@@ -45,9 +45,10 @@ type language string
 
 const (
 	nodeJS language = "nodejs"
+	python language = "python"
 )
 
-var allLanguages = []language{nodeJS}
+var allLanguages = []language{nodeJS, python}
 
 // langGenerator is the interfact for language-specific logic and formatting.
 type langGenerator interface {
@@ -291,6 +292,8 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 	switch language {
 	case nodeJS:
 		lg = newNodeJSGenerator(pkg, version, info, overlaysDir, outDir)
+	case python:
+		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
@@ -727,7 +730,6 @@ func (g *generator) emitGitVersionMetadata() error {
 	if gitinfo.Commit != "" {
 		versionInfo += fmt.Sprintf("Commit: %v\n", gitinfo.Commit)
 	}
-	versionInfo += "\n"
 	return ioutil.WriteFile(filepath.Join(g.outDir, "VERSION"), []byte(versionInfo), 0600)
 }
 

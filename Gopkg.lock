@@ -92,6 +92,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/djherbis/times"
+  packages = ["."]
+  revision = "95292e44976d1217cf3611dc7c8d9466877d3ed5"
+  version = "v1.0.1"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
@@ -338,7 +344,6 @@
     "pkg/diag",
     "pkg/diag/colors",
     "pkg/encoding",
-    "pkg/pack",
     "pkg/resource",
     "pkg/resource/config",
     "pkg/resource/plugin",
@@ -353,7 +358,7 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "6e5084218c8defb27de5ddf006baf4f8cc4869ae"
+  revision = "cc5ce42dc946999b4ae13eefb6eaf4ef78b46a1a"
 
 [[projects]]
   branch = "master"
@@ -534,6 +539,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b37afdc2b6e6c21a7e9dee8a052c4d13b5448ce9ec8b708bffa2d4839a33ff26"
+  inputs-digest = "f81b23e4dab020f14c8286db42cb17f0a6288a16e5966a4f0c20bca4f2440bdc"
   solver-name = "gps-cdcl"
   solver-version = 1

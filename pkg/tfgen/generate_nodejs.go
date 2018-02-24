@@ -372,7 +372,7 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 }
 
 func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
-	// Create a vars.ts file into which all configuration variables will go.
+	// Create a resource module file into which all of this resource's types will go.
 	w, file, err := g.openWriter(mod, lowerFirst(res.name)+".ts", true)
 	if err != nil {
 		return "", err
