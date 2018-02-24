@@ -852,7 +852,13 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out b
 
 	// If nothing was found, generate the primitive type name for this.
 	if t == "" {
-		t = tsPrimitive(sch.Type, sch.Elem, elem, out)
+		var flatten bool
+		if info != nil && info.MaxItemsOne != nil {
+			flatten = *info.MaxItemsOne
+		} else {
+			flatten = sch.MaxItems == 1
+		}
+		t = tsPrimitive(sch.Type, sch.Elem, elem, flatten, out)
 	}
 
 	// If we aren't using optional flags, we need to use TypeScript union types to permit undefined values.
@@ -866,7 +872,7 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out b
 }
 
 // tsPrimitive returns the TypeScript type name for a given schema value type and element kind.
-func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.SchemaInfo, out bool) string {
+func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.SchemaInfo, flatten, out bool) string {
 	// First figure out the raw type.
 	var t = (func() string {
 		switch vt {
@@ -877,7 +883,11 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 		case schema.TypeString:
 			return "string"
 		case schema.TypeSet, schema.TypeList:
-			return fmt.Sprintf("%s[]", tsElemType(elem, eleminfo, out))
+			elemType := tsElemType(elem, eleminfo, out)
+			if flatten {
+				return elemType
+			}
+			return fmt.Sprintf("%s[]", elemType)
 		case schema.TypeMap:
 			return fmt.Sprintf("{[key: string]: %v}", tsElemType(elem, eleminfo, out))
 		default:
@@ -903,7 +913,7 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out bool) string {
 
 	switch e := elem.(type) {
 	case schema.ValueType:
-		return tsPrimitive(e, nil, info, out)
+		return tsPrimitive(e, nil, info, false, out)
 	case *schema.Schema:
 		// A simple type, just return its type name.
 		return tsTypeComplex(e, info, true /*noflags*/, out)

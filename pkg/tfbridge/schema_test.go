@@ -38,6 +38,14 @@ func TestTerraformInputs(t *testing.T) {
 					"configurationValue": true,
 				},
 			}},
+			"optionalConfig": map[string]interface{}{
+				"someValue":      true,
+				"someOtherValue": "a value",
+			},
+			"optionalConfigOther": map[string]interface{}{
+				"someValue":      true,
+				"someOtherValue": "a value",
+			},
 		}),
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
@@ -45,7 +53,7 @@ func TestTerraformInputs(t *testing.T) {
 			"map_property_value":   {Type: schema.TypeMap},
 			"nested_resources": {
 				Type:     schema.TypeList,
-				MaxItems: 1,
+				MaxItems: 2,
 				// Embed a `*schema.Resource` to validate that type directed
 				// walk of the schema successfully walks inside Resources as well
 				// as Schemas.
@@ -55,11 +63,34 @@ func TestTerraformInputs(t *testing.T) {
 					},
 				},
 			},
+			"optional_config": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"some_value":       {Type: schema.TypeBool},
+						"some_other_value": {Type: schema.TypeString},
+					},
+				},
+			},
+			"optional_config_other": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"some_value":       {Type: schema.TypeBool},
+						"some_other_value": {Type: schema.TypeString},
+					},
+				},
+			},
 		},
 		map[string]*SchemaInfo{
 			// Reverse map string_property_value to the stringo property.
 			"string_property_value": {
 				Name: "stringo",
+			},
+			"optional_config_other": {
+				Name:        "optionalConfigOther",
+				MaxItemsOne: boolPointer(true),
 			},
 		},
 		nil,   /* assets */
@@ -90,6 +121,18 @@ func TestTerraformInputs(t *testing.T) {
 				"configuration": map[string]interface{}{
 					"configurationValue": true,
 				},
+			},
+		},
+		"optional_config": []interface{}{
+			map[string]interface{}{
+				"some_value":       true,
+				"some_other_value": "a value",
+			},
+		},
+		"optional_config_other": []interface{}{
+			map[string]interface{}{
+				"some_value":       true,
+				"some_other_value": "a value",
 			},
 		},
 	}, result)
@@ -123,6 +166,18 @@ func TestTerraformOutputs(t *testing.T) {
 					},
 				},
 			},
+			"optional_config": []interface{}{
+				map[string]interface{}{
+					"some_value":       true,
+					"some_other_value": "a value",
+				},
+			},
+			"optional_config_other": []interface{}{
+				map[string]interface{}{
+					"some_value":       true,
+					"some_other_value": "a value",
+				},
+			},
 		},
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
@@ -130,7 +185,7 @@ func TestTerraformOutputs(t *testing.T) {
 			"map_property_value":   {Type: schema.TypeMap},
 			"nested_resources": {
 				Type:     schema.TypeList,
-				MaxItems: 1,
+				MaxItems: 2,
 				// Embed a `*schema.Resource` to validate that type directed
 				// walk of the schema successfully walks inside Resources as well
 				// as Schemas.
@@ -140,11 +195,34 @@ func TestTerraformOutputs(t *testing.T) {
 					},
 				},
 			},
+			"optional_config": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"some_value":       {Type: schema.TypeBool},
+						"some_other_value": {Type: schema.TypeString},
+					},
+				},
+			},
+			"optional_config_other": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"some_value":       {Type: schema.TypeBool},
+						"some_other_value": {Type: schema.TypeString},
+					},
+				},
+			},
 		},
 		map[string]*SchemaInfo{
 			// Reverse map string_property_value to the stringo property.
 			"string_property_value": {
 				Name: "stringo",
+			},
+			"optional_config_other": {
+				Name:        "optionalConfigOther",
+				MaxItemsOne: boolPointer(true),
 			},
 		},
 		nil,   /* assets */
@@ -173,6 +251,14 @@ func TestTerraformOutputs(t *testing.T) {
 				"configurationValue": true,
 			},
 		}},
+		"optionalConfig": map[string]interface{}{
+			"someValue":      true,
+			"someOtherValue": "a value",
+		},
+		"optionalConfigOther": map[string]interface{}{
+			"someValue":      true,
+			"someOtherValue": "a value",
+		},
 	}), result)
 }
 
@@ -402,4 +488,8 @@ func TestDefaults(t *testing.T) {
 		"mmm": "OLM",
 		"zzz": asset,
 	}), outputs)
+}
+
+func boolPointer(b bool) *bool {
+	return &b
 }

@@ -133,6 +133,13 @@ func MakeTerraformInput(res *PulumiResource, name string,
 	old, v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo, assets AssetTable,
 	defaults, rawNames bool) (interface{}, error) {
 
+	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, and need to wrap it
+	// into a single-element array before passing to Terraform.
+	if isListOrSetWithMaxItemsOne(tfs, ps) {
+		old = resource.NewArrayProperty([]resource.PropertyValue{old})
+		v = resource.NewArrayProperty([]resource.PropertyValue{v})
+	}
+
 	switch {
 	case v.IsNull():
 		return nil, nil
@@ -155,10 +162,10 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		if tfs != nil {
 			if sch, issch := tfs.Elem.(*schema.Schema); issch {
 				etfs = sch
-			} else if _, isres := tfs.Elem.(*schema.Resource); isres {
+			} else if res, isres := tfs.Elem.(*schema.Resource); isres {
 				// The IsObject case below expects a schema whose `Elem` is
-				// a Resource, so just pass the full List schema
-				etfs = tfs
+				// a Resource, so create a placeholder schema wrapping this resource.
+				etfs = &schema.Schema{Elem: res}
 			}
 		}
 		var eps *SchemaInfo
@@ -319,6 +326,18 @@ func MakeTerraformOutput(v interface{},
 		var arr []resource.PropertyValue
 		for _, elem := range t {
 			arr = append(arr, MakeTerraformOutput(elem, tfes, pes, assets, rawNames))
+		}
+		// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, so need to extract
+		// out the single element (or null).
+		if isListOrSetWithMaxItemsOne(tfs, ps) {
+			switch len(arr) {
+			case 0:
+				return resource.NewNullProperty()
+			case 1:
+				return arr[0]
+			default:
+				contract.Failf("Unexpected multiple elements in array with MaxItems=1")
+			}
 		}
 		return resource.NewArrayProperty(arr)
 	case map[string]interface{}:
@@ -554,6 +573,21 @@ func MakeTerraformDiffFromRPC(old *pbstruct.Struct, new *pbstruct.Struct,
 		}
 	}
 	return MakeTerraformDiff(oldprops, newprops, tfs, ps)
+}
+
+// isListOrSetWithMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
+// as a scalar, else returns false.
+func isListOrSetWithMaxItemsOne(tfs *schema.Schema, info *SchemaInfo) bool {
+	if tfs == nil {
+		return false
+	}
+	if tfs.Type != schema.TypeList && tfs.Type != schema.TypeSet {
+		return false
+	}
+	if info != nil && info.MaxItemsOne != nil {
+		return *info.MaxItemsOne
+	}
+	return tfs.MaxItems == 1
 }
 
 // useRawNames returns true if raw, unmangled names should be preserved.  This is only true for Terraform maps.
