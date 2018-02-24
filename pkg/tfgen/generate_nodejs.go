@@ -300,7 +300,7 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		anycast = "<any>"
 	}
 	if v.doc != "" {
-		g.emitDocComment(w, v.doc, "")
+		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
 	}
@@ -314,7 +314,7 @@ func sanitizeForDocComment(str string) string {
 	return strings.Replace(str, "*/", "*&#47;", -1)
 }
 
-func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, prefix string) {
+func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
 	if comment != "" {
 		lines := strings.Split(comment, "\n")
 		w.Writefmtln("%v/**", prefix)
@@ -326,6 +326,10 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, prefix str
 			}
 			// Print the line of documentation
 			w.Writefmtln("%v * %s", prefix, docLine)
+		}
+		if docURL != "" {
+			w.Writefmtln("%v *", prefix)
+			w.Writefmtln("%v * Sourced from %s.", prefix, docURL)
 		}
 		w.Writefmtln("%v */", prefix)
 	}
@@ -357,12 +361,12 @@ func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 
 func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
 	if pot.doc != "" {
-		g.emitDocComment(w, pot.doc, "")
+		g.emitDocComment(w, pot.doc, "", "")
 	}
 	w.Writefmtln("export interface %s {", pot.name)
 	for _, prop := range pot.props {
 		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, "    ")
+			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")
 		}
@@ -390,7 +394,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	// Write the TypeDoc/JSDoc for the resource class
 	if res.doc != "" {
-		g.emitDocComment(w, res.doc, "")
+		g.emitDocComment(w, res.doc, res.docURL, "")
 	}
 
 	// Begin defining the class.
@@ -404,7 +408,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	for _, prop := range res.outprops {
 		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, "    ")
+			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")
 		}
@@ -500,7 +504,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
-		g.emitDocComment(w, fun.doc, "")
+		g.emitDocComment(w, fun.doc, fun.docURL, "")
 	}
 
 	// Now, emit the function signature.

@@ -191,6 +191,7 @@ type variable struct {
 	rawdoc string
 	schema *schema.Schema
 	info   *tfbridge.SchemaInfo
+	docURL string
 }
 
 func (v *variable) Name() string { return v.name }
@@ -222,18 +223,20 @@ type resourceType struct {
 	argst    *plainOldType
 	schema   *schema.Resource
 	info     *tfbridge.ResourceInfo
+	docURL   string
 }
 
 func (rt *resourceType) Name() string { return rt.name }
 func (rt *resourceType) Doc() string  { return rt.doc }
 
-func newResourceType(name, doc string, schema *schema.Resource, info *tfbridge.ResourceInfo) *resourceType {
+func newResourceType(name, doc, docURL string, schema *schema.Resource, info *tfbridge.ResourceInfo) *resourceType {
 	return &resourceType{
 		name:     name,
 		doc:      doc,
 		schema:   schema,
 		info:     info,
 		reqprops: make(map[string]bool),
+		docURL:   docURL,
 	}
 }
 
@@ -248,6 +251,7 @@ type resourceFunc struct {
 	retst   *plainOldType
 	schema  *schema.Resource
 	info    *tfbridge.DataSourceInfo
+	docURL  string
 }
 
 func (rf *resourceFunc) Name() string { return rf.name }
@@ -404,7 +408,8 @@ func (g *generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
-		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, true /*out*/); prop != nil {
+		docURL := fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.pkg)
+		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/); prop != nil {
 			config.addMember(prop)
 		}
 	}
@@ -485,7 +490,7 @@ func (g *generator) gatherResource(rawname string,
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(name, parsedDocs.Description, schema, info)
+	res := newResourceType(name, parsedDocs.Description, parsedDocs.URL, schema, info)
 
 	// Next, gather up all properties.
 	for _, key := range stableSchemas(schema.Schema) {
@@ -499,14 +504,15 @@ func (g *generator) gatherResource(rawname string,
 
 			// If an input, generate the input property metadata.
 			propinfo := info.Fields[key]
-			if outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/); outprop != nil {
+			docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
+			if outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/); outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
 
 			// For all properties, generate the output property metadata.  Note that this may differ slightly
 			// from the input in that the types may differ.
 			if input(propschema) {
-				if inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/); inprop != nil {
+				if inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/); inprop != nil {
 					res.inprops = append(res.inprops, inprop)
 					if !inprop.optional() {
 						res.reqprops[name] = true
@@ -614,6 +620,7 @@ func (g *generator) gatherDataSource(rawname string,
 		reqargs: make(map[string]bool),
 		schema:  ds,
 		info:    info,
+		docURL:  parsedDocs.URL,
 	}
 
 	// Sort the args and return properties so we are ready to go.
@@ -630,8 +637,9 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := info.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
+		docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, arg)
 		if input(args[arg]) {
-			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", false /*out*/)
+			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", docURL, false /*out*/)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -642,7 +650,7 @@ func (g *generator) gatherDataSource(rawname string,
 		if args[arg].Computed {
 			// Emit documentation for the property if available
 			fun.rets = append(fun.rets,
-				propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", true /*out*/))
+				propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", docURL, true /*out*/))
 		}
 	}
 
@@ -760,7 +768,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, out bool) *variable {
+	doc string, rawdoc string, docURL string, out bool) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -769,6 +777,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			rawdoc: rawdoc,
 			schema: sch,
 			info:   info,
+			docURL: docURL,
 		}
 	}
 	return nil

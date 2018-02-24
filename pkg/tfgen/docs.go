@@ -22,6 +22,8 @@ type parsedDoc struct {
 	Arguments map[string]string
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
+	// URL is the source documentation URL page at www.terraform.io
+	URL string
 }
 
 // DocKind indicates what kind of entity's documentation is being requested.
@@ -54,7 +56,7 @@ func getDocsForPackage(pkg string, kind DocKind, rawname string, docinfo *tfbrid
 			diag.Message("Could not find docs for resource %v; consider overriding doc source location"), rawname)
 		return parsedDoc{}, nil
 	}
-	doc := parseTFMarkdown(string(markdownByts), rawname)
+	doc := parseTFMarkdown(kind, string(markdownByts), pkg, rawname)
 	if docinfo != nil {
 		// Merge Attributes from source into target
 		if err := mergeDocs(pkg, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
@@ -120,13 +122,15 @@ var argumentBulletRegexp = regexp.MustCompile(
 var attributeBulletRegexp = regexp.MustCompile(
 	"\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)",
 )
+var terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(markdown string, rawname string) parsedDoc {
+func parseTFMarkdown(kind DocKind, markdown string, pkg string, rawname string) parsedDoc {
 	var ret parsedDoc
 	ret.Arguments = map[string]string{}
 	ret.Attributes = map[string]string{}
+	ret.URL = fmt.Sprintf(terraformDocsTemplate, pkg, kind, withoutPackageName(pkg, rawname))
 	sections := strings.Split(markdown, "\n## ")
 	for _, section := range sections {
 		lines := strings.Split(section, "\n")
