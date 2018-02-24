@@ -5,13 +5,15 @@ package tfbridge
 import (
 	"unicode"
 
+	"github.com/gedex/inflector"
+	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
-func PulumiToTerraformName(name string) string {
+func PulumiToTerraformName(name string, tfs map[string]*schema.Schema) string {
 	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
@@ -24,15 +26,35 @@ func PulumiToTerraformName(name string) string {
 			result += string(c)
 		}
 	}
+	// Singularize names which were pluralized because they were array-shaped Pulumi values
+	if tfs != nil {
+		singularResult := inflector.Singularize(result)
+		// Note: If the name is not found in it's singular form in the schema map, that may be because the TF name was
+		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
+		// result.
+		sch, ok := tfs[singularResult]
+		if ok && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
+			result = singularResult
+		}
+	}
 	return result
 }
 
 // TerraformToPulumiName performs a standard transformation on the given name string, from Terraform's underscore_casing
 // to Pulumi's PascalCasing (if upper is true) or camelCasing (if upper is false).
-func TerraformToPulumiName(name string, upper bool) string {
+func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
+
+	// Pluralize names that will become array-shaped Pulumi values
+	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
+		contract.Assertf(
+			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
+			"expected to be able to safely pluralize name: %s", name)
+		name = inflector.Pluralize(name)
+	}
+
 	casingActivated := false // tolerate leading underscores
 	for i, c := range name {
 		if c == '_' && casingActivated {

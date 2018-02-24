@@ -742,7 +742,7 @@ func input(sch *schema.Schema) bool {
 // IDEA: ideally specific languages could override this, to ensure "idiomatic naming", however then the bridge
 //     would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
 //     name transformation process).  This isn't impossible, but certainly complicates matters.
-func propertyName(key string, custom *tfbridge.SchemaInfo) string {
+func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) string {
 	// Use the name override, if one exists, or use the standard name mangling otherwise.
 	if custom != nil {
 		if custom.Name != "" {
@@ -755,19 +755,19 @@ func propertyName(key string, custom *tfbridge.SchemaInfo) string {
 		key = key[:len(key)-1]
 	}
 
-	return tfbridge.TerraformToPulumiName(key, false /*no to PascalCase; we want camelCase*/)
+	return tfbridge.TerraformToPulumiName(key, sch, false /*no to PascalCase; we want camelCase*/)
 }
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
-func propertyVariable(key string, schema *schema.Schema, info *tfbridge.SchemaInfo,
+func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 	doc string, rawdoc string, out bool) *variable {
-	if name := propertyName(key, info); name != "" {
+	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
 			out:    out,
 			doc:    doc,
 			rawdoc: rawdoc,
-			schema: schema,
+			schema: sch,
 			info:   info,
 		}
 	}
@@ -778,9 +778,9 @@ func propertyVariable(key string, schema *schema.Schema, info *tfbridge.SchemaIn
 func dataSourceName(pkg string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(pkg, rawname)            // strip off the pkg prefix.
-		return tfbridge.TerraformToPulumiName(name, false), // camelCase the data source name.
-			tfbridge.TerraformToPulumiName(name, false) // camelCase the filename.
+		name := withoutPackageName(pkg, rawname)                 // strip off the pkg prefix.
+		return tfbridge.TerraformToPulumiName(name, nil, false), // camelCase the data source name.
+			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
 	}
 	// otherwise, a custom transformation exists; use it.
 	return string(info.Tok.Name()), string(info.Tok.Module().Name())
@@ -790,9 +790,9 @@ func dataSourceName(pkg string, rawname string, info *tfbridge.DataSourceInfo) (
 func resourceName(pkg string, rawname string, info *tfbridge.ResourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(pkg, rawname)           // strip off the pkg prefix.
-		return tfbridge.TerraformToPulumiName(name, true), // PascalCase the resource name.
-			tfbridge.TerraformToPulumiName(name, false) // camelCase the filename.
+		name := withoutPackageName(pkg, rawname)                // strip off the pkg prefix.
+		return tfbridge.TerraformToPulumiName(name, nil, true), // PascalCase the resource name.
+			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
 	}
 	// otherwise, a custom transformation exists; use it.
 	return string(info.Tok.Name()), string(info.Tok.Module().Name())

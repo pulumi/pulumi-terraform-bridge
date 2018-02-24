@@ -153,7 +153,7 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 	contract.Assertf(strings.HasPrefix(name, prefix),
 		"Expected all Terraform resources in this module to have a '%v' prefix", prefix)
 	name = name[len(prefix):]
-	return TerraformToPulumiName(name, false), TerraformToPulumiName(name, true)
+	return TerraformToPulumiName(name, nil, false), TerraformToPulumiName(name, nil, true)
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.

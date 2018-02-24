@@ -928,7 +928,7 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out bool) string {
 				fldinfo = info.Fields[s]
 			}
 			sch := e.Schema[s]
-			if name := propertyName(s, fldinfo); name != "" {
+			if name := propertyName(s, sch, fldinfo); name != "" {
 				if c > 0 {
 					t += ", "
 				}

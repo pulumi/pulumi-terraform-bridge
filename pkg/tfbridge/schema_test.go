@@ -51,7 +51,7 @@ func TestTerraformInputs(t *testing.T) {
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
 			"float_property_value": {Type: schema.TypeFloat},
 			"map_property_value":   {Type: schema.TypeMap},
-			"nested_resources": {
+			"nested_resource": {
 				Type:     schema.TypeList,
 				MaxItems: 2,
 				// Embed a `*schema.Resource` to validate that type directed
@@ -116,7 +116,7 @@ func TestTerraformInputs(t *testing.T) {
 				"nestedPropertyA": true,
 			},
 		},
-		"nested_resources": []interface{}{
+		"nested_resource": []interface{}{
 			map[string]interface{}{
 				"configuration": map[string]interface{}{
 					"configurationValue": true,
@@ -159,7 +159,7 @@ func TestTerraformOutputs(t *testing.T) {
 					"nestedPropertyA": true,
 				},
 			},
-			"nested_resources": []interface{}{
+			"nested_resource": []interface{}{
 				map[string]interface{}{
 					"configuration": map[string]interface{}{
 						"configurationValue": true,
@@ -183,7 +183,7 @@ func TestTerraformOutputs(t *testing.T) {
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
 			"float_property_value": {Type: schema.TypeFloat},
 			"map_property_value":   {Type: schema.TypeMap},
-			"nested_resources": {
+			"nested_resource": {
 				Type:     schema.TypeList,
 				MaxItems: 2,
 				// Embed a `*schema.Resource` to validate that type directed

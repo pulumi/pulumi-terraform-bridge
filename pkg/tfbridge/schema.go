@@ -610,7 +610,7 @@ func getInfoFromTerraformName(key string,
 			name = key
 		} else {
 			// If no name override exists, use the default name mangling scheme.
-			name = TerraformToPulumiName(key, false)
+			name = TerraformToPulumiName(key, tfs[key], false)
 		}
 	}
 	return resource.PropertyKey(name), tfs[key], info
@@ -635,7 +635,7 @@ func getInfoFromPulumiName(key resource.PropertyKey,
 		name = ks
 	} else {
 		// Otherwise, transform the Pulumi name to the Terraform name using the standard mangling scheme.
-		name = PulumiToTerraformName(ks)
+		name = PulumiToTerraformName(ks, tfs)
 	}
 	return name, tfs[name], ps[ks]
 }
