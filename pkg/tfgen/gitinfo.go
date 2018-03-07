@@ -31,6 +31,9 @@ const (
 // case dep is being used to vendor, and falls back to looking at the raw Git repo using a standard GOPATH location
 // otherwise.  If neither is found, an error is returned.
 func getGitInfo(prov string) (*GitInfo, error) {
+	if prov == "azure" {
+		prov = "azurerm"
+	}
 	repo := tfGitHub + "/" + tfProvidersOrg + "/" + tfProviderPrefix + "-" + prov
 
 	// First look for a Gopkg.lock file.
@@ -102,6 +105,9 @@ func getRepoDir(prov string) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
+	}
+	if prov == "azure" {
+		prov = "azurerm"
 	}
 	repo := path.Join(tfGitHub, tfProvidersOrg, tfProviderPrefix+"-"+prov)
 	pkg, err := build.Import(repo, wd, build.FindOnly)
