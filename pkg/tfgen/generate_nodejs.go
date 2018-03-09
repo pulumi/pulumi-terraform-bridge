@@ -270,7 +270,7 @@ func (g *nodeJSGenerator) emitConfigVariables(mod *module) (string, error) {
 	}
 
 	// Create a config bag for the variables to pull from.
-	w.Writefmtln("let __config = new pulumi.Config(\"%v:config\");", g.pkg)
+	w.Writefmtln("let __config = new pulumi.Config(\"%v\");", g.pkg)
 	w.Writefmtln("")
 
 	// Emit an entry for all config variables.

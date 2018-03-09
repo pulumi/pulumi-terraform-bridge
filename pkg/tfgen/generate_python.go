@@ -236,7 +236,7 @@ func (g *pythonGenerator) emitConfigVariables(mod *module) (string, error) {
 	defer contract.IgnoreClose(w)
 
 	// Create a config bag for the variables to pull from.
-	w.Writefmtln("__config__ = pulumi.Config('%s:config')", g.pkg)
+	w.Writefmtln("__config__ = pulumi.Config('%s')", g.pkg)
 	w.Writefmtln("")
 
 	// Emit an entry for all config variables.
