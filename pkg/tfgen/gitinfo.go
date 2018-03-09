@@ -103,7 +103,6 @@ func getRepoDir(prov string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	repo := path.Join(tfGitHub, tfProvidersOrg, tfProviderPrefix+"-"+prov)
 	pkg, err := build.Import(repo, wd, build.FindOnly)
 	if err != nil {
