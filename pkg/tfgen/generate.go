@@ -484,7 +484,7 @@ func (g *generator) gatherResource(rawname string,
 	name, module := resourceName(g.pkg, rawname, info)
 
 	// Collect documentation information
-	parsedDocs, err := getDocsForPackage(g.pkg, ResourceDocs, rawname, info.Docs)
+	parsedDocs, err := getDocsForPackage(g.info.Name, ResourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}
@@ -605,10 +605,10 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 func (g *generator) gatherDataSource(rawname string,
 	ds *schema.Resource, info *tfbridge.DataSourceInfo) (string, *resourceFunc, error) {
 	// Generate the name and module for this data source.
-	name, module := dataSourceName(g.pkg, rawname, info)
+	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForPackage(g.pkg, DataSourceDocs, rawname, info.Docs)
+	parsedDocs, err := getDocsForPackage(g.info.Name, DataSourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}
