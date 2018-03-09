@@ -54,8 +54,9 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			"expected to be able to safely pluralize name: %s", name)
 		name = inflector.Pluralize(name)
+		fmt.Println("Status: Success")
 	}
-
+	
 	casingActivated := false // tolerate leading underscores
 	for i, c := range name {
 		if c == '_' && casingActivated {
