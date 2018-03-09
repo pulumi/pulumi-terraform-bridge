@@ -47,7 +47,7 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
-	fmt.Printf("TerraFormToPulumiName : " + name)
+	fmt.Println("TerraFormToPulumiName : " + name)
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
 		contract.Assertf(
