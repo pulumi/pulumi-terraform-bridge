@@ -3,7 +3,6 @@
 package tfbridge
 
 import (
-	"fmt"
 	"unicode"
 
 	"github.com/gedex/inflector"
@@ -47,7 +46,6 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
-	fmt.Println("TerraFormToPulumiName : " + name)
 
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
@@ -55,7 +53,6 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			"expected to be able to safely pluralize name: %s", name)
 		name = inflector.Pluralize(name)
-		fmt.Println("Name: " + name + " ,Status: Success")
 	}
 
 	casingActivated := false // tolerate leading underscores
