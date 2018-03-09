@@ -48,15 +48,16 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	var nextCap bool
 	var prev rune
 	fmt.Println("TerraFormToPulumiName : " + name)
+
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
 		contract.Assertf(
 			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			"expected to be able to safely pluralize name: %s", name)
 		name = inflector.Pluralize(name)
-		fmt.Println("Status: Success")
+		fmt.Println("Name: " + name + " ,Status: Success")
 	}
-	
+
 	casingActivated := false // tolerate leading underscores
 	for i, c := range name {
 		if c == '_' && casingActivated {
