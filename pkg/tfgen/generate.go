@@ -408,7 +408,7 @@ func (g *generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
-		docURL := fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.pkg)
+		docURL := fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
 		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/); prop != nil {
 			config.addMember(prop)
 		}
@@ -481,10 +481,10 @@ func (g *generator) gatherResources() (moduleMap, error) {
 func (g *generator) gatherResource(rawname string,
 	schema *schema.Resource, info *tfbridge.ResourceInfo) (string, *resourceType, error) {
 	// Get the resource's module and name.
-	name, module := resourceName(g.pkg, rawname, info)
+	name, module := resourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information
-	parsedDocs, err := getDocsForPackage(g.pkg, ResourceDocs, rawname, info.Docs)
+	parsedDocs, err := getDocsForProvider(g.info.Name, ResourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}
@@ -605,10 +605,10 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 func (g *generator) gatherDataSource(rawname string,
 	ds *schema.Resource, info *tfbridge.DataSourceInfo) (string, *resourceFunc, error) {
 	// Generate the name and module for this data source.
-	name, module := dataSourceName(g.pkg, rawname, info)
+	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForPackage(g.pkg, DataSourceDocs, rawname, info.Docs)
+	parsedDocs, err := getDocsForProvider(g.info.Name, DataSourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}
@@ -784,10 +784,10 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 }
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
-func dataSourceName(pkg string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
+func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(pkg, rawname)                 // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname)            // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, false), // camelCase the data source name.
 			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
 	}
@@ -796,10 +796,10 @@ func dataSourceName(pkg string, rawname string, info *tfbridge.DataSourceInfo) (
 }
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
-func resourceName(pkg string, rawname string, info *tfbridge.ResourceInfo) (string, string) {
+func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(pkg, rawname)                // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname)           // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, true), // PascalCase the resource name.
 			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
 	}

@@ -36,16 +36,17 @@ const (
 	DataSourceDocs DocKind = "d"
 )
 
-// getDocsForPackage extracts documentation details for the given package from TF website documentation markdown content
-func getDocsForPackage(pkg string, kind DocKind, rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
-	repo, err := getRepoDir(pkg)
+// getDocsForProvider extracts documentation details for the given package from
+// TF website documentation markdown content
+func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
+	repo, err := getRepoDir(provider)
 	if err != nil {
 		return parsedDoc{}, err
 	}
 	possibleMarkdownNames := []string{
-		withoutPackageName(pkg, rawname) + ".html.markdown",
-		withoutPackageName(pkg, rawname) + ".markdown",
-		withoutPackageName(pkg, rawname) + ".html.md",
+		withoutPackageName(provider, rawname) + ".html.markdown",
+		withoutPackageName(provider, rawname) + ".markdown",
+		withoutPackageName(provider, rawname) + ".html.md",
 	}
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
@@ -56,10 +57,10 @@ func getDocsForPackage(pkg string, kind DocKind, rawname string, docinfo *tfbrid
 			diag.Message("Could not find docs for resource %v; consider overriding doc source location"), rawname)
 		return parsedDoc{}, nil
 	}
-	doc := parseTFMarkdown(kind, string(markdownByts), pkg, rawname)
+	doc := parseTFMarkdown(kind, string(markdownByts), provider, rawname)
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(pkg, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
+		if err := mergeDocs(provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -67,7 +68,7 @@ func getDocsForPackage(pkg string, kind DocKind, rawname string, docinfo *tfbrid
 			return doc, err
 		}
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(pkg, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
+		if err := mergeDocs(provider, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -75,7 +76,7 @@ func getDocsForPackage(pkg string, kind DocKind, rawname string, docinfo *tfbrid
 			return doc, err
 		}
 		// Merge Arguments from source into target
-		if err := mergeDocs(pkg, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
+		if err := mergeDocs(provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -101,11 +102,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(pkg string, kind DocKind, targetDocs map[string]string, sourceFrom string,
+func mergeDocs(provider string, kind DocKind, targetDocs map[string]string, sourceFrom string,
 	extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForPackage(pkg, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(provider, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
@@ -126,11 +127,11 @@ var terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.ht
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(kind DocKind, markdown string, pkg string, rawname string) parsedDoc {
+func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname string) parsedDoc {
 	var ret parsedDoc
 	ret.Arguments = map[string]string{}
 	ret.Attributes = map[string]string{}
-	ret.URL = fmt.Sprintf(terraformDocsTemplate, pkg, kind, withoutPackageName(pkg, rawname))
+	ret.URL = fmt.Sprintf(terraformDocsTemplate, provider, kind, withoutPackageName(provider, rawname))
 	sections := strings.Split(markdown, "\n## ")
 	for _, section := range sections {
 		lines := strings.Split(section, "\n")
