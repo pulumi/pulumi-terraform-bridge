@@ -472,7 +472,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// Write out the function signature.
-	w.Writefmt("def %s(", fun.name)
+	w.Writefmt("def %s(", name)
 	for i, arg := range fun.args {
 		if i > 0 {
 			w.Writefmt(", ")
