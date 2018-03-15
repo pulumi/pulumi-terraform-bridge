@@ -550,14 +550,29 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	version = strings.Replace(version, "-", ".", -1) // replace all remaining "-"s with "."s
 
 	// Now create a standard Python package from the metadata.
-	// TODO: how to encode the requirements for downloading a plugin?
 	w.Writefmtln("from setuptools import setup, find_packages")
+	w.Writefmtln("from setuptools.command.install import install")
+	w.Writefmtln("from subprocess import check_call")
 	w.Writefmtln("")
+
+	// Create a command that will install the Pulumi plugin for this resource provider.
+	w.Writefmtln("class InstallPluginCommand(install):")
+	w.Writefmtln("    def run(self):")
+	w.Writefmtln("        install.run(self)")
+	w.Writefmtln("        # if a true install, not building a wheel or egg, fetch the plugin:")
+	w.Writefmtln("        if not self.single_version_externally_managed:")
+	w.Writefmtln("            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s'])", pack.name, version)
+	w.Writefmtln("")
+
+	// Finally, the actual setup part.
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))
 	w.Writefmtln("      version='%s',", version)
 	if g.info.Description != "" {
 		w.Writefmtln("      description='%s',", g.info.Description)
 	}
+	w.Writefmtln("      cmdclass={")
+	w.Writefmtln("          'install': InstallPluginCommand,")
+	w.Writefmtln("      },")
 	if g.info.Keywords != nil {
 		w.Writefmt("      keywords='")
 		for i, kw := range g.info.Keywords {
