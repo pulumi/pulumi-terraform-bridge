@@ -60,6 +60,9 @@ func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 		return nil, err
 	}
 
+	// Set the encoding to UTF-8, in case the comments contain non-ASCII characters.
+	w.Writefmtln("# coding=utf-8")
+
 	// Emit a standard warning header ("do not edit", etc).
 	w.EmitHeaderWarning(g.commentChars())
 
