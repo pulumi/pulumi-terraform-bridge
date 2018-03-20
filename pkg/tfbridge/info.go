@@ -22,6 +22,8 @@ type ProviderInfo struct {
 	Resources   map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
 	DataSources map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
 	Overlay     *OverlayInfo               // optional overlay information for augmented code-generation.
+	JavaScript  *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
+	Python      *PythonInfo                // optional overlay information for augmented Python code-generation.
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
@@ -80,13 +82,22 @@ type PulumiResource struct {
 	Properties resource.PropertyMap
 }
 
-// OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and permits
-// extra files to be included from the overlays/ directory when building up packs/.  This allows augmented
+// OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and
+// permits extra files to be included from the overlays/ directory when building up packs/.  This allows augmented
 // code-generation for convenient things like helper functions, modules, and gradual typing.
 type OverlayInfo struct {
-	Files            []string                // additional files to include in the index file.
-	Modules          map[string]*OverlayInfo // extra modules to inject into the structure.
-	Dependencies     map[string]string       // NPM dependencies to add to package.json.
-	DevDependencies  map[string]string       // NPM dev-dependencies to add to package.json.
-	PeerDependencies map[string]string       // NPM peer-dependencies to add to package.json.
+	Files   []string                // additional files to include in the index file.
+	Modules map[string]*OverlayInfo // extra modules to inject into the structure.
+}
+
+// JavaScriptInfo contains optional overlay information for Python code-generation.
+type JavaScriptInfo struct {
+	Dependencies     map[string]string // NPM dependencies to add to package.json.
+	DevDependencies  map[string]string // NPM dev-dependencies to add to package.json.
+	PeerDependencies map[string]string // NPM peer-dependencies to add to package.json.
+}
+
+// PythonInfo contains optional overlay information for Python code-generation.
+type PythonInfo struct {
+	Requires map[string]string // Pip install_requires information.
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -599,21 +600,35 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	}
 	w.Writefmtln("      packages=find_packages(),")
 
-	// Find the version of the Pulumi SDK to include.  If there is none, add "latest" automatically.
-	sdk := "pulumi"
-	var sdkVersion string
-	if overlay := g.info.Overlay; overlay != nil {
-		if sdkVersion = overlay.Dependencies[sdk]; sdkVersion == "" {
-			if sdkVersion = overlay.DevDependencies[sdk]; sdkVersion == "" {
-				sdkVersion = overlay.PeerDependencies[sdk]
-			}
+	// Emit all requires clauses.
+	var reqs map[string]string
+	if g.info.Python != nil {
+		reqs = g.info.Python.Requires
+	} else {
+		reqs = make(map[string]string)
+	}
+
+	// Ensure that the Pulumi SDK has an entry if not specified.
+	if _, ok := reqs["pulumi"]; !ok {
+		reqs["pulumi"] = ""
+	}
+
+	// Sort the entries so they are deterministic.
+	var reqnames []string
+	for req := range reqs {
+		reqnames = append(reqnames, req)
+	}
+	sort.Strings(reqnames)
+
+	w.Writefmtln("      install_requires=[")
+	for i, req := range reqnames {
+		var comma string
+		if i < len(reqnames)-1 {
+			comma = ","
 		}
+		w.Writefmtln("          '%s%s'%s", req, reqs[req], comma)
 	}
-	w.Writefmt("      install_requires=['%s", sdk)
-	if sdkVersion != "" {
-		w.Writefmt(">=%s", sdkVersion)
-	}
-	w.Writefmtln("'],")
+	w.Writefmtln("      ],")
 
 	w.Writefmtln("      zip_safe=False)")
 	return nil

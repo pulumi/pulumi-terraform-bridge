@@ -623,20 +623,20 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 	}
 
 	// Copy the overlay dependencies, if any.
-	if overlay := g.info.Overlay; overlay != nil {
-		for depk, depv := range overlay.Dependencies {
+	if jso := g.info.JavaScript; jso != nil {
+		for depk, depv := range jso.Dependencies {
 			if npminfo.Dependencies == nil {
 				npminfo.Dependencies = make(map[string]string)
 			}
 			npminfo.Dependencies[depk] = depv
 		}
-		for depk, depv := range overlay.DevDependencies {
+		for depk, depv := range jso.DevDependencies {
 			if npminfo.DevDependencies == nil {
 				npminfo.DevDependencies = make(map[string]string)
 			}
 			npminfo.DevDependencies[depk] = depv
 		}
-		for depk, depv := range overlay.PeerDependencies {
+		for depk, depv := range jso.PeerDependencies {
 			if npminfo.PeerDependencies == nil {
 				npminfo.PeerDependencies = make(map[string]string)
 			}
