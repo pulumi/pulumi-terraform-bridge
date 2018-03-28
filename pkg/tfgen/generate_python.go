@@ -548,10 +548,8 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	if len(version) > 0 && version[0] == 'v' {
 		version = version[1:] // no leading v
 	}
-	if dashix := strings.IndexRune(version, '-'); dashix != -1 {
-		version = version[:dashix] + "+" + version[dashix+1:] // put all non-"N.N.N" text to the right of a "+"
-	}
-	version = strings.Replace(version, "-", ".", -1) // replace all remaining "-"s with "."s
+	version = strings.Replace(version, "-dev-", "a", 1) // replace dev tags with alpha
+	version = strings.Replace(version, "-rc", "rc", 1)  // replace release candidate tags with rc
 
 	// Now create a standard Python package from the metadata.
 	w.Writefmtln("from setuptools import setup, find_packages")
