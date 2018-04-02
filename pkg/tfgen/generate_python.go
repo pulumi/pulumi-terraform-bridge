@@ -543,14 +543,6 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	// Emit a standard warning header ("do not edit", etc).
 	w.EmitHeaderWarning(g.commentChars())
 
-	// Create a Python version.
-	version := pack.version
-	if len(version) > 0 && version[0] == 'v' {
-		version = version[1:] // no leading v
-	}
-	version = strings.Replace(version, "-dev-", "a", 1) // replace dev tags with alpha
-	version = strings.Replace(version, "-rc", "rc", 1)  // replace release candidate tags with rc
-
 	// Now create a standard Python package from the metadata.
 	w.Writefmtln("from setuptools import setup, find_packages")
 	w.Writefmtln("from setuptools.command.install import install")
@@ -563,8 +555,25 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	w.Writefmtln("        install.run(self)")
 	w.Writefmtln("        # if a true install, not building a wheel or egg, fetch the plugin:")
 	w.Writefmtln("        if not self.single_version_externally_managed:")
-	w.Writefmtln("            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s'])", pack.name, version)
+	w.Writefmtln("            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s'])",
+		pack.name, pack.version)
 	w.Writefmtln("")
+
+	// Create a Python version.  To do so, we need to mangle it slightly.  Namely, do the following:
+	//
+	//     1) Skip the leading "v" (i.e., "1.3.11", not "v1.3.11").
+	//     2) Change "-dev-<xyz>" into an alpha release "a<xyz>".
+	//     3) Change "-rc-<xyz>" into a release candidate "rc<xyz>".
+	//     4) Change "-<commitish><dirty>" into a local version label; e.g. "+37bc2f9-dirty", not "-37bc2f9-dirty".
+	//
+	// These changes ensure that we confirm with PEP440: https://www.python.org/dev/peps/pep-0440/#version-scheme.
+	version := pack.version
+	if len(version) > 0 && version[0] == 'v' {
+		version = version[1:] // (1)
+	}
+	version = strings.Replace(version, "-dev-", "a", 1) // (2)
+	version = strings.Replace(version, "-rc", "rc", 1)  // (3)
+	version = strings.Replace(version, "-", "+", 1)     // (4)
 
 	// Finally, the actual setup part.
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))
