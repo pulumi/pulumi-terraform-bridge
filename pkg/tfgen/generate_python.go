@@ -3,7 +3,6 @@
 package tfgen
 
 import (
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -644,7 +643,11 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
 // check is not exhaustive, but it should be good enough to catch 80% of the cases early on.
 func pyType(v *variable) string {
-	switch v.schema.Type {
+	return pyTypeFromSchema(v.schema, v.info)
+}
+
+func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
+	switch sch.Type {
 	case schema.TypeBool:
 		return "bool"
 	case schema.TypeInt:
@@ -654,9 +657,18 @@ func pyType(v *variable) string {
 	case schema.TypeString:
 		return "basestring"
 	case schema.TypeSet, schema.TypeList:
-		return fmt.Sprintf("list")
+		if tfbridge.IsMaxItemsOne(sch, info) {
+			// This isn't supposed to be projected as a list; project it as a scalar.
+			if elem, ok := sch.Elem.(*schema.Schema); ok {
+				// If the elem is a schema type, see if we can do better than just "dict".
+				return pyTypeFromSchema(elem, info.Elem)
+			}
+			// Otherwise, return "dict".
+			return "dict"
+		}
+		return "list"
 	default:
-		return fmt.Sprintf("dict")
+		return "dict"
 	}
 }
 

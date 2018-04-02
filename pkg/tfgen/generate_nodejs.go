@@ -856,12 +856,7 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out b
 
 	// If nothing was found, generate the primitive type name for this.
 	if t == "" {
-		var flatten bool
-		if info != nil && info.MaxItemsOne != nil {
-			flatten = *info.MaxItemsOne
-		} else {
-			flatten = sch.MaxItems == 1
-		}
+		flatten := tfbridge.IsMaxItemsOne(sch, info)
 		t = tsPrimitive(sch.Type, sch.Elem, elem, flatten, out)
 	}
 
