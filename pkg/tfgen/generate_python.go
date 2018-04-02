@@ -308,7 +308,7 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 					curr++
 				}
 			} else {
-				w.Writefmtln(`"""`)
+				w.Writefmtln(`%s"""`, prefix)
 				w.Writefmt(prefix)
 			}
 			w.Writefmt(word)
