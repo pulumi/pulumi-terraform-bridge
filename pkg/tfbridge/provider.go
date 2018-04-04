@@ -14,14 +14,17 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/resource/provider"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
-	"golang.org/x/net/context"
 )
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
@@ -170,6 +173,36 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		if mm.Module() == p.baseConfigMod() || mm.Module() == p.configMod() {
 			vars[resource.PropertyKey(mm.Name())] = resource.NewStringProperty(v)
 		}
+	}
+
+	// So we can provide better error messages, do a quick scan of required configs for this
+	// schema and report any that haven't been supplied.
+	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
+	for key, meta := range p.tf.Schema {
+		_, present := vars[resource.PropertyKey(key)]
+		if meta.Required && !present {
+			fullyQualifiedKey := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(key))
+
+			// TF descriptions often have newlines in inopportune positions. This makes them present
+			// a little better in our console output.
+			descriptionWithoutNewlines := strings.Replace(meta.Description, "\n", " ", -1)
+			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
+				Name:        fullyQualifiedKey.String(),
+				Description: descriptionWithoutNewlines,
+			})
+		}
+	}
+
+	if len(missingKeys) > 0 {
+		err := rpcerror.New(codes.InvalidArgument, "required configuration keys were missing")
+
+		// Clients of our RPC endpoint will be looking for this detail in order to figure out
+		// which keys need descriptive error messages.
+		err = rpcerror.WithDetails(err, &pulumirpc.ConfigureErrorMissingKeys{
+			MissingKeys: missingKeys,
+		})
+
+		return nil, err
 	}
 
 	// Now make a Terraform config map out of the variables.

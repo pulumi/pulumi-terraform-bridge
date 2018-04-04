@@ -361,10 +361,11 @@
     "pkg/util/fsutil",
     "pkg/util/mapper",
     "pkg/util/rpcutil",
+    "pkg/util/rpcutil/rpcerror",
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "cc5ce42dc946999b4ae13eefb6eaf4ef78b46a1a"
+  revision = "a3a6101e792defeaa3cb3db13aeaa850b0d8dbe5"
 
 [[projects]]
   branch = "master"
@@ -545,6 +546,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1e3739f85f1b9f2b87b1010b3b6e9593811d44dfcb597f1a1c04ed56c9138a66"
+  inputs-digest = "a8a728112adf136ab61269d8b125fe2bfb9fa9555ac310c83204c9d73c18ff78"
   solver-name = "gps-cdcl"
   solver-version = 1
