@@ -377,7 +377,8 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 
 func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
 	// Create a resource module file into which all of this resource's types will go.
-	w, file, err := g.openWriter(mod, lowerFirst(res.name)+".ts", true)
+	name := res.name
+	w, file, err := g.openWriter(mod, lowerFirst(name)+".ts", true)
 	if err != nil {
 		return "", err
 	}
@@ -398,7 +399,22 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 
 	// Begin defining the class.
-	w.Writefmtln("export class %s extends pulumi.CustomResource {", res.name)
+	w.Writefmtln("export class %s extends pulumi.CustomResource {", name)
+
+	// Emit a static factory to read instances of this resource.
+	stateType := res.statet.name
+	w.Writefmtln("    /**")
+	w.Writefmtln("     * Get an existing %s resource's state with the given name, ID, and optional extra", name)
+	w.Writefmtln("     * properties used to qualify the lookup.")
+	w.Writefmtln("     *")
+	w.Writefmtln("     * @param name The _unique_ name of the resulting resource.")
+	w.Writefmtln("     * @param id The _unique_ provider ID of the resource to lookup.")
+	w.Writefmtln("     * @param state Any extra arguments used during the lookup.")
+	w.Writefmtln("     */")
+	w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s): %s {", stateType, name)
+	w.Writefmtln("        return new %s(name, state, { id });", name)
+	w.Writefmtln("    }")
+	w.Writefmtln("")
 
 	// Emit all properties (using their output types).
 	// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
@@ -426,61 +442,70 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	// Now create a constructor that chains supercalls and stores into properties.
 	w.Writefmtln("    /**")
-	w.Writefmtln("     * Create a %s resource with the given unique name, arguments, and options.", res.name)
+	w.Writefmtln("     * Create a %s resource with the given unique name, arguments, and options.", name)
 	w.Writefmtln("     *")
 	w.Writefmtln("     * @param name The _unique_ name of the resource.")
-	if res.argst != nil {
-		w.Writefmtln("     * @param args The arguments to use to populate this resource.")
-	}
+	w.Writefmtln("     * @param args The arguments to use to populate this resource's properties.")
+	w.Writefmtln("     * @param state The state to use when looking up an instance of this resource.")
 	w.Writefmtln("     * @param opts A bag of options that control this resource's behavior.")
 	w.Writefmtln("     */")
 
-	var argsarg string
-	if res.argst != nil {
-		var argsflags string
-		if len(res.reqprops) == 0 {
-			// If the number of input properties was zero, we make the args object optional.
-			argsflags = "?"
-		}
-		argsarg = fmt.Sprintf("args%s: %s, ", argsflags, res.argst.name)
+	// Write out the primary callable constructors: first, the creation one, then the lookup one.  This is complicated
+	// slightly by the fact that, if there is no args type, we will emit a constructor lacking that parameter.
+	var argsFlags string
+	if len(res.reqprops) == 0 {
+		// If the number of required input properties was zero, we can make the args object optional.
+		argsFlags = "?"
 	}
+	argsType := res.argst.name
+	w.Writefmtln("    constructor(name: string, args%s: %s, opts?: pulumi.ResourceOptions)", argsFlags, argsType)
+	w.Writefmtln("    constructor(name: string, state?: %s, opts?: pulumi.ResourceOptions)", stateType)
 
-	w.Writefmtln("    constructor(name: string, %sopts?: pulumi.ResourceOptions) {", argsarg)
-
-	// If the property arg isn't required, zero-init it if it wasn't actually passed in.
-	if res.argst != nil && len(res.reqprops) == 0 {
-		w.Writefmtln("        args = args || {};")
+	// Now write out the most general purpose constructor that can handle all of the above.  And then emit the body
+	// preamble which will pluck out the conditional state into sensible variables using dynamic type tests.
+	w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.ResourceOptions) {",
+		argsType, stateType)
+	w.Writefmtln("        let inputs: pulumi.Inputs = {};")
+	// The lookup case:
+	w.Writefmtln("        if (opts && opts.id) {")
+	w.Writefmtln("            const state: %[1]s = argsOrState as %[1]s | undefined;", stateType)
+	for _, prop := range res.outprops {
+		w.Writefmtln(`            inputs["%[1]s"] = state ? state.%[1]s : undefined;`, prop.name)
 	}
-
-	// First, validate all required arguments.
+	// The creation case (with args):
+	w.Writefmtln("        } else {")
+	w.Writefmtln("            const args = argsOrState as %s | undefined;", argsType)
 	for _, prop := range res.inprops {
 		if !prop.optional() {
-			w.Writefmtln("        if (args.%s === undefined) {", prop.name)
-			w.Writefmtln("            throw new Error(\"Missing required property '%s'\");", prop.name)
-			w.Writefmtln("        }")
+			w.Writefmtln("            if (!args || args.%s === undefined) {", prop.name)
+			w.Writefmtln("                throw new Error(\"Missing required property '%s'\");", prop.name)
+			w.Writefmtln("            }")
 		}
 	}
-
-	// Now invoke the super constructor with the type, name, and a property map.
-	w.Writefmtln("        super(\"%s\", name, {", res.info.Tok)
 	for _, prop := range res.inprops {
-		w.Writefmtln("            \"%[1]s\": args.%[1]s,", prop.name)
+		w.Writefmtln(`            inputs["%[1]s"] = args ? args.%[1]s : undefined;`, prop.name)
 	}
 	for _, prop := range res.outprops {
 		if !ins[prop.name] {
-			w.Writefmtln("            \"%s\": undefined,", prop.name)
+			w.Writefmtln(`            inputs["%s"] = undefined /*out*/;`, prop.name)
 		}
 	}
-	w.Writefmtln("        }, opts);")
+	w.Writefmtln("        }")
 
+	// Now invoke the super constructor with the type, name, and a property map.
+	w.Writefmtln(`        super("%s", name, inputs, opts);`, res.info.Tok)
+
+	// Finish the class.
 	w.Writefmtln("    }")
 	w.Writefmtln("}")
 
-	// If there's an argument type, emit it.
-	if res.argst != nil {
-		w.Writefmtln("")
-		g.emitPlainOldType(w, res.argst)
-	}
+	// Emit the state type for get methods.
+	w.Writefmtln("")
+	g.emitPlainOldType(w, res.statet)
+
+	// Emit the argument type for construction.
+	w.Writefmtln("")
+	g.emitPlainOldType(w, res.argst)
 
 	return file, nil
 }
@@ -813,12 +838,12 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 
 // tsFlags returns the TypeScript flags for a given variable.
 func tsFlags(v *variable) string {
-	return tsFlagsComplex(v.schema, v.info, v.out)
+	return tsFlagsComplex(v.schema, v.info, v.opt, v.out)
 }
 
 // tsFlagsComplex is just like tsFlags, except that it permits recursing into component pieces individually.
-func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool) string {
-	if optionalComplex(sch, info, out) {
+func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt bool, out bool) string {
+	if opt || optionalComplex(sch, info, out) {
 		return "?"
 	}
 	return ""
@@ -931,7 +956,7 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out bool) string {
 				if c > 0 {
 					t += ", "
 				}
-				flg := tsFlagsComplex(sch, fldinfo, out)
+				flg := tsFlagsComplex(sch, fldinfo, false, out)
 				typ := tsTypeComplex(sch, fldinfo, false /*noflags*/, out)
 				t += fmt.Sprintf("%s%s: %s", name, flg, typ)
 				c++

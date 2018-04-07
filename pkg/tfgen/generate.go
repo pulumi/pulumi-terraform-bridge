@@ -187,6 +187,7 @@ type moduleMember interface {
 type variable struct {
 	name   string
 	out    bool
+	opt    bool
 	doc    string
 	rawdoc string
 	schema *schema.Schema
@@ -199,7 +200,7 @@ func (v *variable) Doc() string  { return v.doc }
 
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool {
-	return optionalComplex(v.schema, v.info, v.out)
+	return v.opt || optionalComplex(v.schema, v.info, v.out)
 }
 
 // optionalComplex takes the constituent parts of a variable, rather than a variable itself, and returns whether it is
@@ -220,7 +221,8 @@ type resourceType struct {
 	inprops  []*variable
 	outprops []*variable
 	reqprops map[string]bool
-	argst    *plainOldType
+	argst    *plainOldType // input properties.
+	statet   *plainOldType // output properties (all optional).
 	schema   *schema.Resource
 	info     *tfbridge.ResourceInfo
 	docURL   string
@@ -493,6 +495,7 @@ func (g *generator) gatherResource(rawname string,
 	res := newResourceType(name, parsedDocs.Description, parsedDocs.URL, schema, info)
 
 	// Next, gather up all properties.
+	var stateVars []*variable
 	for _, key := range stableSchemas(schema.Schema) {
 		if propschema := schema.Schema[key]; propschema.Removed == "" {
 			// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
@@ -505,30 +508,42 @@ func (g *generator) gatherResource(rawname string,
 			// If an input, generate the input property metadata.
 			propinfo := info.Fields[key]
 			docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
-			if outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/); outprop != nil {
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
+			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
 
 			// For all properties, generate the output property metadata.  Note that this may differ slightly
 			// from the input in that the types may differ.
 			if input(propschema) {
-				if inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/); inprop != nil {
+				inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+				if inprop != nil {
 					res.inprops = append(res.inprops, inprop)
 					if !inprop.optional() {
 						res.reqprops[name] = true
 					}
 				}
 			}
+
+			// Make a state variable.  This is always optional and simply lets callers perform lookups.
+			stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+			stateVar.opt = true
+			stateVars = append(stateVars, stateVar)
 		}
 	}
 
+	// Generate a state type for looking up instances of this resource.
+	res.statet = &plainOldType{
+		name:  fmt.Sprintf("%sState", res.name),
+		doc:   fmt.Sprintf("Input properties used for looking up and filtering %s resources.", res.name),
+		props: stateVars,
+	}
+
 	// Next, generate the args interface for this class, and add it first to the list (since the res type uses it).
-	if len(res.inprops) > 0 {
-		res.argst = &plainOldType{
-			name:  fmt.Sprintf("%sArgs", res.name),
-			doc:   fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
-			props: res.inprops,
-		}
+	res.argst = &plainOldType{
+		name:  fmt.Sprintf("%sArgs", res.name),
+		doc:   fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
+		props: res.inprops,
 	}
 
 	// Ensure there weren't any custom fields that were unrecognized.

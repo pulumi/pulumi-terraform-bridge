@@ -400,6 +400,43 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	return &pulumirpc.CreateResponse{Id: newstate.ID, Properties: mprops}, nil
 }
 
+// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+// identify the resource; this is typically just the resource ID, but may also include some properties.
+func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	p.setLoggingContext(ctx)
+	urn := resource.URN(req.GetUrn())
+	t := urn.Type()
+	res, has := p.resources[t]
+	if !has {
+		return nil, errors.Errorf("unrecognized resource type (Read): %s", t)
+	}
+
+	id := resource.ID(req.GetId())
+	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TF.Name)
+	glog.V(9).Infof("%s executing", label)
+
+	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
+	inputs, err := MakeTerraformAttributesFromRPC(
+		nil, req.GetProperties(), res.TFSchema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
+	if err != nil {
+		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
+	}
+	info := &terraform.InstanceInfo{Type: res.TF.Name}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs}
+	newstate, err := p.tf.Refresh(info, state)
+	if err != nil {
+		return nil, errors.Wrapf(err, "refreshing %s", urn)
+	}
+
+	props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
+	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+		Label: fmt.Sprintf("%s.newstate", label)})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.ReadResponse{Properties: mprops}, nil
+}
+
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
