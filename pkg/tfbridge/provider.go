@@ -333,17 +333,25 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	// Each RequiresNew translates into a replacement.
+	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
-	replaced := make(map[resource.PropertyKey]bool)
-	if diff != nil {
+	var replaced map[resource.PropertyKey]bool
+	var changes pulumirpc.DiffResponse_DiffChanges
+	hasChanges := diff != nil && len(diff.Attributes) > 0
+	if hasChanges {
+		changes = pulumirpc.DiffResponse_DIFF_SOME
 		for k, attr := range diff.Attributes {
 			if attr.RequiresNew {
 				name, _, _ := getInfoFromTerraformName(k, res.TFSchema, res.Schema.Fields, false)
 				replaces = append(replaces, string(name))
+				if replaced == nil {
+					replaced = make(map[resource.PropertyKey]bool)
+				}
 				replaced[name] = true
 			}
 		}
+	} else {
+		changes = pulumirpc.DiffResponse_DIFF_NONE
 	}
 
 	// For all properties that are ForceNew, but didn't change, assume they are stable.  Also recognize
@@ -358,6 +366,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	return &pulumirpc.DiffResponse{
+		Changes:             changes,
 		Replaces:            replaces,
 		Stables:             stables,
 		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
