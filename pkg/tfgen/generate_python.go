@@ -660,8 +660,12 @@ func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 		if tfbridge.IsMaxItemsOne(sch, info) {
 			// This isn't supposed to be projected as a list; project it as a scalar.
 			if elem, ok := sch.Elem.(*schema.Schema); ok {
+				var schInfo *tfbridge.SchemaInfo
+				if info != nil {
+					schInfo = info.Elem
+				}
 				// If the elem is a schema type, see if we can do better than just "dict".
-				return pyTypeFromSchema(elem, info.Elem)
+				return pyTypeFromSchema(elem, schInfo)
 			}
 			// Otherwise, return "dict".
 			return "dict"
