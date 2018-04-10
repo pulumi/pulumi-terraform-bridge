@@ -437,13 +437,20 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
 	}
 
-	props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
-	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.newstate", label)})
-	if err != nil {
-		return nil, err
+	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
+	// that the resource no longer exists, we will simply return the empty string and an empty property map.
+	if newstate != nil {
+		props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
+		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label: fmt.Sprintf("%s.newstate", label)})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.ReadResponse{Id: newstate.ID, Properties: mprops}, nil
 	}
-	return &pulumirpc.ReadResponse{Properties: mprops}, nil
+
+	// The resource is gone.
+	return &pulumirpc.ReadResponse{}, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
