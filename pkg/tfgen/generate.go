@@ -420,7 +420,7 @@ func (g *generator) gatherConfig() *module {
 	for key := range custom {
 		if _, has := cfg[key]; !has {
 			cmdutil.Diag().Warningf(
-				diag.Message("custom config schema %s was not present in the Terraform metadata"), key)
+				diag.Message("", "custom config schema %s was not present in the Terraform metadata"), key)
 		}
 	}
 
@@ -444,7 +444,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 		if info == nil {
 			// if this resource was missing, issue a warning and skip it.
 			cmdutil.Diag().Warningf(
-				diag.Message("resource %s not found in provider map; skipping"), r)
+				diag.Message("", "resource %s not found in provider map; skipping"), r)
 			continue
 		}
 		seen[r] = true
@@ -471,7 +471,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 	for _, name := range names {
 		if !seen[name] {
 			cmdutil.Diag().Warningf(
-				diag.Message("resource %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
+				diag.Message("", "resource %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
 				name, g.info.Resources[name].Tok)
 		}
 	}
@@ -550,7 +550,7 @@ func (g *generator) gatherResource(rawname string,
 	for key := range info.Fields {
 		if _, has := schema.Schema[key]; !has {
 			cmdutil.Diag().Warningf(
-				diag.Message("custom resource schema %s.%s was not present in the Terraform metadata"),
+				diag.Message("", "custom resource schema %s.%s was not present in the Terraform metadata"),
 				name, key)
 		}
 	}
@@ -581,7 +581,7 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 		if dsinfo == nil {
 			// if this data source was missing, issue a warning and skip it.
 			cmdutil.Diag().Warningf(
-				diag.Message("data source %s not found in provider map; skipping"), ds)
+				diag.Message("", "data source %s not found in provider map; skipping"), ds)
 			continue
 		}
 		seen[ds] = true
@@ -608,7 +608,7 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 	for _, name := range names {
 		if !seen[name] {
 			cmdutil.Diag().Warningf(
-				diag.Message("data source %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
+				diag.Message("", "data source %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
 				name, g.info.DataSources[name].Tok)
 		}
 	}
