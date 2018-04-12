@@ -552,7 +552,9 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	w.Writefmtln("class InstallPluginCommand(install):")
 	w.Writefmtln("    def run(self):")
 	w.Writefmtln("        install.run(self)")
-	w.Writefmtln("        check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s', '--verbose'])",
+	w.Writefmtln("        # if a true install, not building a wheel or egg, fetch the plugin:")
+	w.Writefmtln("        if not self.single_version_externally_managed:")
+	w.Writefmtln("            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s'])",
 		pack.name, pack.version)
 	w.Writefmtln("")
 
