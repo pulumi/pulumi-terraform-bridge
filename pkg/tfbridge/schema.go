@@ -496,12 +496,7 @@ func MakeTerraformAttributesFromInputs(inputs map[string]interface{},
 	// them into their TF attribute form. The result is our set of TF attributes.
 	result := make(map[string]string)
 	reader := &schema.ConfigFieldReader{Config: cfg, Schema: tfs}
-	for k, v := range inputs {
-		// Elide nil values.
-		if v == nil {
-			continue
-		}
-
+	for k := range tfs {
 		f, err := reader.ReadField([]string{k})
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not read field %v", k)
