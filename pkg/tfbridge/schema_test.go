@@ -406,6 +406,20 @@ func TestTerraformAttributes(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
+// Test that an unset list still generates a length attribute.
+func TestEmptyListAttribute(t *testing.T) {
+	result, err := MakeTerraformAttributesFromInputs(
+		map[string]interface{}{},
+		map[string]*schema.Schema{
+			"list_property": {Type: schema.TypeList, Optional: true},
+		})
+
+	assert.NoError(t, err)
+	assert.Equal(t, result, map[string]string{
+		"list_property.#": "0",
+	})
+}
+
 func TestDefaults(t *testing.T) {
 	// Produce maps with the following properties, and then validate them:
 	//     - aaa string; no defaults, no inputs => empty
