@@ -265,7 +265,6 @@ func TestTerraformOutputs(t *testing.T) {
 func TestTerraformAttributes(t *testing.T) {
 	result, err := MakeTerraformAttributesFromInputs(
 		map[string]interface{}{
-			"nil_property_value":    nil,
 			"bool_property_value":   false,
 			"number_property_value": 42,
 			"float_property_value":  99.6767932,
@@ -292,7 +291,6 @@ func TestTerraformAttributes(t *testing.T) {
 			"set_property_value": []interface{}{"set member 1", "set member 2"},
 		},
 		map[string]*schema.Schema{
-			"nil_property_value":    {Type: schema.TypeMap},
 			"bool_property_value":   {Type: schema.TypeBool},
 			"number_property_value": {Type: schema.TypeInt},
 			"float_property_value":  {Type: schema.TypeFloat},
@@ -406,6 +404,20 @@ func TestTerraformAttributes(t *testing.T) {
 	result, err = MakeTerraformAttributesFromInputs(sharedInputs, sharedSchema)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
+}
+
+// Test that an unset list still generates a length attribute.
+func TestEmptyListAttribute(t *testing.T) {
+	result, err := MakeTerraformAttributesFromInputs(
+		map[string]interface{}{},
+		map[string]*schema.Schema{
+			"list_property": {Type: schema.TypeList, Optional: true},
+		})
+
+	assert.NoError(t, err)
+	assert.Equal(t, result, map[string]string{
+		"list_property.#": "0",
+	})
 }
 
 func TestDefaults(t *testing.T) {
