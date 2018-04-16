@@ -292,7 +292,7 @@ func TestTerraformAttributes(t *testing.T) {
 			"set_property_value": []interface{}{"set member 1", "set member 2"},
 		},
 		map[string]*schema.Schema{
-			"nil_property_value": {Type: schema.TypeMap},
+			"nil_property_value":    {Type: schema.TypeMap},
 			"bool_property_value":   {Type: schema.TypeBool},
 			"number_property_value": {Type: schema.TypeInt},
 			"float_property_value":  {Type: schema.TypeFloat},
