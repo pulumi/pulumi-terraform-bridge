@@ -327,10 +327,6 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, pr
 			// Print the line of documentation
 			w.Writefmtln("%v * %s", prefix, docLine)
 		}
-		if docURL != "" {
-			w.Writefmtln("%v *", prefix)
-			w.Writefmtln("%v * Sourced from %s.", prefix, docURL)
-		}
 		w.Writefmtln("%v */", prefix)
 	}
 }
