@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/buildutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
@@ -556,21 +557,11 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 		pack.name, pack.version)
 	w.Writefmtln("")
 
-	// Create a Python version.  To do so, we need to mangle it slightly.  Namely, do the following:
-	//
-	//     1) Skip the leading "v" (i.e., "1.3.11", not "v1.3.11").
-	//     2) Change "-dev-<xyz>" into an alpha release "a<xyz>".
-	//     3) Change "-rc-<xyz>" into a release candidate "rc<xyz>".
-	//     4) Change "-<commitish><dirty>" into a local version label; e.g. "+37bc2f9-dirty", not "-37bc2f9-dirty".
-	//
-	// These changes ensure that we confirm with PEP440: https://www.python.org/dev/peps/pep-0440/#version-scheme.
-	version := pack.version
-	if len(version) > 0 && version[0] == 'v' {
-		version = version[1:] // (1)
+	// Mangle the version (which is a semver, by convention) so it is PEP440 compatable
+	version, err := buildutil.PyPiVersionFromNpmVersion(pack.version)
+	if err != nil {
+		return err
 	}
-	version = strings.Replace(version, "-dev-", "a", 1) // (2)
-	version = strings.Replace(version, "-rc", "rc", 1)  // (3)
-	version = strings.Replace(version, "-", "+", 1)     // (4)
 
 	// Finally, the actual setup part.
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))

@@ -356,6 +356,7 @@
     "pkg/resource/provider",
     "pkg/tokens",
     "pkg/tools",
+    "pkg/util/buildutil",
     "pkg/util/cmdutil",
     "pkg/util/contract",
     "pkg/util/fsutil",
@@ -367,7 +368,7 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "4f3d2366064de9a0098b959a05ba1aa1d95c7e0b"
+  revision = "7b27f00602c7eeaa380321c055b34313c9d243f8"
 
 [[projects]]
   branch = "master"
@@ -548,6 +549,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c2f3bc43a709d03ac45c060ba7041e7fb197012e83d76e2a368943d75e88ff38"
+  inputs-digest = "0ca890612b0fe785864e2b478c1714632dfe98ee1eb515d8f4d4dc1a63e56d6a"
   solver-name = "gps-cdcl"
   solver-version = 1
