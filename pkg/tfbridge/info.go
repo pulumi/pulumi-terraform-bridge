@@ -4,6 +4,7 @@ package tfbridge
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/terraform"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -24,6 +25,8 @@ type ProviderInfo struct {
 	Overlay     *OverlayInfo               // optional overlay information for augmented code-generation.
 	JavaScript  *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
 	Python      *PythonInfo                // optional overlay information for augmented Python code-generation.
+
+	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
@@ -101,3 +104,6 @@ type JavaScriptInfo struct {
 type PythonInfo struct {
 	Requires map[string]string // Pip install_requires information.
 }
+
+// PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
+type PreConfigureCallback func(vars resource.PropertyMap, config *terraform.ResourceConfig) error

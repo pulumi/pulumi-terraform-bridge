@@ -211,6 +211,12 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
 
+	if p.info.PreConfigureCallback != nil {
+		if err = p.info.PreConfigureCallback(vars, config); err != nil {
+			return nil, err
+		}
+	}
+
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(config)
 	for _, warn := range warns {
