@@ -408,7 +408,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("     * @param state Any extra arguments used during the lookup.")
 	w.Writefmtln("     */")
 	w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s): %s {", stateType, name)
-	w.Writefmtln("        return new %s(name, state, { id });", name)
+	w.Writefmtln("        return new %s(name, <any>state, { id });", name)
 	w.Writefmtln("    }")
 	w.Writefmtln("")
 
@@ -442,12 +442,12 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("     *")
 	w.Writefmtln("     * @param name The _unique_ name of the resource.")
 	w.Writefmtln("     * @param args The arguments to use to populate this resource's properties.")
-	w.Writefmtln("     * @param state The state to use when looking up an instance of this resource.")
 	w.Writefmtln("     * @param opts A bag of options that control this resource's behavior.")
 	w.Writefmtln("     */")
 
-	// Write out the primary callable constructors: first, the creation one, then the lookup one.  This is complicated
-	// slightly by the fact that, if there is no args type, we will emit a constructor lacking that parameter.
+	// Write out callable constructor: We only emit a single public constructor, even though we use a private signature
+	// as well as part of the implementation of `.get`. This is complicated slightly by the fact that, if there is no
+	// args type, we will emit a constructor lacking that parameter.
 	var argsFlags string
 	if len(res.reqprops) == 0 {
 		// If the number of required input properties was zero, we can make the args object optional.
@@ -455,10 +455,10 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	argsType := res.argst.name
 	w.Writefmtln("    constructor(name: string, args%s: %s, opts?: pulumi.ResourceOptions)", argsFlags, argsType)
-	w.Writefmtln("    constructor(name: string, state?: %s, opts?: pulumi.ResourceOptions)", stateType)
 
-	// Now write out the most general purpose constructor that can handle all of the above.  And then emit the body
-	// preamble which will pluck out the conditional state into sensible variables using dynamic type tests.
+	// Now write out a general purpose constructor implementation that can handle the public signautre as well as the
+	// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
+	// conditional state into sensible variables using dynamic type tests.
 	w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.ResourceOptions) {",
 		argsType, stateType)
 	w.Writefmtln("        let inputs: pulumi.Inputs = {};")
