@@ -150,16 +150,19 @@ func TestTerraformInputs(t *testing.T) {
 	}, result)
 }
 
+type MyString string
+
 // TestTerraformOutputs verifies that we translate Terraform outputs into Pulumi outputs.
 func TestTerraformOutputs(t *testing.T) {
 	result := MakeTerraformOutputs(
 		map[string]interface{}{
-			"nil_property_value":    nil,
-			"bool_property_value":   false,
-			"number_property_value": 42,
-			"float_property_value":  99.6767932,
-			"string_property_value": "ognirts",
-			"array_property_value":  []interface{}{"an array"},
+			"nil_property_value":       nil,
+			"bool_property_value":      false,
+			"number_property_value":    42,
+			"float_property_value":     99.6767932,
+			"string_property_value":    "ognirts",
+			"my_string_property_value": MyString("ognirts"),
+			"array_property_value":     []interface{}{"an array"},
 			"object_property_value": map[string]interface{}{
 				"property_a": "a",
 				"property_b": true,
@@ -193,8 +196,9 @@ func TestTerraformOutputs(t *testing.T) {
 		},
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-			"float_property_value": {Type: schema.TypeFloat},
-			"map_property_value":   {Type: schema.TypeMap},
+			"float_property_value":     {Type: schema.TypeFloat},
+			"my_string_property_value": {Type: schema.TypeString},
+			"map_property_value":       {Type: schema.TypeMap},
 			"nested_resource": {
 				Type:     schema.TypeList,
 				MaxItems: 2,
@@ -241,12 +245,13 @@ func TestTerraformOutputs(t *testing.T) {
 		false, /*useRawNames*/
 	)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"nilPropertyValue":    nil,
-		"boolPropertyValue":   false,
-		"numberPropertyValue": 42,
-		"floatPropertyValue":  99.6767932,
-		"stringo":             "ognirts",
-		"arrayPropertyValue":  []interface{}{"an array"},
+		"nilPropertyValue":      nil,
+		"boolPropertyValue":     false,
+		"numberPropertyValue":   42,
+		"floatPropertyValue":    99.6767932,
+		"stringo":               "ognirts",
+		"myStringPropertyValue": "ognirts",
+		"arrayPropertyValue":    []interface{}{"an array"},
 		"objectPropertyValue": map[string]interface{}{
 			"propertyA": "a",
 			"propertyB": true,
