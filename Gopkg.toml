@@ -1,36 +1,4 @@
 [[constraint]]
-  branch = "master"
-  name = "github.com/golang/glog"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/golang/protobuf"
-
-[[constraint]]
-  name = "github.com/hashicorp/go-multierror"
-  revision = "d30f09973e19c1dfcd120b2d9c4f168e68d6b5d5"
-
-[[constraint]]
-  name = "github.com/pelletier/go-toml"
-  version = "1.0.1"
-
-[[constraint]]
-  name = "github.com/pkg/errors"
-  version = "0.8.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/spf13/cobra"
-
-[[constraint]]
-  name = "github.com/stretchr/testify"
-  version = "1.1.4"
-
-[[constraint]]
-  name = "golang.org/x/net"
-  revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
-
-[[constraint]]
   name = "github.com/pulumi/pulumi"
   revision = "7b27f00602c7eeaa380321c055b34313c9d243f8"
 
