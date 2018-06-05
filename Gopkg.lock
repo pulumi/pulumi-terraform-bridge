@@ -98,6 +98,12 @@
   version = "v1.0.1"
 
 [[projects]]
+  name = "github.com/fatih/color"
+  packages = ["."]
+  revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
+  version = "v1.7.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/gedex/inflector"
   packages = ["."]
@@ -142,9 +148,10 @@
   revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
 
 [[projects]]
+  branch = "master"
   name = "github.com/hashicorp/go-cleanhttp"
   packages = ["."]
-  revision = "3573b8b52aa7b37b9358d966a898feb387f62437"
+  revision = "d5fe4b57a186c716b0e00b8c301cbd9b4182694d"
 
 [[projects]]
   branch = "master"
@@ -168,7 +175,7 @@
 [[projects]]
   name = "github.com/hashicorp/go-version"
   packages = ["."]
-  revision = "e96d3840402619007766590ecea8dd7af1292276"
+  revision = "4fe82ae3040f80a03d04d2cccb5606a626b8e1ee"
 
 [[projects]]
   name = "github.com/hashicorp/hcl"
@@ -195,7 +202,7 @@
     "hcldec",
     "hclparse"
   ]
-  revision = "44bad6dbf5490f5da17ec991e664df3d017b706f"
+  revision = "5f8ed954abd873b2c09616ba0aa607892bbca7e9"
 
 [[projects]]
   name = "github.com/hashicorp/hil"
@@ -213,7 +220,7 @@
   revision = "0dc08b1671f34c4250ce212759ebd880f743d883"
 
 [[projects]]
-  branch = "pulumi-master"
+  branch = "UpdateTF"
   name = "github.com/hashicorp/terraform"
   packages = [
     "config",
@@ -226,8 +233,10 @@
     "helper/hilmapstructure",
     "helper/logging",
     "helper/schema",
+    "httpclient",
     "moduledeps",
     "plugin/discovery",
+    "registry",
     "registry/regsrc",
     "registry/response",
     "svchost",
@@ -237,7 +246,7 @@
     "tfdiags",
     "version"
   ]
-  revision = "aad0b3801b6e590b41305b6ab938669e834e5ca7"
+  revision = "fe2f6a8d31a3b4b6f058fed6a537273b0f1f420a"
   source = "github.com/pulumi/terraform"
 
 [[projects]]
@@ -252,20 +261,27 @@
   revision = "0b12d6b5"
 
 [[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
   name = "github.com/mattn/go-isatty"
   packages = ["."]
   revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
   version = "v0.0.3"
 
 [[projects]]
+  branch = "master"
   name = "github.com/mitchellh/cli"
   packages = ["."]
-  revision = "65fcae5817c8600da98ada9d7edf26dd1a84837b"
+  revision = "c48282d14eba4b0817ddef3f832ff8d13851aefd"
 
 [[projects]]
   name = "github.com/mitchellh/copystructure"
   packages = ["."]
-  revision = "5af94aef99f597e6a9e1f6ac6be6ce0f3c96b49d"
+  revision = "d23ffcb85de31694d6ccaa23ccb4a03e55c1303f"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
@@ -303,7 +319,7 @@
 [[projects]]
   name = "github.com/mitchellh/reflectwalk"
   packages = ["."]
-  revision = "92573fe8d000a145bfebc03a16bc22b34945867f"
+  revision = "63d60e9d0dbc60cf9164e6510889b0db6683d98c"
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
@@ -377,11 +393,6 @@
   revision = "2ab6b7470a54bfa9b5b0289f9b4e8fc4839838f7"
 
 [[projects]]
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  revision = "b061729afc07e77a8aa4fad0a2fd840958f1942a"
-
-[[projects]]
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
@@ -444,9 +455,10 @@
     "cty/json",
     "cty/set"
   ]
-  revision = "8bf222d6d03b7b336d013978f3acbfd877da428f"
+  revision = "49fa5e03c418f95f78684c91e155af06aa901a32"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -461,7 +473,7 @@
     "pbkdf2",
     "ssh/terminal"
   ]
-  revision = "eb71ad9bd329b5ac0fd0148dd99bd62e8be8e035"
+  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
 
 [[projects]]
   name = "golang.org/x/net"
