@@ -408,10 +408,17 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// To get Terraform to create a new resource, the ID msut be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	info := &terraform.InstanceInfo{Type: res.TF.Name}
-	state, diff, err := MakeTerraformDiffFromRPC(nil, req.GetProperties(), res.TFSchema, res.Schema.Fields)
+	state := &terraform.InstanceState{}
+	config, err := MakeTerraformConfigFromRPC(
+		nil, req.GetProperties(), res.TFSchema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's property state")
+		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
+	diff, err := p.tf.Diff(info, state, config)
+	if err != nil {
+		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+
 	newstate, err := p.tf.Apply(info, state, diff)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating %s", urn)

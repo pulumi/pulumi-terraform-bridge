@@ -539,69 +539,6 @@ func MakeTerraformAttributesFromInputs(inputs map[string]interface{},
 	return result, nil
 }
 
-// MakeTerraformDiff takes a bag of old and new properties, and returns two things: the existing resource's state as
-// an attribute map, alongside a Terraform diff for the old versus new state.  If there was no existing state, the
-// returned attributes will be empty (because the resource doesn't yet exist).
-func MakeTerraformDiff(old resource.PropertyMap, new resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (*terraform.InstanceState,
-	*terraform.InstanceDiff, error) {
-	// BUGBUG[pulumi/pulumi-terraform#22]: avoid spilling except for during creation.
-	diff := make(map[string]*terraform.ResourceAttrDiff)
-	// Add all new property values.
-	if new != nil {
-		inputs, err := MakeTerraformAttributes(nil, new, tfs, ps, false)
-		if err != nil {
-			return nil, nil, err
-		}
-		for p, v := range inputs {
-			if diff[p] == nil {
-				diff[p] = &terraform.ResourceAttrDiff{}
-			}
-			diff[p].New = v
-		}
-	}
-	// Now add all old property values, provided they exist in new.
-	existing := make(map[string]string)
-	if old != nil {
-		inputs, err := MakeTerraformAttributes(nil, old, tfs, ps, false)
-		if err != nil {
-			return nil, nil, err
-		}
-		for p, v := range inputs {
-			if d, has := diff[p]; has {
-				d.Old = v
-			}
-			existing[p] = v
-		}
-	}
-	return &terraform.InstanceState{Attributes: existing},
-		&terraform.InstanceDiff{Attributes: diff}, nil
-}
-
-// MakeTerraformDiffFromRPC takes RPC maps of old and new properties, unmarshals them, and calls into MakeTerraformDiff.
-func MakeTerraformDiffFromRPC(old *pbstruct.Struct, new *pbstruct.Struct,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (*terraform.InstanceState,
-	*terraform.InstanceDiff, error) {
-	var err error
-	var oldprops resource.PropertyMap
-	if old != nil {
-		oldprops, err = plugin.UnmarshalProperties(old,
-			plugin.MarshalOptions{SkipNulls: true})
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	var newprops resource.PropertyMap
-	if new != nil {
-		newprops, err = plugin.UnmarshalProperties(new,
-			plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	return MakeTerraformDiff(oldprops, newprops, tfs, ps)
-}
-
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
 // as a scalar, else returns false.
 func IsMaxItemsOne(tfs *schema.Schema, info *SchemaInfo) bool {
