@@ -68,8 +68,22 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
 	if defaults {
+		// Compute any names for which setting a default would cause a conflict.
+		conflictsWith := make(map[string]struct{})
+		for name, sch := range tfs {
+			if _, has := result[name]; has {
+				for _, conflictingName := range sch.ConflictsWith {
+					conflictsWith[conflictingName] = struct{}{}
+				}
+			}
+		}
+
 		// First, attempt to use the overlays.
 		for name, info := range ps {
+			if _, conflicts := conflictsWith[name]; conflicts {
+				continue
+			}
+
 			if _, has := result[name]; !has && info.HasDefault() {
 				// If we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
@@ -98,6 +112,10 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 		// Next, populate defaults from the Terraform schema.
 		for name, sch := range tfs {
+			if _, conflicts := conflictsWith[name]; conflicts {
+				continue
+			}
+
 			if _, has := result[name]; !has {
 				if sch.Removed != "" {
 					// Don't populate defaults for removed fields.
