@@ -265,7 +265,28 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		return config.UnknownVariableValue, nil
+		//
+		// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
+		// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
+		if tfs == nil {
+			return config.UnknownVariableValue, nil
+		}
+
+		switch tfs.Type {
+		case schema.TypeList, schema.TypeSet:
+			// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
+			count := 1
+			if tfs.MinItems > 0 {
+				count = tfs.MinItems
+			}
+			arr := make([]interface{}, count)
+			for i := range arr {
+				arr[i] = config.UnknownVariableValue
+			}
+			return arr, nil
+		default:
+			return config.UnknownVariableValue, nil
+		}
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil

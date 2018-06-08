@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,7 @@ func TestTerraformInputs(t *testing.T) {
 			"floatPropertyValue":  99.6767932,
 			"stringo":             "ognirts",
 			"arrayPropertyValue":  []interface{}{"an array"},
+			"unknownArrayValue":   resource.Computed{Element: resource.NewStringProperty("")},
 			"objectPropertyValue": map[string]interface{}{
 				"propertyA": "a",
 				"propertyB": true,
@@ -62,6 +64,7 @@ func TestTerraformInputs(t *testing.T) {
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
 			"float_property_value": {Type: schema.TypeFloat},
+			"unknown_array_value":  {Type: schema.TypeList},
 			"map_property_value":   {Type: schema.TypeMap},
 			"nested_resource": {
 				Type:     schema.TypeList,
@@ -117,6 +120,7 @@ func TestTerraformInputs(t *testing.T) {
 		"float_property_value":  99.6767932,
 		"string_property_value": "ognirts",
 		"array_property_value":  []interface{}{"an array"},
+		"unknown_array_value":   []interface{}{config.UnknownVariableValue},
 		"object_property_value": map[string]interface{}{
 			"property_a": "a",
 			"property_b": true,
