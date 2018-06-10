@@ -473,9 +473,9 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	funname := upperFirst(fun.name)
 	if strings.Index(funname, "New") == 0 {
-		funname = "Create" + funname[4:]
+		funname = "Create" + funname[3:]
 	} else if strings.Index(funname, "Get") == 0 {
-		funname = "Lookup" + funname[4:]
+		funname = "Lookup" + funname[3:]
 	}
 
 	// Now, emit the function signature.
@@ -523,13 +523,13 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 		w.Writefmtln("\t}")
 
 		// Get the outputs and return the structure, awaiting each one and propagating any errors.
-		w.Writefmtln("\tret := %s{}", fun.retst.name)
+		w.Writefmtln("\treturn &%s{", fun.retst.name)
 		for _, ret := range fun.rets {
-			w.Writefmtln("\tif v, ok := %s[\"%s\"]; ok {", outputsVar, ret.name)
-			w.Writefmtln("\t\tret.%s = v", upperFirst(ret.name))
+			// TODO: ideally, we would have some strong typing on these outputs.
+			w.Writefmtln("\t\t%s: outputs[\"%s\"],", upperFirst(ret.name), ret.name)
 			w.Writefmtln("\t}")
 		}
-		w.Writefmtln("\treturn &ret, nil")
+		w.Writefmtln("\t}, nil")
 	}
 	w.Writefmtln("}")
 
