@@ -212,43 +212,50 @@ func (g *goGenerator) emitConfigVariables(mod *module) error {
 		return err
 	}
 
-	// Create a config bag for the variables to pull from.
-	w.Writefmtln("var __config = config.New(\"%s\")", g.pkg)
-	w.Writefmtln("")
-
-	// Emit an entry for all config variables.
-	w.Writefmtln("var (")
-	for _, member := range mod.members {
+	// For each config variable, emit a helper function that reads from the context.
+	for i, member := range mod.members {
 		if v, ok := member.(*variable); ok {
-			g.emitConfigVariable(w, v)
+			g.emitConfigAccessor(w, v)
+		}
+		if i != len(mod.members)-1 {
+			w.Writefmtln("")
 		}
 	}
-	w.Writefmtln(")")
 
 	return nil
 }
 
-func (g *goGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
+func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 	var getfunc string
 	if v.optional() {
 		getfunc = "Get"
 	} else {
 		getfunc = "Require"
 	}
+
+	var gettype string
 	switch v.schema.Type {
 	case schema.TypeBool:
 		getfunc += "Bool"
+		gettype = "bool"
 	case schema.TypeInt:
 		getfunc += "Int"
-	case schema.TypeString:
-		getfunc += "String"
+		gettype = "int"
+	case schema.TypeFloat:
+		getfunc += "Float64"
+		gettype = "float64"
+	default:
+		gettype = "string"
 	}
+
 	if v.doc != "" {
-		g.emitDocComment(w, v.doc, v.docURL, "\t")
+		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
-		g.emitRawDocComment(w, v.rawdoc, "\t")
+		g.emitRawDocComment(w, v.rawdoc, "")
 	}
-	w.Writefmtln("\t%s = __config.%s(\"%s\")", upperFirst(v.name), getfunc, v.name)
+	w.Writefmtln("func Get%s(ctx *pulumi.Context) %s {", upperFirst(v.name), gettype)
+	w.Writefmtln("\treturn config.%s(\"%s:%s\")", getfunc, g.pkg, v.name)
+	w.Writefmtln("}")
 }
 
 func (g *goGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
@@ -298,7 +305,7 @@ func (g *goGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "\t")
 		}
-		w.Writefmtln("\t%s %s", upperFirst(prop.name), goType(prop, false))
+		w.Writefmtln("\t%s interface{}", upperFirst(prop.name))
 	}
 	w.Writefmtln("}")
 }
@@ -356,7 +363,7 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	}
 
 	// Produce the input map.
-	w.Writefmtln("\tinputs := make(pulumi.Inputs)")
+	w.Writefmtln("\tinputs := make(map[string]interface{})")
 	w.Writefmtln("\tif args == nil {")
 	for _, prop := range res.inprops {
 		w.Writefmtln("\t\tinputs[\"%s\"] = nil", prop.name)
@@ -387,7 +394,7 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	w.Writefmtln("// state properties that are used to uniquely qualify the lookup (nil if not required).")
 	w.Writefmtln("func Get%s(ctx *pulumi.Context,", name)
 	w.Writefmtln("\tname string, id pulumi.ID, state *%s, opts ...pulumi.ResourceOpt) (*%s, error) {", stateType, name)
-	w.Writefmtln("\tinputs := make(pulumi.Inputs)")
+	w.Writefmtln("\tinputs := make(map[string]interface{})")
 	w.Writefmtln("\tif state != nil {")
 	for _, prop := range res.outprops {
 		w.Writefmtln("\t\tinputs[\"%s\"] = state.%s", prop.name, upperFirst(prop.name))
@@ -403,13 +410,13 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 
 	// Create accessors for all of the properties inside of the resulting resource structure.
 	w.Writefmtln("// URN is this resource's unique name assigned by Pulumi.")
-	w.Writefmtln("func (r *%s) URN() (pulumi.URN, error) {", name)
-	w.Writefmtln("\treturn r.s.URN.URN()")
+	w.Writefmtln("func (r *%s) URN() *pulumi.URNOutput {", name)
+	w.Writefmtln("\treturn r.s.URN")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("// ID is this resource's unique identifier assigned by its provider.")
-	w.Writefmtln("func (r *%s) ID() (pulumi.ID, error) {", name)
-	w.Writefmtln("\treturn r.s.ID.ID()")
+	w.Writefmtln("func (r *%s) ID() *pulumi.IDOutput {", name)
+	w.Writefmtln("\treturn r.s.ID")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	for _, prop := range res.outprops {
@@ -419,8 +426,14 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 			g.emitRawDocComment(w, prop.rawdoc, "")
 		}
 
-		w.Writefmtln("func (r *%s) %s() (%s, error) {", name, upperFirst(prop.name), goType(prop, true))
-		w.Writefmtln("\treturn r.s.State[\"%s\"].%s()", prop.name, goOutputAccessor(prop))
+		outType := goOutputType(prop)
+		w.Writefmtln("func (r *%s) %s() %s {", name, upperFirst(prop.name), outType)
+		if outType == defaultGoOutType {
+			w.Writefmtln("\treturn r.s.State[\"%s\"]", prop.name)
+		} else {
+			// If not the default type, we need a cast.
+			w.Writefmtln("\treturn (%s)(r.s.State[\"%s\"])", outType, prop.name)
+		}
 		w.Writefmtln("}")
 		w.Writefmtln("")
 	}
@@ -457,6 +470,14 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 		g.emitDocComment(w, fun.doc, fun.docURL, "")
 	}
 
+	// If the function starts with New or Get, it will conflict; so rename them.
+	funname := upperFirst(fun.name)
+	if strings.Index(funname, "New") == 0 {
+		funname = "Create" + funname[4:]
+	} else if strings.Index(funname, "Get") == 0 {
+		funname = "Lookup" + funname[4:]
+	}
+
 	// Now, emit the function signature.
 	argsig := "ctx *pulumi.Context"
 	if fun.argst != nil {
@@ -468,7 +489,7 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 	} else {
 		retty = fmt.Sprintf("(*%s, error)", fun.retst.name)
 	}
-	w.Writefmtln("func %s(%s) %s {", upperFirst(fun.name), argsig, retty)
+	w.Writefmtln("func %s(%s) %s {", funname, argsig, retty)
 
 	// Make a map of inputs to pass to the runtime function.
 	var inputsVar string
@@ -476,7 +497,7 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 		inputsVar = "nil"
 	} else {
 		inputsVar = "inputs"
-		w.Writefmtln("\tinputs := make(pulumi.Inputs)")
+		w.Writefmtln("\tinputs := make(map[string]interface{})")
 		w.Writefmtln("\tif args != nil {")
 		for _, arg := range fun.args {
 			w.Writefmtln("\t\tinputs[\"%s\"] = args.%s", arg.name, upperFirst(arg.name))
@@ -505,9 +526,7 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 		w.Writefmtln("\tret := %s{}", fun.retst.name)
 		for _, ret := range fun.rets {
 			w.Writefmtln("\tif v, ok := %s[\"%s\"]; ok {", outputsVar, ret.name)
-			w.Writefmtln("\t\tif ret.%s, err = v.Value(); err != nil {", upperFirst(ret.name))
-			w.Writefmtln("\t\t\treturn nil, err")
-			w.Writefmtln("\t\t}")
+			w.Writefmtln("\t\tret.%s = v", upperFirst(ret.name))
 			w.Writefmtln("\t}")
 		}
 		w.Writefmtln("\treturn &ret, nil")
@@ -548,14 +567,41 @@ func (g *goGenerator) emitCustomImports(w *tools.GenWriter, mod *module, infos [
 	return nil
 }
 
-// goOutputAccessor returns the Output type's accessor function for the given type.
-func goOutputAccessor(v *variable) string {
-	// TODO: add other accessors.
-	return "Value"
+// goOutputType returns the Go output type name for a resource property.
+func goOutputType(v *variable) string {
+	return goSchemaOutputType(v.schema, v.info)
 }
 
-// goType returns the Go type name for a given schema property.
-func goType(v *variable, noflags bool) string {
-	// TODO: add other types.
-	return "interface{}"
+const defaultGoOutType = "*pulumi.Output"
+
+// goSchemaOutputType returns the Go output type name for a given Terraform schema and bridge override info.
+func goSchemaOutputType(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
+	if sch != nil {
+		switch sch.Type {
+		case schema.TypeBool:
+			return "*pulumi.BoolOutput"
+		case schema.TypeInt:
+			return "*pulumi.IntOutput"
+		case schema.TypeFloat:
+			return "*pulumi.Float64Output"
+		case schema.TypeString:
+			return "*pulumi.StringOutput"
+		case schema.TypeSet, schema.TypeList:
+			if tfbridge.IsMaxItemsOne(sch, info) {
+				if elemSch, ok := sch.Elem.(*schema.Schema); ok {
+					var elemInfo *tfbridge.SchemaInfo
+					if info != nil {
+						elemInfo = info.Elem
+					}
+					return goSchemaOutputType(elemSch, elemInfo)
+				}
+				return goSchemaOutputType(nil, nil)
+			}
+			return "*pulumi.ArrayOutput"
+		case schema.TypeMap:
+			return "*pulumi.MapOutput"
+		}
+	}
+
+	return defaultGoOutType
 }
