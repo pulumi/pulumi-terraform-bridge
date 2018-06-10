@@ -377,6 +377,7 @@
     "pkg/util/contract",
     "pkg/util/fsutil",
     "pkg/util/httputil",
+    "pkg/util/logging",
     "pkg/util/mapper",
     "pkg/util/retry",
     "pkg/util/rpcutil",
@@ -384,7 +385,7 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "7b27f00602c7eeaa380321c055b34313c9d243f8"
+  revision = "e772aac3c17747e529dae4bcb36f1b82539414df"
 
 [[projects]]
   branch = "master"
@@ -561,6 +562,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f27b06085de4b6fab48c74768990a56655363dfd585bf1180060ca5c0bcf4bfe"
+  inputs-digest = "9a1cdc85a20eda09a9a3a73de686ae9bf7493a5768f8ff64b43b4b96c1ab2315"
   solver-name = "gps-cdcl"
   solver-version = 1
