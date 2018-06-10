@@ -34,9 +34,9 @@ type ProviderInfo struct {
 	Config      map[string]*SchemaInfo     // a map of TF name to config schema overrides.
 	Resources   map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
 	DataSources map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
-	Overlay     *OverlayInfo               // optional overlay information for augmented code-generation.
 	JavaScript  *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
 	Python      *PythonInfo                // optional overlay information for augmented Python code-generation.
+	Golang      *GolangInfo                // optional overlay information for augmented Golang code-generation.
 
 	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 }
@@ -110,11 +110,18 @@ type JavaScriptInfo struct {
 	Dependencies     map[string]string // NPM dependencies to add to package.json.
 	DevDependencies  map[string]string // NPM dev-dependencies to add to package.json.
 	PeerDependencies map[string]string // NPM peer-dependencies to add to package.json.
+	Overlay          *OverlayInfo      // optional overlay information for augmented code-generation.
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.
 type PythonInfo struct {
 	Requires map[string]string // Pip install_requires information.
+	Overlay  *OverlayInfo      // optional overlay information for augmented code-generation.
+}
+
+// GolangInfo contains optional overlay information for Golang code-generation.
+type GolangInfo struct {
+	Overlay *OverlayInfo // optional overlay information for augmented code-generation.
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
