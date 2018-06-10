@@ -232,9 +232,7 @@ func (g *pythonGenerator) emitModuleMember(mod *module, member moduleMember) (st
 		// skip the variable, we will process it later.
 		return "", nil
 	case *overlayFile:
-		// TODO: skip overlays for now.
-		// return g.emitOverlay(mod, t)
-		return "", nil
+		return g.emitOverlay(mod, t)
 	default:
 		contract.Failf("unexpected member type: %v", reflect.TypeOf(member))
 		return "", nil

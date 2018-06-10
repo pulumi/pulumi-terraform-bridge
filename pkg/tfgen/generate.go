@@ -56,11 +56,12 @@ type generator struct {
 type language string
 
 const (
+	golang language = "go"
 	nodeJS language = "nodejs"
 	python language = "python"
 )
 
-var allLanguages = []language{nodeJS, python}
+var allLanguages = []language{golang, nodeJS, python}
 
 // langGenerator is the interfact for language-specific logic and formatting.
 type langGenerator interface {
@@ -308,6 +309,8 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 	// Ensure the language is valid and, if so, create a new language-specific code generator.
 	var lg langGenerator
 	switch language {
+	case golang:
+		lg = newGoGenerator(pkg, version, info, overlaysDir, outDir)
 	case nodeJS:
 		lg = newNodeJSGenerator(pkg, version, info, overlaysDir, outDir)
 	case python:
@@ -704,28 +707,49 @@ func (g *generator) gatherDataSource(rawname string,
 func (g *generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
 
-	// Add the overlays that go in the root ("index") for the enclosing package.
-	for _, file := range g.info.Overlay.Files {
-		root := modules.ensureModule("")
-		root.addMember(&overlayFile{
-			name: file,
-			src:  filepath.Join(g.overlaysDir, file),
-		})
+	// Pluck out the overlay info from the right structure.  This is language dependent.
+	var overlay *tfbridge.OverlayInfo
+	switch g.language {
+	case nodeJS:
+		if jsinfo := g.info.JavaScript; jsinfo != nil {
+			overlay = jsinfo.Overlay
+		}
+	case python:
+		if pyinfo := g.info.Python; pyinfo != nil {
+			overlay = pyinfo.Overlay
+		}
+	case golang:
+		if goinfo := g.info.Golang; goinfo != nil {
+			overlay = goinfo.Overlay
+		}
+	default:
+		contract.Failf("unrecognized language: %s", g.language)
 	}
 
-	// Now add all overlays that are modules.
-	for name, overlay := range g.info.Overlay.Modules {
-		if len(overlay.Modules) > 0 {
-			return nil,
-				errors.Errorf("overlay module %s is >1 level deep, which is not supported", name)
+	if overlay != nil {
+		// Add the overlays that go in the root ("index") for the enclosing package.
+		for _, file := range overlay.Files {
+			root := modules.ensureModule("")
+			root.addMember(&overlayFile{
+				name: file,
+				src:  filepath.Join(g.overlaysDir, file),
+			})
 		}
 
-		mod := modules.ensureModule(name)
-		for _, file := range overlay.Files {
-			mod.addMember(&overlayFile{
-				name: file,
-				src:  filepath.Join(g.overlaysDir, mod.name, file),
-			})
+		// Now add all overlays that are modules.
+		for name, modolay := range overlay.Modules {
+			if len(modolay.Modules) > 0 {
+				return nil,
+					errors.Errorf("overlay module %s is >1 level deep, which is not supported", name)
+			}
+
+			mod := modules.ensureModule(name)
+			for _, file := range modolay.Files {
+				mod.addMember(&overlayFile{
+					name: file,
+					src:  filepath.Join(g.overlaysDir, mod.name, file),
+				})
+			}
 		}
 	}
 
