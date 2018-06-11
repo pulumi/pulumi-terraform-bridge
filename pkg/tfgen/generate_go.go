@@ -254,7 +254,7 @@ func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 		g.emitRawDocComment(w, v.rawdoc, "")
 	}
 	w.Writefmtln("func Get%s(ctx *pulumi.Context) %s {", upperFirst(v.name), gettype)
-	w.Writefmtln("\treturn config.%s(\"%s:%s\")", getfunc, g.pkg, v.name)
+	w.Writefmtln("\treturn config.%s(ctx, \"%s:%s\")", getfunc, g.pkg, v.name)
 	w.Writefmtln("}")
 }
 
