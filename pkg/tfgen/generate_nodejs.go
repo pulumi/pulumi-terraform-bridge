@@ -882,6 +882,10 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out b
 			}
 		} else if info.Asset != nil {
 			t = "pulumi.asset." + info.Asset.Type()
+
+			if !out {
+				t = fmt.Sprintf("pulumi.Input<%s>", t)
+			}
 		}
 
 		elem = info.Elem
