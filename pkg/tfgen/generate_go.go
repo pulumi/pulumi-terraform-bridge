@@ -527,7 +527,6 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 		for _, ret := range fun.rets {
 			// TODO: ideally, we would have some strong typing on these outputs.
 			w.Writefmtln("\t\t%s: outputs[\"%s\"],", upperFirst(ret.name), ret.name)
-			w.Writefmtln("\t}")
 		}
 		w.Writefmtln("\t}, nil")
 	}
