@@ -346,14 +346,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := pyName(prop.name)
 		ptype := pyType(prop)
-		if !prop.optional() {
-			w.Writefmtln("        if not %s:", pname)
-			w.Writefmtln("            raise TypeError('Missing required argument %s')", pname)
-			w.Writefmt("        elif ")
-		} else {
-			w.Writefmt("        if %s and ", pname)
-		}
-		w.Writefmtln("not isinstance(%s, %s):", pname, ptype)
+		w.Writefmt("        if %s and not isinstance(%s, %s):", pname, pname, ptype)
 		w.Writefmtln("            raise TypeError('Expected argument %s to be a %s')", pname, ptype)
 
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
@@ -516,7 +509,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	if fun.retst != nil {
 		w.Writefmtln("    return %s(", fun.retst.name)
 		for i, ret := range fun.rets {
-			w.Writefmt("        %s=__ret__['%s']", pyName(ret.name), ret.name)
+			w.Writefmt("        %s=__ret__.get('%s')", pyName(ret.name), ret.name)
 			if i == len(fun.rets)-1 {
 				w.Writefmtln(")")
 			} else {
