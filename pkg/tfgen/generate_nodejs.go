@@ -638,12 +638,16 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        fmt.Sprintf("@pulumi/%s", pack.name),
-		Version:     pack.version,
+		Version:     "${VERSION}",
 		Description: g.info.Description,
 		Keywords:    g.info.Keywords,
 		Homepage:    g.info.Homepage,
 		Repository:  g.info.Repository,
 		License:     g.info.License,
+		// Ideally, this `scripts` section would include an install script that installs the provider, however, doing
+		// so causes problems when we try to restore package dependencies, since we must do an install for that. So
+		// we have another process that adds the install script when generating the package.json that we actually
+		// publish.
 		Scripts: map[string]string{
 			"build": "tsc",
 		},

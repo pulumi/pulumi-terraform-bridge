@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tools"
-	"github.com/pulumi/pulumi/pkg/util/buildutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
@@ -556,19 +555,13 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	w.Writefmtln("class InstallPluginCommand(install):")
 	w.Writefmtln("    def run(self):")
 	w.Writefmtln("        install.run(self)")
-	w.Writefmtln("        check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '%s'])",
-		pack.name, pack.version)
+	w.Writefmtln("        check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}'])",
+		pack.name)
 	w.Writefmtln("")
-
-	// Mangle the version (which is a semver, by convention) so it is PEP440 compatable
-	version, err := buildutil.PyPiVersionFromNpmVersion(pack.version)
-	if err != nil {
-		return err
-	}
 
 	// Finally, the actual setup part.
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))
-	w.Writefmtln("      version='%s',", version)
+	w.Writefmtln("      version='${VERSION}',")
 	if g.info.Description != "" {
 		w.Writefmtln("      description='%s',", g.info.Description)
 	}
