@@ -346,7 +346,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := pyName(prop.name)
 		ptype := pyType(prop)
-		w.Writefmt("        if %s and not isinstance(%s, %s):", pname, pname, ptype)
+		w.Writefmtln("        if %s and not isinstance(%s, %s):", pname, pname, ptype)
 		w.Writefmtln("            raise TypeError('Expected argument %s to be a %s')", pname, ptype)
 
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
