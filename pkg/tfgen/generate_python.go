@@ -24,6 +24,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -360,7 +361,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 
 func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
 	// Create a resource file for this resource's module.
-	name := pyName(lowerFirst(res.name))
+	name := pyName(res.name)
 	w, err := g.openWriter(mod, name+".py", true)
 	if err != nil {
 		return "", err
@@ -667,25 +668,124 @@ func pyPack(s string) string {
 }
 
 // pyName turns a variable or function name, normally using camelCase, to an underscore_case name.
-func pyName(s string) string {
-	var result string
+func pyName(name string) string {
+	// This method is a state machine with four states:
+	//   stateFirst - the initial state.
+	//   stateUpper - The last character we saw was an uppercase letter and the character before it
+	//                was either a number or a lowercase letter.
+	//   stateAcronym - The last character we saw was an uppercase letter and the character before it
+	//                  was an uppercase letter.
+	//   stateLowerOrNumber - The last character we saw was a lowercase letter or a number.
+	//
+	// The following are the state transitions of this state machine:
+	//   stateFirst -> (uppercase letter) -> stateUpper
+	//   stateFirst -> (lowercase letter or number) -> stateLowerOrNumber
+	//      Append the lower-case form of the character to currentComponent.
+	//
+	//   stateUpper -> (uppercase letter) -> stateAcronym
+	//   stateUpper -> (lowercase letter or number) -> stateLowerOrNumber
+	//      Append the lower-case form of the character to currentComponent.
+	//
+	//   stateAcronym -> (uppercase letter) -> stateAcronym
+	//		Append the lower-case form of the character to currentComponent.
+	//   stateAcronym -> (number) -> stateLowerOrNumber
+	//      Append the character to currentComponent.
+	//   stateAcronym -> (lowercase letter) -> stateLowerOrNumber
+	//      Take all but the last character in currentComponent, turn that into
+	//      a string, and append that to components. Set currentComponent to the
+	//      last two characters seen.
+	//
+	//   stateLowerOrNumber -> (uppercase letter) -> stateUpper
+	//      Take all characters in currentComponent, turn that into a string,
+	//      and append that to components. Set currentComponent to the last
+	//      character seen.
+	//	 stateLowerOrNumber -> (lowercase letter) -> stateLowerOrNumber
+	//      Append the character to currentComponent.
+	//
+	// The Go libraries that convert camelCase to snake_case deviate subtly from
+	// the semantics we're going for in this method, namely that they separate
+	// numbers and lowercase letters. We don't want this in all cases (we want e.g. Sha256Hash to
+	// be converted as sha256_hash). We also want SHA256Hash to be converted as sha256_hash, so
+	// we must at least be aware of digits when in the stateAcronym state.
+	//
+	// As for why this is a state machine, the libraries that do this all pretty much use
+	// either regular expressions or state machines, which I suppose are ultimately the same thing.
+	const (
+		stateFirst = iota
+		stateUpper
+		stateAcronym
+		stateLowerOrNumber
+	)
 
-	// Eat any leading __s.
-	i := 0
-	for ; i < len(s) && s[i] == '_'; i++ {
-		result += "_"
-	}
+	var components []string     // The components that will be joined together with underscores
+	var currentComponent []rune // The characters composing the current component being built
+	state := stateFirst
+	for _, char := range name {
+		switch state {
+		case stateFirst:
+			if unicode.IsUpper(char) {
+				// stateFirst -> stateUpper
+				state = stateUpper
+				currentComponent = append(currentComponent, unicode.ToLower(char))
+				continue
+			}
 
-	// Now do the substitutions.
-	for ; i < len(s); i++ {
-		c := s[i]
-		contract.Assertf(c != '_', "Unexpected underscore %d in pre-Pythonified name %s", i, s)
-		if unicode.IsUpper(rune(c)) {
-			result += "_" + string(unicode.ToLower(rune(c)))
-		} else {
-			result += string(c)
+			// stateFirst -> stateLowerOrNumber
+			state = stateLowerOrNumber
+			currentComponent = append(currentComponent, char)
+			continue
+
+		case stateUpper:
+			if unicode.IsUpper(char) {
+				// stateUpper -> stateAcronym
+				state = stateAcronym
+				currentComponent = append(currentComponent, unicode.ToLower(char))
+				continue
+			}
+
+			// stateUpper -> stateLowerOrNumber
+			state = stateLowerOrNumber
+			currentComponent = append(currentComponent, char)
+			continue
+
+		case stateAcronym:
+			if unicode.IsUpper(char) {
+				// stateAcronym -> stateAcronym
+				currentComponent = append(currentComponent, unicode.ToLower(char))
+				continue
+			}
+
+			// We want to fold digits immediately following an acronym into the same
+			// component as the acronym.
+			if unicode.IsDigit(char) {
+				// stateAcronym -> stateLowerOrNumber
+				currentComponent = append(currentComponent, char)
+				state = stateLowerOrNumber
+				continue
+			}
+
+			// stateAcronym -> stateLowerOrNumber
+			last, rest := currentComponent[len(currentComponent)-1], currentComponent[:len(currentComponent)-1]
+			components = append(components, string(rest))
+			currentComponent = []rune{last, char}
+			state = stateLowerOrNumber
+			continue
+
+		case stateLowerOrNumber:
+			if unicode.IsUpper(char) {
+				// stateLowerOrNumber -> stateUpper
+				components = append(components, string(currentComponent))
+				currentComponent = []rune{unicode.ToLower(char)}
+				state = stateUpper
+				continue
+			}
+
+			// stateLowerOrNumber -> stateLowerOrNumber
+			currentComponent = append(currentComponent, char)
+			continue
 		}
 	}
 
-	return result
+	components = append(components, string(currentComponent))
+	return strings.Join(components, "_")
 }
