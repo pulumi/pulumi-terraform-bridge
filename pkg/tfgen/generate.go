@@ -684,6 +684,16 @@ func (g *generator) gatherDataSource(rawname string,
 		}
 	}
 
+	// Add the special "id" attribute. This isn't exposed via terraform schema, so we make one up.
+	sch := &schema.Schema{
+		Type:     schema.TypeString,
+		Computed: true,
+	}
+	cust := &tfbridge.SchemaInfo{}
+	rawdoc := "id is the provider-assigned unique ID for this managed resource."
+	fun.rets = append(fun.rets,
+		propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/))
+
 	// Produce the args/return types, if needed.
 	if len(fun.args) > 0 {
 		fun.argst = &plainOldType{
