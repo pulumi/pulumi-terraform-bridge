@@ -12,7 +12,7 @@ before_install:
     - gometalinter --install
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
-    - git clone git@github.com:pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
     - make ensure
 before_script:
     # Ensure the working tree is clean (make ensure may have updated lock files)
