@@ -633,6 +633,11 @@ func pyType(v *variable) string {
 }
 
 func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
+	// If this is an asset or archive type, return the proper Pulumi SDK type name.
+	if info != nil && info.Asset != nil {
+		return "pulumi." + info.Asset.Type()
+	}
+
 	switch sch.Type {
 	case schema.TypeBool:
 		return "bool"
