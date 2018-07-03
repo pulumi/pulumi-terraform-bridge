@@ -620,8 +620,13 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		if err != nil {
 			return nil, errors.Wrapf(err, "invoking %s", tok)
 		}
+
+		// Add the special "id" attribute which isn't listed in the schema
+		props := MakeTerraformResult(invoke, ds.TFSchema, ds.Schema.Fields)
+		props["id"] = resource.NewStringProperty(invoke.ID)
+
 		ret, err = plugin.MarshalProperties(
-			MakeTerraformResult(invoke, ds.TFSchema, ds.Schema.Fields),
+			props,
 			plugin.MarshalOptions{Label: fmt.Sprintf("%s.returns", label)})
 		if err != nil {
 			return nil, err
