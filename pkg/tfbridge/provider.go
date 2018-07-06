@@ -127,7 +127,7 @@ func (p *Provider) initResourceMaps() {
 
 		p.resources[tok] = Resource{
 			TF:       res,
-			TFSchema: p.tf.ResourcesMap[res.Name].Schema,
+			TFSchema: CleanTerraformSchema(p.tf.ResourcesMap[res.Name].Schema),
 			Schema:   schema,
 		}
 	}
@@ -155,7 +155,7 @@ func (p *Provider) initResourceMaps() {
 
 		p.dataSources[tok] = DataSource{
 			TF:       ds,
-			TFSchema: p.tf.DataSourcesMap[ds.Name].Schema,
+			TFSchema: CleanTerraformSchema(p.tf.DataSourcesMap[ds.Name].Schema),
 			Schema:   schema,
 		}
 	}

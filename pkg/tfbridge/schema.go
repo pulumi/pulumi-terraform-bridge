@@ -117,11 +117,6 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			}
 
 			if _, has := result[name]; !has {
-				if sch.Removed != "" {
-					// Don't populate defaults for removed fields.
-					continue
-				}
-
 				// Check for a default value from Terraform. If there is not default from terraform, skip this name.
 				dv, err := sch.DefaultValue()
 				if err != nil {
@@ -641,4 +636,19 @@ func getInfoFromPulumiName(key resource.PropertyKey,
 		name = PulumiToTerraformName(ks, tfs)
 	}
 	return name, tfs[name], ps[ks]
+}
+
+// CleanTerraformSchema recursively removes "Removed" properties from a map[string]*schema.Schema.
+func CleanTerraformSchema(tfs map[string]*schema.Schema) map[string]*schema.Schema {
+	cleaned := make(map[string]*schema.Schema)
+	for key := range tfs {
+		sch := tfs[key]
+		if sch.Removed == "" {
+			if resource, ok := sch.Elem.(*schema.Resource); ok {
+				resource.Schema = CleanTerraformSchema(resource.Schema)
+			}
+			cleaned[key] = sch
+		}
+	}
+	return cleaned
 }

@@ -509,42 +509,43 @@ func (g *generator) gatherResource(rawname string,
 	// Create an empty module and associated resource type.
 	res := newResourceType(name, parsedDocs.Description, parsedDocs.URL, schema, info)
 
+	args := tfbridge.CleanTerraformSchema(schema.Schema)
+
 	// Next, gather up all properties.
 	var stateVars []*variable
-	for _, key := range stableSchemas(schema.Schema) {
-		if propschema := schema.Schema[key]; propschema.Removed == "" {
-			// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-			doc := parsedDocs.Arguments[key]
-			if doc == "" {
-				doc = parsedDocs.Attributes[key]
-			}
-			rawdoc := propschema.Description
+	for _, key := range stableSchemas(args) {
+		propschema := args[key]
+		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
+		doc := parsedDocs.Arguments[key]
+		if doc == "" {
+			doc = parsedDocs.Attributes[key]
+		}
+		rawdoc := propschema.Description
 
-			// If an input, generate the input property metadata.
-			propinfo := info.Fields[key]
-			docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
-			if outprop != nil {
-				res.outprops = append(res.outprops, outprop)
-			}
+		// If an input, generate the input property metadata.
+		propinfo := info.Fields[key]
+		docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
+		outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
+		if outprop != nil {
+			res.outprops = append(res.outprops, outprop)
+		}
 
-			// For all properties, generate the output property metadata.  Note that this may differ slightly
-			// from the input in that the types may differ.
-			if input(propschema) {
-				inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
-				if inprop != nil {
-					res.inprops = append(res.inprops, inprop)
-					if !inprop.optional() {
-						res.reqprops[name] = true
-					}
+		// For all properties, generate the output property metadata.  Note that this may differ slightly
+		// from the input in that the types may differ.
+		if input(propschema) {
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+			if inprop != nil {
+				res.inprops = append(res.inprops, inprop)
+				if !inprop.optional() {
+					res.reqprops[name] = true
 				}
 			}
-
-			// Make a state variable.  This is always optional and simply lets callers perform lookups.
-			stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
-			stateVar.opt = true
-			stateVars = append(stateVars, stateVar)
 		}
+
+		// Make a state variable.  This is always optional and simply lets callers perform lookups.
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+		stateVar.opt = true
+		stateVars = append(stateVars, stateVar)
 	}
 
 	// Generate a state type for looking up instances of this resource.
@@ -654,7 +655,7 @@ func (g *generator) gatherDataSource(rawname string,
 	}
 
 	// Sort the args and return properties so we are ready to go.
-	args := ds.Schema
+	args := tfbridge.CleanTerraformSchema(ds.Schema)
 	var argkeys []string
 	for arg := range args {
 		argkeys = append(argkeys, arg)
