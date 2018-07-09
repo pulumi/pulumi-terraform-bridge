@@ -560,12 +560,20 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 		pack.name)
 	w.Writefmtln("")
 
+	// Generate a readme method which will load README.rst, we use this to fill out the
+	// long_description field in the setup call.
+	w.Writefmtln("def readme():")
+	w.Writefmtln("    with open('README.rst') as f:")
+	w.Writefmtln("        return f.read()")
+	w.Writefmtln("")
+
 	// Finally, the actual setup part.
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))
 	w.Writefmtln("      version='${VERSION}',")
 	if g.info.Description != "" {
 		w.Writefmtln("      description='%s',", g.info.Description)
 	}
+	w.Writefmtln("      long_description=readme(),")
 	w.Writefmtln("      cmdclass={")
 	w.Writefmtln("          'install': InstallPluginCommand,")
 	w.Writefmtln("      },")
