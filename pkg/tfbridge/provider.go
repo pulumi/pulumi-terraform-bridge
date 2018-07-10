@@ -46,6 +46,7 @@ type Provider struct {
 	version     string                             // the plugin version number.
 	tf          *schema.Provider                   // the Terraform resource provider to use.
 	info        ProviderInfo                       // overlaid info about this provider.
+	config      map[string]*schema.Schema          // the Terraform config schema.
 	resources   map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
 	dataSources map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 }
@@ -73,6 +74,7 @@ func NewProvider(host *provider.HostClient, module string, version string,
 		version: version,
 		tf:      tf,
 		info:    info,
+		config:  CleanTerraformSchema(tf.Schema),
 	}
 	p.initResourceMaps()
 	return p
@@ -190,7 +192,7 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 	// So we can provide better error messages, do a quick scan of required configs for this
 	// schema and report any that haven't been supplied.
 	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
-	for key, meta := range p.tf.Schema {
+	for key, meta := range p.config {
 		_, present := vars[resource.PropertyKey(key)]
 		if meta.Required && !present {
 			fullyQualifiedKey := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(key))
@@ -218,7 +220,7 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 	}
 
 	// Now make a Terraform config map out of the variables.
-	config, err := MakeTerraformConfig(nil, vars, p.tf.Schema, p.info.Config, true)
+	config, err := MakeTerraformConfig(nil, vars, p.config, p.info.Config, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
