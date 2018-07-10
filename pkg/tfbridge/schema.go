@@ -445,11 +445,10 @@ func MakeTerraformConfigFromRPC(res *PulumiResource, m *pbstruct.Struct,
 
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
 func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.ResourceConfig, error) {
-	cfg, err := config.NewRawConfig(inputs)
-	if err != nil {
-		return nil, err
-	}
-	return terraform.NewResourceConfig(cfg), nil
+	return &terraform.ResourceConfig{
+		Raw:    inputs,
+		Config: inputs,
+	}, nil
 }
 
 // MakeTerraformAttributes converts a Pulumi property bag into its Terraform equivalent.  This requires

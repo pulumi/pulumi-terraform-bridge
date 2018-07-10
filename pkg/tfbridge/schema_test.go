@@ -310,7 +310,8 @@ func TestTerraformAttributes(t *testing.T) {
 					},
 				},
 			},
-			"set_property_value": []interface{}{"set member 1", "set member 2"},
+			"set_property_value":            []interface{}{"set member 1", "set member 2"},
+			"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
 		},
 		map[string]*schema.Schema{
 			"nil_property_value":    {Type: schema.TypeMap},
@@ -340,6 +341,7 @@ func TestTerraformAttributes(t *testing.T) {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
+			"string_with_bad_interpolation": {Type: schema.TypeString},
 		})
 
 	assert.NoError(t, err)
@@ -365,6 +367,7 @@ func TestTerraformAttributes(t *testing.T) {
 		"set_property_value.3618983862":                       "set member 2",
 		"set_property_value.4237827189":                       "set member 1",
 		"string_property_value":                               "ognirts",
+		"string_with_bad_interpolation":                       "some ${interpolated:value} with syntax errors",
 	})
 
 	// MapFieldWriter has issues with values of TypeMap. Build a schema without such values s.t. we can test
@@ -395,6 +398,7 @@ func TestTerraformAttributes(t *testing.T) {
 			Type: schema.TypeSet,
 			Elem: &schema.Schema{Type: schema.TypeString},
 		},
+		"string_with_bad_interpolation": {Type: schema.TypeString},
 	}
 	sharedInputs := map[string]interface{}{
 		"bool_property_value":   false,
@@ -406,7 +410,8 @@ func TestTerraformAttributes(t *testing.T) {
 			"nested_set_property":    []interface{}{"nested set member"},
 			"nested_string_property": "value",
 		},
-		"set_property_value": []interface{}{"set member 1", "set member 2"},
+		"set_property_value":            []interface{}{"set member 1", "set member 2"},
+		"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
 	}
 
 	// Build a TF attribute map using schema.MapFieldWriter.
