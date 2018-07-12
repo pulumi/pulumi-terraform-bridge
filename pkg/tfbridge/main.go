@@ -15,13 +15,29 @@
 package tfbridge
 
 import (
+	"encoding/json"
+	"flag"
+	"os"
+
 	"github.com/hashicorp/terraform/helper/logging"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Main launches the tfbridge plugin for a given package pkg and provider prov.
 func Main(pkg string, version string, prov ProviderInfo) {
+	// Look for a request to dump the provider info to stdout.
+	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
+	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
+	contract.IgnoreError(flags.Parse(os.Args[1:]))
+	if *dumpInfo {
+		if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+		os.Exit(0)
+	}
+
 	// Initialize Terraform logging.
 	logging.SetOutput()
 
