@@ -530,6 +530,47 @@ func TestDefaults(t *testing.T) {
 	}), outputs)
 }
 
+func TestComputedAsset(t *testing.T) {
+
+	assets := make(AssetTable)
+	tfs := map[string]*schema.Schema{
+		"zzz": {Type: schema.TypeString},
+	}
+	ps := map[string]*SchemaInfo{
+		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+	}
+	olds := resource.PropertyMap{}
+	props := resource.PropertyMap{
+		"zzz": resource.NewStringProperty(config.UnknownVariableValue),
+	}
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, true, false)
+	assert.NoError(t, err)
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	assert.Equal(t, resource.PropertyMap{
+		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+	}, outputs)
+}
+
+func TestInvalidAsset(t *testing.T) {
+
+	assets := make(AssetTable)
+	tfs := map[string]*schema.Schema{
+		"zzz": {Type: schema.TypeString},
+	}
+	ps := map[string]*SchemaInfo{
+		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+	}
+	olds := resource.PropertyMap{}
+	props := resource.PropertyMap{
+		"zzz": resource.NewStringProperty("invalid"),
+	}
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, true, false)
+	assert.NoError(t, err)
+	assert.Panics(t, func() {
+		MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	})
+}
+
 func boolPointer(b bool) *bool {
 	return &b
 }
