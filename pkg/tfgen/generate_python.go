@@ -800,5 +800,59 @@ func pyName(name string) string {
 	}
 
 	components = append(components, string(currentComponent))
-	return strings.Join(components, "_")
+	result := strings.Join(components, "_")
+
+	// If the generated name clashes with a Python 2 or 3 keyword, add a trailing underscore per PEP 8:
+	// https://www.python.org/dev/peps/pep-0008/?#function-and-method-arguments
+	if _, isKeyword := pythonKeywords[result]; isKeyword {
+		result += "_"
+	}
+
+	return result
+}
+
+// pythonKeywords is a map of reserved keywords used by Python 2 and 3.  We use this to avoid generating unspeakable
+// names in the resulting code.  This map was sourced by merging the following reference material:
+//
+//     * Python 2: https://docs.python.org/2.5/ref/keywords.html
+//     * Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
+//
+var pythonKeywords = map[string]bool{
+	"False":    true,
+	"None":     true,
+	"True":     true,
+	"and":      true,
+	"as":       true,
+	"assert":   true,
+	"async":    true,
+	"await":    true,
+	"break":    true,
+	"class":    true,
+	"continue": true,
+	"def":      true,
+	"del":      true,
+	"elif":     true,
+	"else":     true,
+	"except":   true,
+	"exec":     true,
+	"finally":  true,
+	"for":      true,
+	"from":     true,
+	"global":   true,
+	"if":       true,
+	"import":   true,
+	"in":       true,
+	"is":       true,
+	"lambda":   true,
+	"nonlocal": true,
+	"not":      true,
+	"or":       true,
+	"pass":     true,
+	"print":    true,
+	"raise":    true,
+	"return":   true,
+	"try":      true,
+	"while":    true,
+	"with":     true,
+	"yield":    true,
 }
