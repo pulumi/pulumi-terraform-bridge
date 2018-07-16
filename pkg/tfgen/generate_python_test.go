@@ -42,3 +42,10 @@ func TestPyName(t *testing.T) {
 		})
 	}
 }
+
+// Tests that we properly transform some Python reserved keywords.
+func TestPyKeywords(t *testing.T) {
+	assert.Equal(t, pyName("if"), "if_")
+	assert.Equal(t, pyName("lambda"), "lambda_")
+	assert.Equal(t, pyClassName("True"), "True_")
+}

@@ -331,7 +331,7 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 
 func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
 	// Produce a class definition with optional """ comment.
-	w.Writefmtln("class %s(object):", pot.name)
+	w.Writefmtln("class %s(object):", pyClassName(pot.name))
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "    ")
 	}
@@ -369,7 +369,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	defer contract.IgnoreClose(w)
 
 	// Produce a class definition with optional """ comment.
-	w.Writefmtln("class %s(pulumi.CustomResource):", res.name)
+	w.Writefmtln("class %s(pulumi.CustomResource):", pyClassName(res.name))
 	if res.doc != "" {
 		g.emitDocComment(w, res.doc, "    ")
 	}
@@ -680,6 +680,11 @@ func pyPack(s string) string {
 	return "pulumi_" + s
 }
 
+// pyClassName turns a raw name into one that is suitable as a Python class name.
+func pyClassName(name string) string {
+	return ensurePythonKeywordSafe(name)
+}
+
 // pyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func pyName(name string) string {
 	// This method is a state machine with four states:
@@ -800,5 +805,61 @@ func pyName(name string) string {
 	}
 
 	components = append(components, string(currentComponent))
-	return strings.Join(components, "_")
+	result := strings.Join(components, "_")
+	return ensurePythonKeywordSafe(result)
+}
+
+// pythonKeywords is a map of reserved keywords used by Python 2 and 3.  We use this to avoid generating unspeakable
+// names in the resulting code.  This map was sourced by merging the following reference material:
+//
+//     * Python 2: https://docs.python.org/2.5/ref/keywords.html
+//     * Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
+//
+var pythonKeywords = map[string]bool{
+	"False":    true,
+	"None":     true,
+	"True":     true,
+	"and":      true,
+	"as":       true,
+	"assert":   true,
+	"async":    true,
+	"await":    true,
+	"break":    true,
+	"class":    true,
+	"continue": true,
+	"def":      true,
+	"del":      true,
+	"elif":     true,
+	"else":     true,
+	"except":   true,
+	"exec":     true,
+	"finally":  true,
+	"for":      true,
+	"from":     true,
+	"global":   true,
+	"if":       true,
+	"import":   true,
+	"in":       true,
+	"is":       true,
+	"lambda":   true,
+	"nonlocal": true,
+	"not":      true,
+	"or":       true,
+	"pass":     true,
+	"print":    true,
+	"raise":    true,
+	"return":   true,
+	"try":      true,
+	"while":    true,
+	"with":     true,
+	"yield":    true,
+}
+
+// ensurePythonKeywordSafe adds a trailing underscore if the generated name clashes with a Python 2 or 3 keyword, per
+// PEP 8: https://www.python.org/dev/peps/pep-0008/?#function-and-method-arguments
+func ensurePythonKeywordSafe(name string) string {
+	if _, isKeyword := pythonKeywords[name]; isKeyword {
+		return name + "_"
+	}
+	return name
 }
