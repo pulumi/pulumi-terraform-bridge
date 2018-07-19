@@ -13,9 +13,23 @@ install:
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:
     - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
-script:
-    - make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
     - ${PULUMI_SCRIPTS}/ci/upload-failed-tests
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
+jobs:
+    include:
+        - stage: build
+          script: make travis_${TRAVIS_EVENT_TYPE}
+        - stage: test-downstream
+          name: Test Code Generation (AWS)
+          if: type = pull_request
+          script: ./scripts/test-downstream-impact pulumi-aws
+        - stage: test-downstream
+          name: Test Code Generation (Azure)
+          if: type = pull_request
+          script: ./scripts/test-downstream-impact pulumi-azure
+        - stage: test-downstream
+          name: Test Code Generation (GCP)
+          if: type = pull_request
+          script: ./scripts/test-downstream-impact pulumi-gcp

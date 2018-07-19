@@ -1,0 +1,55 @@
+#!/bin/bash
+set -eou pipefail
+
+if [ "${TRAVIS:-}" != "true" ]; then
+    echo "error: this script should be run from within Travis"
+    exit 1
+fi
+
+if [ -z "${1:-}" ]; then
+    echo "usage $0 <repo-name>"
+    exit 1
+fi
+
+REPO_NAME="$1"
+
+git clone "https://github.com/pulumi/${REPO_NAME}.git" "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
+
+# Run hack-vendor to update Terraform
+cd "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
+
+git checkout -b "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
+"$(go env GOPATH)"/src/github.com/pulumi/scripts/hack-vendor/hack-vendor github.com/pulumi/pulumi-terraform
+
+# Commit the resulting update (we do this so that the diff later looks nice)
+git config user.name "Pulumi Bot"
+git config user.email "bot@pulumi.com"
+
+git commit -a -m "Run hack-vendor.sh"
+
+# Now, do a build
+make only_build
+
+# Commit the resulting changes (may be empty, for example if the PR only touched tfbridge)
+git add .
+git commit --allow-empty -m "Update to pulumi-terraform@${TRAVIS_PULL_REQUEST_SHA:0:6}"
+
+# If we have a token for pulumi-bot, push up the changes and add a status
+# to a github compare.
+if [ ! -z "${PULUMI_BOT_GITHUB_API_TOKEN:-}" ]; then
+    # Push up the resulting changes
+    git remote add pulumi-bot "https://pulumi-bot:${PULUMI_BOT_GITHUB_API_TOKEN}@github.com/pulumi-bot/${REPO_NAME}"
+    git push pulumi-bot --set-upstream --force "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
+
+    # Report status. This gives us a nice link to the "compare view" on the PR itself to make it easy
+    # to view the proposed source changes.
+    TEMPLATE='{"state": "success", "target_url": "https://github.com/pulumi-bot/REPO_NAME/compare/OLD...NEW", "description": "Source changes for REPO_NAME", "context": "source-diff/REPO_NAME"}'
+    TEMPLATE="${TEMPLATE//OLD/$(git rev-parse HEAD~1)}"
+    TEMPLATE="${TEMPLATE//NEW/$(git rev-parse HEAD)}"
+    TEMPLATE="${TEMPLATE//REPO_NAME/${REPO_NAME}}"
+
+    curl -u "pulumi-bot:${PULUMI_BOT_GITHUB_API_TOKEN}" -X POST -H "Content-Type: application/json" -d "${TEMPLATE}" "https://api.github.com/repos/pulumi/pulumi-terraform/statuses/${TRAVIS_PULL_REQUEST_SHA}"
+else
+    # Otherwise, just print out the diff to the build log.
+    git diff HEAD~1 HEAD
+fi
