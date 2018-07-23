@@ -122,7 +122,6 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  branch = "master"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -134,7 +133,8 @@
     "ptypes/struct",
     "ptypes/timestamp"
   ]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -385,7 +385,7 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "5dd2f10993f2e7b8350b4b795fb9d605dd53f94a"
+  revision = "61324d554059ea96a89460d0ede30eaba4368fb3"
 
 [[projects]]
   branch = "master"

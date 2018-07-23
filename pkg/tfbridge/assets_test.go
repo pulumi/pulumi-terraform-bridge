@@ -74,13 +74,6 @@ func TestFileAssets(t *testing.T) {
 	file3, err := t1.TranslateAsset(asset)
 	assert.Nil(t, err)
 	assert.Equal(t, file1, file3)
-
-	// Now clear out the asset's hash, transform the asset to a file, and ensure it has no path.
-	asset.Hash = ""
-	file4, err := t1.TranslateAsset(asset)
-	assert.Nil(t, err)
-	assert.Equal(t, file4.(string), "")
-	assert.NotEqual(t, file1, file4)
 }
 
 func TestFileArchives(t *testing.T) {

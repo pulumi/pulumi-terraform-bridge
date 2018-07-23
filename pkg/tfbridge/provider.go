@@ -649,3 +649,8 @@ func (p *Provider) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulu
 		Version: p.version,
 	}, nil
 }
+
+// Cancel requests that the provider cancel all ongoing RPCs. For TF, this is a no-op.
+func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
+}
