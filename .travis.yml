@@ -2,22 +2,20 @@
 if: branch = master OR branch =~ ^release/ OR tag IS present
 language: go
 go: 1.9
+git:
+    depth: false
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
-    - export PULUMI_ROOT=/opt/pulumi
-    # Dep for Go dependency management.
-    - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-    # Gometalinter for good Go linting/hygiene.
-    - go get -v github.com/alecthomas/gometalinter
-    - gometalinter --install
-install:
-    # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
-    - make ensure
+    - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
+    - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
+install:
+    - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:
-    # Ensure the working tree is clean (make ensure may have updated lock files)
-    - ${GOPATH}/src/github.com/pulumi/scripts/ci/check-worktree-is-clean.sh
+    - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
+after_failure:
+    - ${PULUMI_SCRIPTS}/ci/upload-failed-tests
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
