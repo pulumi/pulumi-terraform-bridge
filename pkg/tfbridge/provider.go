@@ -190,37 +190,8 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		}
 	}
 
-	// So we can provide better error messages, do a quick scan of required configs for this
-	// schema and report any that haven't been supplied.
-	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
-	for key, meta := range p.config {
-		_, present := vars[resource.PropertyKey(key)]
-		if meta.Required && !present {
-			fullyQualifiedKey := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(key))
-
-			// TF descriptions often have newlines in inopportune positions. This makes them present
-			// a little better in our console output.
-			descriptionWithoutNewlines := strings.Replace(meta.Description, "\n", " ", -1)
-			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
-				Name:        fullyQualifiedKey.String(),
-				Description: descriptionWithoutNewlines,
-			})
-		}
-	}
-
-	if len(missingKeys) > 0 {
-		err := rpcerror.New(codes.InvalidArgument, "required configuration keys were missing")
-
-		// Clients of our RPC endpoint will be looking for this detail in order to figure out
-		// which keys need descriptive error messages.
-		err = rpcerror.WithDetails(err, &pulumirpc.ConfigureErrorMissingKeys{
-			MissingKeys: missingKeys,
-		})
-
-		return nil, err
-	}
-
-	// Now make a Terraform config map out of the variables.
+	// First make a Terraform config map out of the variables. We do this before checking for missing properties
+	// s.t. we can pull any defaults out of the TF schema.
 	config, err := MakeTerraformConfig(nil, vars, p.config, p.info.Config, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
@@ -230,6 +201,33 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		if err = p.info.PreConfigureCallback(vars, config); err != nil {
 			return nil, err
 		}
+	}
+
+	// So we can provide better error messages, do a quick scan of required configs for this
+	// schema and report any that haven't been supplied.
+	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
+	for key, meta := range p.config {
+		if meta.Required && !config.IsSet(key) {
+			name := TerraformToPulumiName(key, meta, false)
+			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
+
+			// TF descriptions often have newlines in inopportune positions. This makes them present
+			// a little better in our console output.
+			descriptionWithoutNewlines := strings.Replace(meta.Description, "\n", " ", -1)
+			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
+				Name:        fullyQualifiedName.String(),
+				Description: descriptionWithoutNewlines,
+			})
+		}
+	}
+
+	if len(missingKeys) > 0 {
+		// Clients of our RPC endpoint will be looking for this detail in order to figure out
+		// which keys need descriptive error messages.
+		err = rpcerror.WithDetails(
+			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
+			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
+		return nil, err
 	}
 
 	// Perform validation of the config state so we can offer nice errors.
