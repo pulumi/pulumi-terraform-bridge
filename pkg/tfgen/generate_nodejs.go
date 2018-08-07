@@ -570,7 +570,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 		if len(fun.reqargs) == 0 {
 			optflag = "?"
 		}
-		argsig = fmt.Sprintf("args%s: %s", optflag, fun.argst.name)
+		argsig = fmt.Sprintf("args%s: %s, ", optflag, fun.argst.name)
 	}
 	var retty string
 	if fun.retst == nil {
@@ -578,7 +578,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	} else {
 		retty = fun.retst.name
 	}
-	w.Writefmtln("export function %s(%s): Promise<%s> {", fun.name, argsig, retty)
+	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {", fun.name, argsig, retty)
 
 	// Zero initialize the args if empty and necessary.
 	if len(fun.args) > 0 && len(fun.reqargs) == 0 {
@@ -591,7 +591,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 		// Pass the argument to the invocation.
 		w.Writefmtln("        \"%[1]s\": args.%[1]s,", arg.name)
 	}
-	w.Writefmtln("    });")
+	w.Writefmtln("    }, opts);")
 
 	w.Writefmtln("}")
 
