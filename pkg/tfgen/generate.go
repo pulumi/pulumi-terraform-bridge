@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -71,11 +72,12 @@ type langGenerator interface {
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
-	name     string    // the package name.
-	version  string    // the package version.
-	language language  // the package's language.
-	path     string    // the path to the package directory on disk.
-	modules  moduleMap // the modules inside of this package.
+	name     string        // the package name.
+	version  string        // the package version.
+	language language      // the package's language.
+	path     string        // the path to the package directory on disk.
+	modules  moduleMap     // the modules inside of this package.
+	provider *resourceType // the provider type for this package.
 }
 
 func newPkg(name string, version string, language language, path string) *pkg {
@@ -229,29 +231,36 @@ func optionalComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool) bo
 
 // resourceType is a generated resource type that represents a Pulumi CustomResource definition.
 type resourceType struct {
-	name     string
-	doc      string
-	inprops  []*variable
-	outprops []*variable
-	reqprops map[string]bool
-	argst    *plainOldType // input properties.
-	statet   *plainOldType // output properties (all optional).
-	schema   *schema.Resource
-	info     *tfbridge.ResourceInfo
-	docURL   string
+	name       string
+	doc        string
+	isProvider bool
+	inprops    []*variable
+	outprops   []*variable
+	reqprops   map[string]bool
+	argst      *plainOldType // input properties.
+	statet     *plainOldType // output properties (all optional).
+	schema     *schema.Resource
+	info       *tfbridge.ResourceInfo
+	docURL     string
 }
 
 func (rt *resourceType) Name() string { return rt.name }
 func (rt *resourceType) Doc() string  { return rt.doc }
 
-func newResourceType(name, doc, docURL string, schema *schema.Resource, info *tfbridge.ResourceInfo) *resourceType {
+// IsProvider is true if this resource is a ProviderResource.
+func (rt *resourceType) IsProvider() bool { return rt.isProvider }
+
+func newResourceType(name, doc, docURL string, schema *schema.Resource, info *tfbridge.ResourceInfo,
+	isProvider bool) *resourceType {
+
 	return &resourceType{
-		name:     name,
-		doc:      doc,
-		schema:   schema,
-		info:     info,
-		reqprops: make(map[string]bool),
-		docURL:   docURL,
+		name:       name,
+		doc:        doc,
+		isProvider: isProvider,
+		schema:     schema,
+		info:       info,
+		reqprops:   make(map[string]bool),
+		docURL:     docURL,
 	}
 }
 
@@ -377,6 +386,13 @@ func (g *generator) gatherPackage() (*pkg, error) {
 		pack.addModule(cfg)
 	}
 
+	// Gather the provider type for this package.
+	provider, err := g.gatherProvider()
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem gathering the provider type")
+	}
+	pack.provider = provider
+
 	// Gather up all resource modules and merge them into the current set.
 	resmods, err := g.gatherResources()
 	if err != nil {
@@ -442,6 +458,20 @@ func (g *generator) gatherConfig() *module {
 	return config
 }
 
+// gatherProvider returns the provider resource for this package.
+func (g *generator) gatherProvider() (*resourceType, error) {
+	cfg := g.provider().Schema
+	if cfg == nil {
+		cfg = map[string]*schema.Schema{}
+	}
+	info := &tfbridge.ResourceInfo{
+		Tok:    tokens.Type(g.info.Name),
+		Fields: g.info.Config,
+	}
+	_, res, err := g.gatherResource("", &schema.Resource{Schema: cfg}, info, true)
+	return res, err
+}
+
 // gatherResources returns all modules and their resources.
 func (g *generator) gatherResources() (moduleMap, error) {
 	// If there aren't any resources, skip this altogether.
@@ -464,7 +494,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 		}
 		seen[r] = true
 
-		module, res, err := g.gatherResource(r, resources[r], info)
+		module, res, err := g.gatherResource(r, resources[r], info, false)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
 			reserr = multierror.Append(reserr, err)
@@ -496,18 +526,25 @@ func (g *generator) gatherResources() (moduleMap, error) {
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *generator) gatherResource(rawname string,
-	schema *schema.Resource, info *tfbridge.ResourceInfo) (string, *resourceType, error) {
+	schema *schema.Resource, info *tfbridge.ResourceInfo, isProvider bool) (string, *resourceType, error) {
 	// Get the resource's module and name.
-	name, module := resourceName(g.info.Name, rawname, info)
+	name, module := resourceName(g.info.Name, rawname, info, isProvider)
 
 	// Collect documentation information
-	parsedDocs, err := getDocsForProvider(g.info.Name, ResourceDocs, rawname, info.Docs)
-	if err != nil {
-		return "", nil, err
+	var parsedDocs parsedDoc
+	if !isProvider {
+		pd, err := getDocsForProvider(g.info.Name, ResourceDocs, rawname, info.Docs)
+		if err != nil {
+			return "", nil, err
+		}
+		parsedDocs = pd
+	} else {
+		parsedDocs.Description = fmt.Sprintf("The provider type for the %s package", g.info.Name)
+		parsedDocs.URL = fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(name, parsedDocs.Description, parsedDocs.URL, schema, info)
+	res := newResourceType(name, parsedDocs.Description, parsedDocs.URL, schema, info, isProvider)
 
 	args := tfbridge.CleanTerraformSchema(schema.Schema)
 
@@ -522,16 +559,21 @@ func (g *generator) gatherResource(rawname string,
 		}
 		rawdoc := propschema.Description
 
-		// If an input, generate the input property metadata.
 		propinfo := info.Fields[key]
 		docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
-		outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
-		if outprop != nil {
-			res.outprops = append(res.outprops, outprop)
+
+		// If we are generating a provider, we do not emit output property definitions as provider outputs are not
+		// yet implemented.
+		if !isProvider {
+			// For all properties, generate the output property metadata. Note that this may differ slightly
+			// from the input in that the types may differ.
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
+			if outprop != nil {
+				res.outprops = append(res.outprops, outprop)
+			}
 		}
 
-		// For all properties, generate the output property metadata.  Note that this may differ slightly
-		// from the input in that the types may differ.
+		// If an input, generate the input property metadata.
 		if input(propschema) {
 			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
 			if inprop != nil {
@@ -861,7 +903,10 @@ func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceIn
 }
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
-func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo) (string, string) {
+func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo, isProvider bool) (string, string) {
+	if isProvider {
+		return "Provider", ""
+	}
 	if info == nil || info.Tok == "" {
 		// default transformations.
 		name := withoutPackageName(provider, rawname)           // strip off the pkg prefix.

@@ -100,6 +100,10 @@ func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 
 	// Generate a top-level index file that re-exports any child modules.
 	index := pack.modules.ensureModule("")
+	if pack.provider != nil {
+		index.members = append(index.members, pack.provider)
+	}
+
 	indexFiles, _, err := g.emitModule(index, submodules)
 	if err != nil {
 		return err
@@ -141,7 +145,7 @@ func (g *nodeJSGenerator) emitModules(mmap moduleMap) ([]string, map[string]stri
 //         memberN.ts
 //
 // The one special case is the configuration module, which yields a vars.ts file containing all exported variables.
-////
+//
 // Note that the special module "" represents the top-most package module and won't be placed in a sub-directory.
 //
 // The return values are the full list of files generated, the index file, and any error that occurred, respectively.
@@ -406,23 +410,30 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		g.emitDocComment(w, res.doc, res.docURL, "")
 	}
 
-	// Begin defining the class.
-	w.Writefmtln("export class %s extends pulumi.CustomResource {", name)
+	baseType := "CustomResource"
+	if res.IsProvider() {
+		baseType = "ProviderResource"
+	}
 
-	// Emit a static factory to read instances of this resource.
+	// Begin defining the class.
+	w.Writefmtln("export class %s extends pulumi.%s {", name, baseType)
+
+	// Emit a static factory to read instances of this resource unless this is a provider resource.
 	stateType := res.statet.name
-	w.Writefmtln("    /**")
-	w.Writefmtln("     * Get an existing %s resource's state with the given name, ID, and optional extra", name)
-	w.Writefmtln("     * properties used to qualify the lookup.")
-	w.Writefmtln("     *")
-	w.Writefmtln("     * @param name The _unique_ name of the resulting resource.")
-	w.Writefmtln("     * @param id The _unique_ provider ID of the resource to lookup.")
-	w.Writefmtln("     * @param state Any extra arguments used during the lookup.")
-	w.Writefmtln("     */")
-	w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s): %s {", stateType, name)
-	w.Writefmtln("        return new %s(name, <any>state, { id });", name)
-	w.Writefmtln("    }")
-	w.Writefmtln("")
+	if !res.IsProvider() {
+		w.Writefmtln("    /**")
+		w.Writefmtln("     * Get an existing %s resource's state with the given name, ID, and optional extra", name)
+		w.Writefmtln("     * properties used to qualify the lookup.")
+		w.Writefmtln("     *")
+		w.Writefmtln("     * @param name The _unique_ name of the resulting resource.")
+		w.Writefmtln("     * @param id The _unique_ provider ID of the resource to lookup.")
+		w.Writefmtln("     * @param state Any extra arguments used during the lookup.")
+		w.Writefmtln("     */")
+		w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s): %s {", stateType, name)
+		w.Writefmtln("        return new %s(name, <any>state, { id });", name)
+		w.Writefmtln("    }")
+		w.Writefmtln("")
+	}
 
 	// Emit all properties (using their output types).
 	// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
@@ -466,23 +477,33 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		argsFlags = "?"
 	}
 	argsType := res.argst.name
-	w.Writefmtln("    constructor(name: string, args%s: %s, opts?: pulumi.ResourceOptions)", argsFlags, argsType)
-
-	// Now write out a general purpose constructor implementation that can handle the public signautre as well as the
-	// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
-	// conditional state into sensible variables using dynamic type tests.
-	w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.ResourceOptions) {",
-		argsType, stateType)
-	w.Writefmtln("        let inputs: pulumi.Inputs = {};")
-	// The lookup case:
-	w.Writefmtln("        if (opts && opts.id) {")
-	w.Writefmtln("            const state: %[1]s = argsOrState as %[1]s | undefined;", stateType)
-	for _, prop := range res.outprops {
-		w.Writefmtln(`            inputs["%[1]s"] = state ? state.%[1]s : undefined;`, prop.name)
+	trailingBrace := ""
+	if res.IsProvider() {
+		trailingBrace = " {"
 	}
-	// The creation case (with args):
-	w.Writefmtln("        } else {")
-	w.Writefmtln("            const args = argsOrState as %s | undefined;", argsType)
+	w.Writefmtln("    constructor(name: string, args%s: %s, opts?: pulumi.ResourceOptions)%s", argsFlags, argsType,
+		trailingBrace)
+
+	if !res.IsProvider() {
+		// Now write out a general purpose constructor implementation that can handle the public signautre as well as the
+		// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
+		// conditional state into sensible variables using dynamic type tests.
+		w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.ResourceOptions) {",
+			argsType, stateType)
+		w.Writefmtln("        let inputs: pulumi.Inputs = {};")
+		// The lookup case:
+		w.Writefmtln("        if (opts && opts.id) {")
+		w.Writefmtln("            const state: %[1]s = argsOrState as %[1]s | undefined;", stateType)
+		for _, prop := range res.outprops {
+			w.Writefmtln(`            inputs["%[1]s"] = state ? state.%[1]s : undefined;`, prop.name)
+		}
+		// The creation case (with args):
+		w.Writefmtln("        } else {")
+		w.Writefmtln("            const args = argsOrState as %s | undefined;", argsType)
+	} else {
+		w.Writefmtln("        let inputs: pulumi.Inputs = {};")
+		w.Writefmtln("        {")
+	}
 	for _, prop := range res.inprops {
 		if !prop.optional() {
 			w.Writefmtln("            if (!args || args.%s === undefined) {", prop.name)
@@ -508,8 +529,10 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("}")
 
 	// Emit the state type for get methods.
-	w.Writefmtln("")
-	g.emitPlainOldType(w, res.statet, true /*wrapInput*/)
+	if !res.IsProvider() {
+		w.Writefmtln("")
+		g.emitPlainOldType(w, res.statet, true /*wrapInput*/)
+	}
 
 	// Emit the argument type for construction.
 	w.Writefmtln("")
