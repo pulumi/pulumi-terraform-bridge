@@ -385,7 +385,7 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "9bfea8e5c4b4b7522e00796397f72fe3f4984dd7"
+  revision = "a2227051430519983d6cd45a5b9b430a8387b5a9"
 
 [[projects]]
   branch = "master"
