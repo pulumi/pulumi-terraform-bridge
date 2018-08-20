@@ -963,7 +963,13 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 		}
 		t = fmt.Sprintf("%s[]", elemType)
 	case schema.TypeMap:
-		t = fmt.Sprintf("{[key: string]: %v}", tsElemType(elem, eleminfo, out, wrapInput))
+		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
+		// TF that effectively forces this behavior.
+		elemType := tsElemType(elem, eleminfo, out, wrapInput)
+		if _, hasResourceElem := elem.(*schema.Resource); hasResourceElem {
+			return elemType
+		}
+		t = fmt.Sprintf("{[key: string]: %v}", elemType)
 	default:
 		contract.Failf("Unrecognized schema type: %v", vt)
 	}

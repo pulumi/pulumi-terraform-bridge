@@ -60,6 +60,9 @@ func TestTerraformInputs(t *testing.T) {
 				"someValue":      true,
 				"someOtherValue": "a value",
 			},
+			"mapWithResourceElem": map[string]interface{}{
+				"someValue": "a value",
+			},
 		}),
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
@@ -94,6 +97,14 @@ func TestTerraformInputs(t *testing.T) {
 					Schema: map[string]*schema.Schema{
 						"some_value":       {Type: schema.TypeBool},
 						"some_other_value": {Type: schema.TypeString},
+					},
+				},
+			},
+			"map_with_resource_elem": {
+				Type: schema.TypeMap,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"some_value": {Type: schema.TypeString},
 					},
 				},
 			},
@@ -149,6 +160,11 @@ func TestTerraformInputs(t *testing.T) {
 			map[string]interface{}{
 				"some_value":       true,
 				"some_other_value": "a value",
+			},
+		},
+		"map_with_resource_elem": []interface{}{
+			map[string]interface{}{
+				"some_value": "a value",
 			},
 		},
 	}, result)

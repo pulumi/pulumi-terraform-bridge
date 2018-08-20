@@ -24,52 +24,106 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Tests that we convert from CamelCase resource names to pythonic
-// snake_case correctly.
-func Test_TsType(t *testing.T) {
+type typeTest struct {
+	schema         *schema.Schema
+	info           *tfbridge.SchemaInfo
+	expectedOutput string
+	expectedInput  string
+}
 
-	// Schema output
-	assert.Equal(t, "string", tsType(&variable{
-		name: "foo",
+var tsTypeTests = []typeTest{
+	{
+		// Bool Schema
+		schema:         &schema.Schema{Type: schema.TypeBool},
+		expectedOutput: "boolean",
+		expectedInput:  "pulumi.Input<boolean>",
+	},
+	{
+		// Int Schema
+		schema:         &schema.Schema{Type: schema.TypeInt},
+		expectedOutput: "number",
+		expectedInput:  "pulumi.Input<number>",
+	},
+	{
+		// Float Schema
+		schema:         &schema.Schema{Type: schema.TypeFloat},
+		expectedOutput: "number",
+		expectedInput:  "pulumi.Input<number>",
+	},
+	{
+		// String Schema
+		schema:         &schema.Schema{Type: schema.TypeString},
+		expectedOutput: "string",
+		expectedInput:  "pulumi.Input<string>",
+	},
+	{
+		// Basic Set Schema
 		schema: &schema.Schema{
-			Type: schema.TypeString,
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{Type: schema.TypeString},
 		},
-		out: true,
-		opt: true,
-	}, false, false))
-
-	// Schema input
-	assert.Equal(t, "pulumi.Input<string>", tsType(&variable{
-		name: "foo",
+		expectedOutput: "string[]",
+		expectedInput:  "pulumi.Input<pulumi.Input<string>[]>",
+	},
+	{
+		// Basic List Schema
 		schema: &schema.Schema{
-			Type: schema.TypeString,
+			Type: schema.TypeList,
+			Elem: &schema.Schema{Type: schema.TypeString},
 		},
-		out: false,
-		opt: true,
-	}, false, true))
-
-	// AltTypes output
-	assert.Equal(t, "string", tsType(&variable{
-		name: "foo",
+		expectedOutput: "string[]",
+		expectedInput:  "pulumi.Input<pulumi.Input<string>[]>",
+	},
+	{
+		// Basic Map Schema
+		schema: &schema.Schema{
+			Type: schema.TypeMap,
+			Elem: &schema.Schema{Type: schema.TypeString},
+		},
+		expectedOutput: "{[key: string]: string}",
+		expectedInput:  "pulumi.Input<{[key: string]: pulumi.Input<string>}>",
+	},
+	{
+		// Resource Map Schema
+		schema: &schema.Schema{
+			Type: schema.TypeMap,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"foo": {Type: schema.TypeString},
+				},
+			},
+		},
+		expectedOutput: "{ foo: string }",
+		expectedInput:  "pulumi.Input<{ foo: pulumi.Input<string> }>",
+	},
+	{
+		// Basic alt types
 		info: &tfbridge.SchemaInfo{
 			Type:     "string",
 			AltTypes: []tokens.Type{"Foo"},
 		},
-		out: true,
-		opt: true,
-	}, false, false))
+		expectedOutput: "string",
+		expectedInput:  "pulumi.Input<string | Foo>",
+	},
+}
 
-	// AltTypes input
-	assert.Equal(t, "pulumi.Input<string | Foo>", tsType(&variable{
-		name: "foo",
-		info: &tfbridge.SchemaInfo{
-			Type:     "string",
-			AltTypes: []tokens.Type{"Foo"},
-		},
-		out: false,
-		opt: true,
-	}, false, true))
+func Test_TsTypes(t *testing.T) {
+	for _, test := range tsTypeTests {
+		v := &variable{
+			name:   "foo",
+			schema: test.schema,
+			info:   test.info,
+			opt:    true,
+		}
 
+		// Output
+		v.out = true
+		assert.Equal(t, test.expectedOutput, tsType(v, false, false))
+
+		// Input
+		v.out = false
+		assert.Equal(t, test.expectedInput, tsType(v, false, true))
+	}
 }
 
 func Test_Issue130(t *testing.T) {

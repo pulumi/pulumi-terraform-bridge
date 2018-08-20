@@ -598,6 +598,11 @@ func goSchemaOutputType(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 			}
 			return "*pulumi.ArrayOutput"
 		case schema.TypeMap:
+			// If this map has a "resource" element type, just use the generated element type. This works around a bug
+			// in TF that effectively forces this behavior.
+			if _, hasResourceElem := sch.Elem.(*schema.Resource); hasResourceElem {
+				return goSchemaOutputType(nil, nil)
+			}
 			return "*pulumi.MapOutput"
 		}
 	}
