@@ -208,5 +208,50 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 			// Ignore everything else - most commonly examples and imports with unpredictable section headers.
 		}
 	}
-	return ret
+	return cleanupDoc(ret)
+}
+
+func cleanupDoc(doc parsedDoc) parsedDoc {
+	newargs := make(map[string]string, len(doc.Arguments))
+	for k, v := range doc.Arguments {
+		newargs[k] = cleanupText(v)
+	}
+	newattrs := make(map[string]string, len(doc.Attributes))
+	for k, v := range doc.Attributes {
+		newattrs[k] = cleanupText(v)
+	}
+	return parsedDoc{
+		Description: cleanupText(doc.Description),
+		Arguments:   newargs,
+		Attributes:  newattrs,
+		URL:         doc.URL,
+	}
+}
+
+var markdownLink = regexp.MustCompile(
+	`\[([^\]]*)\]\(([^\)]*)\)`,
+)
+
+// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
+func cleanupText(text string) string {
+	// Find URLs and re-write local links
+	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
+		parts := markdownLink.FindStringSubmatch(link)
+		url := parts[2]
+		if strings.HasPrefix(url, "http") {
+			// Absolute URL, return as-is
+			return link
+		} else if strings.HasPrefix(url, "/") {
+			// Relative URL to the root of the Terraform docs site, rewrite to absolute
+			return fmt.Sprintf("[%s](https://www.terraform.io%s)", parts[1], url)
+		} else if strings.HasPrefix(url, "#") {
+			// Anchor in current page,  can't be resolved currently so remove the link.
+			// Note: This throws away potentially valuable information in the name of not having broken links.
+			return parts[1]
+		}
+		// Relative URL to the current page, can't be resolved currently so remove the link.
+		// Note: This throws away potentially valuable information in the name of not having broken links.
+		return parts[1]
+	})
+	return text
 }
