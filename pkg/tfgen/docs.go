@@ -132,6 +132,9 @@ func mergeDocs(provider string, kind DocKind, targetDocs map[string]string, sour
 var argumentBulletRegexp = regexp.MustCompile(
 	"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
 )
+var argumentBlockRegexp = regexp.MustCompile(
+	"`([a-z_]+)`\\s+block[\\s\\w]*:",
+)
 var attributeBulletRegexp = regexp.MustCompile(
 	"\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)",
 )
@@ -156,6 +159,7 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 			lastMatch := ""
 			for _, line := range lines {
 				matches := argumentBulletRegexp.FindStringSubmatch(line)
+				blockMatches := argumentBlockRegexp.FindStringSubmatch(line)
 				if len(matches) >= 4 {
 					// found a property bullet, extract the name and description
 					ret.Arguments[matches[1]] = matches[4]
@@ -163,6 +167,10 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 				} else if strings.TrimSpace(line) != "" && lastMatch != "" {
 					// this is a continuation of the previous bullet
 					ret.Arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+				} else if len(blockMatches) >= 2 {
+					// found a block match, once we've found one of these the main attribute section is finished so exit the loop.
+					// May require changing to get docs for named nested types as part of #163.
+					break
 				} else {
 					// This is an empty line or there were no bullets yet - clear the lastMatch
 					lastMatch = ""
