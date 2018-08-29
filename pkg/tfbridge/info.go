@@ -64,6 +64,7 @@ type SchemaInfo struct {
 	Name        string                 // a name to override the default; "" uses the default.
 	Type        tokens.Type            // a type to override the default; "" uses the default.
 	AltTypes    []tokens.Type          // alternative types that can be used instead of the override.
+	Transform   Transformer            // an optional transformation func, applied before passing to TF.
 	Elem        *SchemaInfo            // a schema override for elements for arrays, maps, and sets.
 	Fields      map[string]*SchemaInfo // a map of custom field names; if a type is missing, the default is used.
 	Asset       *AssetTranslation      // a map of asset translation information, if this is an asset.
@@ -71,6 +72,9 @@ type SchemaInfo struct {
 	Stable      *bool                  // to override whether a property is stable or not.
 	MaxItemsOne *bool                  // to override whether this property should project as a scalar or array.
 }
+
+// Transformer is given the option to transform a value in situ before it is processed by the bridge.
+type Transformer func(resource.PropertyValue) (resource.PropertyValue, error)
 
 // DocInfo contains optional overrids for finding and mapping TD docs.
 type DocInfo struct {

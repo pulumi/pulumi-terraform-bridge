@@ -547,7 +547,6 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestComputedAsset(t *testing.T) {
-
 	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"zzz": {Type: schema.TypeString},
@@ -568,7 +567,6 @@ func TestComputedAsset(t *testing.T) {
 }
 
 func TestInvalidAsset(t *testing.T) {
-
 	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"zzz": {Type: schema.TypeString},
@@ -589,4 +587,25 @@ func TestInvalidAsset(t *testing.T) {
 
 func boolPointer(b bool) *bool {
 	return &b
+}
+
+func TestCustomTransforms(t *testing.T) {
+	doc := map[string]interface{}{
+		"a": 99,
+		"b": false,
+	}
+	tfs := &schema.Schema{Type: schema.TypeString}
+	psi := &SchemaInfo{Transform: TransformJSONDocument}
+	v1, err := MakeTerraformInput(
+		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
+		tfs, psi, nil, false, false)
+	assert.NoError(t, err)
+	if !assert.Equal(t, `{"a":99,"b":false}`, v1) {
+		assert.Equal(t, `{"b":false,"a":99}`, v1)
+	}
+	v2, err := MakeTerraformInput(
+		nil, "v", resource.PropertyValue{}, resource.NewStringProperty(`{"a":99,"b":false}`),
+		tfs, psi, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"a":99,"b":false}`, v2)
 }
