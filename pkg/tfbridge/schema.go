@@ -166,6 +166,15 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		v = resource.NewArrayProperty([]resource.PropertyValue{v})
 	}
 
+	// If there is a custom transform for this value, run it before processing the value.
+	if ps != nil && ps.Transform != nil {
+		nv, err := ps.Transform(v)
+		if err != nil {
+			return nil, err
+		}
+		v = nv
+	}
+
 	switch {
 	case v.IsNull():
 		return nil, nil
