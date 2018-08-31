@@ -66,7 +66,7 @@ func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *
 	markdownByts, err := readMarkdown(repo, kind, possibleMarkdownNames)
 	if err != nil {
 		cmdutil.Diag().Warningf(
-			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
+			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), false, rawname)
 		return parsedDoc{}, nil
 	}
 	doc := parseTFMarkdown(kind, string(markdownByts), provider, rawname)
@@ -152,7 +152,7 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 		lines := strings.Split(section, "\n")
 		if len(lines) == 0 {
 			cmdutil.Diag().Warningf(
-				diag.Message("", "Unparseable doc section for  %v; consider overriding doc source location"), rawname)
+				diag.Message("", "Unparseable doc section for  %v; consider overriding doc source location"), false, rawname)
 		}
 		switch lines[0] {
 		case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
@@ -197,7 +197,7 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 			subparts := strings.Split(section, "\n# ")
 			if len(subparts) != 2 {
 				cmdutil.Diag().Warningf(
-					diag.Message("", "Expected only a single H1 in markdown for resource %v"), rawname)
+					diag.Message("", "Expected only a single H1 in markdown for resource %v"), false, rawname)
 			}
 			sublines := strings.Split(subparts[1], "\n")
 			ret.Description += strings.Join(sublines[2:], "\n")
