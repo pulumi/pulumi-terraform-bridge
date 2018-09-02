@@ -92,11 +92,11 @@ func (p *Provider) configMod() tokens.Module     { return p.baseConfigMod() + "/
 func (p *Provider) setLoggingContext(ctx context.Context) {
 	log.SetOutput(&LogRedirector{
 		writers: map[string]func(string) error{
-			tfTracePrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg, false) },
-			tfDebugPrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg, false) },
-			tfInfoPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Info, "", msg, false) },
-			tfWarnPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Warning, "", msg, false) },
-			tfErrorPrefix: func(msg string) error { return p.host.Log(ctx, diag.Error, "", msg, false) },
+			tfTracePrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
+			tfDebugPrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
+			tfInfoPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Info, "", msg) },
+			tfWarnPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Warning, "", msg) },
+			tfErrorPrefix: func(msg string) error { return p.host.Log(ctx, diag.Error, "", msg) },
 		},
 	})
 }
@@ -233,8 +233,7 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(config)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, "",
-			fmt.Sprintf("provider config warning: %v", warn), false); err != nil {
+		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn)); err != nil {
 			return nil, err
 		}
 	}
@@ -298,8 +297,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 	warns, errs := p.tf.ValidateResource(tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, urn,
-			fmt.Sprintf("%v verification warning: %v", urn, warn), false); err != nil {
+		if err = p.host.Log(ctx, diag.Warning, urn, fmt.Sprintf("%v verification warning: %v", urn, warn)); err != nil {
 			return nil, err
 		}
 	}
@@ -619,7 +617,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	}
 	warns, errs := p.tf.ValidateDataSource(tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("%v verification warning: %v", tok, warn), false); err != nil {
+		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("%v verification warning: %v", tok, warn)); err != nil {
 			return nil, err
 		}
 	}
