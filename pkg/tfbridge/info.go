@@ -96,8 +96,13 @@ func (info SchemaInfo) HasDefault() bool {
 
 // DefaultInfo lets fields get default values at runtime, before they are even passed to Terraform.
 type DefaultInfo struct {
-	From  func(res *PulumiResource) (interface{}, error) // a transformation from other resource properties.
-	Value interface{}                                    // a raw value to inject.
+	// a transformation from other resource properties.
+	From func(res *PulumiResource) (interface{}, error)
+	// a raw value to inject.
+	Value interface{}
+	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)
+	// will be used as the default.
+	EnvVars []string
 }
 
 // PulumiResource is just a little bundle that carries URN and properties around.

@@ -164,6 +164,11 @@ func (m *module) config() bool {
 	return m.name == configMod
 }
 
+// root returns true if this is the root module for a package.
+func (m *module) root() bool {
+	return m.name == ""
+}
+
 // addMember appends a new member.  This maintains ordering in case the code is sensitive to declaration order.
 func (m *module) addMember(member moduleMember) {
 	name := member.Name()
@@ -203,6 +208,7 @@ type variable struct {
 	name   string
 	out    bool
 	opt    bool
+	config bool // config is true if this variable represents a Pulumi config value.
 	doc    string
 	rawdoc string
 	schema *schema.Schema
@@ -215,14 +221,16 @@ func (v *variable) Doc() string  { return v.doc }
 
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool {
-	return v.opt || optionalComplex(v.schema, v.info, v.out)
+	return v.opt || optionalComplex(v.schema, v.info, v.out, v.config)
 }
 
 // optionalComplex takes the constituent parts of a variable, rather than a variable itself, and returns whether it is
 // optional based on the Terraform or custom overlay properties.
-func optionalComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool) bool {
+func optionalComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out, config bool) bool {
 	// If we're checking a property used in an output position, it isn't optional if it's computed.
-	customDefault := info != nil && info.HasDefault()
+	//
+	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.
+	customDefault := !config && info != nil && info.HasDefault()
 	if out {
 		return sch.Optional && !sch.Computed && !customDefault
 	}
@@ -443,6 +451,7 @@ func (g *generator) gatherConfig() *module {
 		sch := cfg[key]
 		docURL := fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
 		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/); prop != nil {
+			prop.config = true
 			config.addMember(prop)
 		}
 	}

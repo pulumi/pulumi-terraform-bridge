@@ -15,9 +15,11 @@
 package tfgen
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -25,7 +27,9 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
@@ -64,6 +68,13 @@ func (g *pythonGenerator) moduleDir(mod *module) string {
 	return dir
 }
 
+// relativeRootDir returns the relative path to the root directory for the given module.
+func (g *pythonGenerator) relativeRootDir(mod *module) string {
+	p, err := filepath.Rel(g.moduleDir(mod), filepath.Join(g.outDir, pyPack(g.pkg)))
+	contract.IgnoreError(err)
+	return p
+}
+
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
 func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*tools.GenWriter, error) {
 	dir := g.moduleDir(mod)
@@ -81,15 +92,16 @@ func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		g.emitSDKImport(w)
+		g.emitSDKImport(mod, w)
 	}
 
 	return w, nil
 }
 
-func (g *pythonGenerator) emitSDKImport(w *tools.GenWriter) {
+func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import pulumi")
 	w.Writefmtln("import pulumi.runtime")
+	w.Writefmtln("from %s import utilities", g.relativeRootDir(mod))
 	w.Writefmtln("")
 }
 
@@ -173,6 +185,13 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 		exports = append(exports, m)
 	}
 
+	// If this is the root module, we need to emit the utilities.
+	if mod.root() {
+		if err := g.emitUtilities(mod); err != nil {
+			return errors.Wrap(err, "emitting utilities")
+		}
+	}
+
 	// Lastly, generate an index file for this module.
 	if err := g.emitIndex(mod, exports, submods); err != nil {
 		return errors.Wrapf(err, "emitting module %s index", mod.name)
@@ -214,6 +233,22 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 		}
 	}
 
+	return nil
+}
+
+// emitUtilities emits a utilities file for submodules to consume.
+func (g *pythonGenerator) emitUtilities(mod *module) error {
+	contract.Require(mod.root(), "mod.root()")
+
+	// Open the utilities.ts file for this module and ready it for writing.
+	w, err := g.openWriter(mod, "utilities.py", false)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
+	// TODO: use w.WriteString
+	w.Writefmt(pyUtilitiesFile)
 	return nil
 }
 
@@ -270,7 +305,17 @@ func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	} else {
 		getfunc = "require"
 	}
-	w.Writefmtln("%s = __config__.%s('%s')", pyName(v.name), getfunc, v.name)
+
+	configFetch := fmt.Sprintf("__config__.%s('%s')", getfunc, v.name)
+	if defaultValue := pyDefaultValue(v); defaultValue != "" {
+		if v.optional() {
+			configFetch += " or " + defaultValue
+		} else {
+			configFetch = fmt.Sprintf("utilities.require_with_default(lambda: %s, %s)", configFetch, defaultValue)
+		}
+	}
+
+	w.Writefmtln("%s = %s", pyName(v.name), configFetch)
 	if v.doc != "" {
 		g.emitDocComment(w, v.doc, "")
 	} else if v.rawdoc != "" {
@@ -399,9 +444,15 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	ins := make(map[string]bool)
 	for _, prop := range res.inprops {
-		// Check that required arguments are present.  Also check that types are as expected.
 		pname := pyName(prop.name)
 		ptype := pyType(prop)
+
+		// Fill in computed defaults for arguments.
+		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
+			w.Writefmtln("        %s = %s", pname, defaultValue)
+		}
+
+		// Check that required arguments are present.  Also check that types are as expected.
 		if !prop.optional() {
 			w.Writefmtln("        if not %s:", pname)
 			w.Writefmtln("            raise TypeError('Missing required property %s')", pname)
@@ -862,4 +913,70 @@ func ensurePythonKeywordSafe(name string) string {
 		return name + "_"
 	}
 	return name
+}
+
+func pyPrimitiveValue(value interface{}) (string, error) {
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Bool:
+		if v.Bool() {
+			return "True", nil
+		}
+		return "False", nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
+		return strconv.FormatInt(v.Int(), 10), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+	case reflect.String:
+		return fmt.Sprintf("'%s'", v.String()), nil
+	default:
+		return "", errors.Errorf("unsupported default value of type %T", value)
+	}
+}
+
+func pyDefaultValue(v *variable) string {
+	defaultValue := ""
+	if v.info == nil || v.info.Default == nil {
+		return defaultValue
+	}
+	defaults := v.info.Default
+
+	if defaults.Value != nil {
+		dv, err := pyPrimitiveValue(defaults.Value)
+		if err != nil {
+			cmdutil.Diag().Warningf(diag.Message("", err.Error()))
+			return defaultValue
+		}
+		defaultValue = dv
+	}
+
+	if len(defaults.EnvVars) > 0 {
+		envFunc := "utilities.get_env"
+		switch v.schema.Type {
+		case schema.TypeBool:
+			envFunc = "utilities.get_env_bool"
+		case schema.TypeInt:
+			envFunc = "utilities.get_env_int"
+		case schema.TypeFloat:
+			envFunc = "utilities.get_env_float"
+		}
+
+		envVars := fmt.Sprintf("'%s'", defaults.EnvVars[0])
+		for _, e := range defaults.EnvVars[1:] {
+			envVars += fmt.Sprintf(", '%s'", e)
+		}
+		if defaultValue == "" {
+			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars)
+		} else {
+			defaultValue = fmt.Sprintf("(%s(%s) or %s)", envFunc, envVars, defaultValue)
+		}
+	}
+
+	return defaultValue
 }

@@ -95,6 +95,10 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 					}
 					result[name] = v
 					glog.V(9).Infof("Created Terraform input: %v = %v (old default)", key, old)
+				} else if envVars := info.Default.EnvVars; len(envVars) != 0 {
+					result[name] = schema.MultiEnvDefaultFunc(envVars, info.Default.Value)
+					glog.V(9).Infof("Created Terraform input: %v = %v (default from env vars)", name, result[name])
+
 				} else if info.Default.Value != nil {
 					result[name] = info.Default.Value
 					glog.V(9).Infof("Created Terraform input: %v = %v (default)", name, result[name])
@@ -103,7 +107,6 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 					if err != nil {
 						return nil, err
 					}
-
 					result[name] = v
 					glog.V(9).Infof("Created Terraform input: %v = %v (default from fnc)", name, result[name])
 				}
@@ -603,6 +606,7 @@ func MakeTerraformAttributesFromInputs(inputs map[string]interface{},
 
 		flattenValue(result, k, f.Value)
 	}
+
 	return result, nil
 }
 

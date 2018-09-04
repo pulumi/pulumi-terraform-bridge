@@ -20,13 +20,16 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
@@ -65,6 +68,13 @@ func (g *nodeJSGenerator) moduleDir(mod *module) string {
 	return dir
 }
 
+// relativeRootDir returns the relative path to the root directory for the given module.
+func (g *nodeJSGenerator) relativeRootDir(mod *module) string {
+	p, err := filepath.Rel(g.moduleDir(mod), g.outDir)
+	contract.IgnoreError(err)
+	return p
+}
+
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
 func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK bool) (*tools.GenWriter, string, error) {
 	dir := g.moduleDir(mod)
@@ -79,14 +89,15 @@ func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		g.emitSDKImport(w)
+		g.emitSDKImport(mod, w)
 	}
 
 	return w, file, nil
 }
 
-func (g *nodeJSGenerator) emitSDKImport(w *tools.GenWriter) {
+func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import * as pulumi from \"@pulumi/pulumi\";")
+	w.Writefmtln("import * as utilities from \"%s/utilities\";", g.relativeRootDir(mod))
 	w.Writefmtln("")
 }
 
@@ -98,7 +109,7 @@ func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 		return err
 	}
 
-	// Generate a top-level index file that re-exports any child modules.
+	// Generate a top-level index file that re-exports any child modules and a top-level utils file.
 	index := pack.modules.ensureModule("")
 	if pack.provider != nil {
 		index.members = append(index.members, pack.provider)
@@ -178,12 +189,22 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 		files = append(files, file)
 	}
 
-	// Lastly, generate an index file for this module.
+	// Generate an index file for this module.
 	index, err := g.emitIndex(mod, files, submods)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "emitting module %s index", mod.name)
 	}
 	files = append(files, index)
+
+	// Lastly, if this is the root module, we need to emit a file containing utility functions consumed by other
+	// modules.
+	if mod.root() {
+		utils, err := g.emitUtilities(mod)
+		if err != nil {
+			return nil, "", errors.Wrapf(err, "emitting utility file for root module")
+		}
+		files = append(files, utils)
+	}
 
 	return files, index, nil
 }
@@ -241,6 +262,22 @@ func (g *nodeJSGenerator) emitIndex(mod *module, exports []string, submods map[s
 	}
 
 	return index, nil
+}
+
+// emitUtilities emits a utilities file for submodules to consume.
+func (g *nodeJSGenerator) emitUtilities(mod *module) (string, error) {
+	contract.Require(mod.root(), "mod.root()")
+
+	// Open the utilities.ts file for this module and ready it for writing.
+	w, utilities, err := g.openWriter(mod, "utilities.ts", false)
+	if err != nil {
+		return "", err
+	}
+	defer contract.IgnoreClose(w)
+
+	// TODO: use w.WriteString
+	w.Writefmt(tsUtilitiesFile)
+	return utilities, nil
 }
 
 // emitModuleMember emits the given member, and returns the module file that it was emitted into (if any).
@@ -320,8 +357,18 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
 	}
-	w.Writefmtln("export let %[1]s: %[2]s = %[3]s__config.%[4]s(\"%[1]s\");",
-		v.name, tsType(v, true /*noflags*/, !v.out /*wrapInput*/), anycast, getfunc)
+
+	configFetch := fmt.Sprintf("__config.%s(\"%s\")", getfunc, v.name)
+	if defaultValue := tsDefaultValue(v); defaultValue != "undefined" {
+		if v.optional() {
+			configFetch += " || " + defaultValue
+		} else {
+			configFetch = fmt.Sprintf("utilities.requireWithDefault(() => %s, %s)", configFetch, defaultValue)
+		}
+	}
+
+	w.Writefmtln("export let %s: %s = %s%s;", v.name, tsType(v, true /*noflags*/, !v.out /*wrapInput*/), anycast,
+		configFetch)
 }
 
 // sanitizeForDocComment ensures that no `*/` sequence appears in the string, to avoid
@@ -517,7 +564,11 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 	}
 	for _, prop := range res.inprops {
-		w.Writefmtln(`            inputs["%[1]s"] = args ? args.%[1]s : undefined;`, prop.name)
+		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.name)
+		if defaultValue := tsDefaultValue(prop); defaultValue != "undefined" {
+			arg = fmt.Sprintf("(%s) || %s", arg, defaultValue)
+		}
+		w.Writefmtln(`            inputs["%s"] = %s;`, prop.name, arg)
 	}
 	for _, prop := range res.outprops {
 		if !ins[prop.name] {
@@ -878,12 +929,12 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 
 // tsFlags returns the TypeScript flags for a given variable.
 func tsFlags(v *variable) string {
-	return tsFlagsComplex(v.schema, v.info, v.opt, v.out)
+	return tsFlagsComplex(v.schema, v.info, v.opt, v.out, v.config)
 }
 
 // tsFlagsComplex is just like tsFlags, except that it permits recursing into component pieces individually.
-func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt bool, out bool) string {
-	if opt || optionalComplex(sch, info, out) {
+func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt, out, config bool) string {
+	if opt || optionalComplex(sch, info, out, config) {
 		return "?"
 	}
 	return ""
@@ -894,11 +945,11 @@ func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt bool, out
 // turning the type into a generic type argument, for example, since there will be no opportunity for "?" there.
 // wrapInput can be set to true to cause the generated type to be deeply wrapped with `pulumi.Input<T>`.
 func tsType(v *variable, noflags, wrapInput bool) string {
-	return tsTypeComplex(v.schema, v.info, noflags, v.out, wrapInput)
+	return tsTypeComplex(v.schema, v.info, noflags, v.out, wrapInput, v.config)
 }
 
 // tsTypeComplex is just like tsType, but permits recursing using component pieces rather than a true variable.
-func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, wrapInput bool) string {
+func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, wrapInput, config bool) string {
 	// First, see if there is a custom override.  If yes, use it directly.
 	var t string
 	var elem *tfbridge.SchemaInfo
@@ -930,12 +981,12 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, 
 	// If nothing was found, generate the primitive type name for this.
 	if t == "" {
 		flatten := tfbridge.IsMaxItemsOne(sch, info)
-		t = tsPrimitive(sch.Type, sch.Elem, elem, flatten, out, wrapInput)
+		t = tsPrimitive(sch.Type, sch.Elem, elem, flatten, out, wrapInput, config)
 	}
 
 	// If we aren't using optional flags, we need to use TypeScript union types to permit undefined values.
 	if noflags {
-		if opt := optionalComplex(sch, info, out); opt {
+		if opt := optionalComplex(sch, info, out, config); opt {
 			t += " | undefined"
 		}
 	}
@@ -945,7 +996,7 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, 
 
 // tsPrimitive returns the TypeScript type name for a given schema value type and element kind.
 func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.SchemaInfo,
-	flatten, out, wrapInput bool) string {
+	flatten, out, wrapInput, config bool) string {
 
 	// First figure out the raw type.
 	var t string
@@ -957,7 +1008,7 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 	case schema.TypeString:
 		t = "string"
 	case schema.TypeSet, schema.TypeList:
-		elemType := tsElemType(elem, eleminfo, out, wrapInput)
+		elemType := tsElemType(elem, eleminfo, out, wrapInput, config)
 		if flatten {
 			return elemType
 		}
@@ -965,7 +1016,7 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 	case schema.TypeMap:
 		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
 		// TF that effectively forces this behavior.
-		elemType := tsElemType(elem, eleminfo, out, wrapInput)
+		elemType := tsElemType(elem, eleminfo, out, wrapInput, config)
 		if _, hasResourceElem := elem.(*schema.Resource); hasResourceElem {
 			return elemType
 		}
@@ -983,7 +1034,7 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 
 // tsElemType returns the TypeScript type for a given schema element.  This element may be either a simple schema
 // property or a complex structure.  In the case of a complex structure, this will expand to its nominal type.
-func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput bool) string {
+func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput, config bool) string {
 	// If there is no element type specified, we will accept anything.
 	if elem == nil {
 		return "any"
@@ -991,10 +1042,10 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput bool
 
 	switch e := elem.(type) {
 	case schema.ValueType:
-		return tsPrimitive(e, nil, info, false, out, wrapInput)
+		return tsPrimitive(e, nil, info, false, out, wrapInput, config)
 	case *schema.Schema:
 		// A simple type, just return its type name.
-		return tsTypeComplex(e, info, true /*noflags*/, out, wrapInput)
+		return tsTypeComplex(e, info, true /*noflags*/, out, wrapInput, config)
 	case *schema.Resource:
 		// A complex type, just expand to its nominal type name.
 		// TODO: spill all complex structures in advance so that we don't have insane inline expansions.
@@ -1010,8 +1061,8 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput bool
 				if c > 0 {
 					t += ", "
 				}
-				flg := tsFlagsComplex(sch, fldinfo, false, out)
-				typ := tsTypeComplex(sch, fldinfo, false /*noflags*/, out, wrapInput)
+				flg := tsFlagsComplex(sch, fldinfo, false, out, config)
+				typ := tsTypeComplex(sch, fldinfo, false /*noflags*/, out, wrapInput, config)
 				t += fmt.Sprintf("%s%s: %s", name, flg, typ)
 				c++
 			}
@@ -1025,4 +1076,70 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput bool
 		contract.Failf("Unrecognized schema element type: %v", e)
 		return ""
 	}
+}
+
+func tsPrimitiveValue(value interface{}) (string, error) {
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Bool:
+		if v.Bool() {
+			return "true", nil
+		}
+		return "false", nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
+		return strconv.FormatInt(v.Int(), 10), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+	case reflect.String:
+		return fmt.Sprintf("%q", v.String()), nil
+	default:
+		return "", errors.Errorf("unsupported default value of type %T", value)
+	}
+}
+
+func tsDefaultValue(prop *variable) string {
+	defaultValue := "undefined"
+	if prop.info == nil || prop.info.Default == nil {
+		return defaultValue
+	}
+	defaults := prop.info.Default
+
+	if defaults.Value != nil {
+		dv, err := tsPrimitiveValue(defaults.Value)
+		if err != nil {
+			cmdutil.Diag().Warningf(diag.Message("", err.Error()))
+			return defaultValue
+		}
+		defaultValue = dv
+	}
+
+	if len(defaults.EnvVars) != 0 {
+		getType := ""
+		switch prop.schema.Type {
+		case schema.TypeBool:
+			getType = "Boolean"
+		case schema.TypeInt, schema.TypeFloat:
+			getType = "Number"
+		}
+
+		envVars := fmt.Sprintf("%q", defaults.EnvVars[0])
+		for _, e := range defaults.EnvVars[1:] {
+			envVars += fmt.Sprintf(", %q", e)
+		}
+
+		getEnv := fmt.Sprintf("utilities.getEnv%s(%s)", getType, envVars)
+		if defaultValue != "undefined" {
+			defaultValue = fmt.Sprintf("(%s || %s)", getEnv, defaultValue)
+		} else {
+			defaultValue = getEnv
+		}
+	}
+
+	return defaultValue
 }

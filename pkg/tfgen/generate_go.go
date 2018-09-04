@@ -18,12 +18,15 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
@@ -46,6 +49,7 @@ type goGenerator struct {
 	info        tfbridge.ProviderInfo
 	overlaysDir string
 	outDir      string
+	needsUtils  bool
 }
 
 // commentChars returns the comment characters to use for single-line comments.
@@ -147,6 +151,8 @@ func (g *goGenerator) emitModules(mmap moduleMap) error {
 func (g *goGenerator) emitModule(mod *module) error {
 	glog.V(3).Infof("emitModule(%s)", mod.name)
 
+	defer func() { g.needsUtils = false }()
+
 	// Ensure that the target module directory exists.
 	dir := g.moduleDir(mod)
 	if err := tools.EnsureDir(dir); err != nil {
@@ -164,6 +170,13 @@ func (g *goGenerator) emitModule(mod *module) error {
 	if mod.config() {
 		if err := g.emitConfigVariables(mod); err != nil {
 			return errors.Wrapf(err, "emitting config module variables")
+		}
+	}
+
+	// If any part of this module needs internal utilities, emit them now.
+	if g.needsUtils {
+		if err := g.emitUtilities(mod); err != nil {
+			return errors.Wrapf(err, "emitting utilities file")
 		}
 	}
 
@@ -234,18 +247,16 @@ func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 	}
 
 	var gettype string
+	var functype string
 	switch v.schema.Type {
 	case schema.TypeBool:
-		getfunc += "Bool"
-		gettype = "bool"
+		gettype, functype = "bool", "Bool"
 	case schema.TypeInt:
-		getfunc += "Int"
-		gettype = "int"
+		gettype, functype = "int", "Int"
 	case schema.TypeFloat:
-		getfunc += "Float64"
-		gettype = "float64"
+		gettype, functype = "float64", "Float64"
 	default:
-		gettype = "string"
+		gettype, functype = "string", ""
 	}
 
 	if v.doc != "" {
@@ -253,9 +264,41 @@ func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
 	}
+
+	defaultValue, configKey := g.goDefaultValue(v), fmt.Sprintf("\"%s:%s\"", g.pkg, v.name)
+
 	w.Writefmtln("func Get%s(ctx *pulumi.Context) %s {", upperFirst(v.name), gettype)
-	w.Writefmtln("\treturn config.%s(ctx, \"%s:%s\")", getfunc, g.pkg, v.name)
+	if defaultValue != "" {
+		w.Writefmtln("\tv, err := config.Try%s(ctx, %s)", functype, configKey)
+		w.Writefmtln("\tif err == nil {")
+		w.Writefmtln("\t\treturn v")
+		w.Writefmtln("\t}")
+		w.Writefmtln("\tif dv, ok := %s.(%s); ok {", defaultValue, gettype)
+		w.Writefmtln("\t\treturn dv")
+		w.Writefmtln("\t}")
+		if !v.optional() {
+			w.Writefmtln("\tpanic(err.Error())")
+		}
+		w.Writefmtln("\treturn v")
+	} else {
+		w.Writefmtln("\treturn config.%s%s(ctx, \"%s:%s\")", getfunc, functype, g.pkg, v.name)
+	}
+
 	w.Writefmtln("}")
+}
+
+// emitUtilities
+func (g *goGenerator) emitUtilities(mod *module) error {
+	// Open the utilities.ts file for this module and ready it for writing.
+	w, err := g.openWriter(mod, "internal_utilities.go", imports{})
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
+	// TODO: use w.WriteString
+	w.Writefmt(goUtilitiesFile)
+	return nil
 }
 
 func (g *goGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
@@ -364,9 +407,18 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 
 	// Produce the input map.
 	w.Writefmtln("\tinputs := make(map[string]interface{})")
+	hasDefault := make(map[*variable]bool)
+	for _, prop := range res.inprops {
+		if defaultValue := g.goDefaultValue(prop); defaultValue != "" {
+			hasDefault[prop] = true
+			w.Writefmtln("\tinputs[\"%s\"] = %s", prop.name, defaultValue)
+		}
+	}
 	w.Writefmtln("\tif args == nil {")
 	for _, prop := range res.inprops {
-		w.Writefmtln("\t\tinputs[\"%s\"] = nil", prop.name)
+		if !hasDefault[prop] {
+			w.Writefmtln("\t\tinputs[\"%s\"] = nil", prop.name)
+		}
 	}
 	w.Writefmtln("\t} else {")
 	for _, prop := range res.inprops {
@@ -608,4 +660,76 @@ func goSchemaOutputType(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 	}
 
 	return defaultGoOutType
+}
+
+func goPrimitiveValue(value interface{}) (string, error) {
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Bool:
+		if v.Bool() {
+			return "true", nil
+		}
+		return "false", nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
+		return strconv.FormatInt(v.Int(), 10), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+	case reflect.String:
+		return fmt.Sprintf("%q", v.String()), nil
+	default:
+		return "", errors.Errorf("unsupported default value of type %T", value)
+	}
+}
+
+func (g *goGenerator) goDefaultValue(v *variable) string {
+	defaultValue := ""
+	if v.info == nil || v.info.Default == nil {
+		return defaultValue
+	}
+	defaults := v.info.Default
+
+	if defaults.Value != nil {
+		dv, err := goPrimitiveValue(defaults.Value)
+		if err != nil {
+			cmdutil.Diag().Warningf(diag.Message("", err.Error()))
+			return defaultValue
+		}
+		defaultValue = dv
+	}
+
+	if len(defaults.EnvVars) > 0 {
+		g.needsUtils = true
+
+		parser, outDefault := "nil", "\"\""
+		switch v.schema.Type {
+		case schema.TypeBool:
+			parser, outDefault = "parseEnvBool", "false"
+		case schema.TypeInt:
+			parser, outDefault = "parseEnvInt", "0"
+		case schema.TypeFloat:
+			parser, outDefault = "parseEnvFloat", "0.0"
+		}
+
+		if defaultValue == "" {
+			if v.out {
+				defaultValue = outDefault
+			} else {
+				defaultValue = "nil"
+			}
+		}
+
+		defaultValue = fmt.Sprintf("getEnvOrDefault(%s, %s", defaultValue, parser)
+		for _, e := range defaults.EnvVars {
+			defaultValue += fmt.Sprintf(", %q", e)
+		}
+		defaultValue += ")"
+	}
+
+	return defaultValue
 }
