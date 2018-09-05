@@ -15,10 +15,12 @@
 package tfbridge
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/terraform"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -448,6 +450,50 @@ func TestTerraformAttributes(t *testing.T) {
 	result, err = MakeTerraformAttributesFromInputs(sharedInputs, sharedSchema)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
+}
+
+// Test that meta-properties are correctly produced.
+func TestMetaProperties(t *testing.T) {
+	const resName = "example_resource"
+	res := testTFProvider.ResourcesMap["example_resource"]
+
+	info := &terraform.InstanceInfo{Type: resName}
+	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
+	read, err := testTFProvider.Refresh(info, state)
+	assert.NoError(t, err)
+	assert.NotNil(t, read)
+
+	props := MakeTerraformResult(read, res.Schema, nil)
+	assert.NotNil(t, props)
+
+	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+
+	state.Attributes, state.Meta = attrs, meta
+	read2, err := testTFProvider.Refresh(info, state)
+	assert.NoError(t, err)
+	assert.NotNil(t, read2)
+	assert.Equal(t, read, read2)
+
+	// Delete the resource's meta-property and ensure that we re-populate its schema version.
+	delete(props, metaKey)
+
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+
+	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
+	read2.Meta = map[string]interface{}{}
+	props = MakeTerraformResult(read2, res.Schema, nil)
+	assert.NotNil(t, props)
+	assert.NotContains(t, props, metaKey)
 }
 
 // Test that an unset list still generates a length attribute.

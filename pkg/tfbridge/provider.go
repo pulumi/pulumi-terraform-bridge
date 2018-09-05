@@ -53,16 +53,16 @@ type Provider struct {
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
 type Resource struct {
-	Schema   *ResourceInfo             // optional provider overrides.
-	TF       terraform.ResourceType    // Terraform resource info.
-	TFSchema map[string]*schema.Schema // the Terraform resource schema.
+	Schema *ResourceInfo    // optional provider overrides.
+	TF     *schema.Resource // the Terraform resource schema.
+	TFName string           // the Terraform resource name.
 }
 
 // DataSource wraps both the Terraform data source (resource) type info plus the overlay resource info.
 type DataSource struct {
-	Schema   *DataSourceInfo           // optional provider overrides.
-	TF       terraform.DataSource      // Terraform resource info.
-	TFSchema map[string]*schema.Schema // the Terraform data source schema.
+	Schema *DataSourceInfo  // optional provider overrides.
+	TF     *schema.Resource // the Terraform data source schema.
+	TFName string           // the Terraform resource name.
 }
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
@@ -128,10 +128,13 @@ func (p *Provider) initResourceMaps() {
 			tok = tokens.Type(string(p.pkg()) + ":" + camelName + ":" + pascalName)
 		}
 
+		tfres := p.tf.ResourcesMap[res.Name]
+		tfres.Schema = CleanTerraformSchema(tfres.Schema)
+
 		p.resources[tok] = Resource{
-			TF:       res,
-			TFSchema: CleanTerraformSchema(p.tf.ResourcesMap[res.Name].Schema),
-			Schema:   schema,
+			TF:     tfres,
+			TFName: res.Name,
+			Schema: schema,
 		}
 	}
 
@@ -156,10 +159,13 @@ func (p *Provider) initResourceMaps() {
 			tok = tokens.ModuleMember(string(p.baseDataMod()) + ":" + camelName)
 		}
 
+		tfres := p.tf.DataSourcesMap[ds.Name]
+		tfres.Schema = CleanTerraformSchema(tfres.Schema)
+
 		p.dataSources[tok] = DataSource{
-			TF:       ds,
-			TFSchema: CleanTerraformSchema(p.tf.DataSourcesMap[ds.Name].Schema),
-			Schema:   schema,
+			TF:     tfres,
+			TFName: ds.Name,
+			Schema: schema,
 		}
 	}
 }
@@ -259,7 +265,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, errors.Errorf("unrecognized resource type (Check): %s", t)
 	}
 
-	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// Unmarshal the old and new properties.
@@ -281,11 +287,11 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
-	tfname := res.TF.Name
+	tfname := res.TFName
 	assets := make(AssetTable)
 	inputs, err := MakeTerraformInputs(
 		&PulumiResource{URN: urn, Properties: news},
-		olds, news, res.TFSchema, res.Schema.Fields, assets, true, false)
+		olds, news, res.TF.Schema, res.Schema.Fields, assets, true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +317,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
-	pinputs := MakeTerraformOutputs(inputs, res.TFSchema, res.Schema.Fields, assets, false)
+	pinputs := MakeTerraformOutputs(inputs, res.TF.Schema, res.Schema.Fields, assets, false)
 	minputs, err := plugin.MarshalProperties(pinputs, plugin.MarshalOptions{
 		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
 	if err != nil {
@@ -331,19 +337,19 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Errorf("unrecognized resource type (Diff): %s", urn)
 	}
 
-	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
-	inputs, err := MakeTerraformAttributesFromRPC(
-		nil, req.GetOlds(), res.TFSchema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
+	inputs, meta, err := MakeTerraformAttributesFromRPC(
+		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
-	info := &terraform.InstanceInfo{Type: res.TF.Name}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs}
+	info := &terraform.InstanceInfo{Type: res.TFName}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TFSchema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -361,7 +367,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 		for k, attr := range diff.Attributes {
 			if attr.RequiresNew {
-				name, _, _ := getInfoFromTerraformName(k, res.TFSchema, res.Schema.Fields, false)
+				name, _, _ := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
 				replaces = append(replaces, string(name))
 				if replaced == nil {
 					replaced = make(map[resource.PropertyKey]bool)
@@ -376,8 +382,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// For all properties that are ForceNew, but didn't change, assume they are stable.  Also recognize
 	// overlays that have requested that we treat specific properties as stable.
 	var stables []string
-	for k, sch := range res.TFSchema {
-		name, _, cust := getInfoFromTerraformName(k, res.TFSchema, res.Schema.Fields, false)
+	for k, sch := range res.TF.Schema {
+		name, _, cust := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
 		if !replaced[name] &&
 			(sch.ForceNew || (cust != nil && cust.Stable != nil && *cust.Stable)) {
 			stables = append(stables, string(name))
@@ -403,15 +409,15 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Create): %s", t)
 	}
 
-	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	info := &terraform.InstanceInfo{Type: res.TF.Name}
+	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetProperties(), res.TFSchema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -433,7 +439,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
+	props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: fmt.Sprintf("%s.outs", label)})
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "marshalling %s", urn).Error())
@@ -457,17 +463,17 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	}
 
 	id := resource.ID(req.GetId())
-	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
-	inputs, err := MakeTerraformAttributesFromRPC(
-		nil, req.GetProperties(), res.TFSchema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
+	inputs, meta, err := MakeTerraformAttributesFromRPC(
+		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
 	}
-	info := &terraform.InstanceInfo{Type: res.TF.Name}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs}
+	info := &terraform.InstanceInfo{Type: res.TFName}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	newstate, err := p.tf.Refresh(info, state)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
@@ -476,7 +482,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
+		props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
 		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 			Label: fmt.Sprintf("%s.newstate", label)})
 		if err != nil {
@@ -500,19 +506,19 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Update): %s", t)
 	}
 
-	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
-	inputs, err := MakeTerraformAttributesFromRPC(
-		nil, req.GetOlds(), res.TFSchema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
+	inputs, meta, err := MakeTerraformAttributesFromRPC(
+		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
-	info := &terraform.InstanceInfo{Type: res.TF.Name}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs}
+	info := &terraform.InstanceInfo{Type: res.TFName}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TFSchema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -540,7 +546,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 	}
 
-	props := MakeTerraformResult(newstate, res.TFSchema, res.Schema.Fields)
+	props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 		Label: fmt.Sprintf("%s.outs", label)})
 	if err != nil {
@@ -563,19 +569,19 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Delete): %s", t)
 	}
 
-	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TF.Name)
+	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	attrs, err := MakeTerraformAttributesFromRPC(
-		nil, req.GetProperties(), res.TFSchema, res.Schema.Fields, false, false, label)
+	attrs, meta, err := MakeTerraformAttributesFromRPC(
+		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, label)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a new state, with no diff, that is missing an ID.  Terraform will interpret this as a create operation.
-	info := &terraform.InstanceInfo{Type: res.TF.Name}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs}
+	info := &terraform.InstanceInfo{Type: res.TFName}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
 	if _, err := p.tf.Apply(info, state, &terraform.InstanceDiff{Destroy: true}); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
@@ -602,9 +608,9 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	}
 
 	// First, create the inputs.
-	tfname := ds.TF.Name
+	tfname := ds.TFName
 	inputs, err := MakeTerraformInputs(
-		&PulumiResource{Properties: args}, nil, args, ds.TFSchema, ds.Schema.Fields, nil, true, false)
+		&PulumiResource{Properties: args}, nil, args, ds.TF.Schema, ds.Schema.Fields, nil, true, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
@@ -644,7 +650,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props := MakeTerraformResult(invoke, ds.TFSchema, ds.Schema.Fields)
+		props := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields)
 		if _, has := props["id"]; !has {
 			props["id"] = resource.NewStringProperty(invoke.ID)
 		}

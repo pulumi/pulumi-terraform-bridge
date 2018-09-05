@@ -313,6 +313,9 @@ func MakeTerraformInput(res *PulumiResource, name string,
 	}
 }
 
+// metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
+const metaKey = "__meta"
+
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(state *terraform.InstanceState,
@@ -325,7 +328,13 @@ func MakeTerraformResult(state *terraform.InstanceState,
 			outs[key] = flatmap.Expand(attrs, key)
 		}
 	}
-	return MakeTerraformOutputs(outs, tfs, ps, nil, false)
+	outMap := MakeTerraformOutputs(outs, tfs, ps, nil, false)
+
+	// If there is any Terraform metadata associated with this state, record it.
+	if len(state.Meta) != 0 {
+		outMap[metaKey] = MakeTerraformOutput(state.Meta, nil, nil, nil, true)
+	}
+	return outMap
 }
 
 // MakeTerraformOutputs takes an expanded Terraform property map and returns a Pulumi equivalent.  This respects
@@ -491,25 +500,45 @@ func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.Re
 // MakeTerraformAttributes converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformAttributes(res *PulumiResource, m resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, defaults bool) (map[string]string, error) {
+func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs map[string]*schema.Schema,
+	ps map[string]*SchemaInfo, defaults bool) (map[string]string, map[string]interface{}, error) {
+
+	// Strip out any metadata from the inputs.
+	var meta map[string]interface{}
+	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsObject() {
+		metaValue, err := MakeTerraformInputs(nil, nil, metaProperty.ObjectValue(), nil, nil, nil, false, true)
+		if err != nil {
+			return nil, nil, err
+		}
+		meta = metaValue
+	} else if res.SchemaVersion > 0 {
+		// If there was no metadata in the input and this resource has a non-zero schema version, return a meta bag
+		// with the current schema version. This helps avoid migration issues.
+		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.SchemaVersion)}
+	}
+
 	// Turn the resource properties into a map.  For the most part, this is a straight Mappable, but we use MapReplace
 	// because we use float64s and Terraform uses ints, to represent numbers.
-	inputs, err := MakeTerraformInputs(res, nil, m, tfs, ps, nil, defaults, false)
+	inputs, err := MakeTerraformInputs(nil, nil, m, tfs, ps, nil, defaults, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return MakeTerraformAttributesFromInputs(inputs, tfs)
+
+	attrs, err := MakeTerraformAttributesFromInputs(inputs, tfs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return attrs, meta, nil
 }
 
 // MakeTerraformAttributesFromRPC unmarshals an RPC property map and calls through to MakeTerraformAttributes.
-func MakeTerraformAttributesFromRPC(res *PulumiResource, m *pbstruct.Struct,
+func MakeTerraformAttributesFromRPC(res *schema.Resource, m *pbstruct.Struct,
 	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
-	allowUnknowns, defaults bool, label string) (map[string]string, error) {
+	allowUnknowns, defaults bool, label string) (map[string]string, map[string]interface{}, error) {
 	props, err := plugin.UnmarshalProperties(m,
 		plugin.MarshalOptions{Label: label, KeepUnknowns: allowUnknowns, SkipNulls: true})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return MakeTerraformAttributes(res, props, tfs, ps, defaults)
 }
