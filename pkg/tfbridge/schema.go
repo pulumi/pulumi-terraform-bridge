@@ -83,6 +83,9 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			if _, conflicts := conflictsWith[name]; conflicts {
 				continue
 			}
+			if sch, ok := tfs[name]; ok && sch.Deprecated != "" && !sch.Required {
+				continue
+			}
 
 			if _, has := result[name]; !has && info.HasDefault() {
 				// If we already have a default value from a previous version of this resource, use that instead.
@@ -115,6 +118,9 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 		// Next, populate defaults from the Terraform schema.
 		for name, sch := range tfs {
+			if sch.Deprecated != "" && !sch.Required {
+				continue
+			}
 			if _, conflicts := conflictsWith[name]; conflicts {
 				continue
 			}
