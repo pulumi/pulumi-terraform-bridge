@@ -401,8 +401,10 @@ func MakeTerraformOutput(v interface{},
 	switch val.Kind() {
 	case reflect.Bool:
 		return resource.NewBoolProperty(val.Bool())
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return resource.NewNumberProperty(float64(val.Int()))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return resource.NewNumberProperty(float64(val.Uint()))
 	case reflect.Float64:
 		return resource.NewNumberProperty(val.Float())
 	case reflect.String:

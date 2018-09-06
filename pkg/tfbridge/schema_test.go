@@ -506,6 +506,25 @@ func TestMetaProperties(t *testing.T) {
 	props = MakeTerraformResult(read2, res.Schema, nil)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
+
+	// Ensure that timeouts are populated and preserved.
+	state.ID = ""
+	cfg, err := config.NewRawConfig(map[string]interface{}{})
+	assert.NoError(t, err)
+	diff, err := testTFProvider.Diff(info, state, terraform.NewResourceConfig(cfg))
+	assert.NoError(t, err)
+	create, err := testTFProvider.Apply(info, state, diff)
+	assert.NoError(t, err)
+
+	props = MakeTerraformResult(create, res.Schema, nil)
+	assert.NotNil(t, props)
+
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	assert.Contains(t, meta, schema.TimeoutKey)
 }
 
 // Test that an unset list still generates a length attribute.

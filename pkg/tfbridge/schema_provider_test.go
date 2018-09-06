@@ -1,6 +1,8 @@
 package tfbridge
 
 import (
+	"time"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
@@ -10,6 +12,10 @@ func mustSet(data *schema.ResourceData, key string, value interface{}) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func timeout(d time.Duration) *time.Duration {
+	return &d
 }
 
 var testTFProvider = &schema.Provider{
@@ -52,6 +58,7 @@ var testTFProvider = &schema.Provider{
 				return is, nil
 			},
 			Create: func(data *schema.ResourceData, p interface{}) error {
+				data.SetId("0")
 				mustSet(data, "bool_property_value", false)
 				mustSet(data, "number_property_value", 42)
 				mustSet(data, "float_property_value", 99.6767932)
@@ -116,6 +123,9 @@ var testTFProvider = &schema.Provider{
 			},
 			Delete: func(data *schema.ResourceData, p interface{}) error {
 				return nil
+			},
+			Timeouts: &schema.ResourceTimeout{
+				Create: timeout(time.Second * 120),
 			},
 		},
 	},
