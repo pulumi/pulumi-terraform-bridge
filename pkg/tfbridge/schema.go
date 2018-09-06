@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -341,7 +342,9 @@ func MakeTerraformResult(state *terraform.InstanceState,
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if len(state.Meta) != 0 {
-		outMap[metaKey] = MakeTerraformOutput(state.Meta, nil, nil, nil, true)
+		metaJSON, err := json.Marshal(state.Meta)
+		contract.Assert(err == nil)
+		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
 	return outMap
 }
@@ -401,10 +404,8 @@ func MakeTerraformOutput(v interface{},
 	switch val.Kind() {
 	case reflect.Bool:
 		return resource.NewBoolProperty(val.Bool())
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int:
 		return resource.NewNumberProperty(float64(val.Int()))
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return resource.NewNumberProperty(float64(val.Uint()))
 	case reflect.Float64:
 		return resource.NewNumberProperty(val.Float())
 	case reflect.String:
@@ -516,12 +517,11 @@ func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs m
 
 	// Strip out any metadata from the inputs.
 	var meta map[string]interface{}
-	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsObject() {
-		metaValue, err := MakeTerraformInputs(nil, nil, metaProperty.ObjectValue(), nil, nil, nil, false, true)
-		if err != nil {
+	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
+		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			return nil, nil, err
 		}
-		meta = metaValue
+		delete(m, metaKey)
 	} else if res.SchemaVersion > 0 {
 		// If there was no metadata in the input and this resource has a non-zero schema version, return a meta bag
 		// with the current schema version. This helps avoid migration issues.
