@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"os"
 	"strconv"
 	"testing"
 
@@ -559,9 +560,13 @@ func TestDefaults(t *testing.T) {
 	//     - jjj string: old input "OLJ", no defaults, no input => no merged input
 	//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
 	//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
+	//     - uuu: PS default "PSU", envvars w/o valiues => "PSU"
+	//     - vvv: PS default 42, envvars with values => 1337
 	//     - www: old default "OLW", deprecated, required, no input -> "OLW"
 	//     - xxx: old default "OLX", deprecated, no input => nothing
 	//     - yyy: TF default "TLY", deprecated, no input => nothing
+	err := os.Setenv("PTFV2", "1337")
+	assert.Nil(t, err)
 	asset, err := resource.NewTextAsset("hello")
 	assert.Nil(t, err)
 	assets := make(AssetTable)
@@ -576,6 +581,8 @@ func TestDefaults(t *testing.T) {
 		"jjj": {Type: schema.TypeString},
 		"lll": {Type: schema.TypeString, Default: "TFL"},
 		"mmm": {Type: schema.TypeString},
+		"uuu": {Type: schema.TypeString},
+		"vvv": {Type: schema.TypeInt},
 		"www": {Type: schema.TypeString, Deprecated: "deprecated", Required: true},
 		"xxx": {Type: schema.TypeString, Deprecated: "deprecated", Optional: true},
 		"yyy": {Type: schema.TypeString, Default: "TLY", Deprecated: "deprecated", Optional: true},
@@ -590,6 +597,8 @@ func TestDefaults(t *testing.T) {
 		"hhh": {Default: &DefaultInfo{Value: "PSH"}},
 		"iii": {Default: &DefaultInfo{Value: "PSI"}},
 		"mmm": {Default: &DefaultInfo{Value: "PSM"}},
+		"uuu": {Default: &DefaultInfo{Value: "PSU", EnvVars: []string{"PTFU", "PTFU2"}}},
+		"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
 		"www": {Default: &DefaultInfo{Value: "PSW"}},
 		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
 	}
@@ -628,6 +637,8 @@ func TestDefaults(t *testing.T) {
 		"iii": "OLI",
 		"lll": "OLL",
 		"mmm": "OLM",
+		"uuu": "PSU",
+		"vvv": 1337,
 		"www": "OLW",
 		"zzz": asset,
 	}), outputs)

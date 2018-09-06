@@ -84,7 +84,8 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			if _, conflicts := conflictsWith[name]; conflicts {
 				continue
 			}
-			if sch, ok := tfs[name]; ok && sch.Deprecated != "" && !sch.Required {
+			sch := tfs[name]
+			if sch != nil && sch.Deprecated != "" && !sch.Required {
 				continue
 			}
 
@@ -100,9 +101,45 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 					result[name] = v
 					glog.V(9).Infof("Created Terraform input: %v = %v (old default)", key, old)
 				} else if envVars := info.Default.EnvVars; len(envVars) != 0 {
-					result[name] = schema.MultiEnvDefaultFunc(envVars, info.Default.Value)
+					v, err := schema.MultiEnvDefaultFunc(envVars, info.Default.Value)()
+					if err != nil {
+						return nil, err
+					}
+					if str, ok := v.(string); ok && sch != nil {
+						switch sch.Type {
+						case schema.TypeBool:
+							v = false
+							if str != "" {
+								if v, err = strconv.ParseBool(str); err != nil {
+									return nil, err
+								}
+							}
+						case schema.TypeInt:
+							v = int(0)
+							if str != "" {
+								iv, err := strconv.ParseInt(str, 0, 0)
+								if err != nil {
+									return nil, err
+								}
+								v = int(iv)
+							}
+						case schema.TypeFloat:
+							v = float64(0.0)
+							if str != "" {
+								if v, err = strconv.ParseFloat(str, 64); err != nil {
+									return nil, err
+								}
+							}
+						case schema.TypeString:
+							// nothing to do
+						default:
+							return nil, errors.Errorf("unknown type for default value: %s", sch.Type)
+						}
+					}
+					if v != nil {
+						result[name] = v
+					}
 					glog.V(9).Infof("Created Terraform input: %v = %v (default from env vars)", name, result[name])
-
 				} else if info.Default.Value != nil {
 					result[name] = info.Default.Value
 					glog.V(9).Infof("Created Terraform input: %v = %v (default)", name, result[name])
