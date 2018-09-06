@@ -180,7 +180,10 @@ func MakeTerraformInput(res *PulumiResource, name string,
 
 	switch {
 	case v.IsNull():
-		return nil, nil
+		if name != "" {
+			return nil, errors.Errorf("unexpected null property %v", name)
+		}
+		return nil, errors.New("unexpected null property")
 	case v.IsBool():
 		return v.BoolValue(), nil
 	case v.IsNumber():

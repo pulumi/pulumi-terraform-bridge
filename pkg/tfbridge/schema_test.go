@@ -31,7 +31,6 @@ func TestTerraformInputs(t *testing.T) {
 		nil, /*res*/
 		nil, /*olds*/
 		resource.NewPropertyMapFromMap(map[string]interface{}{
-			"nilPropertyValue":    nil,
 			"boolPropertyValue":   false,
 			"numberPropertyValue": 42,
 			"floatPropertyValue":  99.6767932,
@@ -127,7 +126,6 @@ func TestTerraformInputs(t *testing.T) {
 	)
 	assert.Nil(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"nil_property_value":    nil,
 		"bool_property_value":   false,
 		"number_property_value": 42,
 		"float_property_value":  99.6767932,
@@ -170,6 +168,20 @@ func TestTerraformInputs(t *testing.T) {
 			},
 		},
 	}, result)
+
+	_, err = MakeTerraformInputs(
+		nil, /*res*/
+		nil, /*olds*/
+		resource.NewPropertyMapFromMap(map[string]interface{}{
+			"nilPropertyValue": nil,
+		}),
+		nil,   /* tfs */
+		nil,   /* ps */
+		nil,   /* assets */
+		false, /*defaults*/
+		false, /*useRawNames*/
+	)
+	assert.Error(t, err)
 }
 
 type MyString string
