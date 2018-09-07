@@ -568,6 +568,12 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		if defaultValue := tsDefaultValue(prop); defaultValue != "undefined" {
 			arg = fmt.Sprintf("(%s) || %s", arg, defaultValue)
 		}
+
+		// provider properties must be marshaled as JSON strings.
+		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
+			arg = fmt.Sprintf("JSON.stringify(%s)", arg)
+		}
+
 		w.Writefmtln(`            inputs["%s"] = %s;`, prop.name, arg)
 	}
 	for _, prop := range res.outprops {

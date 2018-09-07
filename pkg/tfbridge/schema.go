@@ -192,7 +192,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 	if glog.V(5) {
 		for k, v := range result {
-			glog.V(5).Infof("Terraform input %v = %v", k, v)
+			glog.V(5).Infof("Terraform input %v = %#v", k, v)
 		}
 	}
 
