@@ -117,9 +117,9 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 						case schema.TypeInt:
 							v = int(0)
 							if str != "" {
-								iv, err := strconv.ParseInt(str, 0, 0)
-								if err != nil {
-									return nil, err
+								iv, iverr := strconv.ParseInt(str, 0, 0)
+								if iverr != nil {
+									return nil, iverr
 								}
 								v = int(iv)
 							}
