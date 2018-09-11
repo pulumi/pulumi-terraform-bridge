@@ -392,7 +392,6 @@
   version = "v1.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/pulumi/pulumi"
   packages = [
     "pkg/diag",
@@ -417,7 +416,8 @@
     "pkg/workspace",
     "sdk/proto/go"
   ]
-  revision = "143d548b350fe940d64fce13a612c8224d16c421"
+  revision = "c7d3cc5731d0ca2b26ad5e18e6a23b43b74b44b7"
+  version = "v0.15.1"
 
 [[projects]]
   branch = "master"
@@ -459,6 +459,12 @@
   packages = ["assert"]
   revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
   version = "v1.1.4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/texttheater/golang-levenshtein"
+  packages = ["levenshtein"]
+  revision = "d188e65d659ef53fcdb0691c12f1bba64928b649"
 
 [[projects]]
   name = "github.com/uber/jaeger-client-go"
@@ -690,6 +696,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b29f67b36b2c315bc1b93182380d5c4445ddfbf4940be2b57f1e4d55b0bfc5ec"
+  inputs-digest = "8fb003c2592d8600f353f25e8816e349cc9dbdd558005ecae2d47d82fe4f600d"
   solver-name = "gps-cdcl"
   solver-version = 1
