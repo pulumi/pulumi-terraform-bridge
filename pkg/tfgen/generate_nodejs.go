@@ -571,7 +571,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 		// provider properties must be marshaled as JSON strings.
 		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
-			arg = fmt.Sprintf("pulumi.output(utilities.unwrap(%s)).apply(JSON.stringify)", arg)
+			arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
 		}
 
 		w.Writefmtln(`            inputs["%s"] = %s;`, prop.name, arg)
