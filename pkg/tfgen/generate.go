@@ -474,7 +474,7 @@ func (g *generator) gatherProvider() (*resourceType, error) {
 		cfg = map[string]*schema.Schema{}
 	}
 	info := &tfbridge.ResourceInfo{
-		Tok:    tokens.Type(g.info.Name),
+		Tok:    tokens.Type(g.pkg),
 		Fields: g.info.Config,
 	}
 	_, res, err := g.gatherResource("", &schema.Resource{Schema: cfg}, info, true)
