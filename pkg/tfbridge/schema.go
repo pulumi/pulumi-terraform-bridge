@@ -199,6 +199,58 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 	return result, nil
 }
 
+// makeTerraformUnknownElement creates an unknown value to be used as an element of a list or set using the given
+// element schema to guide the shape of the value.
+func makeTerraformUnknownElement(elem interface{}) interface{} {
+	// If we have no element schema, just return a simple unknown.
+	if elem == nil {
+		return config.UnknownVariableValue
+	}
+
+	switch e := elem.(type) {
+	case *schema.Schema:
+		// If the element uses a normal schema, defer to makeTerraformUnknown.
+		return makeTerraformUnknown(e)
+	case *schema.Resource:
+		// If the element uses a resource schema, fill in unknown values for any required properties.
+		res := make(map[string]interface{})
+		for k, v := range e.Schema {
+			if v.Required {
+				res[k] = makeTerraformUnknown(v)
+			}
+		}
+		return res
+	default:
+		return config.UnknownVariableValue
+	}
+}
+
+// makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
+//
+// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
+// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
+func makeTerraformUnknown(tfs *schema.Schema) interface{} {
+	if tfs == nil {
+		return config.UnknownVariableValue
+	}
+
+	switch tfs.Type {
+	case schema.TypeList, schema.TypeSet:
+		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
+		count := 1
+		if tfs.MinItems > 0 {
+			count = tfs.MinItems
+		}
+		arr := make([]interface{}, count)
+		for i := range arr {
+			arr[i] = makeTerraformUnknownElement(tfs.Elem)
+		}
+		return arr
+	default:
+		return config.UnknownVariableValue
+	}
+}
+
 // MakeTerraformInput takes a single property plus custom schema info and does whatever is necessary to prepare it for
 // use by Terraform.  Note that this function may have side effects, for instance if it is necessary to spill an asset
 // to disk in order to create a name out of it.  Please take care not to call it superfluously!
@@ -332,28 +384,7 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		//
-		// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
-		// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
-		if tfs == nil {
-			return config.UnknownVariableValue, nil
-		}
-
-		switch tfs.Type {
-		case schema.TypeList, schema.TypeSet:
-			// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
-			count := 1
-			if tfs.MinItems > 0 {
-				count = tfs.MinItems
-			}
-			arr := make([]interface{}, count)
-			for i := range arr {
-				arr[i] = config.UnknownVariableValue
-			}
-			return arr, nil
-		default:
-			return config.UnknownVariableValue, nil
-		}
+		return makeTerraformUnknown(tfs), nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil

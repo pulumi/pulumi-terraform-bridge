@@ -38,6 +38,7 @@ func TestTerraformInputs(t *testing.T) {
 			"stringo":             "ognirts",
 			"arrayPropertyValue":  []interface{}{"an array"},
 			"unknownArrayValue":   resource.Computed{Element: resource.NewStringProperty("")},
+			"unknownArrayValue2":  resource.Computed{Element: resource.NewStringProperty("")},
 			"objectPropertyValue": map[string]interface{}{
 				"propertyA": "a",
 				"propertyB": true,
@@ -70,7 +71,18 @@ func TestTerraformInputs(t *testing.T) {
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
 			"float_property_value": {Type: schema.TypeFloat},
 			"unknown_array_value":  {Type: schema.TypeList},
-			"map_property_value":   {Type: schema.TypeMap},
+			"unknown_array_value2": {
+				Type:     schema.TypeList,
+				MinItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"required_property": {Type: schema.TypeString, Required: true},
+						"conflicts_a":       {Type: schema.TypeString, ConflictsWith: []string{"conflicts_b"}},
+						"conflicts_b":       {Type: schema.TypeString, ConflictsWith: []string{"conflicts_a"}},
+					},
+				},
+			},
+			"map_property_value": {Type: schema.TypeMap},
 			"nested_resource": {
 				Type:     schema.TypeList,
 				MaxItems: 2,
@@ -133,6 +145,11 @@ func TestTerraformInputs(t *testing.T) {
 		"string_property_value": "ognirts",
 		"array_property_value":  []interface{}{"an array"},
 		"unknown_array_value":   []interface{}{config.UnknownVariableValue},
+		"unknown_array_value2": []interface{}{
+			map[string]interface{}{
+				"required_property": config.UnknownVariableValue,
+			},
+		},
 		"object_property_value": map[string]interface{}{
 			"property_a": "a",
 			"property_b": true,
