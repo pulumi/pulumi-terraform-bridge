@@ -712,6 +712,7 @@ func TestCustomTransforms(t *testing.T) {
 	}
 	tfs := &schema.Schema{Type: schema.TypeString}
 	psi := &SchemaInfo{Transform: TransformJSONDocument}
+
 	v1, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
 		tfs, psi, nil, false, false)
@@ -719,9 +720,23 @@ func TestCustomTransforms(t *testing.T) {
 	if !assert.Equal(t, `{"a":99,"b":false}`, v1) {
 		assert.Equal(t, `{"b":false,"a":99}`, v1)
 	}
+
 	v2, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewStringProperty(`{"a":99,"b":false}`),
 		tfs, psi, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v2)
+
+	doc["c"] = resource.Computed{Element: resource.PropertyValue{V: ""}}
+	v3, err := MakeTerraformInput(
+		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
+		tfs, psi, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, config.UnknownVariableValue, v3)
+
+	v4, err := MakeTerraformInput(
+		nil, "v", resource.PropertyValue{}, resource.MakeComputed(resource.NewStringProperty("")),
+		tfs, psi, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, config.UnknownVariableValue, v4)
 }

@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"encoding/json"
-	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -25,6 +24,11 @@ import (
 // TransformJSONDocument permits either a string, which is presumed to represent an already-stringified JSON document,
 // or a map, which will be transformed into its JSON representation.
 func TransformJSONDocument(v resource.PropertyValue) (resource.PropertyValue, error) {
+	// We can't marshal properties that contain unknowns. Turn these into an unknown value instead.
+	if v.ContainsUnknowns() {
+		return resource.MakeComputed(resource.NewStringProperty("")), nil
+	}
+
 	if v.IsString() {
 		return v, nil
 	} else if v.IsObject() {
@@ -36,5 +40,5 @@ func TransformJSONDocument(v resource.PropertyValue) (resource.PropertyValue, er
 		return resource.NewStringProperty(string(b)), nil
 	}
 	return resource.PropertyValue{},
-		errors.Errorf("expected string or JSON map; got %v", reflect.TypeOf(v.V))
+		errors.Errorf("expected string or JSON map; got %T", v.V)
 }
