@@ -451,15 +451,8 @@ func MakeTerraformOutput(v interface{},
 			return asset
 		}
 
-		// we might not have the asset value if this was something computed. in that
-		// case just return an appropriate sentinel indicating that was the case.
-
-		t, ok := v.(string)
-		contract.Assert(ok)
-		contract.Assert(t == config.UnknownVariableValue)
-
-		return resource.NewComputedProperty(
-			resource.Computed{Element: resource.NewStringProperty("")})
+		// If we don't have the value, it is possible that the user supplied a value that was not an asset. Let the
+		// normal marshalling logic handle it in that case.
 	}
 
 	if v == nil {

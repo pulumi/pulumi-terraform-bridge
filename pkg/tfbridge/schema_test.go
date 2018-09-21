@@ -695,9 +695,10 @@ func TestInvalidAsset(t *testing.T) {
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, true, false)
 	assert.NoError(t, err)
-	assert.Panics(t, func() {
-		MakeTerraformOutputs(inputs, tfs, ps, assets, false)
-	})
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	assert.Equal(t, resource.PropertyMap{
+		"zzz": resource.NewStringProperty("invalid"),
+	}, outputs)
 }
 
 func boolPointer(b bool) *bool {
