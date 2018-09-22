@@ -820,6 +820,9 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 					src:  filepath.Join(g.overlaysDir, mod.name, file),
 				})
 			}
+			for _, file := range modolay.DestFiles {
+				mod.addMember(&overlayFile{name: file})
+			}
 		}
 	}
 
