@@ -17,6 +17,7 @@ package tfgen
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -675,8 +676,14 @@ func (g *nodeJSGenerator) emitOverlay(mod *module, overlay *overlayFile) (string
 	// Copy the file from the overlays directory to the destination.
 	dir := g.moduleDir(mod)
 	dst := filepath.Join(dir, overlay.name)
-	if err := copyFile(overlay.src, dst); err != nil {
-		return "", err
+	if overlay.Copy() {
+		if err := copyFile(overlay.src, dst); err != nil {
+			return "", err
+		}
+	} else {
+		if _, err := os.Stat(dst); err != nil {
+			return "", err
+		}
 	}
 
 	// And then export the overlay's contents from the index.

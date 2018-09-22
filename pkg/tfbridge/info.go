@@ -115,8 +115,9 @@ type PulumiResource struct {
 // permits extra files to be included from the overlays/ directory when building up packs/.  This allows augmented
 // code-generation for convenient things like helper functions, modules, and gradual typing.
 type OverlayInfo struct {
-	Files   []string                // additional files to include in the index file.
-	Modules map[string]*OverlayInfo // extra modules to inject into the structure.
+	Files     []string                // additional files to include in the index file.
+	DestFiles []string                // like Files, but the overlays must already exist in the destination.
+	Modules   map[string]*OverlayInfo // extra modules to inject into the structure.
 }
 
 // JavaScriptInfo contains optional overlay information for Python code-generation.

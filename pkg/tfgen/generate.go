@@ -297,6 +297,7 @@ type overlayFile struct {
 
 func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
+func (of *overlayFile) Copy() bool   { return of.src != "" }
 
 // plainOldType is any simple type definition that doesn't correspond to Pulumi CustomResources.  Note that this is not
 // a legal top-level module definition; instead, this type is embedded within others (see resourceType and Func).
@@ -799,6 +800,10 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 				name: file,
 				src:  filepath.Join(g.overlaysDir, file),
 			})
+		}
+		for _, file := range overlay.DestFiles {
+			root := modules.ensureModule("")
+			root.addMember(&overlayFile{name: file})
 		}
 
 		// Now add all overlays that are modules.

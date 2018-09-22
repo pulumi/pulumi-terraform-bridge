@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -602,7 +603,11 @@ func (g *goGenerator) emitOverlay(mod *module, overlay *overlayFile) error {
 	// Copy the file from the overlays directory to the destination.
 	dir := g.moduleDir(mod)
 	dst := filepath.Join(dir, overlay.name)
-	return copyFile(overlay.src, dst)
+	if overlay.Copy() {
+		return copyFile(overlay.src, dst)
+	}
+	_, err := os.Stat(dst)
+	return err
 }
 
 // emitPackageMetadata generates all the non-code metadata required by a Pulumi package.
