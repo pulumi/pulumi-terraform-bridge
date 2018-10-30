@@ -778,7 +778,7 @@ func getInfoFromPulumiName(key resource.PropertyKey,
 		// Otherwise, transform the Pulumi name to the Terraform name using the standard mangling scheme.
 		name = PulumiToTerraformName(ks, tfs)
 	}
-	return name, tfs[name], ps[ks]
+	return name, tfs[name], ps[name]
 }
 
 // CleanTerraformSchema recursively removes "Removed" properties from a map[string]*schema.Schema.
