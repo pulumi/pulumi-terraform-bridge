@@ -464,12 +464,12 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	// Create accessors for all of the properties inside of the resulting resource structure.
 	w.Writefmtln("// URN is this resource's unique name assigned by Pulumi.")
 	w.Writefmtln("func (r *%s) URN() *pulumi.URNOutput {", name)
-	w.Writefmtln("\treturn r.s.URN")
+	w.Writefmtln("\treturn r.s.URN()")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("// ID is this resource's unique identifier assigned by its provider.")
 	w.Writefmtln("func (r *%s) ID() *pulumi.IDOutput {", name)
-	w.Writefmtln("\treturn r.s.ID")
+	w.Writefmtln("\treturn r.s.ID()")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	for _, prop := range res.outprops {
