@@ -230,7 +230,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 		}
 		w.Writefmtln("# Export this package's modules as members:")
 		for _, exp := range exports {
-			w.Writefmtln("from %s import *", exp)
+			w.Writefmtln("from .%s import *", exp)
 		}
 	}
 
@@ -432,7 +432,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln(`        """Create a %s resource with the given unique name, props, and options."""`, res.name)
 	w.Writefmtln("        if not __name__:")
 	w.Writefmtln("            raise TypeError('Missing resource name argument (for URN creation)')")
-	w.Writefmtln("        if not isinstance(__name__, basestring):")
+	w.Writefmtln("        if not isinstance(__name__, str):")
 	w.Writefmtln("            raise TypeError('Expected resource name to be a string')")
 	w.Writefmtln("        if __opts__ and not isinstance(__opts__, pulumi.ResourceOptions):")
 	w.Writefmtln("            raise TypeError('Expected resource options to be a ResourceOptions instance')")
@@ -446,30 +446,16 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	ins := make(map[string]bool)
 	for _, prop := range res.inprops {
 		pname := pyName(prop.name)
-		ptype := pyType(prop)
 
 		// Fill in computed defaults for arguments.
 		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
 			w.Writefmtln("        %s = %s", pname, defaultValue)
 		}
 
-		// Check that required arguments are present.  Also check that types are as expected.
+		// Check that required arguments are present.
 		if !prop.optional() {
 			w.Writefmtln("        if not %s:", pname)
 			w.Writefmtln("            raise TypeError('Missing required property %s')", pname)
-			w.Writefmt("        elif ")
-		} else {
-			w.Writefmt("        if %s and ", pname)
-		}
-		w.Writefmtln("not isinstance(%s, %s):", pname, ptype)
-		w.Writefmtln("            raise TypeError('Expected property %s to be a %s')", pname, ptype)
-
-		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
-		w.Writefmtln("        __self__.%[1]s = %[1]s", pname)
-		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, "        ")
-		} else if prop.rawdoc != "" {
-			g.emitRawDocComment(w, prop.rawdoc, "        ")
 		}
 
 		// And add it to the dictionary.
@@ -481,15 +467,10 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	var wroteOuts bool
 	for _, prop := range res.outprops {
-		// Default any pure output properties to UNKNOWN.  This ensures they are available as properties, even if
+		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins[prop.name] {
-			w.Writefmtln("        __self__.%s = pulumi.runtime.UNKNOWN", pyName(prop.name))
-			if prop.doc != "" {
-				g.emitDocComment(w, prop.doc, "        ")
-			} else if prop.rawdoc != "" {
-				g.emitRawDocComment(w, prop.rawdoc, "        ")
-			}
+			w.Writefmtln("        __props__['%s'] = None", pyName(prop.name))
 			wroteOuts = true
 		}
 	}
@@ -504,13 +485,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("            __props__,")
 	w.Writefmtln("            __opts__)")
 	w.Writefmtln("")
-
-	// Now override the set_outputs function so that this resource can demangle names to assign output properties.
-	w.Writefmtln("    def set_outputs(self, outs):")
-	for _, prop := range res.outprops {
-		w.Writefmtln("        if '%s' in outs:", prop.name)
-		w.Writefmtln("            self.%s = outs['%s']", pyName(prop.name), prop.name)
-	}
 
 	return name, nil
 }
@@ -712,7 +686,7 @@ func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 	case schema.TypeFloat:
 		return "float"
 	case schema.TypeString:
-		return "basestring"
+		return "str"
 	case schema.TypeSet, schema.TypeList:
 		if tfbridge.IsMaxItemsOne(sch, info) {
 			// This isn't supposed to be projected as a list; project it as a scalar.
