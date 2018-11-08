@@ -96,13 +96,6 @@ func (p *pkg) addModule(m *module) {
 	p.modules[m.name] = p.modules[m.name].merge(m)
 }
 
-// addModules registers an array of modules, using the same logic that addModule uses.
-func (p *pkg) addModules(ms []*module) {
-	for _, m := range ms {
-		p.addModule(m)
-	}
-}
-
 // addModuleMap registers an array of modules, using the same logic that addModule uses.
 func (p *pkg) addModuleMap(m moduleMap) {
 	for _, k := range m.keys() {

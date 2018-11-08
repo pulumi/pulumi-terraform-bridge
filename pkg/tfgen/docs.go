@@ -129,16 +129,24 @@ func mergeDocs(provider string, kind DocKind, targetDocs map[string]string, sour
 	return nil
 }
 
-var argumentBulletRegexp = regexp.MustCompile(
-	"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
+// met
+
+// nolint:megacheck
+var (
+	argumentBulletRegexp = regexp.MustCompile(
+		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
+	)
+
+	argumentBlockRegexp = regexp.MustCompile(
+		"`([a-z_]+)`\\s+block[\\s\\w]*:",
+	)
+
+	attributeBulletRegexp = regexp.MustCompile(
+		"\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)",
+	)
+
+	terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
 )
-var argumentBlockRegexp = regexp.MustCompile(
-	"`([a-z_]+)`\\s+block[\\s\\w]*:",
-)
-var attributeBulletRegexp = regexp.MustCompile(
-	"\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)",
-)
-var terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments

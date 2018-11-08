@@ -193,7 +193,6 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 var _ pulumirpc.ResourceProviderServer = (*Provider)(nil)
 
 func (p *Provider) pkg() tokens.Package          { return tokens.Package(p.module) }
-func (p *Provider) indexMod() tokens.Module      { return tokens.Module(p.pkg() + ":index") }
 func (p *Provider) baseConfigMod() tokens.Module { return tokens.Module(p.pkg() + ":config") }
 func (p *Provider) baseDataMod() tokens.Module   { return tokens.Module(p.pkg() + ":data") }
 func (p *Provider) configMod() tokens.Module     { return p.baseConfigMod() + "/vars" }

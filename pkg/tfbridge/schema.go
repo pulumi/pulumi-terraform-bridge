@@ -55,7 +55,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 		var old resource.PropertyValue
 		if defaults && olds != nil {
-			old, _ = olds[key]
+			old = olds[key]
 		}
 
 		// And then translate the property value.
