@@ -5,18 +5,15 @@ PROJECT         = github.com/pulumi/pulumi-terraform
 GOPKGS          = $(shell go list ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM = 10
 
-GOMETALINTERBIN=gometalinter
-GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
-
 build::
 	go build ${PROJECT}/pkg/tfgen
 	go build ${PROJECT}/pkg/tfbridge
 
 lint::
-	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
+	golangci-lint run
 
 test_fast::
-	go test -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
+	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
