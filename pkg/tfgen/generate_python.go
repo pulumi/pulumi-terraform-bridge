@@ -39,20 +39,22 @@ import (
 // newPythonGenerator returns a language generator that understands how to produce Python packages.
 func newPythonGenerator(pkg, version string, info tfbridge.ProviderInfo, overlaysDir, outDir string) langGenerator {
 	return &pythonGenerator{
-		pkg:         pkg,
-		version:     version,
-		info:        info,
-		overlaysDir: overlaysDir,
-		outDir:      outDir,
+		pkg:                  pkg,
+		version:              version,
+		info:                 info,
+		overlaysDir:          overlaysDir,
+		outDir:               outDir,
+		snakeCaseToCamelCase: make(map[string]string),
 	}
 }
 
 type pythonGenerator struct {
-	pkg         string
-	version     string
-	info        tfbridge.ProviderInfo
-	overlaysDir string
-	outDir      string
+	pkg                  string
+	version              string
+	info                 tfbridge.ProviderInfo
+	overlaysDir          string
+	outDir               string
+	snakeCaseToCamelCase map[string]string // property mapping from snake case to camel case
 }
 
 // commentChars returns the comment characters to use for single-line comments.
@@ -102,7 +104,7 @@ func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import pulumi")
 	w.Writefmtln("import pulumi.runtime")
-	w.Writefmtln("from %s import utilities", g.relativeRootDir(mod))
+	w.Writefmtln("from %s import utilities, tables", g.relativeRootDir(mod))
 	w.Writefmtln("")
 }
 
@@ -190,6 +192,10 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 	if mod.root() {
 		if err := g.emitUtilities(mod); err != nil {
 			return errors.Wrap(err, "emitting utilities")
+		}
+
+		if err := g.emitPropertyConversionTables(mod); err != nil {
+			return errors.Wrap(err, "emitting conversion tables")
 		}
 	}
 
@@ -445,6 +451,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	ins := make(map[string]bool)
 	for _, prop := range res.inprops {
+		g.recordProperty(prop.name, prop.schema, prop.info)
 		pname := pyName(prop.name)
 
 		// Fill in computed defaults for arguments.
@@ -459,7 +466,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 
 		// And add it to the dictionary.
-		w.Writefmtln("        __props__['%s'] = %s", prop.name, pname)
+		w.Writefmtln("        __props__['%s'] = %s", pname, pname)
 		w.Writefmtln("")
 
 		ins[prop.name] = true
@@ -467,6 +474,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	var wroteOuts bool
 	for _, prop := range res.outprops {
+		g.recordProperty(prop.name, prop.schema, prop.info)
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins[prop.name] {
@@ -485,6 +493,16 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("            __props__,")
 	w.Writefmtln("            __opts__)")
 	w.Writefmtln("")
+
+	// Override translate_{input|output}_property on each resource to translate between snake case and
+	// camel case when interacting with tfbridge.
+	w.Writefmtln(`
+    def translate_output_property(self, prop):
+        return tables._CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+
+    def translate_input_property(self, prop):
+        return tables._SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
+`)
 
 	return name, nil
 }
@@ -664,6 +682,96 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 
 	w.Writefmtln("      zip_safe=False)")
 	return nil
+}
+
+// Emits property conversion tables for all properties recorded using `recordProperty`. The two tables emitted here are
+// used to convert to and from snake case and camel case.
+func (g *pythonGenerator) emitPropertyConversionTables(tableModule *module) error {
+	w, err := g.openWriter(tableModule, "tables.py", false)
+	if err != nil {
+		return err
+	}
+
+	defer contract.IgnoreClose(w)
+	var allKeys []string
+	for key := range g.snakeCaseToCamelCase {
+		allKeys = append(allKeys, key)
+	}
+	sort.Strings(allKeys)
+
+	w.Writefmtln("_SNAKE_TO_CAMEL_CASE_TABLE = {")
+	for _, key := range allKeys {
+		value := g.snakeCaseToCamelCase[key]
+		if key != value {
+			w.Writefmtln("    %q: %q,", key, value)
+		}
+	}
+	w.Writefmtln("}")
+	w.Writefmtln("\n_CAMEL_TO_SNAKE_CASE_TABLE = {")
+	for _, value := range allKeys {
+		key := g.snakeCaseToCamelCase[value]
+		if key != value {
+			w.Writefmtln("    %q: %q,", key, value)
+		}
+	}
+	w.Writefmtln("}")
+	return nil
+}
+
+// recordProperty records the given property's name and member names. For each property name contained in the given
+// property, the name is converted to snake case and recorded in the snake case to camel case table.
+//
+// Once all resources have been emitted, the table is written out to a format usable for implementations of
+// translate_input_property and translate_output_property.
+func (g *pythonGenerator) recordProperty(name string, sch *schema.Schema, info *tfbridge.SchemaInfo) {
+	snakeCaseName := pyName(name)
+	g.snakeCaseToCamelCase[snakeCaseName] = name
+	g.recordPropertyRec(sch, info)
+}
+
+// recordPropertyRec recurses through a property's schema and recursively records any properties contained within it.
+func (g *pythonGenerator) recordPropertyRec(sch *schema.Schema, info *tfbridge.SchemaInfo) {
+	switch sch.Type {
+	case schema.TypeList, schema.TypeSet:
+		// If this property that we are recursing on is a list or a set, we do not need to record any properties at this
+		// step but we do need to recurse into the element schema of the list or set.
+		if elem, ok := sch.Elem.(*schema.Schema); ok {
+			var schInfo *tfbridge.SchemaInfo
+			if info != nil {
+				schInfo = info.Elem
+			}
+
+			g.recordPropertyRec(elem, schInfo)
+			return
+		}
+
+		// If this list or set doesn't have an element schema, it does not need to be recorded.
+	case schema.TypeMap:
+		// If this property that we are recursing on is a map, and that map has associated with it a Resource schema,
+		// this is a map with well-known keys that we will need to record in our table.
+		if res, ok := sch.Elem.(*schema.Resource); ok {
+			for _, prop := range stableSchemas(res.Schema) {
+				// If this field was overridden in SchemaInfo, keep track of that here.
+				var fldinfo *tfbridge.SchemaInfo
+				if info != nil {
+					fldinfo = info.Fields[prop]
+				}
+
+				childSchema := res.Schema[prop]
+				// If this field has a non-empty property name, record it.
+				if name := propertyName(prop, childSchema, fldinfo); name != "" {
+					// Note: recordProperty recurses into childSchema so there is no need to invoke recordPropertyRec
+					// to do so.
+					g.recordProperty(name, childSchema, fldinfo)
+				}
+			}
+		}
+
+		// If this map isn't a resource, there's no need to recurse any further.
+	default:
+		// Primitives do not need to be recorded.
+		return
+	}
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
