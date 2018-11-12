@@ -59,114 +59,6 @@ type Resource struct {
 	TFName string           // the Terraform resource name.
 }
 
-// collectImporterAttributes runs the Terraform Importer defined on the Resource for the given
-// resource ID, and adds any non-ID attributes to the inputs map.
-func (res *Resource) collectImporterAttributes(resourceID resource.ID, inputs map[string]string) error {
-	// There is nothing to do here if the resource doesn't have an importer defined in the
-	// Terraform schema.
-	if res.TF.Importer == nil {
-		return nil
-	}
-
-	glog.V(9).Infof("%s has TF Importer", res.TFName)
-
-	id := resourceID.String()
-
-	// Prepare a Terraform ResourceData for the importer
-	data := res.TF.Data(nil)
-	data.SetId(id)
-	data.SetType(res.TFName)
-
-	// Run the importer defined in the Terraform resource schema
-	results, err := res.TF.Importer.State(data, nil)
-	if err != nil {
-		return errors.Wrapf(err, "importing %s", id)
-	}
-
-	// No resources were returned - error out
-	if len(results) < 1 {
-		return errors.Errorf("importer for %s returned no resources", id)
-	}
-
-	// Allow constructing an error in the case that we have a nil InstanceState returned from
-	// Terraform, which is always a programming error.
-	makeNilStateError := func(badResourceID string) error {
-		return errors.Errorf("importer for %s returned a empty resource state. This is always "+
-			"the result of a bug in the resource provider - please report this "+
-			"as a bug in the Pulumi provider repository.", badResourceID)
-	}
-
-	// A Terraform importer can return multiple ResourceData instances for different resources. For
-	// example, an AWS security group will also import the related security group rules as independent
-	// resources.
-	//
-	// Some Terraform importers _change_ the ID of the resource to allow for multiple formats to be
-	// specified by a user (for example, an AWS API Gateway Response). In the case that we only have
-	// a single ResourceData returned, we will use that ResourceData regardless of whether the ID
-	// matches, provided the resource Type does match.
-	//
-	// If we get multiple ResourceData back, we need to search the results for one which matches both
-	// the Type and ID of the resource we were trying to import (the "primary" InstanceState).
-	//
-	// The Type can be identified by looking at the ephemeral data attached to the InstanceState, since
-	// it is not stored in all cases - only for import.
-	var primaryInstanceState *terraform.InstanceState
-
-	if len(results) == 1 {
-		// Take the only result, assuming the Type matches
-		state := results[0].State()
-		if state == nil {
-			return makeNilStateError(id)
-		}
-		if state.Ephemeral.Type == res.TFName {
-			primaryInstanceState = state
-		}
-	} else {
-		// Search for a Type+ID match, and use the first (if any)
-		for _, result := range results {
-			if result.Id() != id {
-				continue
-			}
-
-			state := result.State()
-			if state == nil {
-				return makeNilStateError(id)
-			}
-
-			if state.Ephemeral.Type != res.TFName {
-				continue
-			}
-
-			primaryInstanceState = state
-			break
-		}
-	}
-
-	// No resources were returned - error out
-	if primaryInstanceState == nil {
-		return errors.Errorf("importer for %s returned no resources", id)
-	}
-
-	// Set any attributes the importer populated as values in the input map provided, in order
-	// that they are passed to the Read function. If any keys already exist, this is likely because
-	// they have been set in the `state` object passed to a `get` method, so we will honour those
-	// values by not overwriting existing keys.
-	for key, value := range primaryInstanceState.Attributes {
-		// ID is already set
-		if key == "id" {
-			continue
-		}
-
-		// Set the importer's value for they key if it is not already set
-		_, hasKey := inputs[key]
-		if !hasKey {
-			inputs[key] = value
-		}
-	}
-
-	return nil
-}
-
 // DataSource wraps both the Terraform data source (resource) type info plus the overlay resource info.
 type DataSource struct {
 	Schema *DataSourceInfo  // optional provider overrides.
@@ -619,12 +511,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
 	}
-
-	// Ensure that any attributes obtained via the resource importer are passed to read
-	if err = res.collectImporterAttributes(id, inputs); err != nil {
-		return nil, err
-	}
-
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	newstate, err := p.tf.Refresh(info, state)
