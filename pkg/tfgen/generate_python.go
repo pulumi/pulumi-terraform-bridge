@@ -523,7 +523,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// Write out the function signature.
-	w.Writefmt("def %s(", name)
+	w.Writefmt("async def %s(", name)
 	for i, arg := range fun.args {
 		if i > 0 {
 			w.Writefmt(", ")
@@ -546,7 +546,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// Now simply invoke the runtime function with the arguments.
-	w.Writefmtln("    __ret__ = pulumi.runtime.invoke('%s', __args__)", fun.info.Tok)
+	w.Writefmtln("    __ret__ = await pulumi.runtime.invoke('%s', __args__)", fun.info.Tok)
 	w.Writefmtln("")
 
 	// And copy the results to an object, if there are indeed any expected returns.
