@@ -21,6 +21,9 @@ cd "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
 git checkout -b "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
 "$(go env GOPATH)"/src/github.com/pulumi/scripts/hack-vendor/hack-vendor github.com/pulumi/pulumi-terraform
 
+# Show the diff in the Gopkg files.
+git diff
+
 # Commit the resulting update (we do this so that the diff later looks nice)
 git config user.name "Pulumi Bot"
 git config user.email "bot@pulumi.com"
