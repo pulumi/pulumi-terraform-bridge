@@ -8,22 +8,27 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
 package tfbridge
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
@@ -739,4 +744,115 @@ func TestCustomTransforms(t *testing.T) {
 		tfs, psi, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, config.UnknownVariableValue, v4)
+}
+
+func TestImporterOnRead(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"required_for_import": {
+				Type: schema.TypeString,
+			},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			importValue := d.Id() + "-imported"
+			mustSet(d, "required_for_import", importValue)
+
+			return []*schema.ResourceData{d}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "MyID-imported", resp.Properties.Fields["requiredForImport"].GetStringValue())
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n2")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+			Properties: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"name": {
+						Kind: &structpb.Value_StringValue{StringValue: "IAmAlreadyset"},
+					},
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.Nil(t, resp.Properties.Fields["requiredForImport"])
+	}
+}
+
+func TestImporterWithNoResource(t *testing.T) {
+
+	tfProvider := makeTestTFProvider(map[string]*schema.Schema{},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			// Return nothing
+			return []*schema.ResourceData{}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, &pulumirpc.ReadResponse{}, resp)
+	}
+}
+
+func makeTestTFProvider(schemaMap map[string]*schema.Schema, importer schema.StateFunc) *schema.Provider {
+	return &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"importable_resource": {
+				Schema: schemaMap,
+				Importer: &schema.ResourceImporter{
+					State: importer,
+				},
+				Read: func(d *schema.ResourceData, meta interface{}) error {
+					return nil
+				},
+				Create: func(d *schema.ResourceData, meta interface{}) error {
+					return nil
+				},
+				Delete: func(d *schema.ResourceData, meta interface{}) error {
+					return nil
+				},
+			},
+		},
+	}
 }

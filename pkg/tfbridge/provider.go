@@ -59,6 +59,108 @@ type Resource struct {
 	TFName string           // the Terraform resource name.
 }
 
+// runTerraformImporter runs the Terraform Importer defined on the Resource for the given
+// resource ID, and returns a replacement input map if any resources are matched. A nil map
+// with no error should be interpreted by the caller as meaning the resource does not exist,
+// but there were no errors in determining this.
+func (res *Resource) runTerraformImporter(resourceID resource.ID) (map[string]string, error) {
+	// There is nothing to do here if the resource doesn't have an importer defined in the
+	// Terraform schema.
+	if res.TF.Importer == nil {
+		return nil, nil
+	}
+
+	glog.V(9).Infof("%s has TF Importer", res.TFName)
+
+	id := resourceID.String()
+
+	// Prepare a Terraform ResourceData for the importer
+	data := res.TF.Data(nil)
+	data.SetId(id)
+	data.SetType(res.TFName)
+
+	// Run the importer defined in the Terraform resource schema
+	results, err := res.TF.Importer.State(data, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "importing %s", id)
+	}
+
+	// No resources were returned. There are a few different ways this can happen - principally
+	//  - The resource never existed
+	//  - The resource did exist but was deleted
+	//
+	// The engine is capable of converting an empty response into an appropriate error for the
+	// user, so we don't want to disable that behaviour by returning our own (likely different)
+	// error up the chain. Instead, we return a nil map _and_ a nil error, and it is the
+	// responsibility of the caller to convert this into an appropriate error message.
+	//
+	// We consider the case in which multiple results are returned from the importer, but none
+	// match the ID expected to be an error, and this is handled later in this function.
+	if len(results) < 1 {
+		return nil, nil
+	}
+
+	// Allow constructing an error in the case that we have a nil InstanceState returned from
+	// Terraform, which is always a programming error.
+	makeNilStateError := func(badResourceID string) error {
+		return errors.Errorf("importer for %s returned a empty resource state. This is always "+
+			"the result of a bug in the resource provider - please report this "+
+			"as a bug in the Pulumi provider repository.", badResourceID)
+	}
+
+	// A Terraform importer can return multiple ResourceData instances for different resources. For
+	// example, an AWS security group will also import the related security group rules as independent
+	// resources.
+	//
+	// Some Terraform importers _change_ the ID of the resource to allow for multiple formats to be
+	// specified by a user (for example, an AWS API Gateway Response). In the case that we only have
+	// a single ResourceData returned, we will use that ResourceData regardless of whether the ID
+	// matches, provided the resource Type does match.
+	//
+	// If we get multiple ResourceData back, we need to search the results for one which matches both
+	// the Type and ID of the resource we were trying to import (the "primary" InstanceState).
+	//
+	// The Type can be identified by looking at the ephemeral data attached to the InstanceState, since
+	// it is not stored in all cases - only for import.
+	var primaryInstanceState *terraform.InstanceState
+
+	if len(results) == 1 {
+		// Take the only result, assuming the Type matches
+		state := results[0].State()
+		if state == nil {
+			return nil, makeNilStateError(id)
+		}
+		if state.Ephemeral.Type == res.TFName {
+			primaryInstanceState = state
+		}
+	} else {
+		// Search for a Type+ID match, and use the first (if any)
+		for _, result := range results {
+			if result.Id() != id {
+				continue
+			}
+
+			state := result.State()
+			if state == nil {
+				return nil, makeNilStateError(id)
+			}
+
+			if state.Ephemeral.Type != res.TFName {
+				continue
+			}
+
+			primaryInstanceState = state
+			break
+		}
+	}
+
+	// No resources were matched - error out
+	if primaryInstanceState == nil {
+		return nil, errors.Errorf("importer for %s returned no matching resources", id)
+	}
+	return primaryInstanceState.Attributes, nil
+}
+
 // DataSource wraps both the Terraform data source (resource) type info plus the overlay resource info.
 type DataSource struct {
 	Schema *DataSourceInfo  // optional provider overrides.
@@ -511,6 +613,21 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
 	}
+
+	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
+	if len(req.GetProperties().GetFields()) == 0 {
+		inputs, err = res.runTerraformImporter(id)
+		if err != nil {
+			// Pass through any error running the importer
+			return nil, err
+		}
+		if inputs == nil {
+			// The resource is gone (or never existed). Return a gRPC response with no
+			// resource ID set to indicate this.
+			return &pulumirpc.ReadResponse{}, nil
+		}
+	}
+
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	newstate, err := p.tf.Refresh(info, state)
