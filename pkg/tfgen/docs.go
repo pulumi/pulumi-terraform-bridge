@@ -201,11 +201,14 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 				}
 			}
 		case "---":
-			// Extract the description section
-			subparts := strings.Split(section, "\n# ")
+			// Extract the description section. We assume here that the first H1 (line starting with #) is the name
+			// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
+			// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
+			// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
+			subparts := strings.SplitN(section, "\n# ", 2)
 			if len(subparts) != 2 {
 				cmdutil.Diag().Warningf(
-					diag.Message("", "Expected only a single H1 in markdown for resource %v"), rawname)
+					diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
 			}
 			sublines := strings.Split(subparts[1], "\n")
 			ret.Description += strings.Join(sublines[2:], "\n")
