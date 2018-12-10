@@ -63,7 +63,7 @@ type Resource struct {
 // resource ID, and returns a replacement input map if any resources are matched. A nil map
 // with no error should be interpreted by the caller as meaning the resource does not exist,
 // but there were no errors in determining this.
-func (res *Resource) runTerraformImporter(resourceID resource.ID) (map[string]string, error) {
+func (res *Resource) runTerraformImporter(resourceID resource.ID, provider *Provider) (map[string]string, error) {
 	// There is nothing to do here if the resource doesn't have an importer defined in the
 	// Terraform schema.
 	if res.TF.Importer == nil {
@@ -80,7 +80,7 @@ func (res *Resource) runTerraformImporter(resourceID resource.ID) (map[string]st
 	data.SetType(res.TFName)
 
 	// Run the importer defined in the Terraform resource schema
-	results, err := res.TF.Importer.State(data, nil)
+	results, err := res.TF.Importer.State(data, provider.tf.Meta())
 	if err != nil {
 		return nil, errors.Wrapf(err, "importing %s", id)
 	}
@@ -616,7 +616,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
 	if len(req.GetProperties().GetFields()) == 0 {
-		inputs, err = res.runTerraformImporter(id)
+		inputs, err = res.runTerraformImporter(id, p)
 		if err != nil {
 			// Pass through any error running the importer
 			return nil, err
