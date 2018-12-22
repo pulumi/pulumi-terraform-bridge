@@ -245,6 +245,9 @@ var markdownLink = regexp.MustCompile(
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(text string) string {
+	// Replace occurrences of "~>" with just ">", to get a proper MarkDown note.
+	text = strings.Replace(text, "~> ", "> ", -1)
+
 	// Find URLs and re-write local links
 	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
 		parts := markdownLink.FindStringSubmatch(link)
@@ -264,5 +267,6 @@ func cleanupText(text string) string {
 		// Note: This throws away potentially valuable information in the name of not having broken links.
 		return parts[1]
 	})
+
 	return text
 }
