@@ -537,7 +537,12 @@ func (g *generator) gatherResource(rawname string,
 		}
 		parsedDocs = pd
 	} else {
-		parsedDocs.Description = fmt.Sprintf("The provider type for the %s package", g.info.Name)
+		parsedDocs.Description = fmt.Sprintf(
+			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
+				"settings, however an explicit `Provider` instance may be created and passed during resource\n"+
+				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
+				"[documentation](https://pulumi.io/reference/programming-model.html#providers) for more information.",
+			g.info.Name)
 		parsedDocs.URL = fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
 	}
 
