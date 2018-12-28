@@ -15,15 +15,22 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/tf2pulumi/convert"
+
+	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
 )
 
 // parsedDoc represents the data parsed from TF markdown documentation
@@ -129,21 +136,14 @@ func mergeDocs(provider string, kind DocKind, targetDocs map[string]string, sour
 	return nil
 }
 
-// met
-
 // nolint:megacheck
 var (
 	argumentBulletRegexp = regexp.MustCompile(
-		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
-	)
+		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
-	argumentBlockRegexp = regexp.MustCompile(
-		"`([a-z_]+)`\\s+block[\\s\\w]*:",
-	)
+	argumentBlockRegexp = regexp.MustCompile("`([a-z_]+)`\\s+block[\\s\\w]*:")
 
-	attributeBulletRegexp = regexp.MustCompile(
-		"\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)",
-	)
+	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
 	terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
 )
@@ -151,20 +151,25 @@ var (
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname string) parsedDoc {
-	var ret parsedDoc
-	ret.Arguments = map[string]string{}
-	ret.Attributes = map[string]string{}
-	ret.URL = fmt.Sprintf(terraformDocsTemplate, provider, kind, withoutPackageName(provider, rawname))
-	sections := strings.Split(markdown, "\n## ")
-	for _, section := range sections {
+	ret := parsedDoc{
+		Arguments:  make(map[string]string),
+		Attributes: make(map[string]string),
+		URL:        fmt.Sprintf(terraformDocsTemplate, provider, kind, withoutPackageName(provider, rawname)),
+	}
+
+	// Split the sections by H2 topics in the MarkDown file.
+	for _, section := range strings.Split(markdown, "\n## ") {
 		lines := strings.Split(section, "\n")
 		if len(lines) == 0 {
 			cmdutil.Diag().Warningf(
 				diag.Message("", "Unparseable doc section for  %v; consider overriding doc source location"), rawname)
 		}
+
+		// The first line is the H2 topic. These are mostly standard across TF docs, so use that to drive how
+		// to process the content within the topic itself.
 		switch lines[0] {
 		case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
-			lastMatch := ""
+			var lastMatch string
 			for _, line := range lines {
 				matches := argumentBulletRegexp.FindStringSubmatch(line)
 				blockMatches := argumentBlockRegexp.FindStringSubmatch(line)
@@ -176,8 +181,8 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 					// this is a continuation of the previous bullet
 					ret.Arguments[lastMatch] += "\n" + strings.TrimSpace(line)
 				} else if len(blockMatches) >= 2 {
-					// found a block match, once we've found one of these the main attribute section is finished so exit the loop.
-					// May require changing to get docs for named nested types as part of #163.
+					// found a block match, once we've found one of these the main attribute section is finished so
+					// exit the loop. May require changing to get docs for named nested types as part of #163.
 					break
 				} else {
 					// This is an empty line or there were no bullets yet - clear the lastMatch
@@ -185,7 +190,7 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 				}
 			}
 		case "Attributes Reference", "Attribute Reference":
-			lastMatch := ""
+			var lastMatch string
 			for _, line := range lines {
 				matches := attributeBulletRegexp.FindStringSubmatch(line)
 				if len(matches) >= 2 {
@@ -216,10 +221,141 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 			// Append the remarks to the description section
 			ret.Description += strings.Join(lines[2:], "\n")
 		default:
-			// Ignore everything else - most commonly examples and imports with unpredictable section headers.
+			if strings.Index(lines[0], "Example") == 0 {
+				// Append the example text (or nothing, if the conversion failed along the way).
+				ret.Description += parseExamples(lines)
+			} else {
+				// Ignore everything else - most commonly examples and imports with unpredictable section headers.
+				ignoredDocSections++
+				ignoredDocHeaders[lines[0]]++
+			}
 		}
 	}
+
 	return cleanupDoc(ret)
+}
+
+var (
+	ignoredDocSections int
+	ignoredDocHeaders  = make(map[string]int)
+	hclBlocksSucceeded int
+	hclBlocksFailed    int
+	hclFailures        = make(map[string]bool)
+)
+
+// printStatis outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
+func printStats(printIgnoreDetails, printHCLFailureDetails bool) {
+	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
+	if ignoredDocSections > 0 {
+		cmdutil.Diag().Warningf(
+			diag.Message("", "%d documentation sections ignored"), ignoredDocSections)
+	}
+	if hclBlocksFailed > 0 {
+		cmdutil.Diag().Warningf(
+			diag.Message("", "%d documentation code blocks failed to convert"), hclBlocksFailed)
+	}
+
+	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
+	if printIgnoreDetails {
+		fmt.Printf("---IGNORES---\n")
+		var ignores []string
+		for ignore := range ignoredDocHeaders {
+			ignores = append(ignores, ignore)
+		}
+		sort.Strings(ignores)
+		for _, ignore := range ignores {
+			fmt.Printf("[%d] %s\n", ignoredDocHeaders[ignore], ignore)
+		}
+	}
+	if printHCLFailureDetails {
+		fmt.Printf("---HCL FAILURES---\n")
+		var failures []string
+		for failure := range hclFailures {
+			failures = append(failures, failure)
+		}
+		sort.Strings(failures)
+		for i, failure := range failures {
+			fmt.Printf("%d: %s\n", i, failure)
+		}
+	}
+}
+
+// parseExamples converts an examples section into code comments, including converting any code snippets.
+func parseExamples(lines []string) string {
+	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
+	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
+	// them to the description. If we can't, we'll simply log a warning and keep moving along.
+	example := fmt.Sprintf("\n***%s***\n", lines[0])
+
+	for i := 1; i < len(lines); i++ {
+		if strings.Index(lines[i], "```") == 0 {
+			// If we found a fenced block, parse out the code from it.
+			var hcl string
+			for j := i + 1; j < len(lines); j++ {
+				if strings.Index(lines[j], "```") == 0 {
+					// We've got our code -- convert it.
+					code, err := convertHCL(hcl)
+					if err != nil {
+						hclBlocksFailed++
+						hclFailures[err.Error()] = true
+						example = ""
+					} else {
+						// Add a fenced code-block with the resulting TypeScript code snippet.
+						// TODO: support multiple languages.
+						example += fmt.Sprintf("```\n%s```\n", code)
+						hclBlocksSucceeded++
+					}
+
+					// Now set the index and break out of the inner loop, to consume the code string.
+					i = j + 1
+					break
+				} else {
+					hcl += lines[j] + "\n"
+				}
+			}
+		} else {
+			if line := lines[i]; len(line) > 0 && line[0] == '#' {
+				// If this is a MarkDown header, it delimits a sub-example -- just italicize those.
+				for len(line) > 0 && line[0] == '#' { // eat #s
+					line = line[1:]
+				}
+				for len(line) > 0 && line[0] == ' ' { // eat spaces
+					line = line[1:]
+				}
+				example += fmt.Sprintf("*%s*\n", line)
+			} else {
+				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
+				example += line
+			}
+		}
+	}
+
+	return example
+}
+
+// convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string.
+func convertHCL(hcl string) (string, error) {
+	// First create a temp dir and spill the HCL into it. Terraform's module loader assumes code is in a file.
+	dir, err := ioutil.TempDir("", "pt-hcl-")
+	if err != nil {
+		return "", errors.Wrap(err, "creating temp HCL dir")
+	}
+	defer os.RemoveAll(dir)
+
+	path := filepath.Join(dir, "main.tf")
+	if err = ioutil.WriteFile(path, []byte(hcl), 0644); err != nil {
+		return "", errors.Wrap(err, "writing temp HCL file")
+	}
+
+	// Now run the tf2pulumi conversion library, streaming the results into a string.
+	out := &bytes.Buffer{}
+	if err = convert.Convert(convert.Options{
+		Path:   dir,
+		Writer: out,
+	}); err != nil {
+		return "", errors.Wrap(err, "converting HCL to Pulumi code")
+	}
+	return out.String(), nil
 }
 
 func cleanupDoc(doc parsedDoc) parsedDoc {
@@ -239,9 +375,7 @@ func cleanupDoc(doc parsedDoc) parsedDoc {
 	}
 }
 
-var markdownLink = regexp.MustCompile(
-	`\[([^\]]*)\]\(([^\)]*)\)`,
-)
+var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(text string) string {
