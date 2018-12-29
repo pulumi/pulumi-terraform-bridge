@@ -533,7 +533,7 @@ func (g *generator) gatherResource(rawname string,
 	// Collect documentation information
 	var parsedDocs parsedDoc
 	if !isProvider {
-		pd, err := getDocsForProvider(g.info.Name, ResourceDocs, rawname, info.Docs)
+		pd, err := getDocsForProvider(g.language, g.info.Name, ResourceDocs, rawname, info.Docs)
 		if err != nil {
 			return "", nil, err
 		}
@@ -686,7 +686,7 @@ func (g *generator) gatherDataSource(rawname string,
 	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForProvider(g.info.Name, DataSourceDocs, rawname, info.Docs)
+	parsedDocs, err := getDocsForProvider(g.language, g.info.Name, DataSourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}

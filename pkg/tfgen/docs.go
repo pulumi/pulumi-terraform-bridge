@@ -57,7 +57,8 @@ const (
 
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
+func getDocsForProvider(language language, provider string, kind DocKind,
+	rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
 	repo, err := getRepoDir(provider)
 	if err != nil {
 		return parsedDoc{}, err
@@ -79,14 +80,14 @@ func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *
 		return parsedDoc{}, nil
 	}
 
-	doc, err := parseTFMarkdown(kind, string(markdownByts), provider, rawname)
+	doc, err := parseTFMarkdown(language, kind, string(markdownByts), provider, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
 
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
+		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -95,7 +96,7 @@ func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(provider, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
+		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -104,7 +105,7 @@ func getDocsForProvider(provider string, kind DocKind, rawname string, docinfo *
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
+		if err := mergeDocs(language, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -131,11 +132,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(provider string, kind DocKind, targetDocs map[string]string, sourceFrom string,
+func mergeDocs(language language, provider string, kind DocKind, targetDocs map[string]string, sourceFrom string,
 	extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(provider, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(language, provider, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
@@ -160,7 +161,8 @@ var (
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname string) (parsedDoc, error) {
+func parseTFMarkdown(language language, kind DocKind, markdown string,
+	provider string, rawname string) (parsedDoc, error) {
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
@@ -231,15 +233,16 @@ func parseTFMarkdown(kind DocKind, markdown string, provider string, rawname str
 			// Append the remarks to the description section
 			ret.Description += strings.Join(lines[2:], "\n")
 		default:
-			if strings.Index(lines[0], "Example") == 0 {
-				// Append the example text (or nothing, if the conversion failed along the way).
+			// If the language is Node.js, and this is an example, convert the sample to Pulumi TypeScript code.
+			// Otherwise, ignore the section, most commonly import sections or unpredictable headers.
+			// TODO: support other languages.
+			if language == nodeJS && strings.Index(lines[0], "Example") == 0 {
 				examples, err := parseExamples(lines)
 				if err != nil {
 					return parsedDoc{}, err
 				}
 				ret.Description += examples
 			} else {
-				// Ignore everything else - most commonly examples and imports with unpredictable section headers.
 				ignoredDocSections++
 				ignoredDocHeaders[lines[0]]++
 			}
@@ -322,7 +325,6 @@ func parseExamples(lines []string) (string, error) {
 						example = ""
 					} else {
 						// Add a fenced code-block with the resulting TypeScript code snippet.
-						// TODO: support multiple languages.
 						example += fmt.Sprintf("```\n%s```\n", code)
 						hclBlocksSucceeded++
 					}
