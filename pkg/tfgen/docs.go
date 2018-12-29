@@ -303,7 +303,7 @@ func parseExamples(lines []string) (string, error) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
-	example := fmt.Sprintf("\n***%s***\n", lines[0])
+	example := fmt.Sprintf("\n## %s\n", lines[0])
 
 	for i := 1; i < len(lines); i++ {
 		if strings.Index(lines[i], "```") == 0 {
@@ -339,14 +339,14 @@ func parseExamples(lines []string) (string, error) {
 			}
 		} else {
 			if line := lines[i]; len(line) > 0 && line[0] == '#' {
-				// If this is a MarkDown header, it delimits a sub-example -- just italicize those.
+				// If this is a MarkDown header, it delimits a sub-example -- make them H3.
 				for len(line) > 0 && line[0] == '#' { // eat #s
 					line = line[1:]
 				}
 				for len(line) > 0 && line[0] == ' ' { // eat spaces
 					line = line[1:]
 				}
-				example += fmt.Sprintf("*%s*\n", line)
+				example += fmt.Sprintf("### %s\n", line)
 			} else {
 				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
 				example += fmt.Sprintf("%s\n", line)
