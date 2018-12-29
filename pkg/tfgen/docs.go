@@ -260,8 +260,8 @@ var (
 	hclFailures        = make(map[string]bool)
 )
 
-// printStatis outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func printStats(printIgnoreDetails, printHCLFailureDetails bool) {
+// printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
+func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if ignoredDocSections > 0 {
 		cmdutil.Diag().Warningf(
@@ -269,7 +269,8 @@ func printStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	}
 	if hclBlocksFailed > 0 {
 		cmdutil.Diag().Warningf(
-			diag.Message("", "%d documentation code blocks failed to convert"), hclBlocksFailed)
+			diag.Message("", "%d/%d documentation code blocks failed to convert"),
+			hclBlocksFailed, hclBlocksFailed+hclBlocksSucceeded)
 	}
 
 	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
@@ -348,7 +349,7 @@ func parseExamples(lines []string) (string, error) {
 				example += fmt.Sprintf("*%s*\n", line)
 			} else {
 				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-				example += line
+				example += fmt.Sprintf("%s\n", line)
 			}
 		}
 	}

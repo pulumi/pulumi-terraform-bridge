@@ -369,7 +369,8 @@ func (g *generator) Generate() error {
 		return errors.Wrapf(err, "failed to create project file")
 	}
 
-	printStats(false, false)
+	// Print out some documentation stats as a summary afterwards.
+	printDocStats(false, false)
 
 	return nil
 }
