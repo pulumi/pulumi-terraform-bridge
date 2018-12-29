@@ -218,7 +218,16 @@ func parseTFMarkdown(language language, kind DocKind, markdown string,
 				}
 			}
 		case "---":
-			// Extract the description section. We assume here that the first H1 (line starting with #) is the name
+			// The header of the MarkDown will have two "--"s paired up to delineate the header. Skip this.
+			endHeader := strings.Index(section, "\n---")
+			if endHeader == -1 {
+				cmdutil.Diag().Warningf(
+					diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), rawname)
+			} else {
+				section = section[endHeader+4:]
+			}
+
+			// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
 			// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
 			// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
 			// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
