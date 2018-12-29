@@ -326,7 +326,7 @@ func parseExamples(lines []string) (string, error) {
 						example = ""
 					} else {
 						// Add a fenced code-block with the resulting TypeScript code snippet.
-						example += fmt.Sprintf("```\n%s```\n", code)
+						example += fmt.Sprintf("```typescript\n%s```\n", code)
 						hclBlocksSucceeded++
 					}
 
