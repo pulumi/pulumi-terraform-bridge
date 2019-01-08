@@ -456,7 +456,8 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 		// Fill in computed defaults for arguments.
 		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
-			w.Writefmtln("        %s = %s", pname, defaultValue)
+			w.Writefmtln("        if not %s:", pname)
+			w.Writefmtln("            %s = %s", pname, defaultValue)
 		}
 
 		// Check that required arguments are present.
