@@ -102,6 +102,7 @@ func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 }
 
 func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
+	w.Writefmtln("import json")
 	w.Writefmtln("import pulumi")
 	w.Writefmtln("import pulumi.runtime")
 	w.Writefmtln("from %s import utilities, tables", g.relativeRootDir(mod))
@@ -118,6 +119,10 @@ func (g *pythonGenerator) emitPackage(pack *pkg) error {
 
 	// Generate a top-level index file that re-exports any child modules.
 	index := pack.modules.ensureModule("")
+	if pack.provider != nil {
+		index.members = append(index.members, pack.provider)
+	}
+
 	if err := g.emitModule(index, submodules); err != nil {
 		return err
 	}
@@ -420,8 +425,12 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	defer contract.IgnoreClose(w)
 
+	baseType := "pulumi.CustomResource"
+	if res.IsProvider() {
+		baseType = "pulumi.ProviderResource"
+	}
 	// Produce a class definition with optional """ comment.
-	w.Writefmtln("class %s(pulumi.CustomResource):", pyClassName(res.name))
+	w.Writefmtln("class %s(%s):", pyClassName(res.name), baseType)
 	if res.doc != "" {
 		g.emitDocComment(w, res.doc, "    ")
 	}
@@ -467,7 +476,17 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 
 		// And add it to the dictionary.
-		w.Writefmtln("        __props__['%s'] = %s", pname, pname)
+		arg := pname
+
+		// If this resource is a provider then, regardless of the schema of the underlying provider type, we must
+		// project all properties as strings. For all properties that are not strings, we'll marshal them to JSON and
+		// use the JSON string as a string input.
+		//
+		// Note the use of the `json` package here - we must import it at the top of the file so that we can use it.
+		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
+			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
+		}
+		w.Writefmtln("        __props__['%s'] = %s", pname, arg)
 		w.Writefmtln("")
 
 		ins[prop.name] = true
