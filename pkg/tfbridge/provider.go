@@ -177,7 +177,7 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 		version: version,
 		tf:      tf,
 		info:    info,
-		config:  CleanTerraformSchema(tf.Schema),
+		config:  tf.Schema,
 	}
 	p.setLoggingContext(ctx)
 	p.initResourceMaps()
@@ -230,11 +230,8 @@ func (p *Provider) initResourceMaps() {
 			tok = tokens.Type(string(p.pkg()) + ":" + camelName + ":" + pascalName)
 		}
 
-		tfres := p.tf.ResourcesMap[res.Name]
-		tfres.Schema = CleanTerraformSchema(tfres.Schema)
-
 		p.resources[tok] = Resource{
-			TF:     tfres,
+			TF:     p.tf.ResourcesMap[res.Name],
 			TFName: res.Name,
 			Schema: schema,
 		}
@@ -261,11 +258,8 @@ func (p *Provider) initResourceMaps() {
 			tok = tokens.ModuleMember(string(p.baseDataMod()) + ":" + camelName)
 		}
 
-		tfres := p.tf.DataSourcesMap[ds.Name]
-		tfres.Schema = CleanTerraformSchema(tfres.Schema)
-
 		p.dataSources[tok] = DataSource{
-			TF:     tfres,
+			TF:     p.tf.DataSourcesMap[ds.Name],
 			TFName: ds.Name,
 			Schema: schema,
 		}
