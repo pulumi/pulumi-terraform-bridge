@@ -746,6 +746,50 @@ func TestCustomTransforms(t *testing.T) {
 	assert.Equal(t, config.UnknownVariableValue, v4)
 }
 
+func TestRemovedFieldAfterSchemaClean(t *testing.T) {
+	tfProvider := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"test_resource": {
+				Schema: map[string]*schema.Schema{
+					"normal_field": {
+						Type: schema.TypeString,
+					},
+					"removed_field": {
+						Type:    schema.TypeString,
+						Removed: "This will be removed by CleanTerraformSchema",
+					},
+				},
+				Read: func(d *schema.ResourceData, meta interface{}) error {
+					if err := d.Set("normal_field", "a value"); err != nil {
+						return err
+					}
+					if err := d.Set("removed_field", "another value"); err != nil {
+						return err
+					}
+					return nil
+				},
+				Create: func(d *schema.ResourceData, meta interface{}) error {
+					return nil
+				},
+				Delete: func(d *schema.ResourceData, meta interface{}) error {
+					return nil
+				},
+			},
+		},
+	}
+
+	testResource := tfProvider.ResourcesMap["test_resource"]
+	testResource.Schema = CleanTerraformSchema(testResource.Schema)
+	assert.NotContains(t, testResource.Schema, "removed_field",
+		"removed_field still present in schema")
+
+	info := &terraform.InstanceInfo{Type: "test_resource"}
+	state := &terraform.InstanceState{ID: "some-id", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
+
+	_, err := tfProvider.Refresh(info, state)
+	assert.NoError(t, err)
+}
+
 func TestImporterOnRead(t *testing.T) {
 	tfProvider := makeTestTFProvider(
 		map[string]*schema.Schema{
