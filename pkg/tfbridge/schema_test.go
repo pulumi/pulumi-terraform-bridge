@@ -365,6 +365,7 @@ func TestTerraformAttributes(t *testing.T) {
 			},
 			"set_property_value":            []interface{}{"set member 1", "set member 2"},
 			"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
+			"removed_property_value":        "a removed property",
 		},
 		map[string]*schema.Schema{
 			"nil_property_value":    {Type: schema.TypeMap},
@@ -395,6 +396,10 @@ func TestTerraformAttributes(t *testing.T) {
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
 			"string_with_bad_interpolation": {Type: schema.TypeString},
+			"removed_property_value": {
+				Type:    schema.TypeString,
+				Removed: "Removed in the Terraform provider",
+			},
 		})
 
 	assert.NoError(t, err)
@@ -421,6 +426,7 @@ func TestTerraformAttributes(t *testing.T) {
 		"set_property_value.4237827189":                       "set member 1",
 		"string_property_value":                               "ognirts",
 		"string_with_bad_interpolation":                       "some ${interpolated:value} with syntax errors",
+		"removed_property_value":                              "a removed property",
 	})
 
 	// MapFieldWriter has issues with values of TypeMap. Build a schema without such values s.t. we can test
