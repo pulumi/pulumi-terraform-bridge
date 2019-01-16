@@ -85,7 +85,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 				continue
 			}
 			sch := tfs[name]
-			if sch != nil && sch.Deprecated != "" && !sch.Required {
+			if sch != nil && (sch.Removed != "" || sch.Deprecated != "" && !sch.Required) {
 				continue
 			}
 
@@ -156,6 +156,9 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 		// Next, populate defaults from the Terraform schema.
 		for name, sch := range tfs {
+			if sch.Removed != "" {
+				continue
+			}
 			if sch.Deprecated != "" && !sch.Required {
 				continue
 			}
