@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -431,9 +432,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	// Produce a class definition with optional """ comment.
 	w.Writefmtln("class %s(%s):", pyClassName(res.name), baseType)
-	if res.doc != "" {
-		g.emitDocComment(w, res.doc, "    ")
-	}
+	g.emitMembers(w, mod, res)
 
 	// Now generate an initializer with arguments for all input properties.
 	w.Writefmt("    def __init__(__self__, __name__, __opts__=None")
@@ -444,7 +443,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	w.Writefmtln("):")
 
-	w.Writefmtln(`        """Create a %s resource with the given unique name, props, and options."""`, res.name)
+	g.emitInitDocstring(w, mod, res)
 	w.Writefmtln("        if not __name__:")
 	w.Writefmtln("            raise TypeError('Missing resource name argument (for URN creation)')")
 	w.Writefmtln("        if not isinstance(__name__, str):")
@@ -792,6 +791,82 @@ func (g *pythonGenerator) recordPropertyRec(sch *schema.Schema, info *tfbridge.S
 		// Primitives do not need to be recorded.
 		return
 	}
+}
+
+// emitMembers emits property declarations and docstrings for all output properties of the given resource.
+func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *resourceType) {
+	for _, prop := range res.outprops {
+		name := pyName(prop.name)
+		ty := pyType(prop)
+		w.Writefmtln("    %s: pulumi.Output[%s]", name, ty)
+		if prop.doc != "" {
+			g.emitDocComment(w, prop.doc, "    ")
+		}
+	}
+}
+
+// emitInitDocstring emits the docstring for the __init__ method of the given resource type.
+//
+// Sphinx (the documentation generator that we use to generate Python docs) does not draw a distinction between
+// documentation comments on the class itself and documentation comments on the __init__ method of a class. The docs
+// repo instructs Sphinx to concatenate the two together, which means that we don't need to emit docstrings on the class
+// at all as long as the __init__ docstring is good enough.
+//
+// The docstring we generate here describes both the class itself and the arguments to the class's constructor. The
+// format of the docstring is in "Sphinx form":
+//   1. Parameters are introduced using the syntax ":param <type> <name>: <comment>". Sphinx parses this and uses it
+//      to populate the list of parameters for this function.
+//   2. The doc string of parameters is expected to be indented to the same indentation as the type of the parameter.
+//      Sphinx will complain and make mistakes if this is not the case.
+//   3. The doc string can't have random newlines in it, or Sphinx will complain.
+//
+// This function does the best it can to navigate these constraints and produce a docstring that Sphinx can make sense
+// of.
+func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res *resourceType) {
+	// "buf" contains the full text of the docstring, without the leading and trailing triple quotes.
+	var buf bytes.Buffer
+
+	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	if res.doc != "" {
+		fmt.Fprintln(&buf, res.doc)
+	} else {
+		fmt.Fprintf(&buf, "Create a %s resource with the given unique name, props, and options.\n", res.name)
+	}
+	fmt.Fprintln(&buf, "")
+
+	// All resources have a __name__ parameter and __opts__ parameter.
+	fmt.Fprintln(&buf, ":param str __name__: The name of the resource.")
+	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions __opts__: Options for the resource.")
+	for _, prop := range res.inprops {
+		name := pyName(prop.name)
+		ty := pyType(prop)
+		if prop.doc == "" {
+			fmt.Fprintf(&buf, ":param pulumi.Input[%s] %s\n", ty, name)
+			continue
+		}
+
+		// If this property has some documentation associated with it, we need to split it so that it is indented
+		// in a way that Sphinx can understand.
+		lines := strings.Split(prop.doc, "\n")
+		for i, docLine := range lines {
+			// Break if we get to the last line and it's empty.
+			if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+				break
+			}
+
+			// If it's the first line, print the :param header.
+			if i == 0 {
+				fmt.Fprintf(&buf, ":param pulumi.Input[%s] %s: %s\n", ty, name, docLine)
+			} else {
+				// Otherwise, print out enough padding to align with the first "p" in "pulumi.Input"
+				//                 :param pulumi.Input[...]
+				fmt.Fprintf(&buf, "       %s\n", docLine)
+			}
+		}
+	}
+
+	// emitDocComment handles the prefix and triple quotes.
+	g.emitDocComment(w, buf.String(), "        ")
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
