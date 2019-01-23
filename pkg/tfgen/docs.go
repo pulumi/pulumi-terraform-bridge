@@ -312,8 +312,19 @@ func parseExamples(lines []string) (string, error) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
-	example := fmt.Sprintf("\n## %s\n", lines[0])
-
+	var buffer string
+	var skipExample bool
+	var examples []string
+	appendExample := func() {
+		// If the example had an error, skip it. Also, only append the example if the buffer is non-empty;
+		// this can happen due to padding between sections.
+		if skipExample {
+			skipExample = false
+		} else if strings.Replace(buffer, "\n", "", -1) != "" {
+			examples = append(examples, buffer)
+		}
+		buffer = ""
+	}
 	for i := 1; i < len(lines); i++ {
 		if strings.Index(lines[i], "```") == 0 {
 			// If we found a fenced block, parse out the code from it.
@@ -332,10 +343,10 @@ func parseExamples(lines []string) (string, error) {
 						}
 						hclBlocksFailed++
 						hclFailures[stderr] = true
-						example = ""
+						skipExample = true // mark this example as skipped.
 					} else {
 						// Add a fenced code-block with the resulting TypeScript code snippet.
-						example += fmt.Sprintf("```typescript\n%s```\n", code)
+						buffer += fmt.Sprintf("```typescript\n%s```\n", code)
 						hclBlocksSucceeded++
 					}
 
@@ -348,22 +359,33 @@ func parseExamples(lines []string) (string, error) {
 			}
 		} else {
 			if line := lines[i]; len(line) > 0 && line[0] == '#' {
-				// If this is a MarkDown header, it delimits a sub-example -- make them H3.
+				// If this is a MarkDown header, it delimits a sub-example; append the buffer as the last example.
+				appendExample()
+
+				// Also force all headers to become H3s.
 				for len(line) > 0 && line[0] == '#' { // eat #s
 					line = line[1:]
 				}
 				for len(line) > 0 && line[0] == ' ' { // eat spaces
 					line = line[1:]
 				}
-				example += fmt.Sprintf("### %s\n", line)
+				buffer += fmt.Sprintf("### %s\n", line)
 			} else {
 				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-				example += fmt.Sprintf("%s\n", line)
+				buffer += fmt.Sprintf("%s\n", line)
 			}
 		}
 	}
 
-	return example, nil
+	// If we have left-over buffer, make sure to add it to the example list.
+	appendExample()
+
+	// If no examples were successfully converted, return an empty string. Otherwise, prepend the header.
+	if len(examples) == 0 {
+		return "", nil
+	}
+
+	return fmt.Sprintf("\n## %s\n%s", lines[0], strings.Join(examples, "\n")), nil
 }
 
 // errTF2PulumiMissing is a singleton error used to convey and identify situations in which

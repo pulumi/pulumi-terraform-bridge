@@ -11,6 +11,7 @@ before_install:
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
+    - export PATH=$HOME/.pulumi/bin:$PATH
 before_script:
     - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
 after_failure:
