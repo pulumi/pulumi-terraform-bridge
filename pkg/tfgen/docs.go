@@ -513,7 +513,7 @@ func convertHCL(hcl string) (string, string, error) {
 	// tf2pulumi in library form because it greatly complicates our modules/vendoring story.
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	tf2pulumi := exec.Command(path)
+	tf2pulumi := exec.Command(path, "--allow-missing-variables")
 	tf2pulumi.Dir = dir
 	tf2pulumi.Stdout = stdout
 	tf2pulumi.Stderr = stderr
