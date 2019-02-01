@@ -159,6 +159,28 @@ var (
 	terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
 )
 
+// groupLines groups a collection of strings, a, by a given separator, sep.
+func groupLines(lines []string, sep string) [][]string {
+	var buffer []string
+	var sections [][]string
+	for _, line := range lines {
+		if strings.Index(line, sep) == 0 {
+			sections = append(sections, buffer)
+			buffer = []string{}
+		}
+		buffer = append(buffer, line)
+	}
+	if len(buffer) > 0 {
+		sections = append(sections, buffer)
+	}
+	return sections
+}
+
+// splitGroupLines splits and groups a string, s, by a given separator, sep.
+func splitGroupLines(s, sep string) [][]string {
+	return groupLines(strings.Split(s, "\n"), sep)
+}
+
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(language language, kind DocKind, markdown string,
@@ -170,90 +192,161 @@ func parseTFMarkdown(language language, kind DocKind, markdown string,
 	}
 
 	// Split the sections by H2 topics in the MarkDown file.
-	for _, section := range strings.Split(markdown, "\n## ") {
-		lines := strings.Split(section, "\n")
-		if len(lines) == 0 {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "Unparseable doc section for  %v; consider overriding doc source location"), rawname)
+	for _, section := range splitGroupLines(markdown, "## ") {
+		// Extract the header name, since this will drive how we process the content.
+		if len(section) == 0 {
+			cmdutil.Diag().Warningf(diag.Message("",
+				"Unparseable H2 doc section for %v; consider overriding doc source location"), rawname)
+			continue
 		}
 
-		// The first line is the H2 topic. These are mostly standard across TF docs, so use that to drive how
-		// to process the content within the topic itself.
-		switch lines[0] {
-		case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
-			var lastMatch string
-			for _, line := range lines {
-				matches := argumentBulletRegexp.FindStringSubmatch(line)
-				blockMatches := argumentBlockRegexp.FindStringSubmatch(line)
-				if len(matches) >= 4 {
-					// found a property bullet, extract the name and description
-					ret.Arguments[matches[1]] = matches[4]
-					lastMatch = matches[1]
-				} else if strings.TrimSpace(line) != "" && lastMatch != "" {
-					// this is a continuation of the previous bullet
-					ret.Arguments[lastMatch] += "\n" + strings.TrimSpace(line)
-				} else if len(blockMatches) >= 2 {
-					// found a block match, once we've found one of these the main attribute section is finished so
-					// exit the loop. May require changing to get docs for named nested types as part of #163.
-					break
-				} else {
-					// This is an empty line or there were no bullets yet - clear the lastMatch
-					lastMatch = ""
-				}
-			}
-		case "Attributes Reference", "Attribute Reference":
-			var lastMatch string
-			for _, line := range lines {
-				matches := attributeBulletRegexp.FindStringSubmatch(line)
-				if len(matches) >= 2 {
-					// found a property bullet, extract the name and description
-					ret.Attributes[matches[1]] = matches[2]
-					lastMatch = matches[1]
-				} else if strings.TrimSpace(line) != "" && lastMatch != "" {
-					// this is a continuation of the previous bullet
-					ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
-				} else {
-					// This is an empty line or there were no bullets yet - clear the lastMatch
-					lastMatch = ""
-				}
-			}
-		case "---":
-			// The header of the MarkDown will have two "--"s paired up to delineate the header. Skip this.
-			endHeader := strings.Index(section, "\n---")
-			if endHeader == -1 {
-				cmdutil.Diag().Warningf(
-					diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), rawname)
-			} else {
-				section = section[endHeader+4:]
+		// Skip certain headers that we don't support.
+		header := section[0]
+		if strings.Index(header, "## ") == 0 {
+			header = header[3:]
+		}
+		if header == "Import" || header == "Imports" || header == "Timeout" || header == "Timeouts" {
+			ignoredDocSections++
+			ignoredDocHeaders[header]++
+			continue
+		}
+
+		// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
+		// snippets that are unparseable (we don't want to ignore entire H2 sections).
+		var wroteHeader bool
+		for _, subsection := range groupLines(section[1:], "### ") {
+			if len(subsection) == 0 {
+				cmdutil.Diag().Warningf(diag.Message("",
+					"Unparseable H3 doc section for %v; consider overriding doc source location"), rawname)
+				continue
 			}
 
-			// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
-			// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
-			// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
-			// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
-			subparts := strings.SplitN(section, "\n# ", 2)
-			if len(subparts) != 2 {
-				cmdutil.Diag().Warningf(
-					diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
-			}
-			sublines := strings.Split(subparts[1], "\n")
-			ret.Description += strings.Join(sublines[2:], "\n")
-		case "Remarks":
-			// Append the remarks to the description section
-			ret.Description += strings.Join(lines[2:], "\n")
-		default:
-			// If the language is Node.js, and this is an example, convert the sample to Pulumi TypeScript code.
-			// Otherwise, ignore the section, most commonly import sections or unpredictable headers.
-			// TODO: support other languages.
-			if language == nodeJS && strings.Index(lines[0], "Example") == 0 {
-				examples, err := parseExamples(lines)
-				if err != nil {
-					return parsedDoc{}, err
+			// Skip empty sections (they just add unnecessary padding and headers).
+			var allEmpty bool
+			for i, sub := range subsection {
+				if !isBlank(sub) {
+					break
 				}
-				ret.Description += examples
-			} else {
-				ignoredDocSections++
-				ignoredDocHeaders[lines[0]]++
+				if i == len(subsection)-1 {
+					allEmpty = true
+					break
+				}
+			}
+			if allEmpty {
+				continue
+			}
+
+			// Detect important section kinds.
+			var headerIsArgsReference bool
+			var headerIsAttributesReference bool
+			var headerIsFrontMatter bool
+			switch header {
+			case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
+				headerIsArgsReference = true
+			case "Attributes Reference", "Attribute Reference":
+				headerIsAttributesReference = true
+			case "---":
+				headerIsFrontMatter = true
+			}
+
+			// Convert any code snippets, if there are any. If this yields a fatal error, we
+			// bail out, but most errors are ignorable and just lead to us skipping one section.
+			var skippableExamples bool
+			var err error
+			subsection, skippableExamples, err = parseExamples(language, subsection)
+			if err != nil {
+				return parsedDoc{}, err
+			} else if skippableExamples && !headerIsArgsReference &&
+				!headerIsAttributesReference && !headerIsFrontMatter {
+				// Skip sections with failed examples, so long as they aren't "essential" blocks.
+				continue
+			}
+
+			// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
+			switch {
+			case headerIsArgsReference:
+				var lastMatch string
+				for _, line := range subsection {
+					matches := argumentBulletRegexp.FindStringSubmatch(line)
+					blockMatches := argumentBlockRegexp.FindStringSubmatch(line)
+					if len(matches) >= 4 {
+						// found a property bullet, extract the name and description
+						ret.Arguments[matches[1]] = matches[4]
+						lastMatch = matches[1]
+					} else if !isBlank(line) && lastMatch != "" {
+						// this is a continuation of the previous bullet
+						ret.Arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+					} else if len(blockMatches) >= 2 {
+						// found a block match, once we've found one of these the main attribute section is finished so
+						// exit the loop. May require changing to get docs for named nested types as part of #163.
+						break
+					} else {
+						// This is an empty line or there were no bullets yet - clear the lastMatch
+						lastMatch = ""
+					}
+				}
+			case headerIsAttributesReference:
+				var lastMatch string
+				for _, line := range subsection {
+					matches := attributeBulletRegexp.FindStringSubmatch(line)
+					if len(matches) >= 2 {
+						// found a property bullet, extract the name and description
+						ret.Attributes[matches[1]] = matches[2]
+						lastMatch = matches[1]
+					} else if !isBlank(line) && lastMatch != "" {
+						// this is a continuation of the previous bullet
+						ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
+					} else {
+						// This is an empty line or there were no bullets yet - clear the lastMatch
+						lastMatch = ""
+					}
+				}
+			case headerIsFrontMatter:
+				// The header of the MarkDown will have two "---"s paired up to delineate the header. Skip this.
+				var foundEndHeader bool
+				for len(subsection) > 0 {
+					curr := subsection[0]
+					subsection = subsection[1:]
+					if curr == "---" {
+						foundEndHeader = true
+						break
+					}
+				}
+				if !foundEndHeader {
+					cmdutil.Diag().Warningf(
+						diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), rawname)
+				}
+
+				// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
+				// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
+				// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
+				// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
+				lastBlank := true
+				var foundH1Resource bool
+				for _, line := range subsection {
+					if strings.Index(line, "# ") == 0 {
+						foundH1Resource = true
+						lastBlank = true
+					} else if !isBlank(line) || !lastBlank {
+						ret.Description += line + "\n"
+						lastBlank = false
+					} else if isBlank(line) {
+						lastBlank = true
+					}
+				}
+				if !foundH1Resource {
+					cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
+				}
+			default:
+				// For all other sections, append them to the description section.
+				if !wroteHeader {
+					ret.Description += fmt.Sprintf("## %s\n", header)
+					wroteHeader = true
+					if !isBlank(subsection[0]) {
+						ret.Description += "\n"
+					}
+				}
+				ret.Description += strings.Join(subsection, "\n") + "\n"
 			}
 		}
 	}
@@ -268,6 +361,19 @@ var (
 	hclBlocksFailed    int
 	hclFailures        = make(map[string]bool)
 )
+
+// isBlank returns true if the line is all whitespace.
+func isBlank(line string) bool {
+	return strings.TrimSpace(line) == ""
+}
+
+// trimTrailingBlanks removes any blank lines from the end of an array.
+func trimTrailingBlanks(lines []string) []string {
+	for len(lines) > 0 && isBlank(lines[len(lines)-1]) {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
+}
 
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
 func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
@@ -308,84 +414,74 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 }
 
 // parseExamples converts an examples section into code comments, including converting any code snippets.
-func parseExamples(lines []string) (string, error) {
+// If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
+// error returned will be non-nil.
+func parseExamples(language language, lines []string) ([]string, bool, error) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
-	var buffer string
-	var skipExample bool
-	var examples []string
-	appendExample := func() {
-		// If the example had an error, skip it. Also, only append the example if the buffer is non-empty;
-		// this can happen due to padding between sections.
-		if skipExample {
-			skipExample = false
-		} else if strings.Replace(buffer, "\n", "", -1) != "" {
-			examples = append(examples, buffer)
-		}
-		buffer = ""
-	}
-	for i := 1; i < len(lines); i++ {
-		if strings.Index(lines[i], "```") == 0 {
+	var result []string
+	var skippableExamples bool
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if strings.Index(line, "```") == 0 {
 			// If we found a fenced block, parse out the code from it.
-			var hcl string
-			for j := i + 1; j < len(lines); j++ {
-				if strings.Index(lines[j], "```") == 0 {
-					// We've got our code -- convert it.
-					code, stderr, err := convertHCL(hcl)
-					if err != nil {
-						// If the conversion failed, there are two cases to consider. First, if tf2pulumi was
-						// missing from the path, we want to error eagerly, as that means the user probably
-						// forgot to add tf2pulumi to their path (and we don't want to simply silently delete
-						// all docs). Second, for all other errors, record them and proceed silently.
-						if err == errTF2PulumiMissing {
-							return "", err
+			if language == nodeJS {
+				var hcl string
+				for i = i + 1; i < len(lines); i++ {
+					cline := lines[i]
+					if strings.Index(cline, "```") == 0 {
+						// We've got some code -- assume it's HCL and try to convert it.
+						code, stderr, err := convertHCL(hcl)
+						if err != nil {
+							// If the conversion failed, there are two cases to consider. First, if tf2pulumi was
+							// missing from the path, we want to error eagerly, as that means the user probably
+							// forgot to add tf2pulumi to their path (and we don't want to simply silently delete
+							// all docs). Second, for all other errors, record them and proceed silently.
+							if err == errTF2PulumiMissing {
+								return result, false, err
+							}
+							skippableExamples = true
+							hclFailures[stderr] = true
+							hclBlocksFailed++
+						} else {
+							// Add a fenced code-block with the resulting TypeScript code snippet.
+							result = append(result, "```typescript")
+							codeLines := strings.Split(code, "\n")
+							codeLines = trimTrailingBlanks(codeLines)
+							result = append(result, codeLines...)
+							result = append(result, "```")
+							hclBlocksSucceeded++
 						}
-						hclBlocksFailed++
-						hclFailures[stderr] = true
-						skipExample = true // mark this example as skipped.
-					} else {
-						// Add a fenced code-block with the resulting TypeScript code snippet.
-						buffer += fmt.Sprintf("```typescript\n%s```\n", code)
-						hclBlocksSucceeded++
-					}
 
-					// Now set the index and break out of the inner loop, to consume the code string.
-					i = j + 1
-					break
-				} else {
-					hcl += lines[j] + "\n"
+						// Now set the index and break out of the inner loop, to consume the code string.
+						hcl = ""
+						break
+					} else {
+						hcl += cline + "\n"
+					}
 				}
+				if hcl != "" {
+					// If the HCL wasn't consumed, we had an unbalanced pair of ```s, this example is skippable.
+					hcl = ""
+					skippableExamples = true
+				}
+			} else {
+				// TODO: support other languages.
+				for i = i + 1; i < len(lines); i++ {
+					if strings.Index(lines[i], "```") == 0 {
+						break
+					}
+				}
+				skippableExamples = true
 			}
 		} else {
-			if line := lines[i]; len(line) > 0 && line[0] == '#' {
-				// If this is a MarkDown header, it delimits a sub-example; append the buffer as the last example.
-				appendExample()
-
-				// Also force all headers to become H3s.
-				for len(line) > 0 && line[0] == '#' { // eat #s
-					line = line[1:]
-				}
-				for len(line) > 0 && line[0] == ' ' { // eat spaces
-					line = line[1:]
-				}
-				buffer += fmt.Sprintf("### %s\n", line)
-			} else {
-				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-				buffer += fmt.Sprintf("%s\n", line)
-			}
+			// Otherwise, record any text found before, in between, or after the code snippets, as-is.
+			result = append(result, line)
 		}
 	}
 
-	// If we have left-over buffer, make sure to add it to the example list.
-	appendExample()
-
-	// If no examples were successfully converted, return an empty string. Otherwise, prepend the header.
-	if len(examples) == 0 {
-		return "", nil
-	}
-
-	return fmt.Sprintf("\n## %s\n%s", lines[0], strings.Join(examples, "\n")), nil
+	return result, skippableExamples, nil
 }
 
 // errTF2PulumiMissing is a singleton error used to convey and identify situations in which
@@ -449,7 +545,8 @@ var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(text string) string {
-	// Replace occurrences of "~>" with just ">", to get a proper MarkDown note.
+	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
+	text = strings.Replace(text, "-> ", "> ", -1)
 	text = strings.Replace(text, "~> ", "> ", -1)
 
 	// Find URLs and re-write local links
@@ -472,5 +569,8 @@ func cleanupText(text string) string {
 		return parts[1]
 	})
 
-	return text
+	// Finally, trim any trailing blank lines and return the result.
+	lines := strings.Split(text, "\n")
+	lines = trimTrailingBlanks(lines)
+	return strings.Join(lines, "\n")
 }
