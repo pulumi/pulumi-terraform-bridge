@@ -65,9 +65,14 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 	}
 
 	possibleMarkdownNames := []string{
+		// Most frequently, docs leave off the provider prefix
 		withoutPackageName(provider, rawname) + ".html.markdown",
 		withoutPackageName(provider, rawname) + ".markdown",
 		withoutPackageName(provider, rawname) + ".html.md",
+		// But for some providers, the prefix is included in the name of the doc file
+		rawname + ".html.markdown",
+		rawname + ".markdown",
+		rawname + ".html.md",
 	}
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
