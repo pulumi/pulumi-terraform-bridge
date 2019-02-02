@@ -196,6 +196,9 @@ func parseTFMarkdown(language language, kind DocKind, markdown string,
 		URL:        fmt.Sprintf(terraformDocsTemplate, provider, kind, withoutPackageName(provider, rawname)),
 	}
 
+	// Replace any Windows-style newlines.
+	markdown = strings.Replace(markdown, "\r\n", "\n", -1)
+
 	// Split the sections by H2 topics in the MarkDown file.
 	for _, section := range splitGroupLines(markdown, "## ") {
 		// Extract the header name, since this will drive how we process the content.
