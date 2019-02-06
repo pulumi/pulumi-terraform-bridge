@@ -474,13 +474,13 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 		// Fill in computed defaults for arguments.
 		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
-			w.Writefmtln("        if not %s:", pname)
+			w.Writefmtln("        if %s is None:", pname)
 			w.Writefmtln("            %s = %s", pname, defaultValue)
 		}
 
 		// Check that required arguments are present.
 		if !prop.optional() {
-			w.Writefmtln("        if not %s:", pname)
+			w.Writefmtln("        if %s is None:", pname)
 			w.Writefmtln("            raise TypeError('Missing required property %s')", pname)
 		}
 
