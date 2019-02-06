@@ -104,6 +104,7 @@ func (g *pythonGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 
 func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import json")
+	w.Writefmtln("import warnings")
 	w.Writefmtln("import pulumi")
 	w.Writefmtln("import pulumi.runtime")
 	w.Writefmtln("from %s import utilities, tables", g.relativeRootDir(mod))
@@ -435,20 +436,29 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	g.emitMembers(w, mod, res)
 
 	// Now generate an initializer with arguments for all input properties.
-	w.Writefmt("    def __init__(__self__, __name__, __opts__=None")
+	w.Writefmt("    def __init__(__self__, resource_name, opts=None")
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.inprops {
 		w.Writefmt(", %s=None", pyName(prop.name))
 	}
-	w.Writefmtln("):")
 
+	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
+	// compatibility, we still emit them, but we don't emit documentation for them.
+	w.Writefmtln(", __name__=None, __opts__=None):")
 	g.emitInitDocstring(w, mod, res)
-	w.Writefmtln("        if not __name__:")
+	w.Writefmtln("        if __name__ is not None:")
+	w.Writefmtln(`            warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)`)
+	w.Writefmtln("            resource_name = __name__")
+	w.Writefmtln("        if __opts__ is not None:")
+	w.Writefmtln(
+		`            warnings.warn("explicit use of __opts__ is deprecated, use 'opts' instead", DeprecationWarning)`)
+	w.Writefmtln("            opts = __opts__")
+	w.Writefmtln("        if not resource_name:")
 	w.Writefmtln("            raise TypeError('Missing resource name argument (for URN creation)')")
-	w.Writefmtln("        if not isinstance(__name__, str):")
+	w.Writefmtln("        if not isinstance(resource_name, str):")
 	w.Writefmtln("            raise TypeError('Expected resource name to be a string')")
-	w.Writefmtln("        if __opts__ and not isinstance(__opts__, pulumi.ResourceOptions):")
+	w.Writefmtln("        if opts and not isinstance(opts, pulumi.ResourceOptions):")
 	w.Writefmtln("            raise TypeError('Expected resource options to be a ResourceOptions instance')")
 	w.Writefmtln("")
 
@@ -508,9 +518,9 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	// Finally, chain to the base constructor, which will actually register the resource.
 	w.Writefmtln("        super(%s, __self__).__init__(", res.name)
 	w.Writefmtln("            '%s',", res.info.Tok)
-	w.Writefmtln("            __name__,")
+	w.Writefmtln("            resource_name,")
 	w.Writefmtln("            __props__,")
-	w.Writefmtln("            __opts__)")
+	w.Writefmtln("            opts)")
 	w.Writefmtln("")
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
@@ -834,9 +844,9 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	}
 	fmt.Fprintln(&buf, "")
 
-	// All resources have a __name__ parameter and __opts__ parameter.
-	fmt.Fprintln(&buf, ":param str __name__: The name of the resource.")
-	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions __opts__: Options for the resource.")
+	// All resources have a resource_name parameter and opts parameter.
+	fmt.Fprintln(&buf, ":param str resource_name: The name of the resource.")
+	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.inprops {
 		name := pyName(prop.name)
 		ty := pyType(prop)
