@@ -412,7 +412,7 @@ func MakeTerraformResult(state *terraform.InstanceState,
 	outMap := MakeTerraformOutputs(outs, tfs, ps, nil, false)
 
 	// If there is any Terraform metadata associated with this state, record it.
-	if len(state.Meta) != 0 {
+	if state != nil && len(state.Meta) != 0 {
 		metaJSON, err := json.Marshal(state.Meta)
 		contract.Assert(err == nil)
 		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))

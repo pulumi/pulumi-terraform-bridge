@@ -801,7 +801,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 		// Add the special "id" attribute if it wasn't listed in the schema
 		props := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields)
-		if _, has := props["id"]; !has {
+		if _, has := props["id"]; !has && invoke != nil {
 			props["id"] = resource.NewStringProperty(invoke.ID)
 		}
 
