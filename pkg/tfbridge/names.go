@@ -110,7 +110,8 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 	return &SchemaInfo{
 		Name: name,
 		Default: &DefaultInfo{
-			From: FromName(true, maxlen, transform),
+			AutoNamed: true,
+			From:      FromName(true, maxlen, transform),
 		},
 	}
 }
