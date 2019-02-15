@@ -23,12 +23,13 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -304,6 +305,16 @@ func convertStringToPropertyValue(s string, typ schema.ValueType) (resource.Prop
 	return resource.NewPropertyValue(jsonValue), nil
 }
 
+// CheckConfig validates the configuration for this Terraform provider.
+func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+}
+
+// DiffConfig diffs the configuration for this Terraform provider.
+func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
+}
+
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.
 func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pbempty.Empty, error) {
 	p.setLoggingContext(ctx)
@@ -497,18 +508,25 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	var replaces []string
 	var replaced map[resource.PropertyKey]bool
 	var changes pulumirpc.DiffResponse_DiffChanges
+	var properties []string
 	hasChanges := diff != nil && len(diff.Attributes) > 0
 	if hasChanges {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 		for k, attr := range diff.Attributes {
+			// Turn the attribute name into a top-level property name by trimming everything after the first dot.
+			if firstDot := strings.Index(k, "."); firstDot != -1 {
+				k = k[:firstDot]
+			}
+
+			name, _, _ := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
 			if attr.RequiresNew {
-				name, _, _ := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
 				replaces = append(replaces, string(name))
 				if replaced == nil {
 					replaced = make(map[resource.PropertyKey]bool)
 				}
 				replaced[name] = true
 			}
+			properties = append(properties, string(name))
 		}
 	} else {
 		changes = pulumirpc.DiffResponse_DIFF_NONE
@@ -530,6 +548,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		Replaces:            replaces,
 		Stables:             stables,
 		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
+		Diffs:               properties,
 	}, nil
 }
 
@@ -602,7 +621,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	glog.V(9).Infof("%s executing", label)
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
-	inputs, meta, err := MakeTerraformAttributesFromRPC(
+	attrs, meta, err := MakeTerraformAttributesFromRPC(
 		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
@@ -610,12 +629,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
 	if len(req.GetProperties().GetFields()) == 0 {
-		inputs, err = res.runTerraformImporter(id, p)
+		attrs, err = res.runTerraformImporter(id, p)
 		if err != nil {
 			// Pass through any error running the importer
 			return nil, err
 		}
-		if inputs == nil {
+		if attrs == nil {
 			// The resource is gone (or never existed). Return a gRPC response with no
 			// resource ID set to indicate this.
 			return &pulumirpc.ReadResponse{}, nil
@@ -623,7 +642,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	}
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
 	newstate, err := p.tf.Refresh(info, state)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
@@ -633,12 +652,21 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
 		props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
-		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
-			Label: fmt.Sprintf("%s.newstate", label)})
+		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label + ".state"})
 		if err != nil {
 			return nil, err
 		}
-		return &pulumirpc.ReadResponse{Id: newstate.ID, Properties: mprops}, nil
+
+		inputs, err := extractInputsFromOutputs(urn, props, res.TF.Schema, res.Schema.Fields)
+		if err != nil {
+			return nil, err
+		}
+		minputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{Label: label + ".inputs"})
+		if err != nil {
+			return nil, err
+		}
+
+		return &pulumirpc.ReadResponse{Id: newstate.ID, Properties: mprops, Inputs: minputs}, nil
 	}
 
 	// The resource is gone.
