@@ -851,7 +851,6 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 		name := pyName(prop.name)
 		ty := pyType(prop)
 		if prop.doc == "" {
-			fmt.Fprintf(&buf, ":param pulumi.Input[%s] %s\n", ty, name)
 			continue
 		}
 
