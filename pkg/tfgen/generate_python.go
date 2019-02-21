@@ -390,7 +390,7 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 
 func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
 	// Produce a class definition with optional """ comment.
-	w.Writefmtln("class %s(object):", pyClassName(pot.name))
+	w.Writefmtln("class %s:", pyClassName(pot.name))
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "    ")
 	}
@@ -537,7 +537,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 }
 
 func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (string, error) {
-	// Create a vars.ts file into which all configuration variables will go.
 	name := pyName(fun.name)
 	w, err := g.openWriter(mod, name+".py", true)
 	if err != nil {
@@ -553,12 +552,10 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 
 	// Write out the function signature.
 	w.Writefmt("async def %s(", name)
-	for i, arg := range fun.args {
-		if i > 0 {
-			w.Writefmt(", ")
-		}
-		w.Writefmt("%s=None", pyName(arg.name))
+	for _, arg := range fun.args {
+		w.Writefmt("%s=None,", pyName(arg.name))
 	}
+	w.Writefmt("opts=None")
 	w.Writefmtln("):")
 
 	// Write the TypeDoc/JSDoc for the data source function.
@@ -575,7 +572,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// Now simply invoke the runtime function with the arguments.
-	w.Writefmtln("    __ret__ = await pulumi.runtime.invoke('%s', __args__)", fun.info.Tok)
+	w.Writefmtln("    __ret__ = await pulumi.runtime.invoke('%s', __args__, opts=opts)", fun.info.Tok)
 	w.Writefmtln("")
 
 	// And copy the results to an object, if there are indeed any expected returns.
