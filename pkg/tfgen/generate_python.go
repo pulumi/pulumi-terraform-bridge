@@ -231,7 +231,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 			if i > 0 {
 				w.Writefmt(", ")
 			}
-			w.Writefmt("'%s'", sub)
+			w.Writefmt("'%s'", pyName(sub))
 		}
 		w.Writefmtln("]")
 	}
@@ -243,7 +243,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 		}
 		w.Writefmtln("# Export this package's modules as members:")
 		for _, exp := range exports {
-			w.Writefmtln("from .%s import *", exp)
+			w.Writefmtln("from .%s import *", pyName(exp))
 		}
 	}
 
