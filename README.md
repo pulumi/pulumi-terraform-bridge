@@ -6,6 +6,10 @@ This bridge adapts any [Terraform Provider](https://github.com/terraform-provide
 community provides resource providers that perform create, read, update, and delete (CRUD) operations for a broad array
 of infrastructure providers and types.  In principle, any of them can be programmed using Pulumi with this bridge.
 
+If you want to wrap a _new_ Terraform provider as a Pulumi provider, check out [pulumi/pulumi-tf-provider-boilerplate](https://github.com/pulumi/pulumi-tf-provider-boilerplate).
+
+## Overview
+
 Although the Terraform schema is used as a starting point, the concept of "overlays" enables customization, including
 classification into modules, stronger typing, better documentation, and more.  Pulumi can also augment providers with
 non-CRUD operations like queries, metrics, and logs -- while not having to repeat all of the considerable and quality
