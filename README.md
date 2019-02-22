@@ -35,9 +35,7 @@ Before doing any development, there are a few prerequisites to install:
 
 * Go: https://golang.org/dl
 * [Dep](https://github.com/golang/dep): `$ go get -u github.com/golang/dep/cmd/dep`
-* [GoMetaLinter](https://github.com/alecthomas/gometalinter):
-    - `$ go get -u github.com/alecthomas/gometalinter`
-    - `$ gometalinter --install`
+* [GolangCI-Lint](https://github.com/golangci/golangci-lint): `go get -u github.com/golangci/golangci-lint/cmd/golangci-lint`
 
 ### Building and Testing
 
