@@ -13,6 +13,9 @@ lint::
 	golangci-lint run
 
 test_fast::
+	go test -short -count=1 -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
+
+test_all::
 	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 # The travis_* targets are entrypoints for CI.
