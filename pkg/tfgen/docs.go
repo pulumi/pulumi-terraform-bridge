@@ -512,6 +512,11 @@ func convertHCL(hcl, autoNameProperty string) (string, string, error) {
 	}
 	defer os.RemoveAll(dir)
 
+	// fixup the HCL as necessary.
+	if fixed, ok := fixHcl(hcl); ok {
+		hcl = fixed
+	}
+
 	file := filepath.Join(dir, "main.tf")
 	if err = ioutil.WriteFile(file, []byte(hcl), 0644); err != nil {
 		return "", "", errors.Wrap(err, "writing temp HCL file")
