@@ -843,6 +843,8 @@
     "github.com/golang/protobuf/ptypes/empty",
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/hashicorp/go-multierror",
+    "github.com/hashicorp/hcl/hcl/scanner",
+    "github.com/hashicorp/hcl/hcl/token",
     "github.com/hashicorp/terraform/config",
     "github.com/hashicorp/terraform/flatmap",
     "github.com/hashicorp/terraform/helper/logging",
