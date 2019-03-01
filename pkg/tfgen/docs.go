@@ -58,7 +58,7 @@ const (
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(language language, provider string, kind DocKind,
-	rawname, autoNameProperty string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
+	rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
 	repo, err := getRepoDir(provider)
 	if err != nil {
 		return parsedDoc{}, err
@@ -85,14 +85,14 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 		return parsedDoc{}, nil
 	}
 
-	doc, err := parseTFMarkdown(language, kind, string(markdownByts), provider, rawname, autoNameProperty)
+	doc, err := parseTFMarkdown(language, kind, string(markdownByts), provider, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
 
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom, autoNameProperty,
+		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -102,7 +102,7 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 
 		// Merge Arguments from source into Attributes of target
 		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
-			autoNameProperty, func(s parsedDoc) map[string]string {
+			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
 		); err != nil {
@@ -110,7 +110,7 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(language, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom, autoNameProperty,
+		if err := mergeDocs(language, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -137,11 +137,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(language language, provider string, kind DocKind, targetDocs map[string]string, sourceFrom,
-	autoNameProperty string, extractDocs func(d parsedDoc) map[string]string) error {
+func mergeDocs(language language, provider string, kind DocKind, targetDocs map[string]string, sourceFrom string,
+	extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(language, provider, kind, sourceFrom, autoNameProperty, nil)
+		sourceDocs, err := getDocsForProvider(language, provider, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
@@ -188,8 +188,7 @@ func splitGroupLines(s, sep string) [][]string {
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(language language, kind DocKind, markdown, provider, rawname,
-	autoNameProperty string) (parsedDoc, error) {
+func parseTFMarkdown(language language, kind DocKind, markdown, provider, rawname string) (parsedDoc, error) {
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
@@ -261,7 +260,7 @@ func parseTFMarkdown(language language, kind DocKind, markdown, provider, rawnam
 			// bail out, but most errors are ignorable and just lead to us skipping one section.
 			var skippableExamples bool
 			var err error
-			subsection, skippableExamples, err = parseExamples(language, subsection, autoNameProperty)
+			subsection, skippableExamples, err = parseExamples(language, subsection)
 			if err != nil {
 				return parsedDoc{}, err
 			} else if skippableExamples && !headerIsArgsReference &&
@@ -424,7 +423,7 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 // parseExamples converts an examples section into code comments, including converting any code snippets.
 // If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
 // error returned will be non-nil.
-func parseExamples(language language, lines []string, autoNameProperty string) ([]string, bool, error) {
+func parseExamples(language language, lines []string) ([]string, bool, error) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
@@ -440,7 +439,7 @@ func parseExamples(language language, lines []string, autoNameProperty string) (
 					cline := lines[i]
 					if strings.Index(cline, "```") == 0 {
 						// We've got some code -- assume it's HCL and try to convert it.
-						code, stderr, err := convertHCL(hcl, autoNameProperty)
+						code, stderr, err := convertHCL(hcl)
 						if err != nil {
 							// If the conversion failed, there are two cases to consider. First, if tf2pulumi was
 							// missing from the path, we want to error eagerly, as that means the user probably
@@ -498,7 +497,7 @@ var errTF2PulumiMissing = errors.New("tf2pulumi is missing, please install it an
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func convertHCL(hcl, autoNameProperty string) (string, string, error) {
+func convertHCL(hcl string) (string, string, error) {
 	// First, see if tf2pulumi is on the PATH, or not.
 	path, err := exec.LookPath("tf2pulumi")
 	if err != nil {
@@ -527,10 +526,7 @@ func convertHCL(hcl, autoNameProperty string) (string, string, error) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	args := []string{"--allow-missing-variables"}
-	if autoNameProperty != "" {
-		args = append(args, "--filter-resource-names="+autoNameProperty)
-	}
+	args := []string{"--allow-missing-variables", "--filter-auto-names"}
 
 	tf2pulumi := exec.Command(path, args...)
 	tf2pulumi.Dir = dir

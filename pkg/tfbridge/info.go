@@ -344,6 +344,7 @@ func (m *MarshallableSchemaInfo) Unmarshal() *SchemaInfo {
 		Elem:        m.Elem.Unmarshal(),
 		Fields:      fields,
 		Asset:       m.Asset,
+		Default:     m.Default.Unmarshal(),
 		MaxItemsOne: m.MaxItemsOne,
 	}
 }

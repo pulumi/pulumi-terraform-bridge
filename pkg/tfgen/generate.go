@@ -52,7 +52,6 @@ type generator struct {
 	lg          langGenerator         // the generator with language-specific understanding.
 	overlaysDir string                // the directory in which source overlays come from.
 	outDir      string                // the directory in which to generate the code.
-	autoName    string                // the default autoname property for this package's resources, if any.
 }
 
 type language string
@@ -303,7 +302,7 @@ type plainOldType struct {
 
 // newGenerator returns a code-generator for the given language runtime and package info.
 func newGenerator(pkg, version string, language language, info tfbridge.ProviderInfo,
-	overlaysDir, outDir, autoNameProperty string) (*generator, error) {
+	overlaysDir, outDir string) (*generator, error) {
 	// If outDir or overlaysDir are empty, default to pack/<language>/ and overlays/<language>/ in the pwd.
 	if outDir == "" || overlaysDir == "" {
 		p, err := os.Getwd()
@@ -339,7 +338,6 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		lg:          lg,
 		overlaysDir: overlaysDir,
 		outDir:      outDir,
-		autoName:    autoNameProperty,
 	}, nil
 }
 
@@ -536,7 +534,7 @@ func (g *generator) gatherResource(rawname string,
 	// Collect documentation information
 	var parsedDocs parsedDoc
 	if !isProvider {
-		pd, err := getDocsForProvider(g.language, g.info.Name, ResourceDocs, rawname, g.autoName, info.Docs)
+		pd, err := getDocsForProvider(g.language, g.info.Name, ResourceDocs, rawname, info.Docs)
 		if err != nil {
 			return "", nil, err
 		}
@@ -689,7 +687,7 @@ func (g *generator) gatherDataSource(rawname string,
 	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForProvider(g.language, g.info.Name, DataSourceDocs, rawname, g.autoName, info.Docs)
+	parsedDocs, err := getDocsForProvider(g.language, g.info.Name, DataSourceDocs, rawname, info.Docs)
 	if err != nil {
 		return "", nil, err
 	}

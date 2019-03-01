@@ -41,7 +41,6 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var overlaysDir string
 	var quiet bool
 	var verbose int
-	var autoNameProperty string
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -58,7 +57,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Create a generator with the specified settings.
-			g, err := newGenerator(pkg, version, language(args[0]), prov, overlaysDir, outDir, autoNameProperty)
+			g, err := newGenerator(pkg, version, language(args[0]), prov, overlaysDir, outDir)
 			if err != nil {
 				return err
 			}
@@ -86,8 +85,6 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&quiet, "quiet", "q", false, "Suppress non-error output progress messages")
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	cmd.PersistentFlags().StringVar(
-		&autoNameProperty, "autoname", "name", "Strip the indicated auto-name property when generating examples")
 
 	return cmd
 }
