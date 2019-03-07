@@ -842,3 +842,21 @@ func CoerceTerraformString(schType schema.ValueType, stringValue string) (interf
 	// Else it's just a string.
 	return stringValue, nil
 }
+
+func extractInputsFromOutputs(urn resource.URN, outs resource.PropertyMap,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (resource.PropertyMap, error) {
+
+	inputs := make(resource.PropertyMap)
+	for name, value := range outs {
+		// If this property is not an input, ignore it.
+		_, sch, _ := getInfoFromPulumiName(name, tfs, ps, false)
+		if sch == nil || (!sch.Optional && !sch.Required) {
+			continue
+		}
+
+		// Otherwise, copy it to the result.
+		inputs[name] = value
+	}
+
+	return inputs, nil
+}

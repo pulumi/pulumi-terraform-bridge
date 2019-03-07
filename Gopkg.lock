@@ -161,6 +161,14 @@
   version = "v1.32.0"
 
 [[projects]]
+  digest = "1:ac02823572830fb544c7a94152465ca7833aaf1f186aeb4445ce9d34aacfcc4a"
+  name = "github.com/gofrs/flock"
+  packages = ["."]
+  pruneopts = ""
+  revision = "7f43ea2e6a643ad441fc12d0ecc0d3388b300c53"
+  version = "v0.7.0"
+
+[[projects]]
   branch = "master"
   digest = "1:107b233e45174dbab5b1324201d092ea9448e58243ab9f039e4c0f332e121e3a"
   name = "github.com/golang/glog"
@@ -487,7 +495,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d9577b764ea67e82960048873262d31c81a860276c7ebb28da1956c34759e557"
+  digest = "1:7090d1d6bbf1a323e34810752ab4b979c405d3688b7a93e0edf4cd38dc455a3a"
   name = "github.com/pulumi/pulumi"
   packages = [
     "pkg/diag",
@@ -514,7 +522,7 @@
     "sdk/proto/go",
   ]
   pruneopts = ""
-  revision = "a02bfb64696d90bc8a5491b718f1f6853f041e24"
+  revision = "905e7353e4ce6f92e417a56fb29cb433a9577b9d"
 
 [[projects]]
   branch = "master"
@@ -865,6 +873,7 @@
     "github.com/stretchr/testify/assert",
     "golang.org/x/net/context",
     "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
