@@ -24,21 +24,33 @@ import (
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
 // metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
 type ProviderInfo struct {
-	P           *schema.Provider           // the TF provider/schema.
-	Name        string                     // the TF provider name (e.g. terraform-provider-XXXX).
-	Description string                     // an optional descriptive overview of the package (a default will be given).
-	Keywords    []string                   // an optional list of keywords to help discovery of this package.
-	License     string                     // the license, if any, the resulting package has (default is none).
-	Homepage    string                     // the URL to the project homepage.
-	Repository  string                     // the URL to the project source code repository.
-	Config      map[string]*SchemaInfo     // a map of TF name to config schema overrides.
-	Resources   map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	DataSources map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
-	JavaScript  *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
-	Python      *PythonInfo                // optional overlay information for augmented Python code-generation.
-	Golang      *GolangInfo                // optional overlay information for augmented Golang code-generation.
+	P              *schema.Provider           // the TF provider/schema.
+	Name           string                     // the TF provider name (e.g. terraform-provider-XXXX).
+	ResourcePrefix string                     // the prefix on resources the provider exposes, if different to `Name`.
+	Description    string                     // an optional descriptive overview of the package (a default will be given).
+	Keywords       []string                   // an optional list of keywords to help discovery of this package.
+	License        string                     // the license, if any, the resulting package has (default is none).
+	Homepage       string                     // the URL to the project homepage.
+	Repository     string                     // the URL to the project source code repository.
+	Config         map[string]*SchemaInfo     // a map of TF name to config schema overrides.
+	Resources      map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
+	DataSources    map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
+	JavaScript     *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
+	Python         *PythonInfo                // optional overlay information for augmented Python code-generation.
+	Golang         *GolangInfo                // optional overlay information for augmented Golang code-generation.
 
 	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
+}
+
+// GetResourcePrefix returns the resource prefix for the provider: info.ResourcePrefix
+// if that is set, or info.Name if not. This is to avoid unexpected behaviour with providers
+// which have no need to set ResourcePrefix following its introduction.
+func (info ProviderInfo) GetResourcePrefix() string {
+	if info.ResourcePrefix == "" {
+		return info.Name
+	}
+
+	return info.ResourcePrefix
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
