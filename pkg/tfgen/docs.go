@@ -57,7 +57,7 @@ const (
 
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(language language, provider string, kind DocKind,
+func getDocsForProvider(language language, provider string, resourcePrefix string, kind DocKind,
 	rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
 	repo, err := getRepoDir(provider)
 	if err != nil {
@@ -66,9 +66,9 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 
 	possibleMarkdownNames := []string{
 		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(provider, rawname) + ".html.markdown",
-		withoutPackageName(provider, rawname) + ".markdown",
-		withoutPackageName(provider, rawname) + ".html.md",
+		withoutPackageName(resourcePrefix, rawname) + ".html.markdown",
+		withoutPackageName(resourcePrefix, rawname) + ".markdown",
+		withoutPackageName(resourcePrefix, rawname) + ".html.md",
 		// But for some providers, the prefix is included in the name of the doc file
 		rawname + ".html.markdown",
 		rawname + ".markdown",
@@ -78,21 +78,21 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
 	}
 
-	markdownByts, err := readMarkdown(repo, kind, possibleMarkdownNames)
+	markdownBytes, err := readMarkdown(repo, kind, possibleMarkdownNames)
 	if err != nil {
 		cmdutil.Diag().Warningf(
 			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
 		return parsedDoc{}, nil
 	}
 
-	doc, err := parseTFMarkdown(language, kind, string(markdownByts), provider, rawname)
+	doc, err := parseTFMarkdown(language, kind, string(markdownBytes), resourcePrefix, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
 
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
+		if err := mergeDocs(language, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -101,7 +101,7 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(language, provider, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
+		if err := mergeDocs(language, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -110,7 +110,7 @@ func getDocsForProvider(language language, provider string, kind DocKind,
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(language, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
+		if err := mergeDocs(language, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -137,11 +137,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(language language, provider string, kind DocKind, targetDocs map[string]string, sourceFrom string,
-	extractDocs func(d parsedDoc) map[string]string) error {
+func mergeDocs(language language, provider string, resourcePrefix string, kind DocKind,
+	targetDocs map[string]string, sourceFrom string, extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(language, provider, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(language, provider, resourcePrefix, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
@@ -188,11 +188,11 @@ func splitGroupLines(s, sep string) [][]string {
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(language language, kind DocKind, markdown, provider, rawname string) (parsedDoc, error) {
+func parseTFMarkdown(language language, kind DocKind, markdown, resourcePrefix, rawname string) (parsedDoc, error) {
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
-		URL:        fmt.Sprintf(terraformDocsTemplate, provider, kind, withoutPackageName(provider, rawname)),
+		URL:        fmt.Sprintf(terraformDocsTemplate, resourcePrefix, kind, withoutPackageName(resourcePrefix, rawname)),
 	}
 
 	// Replace any Windows-style newlines.
