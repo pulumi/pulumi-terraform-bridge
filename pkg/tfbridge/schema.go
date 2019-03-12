@@ -88,13 +88,13 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 		// Pull the list of old defaults if any. If there is no list, then we will treat all old values as being usable
 		// for new defaults. If there is a list, we will only propagate defaults that were themselves defaults.
-		useOldDefault := func(name string) bool { return true }
+		useOldDefault := func(key resource.PropertyKey) bool { return true }
 		if oldDefaults, ok := olds[defaultsKey]; ok {
-			oldDefaultSet := make(map[string]bool)
+			oldDefaultSet := make(map[resource.PropertyKey]bool)
 			for _, k := range oldDefaults.ArrayValue() {
-				oldDefaultSet[k.StringValue()] = true
+				oldDefaultSet[resource.PropertyKey(k.StringValue())] = true
 			}
-			useOldDefault = func(key string) bool { return oldDefaultSet[key] }
+			useOldDefault = func(key resource.PropertyKey) bool { return oldDefaultSet[key] }
 		}
 
 		// Compute any names for which setting a default would cause a conflict.
@@ -123,7 +123,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 				// If we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
-				if old, hasold := olds[key]; hasold && useOldDefault(name) {
+				if old, hasold := olds[key]; hasold && useOldDefault(key) {
 					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
 						false, useRawNames)
 					if err != nil {
@@ -210,7 +210,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
-				if old, hasold := olds[key]; hasold && useOldDefault(name) {
+				if old, hasold := olds[key]; hasold && useOldDefault(key) {
 					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
 						false, useRawNames)
 					if err != nil {
