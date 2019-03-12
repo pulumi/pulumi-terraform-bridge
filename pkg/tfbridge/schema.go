@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -229,6 +230,9 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			}
 		}
 
+		sort.Slice(newDefaults, func(i, j int) bool {
+			return newDefaults[i].(resource.PropertyKey) < newDefaults[j].(resource.PropertyKey)
+		})
 		result[defaultsKey] = newDefaults
 	}
 
