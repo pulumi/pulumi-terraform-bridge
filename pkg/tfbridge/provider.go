@@ -621,6 +621,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	glog.V(9).Infof("%s executing", label)
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
+	oldInputs, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
+		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
 	attrs, meta, err := MakeTerraformAttributesFromRPC(
 		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
 	if err != nil {
@@ -657,7 +662,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		inputs, err := extractInputsFromOutputs(urn, props, res.TF.Schema, res.Schema.Fields)
+		inputs, err := extractInputsFromOutputs(oldInputs, props, res.TF.Schema, res.Schema.Fields)
 		if err != nil {
 			return nil, err
 		}

@@ -27,11 +27,19 @@ import (
 	"github.com/hashicorp/terraform/flatmap"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+// defaultsKey is the name of the input property that is used to track which property keys were populated using
+// default values from the resource's schema. This information is used to inform which input properties should be
+// populated using old defaults in subsequent updates. When populating the default value for an input property, the
+// property's old value will only be used as the default if the property's key is present in the defaults list for
+// the old property bag.
+const defaultsKey = "__defaults"
 
 // AssetTable is used to record which properties in a call to MakeTerraformInputs were assets so that they can be
 // marshaled back to assets by MakeTerraformOutputs.
@@ -49,6 +57,12 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 	// Enumerate the inputs provided and add them to the map using their Terraform names.
 	for key, value := range news {
+		// If this is a reserved property, ignore it.
+		switch key {
+		case defaultsKey, metaKey:
+			continue
+		}
+
 		// First translate the Pulumi property name to a Terraform name.
 		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, useRawNames)
 		contract.Assert(name != "")
@@ -69,6 +83,20 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
 	if defaults {
+		// Create an array to track which properties are defaults.
+		newDefaults := []interface{}{}
+
+		// Pull the list of old defaults if any. If there is no list, then we will treat all old values as being usable
+		// for new defaults. If there is a list, we will only propagate defaults that were themselves defaults.
+		useOldDefault := func(name string) bool { return true }
+		if oldDefaults, ok := olds[defaultsKey]; ok {
+			oldDefaultSet := make(map[string]bool)
+			for _, k := range oldDefaults.ArrayValue() {
+				oldDefaultSet[k.StringValue()] = true
+			}
+			useOldDefault = func(key string) bool { return oldDefaultSet[key] }
+		}
+
 		// Compute any names for which setting a default would cause a conflict.
 		conflictsWith := make(map[string]struct{})
 		for name, sch := range tfs {
@@ -90,16 +118,18 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			}
 
 			if _, has := result[name]; !has && info.HasDefault() {
+				var defaultValue interface{}
+				var source string
+
 				// If we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
-				if old, hasold := olds[key]; hasold {
+				if old, hasold := olds[key]; hasold && useOldDefault(name) {
 					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
 						false, useRawNames)
 					if err != nil {
 						return nil, err
 					}
-					result[name] = v
-					glog.V(9).Infof("Created Terraform input: %v = %v (old default)", key, old)
+					defaultValue, source = v, "old default"
 				} else if envVars := info.Default.EnvVars; len(envVars) != 0 {
 					v, err := schema.MultiEnvDefaultFunc(envVars, info.Default.Value)()
 					if err != nil {
@@ -136,20 +166,21 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 							return nil, errors.Errorf("unknown type for default value: %s", sch.Type)
 						}
 					}
-					if v != nil {
-						result[name] = v
-					}
-					glog.V(9).Infof("Created Terraform input: %v = %v (default from env vars)", name, result[name])
+					defaultValue, source = v, "env vars"
 				} else if info.Default.Value != nil {
-					result[name] = info.Default.Value
-					glog.V(9).Infof("Created Terraform input: %v = %v (default)", name, result[name])
+					defaultValue, source = info.Default.Value, "Pulumi schema"
 				} else if from := info.Default.From; from != nil {
 					v, err := from(res)
 					if err != nil {
 						return nil, err
 					}
-					result[name] = v
-					glog.V(9).Infof("Created Terraform input: %v = %v (default from fnc)", name, result[name])
+					defaultValue, source = v, "func"
+				}
+
+				if defaultValue != nil {
+					glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, defaultValue, source)
+					result[name] = defaultValue
+					newDefaults = append(newDefaults, key)
 				}
 			}
 		}
@@ -167,6 +198,8 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			}
 
 			if _, has := result[name]; !has {
+				var source string
+
 				// Check for a default value from Terraform. If there is not default from terraform, skip this name.
 				dv, err := sch.DefaultValue()
 				if err != nil {
@@ -177,20 +210,26 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
-				if old, hasold := olds[key]; hasold {
+				if old, hasold := olds[key]; hasold && useOldDefault(name) {
 					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
 						false, useRawNames)
 					if err != nil {
 						return nil, err
 					}
-					result[name] = v
-					glog.V(9).Infof("Create Terraform input: %v = %v (old default)", name, old)
+					dv, source = v, "old default"
 				} else {
+					source = "Terraform schema"
+				}
+
+				if dv != nil {
+					glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, dv, source)
 					result[name] = dv
-					glog.V(9).Infof("Created Terraform input: %v = %v (default from TF)", name, result[name])
+					newDefaults = append(newDefaults, key)
 				}
 			}
 		}
+
+		result[defaultsKey] = newDefaults
 	}
 
 	if glog.V(5) {
@@ -417,6 +456,7 @@ func MakeTerraformResult(state *terraform.InstanceState,
 		contract.Assert(err == nil)
 		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
+
 	return outMap
 }
 
@@ -578,14 +618,45 @@ func MakeTerraformConfigFromRPC(res *PulumiResource, m *pbstruct.Struct,
 	if err != nil {
 		return nil, err
 	}
-	return MakeTerraformConfig(res, props, tfs, ps, defaults)
+	cfg, err := MakeTerraformConfig(res, props, tfs, ps, defaults)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// makeConfig is a helper for MakeTerraformConfigFromInputs that performs a deep-ish copy of its input, recursively
+// removing Pulumi-internal properties as it goes.
+func makeConfig(v interface{}) interface{} {
+	switch v := v.(type) {
+	case []interface{}:
+		r := make([]interface{}, len(v))
+		for i, e := range v {
+			r[i] = makeConfig(e)
+		}
+		return r
+	case map[string]interface{}:
+		r := make(map[string]interface{})
+		for k, e := range v {
+			// If this is a reserved property, ignore it.
+			switch k {
+			case defaultsKey, metaKey:
+				continue
+			}
+			r[k] = makeConfig(e)
+		}
+		return r
+	default:
+		return v
+	}
 }
 
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
 func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.ResourceConfig, error) {
+	raw := makeConfig(inputs).(map[string]interface{})
 	return &terraform.ResourceConfig{
-		Raw:    inputs,
-		Config: inputs,
+		Raw:    raw,
+		Config: raw,
 	}, nil
 }
 
@@ -595,15 +666,14 @@ func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.Re
 func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs map[string]*schema.Schema,
 	ps map[string]*SchemaInfo, defaults bool) (map[string]string, map[string]interface{}, error) {
 
-	// Strip out any metadata from the inputs.
+	// Parse out any metadata from the state.
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			return nil, nil, err
 		}
-		delete(m, metaKey)
 	} else if res.SchemaVersion > 0 {
-		// If there was no metadata in the input and this resource has a non-zero schema version, return a meta bag
+		// If there was no metadata in the inputs and this resource has a non-zero schema version, return a meta bag
 		// with the current schema version. This helps avoid migration issues.
 		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.SchemaVersion)}
 	}
@@ -843,7 +913,42 @@ func CoerceTerraformString(schType schema.ValueType, stringValue string) (interf
 	return stringValue, nil
 }
 
-func extractInputsFromOutputs(urn resource.URN, outs resource.PropertyMap,
+func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue) {
+	switch {
+	case oldInput.IsArray() && newInput.IsArray():
+		oldArray, newArray := oldInput.ArrayValue(), newInput.ArrayValue()
+		for i := range oldArray {
+			if i >= len(newArray) {
+				break
+			}
+			propagateDefaultAnnotations(oldArray[i], newArray[i])
+		}
+	case oldInput.IsObject() && newInput.IsObject():
+		oldMap, newMap := oldInput.ObjectValue(), newInput.ObjectValue()
+		for name, newValue := range newMap {
+			if oldValue, ok := oldMap[name]; ok {
+				propagateDefaultAnnotations(oldValue, newValue)
+			}
+		}
+
+		// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add it
+		// to the new inputs.
+		newDefaultNames := []resource.PropertyValue{}
+		if oldDefaultNames, ok := oldMap[defaultsKey]; ok {
+			for _, nameValue := range oldDefaultNames.ArrayValue() {
+				name := resource.PropertyKey(nameValue.StringValue())
+				if oldMap[name].DeepEquals(newMap[name]) {
+					newDefaultNames = append(newDefaultNames, nameValue)
+				}
+			}
+		}
+		newMap[defaultsKey] = resource.NewArrayProperty(newDefaultNames)
+	default:
+		// nothing to do
+	}
+}
+
+func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (resource.PropertyMap, error) {
 
 	inputs := make(resource.PropertyMap)
@@ -855,8 +960,15 @@ func extractInputsFromOutputs(urn resource.URN, outs resource.PropertyMap,
 		}
 
 		// Otherwise, copy it to the result.
-		inputs[name] = value
+		copy, err := copystructure.Copy(value)
+		if err != nil {
+			return nil, err
+		}
+		inputs[name] = copy.(resource.PropertyValue)
 	}
+
+	// Propagate default annotations.
+	propagateDefaultAnnotations(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs))
 
 	return inputs, nil
 }

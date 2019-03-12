@@ -495,7 +495,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7090d1d6bbf1a323e34810752ab4b979c405d3688b7a93e0edf4cd38dc455a3a"
+  digest = "1:83602cb5fbb57bc388f5c6e27e815c2faea6850f0722bb782067a5169de88fb2"
   name = "github.com/pulumi/pulumi"
   packages = [
     "pkg/diag",
@@ -522,7 +522,7 @@
     "sdk/proto/go",
   ]
   pruneopts = ""
-  revision = "905e7353e4ce6f92e417a56fb29cb433a9577b9d"
+  revision = "7ebd70a3e6e0e80485fd2212929fc2db8e380a08"
 
 [[projects]]
   branch = "master"
@@ -858,6 +858,7 @@
     "github.com/hashicorp/terraform/helper/logging",
     "github.com/hashicorp/terraform/helper/schema",
     "github.com/hashicorp/terraform/terraform",
+    "github.com/mitchellh/copystructure",
     "github.com/pkg/errors",
     "github.com/pulumi/pulumi/pkg/diag",
     "github.com/pulumi/pulumi/pkg/resource",
