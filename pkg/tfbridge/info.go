@@ -27,6 +27,7 @@ type ProviderInfo struct {
 	P              *schema.Provider           // the TF provider/schema.
 	Name           string                     // the TF provider name (e.g. terraform-provider-XXXX).
 	ResourcePrefix string                     // the prefix on resources the provider exposes, if different to `Name`.
+	GitHubOrg      string                     // the GitHub org of the provider. Defaults to `terraform-providers`.
 	Description    string                     // an optional descriptive overview of the package (a default will be given).
 	Keywords       []string                   // an optional list of keywords to help discovery of this package.
 	License        string                     // the license, if any, the resulting package has (default is none).
@@ -51,6 +52,14 @@ func (info ProviderInfo) GetResourcePrefix() string {
 	}
 
 	return info.ResourcePrefix
+}
+
+func (info ProviderInfo) GetGitHubOrg() string {
+	if info.GitHubOrg == "" {
+		return "terraform-providers"
+	}
+
+	return info.GitHubOrg
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can

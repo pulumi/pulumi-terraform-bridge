@@ -57,9 +57,9 @@ const (
 
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(language language, provider string, resourcePrefix string, kind DocKind,
+func getDocsForProvider(language language, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
-	repo, err := getRepoDir(provider)
+	repo, err := getRepoDir(org, provider)
 	if err != nil {
 		return parsedDoc{}, err
 	}
@@ -92,7 +92,7 @@ func getDocsForProvider(language language, provider string, resourcePrefix strin
 
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(language, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
+		if err := mergeDocs(language, org, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -101,7 +101,8 @@ func getDocsForProvider(language language, provider string, resourcePrefix strin
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(language, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFromArguments,
+		if err := mergeDocs(language, org, provider, resourcePrefix, kind, doc.Attributes,
+			docinfo.IncludeAttributesFromArguments,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -110,7 +111,7 @@ func getDocsForProvider(language language, provider string, resourcePrefix strin
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(language, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
+		if err := mergeDocs(language, org, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -137,11 +138,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(language language, provider string, resourcePrefix string, kind DocKind,
+func mergeDocs(language language, org string, provider string, resourcePrefix string, kind DocKind,
 	targetDocs map[string]string, sourceFrom string, extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(language, provider, resourcePrefix, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(language, org, provider, resourcePrefix, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
