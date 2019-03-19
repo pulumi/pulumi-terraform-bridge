@@ -890,9 +890,7 @@ func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 	switch sch.Type {
 	case schema.TypeBool:
 		return "bool"
-	case schema.TypeInt:
-		return "int"
-	case schema.TypeFloat:
+	case schema.TypeInt, schema.TypeFloat:
 		return "float"
 	case schema.TypeString:
 		return "str"
