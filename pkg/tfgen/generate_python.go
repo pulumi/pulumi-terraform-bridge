@@ -225,6 +225,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 
 	// If there are subpackages, export them in the __all__ variable.
 	if len(submods) > 0 {
+		w.Writefmtln("import importlib")
 		w.Writefmtln("# Make subpackages available:")
 		w.Writefmt("__all__ = [")
 		for i, sub := range submods {
@@ -234,6 +235,9 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 			w.Writefmt("'%s'", pyName(sub))
 		}
 		w.Writefmtln("]")
+		w.Writefmtln("for pkg in __all__:")
+		w.Writefmtln("    if pkg != 'config':")
+		w.Writefmtln("        importlib.import_module(f'{__name__}.{pkg}')")
 	}
 
 	// Now, import anything to export flatly that is a direct export rather than sub-module.
