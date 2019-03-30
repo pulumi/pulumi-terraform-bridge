@@ -749,7 +749,7 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 			"build": "tsc",
 		},
 		DevDependencies: map[string]string{
-			"typescript": "^3.0.0",
+			"typescript": "^3.4.1",
 		},
 		Pulumi: npmPulumiManifest{
 			Resource: true,
