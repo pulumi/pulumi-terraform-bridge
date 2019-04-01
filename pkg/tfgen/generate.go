@@ -726,12 +726,11 @@ func (g *generator) gatherDataSource(rawname string,
 			}
 		}
 
-		// Also remember computed properties for the resulting return data structure.
-		if args[arg].Computed {
-			// Emit documentation for the property if available
-			fun.rets = append(fun.rets,
-				propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", docURL, true /*out*/))
-		}
+		// Also remember properties for the resulting return data structure.
+		// Emit documentation for the property if available
+		fun.rets = append(fun.rets,
+			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg],
+				"", docURL, true /*out*/))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
