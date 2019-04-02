@@ -1,9 +1,0 @@
-[[constraint]]
-  name = "github.com/pulumi/pulumi"
-  branch = "master"
-
-# Redirect all Terraform references to our fork.
-[[override]]
-  name = "github.com/hashicorp/terraform"
-  source = "github.com/pulumi/terraform"
-  branch = "pulumi-master"
