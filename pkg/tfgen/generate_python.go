@@ -410,7 +410,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 		pname := pyName(prop.name)
 		ptype := pyType(prop)
 		w.Writefmtln("        if %s and not isinstance(%s, %s):", pname, pname, ptype)
-		w.Writefmtln("            raise TypeError('Expected argument %s to be a %s')", pname, ptype)
+		w.Writefmtln("            raise TypeError(\"Expected argument '%s' to be a %s\")", pname, ptype)
 
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
 		w.Writefmtln("        __self__.%[1]s = %[1]s", pname)
@@ -485,7 +485,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		// Check that required arguments are present.
 		if !prop.optional() {
 			w.Writefmtln("        if %s is None:", pname)
-			w.Writefmtln("            raise TypeError('Missing required property %s')", pname)
+			w.Writefmtln("            raise TypeError(\"Missing required property '%s'\")", pname)
 		}
 
 		// And add it to the dictionary.
