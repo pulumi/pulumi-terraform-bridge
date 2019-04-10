@@ -29,17 +29,16 @@ type GitInfo struct {
 
 const (
 	tfGitHub         = "github.com"
-	tfProvidersOrg   = "terraform-providers"
 	tfProviderPrefix = "terraform-provider"
 )
 
 // getRepoDir gets the source repository for a given provider
-func getRepoDir(prov string) (string, error) {
+func getRepoDir(org, prov string) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	repo := path.Join(tfGitHub, tfProvidersOrg, tfProviderPrefix+"-"+prov)
+	repo := path.Join(tfGitHub, org, tfProviderPrefix+"-"+prov)
 	pkg, err := build.Import(repo, wd, build.FindOnly)
 	if err != nil {
 		return "", err
