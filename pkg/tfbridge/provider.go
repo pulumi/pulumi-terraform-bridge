@@ -716,6 +716,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		// moment.
 		return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
 	}
+	contract.Assertf(!diff.Destroy && !diff.RequiresNew(),
+		"expected diff to not require deletion or replacement during Update")
 
 	newstate, err := p.tf.Apply(info, state, diff)
 	if newstate == nil {
