@@ -483,6 +483,13 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 				}
 				skippableExamples = true
 			}
+		} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
+			// Strip "Open in Cloud Shell" buttons.
+			for i = i + 1; i < len(lines); i++ {
+				if strings.Index(lines[i], "</div>") == 0 {
+					break
+				}
+			}
 		} else {
 			// Otherwise, record any text found before, in between, or after the code snippets, as-is.
 			result = append(result, line)
