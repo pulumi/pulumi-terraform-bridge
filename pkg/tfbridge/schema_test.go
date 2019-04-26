@@ -142,6 +142,7 @@ func TestTerraformInputs(t *testing.T) {
 			},
 		},
 		nil,   /* assets */
+		nil,   /* config */
 		false, /*defaults*/
 		false, /*useRawNames*/
 	)
@@ -204,6 +205,7 @@ func TestTerraformInputs(t *testing.T) {
 		nil,   /* tfs */
 		nil,   /* ps */
 		nil,   /* assets */
+		nil,   /* config */
 		false, /*defaults*/
 		false, /*useRawNames*/
 	)
@@ -510,7 +512,7 @@ func TestMetaProperties(t *testing.T) {
 	props := MakeTerraformResult(read, res.Schema, nil)
 	assert.NotNil(t, props)
 
-	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, attrs)
 	assert.NotNil(t, meta)
@@ -526,7 +528,7 @@ func TestMetaProperties(t *testing.T) {
 	// Delete the resource's meta-property and ensure that we re-populate its schema version.
 	delete(props, metaKey)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, attrs)
 	assert.NotNil(t, meta)
@@ -551,7 +553,7 @@ func TestMetaProperties(t *testing.T) {
 	props = MakeTerraformResult(create, res.Schema, nil)
 	assert.NotNil(t, props)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, false)
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, attrs)
 	assert.NotNil(t, meta)
@@ -669,7 +671,7 @@ func TestDefaults(t *testing.T) {
 		"hhh": resource.NewStringProperty("HHH"),
 		"zzz": resource.NewAssetProperty(asset),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, true, false)
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
 
@@ -705,7 +707,7 @@ func TestDefaults(t *testing.T) {
 	// will be pulled from the old inputs instead of regenerated.
 	delete(olds, defaultsKey)
 	assets = make(AssetTable)
-	inputs, err = MakeTerraformInputs(nil, olds, props, tfs, ps, assets, true, false)
+	inputs, err = MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
 	assert.NoError(t, err)
 	outputs = MakeTerraformOutputs(inputs, tfs, ps, assets, false)
 
@@ -750,7 +752,7 @@ func TestComputedAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty(config.UnknownVariableValue),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, false, false)
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
 	assert.Equal(t, resource.PropertyMap{
@@ -770,7 +772,7 @@ func TestInvalidAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, false, false)
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
 	assert.Equal(t, resource.PropertyMap{
@@ -792,7 +794,7 @@ func TestCustomTransforms(t *testing.T) {
 
 	v1, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
-		tfs, psi, nil, false, false)
+		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
 	if !assert.Equal(t, `{"a":99,"b":false}`, v1) {
 		assert.Equal(t, `{"b":false,"a":99}`, v1)
@@ -800,20 +802,20 @@ func TestCustomTransforms(t *testing.T) {
 
 	v2, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewStringProperty(`{"a":99,"b":false}`),
-		tfs, psi, nil, false, false)
+		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v2)
 
 	doc["c"] = resource.Computed{Element: resource.PropertyValue{V: ""}}
 	v3, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
-		tfs, psi, nil, false, false)
+		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, config.UnknownVariableValue, v3)
 
 	v4, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.MakeComputed(resource.NewStringProperty("")),
-		tfs, psi, nil, false, false)
+		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, config.UnknownVariableValue, v4)
 }
