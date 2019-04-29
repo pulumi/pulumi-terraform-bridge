@@ -269,8 +269,7 @@ func (p *Provider) initResourceMaps() {
 
 // camelPascalPulumiName returns the camel and pascal cased name for a given terraform name.
 func (p *Provider) camelPascalPulumiName(name string) (string, string) {
-	// Strip off the module prefix (e.g., "aws_") and then return the camel- and Pascal-cased names.
-	prefix := p.info.Name + "_" // all resources will have this prefix.
+	prefix := p.info.GetResourcePrefix() + "_"
 	contract.Assertf(strings.HasPrefix(name, prefix),
 		"Expected all Terraform resources in this module to have a '%v' prefix", prefix)
 	name = name[len(prefix):]

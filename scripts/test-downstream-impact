@@ -15,11 +15,12 @@ REPO_NAME="$1"
 
 git clone "https://github.com/pulumi/${REPO_NAME}.git" "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
 
-# Run hack-vendor to update Terraform
+# Replace modle for Pulumi Terraform
 cd "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
 
 git checkout -b "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
-"$(go env GOPATH)"/src/github.com/pulumi/scripts/hack-vendor/hack-vendor github.com/pulumi/pulumi-terraform
+GO111MODULE=on go mod edit -replace=github.com/pulumi/pulumi-terraform=../pulumi-terraform/
+make ensure
 
 # Show the diff in the Gopkg files.
 git diff
@@ -28,7 +29,7 @@ git diff
 git config user.name "Pulumi Bot"
 git config user.email "bot@pulumi.com"
 
-git commit -a -m "Run hack-vendor.sh"
+git commit -a -m "Replace pulumi-terraform module"
 
 # Now, do a build
 make only_build

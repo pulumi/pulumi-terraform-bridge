@@ -119,3 +119,26 @@ func TestConvertStringToPropertyValue(t *testing.T) {
 		}
 	}
 }
+
+func TestCamelPascalPulumiName(t *testing.T) {
+	p := Provider{
+		info: ProviderInfo{
+			Name:           "name",
+			ResourcePrefix: "resource_prefix",
+		},
+	}
+
+	t.Run("Produces correct names", func(t *testing.T) {
+		camel, pascal := p.camelPascalPulumiName("resource_prefix_some_resource")
+
+		assert.Equal(t, "someResource", camel)
+		assert.Equal(t, "SomeResource", pascal)
+	})
+
+	t.Run("Panics if the prefix is incorrect", func(t *testing.T) {
+		assert.Panics(t, func() {
+			p.camelPascalPulumiName("not_resource_prefix_some_resource")
+		})
+	})
+
+}
