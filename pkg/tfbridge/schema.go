@@ -51,7 +51,7 @@ type AssetTable map[*SchemaInfo]resource.PropertyValue
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take
 // care not to call it superfluously!
 func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable, config resource.PropertyMap,
 	defaults, useRawNames bool) (map[string]interface{}, error) {
 
 	result := make(map[string]interface{})
@@ -74,7 +74,8 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 		}
 
 		// And then translate the property value.
-		v, err := MakeTerraformInput(res, name, old, value, tfi, psi, assets, defaults, useRawNames)
+		v, err := MakeTerraformInput(
+			res, name, old, value, tfi, psi, assets, config, defaults, useRawNames)
 		if err != nil {
 			return nil, err
 		}
@@ -125,8 +126,8 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 				// If we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
-						false, useRawNames)
+					v, err := MakeTerraformInput(
+						res, name, resource.PropertyValue{}, old, tfi, psi, assets, config, false, useRawNames)
 					if err != nil {
 						return nil, err
 					}
@@ -168,6 +169,15 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 						}
 					}
 					defaultValue, source = v, "env vars"
+				} else if configKey := info.Default.Config; configKey != "" {
+					if v := config[resource.PropertyKey(configKey)]; !v.IsNull() {
+						tv, err := MakeTerraformInput(
+							res, name, resource.PropertyValue{}, v, tfi, psi, assets, config, false, useRawNames)
+						if err != nil {
+							return nil, err
+						}
+						defaultValue, source = tv, "config"
+					}
 				} else if info.Default.Value != nil {
 					defaultValue, source = info.Default.Value, "Pulumi schema"
 				} else if from := info.Default.From; from != nil {
@@ -212,8 +222,8 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, useRawNames)
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := MakeTerraformInput(res, name, resource.PropertyValue{}, old, tfi, psi, assets,
-						false, useRawNames)
+					v, err := MakeTerraformInput(
+						res, name, resource.PropertyValue{}, old, tfi, psi, assets, config, false, useRawNames)
 					if err != nil {
 						return nil, err
 					}
@@ -301,7 +311,7 @@ func makeTerraformUnknown(tfs *schema.Schema) interface{} {
 // use by Terraform.  Note that this function may have side effects, for instance if it is necessary to spill an asset
 // to disk in order to create a name out of it.  Please take care not to call it superfluously!
 func MakeTerraformInput(res *PulumiResource, name string,
-	old, v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo, assets AssetTable,
+	old, v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo, assets AssetTable, config resource.PropertyMap,
 	defaults, rawNames bool) (interface{}, error) {
 
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, and need to wrap it
@@ -363,7 +373,8 @@ func MakeTerraformInput(res *PulumiResource, name string,
 				oldElem = oldArr[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := MakeTerraformInput(res, elemName, oldElem, elem, etfs, eps, assets, defaults, rawNames)
+			e, err := MakeTerraformInput(
+				res, elemName, oldElem, elem, etfs, eps, assets, config, defaults, rawNames)
 			if err != nil {
 				return nil, err
 			}
@@ -413,7 +424,7 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		}
 
 		input, err := MakeTerraformInputs(res, oldObject, v.ObjectValue(),
-			tfflds, psflds, assets, defaults, rawNames || useRawNames(tfs))
+			tfflds, psflds, assets, config, defaults, rawNames || useRawNames(tfs))
 		if err != nil {
 			return nil, err
 		}
@@ -604,9 +615,10 @@ func MakeTerraformOutput(v interface{},
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(res *PulumiResource, m resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, defaults bool) (*terraform.ResourceConfig, error) {
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
+	config resource.PropertyMap, defaults bool) (*terraform.ResourceConfig, error) {
 	// Convert the resource bag into an untyped map, and then create the resource config object.
-	inputs, err := MakeTerraformInputs(res, nil, m, tfs, ps, nil, defaults, false)
+	inputs, err := MakeTerraformInputs(res, nil, m, tfs, ps, nil, config, defaults, false)
 	if err != nil {
 		return nil, err
 	}
@@ -616,13 +628,13 @@ func MakeTerraformConfig(res *PulumiResource, m resource.PropertyMap,
 // MakeTerraformConfigFromRPC creates a Terraform config map from a Pulumi RPC property map.
 func MakeTerraformConfigFromRPC(res *PulumiResource, m *pbstruct.Struct,
 	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
-	allowUnknowns, defaults bool, label string) (*terraform.ResourceConfig, error) {
+	config resource.PropertyMap, allowUnknowns, defaults bool, label string) (*terraform.ResourceConfig, error) {
 	props, err := plugin.UnmarshalProperties(m,
 		plugin.MarshalOptions{Label: label, KeepUnknowns: allowUnknowns, SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := MakeTerraformConfig(res, props, tfs, ps, defaults)
+	cfg, err := MakeTerraformConfig(res, props, tfs, ps, config, defaults)
 	if err != nil {
 		return nil, err
 	}
@@ -667,8 +679,9 @@ func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.Re
 // MakeTerraformAttributes converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs map[string]*schema.Schema,
-	ps map[string]*SchemaInfo, defaults bool) (map[string]string, map[string]interface{}, error) {
+func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, config resource.PropertyMap,
+	defaults bool) (map[string]string, map[string]interface{}, error) {
 
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -684,7 +697,7 @@ func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs m
 
 	// Turn the resource properties into a map.  For the most part, this is a straight Mappable, but we use MapReplace
 	// because we use float64s and Terraform uses ints, to represent numbers.
-	inputs, err := MakeTerraformInputs(nil, nil, m, tfs, ps, nil, defaults, false)
+	inputs, err := MakeTerraformInputs(nil, nil, m, tfs, ps, nil, config, defaults, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -698,14 +711,14 @@ func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap, tfs m
 
 // MakeTerraformAttributesFromRPC unmarshals an RPC property map and calls through to MakeTerraformAttributes.
 func MakeTerraformAttributesFromRPC(res *schema.Resource, m *pbstruct.Struct,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, config resource.PropertyMap,
 	allowUnknowns, defaults bool, label string) (map[string]string, map[string]interface{}, error) {
 	props, err := plugin.UnmarshalProperties(m,
 		plugin.MarshalOptions{Label: label, KeepUnknowns: allowUnknowns, SkipNulls: true})
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformAttributes(res, props, tfs, ps, defaults)
+	return MakeTerraformAttributes(res, props, tfs, ps, config, defaults)
 }
 
 // flattenValue takes a single value and recursively flattens its properties into the given string -> string map under

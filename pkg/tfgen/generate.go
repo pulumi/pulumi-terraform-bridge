@@ -225,9 +225,9 @@ func optionalComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out, config 
 	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.
 	customDefault := !config && info != nil && info.HasDefault()
 	if out {
-		return sch.Optional && !sch.Computed && !customDefault
+		return sch != nil && sch.Optional && !sch.Computed && !customDefault
 	}
-	return sch.Optional || sch.Computed || customDefault
+	return (sch != nil && sch.Optional || sch.Computed) || customDefault
 }
 
 // resourceType is a generated resource type that represents a Pulumi CustomResource definition.
@@ -448,11 +448,19 @@ func (g *generator) gatherConfig() *module {
 		}
 	}
 
-	// Ensure there weren't any custom fields that were unrecognized.
+	// Ensure there weren't any keys that were unrecognized.
 	for key := range custom {
 		if _, has := cfg[key]; !has {
 			cmdutil.Diag().Warningf(
 				diag.Message("", "custom config schema %s was not present in the Terraform metadata"), key)
+		}
+	}
+
+	// Now, if there are any extra config variables, that are Pulumi-only, add them.
+	for key, val := range g.info.ExtraConfig {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/); prop != nil {
+			prop.config = true
+			config.addMember(prop)
 		}
 	}
 

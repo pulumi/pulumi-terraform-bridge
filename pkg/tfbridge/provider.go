@@ -43,14 +43,15 @@ import (
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
 type Provider struct {
-	host        *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module      string                             // the Terraform module name.
-	version     string                             // the plugin version number.
-	tf          *schema.Provider                   // the Terraform resource provider to use.
-	info        ProviderInfo                       // overlaid info about this provider.
-	config      map[string]*schema.Schema          // the Terraform config schema.
-	resources   map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	host         *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module       string                             // the Terraform module name.
+	version      string                             // the plugin version number.
+	tf           *schema.Provider                   // the Terraform resource provider to use.
+	info         ProviderInfo                       // overlaid info about this provider.
+	config       map[string]*schema.Schema          // the Terraform config schema.
+	configValues resource.PropertyMap               // this package's config values.
+	resources    map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources  map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -341,9 +342,21 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		vars[resource.PropertyKey(mm.Name())] = pv
 	}
 
+	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
+	// them later on for purposes of (e.g.) config-based defaults.
+	p.configValues = vars
+
+	// Strip out Pulumi-only config variables.
+	tfVars := make(resource.PropertyMap)
+	for k, v := range vars {
+		if _, has := p.info.ExtraConfig[string(k)]; !has {
+			tfVars[k] = v
+		}
+	}
+
 	// First make a Terraform config map out of the variables. We do this before checking for missing properties
 	// s.t. we can pull any defaults out of the TF schema.
-	config, err := MakeTerraformConfig(nil, vars, p.config, p.info.Config, true)
+	config, err := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, p.configValues, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
@@ -397,6 +410,7 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 	if err = p.tf.Configure(config); err != nil {
 		return nil, err
 	}
+
 	return &pbempty.Empty{}, nil
 }
 
@@ -436,7 +450,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	assets := make(AssetTable)
 	inputs, err := MakeTerraformInputs(
 		&PulumiResource{URN: urn, Properties: news},
-		olds, news, res.TF.Schema, res.Schema.Fields, assets, true, false)
+		olds, news, res.TF.Schema, res.Schema.Fields, assets, p.configValues, true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -487,14 +501,16 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
 	inputs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
+		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, false, false, fmt.Sprintf("%s.olds", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -570,7 +586,8 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -626,7 +643,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, err
 	}
 	attrs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.state", label))
+		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, false, false, fmt.Sprintf("%s.state", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
 	}
@@ -693,14 +711,16 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
 	inputs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields, false, false, fmt.Sprintf("%s.olds", label))
+		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, false, false, fmt.Sprintf("%s.olds", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields, true, false, fmt.Sprintf("%s.news", label))
+		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -758,7 +778,8 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
 	attrs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields, false, false, label)
+		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
+		p.configValues, false, false, label)
 	if err != nil {
 		return nil, err
 	}
@@ -794,7 +815,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// First, create the inputs.
 	tfname := ds.TFName
 	inputs, err := MakeTerraformInputs(
-		&PulumiResource{Properties: args}, nil, args, ds.TF.Schema, ds.Schema.Fields, nil, true, false)
+		&PulumiResource{Properties: args},
+		nil, args, ds.TF.Schema, ds.Schema.Fields, nil, p.configValues, true, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
