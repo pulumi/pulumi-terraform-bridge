@@ -507,7 +507,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 			outcomment = "/*out*/ "
 		}
 
-		w.Writefmtln("    public %sreadonly %s: pulumi.Output<%s>;",
+		w.Writefmtln("    public %sreadonly %s!: pulumi.Output<%s>;",
 			outcomment, prop.name, tsType(prop, true /*noflags*/, !prop.out /*wrapInput*/))
 	}
 	w.Writefmtln("")
@@ -551,7 +551,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		w.Writefmtln("        let inputs: pulumi.Inputs = {};")
 		// The lookup case:
 		w.Writefmtln("        if (opts && opts.id) {")
-		w.Writefmtln("            const state: %[1]s = argsOrState as %[1]s | undefined;", stateType)
+		w.Writefmtln("            const state = argsOrState as %[1]s | undefined;", stateType)
 		for _, prop := range res.outprops {
 			w.Writefmtln(`            inputs["%[1]s"] = state ? state.%[1]s : undefined;`, prop.name)
 		}
@@ -811,7 +811,12 @@ func (g *nodeJSGenerator) emitTypeScriptProjectFile(pack *pkg, files []string) e
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
     },
     "files": [`)
 	for i, file := range files {
