@@ -589,6 +589,15 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 	w.Writefmtln("        }")
 
+	// If the caller didn't request a specific version, supply one using the version of this library.
+	w.Writefmtln("        if (!opts) {")
+	w.Writefmtln("            opts = {}")
+	w.Writefmtln("        }")
+	w.Writefmtln("")
+	w.Writefmtln("        if (!opts.version) {")
+	w.Writefmtln("            opts.version = utilities.getVersion();")
+	w.Writefmtln("        }")
+
 	// Now invoke the super constructor with the type, name, and a property map.
 	w.Writefmtln(`        super("%s", name, inputs, opts);`, res.info.Tok)
 
@@ -652,6 +661,15 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	if len(fun.args) > 0 && len(fun.reqargs) == 0 {
 		w.Writefmtln("    args = args || {};")
 	}
+
+	// If the caller didn't request a specific version, supply one using the version of this library.
+	w.Writefmtln("    if (!opts) {")
+	w.Writefmtln("        opts = {}")
+	w.Writefmtln("    }")
+	w.Writefmtln("")
+	w.Writefmtln("    if (!opts.version) {")
+	w.Writefmtln("        opts.version = utilities.getVersion();")
+	w.Writefmtln("    }")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	w.Writefmtln("    return pulumi.runtime.invoke(\"%s\", {", fun.info.Tok)
