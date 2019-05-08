@@ -74,6 +74,9 @@ func TestTerraformInputs(t *testing.T) {
 			"mapWithResourceElem": map[string]interface{}{
 				"someValue": "a value",
 			},
+			"arrayWithNestedOptionalComputedArrays": []interface{}{
+				map[string]interface{}{},
+			},
 		}),
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
@@ -130,6 +133,29 @@ func TestTerraformInputs(t *testing.T) {
 					},
 				},
 			},
+			"array_with_nested_optional_computed_arrays": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_value": {
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"nested_inner_value": {
+										Type:     schema.TypeBool,
+										Required: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		map[string]*SchemaInfo{
 			// Reverse map string_property_value to the stringo property.
@@ -140,6 +166,9 @@ func TestTerraformInputs(t *testing.T) {
 				Name:        "optionalConfigOther",
 				MaxItemsOne: boolPointer(true),
 			},
+			"array_with_nested_optional_computed_arrays": {
+				SuppressEmptyMapElements: boolPointer(true),
+			},
 		},
 		nil,   /* assets */
 		nil,   /* config */
@@ -147,6 +176,8 @@ func TestTerraformInputs(t *testing.T) {
 		false, /*useRawNames*/
 	)
 	assert.Nil(t, err)
+
+	var nilInterfaceSlice []interface{}
 	assert.Equal(t, map[string]interface{}{
 		"bool_property_value":   false,
 		"number_property_value": 42,
@@ -194,6 +225,7 @@ func TestTerraformInputs(t *testing.T) {
 				"some_value": "a value",
 			},
 		},
+		"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
 	}, result)
 
 	_, err = MakeTerraformInputs(
