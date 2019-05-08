@@ -582,10 +582,10 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-	w.Writefmtln(" .   if opts is None:")
-	w.Writefmtln("         opts = pulumi.ResourceOptions()")
-	w.Writefmtln("     if opts.version is None:")
-	w.Writefmtln("         opts.version = utilities.get_version()")
+	w.Writefmtln("    if opts is None:")
+	w.Writefmtln("        opts = pulumi.ResourceOptions()")
+	w.Writefmtln("    if opts.version is None:")
+	w.Writefmtln("        opts.version = utilities.get_version()")
 
 	// Now simply invoke the runtime function with the arguments.
 	w.Writefmtln("    __ret__ = await pulumi.runtime.invoke('%s', __args__, opts=opts)", fun.info.Tok)
