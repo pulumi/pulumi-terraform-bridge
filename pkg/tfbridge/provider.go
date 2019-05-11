@@ -598,11 +598,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	newstate, err := p.tf.Apply(info, state, diff)
 	if newstate == nil {
-		contract.Assertf(err != nil, "expected non-nil error with nil state during Create")
+		contract.Assertf(err != nil, "Expected non-nil error with nil state during Create of %s", urn)
 		return nil, err
 	}
 
-	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Create")
+	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Create of %s", urn)
 	reasons := make([]string, 0)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
@@ -736,15 +736,20 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
 	}
 	contract.Assertf(!diff.Destroy && !diff.RequiresNew(),
-		"expected diff to not require deletion or replacement during Update")
+		"Expected diff to not require deletion or replacement during Update of %s", urn)
 
 	newstate, err := p.tf.Apply(info, state, diff)
 	if newstate == nil {
-		contract.Assertf(err != nil, "expected non-nil error with nil state during Update")
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, fmt.Errorf("Resource provider reported that the resource did not exist while updating %s.\n\n"+
+			"This is usually a result of the resource having been deleted outside of Pulumi, and can often be "+
+			"fixed by running `pulumi refresh` before updating.", urn)
 	}
 
-	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Update")
+	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Update of %s", urn)
 	reasons := make([]string, 0)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
