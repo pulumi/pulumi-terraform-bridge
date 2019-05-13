@@ -378,7 +378,14 @@ func MakeTerraformInput(res *PulumiResource, name string,
 			if err != nil {
 				return nil, err
 			}
-			arr = append(arr, e)
+
+			if ps != nil && ps.SuppressEmptyMapElements != nil && *ps.SuppressEmptyMapElements {
+				if eMap, ok := e.(map[string]interface{}); ok && len(eMap) > 0 {
+					arr = append(arr, e)
+				}
+			} else {
+				arr = append(arr, e)
+			}
 		}
 		return arr, nil
 	case v.IsAsset():

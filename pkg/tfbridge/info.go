@@ -83,16 +83,38 @@ type DataSourceInfo struct {
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
-	Name        string                 // a name to override the default; "" uses the default.
-	Type        tokens.Type            // a type to override the default; "" uses the default.
-	AltTypes    []tokens.Type          // alternative types that can be used instead of the override.
-	Transform   Transformer            // an optional idemponent transformation, applied before passing to TF.
-	Elem        *SchemaInfo            // a schema override for elements for arrays, maps, and sets.
-	Fields      map[string]*SchemaInfo // a map of custom field names; if a type is missing, the default is used.
-	Asset       *AssetTranslation      // a map of asset translation information, if this is an asset.
-	Default     *DefaultInfo           // an optional default directive to be applied if a value is missing.
-	Stable      *bool                  // to override whether a property is stable or not.
-	MaxItemsOne *bool                  // to override whether this property should project as a scalar or array.
+	// a name to override the default; "" uses the default.
+	Name string
+
+	// a type to override the default; "" uses the default.
+	Type tokens.Type
+
+	// alternative types that can be used instead of the override.
+	AltTypes []tokens.Type
+
+	// an optional idemponent transformation, applied before passing to TF.
+	Transform Transformer
+
+	// a schema override for elements for arrays, maps, and sets.
+	Elem *SchemaInfo
+
+	// a map of custom field names; if a type is missing, the default is used.
+	Fields map[string]*SchemaInfo
+
+	// a map of asset translation information, if this is an asset.
+	Asset *AssetTranslation
+
+	// an optional default directive to be applied if a value is missing.
+	Default *DefaultInfo
+
+	// to override whether a property is stable or not.
+	Stable *bool
+
+	// to override whether this property should project as a scalar or array.
+	MaxItemsOne *bool
+
+	// to remove empty object array elements
+	SuppressEmptyMapElements *bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
