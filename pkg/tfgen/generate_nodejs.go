@@ -342,15 +342,10 @@ func (g *nodeJSGenerator) emitConfigVariables(mod *module) (string, error) {
 }
 
 func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
-	var getfunc string
-	if v.optional() {
-		getfunc = "get"
-	} else {
-		getfunc = "require"
-	}
+	getfunc := "get"
 	if v.schema.Type != schema.TypeString {
 		// Only try to parse a JSON object if the config isn't a straight string.
-		getfunc = fmt.Sprintf("%sObject<%s>", getfunc, tsType(v, false /*noflags*/, !v.out /*wrapInput*/))
+		getfunc = fmt.Sprintf("getObject<%s>", tsType(v, false /*noflags*/, !v.out /*wrapInput*/))
 	}
 	var anycast string
 	if v.info != nil && v.info.Type != "" {
@@ -365,11 +360,7 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 
 	configFetch := fmt.Sprintf("__config.%s(\"%s\")", getfunc, v.name)
 	if defaultValue := tsDefaultValue(v); defaultValue != "undefined" {
-		if v.optional() {
-			configFetch += " || " + defaultValue
-		} else {
-			configFetch = fmt.Sprintf("utilities.requireWithDefault(() => %s, %s)", configFetch, defaultValue)
-		}
+		configFetch += " || " + defaultValue
 	}
 
 	w.Writefmtln("export let %s: %s = %s%s;", v.name, tsType(v, true /*noflags*/, !v.out /*wrapInput*/), anycast,
