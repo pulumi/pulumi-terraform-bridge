@@ -1,7 +1,7 @@
 # It may be tempting to add parens around each individual clause in this expression, but Travis then builds pushes anyway
 if: branch = master OR branch =~ ^release/ OR branch =~ ^features/ OR tag IS present
 language: go
-go: 1.12
+go: 1.12.x
 git:
     depth: false
 sudo: true # give us 7.5GB and >2 bursted cores.
@@ -11,6 +11,8 @@ before_install:
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
+    # Install Pulumi
+    - curl -L https://get.pulumi.com/ | bash
     - export PATH=$HOME/.pulumi/bin:$PATH
 before_script:
     - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
