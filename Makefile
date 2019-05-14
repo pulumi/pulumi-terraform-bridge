@@ -39,11 +39,11 @@ install::
 		(yarn unlink > /dev/null 2>&1 || true) && \
 		yarn link
 
-test_fast::
-	$(GO_TEST_FAST) ${GOPKGS}
+test_fast:: install
+	$(GO_TEST_FAST) ${GOPKGS} ./examples
 
-test_all::
-	$(GO_TEST) ${GOPKGS}
+test_all:: install
+	$(GO_TEST) ${GOPKGS} ./examples
 
 .PHONY: publish_tgz
 publish_tgz:
