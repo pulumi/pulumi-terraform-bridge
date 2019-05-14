@@ -16,8 +16,11 @@ package tfbridge
 
 import (
 	"bufio"
+	"context"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource/provider"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -27,6 +30,20 @@ type LogRedirector struct {
 	enabled bool                          // true if standard logging is on; false for debug-only.
 	writers map[string]func(string) error // the writers for certain labels.
 	buffer  []byte                        // a buffer that holds up to a line of output.
+}
+
+// NewLogRedirector returns a new LogRedirector with the (unexported) writers field
+// set to the given map.
+func NewTerraformLogRedirector(ctx context.Context, hostClient *provider.HostClient) *LogRedirector {
+	return &LogRedirector{
+		writers: map[string]func(string) error{
+			tfTracePrefix: func(msg string) error { return hostClient.Log(ctx, diag.Debug, "", msg) },
+			tfDebugPrefix: func(msg string) error { return hostClient.Log(ctx, diag.Debug, "", msg) },
+			tfInfoPrefix:  func(msg string) error { return hostClient.Log(ctx, diag.Info, "", msg) },
+			tfWarnPrefix:  func(msg string) error { return hostClient.Log(ctx, diag.Warning, "", msg) },
+			tfErrorPrefix: func(msg string) error { return hostClient.Log(ctx, diag.Error, "", msg) },
+		},
+	}
 }
 
 const (
