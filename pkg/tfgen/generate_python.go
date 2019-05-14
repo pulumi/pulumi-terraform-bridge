@@ -317,20 +317,9 @@ func (g *pythonGenerator) emitConfigVariables(mod *module) (string, error) {
 }
 
 func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
-	var getfunc string
-	if v.optional() {
-		getfunc = "get"
-	} else {
-		getfunc = "require"
-	}
-
-	configFetch := fmt.Sprintf("__config__.%s('%s')", getfunc, v.name)
+	configFetch := fmt.Sprintf("__config__.get('%s')", v.name)
 	if defaultValue := pyDefaultValue(v); defaultValue != "" {
-		if v.optional() {
-			configFetch += " or " + defaultValue
-		} else {
-			configFetch = fmt.Sprintf("utilities.require_with_default(lambda: %s, %s)", configFetch, defaultValue)
-		}
+		configFetch += " or " + defaultValue
 	}
 
 	w.Writefmtln("%s = %s", pyName(v.name), configFetch)
