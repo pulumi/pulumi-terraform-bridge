@@ -244,12 +244,7 @@ func (g *goGenerator) emitConfigVariables(mod *module) error {
 }
 
 func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
-	var getfunc string
-	if v.optional() {
-		getfunc = "Get"
-	} else {
-		getfunc = "Require"
-	}
+	getfunc := "Get"
 
 	var gettype string
 	var functype string
@@ -281,9 +276,6 @@ func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 		w.Writefmtln("\tif dv, ok := %s.(%s); ok {", defaultValue, gettype)
 		w.Writefmtln("\t\treturn dv")
 		w.Writefmtln("\t}")
-		if !v.optional() {
-			w.Writefmtln("\tpanic(err.Error())")
-		}
 		w.Writefmtln("\treturn v")
 	} else {
 		w.Writefmtln("\treturn config.%s%s(ctx, \"%s:%s\")", getfunc, functype, g.pkg, v.name)

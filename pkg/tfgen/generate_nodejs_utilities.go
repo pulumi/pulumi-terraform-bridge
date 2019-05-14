@@ -1,8 +1,6 @@
 package tfgen
 
 const tsUtilitiesFile = `
-import * as pulumi from "@pulumi/pulumi";
-
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {
         const value = process.env[v];
@@ -37,17 +35,6 @@ export function getEnvNumber(...vars: string[]): number | undefined {
         }
     }
     return undefined;
-}
-
-export function requireWithDefault<T>(req: () => T, def: T | undefined): T {
-    try {
-        return req();
-    } catch (err) {
-        if (def === undefined) {
-            throw err;
-        }
-    }
-    return def;
 }
 
 export function getVersion(): string {
