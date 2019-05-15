@@ -363,8 +363,8 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		configFetch += " || " + defaultValue
 	}
 
-	w.Writefmtln("export let %s: %s = %s%s;", v.name, tsType(v, true /*noflags*/, !v.out /*wrapInput*/), anycast,
-		configFetch)
+	w.Writefmtln("export let %s: %s | undefined = %s%s;", v.name, tsType(v, false /*noflags*/, !v.out /*wrapInput*/),
+		anycast, configFetch)
 }
 
 // sanitizeForDocComment ensures that no `*/` sequence appears in the string, to avoid
