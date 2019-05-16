@@ -50,6 +50,10 @@ publish_tgz:
 	$(call STEP_MESSAGE)
 	./scripts/publish_tgz.sh
 
+.PHONY: check_clean_worktree
+check_clean_worktree:
+	$$(go env GOPATH)/src/github.com/pulumi/scripts/ci/check-worktree-is-clean.sh
+
 # While pulumi-terraform is not built using tfgen/tfbridge, the layout of the source tree is the same as these
 # style of repositories, so we can re-use the common publishing scripts.
 .PHONY: publish_packages
