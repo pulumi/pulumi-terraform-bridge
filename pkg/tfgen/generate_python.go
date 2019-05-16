@@ -695,7 +695,10 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	}
 
 	// Sort the entries so they are deterministic.
-	var reqnames []string
+	reqnames := []string{
+		"semver>=2.8.1",
+		"parver>=0.2.1",
+	}
 	for req := range reqs {
 		reqnames = append(reqnames, req)
 	}
