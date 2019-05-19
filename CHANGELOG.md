@@ -5,6 +5,9 @@ This CHANGELOG details important changes made in each version of the
 
 ## v0.18.2 (Unreleased)
 
+- Improved the package `README` file to reflect usage of the `@pulumi/terraform`
+  package rather than the Terraform bridge.
+
 ## v0.18.1 (Released May 16th, 2019)
 
 - Initial release of `@pulumi/terraform` with support for Node.js.
