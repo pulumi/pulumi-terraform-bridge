@@ -20,8 +20,9 @@ build::
 	cd ${PACKDIR}/nodejs/ && \
 		yarn install && \
 		yarn run tsc
-	cp README.md LICENSE ${PACKDIR}/nodejs/package.json ${PACKDIR}/nodejs/yarn.lock \
+	cp LICENSE ${PACKDIR}/nodejs/package.json ${PACKDIR}/nodejs/yarn.lock \
 		${PACKDIR}/nodejs/bin
+	cp README.package.md ${PACKDIR}/nodejs/bin/README.md
 	sed -i.bak 's/$${VERSION}/$(VERSION)/g' ${PACKDIR}/nodejs/bin/package.json
 
 lint::
