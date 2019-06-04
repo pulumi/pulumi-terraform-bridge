@@ -479,6 +479,21 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		w.Writefmtln("")
 	}
 
+	w.Writefmtln("    /** @internal */")
+	w.Writefmtln("    public static readonly __pulumiType = '%s';", res.info.Tok)
+	w.Writefmtln("")
+	w.Writefmtln("    /**")
+	w.Writefmtln("     * Returns true if the given object is an instance of %s.  This is designed to work even", name)
+	w.Writefmtln("     * when multiple copies of the Pulumi SDK have been loaded into the same process.")
+	w.Writefmtln("     */")
+	w.Writefmtln("    public static isInstance(obj: any): obj is %s {", name)
+	w.Writefmtln("        if (obj === undefined || obj === null) {")
+	w.Writefmtln("            return false;")
+	w.Writefmtln("        }")
+	w.Writefmtln("        return obj['__pulumiType'] === %s.__pulumiType;", name)
+	w.Writefmtln("    }")
+	w.Writefmtln("")
+
 	// Emit all properties (using their output types).
 	// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
 	ins := make(map[string]bool)
@@ -591,7 +606,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	// w.Writefmtln("        }")
 
 	// Now invoke the super constructor with the type, name, and a property map.
-	w.Writefmtln(`        super("%s", name, inputs, opts);`, res.info.Tok)
+	w.Writefmtln(`        super(%s.__pulumiType, name, inputs, opts);`, name)
 
 	// Finish the class.
 	w.Writefmtln("    }")
