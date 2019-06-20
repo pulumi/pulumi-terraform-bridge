@@ -19,6 +19,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -541,7 +542,8 @@ func TestMetaProperties(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props := MakeTerraformResult(read, res.Schema, nil)
+	props, err := MakeTerraformResult(read, res.Schema, nil)
+	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
 	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
@@ -569,7 +571,8 @@ func TestMetaProperties(t *testing.T) {
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
-	props = MakeTerraformResult(read2, res.Schema, nil)
+	props, err = MakeTerraformResult(read2, res.Schema, nil)
+	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
 
@@ -582,7 +585,8 @@ func TestMetaProperties(t *testing.T) {
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
 
-	props = MakeTerraformResult(create, res.Schema, nil)
+	props, err = MakeTerraformResult(create, res.Schema, nil)
+	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
 	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
@@ -591,6 +595,38 @@ func TestMetaProperties(t *testing.T) {
 	assert.NotNil(t, meta)
 
 	assert.Contains(t, meta, schema.TimeoutKey)
+}
+
+// Test that MakeTerraformResult reads property values appropriately.
+func TestResultAttributesRoundTrip(t *testing.T) {
+	const resName = "example_resource"
+	res := testTFProvider.ResourcesMap["example_resource"]
+
+	info := &terraform.InstanceInfo{Type: resName}
+	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
+
+	read, err := testTFProvider.Refresh(info, state)
+	assert.NoError(t, err)
+	assert.NotNil(t, read)
+
+	props, err := MakeTerraformResult(read, res.Schema, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, props)
+
+	attrs, _, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+
+	// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
+	// attributes produced by MakeTerraformResult, ignore them.
+	for k, v := range attrs {
+		expected, ok := read.Attributes[k]
+		if !ok {
+			assert.True(t, strings.HasSuffix(k, ".%"))
+		} else {
+			assert.Equal(t, expected, v)
+		}
+	}
 }
 
 // Test that an unset list still generates a length attribute.

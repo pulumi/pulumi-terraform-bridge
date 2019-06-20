@@ -67,6 +67,7 @@ var testTFProvider = &schema.Provider{
 				mustSet(data, "object_property_value", map[string]interface{}{
 					"property_a": "a",
 					"property_b": "true",
+					"property.c": "some.value",
 				})
 				mustSet(data, "nested_resources", []interface{}{
 					map[string]interface{}{
@@ -88,6 +89,7 @@ var testTFProvider = &schema.Provider{
 				mustSet(data, "object_property_value", map[string]interface{}{
 					"property_a": "a",
 					"property_b": "true",
+					"property.c": "some.value",
 				})
 				mustSet(data, "nested_resources", []interface{}{
 					map[string]interface{}{
@@ -109,6 +111,7 @@ var testTFProvider = &schema.Provider{
 				mustSet(data, "object_property_value", map[string]interface{}{
 					"property_a": "a",
 					"property_b": "true",
+					"property.c": "some.value",
 				})
 				mustSet(data, "nested_resources", []interface{}{
 					map[string]interface{}{
@@ -171,6 +174,7 @@ var testTFProvider = &schema.Provider{
 				mustSet(data, "object_property_value", map[string]interface{}{
 					"property_a": "a",
 					"property_b": "true",
+					"property.c": "some.value",
 				})
 				mustSet(data, "nested_resources", []interface{}{
 					map[string]interface{}{

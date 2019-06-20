@@ -6,6 +6,7 @@ This CHANGELOG details important changes made in each version of the
 ## v0.18.3 (Unreleased)
 
 - Fixed a bug that caused unnecessary changes if the first operation after upgrading a bridged provider was a `pulumi refresh`.
+- Fixed a bug that caused maps with keys containing a '.' character to be incorrectly treated as containing nested maps when deserializing Terraform attributes.
 
 ### Improvements
 

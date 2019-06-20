@@ -609,7 +609,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	if err != nil {
+		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
+	}
+
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: fmt.Sprintf("%s.outs", label)})
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "marshalling %s", urn).Error())
@@ -674,7 +678,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+		props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+		if err != nil {
+			return nil, err
+		}
+
 		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label + ".state"})
 		if err != nil {
 			return nil, err
@@ -756,7 +764,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 	}
 
-	props := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	if err != nil {
+		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
+	}
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 		Label: fmt.Sprintf("%s.outs", label)})
 	if err != nil {
@@ -862,7 +873,10 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields)
+		props, err := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields)
+		if err != nil {
+			return nil, err
+		}
 		if _, has := props["id"]; !has && invoke != nil {
 			props["id"] = resource.NewStringProperty(invoke.ID)
 		}
