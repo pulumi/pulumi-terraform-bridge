@@ -3,7 +3,7 @@
 This CHANGELOG details important changes made in each version of the
 `terraform` provider, and the `@pulumi/terraform` Node.js package.
 
-## v0.18.3 (Unreleased)
+## v0.18.3 (Released June 20, 2019)
 
 - Fixed a bug that caused unnecessary changes if the first operation after upgrading a bridged provider was a `pulumi refresh`.
 - Fixed a bug that caused maps with keys containing a '.' character to be incorrectly treated as containing nested maps when deserializing Terraform attributes.
