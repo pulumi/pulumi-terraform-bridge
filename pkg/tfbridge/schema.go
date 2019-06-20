@@ -899,6 +899,7 @@ func CleanTerraformSchema(tfs map[string]*schema.Schema) map[string]*schema.Sche
 	cleaned := make(map[string]*schema.Schema)
 	for key := range tfs {
 		sch := tfs[key]
+
 		if sch.Removed == "" {
 			if resource, ok := sch.Elem.(*schema.Resource); ok {
 				resource.Schema = CleanTerraformSchema(resource.Schema)
@@ -937,7 +938,7 @@ func CoerceTerraformString(schType schema.ValueType, stringValue string) (interf
 	return stringValue, nil
 }
 
-func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue) {
+func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, createIfMissing bool) {
 	switch {
 	case oldInput.IsArray() && newInput.IsArray():
 		oldArray, newArray := oldInput.ArrayValue(), newInput.ArrayValue()
@@ -945,35 +946,37 @@ func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue) {
 			if i >= len(newArray) {
 				break
 			}
-			propagateDefaultAnnotations(oldArray[i], newArray[i])
+			propagateDefaultAnnotations(oldArray[i], newArray[i], createIfMissing)
 		}
 	case oldInput.IsObject() && newInput.IsObject():
 		oldMap, newMap := oldInput.ObjectValue(), newInput.ObjectValue()
 		for name, newValue := range newMap {
 			if oldValue, ok := oldMap[name]; ok {
-				propagateDefaultAnnotations(oldValue, newValue)
+				propagateDefaultAnnotations(oldValue, newValue, createIfMissing)
 			}
 		}
 
-		// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add it
-		// to the new inputs.
-		newDefaultNames := []resource.PropertyValue{}
+		// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add
+		// the result to the new inputs.
 		if oldDefaultNames, ok := oldMap[defaultsKey]; ok {
+			newDefaultNames := []resource.PropertyValue{}
 			for _, nameValue := range oldDefaultNames.ArrayValue() {
 				name := resource.PropertyKey(nameValue.StringValue())
 				if oldMap[name].DeepEquals(newMap[name]) {
 					newDefaultNames = append(newDefaultNames, nameValue)
 				}
 			}
+			newMap[defaultsKey] = resource.NewArrayProperty(newDefaultNames)
+		} else if createIfMissing {
+			newMap[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 		}
-		newMap[defaultsKey] = resource.NewArrayProperty(newDefaultNames)
 	default:
 		// nothing to do
 	}
 }
 
 func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (resource.PropertyMap, error) {
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, isRefresh bool) (resource.PropertyMap, error) {
 
 	inputs := make(resource.PropertyMap)
 	for name, value := range outs {
@@ -991,8 +994,8 @@ func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 		inputs[name] = copy.(resource.PropertyValue)
 	}
 
-	// Propagate default annotations.
-	propagateDefaultAnnotations(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs))
+	// Propagate default annotations from the old inputs.
+	propagateDefaultAnnotations(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs), !isRefresh)
 
 	return inputs, nil
 }

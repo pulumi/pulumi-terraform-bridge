@@ -1198,4 +1198,45 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputF": "input_f_default",
 	}), ins)
 
+	// Step 3a. delete the default annotations from the checked inputs and re-run the read. No default annotations
+	// should be present in the result. This is the refresh-after-upgrade case.
+	delete(checkedIns, defaultsKey)
+	delete(checkedIns["inputE"].ObjectValue(), defaultsKey)
+	checkedInsForRefresh, err := plugin.MarshalProperties(checkedIns, plugin.MarshalOptions{})
+	assert.NoError(t, err)
+
+	resp, err = p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         string(id),
+		Urn:        string(urn),
+		Properties: createResp.GetProperties(),
+		Inputs:     checkedInsForRefresh,
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": "input_a_create",
+		"inoutC": "inout_c_create",
+		"inoutD": "inout_d_read",
+		"inputE": map[string]interface{}{
+			"fieldA": "field_a_default",
+		},
+		"inputF":  "input_f_default",
+		"outputG": "output_g_read",
+	}), outs)
+
+	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputA": "input_a_create",
+		"inoutC": "inout_c_create",
+		"inoutD": "inout_d_read",
+		"inputE": map[string]interface{}{
+			"fieldA": "field_a_default",
+		},
+		"inputF": "input_f_default",
+	}), ins)
+
 }

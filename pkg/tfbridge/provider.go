@@ -650,7 +650,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	}
 
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
-	if len(req.GetProperties().GetFields()) == 0 {
+	isRefresh := len(req.GetProperties().GetFields()) != 0
+	if !isRefresh {
 		attrs, err = res.runTerraformImporter(id, p)
 		if err != nil {
 			// Pass through any error running the importer
@@ -679,7 +680,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		inputs, err := extractInputsFromOutputs(oldInputs, props, res.TF.Schema, res.Schema.Fields)
+		inputs, err := extractInputsFromOutputs(oldInputs, props, res.TF.Schema, res.Schema.Fields, isRefresh)
 		if err != nil {
 			return nil, err
 		}
