@@ -105,6 +105,24 @@ var tsTypeTests = []typeTest{
 		expectedOutput: "string",
 		expectedInput:  "pulumi.Input<string | Foo>",
 	},
+	{
+		// Basic array alt types
+		info: &tfbridge.SchemaInfo{
+			Type:     "string",
+			AltTypes: []tokens.Type{"Foo[]"},
+		},
+		expectedOutput: "string",
+		expectedInput:  "pulumi.Input<string | Foo[]>",
+	},
+	{
+		// Complex array alt types
+		info: &tfbridge.SchemaInfo{
+			Type:     "string",
+			AltTypes: []tokens.Type{"pkg:mod/foo:Foo[]"},
+		},
+		expectedOutput: "string",
+		expectedInput:  "pulumi.Input<string | Foo[]>",
+	},
 }
 
 func Test_TsTypes(t *testing.T) {
@@ -144,4 +162,24 @@ func Test_Issue130(t *testing.T) {
 		schema: schema,
 		out:    false,
 	}, false, true))
+}
+
+func Test_GatherCustomImports_ComplexArrayAltType(t *testing.T) {
+	expected := importMap{
+		"./foo": map[string]bool{
+			"Foo": true,
+		},
+	}
+
+	g := &nodeJSGenerator{pkg: "pkg"}
+	info := tfbridge.SchemaInfo{
+		Type:     "string",
+		AltTypes: []tokens.Type{"pkg:mod/foo:Foo[]"},
+	}
+	actual := make(importMap)
+
+	err := g.gatherCustomImports(newModule("mod"), &info, actual)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
 }

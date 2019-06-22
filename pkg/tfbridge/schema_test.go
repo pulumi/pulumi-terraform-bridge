@@ -864,9 +864,14 @@ func TestCustomTransforms(t *testing.T) {
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
-	if !assert.Equal(t, `{"a":99,"b":false}`, v1) {
-		assert.Equal(t, `{"b":false,"a":99}`, v1)
-	}
+	assert.Equal(t, `{"a":99,"b":false}`, v1)
+
+	array := []resource.PropertyValue{resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc))}
+	v1Array, err := MakeTerraformInput(
+		nil, "v", resource.PropertyValue{}, resource.NewArrayProperty(array),
+		tfs, psi, nil, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, `[{"a":99,"b":false}]`, v1Array)
 
 	v2, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.NewStringProperty(`{"a":99,"b":false}`),

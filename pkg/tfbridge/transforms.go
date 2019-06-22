@@ -22,7 +22,7 @@ import (
 )
 
 // TransformJSONDocument permits either a string, which is presumed to represent an already-stringified JSON document,
-// or a map, which will be transformed into its JSON representation.
+// or a map/array, which will be transformed into its JSON representation.
 func TransformJSONDocument(v resource.PropertyValue) (resource.PropertyValue, error) {
 	// We can't marshal properties that contain unknowns. Turn these into an unknown value instead.
 	if v.ContainsUnknowns() {
@@ -31,7 +31,7 @@ func TransformJSONDocument(v resource.PropertyValue) (resource.PropertyValue, er
 
 	if v.IsString() {
 		return v, nil
-	} else if v.IsObject() {
+	} else if v.IsObject() || v.IsArray() {
 		m := v.Mappable()
 		b, err := json.Marshal(m)
 		if err != nil {

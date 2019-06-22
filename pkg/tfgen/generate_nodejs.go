@@ -952,11 +952,15 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 					return err
 				}
 
+				// We allow types to have a `[]` suffix to indicate an array.
+				// Thus, strip the `[]` suffix for the import so just the type itself is imported.
+				importName := strings.TrimSuffix(string(ct.Name()), "[]")
+
 				// Now just mark the member in the resulting map.
 				if imports[relmod] == nil {
 					imports[relmod] = make(map[string]bool)
 				}
-				imports[relmod][string(ct.Name())] = true
+				imports[relmod][importName] = true
 			}
 		}
 

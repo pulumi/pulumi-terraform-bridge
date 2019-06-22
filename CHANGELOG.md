@@ -11,6 +11,7 @@ This CHANGELOG details important changes made in each version of the
 ### Improvements
 
 - Automatically generate `isInstance` type guards for implementations of `Resource`.
+- `TransformJSONDocument` now accepts arrays (in addition to maps).
 
 ## v0.18.2 (Released May 28th, 2019)
 
