@@ -316,7 +316,9 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.
-func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pbempty.Empty, error) {
+func (p *Provider) Configure(ctx context.Context,
+	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+
 	p.setLoggingContext(ctx)
 	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
 	// we will need to translate into simply the configuration variable names.
@@ -411,7 +413,7 @@ func (p *Provider) Configure(ctx context.Context, req *pulumirpc.ConfigureReques
 		return nil, err
 	}
 
-	return &pbempty.Empty{}, nil
+	return &pulumirpc.ConfigureResponse{}, nil
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
@@ -500,21 +502,29 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	glog.V(9).Infof("%s executing", label)
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
-	inputs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, false, false, fmt.Sprintf("%s.olds", label))
+	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+	attrs, meta, err := MakeTerraformAttributes(res.TF, olds, res.TF.Schema, res.Schema.Fields, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
-	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, true, false, fmt.Sprintf("%s.news", label))
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
+
+	news, err := plugin.UnmarshalProperties(req.GetNews(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
-	diff, err := p.tf.Diff(info, state, config)
+
+	diff, err := p.tf.SimpleDiff(info, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -564,6 +574,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		Stables:             stables,
 		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
 		Diffs:               properties,
+		DetailedDiff:        makeDetailedDiff(res.TF.Schema, res.Schema.Fields, olds, news, diff),
 	}, nil
 }
 
@@ -591,7 +602,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
-	diff, err := p.tf.Diff(info, state, config)
+	diff, err := p.tf.SimpleDiff(info, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -733,7 +744,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
-	diff, err := p.tf.Diff(info, state, config)
+	diff, err := p.tf.SimpleDiff(info, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}

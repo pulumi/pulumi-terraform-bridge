@@ -3,6 +3,10 @@
 This CHANGELOG details important changes made in each version of the
 `terraform` provider, and the `@pulumi/terraform` Node.js package.
 
+## v0.18.4 (Unreleased)
+
+- Terraform-based providers can now communicate detailed information about the difference between a resource's desired and actual state during a Pulumi update.
+
 ## v0.18.3 (Released June 20, 2019)
 
 - Fixed a bug that caused unnecessary changes if the first operation after upgrading a bridged provider was a `pulumi refresh`.

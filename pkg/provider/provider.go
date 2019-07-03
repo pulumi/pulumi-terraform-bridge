@@ -67,8 +67,8 @@ func (*Provider) DiffConfig(context.Context, *pulumirpc.DiffRequest) (*pulumirpc
 	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 }
 
-func (p *Provider) Configure(context.Context, *pulumirpc.ConfigureRequest) (*empty.Empty, error) {
-	return &empty.Empty{}, nil
+func (p *Provider) Configure(context.Context, *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	return &pulumirpc.ConfigureResponse{}, nil
 }
 
 func (*Provider) Invoke(context.Context, *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
