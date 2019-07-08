@@ -76,6 +76,13 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 
 	switch {
 	case v.IsArray():
+		// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
+		// this case, do not recurse into the array; instead, just use the count diff for the details.
+		if d := tfDiff.Attributes[name+".#"]; d != nil && d.NewComputed {
+			name += ".#"
+			break
+		}
+
 		isset := tfs != nil && tfs.Type == schema.TypeSet
 
 		var set *schema.Set
@@ -116,17 +123,19 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 					return
 				}
 
-				ecfg, eflds := map[string]interface{}{"e": []interface{}{ev}}, map[string]*schema.Schema{"e": tfs}
-				cfg, err := MakeTerraformConfigFromInputs(ecfg)
-				if err != nil {
-					return
+				if !e.IsComputed() && !e.IsOutput() {
+					ecfg, eflds := map[string]interface{}{"e": []interface{}{ev}}, map[string]*schema.Schema{"e": tfs}
+					cfg, err := MakeTerraformConfigFromInputs(ecfg)
+					if err != nil {
+						return
+					}
+					reader := &schema.ConfigFieldReader{Config: cfg, Schema: eflds}
+					field, err := reader.ReadField([]string{"e"})
+					if err != nil {
+						return
+					}
+					ev = field.Value.(*schema.Set).List()[0]
 				}
-				reader := &schema.ConfigFieldReader{Config: cfg, Schema: eflds}
-				field, err := reader.ReadField([]string{"e"})
-				if err != nil {
-					return
-				}
-				ev = field.Value.(*schema.Set).List()[0]
 
 				code := set.F(ev)
 				if code < 0 {
@@ -142,6 +151,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			en := name + "." + ti
 			makePropertyDiff(en, ep, e, tfDiff, diff, etfs, eps, rawNames)
 		}
+		return
 	case v.IsObject():
 		var tfflds map[string]*schema.Schema
 		if tfs != nil {
@@ -152,6 +162,13 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 		var psflds map[string]*SchemaInfo
 		if ps != nil {
 			psflds = ps.Fields
+		}
+
+		// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
+		// this case, do not recurse into the object; instead, just use the count diff for the details.
+		if d := tfDiff.Attributes[name+".%"]; d != nil && d.NewComputed {
+			name += ".%"
+			break
 		}
 
 		for k, e := range v.ObjectValue() {
@@ -165,33 +182,46 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames)
 			makePropertyDiff(name+"."+en, elementPath, e, tfDiff, diff, etf, eps, rawNames || useRawNames(tfs))
 		}
-	default:
-		if d := tfDiff.Attributes[name]; d != nil {
-			_, hasOtherDiff := diff[path]
-
-			var kind pulumirpc.PropertyDiff_Kind
-			switch {
-			case d.NewRemoved:
-				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_DELETE_REPLACE
-				} else {
-					kind = pulumirpc.PropertyDiff_DELETE
-				}
-			case !hasOtherDiff:
-				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_ADD_REPLACE
-				} else {
-					kind = pulumirpc.PropertyDiff_ADD
-				}
-			default:
-				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
-				} else {
-					kind = pulumirpc.PropertyDiff_UPDATE
-				}
-			}
-			diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
+		return
+	case v.IsComputed() || v.IsOutput():
+		// If this is a computed value, it may be replacing a map or list. To detect that case, check for attribute
+		// diffs at the various count paths and update `name` appropriately.
+		switch {
+		case tfDiff.Attributes[name] != nil:
+			// We have a diff at this name; process it as usual.
+		case tfDiff.Attributes[name+".#"] != nil:
+			// We have a diff at the list count. Use that name when deciding on the diff kind below.
+			name += ".#"
+		case tfDiff.Attributes[name+".%"] != nil:
+			// We have a diff at the map or set count. Use that name when deciding on the diff kind below.
+			name += ".%"
 		}
+	}
+	if d := tfDiff.Attributes[name]; d != nil {
+		_, hasOtherDiff := diff[path]
+
+		var kind pulumirpc.PropertyDiff_Kind
+		switch {
+		case d.NewRemoved:
+			if d.RequiresNew {
+				kind = pulumirpc.PropertyDiff_DELETE_REPLACE
+			} else {
+				kind = pulumirpc.PropertyDiff_DELETE
+			}
+		case !hasOtherDiff:
+			if d.RequiresNew {
+				kind = pulumirpc.PropertyDiff_ADD_REPLACE
+			} else {
+				kind = pulumirpc.PropertyDiff_ADD
+			}
+		default:
+			if d.RequiresNew {
+				kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
+			} else {
+				kind = pulumirpc.PropertyDiff_UPDATE
+			}
+		}
+		diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
 	}
 }
 

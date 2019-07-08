@@ -575,6 +575,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
 		Diffs:               properties,
 		DetailedDiff:        makeDetailedDiff(res.TF.Schema, res.Schema.Fields, olds, news, diff),
+		HasDetailedDiff:     true,
 	}, nil
 }
 
