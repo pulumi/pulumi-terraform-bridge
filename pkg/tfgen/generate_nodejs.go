@@ -155,6 +155,7 @@ func (g *nodeJSGenerator) emitModules(mmap moduleMap) ([]string, map[string]stri
 // causing problematic cycles.  For example, imagine a module m with many members; the result is:
 //
 //     m/
+//         README.md
 //         index.ts
 //         member1.ts
 //         member<etc>.ts
@@ -172,6 +173,11 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 	dir := g.moduleDir(mod)
 	if err := tools.EnsureDir(dir); err != nil {
 		return nil, "", errors.Wrapf(err, "creating module directory")
+	}
+
+	// Ensure that the target module directory contains a README.md file.
+	if err := g.ensureReadme(dir); err != nil {
+		return nil, "", errors.Wrapf(err, "creating module README file")
 	}
 
 	// Now, enumerate each module member, in the order presented to us, and do the right thing.
@@ -212,6 +218,27 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 	}
 
 	return files, index, nil
+}
+
+// ensureReadme writes out a stock README.md file, provided one doesn't already exist.
+func (g *nodeJSGenerator) ensureReadme(dir string) error {
+	rf := filepath.Join(dir, "README.md")
+	_, err := os.Stat(rf)
+	if err == nil {
+		return nil // file already exists, exit right away.
+	} else if !os.IsNotExist(err) {
+		return err // legitimate error, propagate it.
+	}
+
+	// If we got here, the README.md doesn't already exist -- write out a stock one.
+	w, err := tools.NewGenWriter(tfgen, rf)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
+	w.Writefmtln(standardDocReadme, g.pkg)
+	return nil
 }
 
 // emitIndex emits an index module, optionally re-exporting other members or submodules.
@@ -385,6 +412,10 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, pr
 			}
 			// Print the line of documentation
 			w.Writefmtln("%v * %s", prefix, docLine)
+		}
+		if docURL != "" {
+			w.Writefmtln("%v *", prefix)
+			w.Writefmtln("%v * > This content is derived from %s.", prefix, docURL)
 		}
 		w.Writefmtln("%v */", prefix)
 	}

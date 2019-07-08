@@ -441,7 +441,7 @@ func (g *generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
-		docURL := fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
+		docURL := getDocsIndexURL(g.info.Name)
 		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/); prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -555,7 +555,7 @@ func (g *generator) gatherResource(rawname string,
 				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
 				"[documentation](https://pulumi.io/reference/programming-model.html#providers) for more information.",
 			g.info.Name)
-		parsedDocs.URL = fmt.Sprintf("https://www.terraform.io/docs/providers/%s/", g.info.Name)
+		parsedDocs.URL = getDocsIndexURL(g.info.Name)
 	}
 
 	// Create an empty module and associated resource type.
@@ -575,14 +575,13 @@ func (g *generator) gatherResource(rawname string,
 		rawdoc := propschema.Description
 
 		propinfo := info.Fields[key]
-		docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, key)
 
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not
 		// yet implemented.
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, true /*out*/)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -590,7 +589,7 @@ func (g *generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -600,7 +599,7 @@ func (g *generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, docURL, false /*out*/)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -726,9 +725,8 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := info.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
-		docURL := fmt.Sprintf("%s#%s", parsedDocs.URL, arg)
 		if input(args[arg]) {
-			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", docURL, false /*out*/)
+			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -738,8 +736,7 @@ func (g *generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg],
-				"", docURL, true /*out*/))
+			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", "", true /*out*/))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data

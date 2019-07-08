@@ -90,17 +90,22 @@ func (g *goGenerator) openWriter(mod *module, name string, ims imports) (*tools.
 	w.EmitHeaderWarning(g.commentChars())
 
 	// Emit the Go package name.
-	if mod.name == "" {
-		w.Writefmtln("package %s", g.pkg)
-	} else {
-		w.Writefmtln("package %s", mod.name)
-	}
+	pkg := g.goPackageName(mod)
+	w.Writefmtln("package %s", pkg)
 	w.Writefmtln("")
 
 	// If needed, emit import statements.
 	g.emitImports(w, ims)
 
 	return w, nil
+}
+
+// goPackageName returns the Go package name for this module (package if no sub-module, module otherwise).
+func (g *goGenerator) goPackageName(mod *module) string {
+	if mod.name == "" {
+		return g.pkg
+	}
+	return mod.name
 }
 
 func (g *goGenerator) emitImports(w *tools.GenWriter, ims imports) {
@@ -146,6 +151,7 @@ func (g *goGenerator) emitModules(mmap moduleMap) error {
 // For example, imagine a module m with many members; the result is:
 //
 //     m/
+//         m.go
 //         member1.go
 //         member<etc>.go
 //         memberN.go
@@ -162,6 +168,11 @@ func (g *goGenerator) emitModule(mod *module) error {
 	dir := g.moduleDir(mod)
 	if err := tools.EnsureDir(dir); err != nil {
 		return errors.Wrapf(err, "creating module directory")
+	}
+
+	// Ensure that the module has a module-wide comment.
+	if err := g.ensurePackageComment(mod, dir); err != nil {
+		return errors.Wrapf(err, "creating module comment file")
 	}
 
 	// Now, enumerate each module member, in the order presented to us, and do the right thing.
@@ -184,6 +195,39 @@ func (g *goGenerator) emitModule(mod *module) error {
 			return errors.Wrapf(err, "emitting utilities file")
 		}
 	}
+
+	return nil
+}
+
+// ensurePackageComment writes out a file with a module-wide comment, provided one doesn't already exist.
+func (g *goGenerator) ensurePackageComment(mod *module, dir string) error {
+	pkg := g.goPackageName(mod)
+	rf := filepath.Join(dir, pkg+".go")
+	_, err := os.Stat(rf)
+	if err == nil {
+		return nil // file already exists, exit right away.
+	} else if !os.IsNotExist(err) {
+		return err // legitimate error, propagate it.
+	}
+
+	// If we got here, the module comment file doesn't already exist -- write out a stock one.
+	w, err := tools.NewGenWriter(tfgen, rf)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
+	w.Writefmtln("//nolint: lll")
+	// Fake up a comment that makes it clear to Go that this is a module-wide comment.
+	w.Writefmtln("// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.", pkg)
+	w.Writefmtln("//")
+
+	readme := fmt.Sprintf(standardDocReadme, g.pkg)
+	for _, line := range strings.Split(readme, "\n") {
+		w.Writefmtln("// %s", line)
+	}
+
+	w.Writefmtln("package %s", pkg)
 
 	return nil
 }
@@ -308,6 +352,10 @@ func (g *goGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix
 			}
 			// Print the line of documentation
 			w.Writefmtln("%s// %s", prefix, docLine)
+		}
+		if docURL != "" {
+			w.Writefmtln("%s//", prefix)
+			w.Writefmtln("%s// > This content is derived from %s.", prefix, docURL)
 		}
 	}
 }

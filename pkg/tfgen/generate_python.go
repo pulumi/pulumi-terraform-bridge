@@ -154,6 +154,7 @@ func (g *pythonGenerator) emitModules(mmap moduleMap) ([]string, error) {
 // without causing problematic cycles.  For example, imagine a module m with many members; the result is:
 //
 //     m/
+//         README.md
 //         __init__.py
 //         member1.py
 //         member<etc>.py
@@ -171,6 +172,11 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 	dir := g.moduleDir(mod)
 	if err := tools.EnsureDir(dir); err != nil {
 		return errors.Wrapf(err, "creating module directory")
+	}
+
+	// Ensure that the target module directory contains a README.md file.
+	if err := g.ensureReadme(dir); err != nil {
+		return errors.Wrapf(err, "creating module README file")
 	}
 
 	// Keep track of any immediately exported package modules, as we will re-export them.
@@ -211,6 +217,27 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 		return errors.Wrapf(err, "emitting module %s index", mod.name)
 	}
 
+	return nil
+}
+
+// ensureReadme writes out a stock README.md file, provided one doesn't already exist.
+func (g *pythonGenerator) ensureReadme(dir string) error {
+	rf := filepath.Join(dir, "README.md")
+	_, err := os.Stat(rf)
+	if err == nil {
+		return nil // file already exists, exit right away.
+	} else if !os.IsNotExist(err) {
+		return err // legitimate error, propagate it.
+	}
+
+	// If we got here, the README.md doesn't already exist -- write out a stock one.
+	w, err := tools.NewGenWriter(tfgen, rf)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
+	w.Writefmtln(standardDocReadme, g.pkg)
 	return nil
 }
 
@@ -324,14 +351,14 @@ func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 
 	w.Writefmtln("%s = %s", pyName(v.name), configFetch)
 	if v.doc != "" {
-		g.emitDocComment(w, v.doc, "")
+		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
 	}
 	w.Writefmtln("")
 }
 
-func (g *pythonGenerator) emitDocComment(w *tools.GenWriter, comment, prefix string) {
+func (g *pythonGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
 	if comment != "" {
 		var written bool
 		lines := strings.Split(comment, "\n")
@@ -351,6 +378,10 @@ func (g *pythonGenerator) emitDocComment(w *tools.GenWriter, comment, prefix str
 			w.Writefmtln("%s%s", prefix, docLine)
 		}
 		if written {
+			if docURL != "" {
+				w.Writefmtln("")
+				w.Writefmtln("%s> This content is derived from %s.", prefix, docURL)
+			}
 			w.Writefmtln(`%s"""`, prefix)
 		}
 	}
@@ -385,7 +416,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 	// Produce a class definition with optional """ comment.
 	w.Writefmtln("class %s:", pyClassName(pot.name))
 	if pot.doc != "" {
-		g.emitDocComment(w, pot.doc, "    ")
+		g.emitDocComment(w, pot.doc, "", "    ")
 	}
 
 	// Now generate an initializer with properties for all inputs.
@@ -404,7 +435,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
 		w.Writefmtln("        __self__.%[1]s = %[1]s", pname)
 		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, "        ")
+			g.emitDocComment(w, prop.doc, prop.docURL, "        ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "        ")
 		}
@@ -560,7 +591,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
-		g.emitDocComment(w, fun.doc, "    ")
+		g.emitDocComment(w, fun.doc, fun.docURL, "    ")
 	}
 
 	// Copy the function arguments into a dictionary.
@@ -817,7 +848,7 @@ func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *reso
 		ty := pyType(prop)
 		w.Writefmtln("    %s: pulumi.Output[%s]", name, ty)
 		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, "    ")
+			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		}
 	}
 }
@@ -882,7 +913,7 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	}
 
 	// emitDocComment handles the prefix and triple quotes.
-	g.emitDocComment(w, buf.String(), "        ")
+	g.emitDocComment(w, buf.String(), res.docURL, "        ")
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this

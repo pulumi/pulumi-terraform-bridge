@@ -41,7 +41,7 @@ type parsedDoc struct {
 	Arguments map[string]string
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
-	// URL is the source documentation URL page at www.terraform.io
+	// URL is the source documentation URL page
 	URL string
 }
 
@@ -153,7 +153,7 @@ func mergeDocs(language language, org string, provider string, resourcePrefix st
 	return nil
 }
 
-// nolint:megacheck
+// nolint:lll
 var (
 	argumentBulletRegexp = regexp.MustCompile(
 		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
@@ -162,7 +162,13 @@ var (
 
 	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
-	terraformDocsTemplate = "https://www.terraform.io/docs/providers/%s/%s/%s.html"
+	docsBaseURL    = "https://github.com/terraform-providers/terraform-provider-%s/blob/master/website/docs"
+	docsDetailsURL = docsBaseURL + "/%s/%s.html.markdown"
+
+	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-%[1]s)
+> distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,
+> first check the [` + "`pulumi/pulumi-%[1]s`" + ` repo](https://github.com/pulumi/pulumi-%[1]s/issues); however, if that doesn't turn up anything,
+> please consult the source [` + "`terraform-providers/terraform-provider-%[1]s`" + ` repo](https://github.com/terraform-providers/terraform-provider-%[1]s/issues).`
 )
 
 // groupLines groups a collection of strings, a, by a given separator, sep.
@@ -187,13 +193,28 @@ func splitGroupLines(s, sep string) [][]string {
 	return groupLines(strings.Split(s, "\n"), sep)
 }
 
+// getDocsBaseURL gets the base URL for a given provider's documentation source.
+func getDocsBaseURL(p string) string {
+	return fmt.Sprintf(docsBaseURL, p)
+}
+
+// getDocsDetailsURL gets the detailed resource or data source documentation source.
+func getDocsDetailsURL(p, kind, name string) string {
+	return fmt.Sprintf(docsDetailsURL, p, kind, name)
+}
+
+// getDocsIndexURL gets the given provider's documentation index page's source URL.
+func getDocsIndexURL(p string) string {
+	return getDocsBaseURL(p) + "/index.html.markdown"
+}
+
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(language language, kind DocKind, markdown, resourcePrefix, rawname string) (parsedDoc, error) {
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
-		URL:        fmt.Sprintf(terraformDocsTemplate, resourcePrefix, kind, withoutPackageName(resourcePrefix, rawname)),
+		URL:        getDocsDetailsURL(resourcePrefix, string(kind), withoutPackageName(resourcePrefix, rawname)),
 	}
 
 	// Replace any Windows-style newlines.
@@ -568,6 +589,12 @@ var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(text string) string {
+	// Remove incorrect documentation that should have been cleaned up in our forks.
+	// TODO: fail the build in the face of such text, once we have a processes in place.
+	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+		return ""
+	}
+
 	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
 	text = strings.Replace(text, "-> ", "> ", -1)
 	text = strings.Replace(text, "~> ", "> ", -1)
