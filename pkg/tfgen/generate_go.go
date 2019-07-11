@@ -303,7 +303,7 @@ func (g *goGenerator) emitConfigAccessor(w *tools.GenWriter, v *variable) {
 		gettype, functype = "string", ""
 	}
 
-	if v.doc != "" {
+	if v.doc != "" && v.doc != elidedDocComment {
 		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
@@ -343,7 +343,11 @@ func (g *goGenerator) emitUtilities(mod *module) error {
 }
 
 func (g *goGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
-	if comment != "" {
+	if comment == elidedDocComment && docURL == "" {
+		return
+	}
+
+	if comment != elidedDocComment {
 		lines := strings.Split(comment, "\n")
 		for i, docLine := range lines {
 			// Break if we get to the last line and it's empty
@@ -353,10 +357,14 @@ func (g *goGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix
 			// Print the line of documentation
 			w.Writefmtln("%s// %s", prefix, docLine)
 		}
+
 		if docURL != "" {
 			w.Writefmtln("%s//", prefix)
-			w.Writefmtln("%s// > This content is derived from %s.", prefix, docURL)
 		}
+	}
+
+	if docURL != "" {
+		w.Writefmtln("%s// > This content is derived from %s.", prefix, docURL)
 	}
 }
 
@@ -388,7 +396,7 @@ func (g *goGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
 	}
 	w.Writefmtln("type %s struct {", pot.name)
 	for _, prop := range pot.props {
-		if prop.doc != "" {
+		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "\t")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "\t")
@@ -517,7 +525,7 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	for _, prop := range res.outprops {
-		if prop.doc != "" {
+		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "")
