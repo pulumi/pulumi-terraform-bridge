@@ -379,7 +379,7 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		// If there's a custom type, we need to inject a cast to silence the compiler.
 		anycast = "<any>"
 	}
-	if v.doc != "" {
+	if v.doc != "" && v.doc != elidedDocComment {
 		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
@@ -401,9 +401,14 @@ func sanitizeForDocComment(str string) string {
 }
 
 func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
-	if comment != "" {
+	if comment == elidedDocComment && docURL == "" {
+		return
+	}
+
+	w.Writefmtln("%v/**", prefix)
+
+	if comment != elidedDocComment {
 		lines := strings.Split(comment, "\n")
-		w.Writefmtln("%v/**", prefix)
 		for i, docLine := range lines {
 			docLine = sanitizeForDocComment(docLine)
 			// Break if we get to the last line and it's empty
@@ -413,12 +418,17 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, pr
 			// Print the line of documentation
 			w.Writefmtln("%v * %s", prefix, docLine)
 		}
+
 		if docURL != "" {
 			w.Writefmtln("%v *", prefix)
-			w.Writefmtln("%v * > This content is derived from %s.", prefix, docURL)
 		}
-		w.Writefmtln("%v */", prefix)
 	}
+
+	if docURL != "" {
+		w.Writefmtln("%v * > This content is derived from %s.", prefix, docURL)
+	}
+
+	w.Writefmtln("%v */", prefix)
 }
 
 func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix string) {
@@ -451,7 +461,7 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 	}
 	w.Writefmtln("export interface %s {", pot.name)
 	for _, prop := range pot.props {
-		if prop.doc != "" {
+		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")
@@ -532,7 +542,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		ins[prop.name] = true
 	}
 	for _, prop := range res.outprops {
-		if prop.doc != "" {
+		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")

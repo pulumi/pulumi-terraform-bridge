@@ -587,12 +587,14 @@ func cleanupDoc(doc parsedDoc) parsedDoc {
 
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 
+const elidedDocComment = "<elided>"
+
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(text string) string {
 	// Remove incorrect documentation that should have been cleaned up in our forks.
 	// TODO: fail the build in the face of such text, once we have a processes in place.
 	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
-		return ""
+		return elidedDocComment
 	}
 
 	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.

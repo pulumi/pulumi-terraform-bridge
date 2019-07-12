@@ -350,7 +350,7 @@ func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	}
 
 	w.Writefmtln("%s = %s", pyName(v.name), configFetch)
-	if v.doc != "" {
+	if v.doc != "" && v.doc != elidedDocComment {
 		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
 		g.emitRawDocComment(w, v.rawdoc, "")
@@ -359,8 +359,13 @@ func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 }
 
 func (g *pythonGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
-	if comment != "" {
-		var written bool
+	if comment == elidedDocComment && docURL == "" {
+		return
+	}
+
+	w.Writefmtln(`%s"""`, prefix)
+
+	if comment != elidedDocComment {
 		lines := strings.Split(comment, "\n")
 		for i, docLine := range lines {
 			// Break if we get to the last line and it's empty
@@ -368,23 +373,20 @@ func (g *pythonGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, pr
 				break
 			}
 
-			// If the first line, start a doc comment.
-			if i == 0 {
-				w.Writefmtln(`%s"""`, prefix)
-				written = true
-			}
-
 			// Print the line of documentation
 			w.Writefmtln("%s%s", prefix, docLine)
 		}
-		if written {
-			if docURL != "" {
-				w.Writefmtln("")
-				w.Writefmtln("%s> This content is derived from %s.", prefix, docURL)
-			}
-			w.Writefmtln(`%s"""`, prefix)
+
+		if docURL != "" {
+			w.Writefmtln("")
 		}
 	}
+
+	if docURL != "" {
+		w.Writefmtln("%s> This content is derived from %s.", prefix, docURL)
+	}
+
+	w.Writefmtln(`%s"""`, prefix)
 }
 
 func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix string) {
@@ -434,7 +436,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
 		w.Writefmtln("        __self__.%[1]s = %[1]s", pname)
-		if prop.doc != "" {
+		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "        ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "        ")
@@ -875,7 +877,7 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	var buf bytes.Buffer
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	if res.doc != "" {
+	if res.doc != "" && res.doc != elidedDocComment {
 		fmt.Fprintln(&buf, res.doc)
 	} else {
 		fmt.Fprintf(&buf, "Create a %s resource with the given unique name, props, and options.\n", res.name)
@@ -888,7 +890,7 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	for _, prop := range res.inprops {
 		name := pyName(prop.name)
 		ty := pyType(prop)
-		if prop.doc == "" {
+		if prop.doc == "" || prop.doc == elidedDocComment {
 			continue
 		}
 
