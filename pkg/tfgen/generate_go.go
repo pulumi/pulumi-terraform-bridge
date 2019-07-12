@@ -202,7 +202,7 @@ func (g *goGenerator) emitModule(mod *module) error {
 // ensurePackageComment writes out a file with a module-wide comment, provided one doesn't already exist.
 func (g *goGenerator) ensurePackageComment(mod *module, dir string) error {
 	pkg := g.goPackageName(mod)
-	rf := filepath.Join(dir, pkg+".go")
+	rf := filepath.Join(dir, "_about.go")
 	_, err := os.Stat(rf)
 	if err == nil {
 		return nil // file already exists, exit right away.
