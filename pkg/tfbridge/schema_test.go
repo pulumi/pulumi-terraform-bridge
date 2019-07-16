@@ -513,6 +513,7 @@ func TestTerraformAttributes(t *testing.T) {
 
 	// Build a TF attribute map using schema.MapFieldWriter.
 	cfg, err := MakeTerraformConfigFromInputs(sharedInputs)
+
 	assert.NoError(t, err)
 	reader := &schema.ConfigFieldReader{Config: cfg, Schema: sharedSchema}
 	writer := &schema.MapFieldWriter{Schema: sharedSchema}
@@ -581,6 +582,7 @@ func TestMetaProperties(t *testing.T) {
 	cfg, err := config.NewRawConfig(map[string]interface{}{})
 	assert.NoError(t, err)
 	diff, err := testTFProvider.Diff(info, state, terraform.NewResourceConfig(cfg))
+
 	assert.NoError(t, err)
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
@@ -595,6 +597,78 @@ func TestMetaProperties(t *testing.T) {
 	assert.NotNil(t, meta)
 
 	assert.Contains(t, meta, schema.TimeoutKey)
+}
+
+func TestInjectingCustomTimeouts(t *testing.T) {
+	const resName = "second_resource"
+	res := testTFProvider.ResourcesMap["second_resource"]
+
+	info := &terraform.InstanceInfo{Type: resName}
+	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
+	read, err := testTFProvider.Refresh(info, state)
+	assert.NoError(t, err)
+	assert.NotNil(t, read)
+
+	props, err := MakeTerraformResult(read, res.Schema, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, props)
+
+	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+
+	state.Attributes, state.Meta = attrs, meta
+	read2, err := testTFProvider.Refresh(info, state)
+	assert.NoError(t, err)
+	assert.NotNil(t, read2)
+	assert.Equal(t, read, read2)
+
+	// Delete the resource's meta-property and ensure that we re-populate its schema version.
+	delete(props, metaKey)
+
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+
+	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
+	read2.Meta = map[string]interface{}{}
+	props, err = MakeTerraformResult(read2, res.Schema, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, props)
+	assert.NotContains(t, props, metaKey)
+
+	// Ensure that timeouts are populated and preserved.
+	state.ID = ""
+	cfg, err := config.NewRawConfig(map[string]interface{}{})
+	assert.NoError(t, err)
+	diff, err := testTFProvider.Diff(info, state, terraform.NewResourceConfig(cfg))
+	assert.NoError(t, err)
+
+	injectTimeoutValue(diff, float64(300), schema.TimeoutCreate)
+
+	create, err := testTFProvider.Apply(info, state, diff)
+	assert.NoError(t, err)
+
+	props, err = MakeTerraformResult(create, res.Schema, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, props)
+
+	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, attrs)
+	assert.NotNil(t, meta)
+
+	timeouts := meta[schema.TimeoutKey]
+	assert.NotNil(t, timeouts)
+	assert.Contains(t, timeouts, schema.TimeoutCreate)
+	assert.NotContains(t, timeouts, schema.TimeoutDelete)
+	assert.NotContains(t, timeouts, schema.TimeoutUpdate)
 }
 
 // Test that MakeTerraformResult reads property values appropriately.
