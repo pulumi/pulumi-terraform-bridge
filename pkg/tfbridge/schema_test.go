@@ -650,7 +650,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	diff, err := testTFProvider.Diff(info, state, terraform.NewResourceConfig(cfg))
 	assert.NoError(t, err)
 
-	injectTimeoutValue(diff, float64(300), schema.TimeoutCreate)
+	setTimeout(diff, float64(300), schema.TimeoutCreate)
 
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)

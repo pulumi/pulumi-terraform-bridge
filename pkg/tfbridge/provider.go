@@ -610,7 +610,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	if req.Timeout != 0 {
-		injectTimeoutValue(diff, req.Timeout, schema.TimeoutCreate)
+		setTimeout(diff, req.Timeout, schema.TimeoutCreate)
 	}
 
 	newstate, err := p.tf.Apply(info, state, diff)
@@ -766,7 +766,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		"Expected diff to not require deletion or replacement during Update of %s", urn)
 
 	if req.Timeout != 0 {
-		injectTimeoutValue(diff, req.Timeout, schema.TimeoutUpdate)
+		setTimeout(diff, req.Timeout, schema.TimeoutUpdate)
 	}
 
 	newstate, err := p.tf.Apply(info, state, diff)
@@ -829,7 +829,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 
 	diff := &terraform.InstanceDiff{Destroy: true}
 	if req.Timeout != 0 {
-		injectTimeoutValue(diff, req.Timeout, schema.TimeoutDelete)
+		setTimeout(diff, req.Timeout, schema.TimeoutDelete)
 	}
 
 	if _, err := p.tf.Apply(info, state, diff); err != nil {
@@ -945,18 +945,15 @@ func initializationError(id string, props *pbstruct.Struct, reasons []string) er
 	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 }
 
-func injectTimeoutValue(diff *terraform.InstanceDiff, timeout float64, timeoutKey string) *terraform.InstanceDiff {
+func setTimeout(diff *terraform.InstanceDiff, timeout float64, timeoutKey string) *terraform.InstanceDiff {
 	timeoutValue := int64(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
+
 	if diff.Meta == nil {
-		diff.Meta = map[string]interface{}{
-			schema.TimeoutKey: map[string]interface{}{
-				timeoutKey: timeoutValue,
-			},
-		}
-	} else {
-		diff.Meta[schema.TimeoutKey] = map[string]interface{}{
-			timeoutKey: timeoutValue,
-		}
+		diff.Meta = map[string]interface{}{}
+	}
+
+	diff.Meta[schema.TimeoutKey] = map[string]interface{}{
+		timeoutKey: timeoutValue,
 	}
 
 	return diff

@@ -6,6 +6,7 @@ This CHANGELOG details important changes made in each version of the
 ## v0.18.4 (Unreleased)
 
 - Terraform-based providers can now communicate detailed information about the difference between a resource's desired and actual state during a Pulumi update.
+- Add the ability to inject CustomTimeouts into the InstanceDiff during a pulumi update.
 
 ## v0.18.3 (Released June 20, 2019)
 
