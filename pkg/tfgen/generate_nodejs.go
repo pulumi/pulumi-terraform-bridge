@@ -703,7 +703,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	} else {
 		retty = fun.retst.name
 	}
-	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {", fun.name, argsig, retty)
+	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> & %s {", fun.name, argsig, retty, retty)
 
 	// Zero initialize the args if empty and necessary.
 	if len(fun.args) > 0 && len(fun.reqargs) == 0 {
@@ -721,13 +721,14 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	// w.Writefmtln("    }")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
-	w.Writefmtln("    return pulumi.runtime.invoke(\"%s\", {", fun.info.Tok)
+	w.Writefmtln("    const promise: Promise<%s> = pulumi.runtime.invoke(\"%s\", {", retty, fun.info.Tok)
 	for _, arg := range fun.args {
 		// Pass the argument to the invocation.
 		w.Writefmtln("        \"%[1]s\": args.%[1]s,", arg.name)
 	}
 	w.Writefmtln("    }, opts);")
-
+	w.Writefmtln("")
+	w.Writefmtln("    return pulumi.utils.liftProperties(promise);")
 	w.Writefmtln("}")
 
 	// If there are argument and/or return types, emit them.
