@@ -23,7 +23,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/pkg/errors"
@@ -603,9 +603,14 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
+
 	diff, err := p.tf.SimpleDiff(info, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+
+	if req.Timeout != 0 {
+		setTimeout(diff, req.Timeout, schema.TimeoutCreate)
 	}
 
 	newstate, err := p.tf.Apply(info, state, diff)
@@ -737,6 +742,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
+
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
 	config, err := MakeTerraformConfigFromRPC(
@@ -758,6 +764,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 	contract.Assertf(!diff.Destroy && !diff.RequiresNew(),
 		"Expected diff to not require deletion or replacement during Update of %s", urn)
+
+	if req.Timeout != 0 {
+		setTimeout(diff, req.Timeout, schema.TimeoutUpdate)
+	}
 
 	newstate, err := p.tf.Apply(info, state, diff)
 	if newstate == nil {
@@ -816,7 +826,13 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	// Create a new state, with no diff, that is missing an ID.  Terraform will interpret this as a create operation.
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
-	if _, err := p.tf.Apply(info, state, &terraform.InstanceDiff{Destroy: true}); err != nil {
+
+	diff := &terraform.InstanceDiff{Destroy: true}
+	if req.Timeout != 0 {
+		setTimeout(diff, req.Timeout, schema.TimeoutDelete)
+	}
+
+	if _, err := p.tf.Apply(info, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
@@ -927,4 +943,18 @@ func initializationError(id string, props *pbstruct.Struct, reasons []string) er
 		Reasons:    reasons,
 	}
 	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+}
+
+func setTimeout(diff *terraform.InstanceDiff, timeout float64, timeoutKey string) *terraform.InstanceDiff {
+	timeoutValue := int64(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
+
+	if diff.Meta == nil {
+		diff.Meta = map[string]interface{}{}
+	}
+
+	diff.Meta[schema.TimeoutKey] = map[string]interface{}{
+		timeoutKey: timeoutValue,
+	}
+
+	return diff
 }

@@ -17,7 +17,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829 // indirect
-	github.com/pulumi/pulumi v0.17.22-0.20190702185104-ebceea93a5da
+	github.com/pulumi/pulumi v0.17.23-0.20190715212628-02ffff88409f
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/stretchr/testify v1.3.1-0.20190311161405-34c6fa2dc709
@@ -25,6 +25,8 @@ require (
 	golang.org/x/build v0.0.0-20190314133821-5284462c4bec // indirect
 	golang.org/x/net v0.0.0-20190502183928-7f726cade0ab
 	google.golang.org/grpc v1.20.1
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
 )
