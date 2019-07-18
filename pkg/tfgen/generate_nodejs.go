@@ -730,7 +730,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 	w.Writefmtln("    }, opts);")
 	w.Writefmtln("")
-	w.Writefmtln("    return (<any>opts).async ? promise : utils.promiseResult(promise);")
+	w.Writefmtln("    return <any>((<any>opts).async ? promise : utils.promiseResult(promise));")
 	w.Writefmtln("}")
 
 	// If there are argument and/or return types, emit them.
