@@ -704,7 +704,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	} else {
 		retty = fun.retst.name
 	}
-	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): %s {", fun.name, argsig, retty)
+	w.Writefmtln("export function %s(%sopts: pulumi.InvokeOptions = {}): %s {", fun.name, argsig, retty)
 
 	// Zero initialize the args if empty and necessary.
 	if len(fun.args) > 0 && len(fun.reqargs) == 0 {
@@ -729,7 +729,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 	w.Writefmtln("    }, opts);")
 	w.Writefmtln("")
-	w.Writefmtln("    return utils.promiseResult(promise);")
+	w.Writefmtln("    return utils.promiseResult(promise, (<any>opts).async);")
 	w.Writefmtln("}")
 
 	// If there are argument and/or return types, emit them.
