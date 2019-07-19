@@ -94,6 +94,6 @@ const ref = new tf.state.RemoteStateReference("remote", {
 const vpcId= remoteState.getOutput("vpc_id");
 ```
 
-[stackreference]: https://pulumi.io/reference/organizing-stacks-projects.html#inter-stack-dependencies
-[pulumicli]: https://pulumi.io/
+[stackreference]: https://www.pulumi.com/docs/reference/organizing-stacks-projects/#inter-stack-dependencies
+[pulumicli]: https://pulumi.com/
 

@@ -553,7 +553,7 @@ func (g *generator) gatherResource(rawname string,
 			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
 				"settings, however an explicit `Provider` instance may be created and passed during resource\n"+
 				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
-				"[documentation](https://pulumi.io/reference/programming-model.html#providers) for more information.",
+				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
 		parsedDocs.URL = getDocsIndexURL(g.info.Name)
 	}
