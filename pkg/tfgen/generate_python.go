@@ -237,7 +237,7 @@ func (g *pythonGenerator) ensureReadme(dir string) error {
 	}
 	defer contract.IgnoreClose(w)
 
-	w.Writefmtln(standardDocReadme, g.pkg)
+	w.Writefmtln(standardDocReadme, g.pkg, g.info.Name)
 	return nil
 }
 

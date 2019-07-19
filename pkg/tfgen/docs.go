@@ -165,10 +165,10 @@ var (
 	docsBaseURL    = "https://github.com/terraform-providers/terraform-provider-%s/blob/master/website/docs"
 	docsDetailsURL = docsBaseURL + "/%s/%s.html.markdown"
 
-	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-%[1]s)
+	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-%[2]s)
 > distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,
 > first check the [` + "`pulumi/pulumi-%[1]s`" + ` repo](https://github.com/pulumi/pulumi-%[1]s/issues); however, if that doesn't turn up anything,
-> please consult the source [` + "`terraform-providers/terraform-provider-%[1]s`" + ` repo](https://github.com/terraform-providers/terraform-provider-%[1]s/issues).`
+> please consult the source [` + "`terraform-providers/terraform-provider-%[2]s`" + ` repo](https://github.com/terraform-providers/terraform-provider-%[2]s/issues).`
 )
 
 // groupLines groups a collection of strings, a, by a given separator, sep.

@@ -222,7 +222,7 @@ func (g *goGenerator) ensurePackageComment(mod *module, dir string) error {
 	w.Writefmtln("// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.", pkg)
 	w.Writefmtln("//")
 
-	readme := fmt.Sprintf(standardDocReadme, g.pkg)
+	readme := fmt.Sprintf(standardDocReadme, g.pkg, g.info.Name)
 	for _, line := range strings.Split(readme, "\n") {
 		w.Writefmtln("// %s", line)
 	}
