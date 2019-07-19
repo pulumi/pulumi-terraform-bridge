@@ -475,7 +475,16 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
 	// Create a resource module file into which all of this resource's types will go.
 	name := res.name
-	w, file, err := g.openWriter(mod, lowerFirst(name)+".ts", true)
+	filename := lowerFirst(name)
+
+	// We need to check if the resource is called index or utilities. If so then we will have problems
+	// based on the fact that we need to generate an index.ts based on the package contents
+	// Therefore, we are going to append _ into the name to allow us to continue
+	if filename == "index" || filename == "utilities" {
+		filename = fmt.Sprintf("%s_", filename)
+	}
+
+	w, file, err := g.openWriter(mod, filename+".ts", true)
 	if err != nil {
 		return "", err
 	}
