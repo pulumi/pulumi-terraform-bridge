@@ -103,7 +103,6 @@ func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import * as pulumi from \"@pulumi/pulumi\";")
 	w.Writefmtln("import * as utilities from \"%s/utilities\";", g.relativeRootDir(mod))
-	w.Writefmtln("import * as utils from \"%s/utils\";", g.relativeRootDir(mod))
 	w.Writefmtln("")
 }
 
@@ -704,7 +703,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	} else {
 		retty = fun.retst.name
 	}
-	w.Writefmtln("export function %s(%sopts: pulumi.InvokeOptions = {}): Promise<%s> & %s {",
+	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> & %s {",
 		fun.name, argsig, retty, retty)
 
 	// Zero initialize the args if empty and necessary.
@@ -730,7 +729,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 	w.Writefmtln("    }, opts);")
 	w.Writefmtln("")
-	w.Writefmtln("    return <any>((<any>opts).async ? promise : utils.promiseResult(promise));")
+	w.Writefmtln("    return pulumi.utils.liftProperties(promise, opts);")
 	w.Writefmtln("}")
 
 	// If there are argument and/or return types, emit them.
