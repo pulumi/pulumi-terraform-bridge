@@ -596,7 +596,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{}
+	state := &terraform.InstanceState{Meta: make(map[string]interface{})}
 	config, err := MakeTerraformConfigFromRPC(
 		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
 		p.configValues, true, false, fmt.Sprintf("%s.news", label))
