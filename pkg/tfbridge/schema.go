@@ -461,7 +461,7 @@ const metaKey = "__meta"
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(state *terraform.InstanceState,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (resource.PropertyMap, error) {
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, supportsSecrets bool) (resource.PropertyMap, error) {
 	var outs map[string]interface{}
 	if state != nil {
 		outs = make(map[string]interface{})
@@ -487,7 +487,7 @@ func MakeTerraformResult(state *terraform.InstanceState,
 			outs["id"] = attrs["id"]
 		}
 	}
-	outMap := MakeTerraformOutputs(outs, tfs, ps, nil, false)
+	outMap := MakeTerraformOutputs(outs, tfs, ps, nil, false, supportsSecrets)
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta) != 0 {
@@ -502,15 +502,17 @@ func MakeTerraformResult(state *terraform.InstanceState,
 // MakeTerraformOutputs takes an expanded Terraform property map and returns a Pulumi equivalent.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformOutputs(outs map[string]interface{},
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable, rawNames bool) resource.PropertyMap {
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable, rawNames,
+	supportsSecrets bool) resource.PropertyMap {
 	result := make(resource.PropertyMap)
+
 	for key, value := range outs {
 		// First do a lookup of the name/info.
 		name, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
 		contract.Assert(name != "")
 
 		// Next perform a translation of the value accordingly.
-		result[name] = MakeTerraformOutput(value, tfi, psi, assets, rawNames)
+		result[name] = MakeTerraformOutput(value, tfi, psi, assets, rawNames, supportsSecrets)
 	}
 
 	if glog.V(5) {
@@ -524,122 +526,133 @@ func MakeTerraformOutputs(outs map[string]interface{},
 
 // MakeTerraformOutput takes a single Terraform property and returns the Pulumi equivalent.
 func MakeTerraformOutput(v interface{},
-	tfs *schema.Schema, ps *SchemaInfo, assets AssetTable, rawNames bool) resource.PropertyValue {
+	tfs *schema.Schema, ps *SchemaInfo, assets AssetTable, rawNames, supportsSecrets bool) resource.PropertyValue {
 
-	if assets != nil && ps != nil && ps.Asset != nil {
-		if asset, has := assets[ps]; has {
-			// if we have the value, it better actually be an asset or an archive.
-			contract.Assert(asset.IsAsset() || asset.IsArchive())
-			return asset
-		}
-
-		// If we don't have the value, it is possible that the user supplied a value that was not an asset. Let the
-		// normal marshalling logic handle it in that case.
-	}
-
-	if v == nil {
-		return resource.NewNullProperty()
-	}
-
-	// Marshal sets as their list value.
-	if set, isset := v.(*schema.Set); isset {
-		v = set.List()
-	}
-
-	// We use reflection instead of a type switch so that we can support mapping values whose underlying type is
-	// supported into a Pulumi value, even if they stored as a wrapper type (such as a strongly-typed enum).
-	//
-	// That said, Terraform often returns values of type String for fields whose schema does not indicate that the
-	// value is actually a string. If we are given a string, and we'd otherwise return a string property, we'll also
-	// inspect the schema if one exists to determine the actual value that we should return.
-	val := reflect.ValueOf(v)
-	switch val.Kind() {
-	case reflect.Bool:
-		return resource.NewBoolProperty(val.Bool())
-	case reflect.Int:
-		return resource.NewNumberProperty(float64(val.Int()))
-	case reflect.Float64:
-		return resource.NewNumberProperty(val.Float())
-	case reflect.String:
-		// If the string is the special unknown property sentinel, reflect back an unknown computed property.  Note that
-		// Terraform doesn't carry the types along with it, so the best we can do is give back a computed string.
-		t := val.String()
-		if t == config.UnknownVariableValue {
-			return resource.NewComputedProperty(
-				resource.Computed{Element: resource.NewStringProperty("")})
-		}
-
-		// Is there a schema available to us? If not, it's definitely just a string.
-		if tfs == nil {
-			return resource.NewStringProperty(t)
-		}
-
-		// Otherwise, it might be a string that needs to be coerced to match the Terraform schema type. Coerce the
-		// string to the Go value of the correct type and, if the coercion produced something different than the string
-		// value we already have, re-make the output.
-		coerced, err := CoerceTerraformString(tfs.Type, t)
-		if err != nil || coerced == t {
-			return resource.NewStringProperty(t)
-		}
-		return MakeTerraformOutput(coerced, tfs, ps, assets, rawNames)
-	case reflect.Slice:
-		elems := []interface{}{}
-		for i := 0; i < val.Len(); i++ {
-			elems = append(elems, val.Index(i).Interface())
-		}
-		var tfes *schema.Schema
-		if tfs != nil {
-			if sch, issch := tfs.Elem.(*schema.Schema); issch {
-				tfes = sch
-			} else if _, isres := tfs.Elem.(*schema.Resource); isres {
-				// The map[string]interface{} case below expects a schema whose
-				// `Elem` is a Resource, so just pass the full List schema
-				tfes = tfs
+	buildOutput := func(v interface{},
+		tfs *schema.Schema, ps *SchemaInfo, assets AssetTable, rawNames, supportsSecrets bool) resource.PropertyValue {
+		if assets != nil && ps != nil && ps.Asset != nil {
+			if asset, has := assets[ps]; has {
+				// if we have the value, it better actually be an asset or an archive.
+				contract.Assert(asset.IsAsset() || asset.IsArchive())
+				return asset
 			}
+
+			// If we don't have the value, it is possible that the user supplied a value that was not an asset. Let the
+			// normal marshalling logic handle it in that case.
 		}
-		var pes *SchemaInfo
-		if ps != nil {
-			pes = ps.Elem
+
+		if v == nil {
+			return resource.NewNullProperty()
 		}
-		var arr []resource.PropertyValue
-		for _, elem := range elems {
-			arr = append(arr, MakeTerraformOutput(elem, tfes, pes, assets, rawNames))
+
+		// Marshal sets as their list value.
+		if set, isset := v.(*schema.Set); isset {
+			v = set.List()
 		}
-		// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, so need to extract
-		// out the single element (or null).
-		if IsMaxItemsOne(tfs, ps) {
-			switch len(arr) {
-			case 0:
-				return resource.NewNullProperty()
-			case 1:
-				return arr[0]
-			default:
-				contract.Failf("Unexpected multiple elements in array with MaxItems=1")
+
+		// We use reflection instead of a type switch so that we can support mapping values whose underlying type is
+		// supported into a Pulumi value, even if they stored as a wrapper type (such as a strongly-typed enum).
+		//
+		// That said, Terraform often returns values of type String for fields whose schema does not indicate that the
+		// value is actually a string. If we are given a string, and we'd otherwise return a string property, we'll also
+		// inspect the schema if one exists to determine the actual value that we should return.
+		val := reflect.ValueOf(v)
+		switch val.Kind() {
+		case reflect.Bool:
+			return resource.NewBoolProperty(val.Bool())
+		case reflect.Int:
+			return resource.NewNumberProperty(float64(val.Int()))
+		case reflect.Float64:
+			return resource.NewNumberProperty(val.Float())
+		case reflect.String:
+			// If the string is the special unknown property sentinel, reflect back an unknown computed property.  Note that
+			// Terraform doesn't carry the types along with it, so the best we can do is give back a computed string.
+			t := val.String()
+			if t == config.UnknownVariableValue {
+				return resource.NewComputedProperty(
+					resource.Computed{Element: resource.NewStringProperty("")})
 			}
-		}
-		return resource.NewArrayProperty(arr)
-	case reflect.Map:
-		outs := map[string]interface{}{}
-		for _, key := range val.MapKeys() {
-			contract.Assert(key.Kind() == reflect.String)
-			outs[key.String()] = val.MapIndex(key).Interface()
-		}
-		var tfflds map[string]*schema.Schema
-		if tfs != nil {
-			if res, isres := tfs.Elem.(*schema.Resource); isres {
-				tfflds = res.Schema
+
+			// Is there a schema available to us? If not, it's definitely just a string.
+			if tfs == nil {
+				return resource.NewStringProperty(t)
 			}
+
+			// Otherwise, it might be a string that needs to be coerced to match the Terraform schema type. Coerce the
+			// string to the Go value of the correct type and, if the coercion produced something different than the string
+			// value we already have, re-make the output.
+			coerced, err := CoerceTerraformString(tfs.Type, t)
+			if err != nil || coerced == t {
+				return resource.NewStringProperty(t)
+			}
+			return MakeTerraformOutput(coerced, tfs, ps, assets, rawNames, supportsSecrets)
+		case reflect.Slice:
+			elems := []interface{}{}
+			for i := 0; i < val.Len(); i++ {
+				elems = append(elems, val.Index(i).Interface())
+			}
+			var tfes *schema.Schema
+			if tfs != nil {
+				if sch, issch := tfs.Elem.(*schema.Schema); issch {
+					tfes = sch
+				} else if _, isres := tfs.Elem.(*schema.Resource); isres {
+					// The map[string]interface{} case below expects a schema whose
+					// `Elem` is a Resource, so just pass the full List schema
+					tfes = tfs
+				}
+			}
+			var pes *SchemaInfo
+			if ps != nil {
+				pes = ps.Elem
+			}
+			var arr []resource.PropertyValue
+			for _, elem := range elems {
+				arr = append(arr, MakeTerraformOutput(elem, tfes, pes, assets, rawNames, supportsSecrets))
+			}
+			// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, so need to extract
+			// out the single element (or null).
+			if IsMaxItemsOne(tfs, ps) {
+				switch len(arr) {
+				case 0:
+					return resource.NewNullProperty()
+				case 1:
+					return arr[0]
+				default:
+					contract.Failf("Unexpected multiple elements in array with MaxItems=1")
+				}
+			}
+			return resource.NewArrayProperty(arr)
+		case reflect.Map:
+			outs := map[string]interface{}{}
+			for _, key := range val.MapKeys() {
+				contract.Assert(key.Kind() == reflect.String)
+				outs[key.String()] = val.MapIndex(key).Interface()
+			}
+			var tfflds map[string]*schema.Schema
+			if tfs != nil {
+				if res, isres := tfs.Elem.(*schema.Resource); isres {
+					tfflds = res.Schema
+				}
+			}
+			var psflds map[string]*SchemaInfo
+			if ps != nil {
+				psflds = ps.Fields
+			}
+			obj := MakeTerraformOutputs(outs, tfflds, psflds, assets, rawNames || useRawNames(tfs), supportsSecrets)
+			return resource.NewObjectProperty(obj)
+		default:
+			contract.Failf("Unexpected TF output property value: %#v", v)
+			return resource.NewNullProperty()
 		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
-		obj := MakeTerraformOutputs(outs, tfflds, psflds, assets, rawNames || useRawNames(tfs))
-		return resource.NewObjectProperty(obj)
-	default:
-		contract.Failf("Unexpected TF output property value: %#v", v)
-		return resource.NewNullProperty()
 	}
+
+	output := buildOutput(v, tfs, ps, assets, rawNames, supportsSecrets)
+
+	if tfs != nil && tfs.Sensitive && supportsSecrets {
+		return resource.MakeSecret(output)
+	}
+
+	return output
 }
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
@@ -876,6 +889,7 @@ func getInfoFromTerraformName(key string,
 	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, rawName bool) (resource.PropertyKey,
 	*schema.Schema, *SchemaInfo) {
 	info := ps[key]
+
 	var name string
 	if info != nil {
 		name = info.Name
@@ -889,6 +903,7 @@ func getInfoFromTerraformName(key string,
 			name = TerraformToPulumiName(key, tfs[key], false)
 		}
 	}
+
 	return resource.PropertyKey(name), tfs[key], info
 }
 

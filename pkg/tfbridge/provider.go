@@ -43,15 +43,16 @@ import (
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
 type Provider struct {
-	host         *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module       string                             // the Terraform module name.
-	version      string                             // the plugin version number.
-	tf           *schema.Provider                   // the Terraform resource provider to use.
-	info         ProviderInfo                       // overlaid info about this provider.
-	config       map[string]*schema.Schema          // the Terraform config schema.
-	configValues resource.PropertyMap               // this package's config values.
-	resources    map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources  map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module          string                             // the Terraform module name.
+	version         string                             // the plugin version number.
+	tf              *schema.Provider                   // the Terraform resource provider to use.
+	info            ProviderInfo                       // overlaid info about this provider.
+	config          map[string]*schema.Schema          // the Terraform config schema.
+	configValues    resource.PropertyMap               // this package's config values.
+	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	supportsSecrets bool                               // true if the engine supports secret property values
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -319,6 +320,10 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 func (p *Provider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 
+	if req.AcceptSecrets {
+		p.supportsSecrets = true
+	}
+
 	p.setLoggingContext(ctx)
 	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
 	// we will need to translate into simply the configuration variable names.
@@ -478,7 +483,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
-	pinputs := MakeTerraformOutputs(inputs, res.TF.Schema, res.Schema.Fields, assets, false)
+	pinputs := MakeTerraformOutputs(inputs, res.TF.Schema, res.Schema.Fields, assets, false, p.supportsSecrets)
 	minputs, err := plugin.MarshalProperties(pinputs, plugin.MarshalOptions{
 		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
 	if err != nil {
@@ -626,7 +631,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -695,7 +700,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+		props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -786,7 +791,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 	}
 
-	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -901,7 +906,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props, err := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields)
+		props, err := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
