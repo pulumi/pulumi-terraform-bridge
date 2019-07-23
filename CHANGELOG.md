@@ -8,6 +8,7 @@ This CHANGELOG details important changes made in each version of the
 - Terraform-based providers can now communicate detailed information about the difference between a resource's desired and actual state during a Pulumi update.
 - Add the ability to inject CustomTimeouts into the InstanceDiff during a pulumi update.
 - Change how Tfgen deals with package classes that are named Index to make them index_.ts
+- Protect against panic when RemoteState NotFound.
 
 ## v0.18.3 (Released June 20, 2019)
 
