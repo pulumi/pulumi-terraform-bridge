@@ -23,12 +23,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
 
+	pycodegen "github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -67,7 +67,7 @@ func (g *pythonGenerator) commentChars() string {
 func (g *pythonGenerator) moduleDir(mod *module) string {
 	dir := filepath.Join(g.outDir, pyPack(g.pkg))
 	if mod.name != "" {
-		dir = filepath.Join(dir, pyName(mod.name))
+		dir = filepath.Join(dir, pycodegen.PyName(mod.name))
 	}
 	return dir
 }
@@ -259,7 +259,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 			if i > 0 {
 				w.Writefmt(", ")
 			}
-			w.Writefmt("'%s'", pyName(sub))
+			w.Writefmt("'%s'", pycodegen.PyName(sub))
 		}
 		w.Writefmtln("]")
 		w.Writefmtln("for pkg in __all__:")
@@ -274,7 +274,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 		}
 		w.Writefmtln("# Export this package's modules as members:")
 		for _, exp := range exports {
-			w.Writefmtln("from .%s import *", pyName(exp))
+			w.Writefmtln("from .%s import *", pycodegen.PyName(exp))
 		}
 	}
 
@@ -349,7 +349,7 @@ func (g *pythonGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		configFetch += " or " + defaultValue
 	}
 
-	w.Writefmtln("%s = %s", pyName(v.name), configFetch)
+	w.Writefmtln("%s = %s", pycodegen.PyName(v.name), configFetch)
 	if v.doc != "" && v.doc != elidedDocComment {
 		g.emitDocComment(w, v.doc, v.docURL, "")
 	} else if v.rawdoc != "" {
@@ -424,12 +424,12 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 	// Now generate an initializer with properties for all inputs.
 	w.Writefmt("    def __init__(__self__")
 	for _, prop := range pot.props {
-		w.Writefmt(", %s=None", pyName(prop.name))
+		w.Writefmt(", %s=None", pycodegen.PyName(prop.name))
 	}
 	w.Writefmtln("):")
 	for _, prop := range pot.props {
 		// Check that required arguments are present.  Also check that types are as expected.
-		pname := pyName(prop.name)
+		pname := pycodegen.PyName(prop.name)
 		ptype := pyType(prop)
 		w.Writefmtln("        if %s and not isinstance(%s, %s):", pname, pname, ptype)
 		w.Writefmtln("            raise TypeError(\"Expected argument '%s' to be a %s\")", pname, ptype)
@@ -446,7 +446,7 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 
 func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
 	// Create a resource file for this resource's module.
-	name := pyName(res.name)
+	name := pycodegen.PyName(res.name)
 	w, err := g.openWriter(mod, name+".py", true)
 	if err != nil {
 		return "", err
@@ -466,7 +466,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.inprops {
-		w.Writefmt(", %s=None", pyName(prop.name))
+		w.Writefmt(", %s=None", pycodegen.PyName(prop.name))
 	}
 
 	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
@@ -496,7 +496,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	ins := make(map[string]bool)
 	for _, prop := range res.inprops {
 		g.recordProperty(prop.name, prop.schema, prop.info)
-		pname := pyName(prop.name)
+		pname := pycodegen.PyName(prop.name)
 
 		// Fill in computed defaults for arguments.
 		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
@@ -533,7 +533,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins[prop.name] {
-			w.Writefmtln("        __props__['%s'] = None", pyName(prop.name))
+			w.Writefmtln("        __props__['%s'] = None", pycodegen.PyName(prop.name))
 			wroteOuts = true
 		}
 	}
@@ -570,7 +570,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 }
 
 func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (string, error) {
-	name := pyName(fun.name)
+	name := pycodegen.PyName(fun.name)
 	w, err := g.openWriter(mod, name+".py", true)
 	if err != nil {
 		return "", err
@@ -586,7 +586,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	// Write out the function signature.
 	w.Writefmt("async def %s(", name)
 	for _, arg := range fun.args {
-		w.Writefmt("%s=None,", pyName(arg.name))
+		w.Writefmt("%s=None,", pycodegen.PyName(arg.name))
 	}
 	w.Writefmt("opts=None")
 	w.Writefmtln("):")
@@ -601,7 +601,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	w.Writefmtln("")
 	for _, arg := range fun.args {
 		// TODO: args validation.
-		w.Writefmtln("    __args__['%s'] = %s", arg.name, pyName(arg.name))
+		w.Writefmtln("    __args__['%s'] = %s", arg.name, pycodegen.PyName(arg.name))
 	}
 
 	// TODO[pulumi/pulumi#2753]: We should re-enable this code once we have a solution for #2753.
@@ -619,7 +619,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	if fun.retst != nil {
 		w.Writefmtln("    return %s(", fun.retst.name)
 		for i, ret := range fun.rets {
-			w.Writefmt("        %s=__ret__.get('%s')", pyName(ret.name), ret.name)
+			w.Writefmt("        %s=__ret__.get('%s')", pycodegen.PyName(ret.name), ret.name)
 			if i == len(fun.rets)-1 {
 				w.Writefmtln(")")
 			} else {
@@ -793,7 +793,7 @@ func (g *pythonGenerator) emitPropertyConversionTables(tableModule *module) erro
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
 func (g *pythonGenerator) recordProperty(name string, sch *schema.Schema, info *tfbridge.SchemaInfo) {
-	snakeCaseName := pyName(name)
+	snakeCaseName := pycodegen.PyName(name)
 	g.snakeCaseToCamelCase[snakeCaseName] = name
 	g.recordPropertyRec(sch, info)
 }
@@ -846,7 +846,7 @@ func (g *pythonGenerator) recordPropertyRec(sch *schema.Schema, info *tfbridge.S
 // emitMembers emits property declarations and docstrings for all output properties of the given resource.
 func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *resourceType) {
 	for _, prop := range res.outprops {
-		name := pyName(prop.name)
+		name := pycodegen.PyName(prop.name)
 		ty := pyType(prop)
 		w.Writefmtln("    %s: pulumi.Output[%s]", name, ty)
 		if prop.doc != "" {
@@ -888,7 +888,7 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	fmt.Fprintln(&buf, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.inprops {
-		name := pyName(prop.name)
+		name := pycodegen.PyName(prop.name)
 		ty := pyType(prop)
 		if prop.doc == "" || prop.doc == elidedDocComment {
 			continue
@@ -964,186 +964,7 @@ func pyPack(s string) string {
 
 // pyClassName turns a raw name into one that is suitable as a Python class name.
 func pyClassName(name string) string {
-	return ensurePythonKeywordSafe(name)
-}
-
-// pyName turns a variable or function name, normally using camelCase, to an underscore_case name.
-func pyName(name string) string {
-	// This method is a state machine with four states:
-	//   stateFirst - the initial state.
-	//   stateUpper - The last character we saw was an uppercase letter and the character before it
-	//                was either a number or a lowercase letter.
-	//   stateAcronym - The last character we saw was an uppercase letter and the character before it
-	//                  was an uppercase letter.
-	//   stateLowerOrNumber - The last character we saw was a lowercase letter or a number.
-	//
-	// The following are the state transitions of this state machine:
-	//   stateFirst -> (uppercase letter) -> stateUpper
-	//   stateFirst -> (lowercase letter or number) -> stateLowerOrNumber
-	//      Append the lower-case form of the character to currentComponent.
-	//
-	//   stateUpper -> (uppercase letter) -> stateAcronym
-	//   stateUpper -> (lowercase letter or number) -> stateLowerOrNumber
-	//      Append the lower-case form of the character to currentComponent.
-	//
-	//   stateAcronym -> (uppercase letter) -> stateAcronym
-	//		Append the lower-case form of the character to currentComponent.
-	//   stateAcronym -> (number) -> stateLowerOrNumber
-	//      Append the character to currentComponent.
-	//   stateAcronym -> (lowercase letter) -> stateLowerOrNumber
-	//      Take all but the last character in currentComponent, turn that into
-	//      a string, and append that to components. Set currentComponent to the
-	//      last two characters seen.
-	//
-	//   stateLowerOrNumber -> (uppercase letter) -> stateUpper
-	//      Take all characters in currentComponent, turn that into a string,
-	//      and append that to components. Set currentComponent to the last
-	//      character seen.
-	//	 stateLowerOrNumber -> (lowercase letter) -> stateLowerOrNumber
-	//      Append the character to currentComponent.
-	//
-	// The Go libraries that convert camelCase to snake_case deviate subtly from
-	// the semantics we're going for in this method, namely that they separate
-	// numbers and lowercase letters. We don't want this in all cases (we want e.g. Sha256Hash to
-	// be converted as sha256_hash). We also want SHA256Hash to be converted as sha256_hash, so
-	// we must at least be aware of digits when in the stateAcronym state.
-	//
-	// As for why this is a state machine, the libraries that do this all pretty much use
-	// either regular expressions or state machines, which I suppose are ultimately the same thing.
-	const (
-		stateFirst = iota
-		stateUpper
-		stateAcronym
-		stateLowerOrNumber
-	)
-
-	var components []string     // The components that will be joined together with underscores
-	var currentComponent []rune // The characters composing the current component being built
-	state := stateFirst
-	for _, char := range name {
-		switch state {
-		case stateFirst:
-			if unicode.IsUpper(char) {
-				// stateFirst -> stateUpper
-				state = stateUpper
-				currentComponent = append(currentComponent, unicode.ToLower(char))
-				continue
-			}
-
-			// stateFirst -> stateLowerOrNumber
-			state = stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
-			continue
-
-		case stateUpper:
-			if unicode.IsUpper(char) {
-				// stateUpper -> stateAcronym
-				state = stateAcronym
-				currentComponent = append(currentComponent, unicode.ToLower(char))
-				continue
-			}
-
-			// stateUpper -> stateLowerOrNumber
-			state = stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
-			continue
-
-		case stateAcronym:
-			if unicode.IsUpper(char) {
-				// stateAcronym -> stateAcronym
-				currentComponent = append(currentComponent, unicode.ToLower(char))
-				continue
-			}
-
-			// We want to fold digits immediately following an acronym into the same
-			// component as the acronym.
-			if unicode.IsDigit(char) {
-				// stateAcronym -> stateLowerOrNumber
-				currentComponent = append(currentComponent, char)
-				state = stateLowerOrNumber
-				continue
-			}
-
-			// stateAcronym -> stateLowerOrNumber
-			last, rest := currentComponent[len(currentComponent)-1], currentComponent[:len(currentComponent)-1]
-			components = append(components, string(rest))
-			currentComponent = []rune{last, char}
-			state = stateLowerOrNumber
-			continue
-
-		case stateLowerOrNumber:
-			if unicode.IsUpper(char) {
-				// stateLowerOrNumber -> stateUpper
-				components = append(components, string(currentComponent))
-				currentComponent = []rune{unicode.ToLower(char)}
-				state = stateUpper
-				continue
-			}
-
-			// stateLowerOrNumber -> stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
-			continue
-		}
-	}
-
-	components = append(components, string(currentComponent))
-	result := strings.Join(components, "_")
-	return ensurePythonKeywordSafe(result)
-}
-
-// pythonKeywords is a map of reserved keywords used by Python 2 and 3.  We use this to avoid generating unspeakable
-// names in the resulting code.  This map was sourced by merging the following reference material:
-//
-//     * Python 2: https://docs.python.org/2.5/ref/keywords.html
-//     * Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
-//
-var pythonKeywords = map[string]bool{
-	"False":    true,
-	"None":     true,
-	"True":     true,
-	"and":      true,
-	"as":       true,
-	"assert":   true,
-	"async":    true,
-	"await":    true,
-	"break":    true,
-	"class":    true,
-	"continue": true,
-	"def":      true,
-	"del":      true,
-	"elif":     true,
-	"else":     true,
-	"except":   true,
-	"exec":     true,
-	"finally":  true,
-	"for":      true,
-	"from":     true,
-	"global":   true,
-	"if":       true,
-	"import":   true,
-	"in":       true,
-	"is":       true,
-	"lambda":   true,
-	"nonlocal": true,
-	"not":      true,
-	"or":       true,
-	"pass":     true,
-	"print":    true,
-	"raise":    true,
-	"return":   true,
-	"try":      true,
-	"while":    true,
-	"with":     true,
-	"yield":    true,
-}
-
-// ensurePythonKeywordSafe adds a trailing underscore if the generated name clashes with a Python 2 or 3 keyword, per
-// PEP 8: https://www.python.org/dev/peps/pep-0008/?#function-and-method-arguments
-func ensurePythonKeywordSafe(name string) string {
-	if _, isKeyword := pythonKeywords[name]; isKeyword {
-		return name + "_"
-	}
-	return name
+	return pycodegen.EnsureKeywordSafe(name)
 }
 
 func pyPrimitiveValue(value interface{}) (string, error) {

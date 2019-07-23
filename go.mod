@@ -17,7 +17,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829 // indirect
-	github.com/pulumi/pulumi v0.17.23-0.20190715212628-02ffff88409f
+	github.com/pulumi/pulumi v0.17.26-0.20190723034217-ed5b8437d126
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/stretchr/testify v1.3.1-0.20190311161405-34c6fa2dc709
