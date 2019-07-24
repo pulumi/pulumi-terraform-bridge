@@ -247,8 +247,9 @@ func TestTerraformInputs(t *testing.T) {
 
 type MyString string
 
-// TestTerraformOutputs verifies that we translate Terraform outputs into Pulumi outputs.
-func TestTerraformOutputs(t *testing.T) {
+// TestTerraformOutputsWithSecretsSupported verifies that we translate Terraform outputs into Pulumi outputs and
+// treating sensitive outputs as secrets
+func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 	result := MakeTerraformOutputs(
 		map[string]interface{}{
 			"nil_property_value":       nil,
@@ -288,6 +289,12 @@ func TestTerraformOutputs(t *testing.T) {
 					"some_other_value": "a value",
 				},
 			},
+			"secret_value": "MyPassword",
+			"nested_secret_value": []interface{}{
+				map[string]interface{}{
+					"secret_value": "MyPassword",
+				},
+			},
 		},
 		map[string]*schema.Schema{
 			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
@@ -325,6 +332,23 @@ func TestTerraformOutputs(t *testing.T) {
 					},
 				},
 			},
+			"secret_value": {
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+			},
+			"nested_secret_value": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"secret_value": {
+							Type:      schema.TypeString,
+							Sensitive: true,
+						},
+					},
+				},
+			},
 		},
 		map[string]*SchemaInfo{
 			// Reverse map string_property_value to the stringo property.
@@ -338,6 +362,7 @@ func TestTerraformOutputs(t *testing.T) {
 		},
 		nil,   /* assets */
 		false, /*useRawNames*/
+		true,
 	)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"nilPropertyValue":      nil,
@@ -371,6 +396,42 @@ func TestTerraformOutputs(t *testing.T) {
 			"someValue":      true,
 			"someOtherValue": "a value",
 		},
+		"secretValue": resource.Secret{
+			Element: resource.PropertyValue{
+				V: "MyPassword",
+			},
+		},
+		"nestedSecretValue": map[string]interface{}{
+			"secretValue": resource.Secret{
+				Element: resource.PropertyValue{
+					V: "MyPassword",
+				},
+			},
+		},
+	}), result)
+}
+
+// TestTerraformOutputsWithSecretsUnsupported verifies that we translate Terraform outputs into Pulumi outputs without
+// treating sensitive outputs as secrets
+func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
+	result := MakeTerraformOutputs(
+		map[string]interface{}{
+			"secret_value": "MyPassword",
+		},
+		map[string]*schema.Schema{
+			"secret_value": {
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+			},
+		},
+		map[string]*SchemaInfo{},
+		nil,   /* assets */
+		false, /*useRawNames*/
+		false,
+	)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"secretValue": "MyPassword",
 	}), result)
 }
 
@@ -543,7 +604,7 @@ func TestMetaProperties(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil)
+	props, err := MakeTerraformResult(read, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -572,7 +633,7 @@ func TestMetaProperties(t *testing.T) {
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil)
+	props, err = MakeTerraformResult(read2, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
@@ -587,7 +648,7 @@ func TestMetaProperties(t *testing.T) {
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil)
+	props, err = MakeTerraformResult(create, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -609,7 +670,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil)
+	props, err := MakeTerraformResult(read, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -638,7 +699,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil)
+	props, err = MakeTerraformResult(read2, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
@@ -655,7 +716,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil)
+	props, err = MakeTerraformResult(create, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -683,7 +744,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil)
+	props, err := MakeTerraformResult(read, res.Schema, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -815,7 +876,7 @@ func TestDefaults(t *testing.T) {
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 
 	// sort the defaults list before the equality test below.
 	sortDefaultsList(outputs)
@@ -851,7 +912,7 @@ func TestDefaults(t *testing.T) {
 	assets = make(AssetTable)
 	inputs, err = MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
 	assert.NoError(t, err)
-	outputs = MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	outputs = MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 
 	// sort the defaults list before the equality test below.
 	sortDefaultsList(outputs)
@@ -896,7 +957,7 @@ func TestComputedAsset(t *testing.T) {
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
 	}, outputs)
@@ -916,7 +977,7 @@ func TestInvalidAsset(t *testing.T) {
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false)
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}, outputs)
@@ -1100,6 +1161,7 @@ func TestStringOutputsWithSchema(t *testing.T) {
 		map[string]*SchemaInfo{},
 		nil,   /* assets */
 		false, /* useRawNames */
+		true,
 	)
 
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{

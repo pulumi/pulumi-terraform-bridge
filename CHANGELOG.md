@@ -10,6 +10,7 @@ This CHANGELOG details important changes made in each version of the
 - Change how Tfgen deals with package classes that are named Index to make them index_.ts
 - Protect against panic in provider Create with InstanceState Meta initialization
 - Use of the `RemoteStateReference` resource no longer results in a panic if the configured remote state cannot be accessed.
+- Treat sensitive outputs as secrets.
 
 ## v0.18.3 (Released June 20, 2019)
 
