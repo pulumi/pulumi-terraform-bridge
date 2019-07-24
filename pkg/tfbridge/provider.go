@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/golang/glog"
@@ -421,6 +422,34 @@ func (p *Provider) Configure(ctx context.Context,
 	return &pulumirpc.ConfigureResponse{}, nil
 }
 
+// Parse the TF error of a missing field:
+// https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
+var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
+
+func (p *Provider) formatFailureReason(res Resource, reason string) string {
+	// Translate the name in missing-required-field error from TF to Pulumi naming scheme
+	parts := requiredFieldRegex.FindStringSubmatch(reason)
+	if len(parts) == 2 {
+		schema := res.TF.Schema[parts[1]]
+		if schema != nil {
+			name := TerraformToPulumiName(parts[1], schema, false)
+			message := fmt.Sprintf("Missing required property '%s'", name)
+			// If a required field is missing and the value can be set via config,
+			// extend the error with a hint to set the proper config value
+			field := res.Schema.Fields[name]
+			if field != nil && field.Default != nil {
+				if configKey := field.Default.Config; configKey != "" {
+					format := "%s. Either set it explicitly or configure it with 'pulumi config set %s:%s <value>'."
+					return fmt.Sprintf(format, message, p.module, configKey)
+				}
+			}
+			return message
+		}
+	}
+
+	return reason
+}
+
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	p.setLoggingContext(ctx)
@@ -478,7 +507,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	var failures []*pulumirpc.CheckFailure
 	for _, err := range errs {
 		failures = append(failures, &pulumirpc.CheckFailure{
-			Reason: err.Error(),
+			Reason: p.formatFailureReason(res, err.Error()),
 		})
 	}
 

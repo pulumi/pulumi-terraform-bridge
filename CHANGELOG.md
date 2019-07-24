@@ -7,6 +7,7 @@ This CHANGELOG details important changes made in each version of the
 
 - Terraform-based providers can now communicate detailed information about the difference between a resource's desired and actual state during a Pulumi update.
 - Add the ability to inject CustomTimeouts into the InstanceDiff during a pulumi update.
+- Better error message for missing required fields with default config ([#400](https://github.com/pulumi/pulumi-terraform/issues/400)).
 - Change how Tfgen deals with package classes that are named Index to make them index_.ts
 - Protect against panic in provider Create with InstanceState Meta initialization
 - Use of the `RemoteStateReference` resource no longer results in a panic if the configured remote state cannot be accessed.
