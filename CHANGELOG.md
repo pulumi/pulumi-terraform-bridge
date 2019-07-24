@@ -12,6 +12,7 @@ This CHANGELOG details important changes made in each version of the
 - Protect against panic in provider Create with InstanceState Meta initialization
 - Use of the `RemoteStateReference` resource no longer results in a panic if the configured remote state cannot be accessed.
 - Treat sensitive outputs as secrets.
+- Allow a provider to depend on a specific version of TypeScript.
 
 ## v0.18.3 (Released June 20, 2019)
 

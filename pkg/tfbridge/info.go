@@ -178,10 +178,11 @@ type OverlayInfo struct {
 
 // JavaScriptInfo contains optional overlay information for Python code-generation.
 type JavaScriptInfo struct {
-	Dependencies     map[string]string // NPM dependencies to add to package.json.
-	DevDependencies  map[string]string // NPM dev-dependencies to add to package.json.
-	PeerDependencies map[string]string // NPM peer-dependencies to add to package.json.
-	Overlay          *OverlayInfo      // optional overlay information for augmented code-generation.
+	Dependencies      map[string]string // NPM dependencies to add to package.json.
+	DevDependencies   map[string]string // NPM dev-dependencies to add to package.json.
+	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.
+	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
+	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.

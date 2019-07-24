@@ -810,6 +810,11 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 	}
 	defer contract.IgnoreClose(w)
 
+	typeScriptVersion := "^3.4.1"
+	if g.info.JavaScript != nil && g.info.JavaScript.TypeScriptVersion != "" {
+		typeScriptVersion = g.info.JavaScript.TypeScriptVersion
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        fmt.Sprintf("@pulumi/%s", pack.name),
@@ -827,7 +832,7 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 			"build": "tsc",
 		},
 		DevDependencies: map[string]string{
-			"typescript": "^3.4.1",
+			"typescript": typeScriptVersion,
 		},
 		Pulumi: npmPulumiManifest{
 			Resource: true,
