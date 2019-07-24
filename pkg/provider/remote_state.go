@@ -108,8 +108,14 @@ func remoteStateReferenceRead(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, status.Errorf(codes.NotFound, "error refreshing Terraform state: %s", err)
 	}
 
+	// Check the state isn't empty
+	state := stateManager.State()
+	if state == nil {
+		return nil, status.Error(codes.NotFound, "remote state not found")
+	}
+
 	// Get the root module outputs and process them from a map of string to cty.Value into a structpb
-	outputsCty := stateManager.State().RootModule().OutputValues
+	outputsCty := state.RootModule().OutputValues
 	outputsStructpb, err := outputsToStructpb(outputsCty)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error converting Terraform outputs: %s", err)
