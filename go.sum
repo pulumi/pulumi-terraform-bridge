@@ -494,6 +494,8 @@ github.com/pulumi/pulumi v0.17.22-0.20190702185104-ebceea93a5da h1:8j8kMQncrqAfs
 github.com/pulumi/pulumi v0.17.22-0.20190702185104-ebceea93a5da/go.mod h1:YUZl+EG25I3Zs337/O7gRiGfquphPBOrMG6QZYAWW9g=
 github.com/pulumi/pulumi v0.17.23-0.20190715212628-02ffff88409f h1:3K/cssb6A3pEEDcNPEZSOVF70jPIdgftGX9UcSINZ/0=
 github.com/pulumi/pulumi v0.17.23-0.20190715212628-02ffff88409f/go.mod h1:d+ivoM5WASR34nx+EJwBMfWtuU8oczAY5lMTrXsdboM=
+github.com/pulumi/pulumi v0.17.26-0.20190723034217-ed5b8437d126 h1:ZeaZksXFGJEHznfEEjGm5y0vW4hih6NxxYERmpnSZ0I=
+github.com/pulumi/pulumi v0.17.26-0.20190723034217-ed5b8437d126/go.mod h1:KWwOOr07OHTwyPA4cACn8zLfZ9tTEktb0wu3P7nfSto=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54 h1:J2RvHxEMIzMV6XbaZIj9s5G4lG3hhqWxS7Cl1Jii44c=
 github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54/go.mod h1:1NF/j951kWm+ZnRXpOkBqweImgwhlzFVwTA4A0V7TEU=
@@ -501,6 +503,8 @@ github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6So
 github.com/russross/blackfriday v1.5.1/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/russross/blackfriday v1.5.2 h1:HyvC0ARfnZBqnXwABFeSZHpKvJHJJfPz81GNueLj0oo=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
+github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 h1:G04eS0JkAIVZfaJLjla9dNxkJCPiKIGZlw9AfOhzOD0=
+github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94/go.mod h1:b18R55ulyQ/h3RaWyloPyER7fWQVZvimKKhnI5OfrJQ=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 h1:nn5Wsu0esKSJiIVhscUtVbo7ada43DJhG55ua/hjS5I=
