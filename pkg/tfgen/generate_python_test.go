@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	pycodegen "github.com/pulumi/pulumi/pkg/codegen/python"
 )
 
 // Tests that we convert from CamelCase resource names to pythonic
@@ -37,7 +39,7 @@ func TestPyName(t *testing.T) {
 
 	for _, testCase := range tests {
 		t.Run(testCase[0], func(tt *testing.T) {
-			out := pyName(testCase[0])
+			out := pycodegen.PyName(testCase[0])
 			assert.Equal(tt, testCase[1], out)
 		})
 	}
@@ -45,7 +47,7 @@ func TestPyName(t *testing.T) {
 
 // Tests that we properly transform some Python reserved keywords.
 func TestPyKeywords(t *testing.T) {
-	assert.Equal(t, pyName("if"), "if_")
-	assert.Equal(t, pyName("lambda"), "lambda_")
+	assert.Equal(t, pycodegen.PyName("if"), "if_")
+	assert.Equal(t, pycodegen.PyName("lambda"), "lambda_")
 	assert.Equal(t, pyClassName("True"), "True_")
 }
