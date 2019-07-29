@@ -656,6 +656,23 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	// w.Writefmtln("        }")
 
 	// Now invoke the super constructor with the type, name, and a property map.
+
+	if len(res.info.Aliases) > 0 {
+		w.Writefmt(`        const aliasOpts = { aliases: [`)
+
+		for i, alias := range res.info.Aliases {
+			if i > 0 {
+				w.Writefmt(", ")
+			}
+
+			g.writeAlias(w, alias)
+		}
+
+		w.Writefmtln(`] };`)
+
+		w.Writefmtln(`        opts = opts ? pulumi.mergeOptions(opts, aliasOpts) : aliasOpts;`)
+	}
+
 	w.Writefmtln(`        super(%s.__pulumiType, name, inputs, opts);`, name)
 
 	// Finish the class.
@@ -673,6 +690,30 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	g.emitPlainOldType(w, res.argst, true /*wrapInput*/)
 
 	return file, nil
+}
+
+func (g *nodeJSGenerator) writeAlias(w *tools.GenWriter, alias tfbridge.AliasInfo) {
+	w.WriteString("{ ")
+	parts := []string{}
+	if alias.Name != nil {
+		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
+	}
+	if alias.Project != nil {
+		parts = append(parts, fmt.Sprintf("project: \"%v\"", *alias.Project))
+	}
+	if alias.Type != nil {
+		parts = append(parts, fmt.Sprintf("type: \"%v\"", *alias.Type))
+	}
+
+	for i, part := range parts {
+		if i > 0 {
+			w.Writefmt(", ")
+		}
+
+		w.WriteString(part)
+	}
+
+	w.WriteString(" }")
 }
 
 func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (string, error) {

@@ -63,6 +63,18 @@ func (info ProviderInfo) GetGitHubOrg() string {
 	return info.GitHubOrg
 }
 
+// AliasInfo is a partial description of prior named used for a resource. It can be processed in the
+// context of a resource creation to determine what the full aliased URN would be.
+//
+// It can be used by Pulumi resource providers to change the aspects of it (i.e. what module it is
+// contained in), without causing resources to be recreated for customers who migrate from the
+// original resource to the current resource.
+type AliasInfo struct {
+	Name    *string
+	Type    *string
+	Project *string
+}
+
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
 // given; this is used when Terraform needs more than just the ID to uniquely identify and query for a resource.
@@ -72,6 +84,7 @@ type ResourceInfo struct {
 	IDFields            []string               // an optional list of ID alias fields.
 	Docs                *DocInfo               // overrides for finding and mapping TF docs.
 	DeleteBeforeReplace bool                   // if true, Pulumi will delete before creating new replacement resources.
+	Aliases             []AliasInfo            // aliases for this resources, if any.
 }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
