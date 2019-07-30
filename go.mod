@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl v0.0.0-20170504190234-a4b07c25de5f
-	github.com/hashicorp/terraform v0.12.0-rc1.0.20190509225429-28b2383eacae
+	github.com/hashicorp/terraform v0.12.5
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.8.1
@@ -21,13 +21,12 @@ require (
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/stretchr/testify v1.3.1-0.20190311161405-34c6fa2dc709
-	github.com/zclconf/go-cty v0.0.0-20190430221426-d36a6f0dbffd
+	github.com/zclconf/go-cty v1.0.1-0.20190708163926-19588f92a98f
 	golang.org/x/build v0.0.0-20190314133821-5284462c4bec // indirect
 	golang.org/x/net v0.0.0-20190502183928-7f726cade0ab
 	google.golang.org/grpc v1.20.1
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
-	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
 )
 

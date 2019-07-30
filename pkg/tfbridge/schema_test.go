@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"github.com/hashicorp/terraform/config"
 	"os"
 	"sort"
 	"strconv"
@@ -23,7 +24,7 @@ import (
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/hcl2shim"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/stretchr/testify/assert"
@@ -185,10 +186,10 @@ func TestTerraformInputs(t *testing.T) {
 		"float_property_value":  99.6767932,
 		"string_property_value": "ognirts",
 		"array_property_value":  []interface{}{"an array"},
-		"unknown_array_value":   []interface{}{config.UnknownVariableValue},
+		"unknown_array_value":   []interface{}{hcl2shim.UnknownVariableValue},
 		"unknown_array_value2": []interface{}{
 			map[string]interface{}{
-				"required_property": config.UnknownVariableValue,
+				"required_property": hcl2shim.UnknownVariableValue,
 			},
 		},
 		"object_property_value": map[string]interface{}{
@@ -953,7 +954,7 @@ func TestComputedAsset(t *testing.T) {
 	}
 	olds := resource.PropertyMap{}
 	props := resource.PropertyMap{
-		"zzz": resource.NewStringProperty(config.UnknownVariableValue),
+		"zzz": resource.NewStringProperty(hcl2shim.UnknownVariableValue),
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
@@ -1019,13 +1020,13 @@ func TestCustomTransforms(t *testing.T) {
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
-	assert.Equal(t, config.UnknownVariableValue, v3)
+	assert.Equal(t, hcl2shim.UnknownVariableValue, v3)
 
 	v4, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.MakeComputed(resource.NewStringProperty("")),
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
-	assert.Equal(t, config.UnknownVariableValue, v4)
+	assert.Equal(t, hcl2shim.UnknownVariableValue, v4)
 }
 
 func TestImporterOnRead(t *testing.T) {

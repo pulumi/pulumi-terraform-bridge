@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/hcl2shim"
 	"github.com/hashicorp/terraform/flatmap"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
@@ -260,7 +260,7 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 func makeTerraformUnknownElement(elem interface{}) interface{} {
 	// If we have no element schema, just return a simple unknown.
 	if elem == nil {
-		return config.UnknownVariableValue
+		return hcl2shim.UnknownVariableValue
 	}
 
 	switch e := elem.(type) {
@@ -277,7 +277,7 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 		}
 		return res
 	default:
-		return config.UnknownVariableValue
+		return hcl2shim.UnknownVariableValue
 	}
 }
 
@@ -287,7 +287,7 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 // e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
 func makeTerraformUnknown(tfs *schema.Schema) interface{} {
 	if tfs == nil {
-		return config.UnknownVariableValue
+		return hcl2shim.UnknownVariableValue
 	}
 
 	switch tfs.Type {
@@ -303,7 +303,7 @@ func makeTerraformUnknown(tfs *schema.Schema) interface{} {
 		}
 		return arr
 	default:
-		return config.UnknownVariableValue
+		return hcl2shim.UnknownVariableValue
 	}
 }
 
@@ -568,7 +568,7 @@ func MakeTerraformOutput(v interface{},
 			// If the string is the special unknown property sentinel, reflect back an unknown computed property.  Note that
 			// Terraform doesn't carry the types along with it, so the best we can do is give back a computed string.
 			t := val.String()
-			if t == config.UnknownVariableValue {
+			if t == hcl2shim.UnknownVariableValue {
 				return resource.NewComputedProperty(
 					resource.Computed{Element: resource.NewStringProperty("")})
 			}
