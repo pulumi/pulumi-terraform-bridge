@@ -13,6 +13,7 @@ This CHANGELOG details important changes made in each version of the
 - Use of the `RemoteStateReference` resource no longer results in a panic if the configured remote state cannot be accessed.
 - Allow a provider to depend on a specific version of TypeScript.
 - Allow users to specific a specific provider version.
+- Emit an appropriate user warning when Pulumi binary not found in Python setup.py.
 
 ## v0.18.3 (Released June 20, 2019)
 
