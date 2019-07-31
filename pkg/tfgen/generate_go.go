@@ -438,6 +438,11 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	if res.doc != "" {
 		g.emitDocComment(w, res.doc, res.docURL, "")
 	}
+	if !res.IsProvider() {
+		if res.info.DeprecationMessage != "" {
+			w.Writefmtln("// Deprecated: %s", res.info.DeprecationMessage)
+		}
+	}
 	w.Writefmtln("type %s struct {", name)
 	w.Writefmtln("\ts *pulumi.ResourceState")
 	w.Writefmtln("}")
@@ -446,6 +451,9 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	// Create a constructor function that registers a new instance of this resource.
 	argsType := res.argst.name
 	w.Writefmtln("// New%s registers a new resource with the given unique name, arguments, and options.", name)
+	if res.info.DeprecationMessage != "" {
+		w.Writefmtln("// Deprecated: %s", res.info.DeprecationMessage)
+	}
 	w.Writefmtln("func New%s(ctx *pulumi.Context,", name)
 	w.Writefmtln("\tname string, args *%s, opts ...pulumi.ResourceOpt) (*%s, error) {", argsType, name)
 
@@ -497,6 +505,9 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 	stateType := res.statet.name
 	w.Writefmtln("// Get%[1]s gets an existing %[1]s resource's state with the given name, ID, and optional", name)
 	w.Writefmtln("// state properties that are used to uniquely qualify the lookup (nil if not required).")
+	if res.info.DeprecationMessage != "" {
+		w.Writefmtln("// Deprecated: %s", res.info.DeprecationMessage)
+	}
 	w.Writefmtln("func Get%s(ctx *pulumi.Context,", name)
 	w.Writefmtln("\tname string, id pulumi.ID, state *%s, opts ...pulumi.ResourceOpt) (*%s, error) {", stateType, name)
 	w.Writefmtln("\tinputs := make(map[string]interface{})")
@@ -573,6 +584,10 @@ func (g *goGenerator) emitResourceFunc(mod *module, fun *resourceFunc) error {
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
 		g.emitDocComment(w, fun.doc, fun.docURL, "")
+	}
+
+	if fun.info.DeprecationMessage != "" {
+		w.Writefmtln("// Deprecated: %s", fun.info.DeprecationMessage)
 	}
 
 	// If the function starts with New or Get, it will conflict; so rename them.

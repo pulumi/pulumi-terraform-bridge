@@ -509,6 +509,10 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		baseType = "ProviderResource"
 	}
 
+	if !res.IsProvider() && res.info.DeprecationMessage != "" {
+		w.Writefmtln("/** @deprecated %s */", res.info.DeprecationMessage)
+	}
+
 	// Begin defining the class.
 	w.Writefmtln("export class %s extends pulumi.%s {", name, baseType)
 
@@ -524,6 +528,9 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		w.Writefmtln("     * @param state Any extra arguments used during the lookup.")
 		w.Writefmtln("     */")
 		w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s, opts?: pulumi.CustomResourceOptions): %s {", stateType, name)
+		if res.info.DeprecationMessage != "" {
+			w.Writefmtln("		pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
+		}
 		w.Writefmtln("        return new %s(name, <any>state, { ...opts, id: id });", name)
 		w.Writefmtln("    }")
 		w.Writefmtln("")
@@ -595,15 +602,24 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		optionsType = "ResourceOptions"
 	}
 
+	if res.info.DeprecationMessage != "" {
+		w.Writefmtln("    /** @deprecated %s */", res.info.DeprecationMessage)
+	}
 	w.Writefmtln("    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s", argsFlags, argsType,
 		optionsType, trailingBrace)
 
 	if !res.IsProvider() {
+		if res.info.DeprecationMessage != "" {
+			w.Writefmtln("    /** @deprecated %s */", res.info.DeprecationMessage)
+		}
 		// Now write out a general purpose constructor implementation that can handle the public signautre as well as the
 		// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 		// conditional state into sensible variables using dynamic type tests.
 		w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {",
 			argsType, stateType)
+		if res.info.DeprecationMessage != "" {
+			w.Writefmtln("	pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
+		}
 		w.Writefmtln("        let inputs: pulumi.Inputs = {};")
 		// The lookup case:
 		w.Writefmtln("        if (opts && opts.id) {")
@@ -737,6 +753,10 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 		g.emitDocComment(w, fun.doc, fun.docURL, "")
 	}
 
+	if fun.info.DeprecationMessage != "" {
+		w.Writefmtln("/** @deprecated %s */", fun.info.DeprecationMessage)
+	}
+
 	// Now, emit the function signature.
 	var argsig string
 	if fun.argst != nil {
@@ -754,6 +774,9 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> & %s {",
 		fun.name, argsig, retty, retty)
+	if fun.info.DeprecationMessage != "" {
+		w.Writefmtln("	pulumi.log.warn(\"%s is deprecated: %s\")", fun.name, fun.info.DeprecationMessage)
+	}
 
 	// Zero initialize the args if empty and necessary.
 	if len(fun.args) > 0 && len(fun.reqargs) == 0 {

@@ -457,10 +457,18 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	if res.IsProvider() {
 		baseType = "pulumi.ProviderResource"
 	}
+
+	if !res.IsProvider() && res.info.DeprecationMessage != "" {
+		w.Writefmtln("warnings.warn(\"%s\", DeprecationWarning)", res.info.DeprecationMessage)
+	}
+
 	// Produce a class definition with optional """ comment.
 	w.Writefmtln("class %s(%s):", pyClassName(res.name), baseType)
 	g.emitMembers(w, mod, res)
 
+	if res.info.DeprecationMessage != "" {
+		w.Writefmtln("    warnings.warn(\"%s\", DeprecationWarning)", res.info.DeprecationMessage)
+	}
 	// Now generate an initializer with arguments for all input properties.
 	w.Writefmt("    def __init__(__self__, resource_name, opts=None")
 
@@ -473,6 +481,9 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	// compatibility, we still emit them, but we don't emit documentation for them.
 	w.Writefmtln(", __name__=None, __opts__=None):")
 	g.emitInitDocstring(w, mod, res)
+	if res.info.DeprecationMessage != "" {
+		w.Writefmtln("        pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
+	}
 	w.Writefmtln("        if __name__ is not None:")
 	w.Writefmtln(`            warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)`)
 	w.Writefmtln("            resource_name = __name__")
@@ -615,6 +626,10 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 	defer contract.IgnoreClose(w)
 
+	if fun.info.DeprecationMessage != "" {
+		w.Writefmtln("warnings.warn(\"%s\", DeprecationWarning)", fun.info.DeprecationMessage)
+	}
+
 	// If there is a return type, emit it.
 	if fun.retst != nil {
 		g.emitPlainOldType(w, fun.retst)
@@ -632,6 +647,10 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
 		g.emitDocComment(w, fun.doc, fun.docURL, "    ")
+	}
+
+	if fun.info.DeprecationMessage != "" {
+		w.Writefmtln("    pulumi.log.warn(\"%s is deprecated: %s\")", name, fun.info.DeprecationMessage)
 	}
 
 	// Copy the function arguments into a dictionary.

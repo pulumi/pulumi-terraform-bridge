@@ -85,13 +85,15 @@ type ResourceInfo struct {
 	Docs                *DocInfo               // overrides for finding and mapping TF docs.
 	DeleteBeforeReplace bool                   // if true, Pulumi will delete before creating new replacement resources.
 	Aliases             []AliasInfo            // aliases for this resources, if any.
+	DeprecationMessage  string                 // message to use in deprecation warning
 }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
-	Tok    tokens.ModuleMember
-	Fields map[string]*SchemaInfo
-	Docs   *DocInfo // overrides for finding and mapping TF docs.
+	Tok                tokens.ModuleMember
+	Fields             map[string]*SchemaInfo
+	Docs               *DocInfo // overrides for finding and mapping TF docs.
+	DeprecationMessage string   // message to use in deprecation warning
 }
 
 // SchemaInfo contains optional name transformations to apply.
