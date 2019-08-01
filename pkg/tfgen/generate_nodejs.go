@@ -529,7 +529,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		w.Writefmtln("     */")
 		w.Writefmtln("    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: %s, opts?: pulumi.CustomResourceOptions): %s {", stateType, name)
 		if res.info.DeprecationMessage != "" {
-			w.Writefmtln("		pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
+			w.Writefmtln("        pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
 		}
 		w.Writefmtln("        return new %s(name, <any>state, { ...opts, id: id });", name)
 		w.Writefmtln("    }")
