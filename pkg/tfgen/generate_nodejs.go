@@ -618,7 +618,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		w.Writefmtln("    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {",
 			argsType, stateType)
 		if res.info.DeprecationMessage != "" {
-			w.Writefmtln("	pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
+			w.Writefmtln("        pulumi.log.warn(\"%s is deprecated: %s\")", name, res.info.DeprecationMessage)
 		}
 		w.Writefmtln("        let inputs: pulumi.Inputs = {};")
 		// The lookup case:
