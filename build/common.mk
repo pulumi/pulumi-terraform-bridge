@@ -34,6 +34,11 @@
 # In addition, we have a few higher level targets that just depend on
 # these targets:
 #
+#  - only_build: this target runs build and install targets
+#
+#  - only_test: this target runs the list and test_all targets
+#               (test_all itself runs test_fast)
+#
 #  - default: this is the target that is run by default when no
 #             arguments are passed to make, it runs the build, lint,
 #             install and test_fast targets
@@ -102,10 +107,46 @@ PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 GO_TEST_FAST = go test -short -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
 GO_TEST = go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
 
-.PHONY: default all ensure build lint install test_all core
+.PHONY: default all ensure only_build only_test build lint install test_all core
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
+
+# Ensure the requisite tools are on the PATH.
+#     - Prefer Python2 over Python.
+PYTHON := $(shell command -v python2 2>/dev/null)
+ifeq ($(PYTHON),)
+	PYTHON = $(shell command -v python 2>/dev/null)
+endif
+ifeq ($(PYTHON),)
+ensure::
+	$(error "missing python 2.7 (`python2` or `python`) from your $$PATH; \
+		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
+else
+PYTHON_VERSION := $(shell command $(PYTHON) --version 2>&1)
+ifeq (,$(findstring 2.7,$(PYTHON_VERSION)))
+ensure::
+	$(error "$(PYTHON) did not report a 2.7 version number ($(PYTHON_VERSION)); \
+		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
+endif
+endif
+#     - Prefer Pip2 over Pip.
+PIP := $(shell command -v pip2 2>/dev/null)
+ifeq ($(PIP),)
+	PIP = $(shell command -v pip 2>/dev/null)
+endif
+ifeq ($(PIP),)
+ensure::
+	$(error "missing pip 2.7 (`pip2` or `pip`) from your $$PATH; \
+		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
+else
+PIP_VERSION := $(shell command $(PIP) --version 2>&1)
+ifeq (,$(findstring python 2.7,$(PIP_VERSION)))
+ensure::
+	$(error "$(PIP) did not report a 2.7 version number ($(PIP_VERSION)); \
+		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
+endif
+endif
 
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
@@ -134,8 +175,8 @@ all::
 	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
 endif
 
-default:: build lint install test_fast
-all:: build lint install test_all
+default:: build install lint test_fast
+all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
