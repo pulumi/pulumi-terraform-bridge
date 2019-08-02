@@ -975,21 +975,77 @@ func CoerceTerraformString(schType schema.ValueType, stringValue string) (interf
 	return stringValue, nil
 }
 
-func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, createIfMissing bool) {
+// propagateDefaultAnnotations recursively propagates the `__defaults` annotation on the given value.
+//
+// An entry in the `__defaults` annotation is only propagated if the named property has a semantically identical value
+// in the old and new inputs. Otherwise, the entry is removed.
+//
+// This function returns `true` if the old and new inputs have semantically identical values.
+func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo,
+	createIfMissing bool) bool {
+
 	switch {
 	case oldInput.IsArray() && newInput.IsArray():
+		var etfs *schema.Schema
+		if tfs != nil {
+			if sch, issch := tfs.Elem.(*schema.Schema); issch {
+				etfs = sch
+			} else if res, isres := tfs.Elem.(*schema.Resource); isres {
+				// The IsObject case below expects a schema whose `Elem` is
+				// a Resource, so create a placeholder schema wrapping this resource.
+				etfs = &schema.Schema{Elem: res}
+			}
+		}
+		var eps *SchemaInfo
+		if ps != nil {
+			eps = ps.Elem
+		}
+
+		possibleDefault := true
 		oldArray, newArray := oldInput.ArrayValue(), newInput.ArrayValue()
 		for i := range oldArray {
 			if i >= len(newArray) {
+				possibleDefault = false
 				break
 			}
-			propagateDefaultAnnotations(oldArray[i], newArray[i], createIfMissing)
+			if !propagateDefaultAnnotations(oldArray[i], newArray[i], etfs, eps, createIfMissing) {
+				possibleDefault = false
+			}
 		}
+		return possibleDefault
 	case oldInput.IsObject() && newInput.IsObject():
+		var tfflds map[string]*schema.Schema
+		if tfs != nil {
+			if res, isres := tfs.Elem.(*schema.Resource); isres {
+				tfflds = res.Schema
+			}
+		}
+		var psflds map[string]*SchemaInfo
+		if ps != nil {
+			psflds = ps.Fields
+		}
+
+		possibleDefaultsNames := map[resource.PropertyKey]bool{}
+
+		possibleDefault := true
 		oldMap, newMap := oldInput.ObjectValue(), newInput.ObjectValue()
 		for name, newValue := range newMap {
 			if oldValue, ok := oldMap[name]; ok {
-				propagateDefaultAnnotations(oldValue, newValue, createIfMissing)
+				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, false)
+
+				if propagateDefaultAnnotations(oldValue, newValue, etfs, eps, createIfMissing) {
+					newMap[name] = oldMap[name]
+					possibleDefaultsNames[name] = true
+				} else {
+					possibleDefault = false
+				}
+			} else {
+				possibleDefault = false
+			}
+		}
+		for name := range oldMap {
+			if _, ok := newMap[name]; !ok {
+				possibleDefault = false
 			}
 		}
 
@@ -998,8 +1054,7 @@ func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, crea
 		if oldDefaultNames, ok := oldMap[defaultsKey]; ok {
 			newDefaultNames := []resource.PropertyValue{}
 			for _, nameValue := range oldDefaultNames.ArrayValue() {
-				name := resource.PropertyKey(nameValue.StringValue())
-				if oldMap[name].DeepEquals(newMap[name]) {
+				if possibleDefaultsNames[resource.PropertyKey(nameValue.StringValue())] {
 					newDefaultNames = append(newDefaultNames, nameValue)
 				}
 			}
@@ -1007,8 +1062,15 @@ func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, crea
 		} else if createIfMissing {
 			newMap[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 		}
+		return possibleDefault
+	case oldInput.IsString() && newInput.IsString():
+		oldStr, newStr := oldInput.StringValue(), newInput.StringValue()
+		if tfs != nil && tfs.StateFunc != nil {
+			oldStr = tfs.StateFunc(oldStr)
+		}
+		return oldStr == newStr
 	default:
-		// nothing to do
+		return oldInput.DeepEquals(newInput)
 	}
 }
 
@@ -1032,7 +1094,10 @@ func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	}
 
 	// Propagate default annotations from the old inputs.
-	propagateDefaultAnnotations(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs), !isRefresh)
+	sch := &schema.Schema{Elem: &schema.Resource{Schema: tfs}}
+	pss := &SchemaInfo{Fields: ps}
+	propagateDefaultAnnotations(
+		resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs), sch, pss, !isRefresh)
 
 	return inputs, nil
 }

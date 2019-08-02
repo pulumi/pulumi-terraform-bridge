@@ -16,12 +16,13 @@ package tfbridge
 
 import (
 	"context"
-	"github.com/hashicorp/terraform/config"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hashicorp/terraform/config"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/terraform/config/hcl2shim"
@@ -1195,6 +1196,13 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 			},
 			"input_f":  {Type: schema.TypeString, Required: true},
 			"output_g": {Type: schema.TypeString},
+			"input_h": {
+				Type:     schema.TypeString,
+				Required: true,
+				StateFunc: func(v interface{}) string {
+					return strings.ToLower(v.(string))
+				},
+			},
 		},
 		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 			return []*schema.ResourceData{d}, nil
@@ -1243,6 +1251,11 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 						"input_f": {
 							Default: &DefaultInfo{
 								Value: "input_f_default",
+							},
+						},
+						"input_h": {
+							Default: &DefaultInfo{
+								Value: "Input_H_Default",
 							},
 						},
 					},
@@ -1303,7 +1316,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	assert.NoError(t, err)
 	sortDefaultsList(checkedIns)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{"inoutD", "inputF"},
+		defaultsKey: []interface{}{"inoutD", "inputF", "inputH"},
 		"inputA":    "input_a_create",
 		"inoutD":    "inout_d_default",
 		"inputE": map[string]interface{}{
@@ -1311,6 +1324,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 			"fieldA":    "field_a_default",
 		},
 		"inputF": "input_f_default",
+		"inputH": "Input_H_Default",
 	}), checkedIns)
 
 	// Step 2: create a resource using the checked input bag. The inputs should be smuggled along with the state.
@@ -1332,6 +1346,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF":  "input_f_default",
 		"outputG": "output_g_create",
+		"inputH":  "input_h_default",
 	}), outs)
 
 	// Step 3: read the resource we just created. The read should make the following changes to the inputs:
@@ -1360,12 +1375,13 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF":  "input_f_default",
 		"outputG": "output_g_read",
+		"inputH":  "input_h_default",
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{"inputF"},
+		defaultsKey: []interface{}{"inputF", "inputH"},
 		"inputA":    "input_a_create",
 		"inoutC":    "inout_c_create",
 		"inoutD":    "inout_d_read",
@@ -1374,6 +1390,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 			"fieldA":    "field_a_default",
 		},
 		"inputF": "input_f_default",
+		"inputH": "Input_H_Default",
 	}), ins)
 
 	// Step 3a. delete the default annotations from the checked inputs and re-run the read. No default annotations
@@ -1403,6 +1420,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF":  "input_f_default",
 		"outputG": "output_g_read",
+		"inputH":  "input_h_default",
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1415,6 +1433,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 			"fieldA": "field_a_default",
 		},
 		"inputF": "input_f_default",
+		"inputH": "Input_H_Default",
 	}), ins)
 
 }

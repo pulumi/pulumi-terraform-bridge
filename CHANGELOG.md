@@ -16,6 +16,7 @@ This CHANGELOG details important changes made in each version of the
 - Add the ability to deprecate resources and datasources.
 - Emit an appropriate user warning when Pulumi binary not found in Python setup.py.
 - Add support for suppressing differences between the desired and actual state of a resource via the `ignoreChanges` property.
+- Fix a bug that caused the recalculation of defaults for values that are normalized in resource state.
 
 ## v0.18.3 (Released June 20, 2019)
 
