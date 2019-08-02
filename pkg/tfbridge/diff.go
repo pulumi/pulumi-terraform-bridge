@@ -47,7 +47,12 @@ func containsComputedValues(v resource.PropertyValue) bool {
 	}
 }
 
-// makePropertyDiff checks the given property for diffs and records any that are found in diff.
+// A propertyVisitor is called for each property value in `visitPropertyValue` with the TF attribute key, Pulumi
+// property name, and the value itself. If the visitor returns `false`, `visitPropertyValue` will not recurse into
+// the value.
+type propertyVisitor func(attributeKey, propertyPath string, value resource.PropertyValue) bool
+
+// visitPropertyDiff checks the given property for diffs and invokes the given callback if a diff is found.
 //
 // This function contains the core logic used to convert a terraform.InstanceDiff to a list of Pulumi property paths
 // that have changed and the type of change for each path.
@@ -61,28 +66,19 @@ func containsComputedValues(v resource.PropertyValue) bool {
 //
 // To solve this problem, we recurse through each element in the given property value, compute its path, and
 // check to see if the InstanceDiff has an entry for that path.
-//
-// There is one other minor complication: Terraform has no concept of an "add" diff. Instead, adds are recorded as
-// updates with an old property value of the empty string. In order to detect adds--and to ensure that all diffs in the
-// InstanceDiff are reflected in the resulting Pulumi property diff--we first call this function with each property in
-// a resource's state, then with each property in its config. Any diffs that only appear in the config are treated as
-// adds; diffs that appear in both the state and config are treated as updates.
-func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terraform.InstanceDiff,
-	diff map[string]*pulumirpc.PropertyDiff, tfs *schema.Schema, ps *SchemaInfo, rawNames bool) {
+func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo,
+	rawNames bool, visitor propertyVisitor) {
 
 	if IsMaxItemsOne(tfs, ps) {
 		v = resource.NewArrayProperty([]resource.PropertyValue{v})
 	}
 
+	if !visitor(name, path, v) {
+		return
+	}
+
 	switch {
 	case v.IsArray():
-		// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
-		// this case, do not recurse into the array; instead, just use the count diff for the details.
-		if d := tfDiff.Attributes[name+".#"]; d != nil && d.NewComputed {
-			name += ".#"
-			break
-		}
-
 		isset := tfs != nil && tfs.Type == schema.TypeSet
 
 		var set *schema.Set
@@ -149,9 +145,8 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			}
 
 			en := name + "." + ti
-			makePropertyDiff(en, ep, e, tfDiff, diff, etfs, eps, rawNames)
+			visitPropertyValue(en, ep, e, etfs, eps, rawNames, visitor)
 		}
-		return
 	case v.IsObject():
 		var tfflds map[string]*schema.Schema
 		if tfs != nil {
@@ -164,13 +159,6 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			psflds = ps.Fields
 		}
 
-		// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
-		// this case, do not recurse into the object; instead, just use the count diff for the details.
-		if d := tfDiff.Attributes[name+".%"]; d != nil && d.NewComputed {
-			name += ".%"
-			break
-		}
-
 		for k, e := range v.ObjectValue() {
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
@@ -180,48 +168,115 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			}
 
 			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames)
-			makePropertyDiff(name+"."+en, elementPath, e, tfDiff, diff, etf, eps, rawNames || useRawNames(tfs))
-		}
-		return
-	case v.IsComputed() || v.IsOutput():
-		// If this is a computed value, it may be replacing a map or list. To detect that case, check for attribute
-		// diffs at the various count paths and update `name` appropriately.
-		switch {
-		case tfDiff.Attributes[name] != nil:
-			// We have a diff at this name; process it as usual.
-		case tfDiff.Attributes[name+".#"] != nil:
-			// We have a diff at the list count. Use that name when deciding on the diff kind below.
-			name += ".#"
-		case tfDiff.Attributes[name+".%"] != nil:
-			// We have a diff at the map or set count. Use that name when deciding on the diff kind below.
-			name += ".%"
+			visitPropertyValue(name+"."+en, elementPath, e, etf, eps, rawNames || useRawNames(tfs), visitor)
 		}
 	}
-	if d := tfDiff.Attributes[name]; d != nil {
-		_, hasOtherDiff := diff[path]
+}
 
-		var kind pulumirpc.PropertyDiff_Kind
+func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terraform.InstanceDiff,
+	diff map[string]*pulumirpc.PropertyDiff, tfs *schema.Schema, ps *SchemaInfo, rawNames bool) {
+
+	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
-		case d.NewRemoved:
-			if d.RequiresNew {
-				kind = pulumirpc.PropertyDiff_DELETE_REPLACE
-			} else {
-				kind = pulumirpc.PropertyDiff_DELETE
+		case v.IsArray():
+			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
+			// this case, do not recurse into the array; instead, just use the count diff for the details.
+			if d := tfDiff.Attributes[name+".#"]; d == nil || !d.NewComputed {
+				return true
 			}
-		case !hasOtherDiff:
-			if d.RequiresNew {
-				kind = pulumirpc.PropertyDiff_ADD_REPLACE
-			} else {
-				kind = pulumirpc.PropertyDiff_ADD
+			name += ".#"
+		case v.IsObject():
+			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
+			// this case, do not recurse into the array; instead, just use the count diff for the details.
+			if d := tfDiff.Attributes[name+".%"]; d == nil || !d.NewComputed {
+				return true
 			}
-		default:
-			if d.RequiresNew {
-				kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
-			} else {
-				kind = pulumirpc.PropertyDiff_UPDATE
+			name += ".%"
+		case v.IsComputed() || v.IsOutput():
+			// If this is a computed value, it may be replacing a map or list. To detect that case, check for attribute
+			// diffs at the various count paths and update `name` appropriately.
+			switch {
+			case tfDiff.Attributes[name] != nil:
+				// We have a diff at this name; process it as usual.
+			case tfDiff.Attributes[name+".#"] != nil:
+				// We have a diff at the list count. Use that name when deciding on the diff kind below.
+				name += ".#"
+			case tfDiff.Attributes[name+".%"] != nil:
+				// We have a diff at the map or set count. Use that name when deciding on the diff kind below.
+				name += ".%"
 			}
 		}
-		diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
+		if d := tfDiff.Attributes[name]; d != nil {
+			_, hasOtherDiff := diff[path]
+
+			var kind pulumirpc.PropertyDiff_Kind
+			switch {
+			case d.NewRemoved:
+				if d.RequiresNew {
+					kind = pulumirpc.PropertyDiff_DELETE_REPLACE
+				} else {
+					kind = pulumirpc.PropertyDiff_DELETE
+				}
+			case !hasOtherDiff:
+				if d.RequiresNew {
+					kind = pulumirpc.PropertyDiff_ADD_REPLACE
+				} else {
+					kind = pulumirpc.PropertyDiff_ADD
+				}
+			default:
+				if d.RequiresNew {
+					kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
+				} else {
+					kind = pulumirpc.PropertyDiff_UPDATE
+				}
+			}
+			diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
+		}
+		return false
+	}
+
+	visitPropertyValue(name, path, v, tfs, ps, rawNames, visitor)
+}
+
+func doIgnoreChanges(tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, olds, news resource.PropertyMap,
+	ignoredPaths []string, tfDiff *terraform.InstanceDiff) {
+
+	if tfDiff == nil {
+		return
+	}
+
+	ignoredPathSet := map[string]bool{}
+	for _, p := range ignoredPaths {
+		ignoredPathSet[p] = true
+	}
+
+	ignoredKeySet := map[string]bool{}
+	visitor := func(attributeKey, propertyPath string, _ resource.PropertyValue) bool {
+		if ignoredPathSet[propertyPath] {
+			ignoredKeySet[attributeKey] = true
+		}
+		return true
+	}
+	for k, v := range olds {
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
+	}
+	for k, v := range news {
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
+	}
+
+	for k := range tfDiff.Attributes {
+		if _, ok := ignoredKeySet[k]; ok {
+			delete(tfDiff.Attributes, k)
+		} else {
+			for attr := range ignoredKeySet {
+				if strings.HasPrefix(k, attr+".") {
+					delete(tfDiff.Attributes, k)
+					break
+				}
+			}
+		}
 	}
 }
 
@@ -236,6 +291,12 @@ func makeDetailedDiff(tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, 
 	}
 
 	// Check both the old state and the new config for diffs and report them as necessary.
+	//
+	// There is a minor complication here: Terraform has no concept of an "add" diff. Instead, adds are recorded as
+	// updates with an old property value of the empty string. In order to detect adds--and to ensure that all diffs in
+	// the InstanceDiff are reflected in the resulting Pulumi property diff--we first call this function with each
+	// property in a resource's state, then with each property in its config. Any diffs that only appear in the config
+	// are treated as adds; diffs that appear in both the state and config are treated as updates.
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)

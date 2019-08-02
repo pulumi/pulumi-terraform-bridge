@@ -563,29 +563,34 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
+	doIgnoreChanges(res.TF.Schema, res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
+	detailedDiff := makeDetailedDiff(res.TF.Schema, res.Schema.Fields, olds, news, diff)
+
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
-	var replaced map[resource.PropertyKey]bool
+	var replaced map[string]bool
 	var changes pulumirpc.DiffResponse_DiffChanges
 	var properties []string
-	hasChanges := diff != nil && len(diff.Attributes) > 0
+	hasChanges := len(detailedDiff) > 0
 	if hasChanges {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
-		for k, attr := range diff.Attributes {
+		for k, d := range detailedDiff {
 			// Turn the attribute name into a top-level property name by trimming everything after the first dot.
-			if firstDot := strings.Index(k, "."); firstDot != -1 {
-				k = k[:firstDot]
+			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
+				k = k[:firstSep]
 			}
+			properties = append(properties, k)
 
-			name, _, _ := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
-			if attr.RequiresNew {
-				replaces = append(replaces, string(name))
+			switch d.Kind {
+			case pulumirpc.PropertyDiff_ADD_REPLACE:
+			case pulumirpc.PropertyDiff_UPDATE_REPLACE:
+			case pulumirpc.PropertyDiff_DELETE_REPLACE:
+				replaces = append(replaces, k)
 				if replaced == nil {
-					replaced = make(map[resource.PropertyKey]bool)
+					replaced = make(map[string]bool)
 				}
-				replaced[name] = true
+				replaced[k] = true
 			}
-			properties = append(properties, string(name))
 		}
 	} else {
 		changes = pulumirpc.DiffResponse_DIFF_NONE
@@ -596,7 +601,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	var stables []string
 	for k, sch := range res.TF.Schema {
 		name, _, cust := getInfoFromTerraformName(k, res.TF.Schema, res.Schema.Fields, false)
-		if !replaced[name] &&
+		if !replaced[string(name)] &&
 			(sch.ForceNew || (cust != nil && cust.Stable != nil && *cust.Stable)) {
 			stables = append(stables, string(name))
 		}
@@ -608,7 +613,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		Stables:             stables,
 		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
 		Diffs:               properties,
-		DetailedDiff:        makeDetailedDiff(res.TF.Schema, res.Schema.Fields, olds, news, diff),
+		DetailedDiff:        detailedDiff,
 		HasDetailedDiff:     true,
 	}, nil
 }
@@ -770,21 +775,29 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	glog.V(9).Infof("%s executing", label)
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
-	inputs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetOlds(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, false, false, fmt.Sprintf("%s.olds", label))
+	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+	attrs, meta, err := MakeTerraformAttributes(res.TF, olds, res.TF.Schema, res.Schema.Fields, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
 	}
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: inputs, Meta: meta}
-	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetNews(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, true, false, fmt.Sprintf("%s.news", label))
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
+
+	news, err := plugin.UnmarshalProperties(req.GetNews(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
+
 	diff, err := p.tf.SimpleDiff(info, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
@@ -798,6 +811,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 	contract.Assertf(!diff.Destroy && !diff.RequiresNew(),
 		"Expected diff to not require deletion or replacement during Update of %s", urn)
+
+	doIgnoreChanges(res.TF.Schema, res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 
 	if req.Timeout != 0 {
 		setTimeout(diff, req.Timeout, schema.TimeoutUpdate)

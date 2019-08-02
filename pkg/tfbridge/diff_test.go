@@ -24,7 +24,7 @@ const (
 var computedValue = resource.Computed{Element: resource.NewStringProperty("")}
 
 func diffTest(t *testing.T, sch map[string]*schema.Schema, info map[string]*SchemaInfo,
-	inputs, state map[string]interface{}, expected map[string]DiffKind) {
+	inputs, state map[string]interface{}, expected map[string]DiffKind, ignoreChanges ...string) {
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
 	stateMap := resource.NewPropertyMapFromMap(state)
@@ -48,6 +48,9 @@ func diffTest(t *testing.T, sch map[string]*schema.Schema, info map[string]*Sche
 		&terraform.InstanceState{ID: "id", Attributes: attrs, Meta: meta}, config)
 	assert.NoError(t, err)
 
+	// ProcessIgnoreChanges
+	doIgnoreChanges(sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+
 	// Convert the diff to a detailed diff and check the result.
 	diff := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
 	expectedDiff := map[string]*pulumirpc.PropertyDiff{}
@@ -55,6 +58,15 @@ func diffTest(t *testing.T, sch map[string]*schema.Schema, info map[string]*Sche
 		expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 	}
 	assert.Equal(t, expectedDiff, diff)
+
+	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff and check the result.
+	for k := range expected {
+		ignoreChanges = append(ignoreChanges, k)
+	}
+	doIgnoreChanges(sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+
+	diff = makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+	assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
 }
 
 func TestEmptyDiff(t *testing.T) {
@@ -290,6 +302,24 @@ func TestNestedUpdateReplace(t *testing.T) {
 		})
 }
 
+func TestNestedIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeMap, ForceNew: true},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": map[string]interface{}{"nest": "baz"},
+		},
+		map[string]interface{}{
+			"prop": map[string]interface{}{"nest": "foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
+}
+
 func TestListAdd(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -396,6 +426,24 @@ func TestListUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": UR,
 		})
+}
+
+func TestListIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{"baz"},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
 }
 
 func TestSetAdd(t *testing.T) {
@@ -505,6 +553,24 @@ func TestSetUpdate(t *testing.T) {
 		})
 }
 
+func TestSetIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{"baz"},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
+}
+
 func TestSetUpdateReplace(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -574,6 +640,33 @@ func TestSetNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": UR,
 		})
+}
+
+func TestSetNestedIgnore(t *testing.T) {
+	for _, ignore := range []string{"prop[0]", "prop"} {
+		diffTest(t,
+			map[string]*schema.Schema{
+				"prop": {
+					Type: schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nest": {Type: schema.TypeString, Required: true},
+						},
+					},
+				},
+				"outp": {Type: schema.TypeString, Computed: true},
+			},
+			map[string]*SchemaInfo{},
+			map[string]interface{}{
+				"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
+			},
+			map[string]interface{}{
+				"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
+				"outp": "bar",
+			},
+			map[string]DiffKind{},
+			ignore)
+	}
 }
 
 func TestComputedSimpleUpdate(t *testing.T) {
@@ -671,6 +764,24 @@ func TestComputedNestedUpdateReplace(t *testing.T) {
 		})
 }
 
+func TestComputedNestedIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeMap},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": map[string]interface{}{"nest": computedValue},
+		},
+		map[string]interface{}{
+			"prop": map[string]interface{}{"nest": "foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
+}
+
 func TestComputedListUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -726,6 +837,24 @@ func TestComputedListElementUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		})
+}
+
+func TestComputedListElementIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
 }
 
 func TestComputedSetUpdate(t *testing.T) {
@@ -816,4 +945,31 @@ func TestComputedSetNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": UR,
 		})
+}
+
+func TestComputedSetNestedIgnore(t *testing.T) {
+	for _, ignore := range []string{"prop[0]", "prop"} {
+		diffTest(t,
+			map[string]*schema.Schema{
+				"prop": {
+					Type: schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nest": {Type: schema.TypeString, Required: true},
+						},
+					},
+				},
+				"outp": {Type: schema.TypeString, Computed: true},
+			},
+			map[string]*SchemaInfo{},
+			map[string]interface{}{
+				"prop": []interface{}{map[string]interface{}{"nest": computedValue}},
+			},
+			map[string]interface{}{
+				"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
+				"outp": "bar",
+			},
+			map[string]DiffKind{},
+			ignore)
+	}
 }
