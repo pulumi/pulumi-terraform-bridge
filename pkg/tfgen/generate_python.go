@@ -20,10 +20,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
@@ -634,10 +636,23 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	if fun.retst != nil {
 		g.emitPlainOldType(w, fun.retst)
 		w.Writefmtln("")
+
+		// Emit __await__ and __iter__ in order to make this type awaitable.
+		//
+		// Note that we need __await__ to be an iterator, but we only want it to return one value. As such, we use
+		// `if False: yield` to construct this.
+		w.Writefmtln("    # pylint: disable=using-constant-test")
+		w.Writefmtln("    def __await__(self):")
+		w.Writefmtln("        if False:")
+		w.Writefmtln("            yield self")
+		w.Writefmtln("        return self")
+		w.Writefmtln("")
+		w.Writefmtln("    __iter__ = __await__")
+		w.Writefmtln("")
 	}
 
 	// Write out the function signature.
-	w.Writefmt("async def %s(", name)
+	w.Writefmt("def %s(", name)
 	for _, arg := range fun.args {
 		w.Writefmt("%s=None,", pycodegen.PyName(arg.name))
 	}
@@ -668,7 +683,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	w.Writefmtln("        opts.version = utilities.get_version()")
 
 	// Now simply invoke the runtime function with the arguments.
-	w.Writefmtln("    __ret__ = await pulumi.runtime.invoke('%s', __args__, opts=opts)", fun.info.Tok)
+	w.Writefmtln("    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts).value", fun.info.Tok)
 	w.Writefmtln("")
 
 	// And copy the results to an object, if there are indeed any expected returns.
@@ -704,6 +719,13 @@ func (g *pythonGenerator) emitOverlay(mod *module, overlay *overlayFile) (string
 
 	// And then export the overlay's contents from the index.
 	return dst, nil
+}
+
+var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
+var oldestAllowedPulumi = semver.Version{
+	Major: 0,
+	Minor: 17,
+	Patch: 28,
 }
 
 // emitPackageMetadata generates all the non-code metadata required by a Pulumi package.
@@ -793,8 +815,23 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 		reqs = make(map[string]string)
 	}
 
-	// Ensure that the Pulumi SDK has an entry if not specified.
-	if _, ok := reqs["pulumi"]; !ok {
+	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure that it specifies
+	// an acceptable version range.
+	if pulumiReq, ok := reqs["pulumi"]; ok {
+		// We expect a specific pattern of ">=version,<version" here.
+		matches := requirementRegex.FindStringSubmatch(pulumiReq)
+		if len(matches) != 2 {
+			return errors.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
+		}
+
+		lowerBound, err := semver.ParseTolerant(matches[1])
+		if err != nil {
+			return errors.Errorf("invalid version for lower bound: %v", err)
+		}
+		if lowerBound.LT(oldestAllowedPulumi) {
+			return errors.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
+		}
+	} else {
 		reqs["pulumi"] = ""
 	}
 

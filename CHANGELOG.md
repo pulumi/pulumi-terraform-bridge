@@ -19,6 +19,7 @@ This CHANGELOG details important changes made in each version of the
 - Emit an appropriate user warning when Pulumi binary not found in Python setup.py.
 - Add support for suppressing differences between the desired and actual state of a resource via the `ignoreChanges` property.
 - Fix a bug that caused the recalculation of defaults for values that are normalized in resource state.
+- The Python SDK generated for a provider now supports synchronous invokes.
 
 ## v0.18.3 (Released June 20, 2019)
 
