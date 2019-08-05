@@ -1,0 +1,3 @@
+name: terraform
+description: A Pulumi resource provider for Terraform remote state
+language: python

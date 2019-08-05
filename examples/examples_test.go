@@ -3,6 +3,7 @@ package examples
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,8 +26,15 @@ func TestExamples(t *testing.T) {
 		},
 	})
 
+	basePython := base.With(integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "sdk", "python", "bin"),
+		},
+	})
+
 	shortTests := []integration.ProgramTestOptions{
-		baseJS.With(integration.ProgramTestOptions{Dir: path.Join(cwd, "localstate")}),
+		baseJS.With(integration.ProgramTestOptions{Dir: path.Join(cwd, "localstate-nodejs")}),
+		basePython.With(integration.ProgramTestOptions{Dir: path.Join(cwd, "localstate-python")}),
 	}
 
 	longTests := []integration.ProgramTestOptions{}
