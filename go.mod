@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl v0.0.0-20170504190234-a4b07c25de5f
-	github.com/hashicorp/terraform v0.12.5
+	github.com/hashicorp/terraform v0.12.6
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829 // indirect
