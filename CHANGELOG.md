@@ -7,6 +7,7 @@ This CHANGELOG details important changes made in each version of the
 ## v0.18.4 (Unreleased)
 
 - Initial release of `pulumi_terraform` for Python.
+- `RemoteStateReference` resources can now read states created with Terraform 0.12.6 and below.
 - Terraform-based providers can now communicate detailed information about the difference between a resource's desired and actual state during a Pulumi update.
 - Add the ability to inject CustomTimeouts into the InstanceDiff during a pulumi update.
 - Better error message for missing required fields with default config ([#400](https://github.com/pulumi/pulumi-terraform/issues/400)).
