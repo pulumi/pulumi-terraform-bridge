@@ -493,10 +493,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln(
 		`            warnings.warn("explicit use of __opts__ is deprecated, use 'opts' instead", DeprecationWarning)`)
 	w.Writefmtln("            opts = __opts__")
-	w.Writefmtln("        if not resource_name:")
-	w.Writefmtln("            raise TypeError('Missing resource name argument (for URN creation)')")
-	w.Writefmtln("        if not isinstance(resource_name, str):")
-	w.Writefmtln("            raise TypeError('Expected resource name to be a string')")
 	w.Writefmtln("        if opts and not isinstance(opts, pulumi.ResourceOptions):")
 	w.Writefmtln("            raise TypeError('Expected resource options to be a ResourceOptions instance')")
 	w.Writefmtln("")
@@ -535,7 +531,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
 		}
 		w.Writefmtln("        __props__['%s'] = %s", pname, arg)
-		w.Writefmtln("")
 
 		ins[prop.name] = true
 	}
@@ -585,8 +580,8 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
-	w.Writefmtln(`
-    def translate_output_property(self, prop):
+	w.Writefmtln(
+		`    def translate_output_property(self, prop):
         return tables._CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
     def translate_input_property(self, prop):
