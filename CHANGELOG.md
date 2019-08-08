@@ -21,6 +21,8 @@ This CHANGELOG details important changes made in each version of the
 - Add support for suppressing differences between the desired and actual state of a resource via the `ignoreChanges` property.
 - Fix a bug that caused the recalculation of defaults for values that are normalized in resource state.
 - The Python SDK generated for a provider now supports synchronous invokes.
+- The Python SDK generated for a provider now supports calling `SomeResource.get(...)` to create a
+  resource with the state of existing cloud resource.
 
 ## v0.18.3 (Released June 20, 2019)
 

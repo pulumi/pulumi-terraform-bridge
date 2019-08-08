@@ -17,6 +17,7 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -481,6 +482,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
 	// compatibility, we still emit them, but we don't emit documentation for them.
+	w.Writefmt(", __props__=None")
 	w.Writefmtln(", __name__=None, __opts__=None):")
 	g.emitInitDocstring(w, mod, res)
 	if res.info.DeprecationMessage != "" {
@@ -493,13 +495,17 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln(
 		`            warnings.warn("explicit use of __opts__ is deprecated, use 'opts' instead", DeprecationWarning)`)
 	w.Writefmtln("            opts = __opts__")
-	w.Writefmtln("        if opts and not isinstance(opts, pulumi.ResourceOptions):")
+	w.Writefmtln("        if opts is None:")
+	w.Writefmtln("            opts = pulumi.ResourceOptions()")
+	w.Writefmtln("        if not isinstance(opts, pulumi.ResourceOptions):")
 	w.Writefmtln("            raise TypeError('Expected resource options to be a ResourceOptions instance')")
-	w.Writefmtln("")
-
-	// Now copy all properties to a dictionary, in preparation for passing it to the base function.  Along
-	// the way, we will perform argument validation.
-	w.Writefmtln("        __props__ = dict()")
+	w.Writefmtln("        if opts.version is None:")
+	w.Writefmtln("            opts.version = utilities.get_version()")
+	w.Writefmtln("        if opts.id is None:")
+	w.Writefmtln("            if __props__ is not None:")
+	w.Writefmt("                raise TypeError(")
+	w.Writefmtln("'__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')")
+	w.Writefmtln("            __props__ = dict()")
 	w.Writefmtln("")
 
 	ins := make(map[string]bool)
@@ -509,51 +515,41 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 		// Fill in computed defaults for arguments.
 		if defaultValue := pyDefaultValue(prop); defaultValue != "" {
-			w.Writefmtln("        if %s is None:", pname)
-			w.Writefmtln("            %s = %s", pname, defaultValue)
+			w.Writefmtln("            if %s is None:", pname)
+			w.Writefmtln("                %s = %s", pname, defaultValue)
 		}
 
 		// Check that required arguments are present.
 		if !prop.optional() {
-			w.Writefmtln("        if %s is None:", pname)
-			w.Writefmtln("            raise TypeError(\"Missing required property '%s'\")", pname)
+			w.Writefmtln("            if %s is None:", pname)
+			w.Writefmtln("                raise TypeError(\"Missing required property '%s'\")", pname)
 		}
 
 		// And add it to the dictionary.
 		arg := pname
 
-		// If this resource is a provider then, regardless of the schema of the underlying provider type, we must
-		// project all properties as strings. For all properties that are not strings, we'll marshal them to JSON and
-		// use the JSON string as a string input.
+		// If this resource is a provider then, regardless of the schema of the underlying provider
+		// type, we must project all properties as strings. For all properties that are not strings,
+		// we'll marshal them to JSON and use the JSON string as a string input.
 		//
-		// Note the use of the `json` package here - we must import it at the top of the file so that we can use it.
+		// Note the use of the `json` package here - we must import it at the top of the file so
+		// that we can use it.
 		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
 		}
-		w.Writefmtln("        __props__['%s'] = %s", pname, arg)
+		w.Writefmtln("            __props__['%s'] = %s", pname, arg)
 
 		ins[prop.name] = true
 	}
 
-	var wroteOuts bool
 	for _, prop := range res.outprops {
 		g.recordProperty(prop.name, prop.schema, prop.info)
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins[prop.name] {
-			w.Writefmtln("        __props__['%s'] = None", pycodegen.PyName(prop.name))
-			wroteOuts = true
+			w.Writefmtln("            __props__['%s'] = None", pycodegen.PyName(prop.name))
 		}
 	}
-	if wroteOuts {
-		w.Writefmtln("")
-	}
-
-	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-	w.Writefmtln("        if opts is None:")
-	w.Writefmtln("            opts = pulumi.ResourceOptions()")
-	w.Writefmtln("        if opts.version is None:")
-	w.Writefmtln("            opts.version = utilities.get_version()")
 
 	if len(res.info.Aliases) > 0 {
 		w.Writefmt(`        alias_opts = pulumi.ResourceOptions(aliases=[`)
@@ -577,6 +573,24 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("            __props__,")
 	w.Writefmtln("            opts)")
 	w.Writefmtln("")
+
+	w.Writefmtln("    @staticmethod")
+	w.Writefmt("    def get(resource_name, id, opts=None")
+	for _, prop := range res.outprops {
+		w.Writefmt(", %[1]s=None", pycodegen.PyName(prop.name))
+	}
+	w.Writefmtln("):")
+	g.emitGetDocstring(w, mod, res)
+	w.Writefmtln(
+		"        opts = pulumi.ResourceOptions(id=id) if opts is None else opts.merge(pulumi.ResourceOptions(id=id))")
+	w.Writefmtln("")
+	w.Writefmtln("        __props__ = dict()")
+
+	for _, prop := range res.outprops {
+		w.Writefmtln(`        __props__["%[1]s"] = %[1]s`, pycodegen.PyName(prop.name))
+	}
+
+	w.Writefmtln("        return %s(resource_name, opts=opts, __props__=__props__)", pyClassName(res.name))
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
@@ -963,21 +977,22 @@ func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *reso
 
 // emitInitDocstring emits the docstring for the __init__ method of the given resource type.
 //
-// Sphinx (the documentation generator that we use to generate Python docs) does not draw a distinction between
-// documentation comments on the class itself and documentation comments on the __init__ method of a class. The docs
-// repo instructs Sphinx to concatenate the two together, which means that we don't need to emit docstrings on the class
-// at all as long as the __init__ docstring is good enough.
+// Sphinx (the documentation generator that we use to generate Python docs) does not draw a
+// distinction between documentation comments on the class itself and documentation comments on the
+// __init__ method of a class. The docs repo instructs Sphinx to concatenate the two together, which
+// means that we don't need to emit docstrings on the class at all as long as the __init__ docstring
+// is good enough.
 //
-// The docstring we generate here describes both the class itself and the arguments to the class's constructor. The
-// format of the docstring is in "Sphinx form":
+// The docstring we generate here describes both the class itself and the arguments to the class's
+// constructor. The format of the docstring is in "Sphinx form":
 //   1. Parameters are introduced using the syntax ":param <type> <name>: <comment>". Sphinx parses this and uses it
 //      to populate the list of parameters for this function.
 //   2. The doc string of parameters is expected to be indented to the same indentation as the type of the parameter.
 //      Sphinx will complain and make mistakes if this is not the case.
 //   3. The doc string can't have random newlines in it, or Sphinx will complain.
 //
-// This function does the best it can to navigate these constraints and produce a docstring that Sphinx can make sense
-// of.
+// This function does the best it can to navigate these constraints and produce a docstring that
+// Sphinx can make sense of.
 func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res *resourceType) {
 	// "buf" contains the full text of the docstring, without the leading and trailing triple quotes.
 	var buf bytes.Buffer
@@ -994,34 +1009,58 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	fmt.Fprintln(&buf, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.inprops {
-		name := pycodegen.PyName(prop.name)
-		ty := pyType(prop)
-		if prop.doc == "" || prop.doc == elidedDocComment {
-			continue
-		}
-
-		// If this property has some documentation associated with it, we need to split it so that it is indented
-		// in a way that Sphinx can understand.
-		lines := strings.Split(prop.doc, "\n")
-		for i, docLine := range lines {
-			// Break if we get to the last line and it's empty.
-			if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
-				break
-			}
-
-			// If it's the first line, print the :param header.
-			if i == 0 {
-				fmt.Fprintf(&buf, ":param pulumi.Input[%s] %s: %s\n", ty, name, docLine)
-			} else {
-				// Otherwise, print out enough padding to align with the first "p" in "pulumi.Input"
-				//                 :param pulumi.Input[...]
-				fmt.Fprintf(&buf, "       %s\n", docLine)
-			}
-		}
+		g.emitPropDocstring(&buf, prop)
 	}
 
 	// emitDocComment handles the prefix and triple quotes.
 	g.emitDocComment(w, buf.String(), res.docURL, "        ")
+}
+
+func (g *pythonGenerator) emitGetDocstring(w *tools.GenWriter, mod *module, res *resourceType) {
+	// "buf" contains the full text of the docstring, without the leading and trailing triple quotes.
+	var buf bytes.Buffer
+
+	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	fmt.Fprintf(&buf, `Get an existing %s resource's state with the given name, id, and optional extra
+properties used to qualify the lookup.`, res.name)
+	fmt.Fprintln(&buf, "")
+
+	fmt.Fprintln(&buf, ":param str resource_name: The unique name of the resulting resource.")
+	fmt.Fprintln(&buf, ":param str id: The unique provider ID of the resource to lookup.")
+	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
+	for _, prop := range res.outprops {
+		g.emitPropDocstring(&buf, prop)
+	}
+
+	// emitDocComment handles the prefix and triple quotes.
+	g.emitDocComment(w, buf.String(), res.docURL, "        ")
+}
+
+func (g *pythonGenerator) emitPropDocstring(buf io.Writer, prop *variable) {
+	name := pycodegen.PyName(prop.name)
+	ty := pyType(prop)
+	if prop.doc == "" || prop.doc == elidedDocComment {
+		return
+	}
+
+	// If this property has some documentation associated with it, we need to split it so that it is indented
+	// in a way that Sphinx can understand.
+	lines := strings.Split(prop.doc, "\n")
+	for i, docLine := range lines {
+		// Break if we get to the last line and it's empty.
+		if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+			break
+		}
+
+		// If it's the first line, print the :param header.
+		if i == 0 {
+			fmt.Fprintf(buf, ":param pulumi.Input[%s] %s: %s\n", ty, name, docLine)
+		} else {
+			// Otherwise, print out enough padding to align with the first "p" in "pulumi.Input"
+			//                 :param pulumi.Input[...]
+			fmt.Fprintf(buf, "       %s\n", docLine)
+		}
+	}
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
