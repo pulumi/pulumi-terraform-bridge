@@ -636,10 +636,15 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 		//
 		// Note that we need __await__ to be an iterator, but we only want it to return one value. As such, we use
 		// `if False: yield` to construct this.
+		//
+		// We also need the result of __await__ to be a plain, non-awaitable value. We achieve this by deleting the
+		// __await__ and __iter__ attributes from self before returning it.
 		w.Writefmtln("    # pylint: disable=using-constant-test")
 		w.Writefmtln("    def __await__(self):")
 		w.Writefmtln("        if False:")
 		w.Writefmtln("            yield self")
+		w.Writefmtln("        delattr(self, \"__await__\")")
+		w.Writefmtln("        delattr(self, \"__iter__\")")
 		w.Writefmtln("        return self")
 		w.Writefmtln("")
 		w.Writefmtln("    __iter__ = __await__")
