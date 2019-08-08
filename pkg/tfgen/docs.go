@@ -57,8 +57,8 @@ const (
 
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(language language, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, docinfo *tfbridge.DocInfo) (parsedDoc, error) {
+func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
 	repo, err := getRepoDir(org, provider)
 	if err != nil {
 		return parsedDoc{}, err
@@ -74,6 +74,12 @@ func getDocsForProvider(language language, org string, provider string, resource
 		rawname + ".markdown",
 		rawname + ".html.md",
 	}
+
+	var docinfo *tfbridge.DocInfo
+	if info != nil {
+		docinfo = info.GetDocs()
+	}
+
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
 	}
@@ -85,14 +91,14 @@ func getDocsForProvider(language language, org string, provider string, resource
 		return parsedDoc{}, nil
 	}
 
-	doc, err := parseTFMarkdown(language, kind, string(markdownBytes), resourcePrefix, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), resourcePrefix, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
 
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(language, org, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
+		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Attributes
 			},
@@ -101,7 +107,7 @@ func getDocsForProvider(language language, org string, provider string, resource
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(language, org, provider, resourcePrefix, kind, doc.Attributes,
+		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc.Attributes,
 			docinfo.IncludeAttributesFromArguments,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
@@ -111,7 +117,7 @@ func getDocsForProvider(language language, org string, provider string, resource
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(language, org, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
+		if err := mergeDocs(g, info, org, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
 			func(s parsedDoc) map[string]string {
 				return s.Arguments
 			},
@@ -138,11 +144,12 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(language language, org string, provider string, resourcePrefix string, kind DocKind,
-	targetDocs map[string]string, sourceFrom string, extractDocs func(d parsedDoc) map[string]string) error {
+func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
+	resourcePrefix string, kind DocKind, targetDocs map[string]string, sourceFrom string,
+	extractDocs func(d parsedDoc) map[string]string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(language, org, provider, resourcePrefix, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
@@ -210,7 +217,9 @@ func getDocsIndexURL(p string) string {
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(language language, kind DocKind, markdown, resourcePrefix, rawname string) (parsedDoc, error) {
+func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
+	markdown, resourcePrefix, rawname string) (parsedDoc, error) {
+
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
@@ -282,7 +291,7 @@ func parseTFMarkdown(language language, kind DocKind, markdown, resourcePrefix, 
 			// bail out, but most errors are ignorable and just lead to us skipping one section.
 			var skippableExamples bool
 			var err error
-			subsection, skippableExamples, err = parseExamples(language, subsection)
+			subsection, skippableExamples, err = parseExamples(g.language, subsection)
 			if err != nil {
 				return parsedDoc{}, err
 			} else if skippableExamples && !headerIsArgsReference &&
@@ -380,7 +389,7 @@ func parseTFMarkdown(language language, kind DocKind, markdown, resourcePrefix, 
 		}
 	}
 
-	return cleanupDoc(ret), nil
+	return cleanupDoc(g, info, ret), nil
 }
 
 var (
@@ -568,17 +577,17 @@ func convertHCL(hcl string) (string, string, error) {
 	return stdout.String(), "", nil
 }
 
-func cleanupDoc(doc parsedDoc) parsedDoc {
+func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) parsedDoc {
 	newargs := make(map[string]string, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		newargs[k] = cleanupText(v)
+		newargs[k] = cleanupText(g, info, v)
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
-		newattrs[k] = cleanupText(v)
+		newattrs[k] = cleanupText(g, info, v)
 	}
 	return parsedDoc{
-		Description: cleanupText(doc.Description),
+		Description: cleanupText(g, info, doc.Description),
 		Arguments:   newargs,
 		Attributes:  newattrs,
 		URL:         doc.URL,
@@ -586,11 +595,12 @@ func cleanupDoc(doc parsedDoc) parsedDoc {
 }
 
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
+var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
 
 const elidedDocComment = "<elided>"
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(text string) string {
+func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string) string {
 	// Remove incorrect documentation that should have been cleaned up in our forks.
 	// TODO: fail the build in the face of such text, once we have a processes in place.
 	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
@@ -619,6 +629,46 @@ func cleanupText(text string) string {
 		// Relative URL to the current page, can't be resolved currently so remove the link.
 		// Note: This throws away potentially valuable information in the name of not having broken links.
 		return parts[1]
+	})
+
+	// Fixup resource and property name references
+	text = codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
+		parts := codeLikeSingleWord.FindStringSubmatch(match)
+		name := parts[2]
+		if resInfo, hasResourceInfo := g.info.Resources[name]; hasResourceInfo {
+			// This is a resource name
+			resname, mod := resourceName(g.info.GetResourcePrefix(), name, resInfo, false)
+			modname := extractModuleName(mod)
+			switch g.language {
+			case golang, python:
+				// Use `ec2.Instance` format
+				return parts[1] + modname + "." + resname + parts[4]
+			default:
+				// Use `aws.ec2.Instance` format
+				return parts[1] + g.pkg + "." + modname + "." + resname + parts[4]
+			}
+		} else if dataInfo, hasDatasourceInfo := g.info.DataSources[name]; hasDatasourceInfo {
+			// This is a data source name
+			getname, mod := dataSourceName(g.info.GetResourcePrefix(), name, dataInfo)
+			modname := extractModuleName(mod)
+			switch g.language {
+			case golang, python:
+				// Use `ec2.getAmi` format
+				return parts[1] + modname + "." + getname + parts[4]
+			default:
+				// Use `aws.ec2.getAmi` format
+				return parts[1] + g.pkg + "." + modname + "." + getname + parts[4]
+			}
+		}
+		// Else just treat as a property name
+		switch g.language {
+		case nodeJS, golang:
+			// Use `camelCase` format
+			pname := propertyName(name, nil, nil)
+			return parts[1] + pname + parts[4]
+		default:
+			return match
+		}
 	})
 
 	// Finally, trim any trailing blank lines and return the result.

@@ -75,6 +75,13 @@ type AliasInfo struct {
 	Project *string
 }
 
+// ResourceOrDataSourceInfo is a shared interface to ResourceInfo and DataSourceInfo mappings
+type ResourceOrDataSourceInfo interface {
+	GetTok() tokens.Token              // a type token to override the default; "" uses the default.
+	GetFields() map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
+	GetDocs() *DocInfo                 // overrides for finding and mapping TF docs.
+}
+
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
 // given; this is used when Terraform needs more than just the ID to uniquely identify and query for a resource.
@@ -88,6 +95,10 @@ type ResourceInfo struct {
 	DeprecationMessage  string                 // message to use in deprecation warning
 }
 
+func (info *ResourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
+func (info *ResourceInfo) GetDocs() *DocInfo                 { return info.Docs }
+
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
 	Tok                tokens.ModuleMember
@@ -95,6 +106,10 @@ type DataSourceInfo struct {
 	Docs               *DocInfo // overrides for finding and mapping TF docs.
 	DeprecationMessage string   // message to use in deprecation warning
 }
+
+func (info *DataSourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
+func (info *DataSourceInfo) GetDocs() *DocInfo                 { return info.Docs }
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
