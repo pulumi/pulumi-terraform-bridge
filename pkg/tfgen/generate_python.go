@@ -417,9 +417,11 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 	}
 }
 
-func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
+func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldType) string {
+	baseName := pyClassName(pot.name)
+
 	// Produce a class definition with optional """ comment.
-	w.Writefmtln("class %s:", pyClassName(pot.name))
+	w.Writefmtln("class %s:", baseName)
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "", "    ")
 	}
@@ -445,6 +447,34 @@ func (g *pythonGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 			g.emitRawDocComment(w, prop.rawdoc, "        ")
 		}
 	}
+
+	awaitableName := "Awaitable" + baseName
+
+	// Produce an awaitable subclass.
+	w.Writefmtln("class %s(%s):", awaitableName, baseName)
+
+	// Emit __await__ and __iter__ in order to make this type awaitable.
+	//
+	// Note that we need __await__ to be an iterator, but we only want it to return one value. As such, we use
+	// `if False: yield` to construct this.
+	//
+	// We also need the result of __await__ to be a plain, non-awaitable value. We achieve this by returning a new
+	// instance of the base class.
+	w.Writefmtln("    # pylint: disable=using-constant-test")
+	w.Writefmtln("    def __await__(self):")
+	w.Writefmtln("        if False:")
+	w.Writefmtln("            yield self")
+	w.Writefmtln("        return %s(", baseName)
+	for i, prop := range pot.props {
+		if i > 0 {
+			w.Writefmtln(",")
+		}
+		pname := pycodegen.PyName(prop.name)
+		w.Writefmt("            %s=self.%s", pname, pname)
+	}
+	w.Writefmtln(")")
+
+	return awaitableName
 }
 
 func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
@@ -642,26 +672,9 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// If there is a return type, emit it.
+	retTypeName := ""
 	if fun.retst != nil {
-		g.emitPlainOldType(w, fun.retst)
-		w.Writefmtln("")
-
-		// Emit __await__ and __iter__ in order to make this type awaitable.
-		//
-		// Note that we need __await__ to be an iterator, but we only want it to return one value. As such, we use
-		// `if False: yield` to construct this.
-		//
-		// We also need the result of __await__ to be a plain, non-awaitable value. We achieve this by deleting the
-		// __await__ and __iter__ attributes from self before returning it.
-		w.Writefmtln("    # pylint: disable=using-constant-test")
-		w.Writefmtln("    def __await__(self):")
-		w.Writefmtln("        if False:")
-		w.Writefmtln("            yield self")
-		w.Writefmtln("        delattr(self, \"__await__\")")
-		w.Writefmtln("        delattr(self, \"__iter__\")")
-		w.Writefmtln("        return self")
-		w.Writefmtln("")
-		w.Writefmtln("    __iter__ = __await__")
+		retTypeName = g.emitAwaitableType(w, fun.retst)
 		w.Writefmtln("")
 	}
 
@@ -702,7 +715,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 
 	// And copy the results to an object, if there are indeed any expected returns.
 	if fun.retst != nil {
-		w.Writefmtln("    return %s(", fun.retst.name)
+		w.Writefmtln("    return %s(", retTypeName)
 		for i, ret := range fun.rets {
 			w.Writefmt("        %s=__ret__.get('%s')", pycodegen.PyName(ret.name), ret.name)
 			if i == len(fun.rets)-1 {
