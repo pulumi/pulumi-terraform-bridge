@@ -574,7 +574,11 @@ func convertHCL(hcl string) (string, string, error) {
 		return "", stderr.String(), errors.Wrap(err, "converting HCL to Pulumi code")
 	}
 
-	return stdout.String(), "", nil
+	result := stdout.String()
+	if strings.Contains(result, "tf2pulumi error") {
+		return "", "", errors.New("tf2pulumi error in generated code")
+	}
+	return result, "", nil
 }
 
 func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) parsedDoc {
