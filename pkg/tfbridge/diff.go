@@ -174,7 +174,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema
 }
 
 func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terraform.InstanceDiff,
-	diff map[string]*pulumirpc.PropertyDiff, tfs *schema.Schema, ps *SchemaInfo, rawNames bool) {
+	diff map[string]*pulumirpc.PropertyDiff, tfs *schema.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
@@ -207,7 +207,17 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff *terra
 			}
 		}
 		if d := tfDiff.Attributes[name]; d != nil {
-			_, hasOtherDiff := diff[path]
+			other, hasOtherDiff := diff[path]
+
+			// If we're finalizing the diff, we want to remove any ADD diffs that were only present in the state.
+			// These diffs are typically changes to output properties that we don't care about.
+			if finalize {
+				if hasOtherDiff &&
+					(other.Kind == pulumirpc.PropertyDiff_ADD || other.Kind == pulumirpc.PropertyDiff_ADD_REPLACE) {
+					delete(diff, path)
+				}
+				return false
+			}
 
 			var kind pulumirpc.PropertyDiff_Kind
 			switch {
@@ -300,11 +310,15 @@ func makeDetailedDiff(tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, 
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
+	}
+	for k, v := range olds {
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, true, useRawNames(etf))
 	}
 	return diff
 }
