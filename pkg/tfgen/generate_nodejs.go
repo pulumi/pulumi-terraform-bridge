@@ -22,12 +22,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/gedex/inflector"
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
@@ -59,6 +61,23 @@ type nodeJSGenerator struct {
 	outDir      string
 }
 
+// nestedTypes is hold nested type information.
+// The inputs and outputs maps are maps from a type name to type declaration.
+// inputOverlays contains a set of custom types that need to be imported for the nested input types.
+type nestedTypes struct {
+	inputs        map[string]string
+	inputOverlays map[string]bool
+	outputs       map[string]string
+}
+
+func newNestedTypes() *nestedTypes {
+	return &nestedTypes{
+		inputs:        make(map[string]string),
+		inputOverlays: make(map[string]bool),
+		outputs:       make(map[string]string),
+	}
+}
+
 // commentChars returns the comment characters to use for single-line comments.
 func (g *nodeJSGenerator) commentChars() string {
 	return "//"
@@ -81,7 +100,9 @@ func (g *nodeJSGenerator) relativeRootDir(mod *module) string {
 }
 
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
-func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK bool) (*tools.GenWriter, string, error) {
+func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK, needsInput, needsOutput, needsUtilities bool) (
+	*tools.GenWriter, string, error) {
+
 	dir := g.moduleDir(mod)
 	file := filepath.Join(dir, name)
 	w, err := tools.NewGenWriter(tfgen, file)
@@ -94,22 +115,39 @@ func (g *nodeJSGenerator) openWriter(mod *module, name string, needsSDK bool) (*
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		g.emitSDKImport(mod, w)
+		g.emitSDKImport(mod, w, needsInput, needsOutput, needsUtilities)
 	}
 
 	return w, file, nil
 }
 
-func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
+func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter, needsInput, needsOutput, needsUtilities bool) {
 	w.Writefmtln("import * as pulumi from \"@pulumi/pulumi\";")
-	w.Writefmtln("import * as utilities from \"%s/utilities\";", g.relativeRootDir(mod))
+	if needsInput {
+		w.Writefmtln("import * as inputs from \"%s/types/input\";", g.relativeRootDir(mod))
+	}
+	if needsOutput {
+		w.Writefmtln("import * as outputs from \"%s/types/output\";", g.relativeRootDir(mod))
+	}
+	if needsUtilities {
+		w.Writefmtln("import * as utilities from \"%s/utilities\";", g.relativeRootDir(mod))
+	}
 	w.Writefmtln("")
 }
 
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
-	// First, generate the individual modules and their contents.
-	files, submodules, err := g.emitModules(pack.modules)
+	// Return an error if the provider has its own `types` module, which is reserved for now.
+	// If we do run into a provider that has such a module, we'll have to make some changes to allow it.
+	if _, ok := pack.modules["types"]; ok {
+		return errors.New("This provider has a `types` module which is reserved for input/output types")
+	}
+
+	// Create a map of modules to *nestedTypes.
+	nestedMap := make(map[string]*nestedTypes)
+
+	// Generate the individual modules and their contents.
+	files, submodules, err := g.emitModules(pack.modules, nestedMap)
 	if err != nil {
 		return err
 	}
@@ -120,7 +158,45 @@ func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 		index.members = append(index.members, pack.provider)
 	}
 
-	indexFiles, _, err := g.emitModule(index, submodules)
+	// Generate initial top-level module without `types` submodule.
+	_, _, nested, err := g.emitModule(index, submodules)
+	if err != nil {
+		return err
+	}
+	if nested != nil {
+		nestedMap[""] = nested
+	}
+
+	// Emit input/output files in the `types` module.
+	typesInputFile, err := g.emitNestedTypes(nestedMap, true /*input*/)
+	if err != nil {
+		return err
+	}
+	if typesInputFile != "" {
+		files = append(files, typesInputFile)
+	}
+
+	typesOutputFile, err := g.emitNestedTypes(nestedMap, false /*input*/)
+	if err != nil {
+		return err
+	}
+	if typesOutputFile != "" {
+		files = append(files, typesOutputFile)
+	}
+
+	hasInputs := typesInputFile != ""
+	hasOutputs := typesOutputFile != ""
+	typesIndex, err := g.emitTypesModule(hasInputs, hasOutputs)
+	if err != nil {
+		return err
+	}
+	if typesIndex != "" {
+		files = append(files, typesIndex)
+		submodules["types"] = typesIndex
+	}
+
+	// Regenerate the top-level index again, this time including the `types` submodule, if present.
+	indexFiles, _, _, err := g.emitModule(index, submodules)
 	if err != nil {
 		return err
 	}
@@ -131,21 +207,176 @@ func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 	return g.emitPackageMetadata(pack, files)
 }
 
+// emitTypesModule emits the `types` module.
+func (g *nodeJSGenerator) emitTypesModule(hasInputs, hasOutputs bool) (string, error) {
+	if !hasInputs && !hasOutputs {
+		return "", nil
+	}
+
+	typesMod := newModule("types")
+	dir := g.moduleDir(typesMod)
+
+	submodules := make(map[string]string)
+	if hasInputs {
+		submodules["input"] = path.Join(dir, "input.ts")
+	}
+	if hasOutputs {
+		submodules["output"] = path.Join(dir, "output.ts")
+	}
+
+	typesIndexFile, err := g.emitIndex(typesMod, nil, submodules)
+	if err != nil {
+		return "", err
+	}
+	return typesIndexFile, nil
+}
+
+// emitNestedTypes emits the nested types in the map of modules to nestedTypes in either a `types/input.ts` or
+// `types/output.ts` based on the value of `input`.
+func (g *nodeJSGenerator) emitNestedTypes(nestedMap map[string]*nestedTypes, input bool) (string, error) {
+	// Ensure we have nested types.
+	if nestedMap == nil {
+		return "", nil
+	}
+	any := false
+	for _, nested := range nestedMap {
+		typeMap := nested.outputs
+		if input {
+			typeMap = nested.inputs
+		}
+		if len(typeMap) > 0 {
+			any = true
+			break
+		}
+	}
+	if !any {
+		return "", nil
+	}
+
+	name := "output"
+	if input {
+		name = "input"
+	}
+
+	typesMod := newModule("types")
+
+	// Ensure the types directory exists.
+	dir := g.moduleDir(typesMod)
+	if err := tools.EnsureDir(dir); err != nil {
+		return "", errors.Wrapf(err, "creating module directory")
+	}
+
+	// Open the file for writing.
+	needsSDK := true
+	needsInput := input
+	needsOutput := !input
+	needsUtilities := false
+	w, file, err := g.openWriter(typesMod, name+".ts", needsSDK, needsInput, needsOutput, needsUtilities)
+	if err != nil {
+		return "", err
+	}
+	defer contract.IgnoreClose(w)
+
+	var mods []string
+	for mod := range nestedMap {
+		mods = append(mods, mod)
+	}
+	sort.Strings(mods)
+
+	// Gather custom type imports (overlays).
+	imports := make(importMap)
+	if input {
+		for _, mod := range mods {
+			nested := nestedMap[mod]
+			relmod := fmt.Sprintf("../%s", mod)
+			for typeName := range nested.inputOverlays {
+				importName := getCustomImportTypeName(typeName)
+
+				// Now just mark the member in the resulting map.
+				if imports[relmod] == nil {
+					imports[relmod] = make(map[string]bool)
+				}
+				imports[relmod][importName] = true
+			}
+		}
+	}
+
+	// Emit custom type imports.
+	if err := g.emitImportMap(w, imports); err != nil {
+		return "", err
+	}
+
+	// Emit the modules as namespaces.
+	// Types in the "" module are top-level and aren't outputted within a namespace.
+	for i, mod := range mods {
+		nested := nestedMap[mod]
+		typeMap := nested.outputs
+		if input {
+			typeMap = nested.inputs
+		}
+
+		if i > 0 {
+			w.Writefmtln("")
+		}
+
+		indent := ""
+
+		if mod != "" {
+			indent = "    "
+			w.Writefmtln("export namespace %s {", mod)
+		}
+
+		// Emit the types.
+		var types []string
+		for typ := range typeMap {
+			types = append(types, typ)
+		}
+		sort.Strings(types)
+		for j, typ := range types {
+			declaration := typeMap[typ]
+
+			if j > 0 {
+				w.Writefmtln("")
+			}
+
+			declarationLines := strings.Split(declaration, "\n")
+			for k, line := range declarationLines {
+				if k == 0 {
+					w.Writefmtln("%sexport interface %s %s", indent, typ, line)
+				} else {
+					w.Writefmtln("%s%s", indent, line)
+				}
+			}
+		}
+
+		if mod != "" {
+			w.Writefmtln("}")
+		}
+	}
+
+	return file, nil
+}
+
 // emitModules emits all modules in the given module map.  It returns a full list of files, a map of module to its
 // associated index, and any error that occurred, if any.
-func (g *nodeJSGenerator) emitModules(mmap moduleMap) ([]string, map[string]string, error) {
+func (g *nodeJSGenerator) emitModules(mmap moduleMap, nestedMap map[string]*nestedTypes) ([]string, map[string]string,
+	error) {
+
 	var allFiles []string
 	moduleMap := make(map[string]string)
 	for _, mod := range mmap.values() {
 		if mod.name == "" {
 			continue // skip the root module, it is handled specially.
 		}
-		files, index, err := g.emitModule(mod, nil)
+		files, index, nested, err := g.emitModule(mod, nil)
 		if err != nil {
 			return nil, nil, err
 		}
 		allFiles = append(allFiles, files...)
 		moduleMap[mod.name] = index
+		if nested != nil {
+			nestedMap[mod.name] = nested
+		}
 	}
 	return allFiles, moduleMap, nil
 }
@@ -166,26 +397,29 @@ func (g *nodeJSGenerator) emitModules(mmap moduleMap) ([]string, map[string]stri
 // Note that the special module "" represents the top-most package module and won't be placed in a sub-directory.
 //
 // The return values are the full list of files generated, the index file, and any error that occurred, respectively.
-func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]string, string, error) {
+func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]string, string, *nestedTypes, error) {
 	glog.V(3).Infof("emitModule(%s)", mod.name)
 
 	// Ensure that the target module directory exists.
 	dir := g.moduleDir(mod)
 	if err := tools.EnsureDir(dir); err != nil {
-		return nil, "", errors.Wrapf(err, "creating module directory")
+		return nil, "", nil, errors.Wrapf(err, "creating module directory")
 	}
 
 	// Ensure that the target module directory contains a README.md file.
 	if err := g.ensureReadme(dir); err != nil {
-		return nil, "", errors.Wrapf(err, "creating module README file")
+		return nil, "", nil, errors.Wrapf(err, "creating module README file")
 	}
+
+	// Create the data structure to hold nested type information for the module.
+	nested := newNestedTypes()
 
 	// Now, enumerate each module member, in the order presented to us, and do the right thing.
 	var files []string
 	for _, member := range mod.members {
-		file, err := g.emitModuleMember(mod, member)
+		file, err := g.emitModuleMember(mod, member, nested)
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "emitting module %s member %s", mod.name, member.Name())
+			return nil, "", nil, errors.Wrapf(err, "emitting module %s member %s", mod.name, member.Name())
 		} else if file != "" {
 			files = append(files, file)
 		}
@@ -195,7 +429,7 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 	if mod.config() {
 		file, err := g.emitConfigVariables(mod)
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "emitting config module variables")
+			return nil, "", nil, errors.Wrapf(err, "emitting config module variables")
 		}
 		files = append(files, file)
 	}
@@ -203,7 +437,7 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 	// Generate an index file for this module.
 	index, err := g.emitIndex(mod, files, submods)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "emitting module %s index", mod.name)
+		return nil, "", nil, errors.Wrapf(err, "emitting module %s index", mod.name)
 	}
 	files = append(files, index)
 
@@ -212,12 +446,16 @@ func (g *nodeJSGenerator) emitModule(mod *module, submods map[string]string) ([]
 	if mod.root() {
 		utils, err := g.emitUtilities(mod)
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "emitting utility file for root module")
+			return nil, "", nil, errors.Wrapf(err, "emitting utility file for root module")
 		}
 		files = append(files, utils)
 	}
 
-	return files, index, nil
+	if len(nested.inputs) == 0 && len(nested.outputs) == 0 {
+		nested = nil
+	}
+
+	return files, index, nested, nil
 }
 
 // ensureReadme writes out a stock README.md file, provided one doesn't already exist.
@@ -244,7 +482,7 @@ func (g *nodeJSGenerator) ensureReadme(dir string) error {
 // emitIndex emits an index module, optionally re-exporting other members or submodules.
 func (g *nodeJSGenerator) emitIndex(mod *module, exports []string, submods map[string]string) (string, error) {
 	// Open the index.ts file for this module, and ready it for writing.
-	w, index, err := g.openWriter(mod, "index.ts", false)
+	w, index, err := g.openWriter(mod, "index.ts", false, false, false, false)
 	if err != nil {
 		return "", err
 	}
@@ -265,7 +503,7 @@ func (g *nodeJSGenerator) emitIndex(mod *module, exports []string, submods map[s
 		}
 	}
 
-	// Finally, f there are submodules, export them.
+	// Finally, if there are submodules, export them.
 	if len(submods) > 0 {
 		if len(exports) > 0 {
 			w.Writefmtln("")
@@ -301,7 +539,7 @@ func (g *nodeJSGenerator) emitUtilities(mod *module) (string, error) {
 	contract.Require(mod.root(), "mod.root()")
 
 	// Open the utilities.ts file for this module and ready it for writing.
-	w, utilities, err := g.openWriter(mod, "utilities.ts", false)
+	w, utilities, err := g.openWriter(mod, "utilities.ts", false, false, false, false)
 	if err != nil {
 		return "", err
 	}
@@ -313,14 +551,14 @@ func (g *nodeJSGenerator) emitUtilities(mod *module) (string, error) {
 }
 
 // emitModuleMember emits the given member, and returns the module file that it was emitted into (if any).
-func (g *nodeJSGenerator) emitModuleMember(mod *module, member moduleMember) (string, error) {
+func (g *nodeJSGenerator) emitModuleMember(mod *module, member moduleMember, nested *nestedTypes) (string, error) {
 	glog.V(3).Infof("emitModuleMember(%s, %s)", mod, member.Name())
 
 	switch t := member.(type) {
 	case *resourceType:
-		return g.emitResourceType(mod, t)
+		return g.emitResourceType(mod, t, nested)
 	case *resourceFunc:
-		return g.emitResourceFunc(mod, t)
+		return g.emitResourceFunc(mod, t, nested)
 	case *variable:
 		contract.Assertf(mod.config(),
 			"only expected top-level variables in config module (%s is not one)", mod.name)
@@ -337,7 +575,7 @@ func (g *nodeJSGenerator) emitModuleMember(mod *module, member moduleMember) (st
 // emitConfigVariables emits all config vaiables in the given module, returning the resulting file.
 func (g *nodeJSGenerator) emitConfigVariables(mod *module) (string, error) {
 	// Create a vars.ts file into which all configuration variables will go.
-	w, config, err := g.openWriter(mod, "vars.ts", true)
+	w, config, err := g.openWriter(mod, "vars.ts", true, false, false, true)
 	if err != nil {
 		return "", err
 	}
@@ -372,7 +610,8 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	getfunc := "get"
 	if v.schema.Type != schema.TypeString {
 		// Only try to parse a JSON object if the config isn't a straight string.
-		getfunc = fmt.Sprintf("getObject<%s>", tsType(v, false /*noflags*/, !v.out /*wrapInput*/))
+		getfunc = fmt.Sprintf("getObject<%s>",
+			tsType("", "", v, parsedDoc{}, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/))
 	}
 	var anycast string
 	if v.info != nil && v.info.Type != "" {
@@ -390,7 +629,8 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		configFetch += " || " + defaultValue
 	}
 
-	w.Writefmtln("export let %s: %s | undefined = %s%s;", v.name, tsType(v, false /*noflags*/, !v.out /*wrapInput*/),
+	w.Writefmtln("export let %s: %s | undefined = %s%s;", v.name,
+		tsType("", "", v, parsedDoc{}, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/),
 		anycast, configFetch)
 }
 
@@ -455,7 +695,10 @@ func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 	}
 }
 
-func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType, wrapInput bool) {
+func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType, module, prefix string,
+	parsedDocs parsedDoc, nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, wrapInput,
+	isInputType bool) {
+
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "", "")
 	}
@@ -466,13 +709,14 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")
 		}
-		w.Writefmtln("    readonly %s%s: %s;", prop.name, tsFlags(prop), tsType(prop, false, wrapInput))
+		w.Writefmtln("    readonly %s%s: %s;", prop.name, tsFlags(prop), tsType(module, prefix, prop, parsedDocs,
+			nestedTypeDeclarations, nestedInputOverlays, false /*noflags*/, wrapInput, isInputType))
 	}
 	w.Writefmtln("}")
 }
 
 //nolint:lll
-func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (string, error) {
+func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, nested *nestedTypes) (string, error) {
 	// Create a resource module file into which all of this resource's types will go.
 	name := res.name
 	filename := lowerFirst(name)
@@ -484,7 +728,11 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		filename = fmt.Sprintf("%s_", filename)
 	}
 
-	w, file, err := g.openWriter(mod, filename+".ts", true)
+	needsSDK := true
+	needsInput := len(nested.inputs) > 0
+	needsOutput := len(nested.outputs) > 0
+	needsUtilities := true
+	w, file, err := g.openWriter(mod, filename+".ts", needsSDK, needsInput, needsOutput, needsUtilities)
 	if err != nil {
 		return "", err
 	}
@@ -571,7 +819,8 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 
 		w.Writefmtln("    public %sreadonly %s!: pulumi.Output<%s>;",
-			outcomment, prop.name, tsType(prop, true /*noflags*/, !prop.out /*wrapInput*/))
+			outcomment, prop.name, tsType(mod.name, name, prop, res.parsedDocs, nested.outputs, nil,
+				true /*noflags*/, !prop.out /*wrapInput*/, false /*isInputType*/))
 	}
 	w.Writefmtln("")
 
@@ -697,12 +946,21 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	// Emit the state type for get methods.
 	if !res.IsProvider() {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, res.statet, true /*wrapInput*/)
+		g.emitPlainOldType(w, res.statet, mod.name, name, res.parsedDocs, nested.inputs, nested.inputOverlays,
+			true /*wrapInput*/, true /*isInputType*/)
 	}
 
 	// Emit the argument type for construction.
 	w.Writefmtln("")
-	g.emitPlainOldType(w, res.argst, true /*wrapInput*/)
+	g.emitPlainOldType(w, res.argst, mod.name, name, res.parsedDocs, nested.inputs, nested.inputOverlays,
+		true /*wrapInput*/, true /*isInputType*/)
+
+	// If we generated any nested types, regenerate the type to add the proper imports at the top.
+	// This approach isn't great. Ideally, we'd precompute the nested types so we wouldn't have to regenerate.
+	if (!needsInput && len(nested.inputs) > 0) || (!needsOutput && len(nested.outputs) > 0) {
+		contract.IgnoreClose(w)
+		return g.emitResourceType(mod, res, nested)
+	}
 
 	return file, nil
 }
@@ -731,9 +989,12 @@ func (g *nodeJSGenerator) writeAlias(w *tools.GenWriter, alias tfbridge.AliasInf
 	w.WriteString(" }")
 }
 
-func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (string, error) {
-	// Create a vars.ts file into which all configuration variables will go.
-	w, file, err := g.openWriter(mod, fun.name+".ts", true)
+func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, nested *nestedTypes) (string, error) {
+	needsSDK := true
+	needsInput := len(nested.inputs) > 0
+	needsOutput := len(nested.outputs) > 0
+	needsUtilities := true
+	w, file, err := g.openWriter(mod, fun.name+".ts", needsSDK, needsInput, needsOutput, needsUtilities)
 	if err != nil {
 		return "", err
 	}
@@ -806,11 +1067,20 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, fun.argst, false /*wrapInput*/)
+		g.emitPlainOldType(w, fun.argst, mod.name, strings.Title(fun.name), fun.parsedDocs, nested.inputs,
+			nested.inputOverlays, false /*wrapInput*/, true /*isInputType*/)
 	}
 	if fun.retst != nil {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, fun.retst, false /*wrapInput*/)
+		g.emitPlainOldType(w, fun.retst, mod.name, strings.Title(fun.name), fun.parsedDocs, nested.outputs, nil,
+			false /*wrapInput*/, false /*isInputType*/)
+	}
+
+	// If we generated any nested types, regenerate the type to add the proper imports at the top.
+	// This approach isn't great. Ideally, we'd precompute the nested types so we wouldn't have to regenerate.
+	if (!needsInput && len(nested.inputs) > 0) || (!needsOutput && len(nested.outputs) > 0) {
+		contract.IgnoreClose(w)
+		return g.emitResourceFunc(mod, fun, nested)
 	}
 
 	return file, nil
@@ -1017,7 +1287,12 @@ func (g *nodeJSGenerator) emitCustomImports(w *tools.GenWriter, mod *module, inf
 		}
 	}
 
-	// Next, if there were any imports, generate the import statement.  We must sort names to ensure determinism.
+	// Next, if there were any imports, generate the import statement.
+	return g.emitImportMap(w, imports)
+}
+
+// emitImportMap emits imports in the map.
+func (g *nodeJSGenerator) emitImportMap(w *tools.GenWriter, imports importMap) error {
 	if len(imports) > 0 {
 		var files []string
 		for file := range imports {
@@ -1026,6 +1301,7 @@ func (g *nodeJSGenerator) emitCustomImports(w *tools.GenWriter, mod *module, inf
 		sort.Strings(files)
 
 		for _, file := range files {
+			// We must sort names to ensure determinism.
 			var names []string
 			for name := range imports[file] {
 				names = append(names, name)
@@ -1071,9 +1347,7 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 					return err
 				}
 
-				// We allow types to have a `[]` suffix to indicate an array.
-				// Thus, strip the `[]` suffix for the import so just the type itself is imported.
-				importName := strings.TrimSuffix(string(ct.Name()), "[]")
+				importName := getCustomImportTypeName(string(ct.Name()))
 
 				// Now just mark the member in the resulting map.
 				if imports[relmod] == nil {
@@ -1099,6 +1373,13 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 	return nil
 }
 
+// getCustomImportTypeName returns the import name to use for custom types.
+func getCustomImportTypeName(typeName string) string {
+	// We allow types to have a `[]` suffix to indicate an array.
+	// Thus, strip the `[]` suffix for the import so just the type itself is imported.
+	return strings.TrimSuffix(typeName, "[]")
+}
+
 // tsFlags returns the TypeScript flags for a given variable.
 func tsFlags(v *variable) string {
 	return tsFlagsComplex(v.schema, v.info, v.opt, v.out, v.config)
@@ -1116,12 +1397,24 @@ func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt, out, con
 // that represents the optional nature of a variable, even when flags will not be present; this is often needed when
 // turning the type into a generic type argument, for example, since there will be no opportunity for "?" there.
 // wrapInput can be set to true to cause the generated type to be deeply wrapped with `pulumi.Input<T>`.
-func tsType(v *variable, noflags, wrapInput bool) string {
-	return tsTypeComplex(v.schema, v.info, noflags, v.out, wrapInput, v.config)
+// module is the name of the type's module.
+// typeNamePrefix is the prefix to use when generating the name of nested types.
+// parsedDocs contains docs that can be used on nested types.
+// Nested types are added to the nestedTypeDeclarations map.
+// Imports for custom types (overlays) used in nested types are added to the nestedInputOverlays map when it is non-nil.
+// isInputType indicates whether the type is an input type; setting to false indicates an output type.
+func tsType(module, typeNamePrefix string, v *variable, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
+	nestedInputOverlays map[string]bool, noflags, wrapInput, isInputType bool) string {
+
+	return tsTypeComplex(module, typeNamePrefix, v.name, v.schema, v.info, parsedDocs, nestedTypeDeclarations,
+		nestedInputOverlays, noflags, v.out, wrapInput, isInputType, v.config, 0)
 }
 
 // tsTypeComplex is just like tsType, but permits recursing using component pieces rather than a true variable.
-func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, wrapInput, config bool) string {
+func tsTypeComplex(module, typeNamePrefix, name string, sch *schema.Schema, info *tfbridge.SchemaInfo,
+	parsedDocs parsedDoc, nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, noflags, out,
+	wrapInput, isInputType, config bool, level int) string {
+
 	// First, see if there is a custom override.  If yes, use it directly.
 	var t string
 	var elem *tfbridge.SchemaInfo
@@ -1133,6 +1426,12 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, 
 				if len(info.AltTypes) > 0 {
 					for _, at := range info.AltTypes {
 						t = fmt.Sprintf("%s | %s", t, at.Name())
+
+						// If this is for a nested structure and the overlaps map is non-nil, add the
+						// custom type to the map.
+						if level > 0 && nestedInputOverlays != nil {
+							nestedInputOverlays[at.Name().String()] = true
+						}
 					}
 				}
 			}
@@ -1153,7 +1452,8 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, 
 	// If nothing was found, generate the primitive type name for this.
 	if t == "" {
 		flatten := tfbridge.IsMaxItemsOne(sch, info)
-		t = tsPrimitive(sch.Type, sch.Elem, elem, flatten, out, wrapInput, config)
+		t = tsPrimitive(module, typeNamePrefix, name, sch.Type, sch.Elem, elem, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, flatten, out, wrapInput, isInputType, config, level)
 	}
 
 	// If we aren't using optional flags, we need to use TypeScript union types to permit undefined values.
@@ -1167,8 +1467,9 @@ func tsTypeComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, noflags, out, 
 }
 
 // tsPrimitive returns the TypeScript type name for a given schema value type and element kind.
-func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.SchemaInfo,
-	flatten, out, wrapInput, config bool) string {
+func tsPrimitive(module, typeNamePrefix, name string, vt schema.ValueType, elem interface{},
+	eleminfo *tfbridge.SchemaInfo, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
+	nestedInputOverlays map[string]bool, flatten, out, wrapInput, isInputType, config bool, level int) string {
 
 	// First figure out the raw type.
 	var t string
@@ -1180,7 +1481,11 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 	case schema.TypeString:
 		t = "string"
 	case schema.TypeSet, schema.TypeList:
-		elemType := tsElemType(elem, eleminfo, out, wrapInput, config)
+		if !flatten {
+			name = inflector.Singularize(name)
+		}
+		elemType := tsElemType(module, typeNamePrefix, name, elem, eleminfo, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, out, wrapInput, isInputType, config, level)
 		if flatten {
 			return elemType
 		}
@@ -1188,7 +1493,8 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 	case schema.TypeMap:
 		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
 		// TF that effectively forces this behavior.
-		elemType := tsElemType(elem, eleminfo, out, wrapInput, config)
+		elemType := tsElemType(module, typeNamePrefix, name, elem, eleminfo, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, out, wrapInput, isInputType, config, level)
 		if _, hasResourceElem := elem.(*schema.Resource); hasResourceElem {
 			return elemType
 		}
@@ -1206,7 +1512,10 @@ func tsPrimitive(vt schema.ValueType, elem interface{}, eleminfo *tfbridge.Schem
 
 // tsElemType returns the TypeScript type for a given schema element.  This element may be either a simple schema
 // property or a complex structure.  In the case of a complex structure, this will expand to its nominal type.
-func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput, config bool) string {
+func tsElemType(module, typeNamePrefix, name string, elem interface{}, info *tfbridge.SchemaInfo, parsedDocs parsedDoc,
+	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, out, wrapInput, isInputType,
+	config bool, level int) string {
+
 	// If there is no element type specified, we will accept anything.
 	if elem == nil {
 		return "any"
@@ -1214,40 +1523,114 @@ func tsElemType(elem interface{}, info *tfbridge.SchemaInfo, out, wrapInput, con
 
 	switch e := elem.(type) {
 	case schema.ValueType:
-		return tsPrimitive(e, nil, info, false, out, wrapInput, config)
+		return tsPrimitive(module, typeNamePrefix, name, e, nil, info, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, false /*noflags*/, out, wrapInput, isInputType, config, level)
 	case *schema.Schema:
 		// A simple type, just return its type name.
-		return tsTypeComplex(e, info, true /*noflags*/, out, wrapInput, config)
+		return tsTypeComplex(module, typeNamePrefix, name, e, info, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, true /*noflags*/, out, wrapInput, isInputType, config, level)
 	case *schema.Resource:
 		// A complex type, just expand to its nominal type name.
-		// TODO: spill all complex structures in advance so that we don't have insane inline expansions.
-		t := "{ "
-		c := 0
-		for _, s := range stableSchemas(e.Schema) {
-			var fldinfo *tfbridge.SchemaInfo
-			if info != nil {
-				fldinfo = info.Fields[s]
-			}
-			sch := e.Schema[s]
-			if name := propertyName(s, sch, fldinfo); name != "" {
-				if c > 0 {
-					t += ", "
-				}
-				flg := tsFlagsComplex(sch, fldinfo, false, out, config)
-				typ := tsTypeComplex(sch, fldinfo, false /*noflags*/, out, wrapInput, config)
-				t += fmt.Sprintf("%s%s: %s", name, flg, typ)
-				c++
-			}
-		}
-		t += " }"
-		if wrapInput {
-			t = fmt.Sprintf("pulumi.Input<%s>", t)
-		}
-		return t
+		return tsElemComplexStructureType(module, typeNamePrefix, name, e, info, parsedDocs, nestedTypeDeclarations,
+			nestedInputOverlays, out, wrapInput, isInputType, config, level)
 	default:
 		contract.Failf("Unrecognized schema element type: %v", e)
 		return ""
 	}
+}
+
+// tsElemComplexStructureType returns the TypeScript expanded anonymous type if nestedTypeDeclarations is nil, otherwise
+// the nested type declaration will be added to the map and full type name returned.
+func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.Resource,
+	info *tfbridge.SchemaInfo, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
+	nestedInputOverlays map[string]bool, out, wrapInput, isInputType, config bool, level int) string {
+
+	// Bump the nest level.
+	level++
+
+	typeName := typeNamePrefix + strings.Title(name)
+
+	// Values to use when generating an inline anonymous type.
+	whitespace := " "
+	indent := ""
+	propertySeparator := ", "
+	propertyLineEnding := ""
+
+	// Customize the values when we're generating a nested type declaration.
+	if nestedTypeDeclarations != nil {
+		whitespace = "\n"
+		indent = "    "
+		propertySeparator = "\n"
+		propertyLineEnding = ";"
+	}
+
+	t := "{" + whitespace
+	for i, s := range stableSchemas(e.Schema) {
+		var fldinfo *tfbridge.SchemaInfo
+		if info != nil {
+			fldinfo = info.Fields[s]
+		}
+		sch := e.Schema[s]
+		if propName := propertyName(s, sch, fldinfo); propName != "" {
+			if i > 0 {
+				t += propertySeparator
+			}
+
+			// Emit doc comment when generating the nested type declaration.
+			doc := parsedDocs.Arguments[s]
+			if doc == "" {
+				doc = parsedDocs.Attributes[s]
+			}
+			if nestedTypeDeclarations != nil && doc != "" {
+				t += fmt.Sprintf("%v/**\n", indent)
+
+				lines := strings.Split(doc, "\n")
+				for i, docLine := range lines {
+					docLine = sanitizeForDocComment(docLine)
+					// Break if we get to the last line and it's empty
+					if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+						break
+					}
+					// Print the line of documentation
+					t += fmt.Sprintf("%v * %s\n", indent, docLine)
+				}
+
+				t += fmt.Sprintf("%v */\n", indent)
+			}
+
+			flg := tsFlagsComplex(sch, fldinfo, false, out, config)
+			typ := tsTypeComplex(module, typeName, propName, sch, fldinfo, parsedDocs, nestedTypeDeclarations,
+				nestedInputOverlays, false /*noflags*/, out, wrapInput, isInputType, config, level)
+			t += fmt.Sprintf("%s%s%s: %s%s", indent, propName, flg, typ, propertyLineEnding)
+		}
+	}
+	t += whitespace + "}"
+
+	if nestedTypeDeclarations != nil {
+		fullTypeName := "outputs"
+		if isInputType {
+			fullTypeName = "inputs"
+		}
+		if module != "" {
+			fullTypeName += fmt.Sprintf(".%s", module)
+		}
+		fullTypeName += fmt.Sprintf(".%s", typeName)
+
+		declaration, ok := nestedTypeDeclarations[typeName]
+		contract.Assertf(!ok || declaration == t,
+			"Nested type %q already exists with a different declaration.", typeName)
+
+		// Save the nested type's declaration in the map.
+		nestedTypeDeclarations[typeName] = t
+
+		// Use the full type name to refer to the nested type.
+		t = fullTypeName
+	}
+
+	if wrapInput {
+		t = fmt.Sprintf("pulumi.Input<%s>", t)
+	}
+	return t
 }
 
 func tsPrimitiveValue(value interface{}) (string, error) {
