@@ -461,7 +461,9 @@ const metaKey = "__meta"
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(state *terraform.InstanceState,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, supportsSecrets bool) (resource.PropertyMap, error) {
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable,
+	supportsSecrets bool) (resource.PropertyMap, error) {
+
 	var outs map[string]interface{}
 	if state != nil {
 		outs = make(map[string]interface{})
@@ -487,7 +489,7 @@ func MakeTerraformResult(state *terraform.InstanceState,
 			outs["id"] = attrs["id"]
 		}
 	}
-	outMap := MakeTerraformOutputs(outs, tfs, ps, nil, false, supportsSecrets)
+	outMap := MakeTerraformOutputs(outs, tfs, ps, assets, false, supportsSecrets)
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta) != 0 {
@@ -657,10 +659,10 @@ func MakeTerraformOutput(v interface{},
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(res *PulumiResource, m resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable,
 	config resource.PropertyMap, defaults bool) (*terraform.ResourceConfig, error) {
 	// Convert the resource bag into an untyped map, and then create the resource config object.
-	inputs, err := MakeTerraformInputs(res, nil, m, tfs, ps, nil, config, defaults, false)
+	inputs, err := MakeTerraformInputs(res, nil, m, tfs, ps, assets, config, defaults, false)
 	if err != nil {
 		return nil, err
 	}
@@ -669,14 +671,14 @@ func MakeTerraformConfig(res *PulumiResource, m resource.PropertyMap,
 
 // MakeTerraformConfigFromRPC creates a Terraform config map from a Pulumi RPC property map.
 func MakeTerraformConfigFromRPC(res *PulumiResource, m *pbstruct.Struct,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable,
 	config resource.PropertyMap, allowUnknowns, defaults bool, label string) (*terraform.ResourceConfig, error) {
 	props, err := plugin.UnmarshalProperties(m,
 		plugin.MarshalOptions{Label: label, KeepUnknowns: allowUnknowns, SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := MakeTerraformConfig(res, props, tfs, ps, config, defaults)
+	cfg, err := MakeTerraformConfig(res, props, tfs, ps, assets, config, defaults)
 	if err != nil {
 		return nil, err
 	}

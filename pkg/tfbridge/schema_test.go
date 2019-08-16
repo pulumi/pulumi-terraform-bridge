@@ -606,7 +606,7 @@ func TestMetaProperties(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, true)
+	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -635,7 +635,7 @@ func TestMetaProperties(t *testing.T) {
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil, true)
+	props, err = MakeTerraformResult(read2, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
@@ -650,7 +650,7 @@ func TestMetaProperties(t *testing.T) {
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil, true)
+	props, err = MakeTerraformResult(create, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -672,7 +672,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, true)
+	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -701,7 +701,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil, true)
+	props, err = MakeTerraformResult(read2, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.NotContains(t, props, metaKey)
@@ -718,7 +718,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	create, err := testTFProvider.Apply(info, state, diff)
 	assert.NoError(t, err)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil, true)
+	props, err = MakeTerraformResult(create, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -746,7 +746,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, true)
+	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
@@ -1498,4 +1498,101 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	assert.Equal(t, "Missing required property 'inputX'", x)
 	assert.Equal(t, "Missing required property 'inputY'. Either set it explicitly or configure it "+
 		"with 'pulumi config set test:input_y_config <value>'.", y)
+}
+
+func TestAssetRoundtrip(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"input_a": {Type: schema.TypeString, Required: true},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			return []*schema.ResourceData{d}, nil
+		})
+
+	tfres := tfProvider.ResourcesMap["importable_resource"]
+	tfres.Create = func(d *schema.ResourceData, meta interface{}) error {
+		d.SetId("MyID")
+		return nil
+	}
+	tfres.Update = func(d *schema.ResourceData, meta interface{}) error {
+		return nil
+	}
+
+	p := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+					Fields: map[string]*SchemaInfo{
+						"input_a": {
+							Asset: &AssetTranslation{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+
+	asset, err := resource.NewTextAsset("foo")
+	assert.NoError(t, err)
+
+	// Step 1: create and check an input bag.
+	pulumiIns, err := plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputA": asset,
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err := p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	// Step 2: create a resource using the checked input bag. The inputs should be smuggled along with the state.
+	createResp, err := p.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": asset,
+	}).DeepEquals(outs))
+
+	// Step 3: update the resource we just created.
+	asset, err = resource.NewTextAsset("bar")
+	assert.NoError(t, err)
+
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputA": asset,
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	// Step 2: create a resource using the checked input bag. The inputs should be smuggled along with the state.
+	updateResp, err := p.Update(context.Background(), &pulumirpc.UpdateRequest{
+		Id:   "MyID",
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": asset,
+	}).DeepEquals(outs))
 }

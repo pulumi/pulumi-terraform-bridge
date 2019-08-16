@@ -364,7 +364,7 @@ func (p *Provider) Configure(ctx context.Context,
 
 	// First make a Terraform config map out of the variables. We do this before checking for missing properties
 	// s.t. we can pull any defaults out of the TF schema.
-	config, err := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, p.configValues, true)
+	config, err := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
@@ -553,7 +553,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, p.configValues, false)
+	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, nil, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -636,8 +636,9 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{Meta: make(map[string]interface{})}
+	assets := make(AssetTable)
 	config, err := MakeTerraformConfigFromRPC(
-		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
+		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields, assets,
 		p.configValues, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
@@ -665,7 +666,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -734,7 +735,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
+		props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -787,13 +788,14 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
+	assets := make(AssetTable)
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
 		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, p.configValues, false)
+	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, assets, p.configValues, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -835,7 +837,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 	}
 
-	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, p.supportsSecrets)
+	props, err := MakeTerraformResult(newstate, res.TF.Schema, res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -950,7 +952,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props, err := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields, p.supportsSecrets)
+		props, err := MakeTerraformResult(invoke, ds.TF.Schema, ds.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
