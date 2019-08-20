@@ -842,8 +842,8 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 		reqs = make(map[string]string)
 	}
 
-	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure that it specifies
-	// an acceptable version range.
+	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure
+	// that it specifies an acceptable version range.
 	if pulumiReq, ok := reqs["pulumi"]; ok {
 		// We expect a specific pattern of ">=version,<version" here.
 		matches := requirementRegex.FindStringSubmatch(pulumiReq)
