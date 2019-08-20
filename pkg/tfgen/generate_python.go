@@ -593,7 +593,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 
 		w.Writefmtln(`])`)
-		w.Writefmtln(`        opts = alias_opts if opts is None else opts.merge(alias_opts)`)
+		w.Writefmtln(`        opts = pulumi.ResourceOptions.merge(opts, alias_opts)`)
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
@@ -612,7 +612,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("):")
 	g.emitGetDocstring(w, mod, res)
 	w.Writefmtln(
-		"        opts = pulumi.ResourceOptions(id=id) if opts is None else opts.merge(pulumi.ResourceOptions(id=id))")
+		"        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))")
 	w.Writefmtln("")
 	w.Writefmtln("        __props__ = dict()")
 
