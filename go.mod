@@ -3,7 +3,6 @@ module github.com/pulumi/pulumi-terraform
 go 1.12
 
 require (
-	github.com/blang/semver v3.5.1+incompatible
 	github.com/docker/docker v1.13.1 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gliderlabs/ssh v0.1.3 // indirect

@@ -21,12 +21,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
+	// "regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/blang/semver"
+	// "github.com/blang/semver"
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
@@ -593,7 +593,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		}
 
 		w.Writefmtln(`])`)
-		w.Writefmtln(`        opts = alias_opts if opts is None else opts.merge(alias_opts)`)
+		w.Writefmtln(`        opts = pulumi.ResourceOptions.merge(opts, alias_opts)`)
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
@@ -612,7 +612,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	w.Writefmtln("):")
 	g.emitGetDocstring(w, mod, res)
 	w.Writefmtln(
-		"        opts = pulumi.ResourceOptions(id=id) if opts is None else opts.merge(pulumi.ResourceOptions(id=id))")
+		"        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))")
 	w.Writefmtln("")
 	w.Writefmtln("        __props__ = dict()")
 
@@ -748,12 +748,12 @@ func (g *pythonGenerator) emitOverlay(mod *module, overlay *overlayFile) (string
 	return dst, nil
 }
 
-var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
-var oldestAllowedPulumi = semver.Version{
-	Major: 0,
-	Minor: 17,
-	Patch: 28,
-}
+// var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
+// var oldestAllowedPulumi = semver.Version{
+// 	Major: 0,
+// 	Minor: 17,
+// 	Patch: 28,
+// }
 
 // emitPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
@@ -844,23 +844,23 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 
 	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure that it specifies
 	// an acceptable version range.
-	if pulumiReq, ok := reqs["pulumi"]; ok {
-		// We expect a specific pattern of ">=version,<version" here.
-		matches := requirementRegex.FindStringSubmatch(pulumiReq)
-		if len(matches) != 2 {
-			return errors.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
-		}
+	// if pulumiReq, ok := reqs["pulumi"]; ok {
+	// 	// We expect a specific pattern of ">=version,<version" here.
+	// 	matches := requirementRegex.FindStringSubmatch(pulumiReq)
+	// 	if len(matches) != 2 {
+	// 		return errors.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
+	// 	}
 
-		lowerBound, err := semver.ParseTolerant(matches[1])
-		if err != nil {
-			return errors.Errorf("invalid version for lower bound: %v", err)
-		}
-		if lowerBound.LT(oldestAllowedPulumi) {
-			return errors.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
-		}
-	} else {
-		reqs["pulumi"] = ""
-	}
+	// 	lowerBound, err := semver.ParseTolerant(matches[1])
+	// 	if err != nil {
+	// 		return errors.Errorf("invalid version for lower bound: %v", err)
+	// 	}
+	// 	if lowerBound.LT(oldestAllowedPulumi) {
+	// 		return errors.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
+	// 	}
+	// } else {
+	// 	reqs["pulumi"] = ""
+	// }
 
 	// Sort the entries so they are deterministic.
 	reqnames := []string{
