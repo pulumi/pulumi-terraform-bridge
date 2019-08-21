@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/pkg/errors"
@@ -582,9 +582,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			properties = append(properties, k)
 
 			switch d.Kind {
-			case pulumirpc.PropertyDiff_ADD_REPLACE:
-			case pulumirpc.PropertyDiff_UPDATE_REPLACE:
-			case pulumirpc.PropertyDiff_DELETE_REPLACE:
+			case pulumirpc.PropertyDiff_ADD_REPLACE,
+				pulumirpc.PropertyDiff_UPDATE_REPLACE,
+				pulumirpc.PropertyDiff_DELETE_REPLACE:
+
 				replaces = append(replaces, k)
 				if replaced == nil {
 					replaced = make(map[string]bool)
@@ -607,11 +608,14 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		}
 	}
 
+	deleteBeforeReplace := len(replaces) > 0 &&
+		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, res.TF.Schema, res.Schema.Fields))
+
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
 		Replaces:            replaces,
 		Stables:             stables,
-		DeleteBeforeReplace: len(replaces) > 0 && res.Schema.DeleteBeforeReplace,
+		DeleteBeforeReplace: deleteBeforeReplace,
 		Diffs:               properties,
 		DetailedDiff:        detailedDiff,
 		HasDetailedDiff:     true,

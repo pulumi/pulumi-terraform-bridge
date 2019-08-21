@@ -46,6 +46,36 @@ const defaultsKey = "__defaults"
 // marshaled back to assets by MakeTerraformOutputs.
 type AssetTable map[*SchemaInfo]resource.PropertyValue
 
+// nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
+// property with a value that was not populated by the autonamer.
+func nameRequiresDeleteBeforeReplace(inputs resource.PropertyMap,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) bool {
+
+	defaults, hasDefaults := inputs[defaultsKey]
+	if !hasDefaults || !defaults.IsArray() {
+		// If there is no list of properties that were populated using defaults, consider the resource autonamed.
+		// This avoids setting delete-before-replace for resources that were created before the defaults list existed.
+		return false
+	}
+
+	hasDefault := map[resource.PropertyKey]bool{}
+	for _, key := range defaults.ArrayValue() {
+		if !key.IsString() {
+			continue
+		}
+		hasDefault[resource.PropertyKey(key.StringValue())] = true
+	}
+
+	for key := range inputs {
+		_, _, psi := getInfoFromPulumiName(key, tfs, ps, false)
+		if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && !hasDefault[key] {
+			return true
+		}
+	}
+
+	return false
+}
+
 // MakeTerraformInputs takes a property map plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform.  Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take

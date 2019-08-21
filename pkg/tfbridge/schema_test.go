@@ -1596,3 +1596,154 @@ func TestAssetRoundtrip(t *testing.T) {
 		"inputA": asset,
 	}).DeepEquals(outs))
 }
+
+func TestDeleteBeforeReplaceAutoname(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"input_a": {Type: schema.TypeString, Required: true},
+			"input_b": {Type: schema.TypeString, Required: true, ForceNew: true},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			return []*schema.ResourceData{d}, nil
+		})
+
+	tfres := tfProvider.ResourcesMap["importable_resource"]
+	tfres.Create = func(d *schema.ResourceData, meta interface{}) error {
+		d.SetId("MyID")
+		return nil
+	}
+	tfres.Update = func(d *schema.ResourceData, meta interface{}) error {
+		return nil
+	}
+
+	p := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+					Fields: map[string]*SchemaInfo{
+						"input_a": AutoName("inputA", 64),
+					},
+				},
+			},
+		},
+	}
+
+	urn := resource.NewURN("s", "pr", "pa", "importableResource", "myResource")
+
+	// Step 1: create and check an input bag. This input bag will use an auto-name.
+	pulumiIns, err := plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputB": "foo",
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err := p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	// Step 2: create a resource using the checked input bag. The inputs should be smuggled along with the state.
+	createResp, err := p.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	// Step 3: make a new property bag that changes a force-new property and diff the resource. The result should not
+	// be delete-before-create.
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputB": "bar",
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	diffResp, err := p.Diff(context.Background(), &pulumirpc.DiffRequest{
+		Id:   "MyID",
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	assert.True(t, len(diffResp.GetReplaces()) > 0)
+	assert.False(t, diffResp.GetDeleteBeforeReplace())
+
+	// Step 4: make another property bag that sets a value for the name and changes a force-new property and then diff
+	// the resource. The result should indicate delete-before-replace.
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputA": "myResource",
+		"inputB": "bar",
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	diffResp, err = p.Diff(context.Background(), &pulumirpc.DiffRequest{
+		Id:   "MyID",
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	assert.True(t, len(diffResp.GetReplaces()) > 0)
+	assert.True(t, diffResp.GetDeleteBeforeReplace())
+
+	// Step 5: delete the defaults list from the checked inputs and re-run the diff. The result should not indicate
+	// delete-before-replace. This tests the back-compat scenario.
+	checkedIns, err := plugin.UnmarshalProperties(checkResp.GetInputs(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	delete(checkedIns, defaultsKey)
+	marshaledIns, err := plugin.MarshalProperties(checkedIns, plugin.MarshalOptions{})
+	assert.NoError(t, err)
+
+	diffResp, err = p.Diff(context.Background(), &pulumirpc.DiffRequest{
+		Id:   "MyID",
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: marshaledIns,
+	})
+	assert.NoError(t, err)
+
+	assert.True(t, len(diffResp.GetReplaces()) > 0)
+	assert.False(t, diffResp.GetDeleteBeforeReplace())
+
+	// Step 6: delete the auto-name default from the schema and re-run the diff. The result should not indicate
+	// delete-befer-replace.
+	p.resources["importableResource"].Schema.Fields = nil
+
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputA": "myResource",
+		"inputB": "bar",
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = p.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	diffResp, err = p.Diff(context.Background(), &pulumirpc.DiffRequest{
+		Id:   "MyID",
+		Urn:  string(urn),
+		Olds: createResp.GetProperties(),
+		News: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	assert.True(t, len(diffResp.GetReplaces()) > 0)
+	assert.False(t, diffResp.GetDeleteBeforeReplace())
+}
