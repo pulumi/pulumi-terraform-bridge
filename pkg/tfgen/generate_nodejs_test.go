@@ -123,6 +123,28 @@ var tsTypeTests = []typeTest{
 		expectedOutput: "string",
 		expectedInput:  "pulumi.Input<string | Foo[]>",
 	},
+	{
+		// Asset
+		schema: &schema.Schema{Type: schema.TypeString},
+		info: &tfbridge.SchemaInfo{
+			Asset: &tfbridge.AssetTranslation{
+				Kind: tfbridge.FileAsset,
+			},
+		},
+		expectedOutput: "pulumi.asset.Asset | pulumi.asset.Archive",
+		expectedInput:  "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>",
+	},
+	{
+		// Archive
+		schema: &schema.Schema{Type: schema.TypeString},
+		info: &tfbridge.SchemaInfo{
+			Asset: &tfbridge.AssetTranslation{
+				Kind: tfbridge.FileArchive,
+			},
+		},
+		expectedOutput: "pulumi.asset.Archive",
+		expectedInput:  "pulumi.Input<pulumi.asset.Archive>",
+	},
 }
 
 func Test_TsTypes(t *testing.T) {

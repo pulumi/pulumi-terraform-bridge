@@ -25,6 +25,7 @@ This CHANGELOG details important changes made in each version of the
   resource with the state of existing cloud resource.
 - Generate named nested types with doc comments instead of anonymous inline expansions for TypeScript.
 - Set `DeleteBeforeReplace` for resources that are not auto-named.
+- Accept archive values everywhere asset values are accepted.
 
 ## v0.18.3 (Released June 20, 2019)
 

@@ -1439,7 +1439,11 @@ func tsTypeComplex(module, typeNamePrefix, name string, sch *schema.Schema, info
 				t = fmt.Sprintf("pulumi.Input<%s>", t)
 			}
 		} else if info.Asset != nil {
-			t = "pulumi.asset." + info.Asset.Type()
+			if info.Asset.IsArchive() {
+				t = "pulumi.asset." + info.Asset.Type()
+			} else {
+				t = "pulumi.asset.Asset | pulumi.asset.Archive"
+			}
 
 			if wrapInput {
 				t = fmt.Sprintf("pulumi.Input<%s>", t)

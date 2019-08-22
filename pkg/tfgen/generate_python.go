@@ -110,6 +110,7 @@ func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("import warnings")
 	w.Writefmtln("import pulumi")
 	w.Writefmtln("import pulumi.runtime")
+	w.Writefmtln("from typing import Union")
 	w.Writefmtln("from %s import utilities, tables", g.relativeRootDir(mod))
 	w.Writefmtln("")
 }
@@ -1085,7 +1086,10 @@ func pyType(v *variable) string {
 func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 	// If this is an asset or archive type, return the proper Pulumi SDK type name.
 	if info != nil && info.Asset != nil {
-		return "pulumi." + info.Asset.Type()
+		if info.Asset.IsArchive() {
+			return "pulumi." + info.Asset.Type()
+		}
+		return "Union[pulumi.Asset, pulumi.Archive]"
 	}
 
 	switch sch.Type {

@@ -435,8 +435,6 @@ func MakeTerraformInput(res *PulumiResource, name string,
 		// We require that there be archive information, otherwise an error occurs.
 		if ps == nil || ps.Asset == nil {
 			return nil, errors.Errorf("unexpected archive %s", name)
-		} else if !ps.Asset.IsArchive() {
-			return nil, errors.Errorf("expected an archive, but %s is not an archive", name)
 		}
 		if assets != nil {
 			_, has := assets[ps]

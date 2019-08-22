@@ -985,6 +985,31 @@ func TestInvalidAsset(t *testing.T) {
 	}, outputs)
 }
 
+func TestArchiveAsAsset(t *testing.T) {
+	assets := make(AssetTable)
+	tfs := map[string]*schema.Schema{
+		"zzz": {Type: schema.TypeString},
+	}
+	ps := map[string]*SchemaInfo{
+		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+	}
+	olds := resource.PropertyMap{}
+	asset, err := resource.NewTextAsset("bar")
+	assert.NoError(t, err)
+	archValue, err := resource.NewAssetArchive(map[string]interface{}{
+		"foo": asset,
+	})
+	assert.NoError(t, err)
+	arch := resource.NewPropertyValue(archValue)
+	props := resource.PropertyMap{
+		"zzz": arch,
+	}
+	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
+	assert.NoError(t, err)
+	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+	assert.True(t, arch.DeepEquals(outputs["zzz"]))
+}
+
 func boolPointer(b bool) *bool {
 	return &b
 }

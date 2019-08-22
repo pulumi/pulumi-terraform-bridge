@@ -156,22 +156,24 @@ func (a *AssetTranslation) TranslateAsset(asset *resource.Asset) (interface{}, e
 
 // TranslateArchive translates the given archive using the directives provided by the translation info.
 func (a *AssetTranslation) TranslateArchive(archive *resource.Archive) (interface{}, error) {
-	contract.Assert(a.IsArchive())
-
 	// TODO[pulumi/pulumi#153]: support HashField.
 
 	// Produce either a temp file or an in-memory representation, as requested.
+	format := a.Format
+	if format == resource.NotArchive {
+		format = resource.ZIPArchive
+	}
 	switch a.Kind {
-	case FileArchive:
+	case FileArchive, FileAsset:
 		path, err := translateToFile(archive.Hash, archive.HasContents(), func(w io.Writer) error {
-			return archive.Archive(a.Format, w)
+			return archive.Archive(format, w)
 		})
 		return path, err
-	case BytesArchive:
+	case BytesArchive, BytesAsset:
 		if !archive.HasContents() {
 			return []byte{}, nil
 		}
-		return archive.Bytes(a.Format)
+		return archive.Bytes(format)
 	default:
 		contract.Failf("Unrecognized asset translation kind: %v", a.Kind)
 		return nil, nil
