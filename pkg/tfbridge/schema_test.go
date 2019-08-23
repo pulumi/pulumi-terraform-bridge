@@ -1111,6 +1111,168 @@ func TestImporterOnRead(t *testing.T) {
 	}
 }
 
+func TestImporterWithNewID(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"required_for_import": {
+				Type: schema.TypeString,
+			},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			d.SetId(d.Id() + "-imported")
+			return []*schema.ResourceData{d}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "MyID-imported", resp.Id)
+	}
+}
+
+func TestImporterWithMultipleResourceTypes(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"required_for_import": {
+				Type: schema.TypeString,
+			},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			d.SetId(d.Id() + "-imported")
+
+			d2 := &schema.ResourceData{}
+			d2.SetType("other_importable_resource")
+			d2.SetId(d.Id())
+
+			return []*schema.ResourceData{d, d2}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "MyID-imported", resp.Id)
+	}
+}
+
+func TestImporterWithMultipleResources(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"required_for_import": {
+				Type: schema.TypeString,
+			},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			d.SetId(d.Id())
+
+			d2 := &schema.ResourceData{}
+			d2.SetType(d.State().Ephemeral.Type)
+			d2.SetId(d.Id() + "-imported")
+
+			return []*schema.ResourceData{d, d2}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		resp, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "MyID", resp.Id)
+	}
+}
+
+func TestImporterWithMultipleNewIDs(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schema.Schema{
+			"required_for_import": {
+				Type: schema.TypeString,
+			},
+		},
+		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			d.SetId(d.Id() + "-imported")
+
+			d2 := &schema.ResourceData{}
+			d2.SetType(d.State().Ephemeral.Type)
+			d2.SetId(d.Id() + "-2")
+
+			return []*schema.ResourceData{d, d2}, nil
+		})
+
+	provider := &Provider{
+		tf: tfProvider,
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	{
+		urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+		_, err := provider.Read(context.TODO(), &pulumirpc.ReadRequest{
+			Id:  "MyID",
+			Urn: string(urn),
+		})
+
+		assert.Error(t, err)
+	}
+}
+
 func TestImporterWithNoResource(t *testing.T) {
 
 	tfProvider := makeTestTFProvider(map[string]*schema.Schema{},
