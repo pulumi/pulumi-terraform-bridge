@@ -750,6 +750,11 @@ func (g *pythonGenerator) emitOverlay(mod *module, overlay *overlayFile) (string
 }
 
 var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
+var pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
+var pep440BetaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
+var pep440RCRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
+var pep440DevRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
+
 var oldestAllowedPulumi = semver.Version{
 	Major: 0,
 	Minor: 17,
@@ -852,7 +857,7 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 			return errors.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
 		}
 
-		lowerBound, err := semver.ParseTolerant(matches[1])
+		lowerBound, err := pep440VersionToSemver(matches[1])
 		if err != nil {
 			return errors.Errorf("invalid version for lower bound: %v", err)
 		}
@@ -885,6 +890,25 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 
 	w.Writefmtln("      zip_safe=False)")
 	return nil
+}
+
+func pep440VersionToSemver(v string) (semver.Version, error) {
+	switch {
+	case pep440AlphaRegex.MatchString(v):
+		parts := pep440AlphaRegex.FindStringSubmatch(v)
+		v = parts[1] + "-alpha." + parts[2]
+	case pep440BetaRegex.MatchString(v):
+		parts := pep440BetaRegex.FindStringSubmatch(v)
+		v = parts[1] + "-beta." + parts[2]
+	case pep440RCRegex.MatchString(v):
+		parts := pep440RCRegex.FindStringSubmatch(v)
+		v = parts[1] + "-rc." + parts[2]
+	case pep440DevRegex.MatchString(v):
+		parts := pep440DevRegex.FindStringSubmatch(v)
+		v = parts[1] + "-dev." + parts[2]
+	}
+
+	return semver.ParseTolerant(v)
 }
 
 // Emits property conversion tables for all properties recorded using `recordProperty`. The two tables emitted here are

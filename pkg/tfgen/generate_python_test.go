@@ -51,3 +51,26 @@ func TestPyKeywords(t *testing.T) {
 	assert.Equal(t, pycodegen.PyName("lambda"), "lambda_")
 	assert.Equal(t, pyClassName("True"), "True_")
 }
+
+// Tests our PEP440 to Semver conversion.
+func TestVersionConversion(t *testing.T) {
+	ver, err := pep440VersionToSemver("1.0.0")
+	assert.NoError(t, err)
+	assert.Equal(t, ver.String(), "1.0.0")
+
+	ver, err = pep440VersionToSemver("1.0.0a123")
+	assert.NoError(t, err)
+	assert.Equal(t, ver.String(), "1.0.0-alpha.123")
+
+	ver, err = pep440VersionToSemver("1.0.0b123")
+	assert.NoError(t, err)
+	assert.Equal(t, ver.String(), "1.0.0-beta.123")
+
+	ver, err = pep440VersionToSemver("1.0.0rc123")
+	assert.NoError(t, err)
+	assert.Equal(t, ver.String(), "1.0.0-rc.123")
+
+	ver, err = pep440VersionToSemver("1.0.0.dev123")
+	assert.NoError(t, err)
+	assert.Equal(t, ver.String(), "1.0.0-dev.123")
+}
