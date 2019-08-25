@@ -1058,9 +1058,8 @@ func (g *pythonGenerator) emitGetDocstring(w *tools.GenWriter, mod *module, res 
 	// "buf" contains the full text of the docstring, without the leading and trailing triple quotes.
 	var buf bytes.Buffer
 
-	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	fmt.Fprintf(&buf, `Get an existing %s resource's state with the given name, id, and optional extra
-properties used to qualify the lookup.`, res.name)
+	fmt.Fprintf(&buf, "Get an existing %s resource's state with the given name, id, and optional extra\n"+
+		"properties used to qualify the lookup.\n", res.name)
 	fmt.Fprintln(&buf, "")
 
 	fmt.Fprintln(&buf, ":param str resource_name: The unique name of the resulting resource.")
