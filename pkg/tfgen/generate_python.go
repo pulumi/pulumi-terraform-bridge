@@ -687,10 +687,25 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	w.Writefmt("opts=None")
 	w.Writefmtln("):")
 
-	// Write the TypeDoc/JSDoc for the data source function.
-	if fun.doc != "" {
-		g.emitDocComment(w, fun.doc, fun.docURL, "    ")
+	var buf bytes.Buffer
+	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	if fun.doc != "" && fun.doc != elidedDocComment {
+		fmt.Fprintln(&buf, fun.doc)
+	} else {
+		fmt.Fprintln(&buf, "Use this data source to access information about an existing resource.")
 	}
+
+	if len(fun.args) > 0 {
+		fmt.Fprintln(&buf, "")
+	}
+	for _, arg := range fun.args {
+		g.emitPropDocstring(&buf, arg, false /*wrapInput*/)
+	}
+
+	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
+	g.emitNestedStructuresDocstring(&buf, fun.args, fun.parsedDocs, false /*wrapInput*/)
+
+	g.emitDocComment(w, buf.String(), fun.docURL, "    ")
 
 	if fun.info.DeprecationMessage != "" {
 		w.Writefmtln("    pulumi.log.warn(\"%s is deprecated: %s\")", name, fun.info.DeprecationMessage)
@@ -1008,7 +1023,18 @@ func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *reso
 		ty := pyType(prop)
 		w.Writefmtln("    %s: pulumi.Output[%s]", name, ty)
 		if prop.doc != "" {
-			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
+			doc := prop.doc
+
+			nested := nestedStructure(prop, res.parsedDocs)
+			if len(nested) > 0 {
+				doc = fmt.Sprintf("%s\n\n", doc)
+
+				var buf bytes.Buffer
+				g.emitNestedStructureBullets(&buf, nested, "  ", false /*wrapInput*/)
+				doc = fmt.Sprintf("%s%s", doc, buf.String())
+			}
+
+			g.emitDocComment(w, doc, prop.docURL, "    ")
 		}
 	}
 }
@@ -1047,8 +1073,11 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	fmt.Fprintln(&buf, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.inprops {
-		g.emitPropDocstring(&buf, prop)
+		g.emitPropDocstring(&buf, prop, true /*wrapInput*/)
 	}
+
+	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
+	g.emitNestedStructuresDocstring(&buf, res.inprops, res.parsedDocs, true /*wrapInput*/)
 
 	// emitDocComment handles the prefix and triple quotes.
 	g.emitDocComment(w, buf.String(), res.docURL, "        ")
@@ -1066,18 +1095,25 @@ func (g *pythonGenerator) emitGetDocstring(w *tools.GenWriter, mod *module, res 
 	fmt.Fprintln(&buf, ":param str id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(&buf, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.outprops {
-		g.emitPropDocstring(&buf, prop)
+		g.emitPropDocstring(&buf, prop, true /*wrapInput*/)
 	}
+
+	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
+	g.emitNestedStructuresDocstring(&buf, res.outprops, res.parsedDocs, true /*wrapInput*/)
 
 	// emitDocComment handles the prefix and triple quotes.
 	g.emitDocComment(w, buf.String(), res.docURL, "        ")
 }
 
-func (g *pythonGenerator) emitPropDocstring(buf io.Writer, prop *variable) {
-	name := pycodegen.PyName(prop.name)
-	ty := pyType(prop)
+func (g *pythonGenerator) emitPropDocstring(buf io.Writer, prop *variable, wrapInput bool) {
 	if prop.doc == "" || prop.doc == elidedDocComment {
 		return
+	}
+
+	name := pycodegen.PyName(prop.name)
+	ty := pyType(prop)
+	if wrapInput {
+		ty = fmt.Sprintf("pulumi.Input[%s]", ty)
 	}
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
@@ -1091,13 +1127,146 @@ func (g *pythonGenerator) emitPropDocstring(buf io.Writer, prop *variable) {
 
 		// If it's the first line, print the :param header.
 		if i == 0 {
-			fmt.Fprintf(buf, ":param pulumi.Input[%s] %s: %s\n", ty, name, docLine)
+			fmt.Fprintf(buf, ":param %s %s: %s\n", ty, name, docLine)
 		} else {
-			// Otherwise, print out enough padding to align with the first "p" in "pulumi.Input"
-			//                 :param pulumi.Input[...]
+			// Otherwise, print out enough padding to align with the first char of the type.
 			fmt.Fprintf(buf, "       %s\n", docLine)
 		}
 	}
+}
+
+func (g *pythonGenerator) emitNestedStructuresDocstring(buf io.Writer, props []*variable, parsedDocs parsedDoc,
+	wrapInput bool) {
+
+	var names []string
+	nestedMap := make(map[string][]*nestedVariable)
+	for _, prop := range props {
+		nested := nestedStructure(prop, parsedDocs)
+		if len(nested) > 0 {
+			nestedMap[prop.Name()] = nested
+			names = append(names, prop.Name())
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		nested := nestedMap[name]
+		fmt.Fprintf(buf, "\nThe **%s** object supports the following:\n\n", pycodegen.PyName(name))
+		g.emitNestedStructureBullets(buf, nested, "  ", wrapInput)
+	}
+}
+
+func (g *pythonGenerator) emitNestedStructureBullets(buf io.Writer, nested []*nestedVariable, indent string,
+	wrapInput bool) {
+
+	if len(nested) == 0 {
+		return
+	}
+
+	for i, nes := range nested {
+		name := pycodegen.PyName(nes.prop.Name())
+		typ := pyType(nes.prop)
+		if wrapInput {
+			typ = fmt.Sprintf("pulumi.Input[%s]", typ)
+		}
+
+		docPrefix := " - "
+		if nes.prop.doc == "" {
+			// If there's no doc available, just write a new line.
+			docPrefix = "\n"
+		}
+		fmt.Fprintf(buf, "%s* `%s` (`%s`)%s", indent, name, typ, docPrefix)
+
+		// If this property has some documentation associated with it, we need to split it so that it is indented
+		// in a way that Sphinx can understand.
+		lines := strings.Split(nes.prop.doc, "\n")
+		for j, docLine := range lines {
+			// Break if we get to the last line and it's empty.
+			if j == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+				break
+			}
+
+			// If it's the first line, print it.
+			if j == 0 {
+				fmt.Fprintln(buf, docLine)
+			} else {
+				// Otherwise, pad with a couple spaces so the text is aligned with the bullet text above.
+				fmt.Fprintf(buf, "%s  %s\n", indent, docLine)
+			}
+		}
+
+		if len(nes.nested) > 0 {
+			fmt.Fprintln(buf, "")
+			g.emitNestedStructureBullets(buf, nes.nested, indent+"  ", wrapInput)
+			if i < len(nested)-1 {
+				fmt.Fprintln(buf, "")
+			}
+		}
+	}
+}
+
+type nestedVariable struct {
+	prop   *variable
+	nested []*nestedVariable
+}
+
+func nestedStructure(v *variable, parsedDocs parsedDoc) []*nestedVariable {
+	return nestedStructureFromSchema(v.schema, v.info, parsedDocs)
+}
+
+func nestedStructureFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo, parsedDocs parsedDoc) []*nestedVariable {
+	var elem *tfbridge.SchemaInfo
+	if info != nil {
+		elem = info.Elem
+	}
+
+	switch sch.Type {
+	case schema.TypeSet, schema.TypeList:
+		return elemNestedStructure(sch.Elem, elem, parsedDocs)
+
+	case schema.TypeMap:
+		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
+		// TF that effectively forces this behavior.
+		if _, hasResourceElem := sch.Elem.(*schema.Resource); hasResourceElem {
+			return elemNestedStructure(sch.Elem, elem, parsedDocs)
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func elemNestedStructure(elem interface{}, info *tfbridge.SchemaInfo, parsedDocs parsedDoc) []*nestedVariable {
+	if elem == nil {
+		return nil
+	}
+
+	e, isResource := elem.(*schema.Resource)
+	if !isResource {
+		return nil
+	}
+
+	var nested []*nestedVariable
+	for _, s := range stableSchemas(e.Schema) {
+		var fldinfo *tfbridge.SchemaInfo
+		if info != nil {
+			fldinfo = info.Fields[s]
+		}
+		sch := e.Schema[s]
+		if propName := propertyName(s, sch, fldinfo); propName != "" {
+			doc := parsedDocs.Arguments[s]
+			if doc == "" {
+				doc = parsedDocs.Attributes[s]
+			}
+			prop := propertyVariable(propName, sch, fldinfo, doc, "", "", false)
+			nested = append(nested, &nestedVariable{
+				prop:   prop,
+				nested: nestedStructureFromSchema(sch, fldinfo, parsedDocs),
+			})
+		}
+	}
+
+	return nested
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
