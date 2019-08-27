@@ -721,7 +721,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 
 	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
 	w.Writefmtln("    if opts is None:")
-	w.Writefmtln("        opts = pulumi.ResourceOptions()")
+	w.Writefmtln("        opts = pulumi.InvokeOptions()")
 	w.Writefmtln("    if opts.version is None:")
 	w.Writefmtln("        opts.version = utilities.get_version()")
 
