@@ -49,6 +49,7 @@ func newPythonGenerator(pkg, version string, info tfbridge.ProviderInfo, overlay
 		overlaysDir:          overlaysDir,
 		outDir:               outDir,
 		snakeCaseToCamelCase: make(map[string]string),
+		camelCaseToSnakeCase: make(map[string]string),
 	}
 }
 
@@ -59,6 +60,7 @@ type pythonGenerator struct {
 	overlaysDir          string
 	outDir               string
 	snakeCaseToCamelCase map[string]string // property mapping from snake case to camel case
+	camelCaseToSnakeCase map[string]string // property mapping from camel case to snake case
 }
 
 // commentChars returns the comment characters to use for single-line comments.
@@ -185,6 +187,19 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 
 	// Keep track of any immediately exported package modules, as we will re-export them.
 	var exports []string
+
+	// Calculate our casing tables. We do this up front because our docstring generator (which is run during
+	// emitModuleMember) requires them.
+	for _, member := range mod.members {
+		if res, ok := member.(*resourceType); ok {
+			for _, prop := range res.inprops {
+				g.recordProperty(prop.name, prop.schema, prop.info)
+			}
+			for _, prop := range res.outprops {
+				g.recordProperty(prop.name, prop.schema, prop.info)
+			}
+		}
+	}
 
 	// Now, enumerate each module member, in the order presented to us, and do the right thing.
 	for _, member := range mod.members {
@@ -541,7 +556,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 
 	ins := make(map[string]bool)
 	for _, prop := range res.inprops {
-		g.recordProperty(prop.name, prop.schema, prop.info)
 		pname := pycodegen.PyName(prop.name)
 
 		// Fill in computed defaults for arguments.
@@ -574,7 +588,6 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 	}
 
 	for _, prop := range res.outprops {
-		g.recordProperty(prop.name, prop.schema, prop.info)
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins[prop.name] {
@@ -968,6 +981,7 @@ func (g *pythonGenerator) emitPropertyConversionTables(tableModule *module) erro
 func (g *pythonGenerator) recordProperty(name string, sch *schema.Schema, info *tfbridge.SchemaInfo) {
 	snakeCaseName := pycodegen.PyName(name)
 	g.snakeCaseToCamelCase[snakeCaseName] = name
+	g.camelCaseToSnakeCase[name] = snakeCaseName
 	g.recordPropertyRec(sch, info)
 }
 
@@ -1164,7 +1178,11 @@ func (g *pythonGenerator) emitNestedStructureBullets(buf io.Writer, nested []*ne
 	}
 
 	for i, nes := range nested {
-		name := pycodegen.PyName(nes.prop.Name())
+		name := nes.prop.Name()
+		if snake, ok := g.camelCaseToSnakeCase[name]; ok {
+			name = snake
+		}
+
 		typ := pyType(nes.prop)
 		if wrapInput {
 			typ = fmt.Sprintf("pulumi.Input[%s]", typ)
