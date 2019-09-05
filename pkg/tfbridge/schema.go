@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/terraform/config/hcl2shim"
+	"github.com/hashicorp/terraform/configs/hcl2shim"
 	"github.com/hashicorp/terraform/flatmap"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
