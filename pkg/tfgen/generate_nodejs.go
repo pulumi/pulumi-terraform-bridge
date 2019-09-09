@@ -1621,8 +1621,9 @@ func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.R
 		fullTypeName += fmt.Sprintf(".%s", typeName)
 
 		declaration, ok := nestedTypeDeclarations[typeName]
-		contract.Assertf(!ok || declaration == t,
-			"Nested type %q already exists with a different declaration.", typeName)
+		contract.Assertf(!ok || declaration == t, "Nested type %[1]q already exists with a different declaration.\n\n"+
+			"Existing Declaration:\n\ninterface %[1]s %[2]s\n\nNew Declaration:\n\ninterface %[1]s %[3]s",
+			typeName, declaration, t)
 
 		// Save the nested type's declaration in the map.
 		nestedTypeDeclarations[typeName] = t
