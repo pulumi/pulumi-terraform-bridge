@@ -122,6 +122,9 @@ type SchemaInfo struct {
 	// alternative types that can be used instead of the override.
 	AltTypes []tokens.Type
 
+	// a type to override when the property is a nested structure.
+	NestedType tokens.Type
+
 	// an optional idemponent transformation, applied before passing to TF.
 	Transform Transformer
 

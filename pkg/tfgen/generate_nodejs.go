@@ -1553,6 +1553,10 @@ func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.R
 	level++
 
 	typeName := typeNamePrefix + strings.Title(name)
+	// Override the nested type name, if necessary.
+	if info != nil && info.NestedType.Name().String() != "" {
+		typeName = info.NestedType.Name().String()
+	}
 
 	// Values to use when generating an inline anonymous type.
 	whitespace := " "
