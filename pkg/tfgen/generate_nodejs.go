@@ -1222,7 +1222,7 @@ func (g *nodeJSGenerator) emitTypeScriptProjectFile(pack *pkg, files []string) e
 	w.Writefmtln(`{
     "compilerOptions": {
         "outDir": "bin",
-        "target": "es6",
+        "target": "es2016",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
