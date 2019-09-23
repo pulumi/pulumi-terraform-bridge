@@ -978,3 +978,42 @@ func TestComputedSetNestedIgnore(t *testing.T) {
 			ignore)
 	}
 }
+
+func TestRawElementNames(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"variables": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": map[string]interface{}{
+				"variables": map[string]interface{}{
+					"DYNAMODB_ROUTE_TABLE_NAME": "foo",
+				},
+			},
+		},
+		map[string]interface{}{
+			"prop": map[string]interface{}{
+				"variables": map[string]interface{}{
+					"DYNAMODB_ROUTE_TABLE_NAME": "bar",
+				},
+			},
+		},
+		map[string]DiffKind{
+			"prop.variables.DYNAMODB_ROUTE_TABLE_NAME": U,
+		})
+}

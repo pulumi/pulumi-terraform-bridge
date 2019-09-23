@@ -159,6 +159,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema
 			psflds = ps.Fields
 		}
 
+		rawElementNames := rawNames || useRawNames(tfs)
 		for k, e := range v.ObjectValue() {
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
@@ -167,8 +168,8 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema
 				elementPath = fmt.Sprintf("%s.%s", path, k)
 			}
 
-			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames)
-			visitPropertyValue(name+"."+en, elementPath, e, etf, eps, rawNames || useRawNames(tfs), visitor)
+			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawElementNames)
+			visitPropertyValue(name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
 		}
 	}
 }
