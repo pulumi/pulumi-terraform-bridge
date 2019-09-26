@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
 )
 

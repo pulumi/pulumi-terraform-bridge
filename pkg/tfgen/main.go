@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
 
 // Main executes the TFGen process for the given package pkg and provider prov.

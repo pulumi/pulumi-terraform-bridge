@@ -28,16 +28,15 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/golang/glog"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 	pycodegen "github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
 )
 
 // newPythonGenerator returns a language generator that understands how to produce Python packages.

@@ -3,8 +3,8 @@ package tfbridge
 import (
 	"time"
 
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 func mustSet(data *schema.ResourceData, key string, value interface{}) {

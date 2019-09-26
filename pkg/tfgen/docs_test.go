@@ -17,7 +17,7 @@ package tfgen
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -3,7 +3,7 @@ include build/common.mk
 
 PACK             := terraform
 PACKDIR          := sdk
-PROJECT          := github.com/pulumi/pulumi-terraform
+PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 GOPKGS           := $(shell go list ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM  := 10
 
