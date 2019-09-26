@@ -1,3 +1,0 @@
-name: localstate
-runtime: python
-description: An example demonstrating the Terraform Remote State resource
