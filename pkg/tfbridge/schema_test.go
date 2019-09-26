@@ -1468,12 +1468,13 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		defaultsKey: []interface{}{},
 		"inputA":    "input_a_read",
 		"inoutC":    "inout_c_read",
 		"inoutD":    "inout_d_read",
-	}), ins)
+	})
+	assert.True(t, expected.DeepEquals(ins))
 
 	// Case 2: read a resource that has old state (this is the refresh case)
 	//
