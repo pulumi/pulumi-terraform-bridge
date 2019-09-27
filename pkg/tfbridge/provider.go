@@ -68,13 +68,7 @@ type Resource struct {
 // with no error should be interpreted by the caller as meaning the resource does not exist,
 // but there were no errors in determining this.
 func (res *Resource) runTerraformImporter(id resource.ID, provider *Provider) (resource.ID, map[string]string, error) {
-	// There is nothing to do here if the resource doesn't have an importer defined in the
-	// Terraform schema.
-	if res.TF.Importer == nil {
-		return id, nil, nil
-	}
-
-	glog.V(9).Infof("%s has TF Importer", res.TFName)
+	contract.Assert(res.TF.Importer != nil)
 
 	// Prepare a Terraform ResourceData for the importer
 	data := res.TF.Data(nil)
@@ -707,7 +701,9 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
 	isRefresh := len(req.GetProperties().GetFields()) != 0
-	if !isRefresh {
+	if !isRefresh && res.TF.Importer != nil {
+		glog.V(9).Infof("%s has TF Importer", res.TFName)
+
 		id, attrs, err = res.runTerraformImporter(id, p)
 		if err != nil {
 			// Pass through any error running the importer
