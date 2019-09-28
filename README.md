@@ -1,8 +1,9 @@
-[![Build Status](https://travis-ci.com/pulumi/pulumi-terraform.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-terraform)
+[![Build Status](https://travis-ci.com/pulumi/pulumi-terraform-bridge.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-terraform-bridge)
 
 # Pulumi Terraform Bridge
 
-This bridge adapts any [Terraform Provider](https://github.com/terraform-providers) for use with Pulumi.  The Terraform
+This bridge adapts any [Terraform Provider](https://github.com/terraform-providers) built using the [Terraform Plugin
+SDK](https://github.com/hashicorp/terraform-plugin-sdk) for use with Pulumi.  The Terraform
 community provides resource providers that perform create, read, update, and delete (CRUD) operations for a broad array
 of infrastructure providers and types.  In principle, any of them can be programmed using Pulumi with this bridge.
 
@@ -38,7 +39,6 @@ This section only matters if you want to build this bridge from scratch, or use 
 Before doing any development, there are a few prerequisites to install:
 
 * Go: https://golang.org/dl
-* [Dep](https://github.com/golang/dep): `$ go get -u github.com/golang/dep/cmd/dep`
 * [GolangCI-Lint](https://github.com/golangci/golangci-lint): `go get -u github.com/golangci/golangci-lint/cmd/golangci-lint`
 
 ### Building and Testing
@@ -47,12 +47,12 @@ There is a `Makefile` in the root that builds and tests everything.
 
 To build, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
-    $ git clone git@github.com:pulumi/pulumi-terraform $GOPATH/src/github.com/pulumi/pulumi-terraform
-    $ cd $GOPATH/src/github.com/pulumi/pulumi-terraform
+    $ git clone git@github.com:pulumi/pulumi-terraform-bridge $GOPATH/src/github.com/pulumi/pulumi-terraform-bridge
+    $ cd $GOPATH/src/github.com/pulumi/pulumi-terraform-bridge
 
-Before building, you will need to ensure dependencies have been restored to your enlistment:
+Before building, you will need to ensure dependencies have been downloaded into the `vendor/` directory.
 
-    $ dep ensure
+    $ make ensure
 
 At this point you can run make to build and run tests:
 
