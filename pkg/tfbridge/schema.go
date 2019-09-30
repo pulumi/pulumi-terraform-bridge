@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/golang/glog"
-
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/terraform/configs/hcl2shim"
 	"github.com/hashicorp/terraform/flatmap"
@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -501,7 +502,22 @@ func MakeTerraformResult(state *terraform.InstanceState,
 			Schema: tfs,
 			Map:    schema.BasicMapReader(attrs),
 		}
-		for _, key := range flatmap.Map(attrs).Keys() {
+
+		// Read each top-level field out of the attributes.
+		keys := make(map[string]bool)
+		for key := range attrs {
+			// Pull the top-level field out of this attribute key. If we've already read the top-level field, skip this
+			// key.
+			dot := strings.Index(key, ".")
+			if dot != -1 {
+				key = key[:dot]
+			}
+			if _, ok := keys[key]; ok {
+				continue
+			}
+			keys[key] = true
+
+			// Read the top-level attribute for this key.
 			res, err := reader.ReadField([]string{key})
 			if err != nil {
 				return nil, err
