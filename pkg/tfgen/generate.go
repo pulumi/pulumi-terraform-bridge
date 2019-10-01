@@ -734,7 +734,7 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := info.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
-		if input(args[arg]) {
+		if input(args[arg]) && !isComputedOverride(cust) {
 			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
@@ -862,6 +862,12 @@ func (g *generator) emitProjectMetadata(pack *pkg) error {
 // input checks whether the given property is supplied by the user (versus being always computed).
 func input(sch *schema.Schema) bool {
 	return sch.Optional || sch.Required
+}
+
+// isComputedOverride checks whether the given property is marked to be a computed only value. This
+// ignores any sign of it being an input value
+func isComputedOverride(info *tfbridge.SchemaInfo) bool {
+	return info.MarkAsComputedOnly != nil && *info.MarkAsComputedOnly
 }
 
 // propertyName translates a Terraform underscore_cased_property_name into a JavaScript camelCasedPropertyName.
