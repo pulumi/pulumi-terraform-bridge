@@ -211,6 +211,7 @@ type OverlayInfo struct {
 
 // JavaScriptInfo contains optional overlay information for Python code-generation.
 type JavaScriptInfo struct {
+	PackageName       string            // Custom name for the NPM package.
 	Dependencies      map[string]string // NPM dependencies to add to package.json.
 	DevDependencies   map[string]string // NPM dev-dependencies to add to package.json.
 	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.

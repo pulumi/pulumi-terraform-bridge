@@ -1142,6 +1142,11 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 	}
 	defer contract.IgnoreClose(w)
 
+	packageName := g.info.JavaScript.PackageName
+	if packageName == "" {
+		packageName = fmt.Sprintf("@pulumi/%s", pack.name)
+	}
+
 	typeScriptVersion := "^3.4.1"
 	if g.info.JavaScript != nil && g.info.JavaScript.TypeScriptVersion != "" {
 		typeScriptVersion = g.info.JavaScript.TypeScriptVersion
@@ -1149,7 +1154,7 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
-		Name:        fmt.Sprintf("@pulumi/%s", pack.name),
+		Name:        packageName,
 		Version:     "${VERSION}",
 		Description: g.info.Description,
 		Keywords:    g.info.Keywords,
