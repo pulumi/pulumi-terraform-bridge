@@ -395,13 +395,13 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 			"someValue":      true,
 			"someOtherValue": "a value",
 		},
-		"secretValue": resource.Secret{
+		"secretValue": &resource.Secret{
 			Element: resource.PropertyValue{
 				V: "MyPassword",
 			},
 		},
 		"nestedSecretValue": map[string]interface{}{
-			"secretValue": resource.Secret{
+			"secretValue": &resource.Secret{
 				Element: resource.PropertyValue{
 					V: "MyPassword",
 				},
