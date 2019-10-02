@@ -15,11 +15,11 @@ REPO_NAME="$1"
 
 git clone "https://github.com/pulumi/${REPO_NAME}.git" "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
 
-# Replace modle for Pulumi Terraform
+# Replace module for Pulumi Terraform
 cd "$(go env GOPATH)/src/github.com/pulumi/${REPO_NAME}"
 
-git checkout -b "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
-GO111MODULE=on go mod edit -replace=github.com/pulumi/pulumi-terraform=../pulumi-terraform/
+git checkout -b "integration/pulumi-terraform-bridge/${TRAVIS_JOB_NUMBER}"
+GO111MODULE=on go mod edit -replace=github.com/pulumi/pulumi-terraform-bridge=../pulumi-terraform-bridge/
 make ensure
 
 # Show the diff in the Gopkg files.
@@ -29,21 +29,21 @@ git diff
 git config user.name "Pulumi Bot"
 git config user.email "bot@pulumi.com"
 
-git commit -a -m "Replace pulumi-terraform module"
+git commit -a -m "Replace pulumi-terraform-bridge module"
 
 # Now, do a build
 make only_build
 
 # Commit the resulting changes (may be empty, for example if the PR only touched tfbridge)
 git add .
-git commit --allow-empty -m "Update to pulumi-terraform@${TRAVIS_PULL_REQUEST_SHA:0:6}"
+git commit --allow-empty -m "Update to pulumi-terraform-bridge@${TRAVIS_PULL_REQUEST_SHA:0:6}"
 
 # If we have a token for pulumi-bot, push up the changes and add a status
 # to a github compare.
 if [ ! -z "${PULUMI_BOT_GITHUB_API_TOKEN:-}" ]; then
     # Push up the resulting changes
     git remote add pulumi-bot "https://pulumi-bot:${PULUMI_BOT_GITHUB_API_TOKEN}@github.com/pulumi-bot/${REPO_NAME}"
-    git push pulumi-bot --set-upstream --force "integration/pulumi-terraform/${TRAVIS_JOB_NUMBER}"
+    git push pulumi-bot --set-upstream --force "integration/pulumi-terraform-bridge/${TRAVIS_JOB_NUMBER}"
 
     # Report status. This gives us a nice link to the "compare view" on the PR itself to make it easy
     # to view the proposed source changes.
@@ -52,7 +52,7 @@ if [ ! -z "${PULUMI_BOT_GITHUB_API_TOKEN:-}" ]; then
     TEMPLATE="${TEMPLATE//NEW/$(git rev-parse HEAD)}"
     TEMPLATE="${TEMPLATE//REPO_NAME/${REPO_NAME}}"
 
-    curl -u "pulumi-bot:${PULUMI_BOT_GITHUB_API_TOKEN}" -X POST -H "Content-Type: application/json" -d "${TEMPLATE}" "https://api.github.com/repos/pulumi/pulumi-terraform/statuses/${TRAVIS_PULL_REQUEST_SHA}"
+    curl -u "pulumi-bot:${PULUMI_BOT_GITHUB_API_TOKEN}" -X POST -H "Content-Type: application/json" -d "${TEMPLATE}" "https://api.github.com/repos/pulumi/pulumi-terraform-bridge/statuses/${TRAVIS_PULL_REQUEST_SHA}"
 else
     # Otherwise, just print out the diff to the build log.
     git diff HEAD~1 HEAD
