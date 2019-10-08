@@ -838,7 +838,7 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	w.Writefmtln("setup(name='%s',", pyPack(pack.name))
 	w.Writefmtln("      version='${VERSION}',")
 	if g.info.Description != "" {
-		w.Writefmtln("      description='%s',", g.info.Description)
+		w.Writefmtln("      description='%s',", generateManifestDescription(g.info))
 	}
 	w.Writefmtln("      long_description=readme(),")
 	w.Writefmtln("      cmdclass={")

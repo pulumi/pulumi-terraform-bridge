@@ -977,3 +977,12 @@ func upperFirst(s string) string {
 	c, rest := utf8.DecodeRuneInString(s)
 	return string(unicode.ToUpper(c)) + s[rest:]
 }
+
+func generateManifestDescription(info tfbridge.ProviderInfo) string {
+	if info.TFProviderVersion == "" {
+		return info.Description
+	}
+
+	return fmt.Sprintf("%s. Based on terraform-provider-%s: version v%s", info.Description, info.Name,
+		info.TFProviderVersion)
+}

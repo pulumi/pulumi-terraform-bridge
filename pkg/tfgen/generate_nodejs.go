@@ -1156,7 +1156,7 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 	npminfo := npmPackage{
 		Name:        packageName,
 		Version:     "${VERSION}",
-		Description: g.info.Description,
+		Description: generateManifestDescription(g.info),
 		Keywords:    g.info.Keywords,
 		Homepage:    g.info.Homepage,
 		Repository:  g.info.Repository,
