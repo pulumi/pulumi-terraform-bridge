@@ -12,6 +12,7 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl v1.0.0
+	github.com/hashicorp/hcl2 v0.0.0-20190821123243-0c888d1241f6
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.8.1
