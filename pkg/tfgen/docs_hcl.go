@@ -17,6 +17,7 @@ package tfgen
 import (
 	"github.com/hashicorp/hcl/hcl/scanner"
 	"github.com/hashicorp/hcl/hcl/token"
+	"github.com/hashicorp/hcl2/hclparse"
 )
 
 // fixHcl attempts to fix certain simple syntactical errors in a particular piece of HCL source text.
@@ -53,8 +54,15 @@ import (
 // - etc.
 //
 // All of the problems we want to fix can be addressed by inserting artificial tokens into the token stream.
+//
+// NOTE: some valid HCL2 looks like invalid HCL. We try to catch these cases by checking for valid HCL2 first.
 func fixHcl(hcl string) (string, bool) {
 	input := []byte(hcl)
+
+	if _, diags := hclparse.NewParser().ParseHCL(input, "main.tf"); len(diags) == 0 {
+		return "", false
+	}
+
 	h := &hclFixer{
 		input:   input,
 		scanner: scanner.New(input),
