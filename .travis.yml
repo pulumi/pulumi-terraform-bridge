@@ -21,15 +21,15 @@ jobs:
     include:
         - stage: build
           script: make travis_${TRAVIS_EVENT_TYPE}
-        - stage: test-downstream
-          name: Test Code Generation (AWS)
-          if: type = pull_request
-          script: ./scripts/test-downstream-impact pulumi-aws
-        - stage: test-downstream
-          name: Test Code Generation (Azure)
-          if: type = pull_request
-          script: ./scripts/test-downstream-impact pulumi-azure
-        - stage: test-downstream
-          name: Test Code Generation (GCP)
-          if: type = pull_request
-          script: ./scripts/test-downstream-impact pulumi-gcp
+        #- stage: test-downstream
+          #name: Test Code Generation (AWS)
+          #if: type = pull_request
+          #script: ./scripts/test-downstream-impact pulumi-aws
+        #- stage: test-downstream
+          #name: Test Code Generation (Azure)
+          #if: type = pull_request
+          #script: ./scripts/test-downstream-impact pulumi-azure
+        #- stage: test-downstream
+          #name: Test Code Generation (GCP)
+          #if: type = pull_request
+          #script: ./scripts/test-downstream-impact pulumi-gcp
