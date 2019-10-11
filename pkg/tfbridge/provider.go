@@ -1000,3 +1000,67 @@ func setTimeout(diff *terraform.InstanceDiff, timeout float64, timeoutKey string
 
 	return diff
 }
+
+func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok tokens.Type, newTok tokens.Type,
+	legacyModule string, newModule string, info *ResourceInfo) {
+
+	resourcePrefix := p.Name + "_"
+	legacyResourceName := resourceName + "_legacy"
+	if info == nil {
+		info = &ResourceInfo{}
+	}
+	legacyInfo := *info
+	currentInfo := *info
+
+	legacyInfo.Tok = legacyTok
+	legacyType := legacyInfo.Tok.String()
+
+	if newTok != "" {
+		legacyTok = newTok
+	}
+
+	currentInfo.Tok = legacyTok
+	currentInfo.Aliases = []AliasInfo{
+		{Type: &legacyType},
+	}
+
+	if legacyInfo.Docs == nil {
+		legacyInfo.Docs = &DocInfo{
+			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
+		}
+	}
+
+	p.Resources[resourceName] = &currentInfo
+	p.Resources[legacyResourceName] = &legacyInfo
+	p.P.ResourcesMap[legacyResourceName] = p.P.ResourcesMap[resourceName]
+}
+
+func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
+	legacyModule string, newModule string, info *DataSourceInfo) {
+
+	resourcePrefix := p.Name + "_"
+	legacyResourceName := resourceName + "_legacy"
+	if info == nil {
+		info = &DataSourceInfo{}
+	}
+	legacyInfo := *info
+	currentInfo := *info
+
+	legacyInfo.Tok = legacyTok
+
+	if newTok != "" {
+		legacyTok = newTok
+	}
+
+	currentInfo.Tok = legacyTok
+
+	if legacyInfo.Docs == nil {
+		legacyInfo.Docs = &DocInfo{
+			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
+		}
+	}
+
+	p.DataSources[resourceName] = &currentInfo
+	p.DataSources[legacyResourceName] = &legacyInfo
+	p.P.DataSourcesMap[legacyResourceName] = p.P.DataSourcesMap[resourceName]
+}
