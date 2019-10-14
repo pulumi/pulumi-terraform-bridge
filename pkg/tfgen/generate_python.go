@@ -292,7 +292,7 @@ func (g *pythonGenerator) emitIndex(mod *module, exports, submods []string) erro
 		}
 		w.Writefmtln("# Export this package's modules as members:")
 		for _, exp := range exports {
-			w.Writefmtln("from .%s import *", pycodegen.PyName(exp))
+			w.Writefmtln("from .%s import %s", pycodegen.PyName(exp), pyClassName(exp))
 		}
 	}
 
@@ -645,7 +645,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
         return tables._SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 `)
 
-	return name, nil
+	return res.name, nil
 }
 
 func (g *pythonGenerator) writeAlias(w *tools.GenWriter, alias tfbridge.AliasInfo) {
