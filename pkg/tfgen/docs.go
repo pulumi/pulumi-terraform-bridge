@@ -201,8 +201,8 @@ func splitGroupLines(s, sep string) [][]string {
 }
 
 // getDocsBaseURL gets the base URL for a given provider's documentation source.
-func getDocsBaseURL(p string) string {
-	return fmt.Sprintf(docsBaseURL, p)
+func getDocsBaseURL(org, p string) string {
+	return fmt.Sprintf(docsBaseURL, org, p)
 }
 
 // getDocsDetailsURL gets the detailed resource or data source documentation source.
@@ -211,8 +211,8 @@ func getDocsDetailsURL(org, p, kind, name string) string {
 }
 
 // getDocsIndexURL gets the given provider's documentation index page's source URL.
-func getDocsIndexURL(p string) string {
-	return getDocsBaseURL(p) + "/index.html.markdown"
+func getDocsIndexURL(org, p string) string {
+	return getDocsBaseURL(org, p) + "/index.html.markdown"
 }
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
@@ -223,7 +223,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
-		URL: getDocsDetailsURL(g.info.GitHubOrg, resourcePrefix, string(kind),
+		URL: getDocsDetailsURL(g.info.GetGitHubOrg(), resourcePrefix, string(kind),
 			withoutPackageName(resourcePrefix, rawname)),
 	}
 

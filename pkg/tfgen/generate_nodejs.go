@@ -475,7 +475,7 @@ func (g *nodeJSGenerator) ensureReadme(dir string) error {
 	}
 	defer contract.IgnoreClose(w)
 
-	w.Writefmtln(standardDocReadme, g.pkg, g.info.Name, g.info.GitHubOrg)
+	w.Writefmtln(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg())
 	return nil
 }
 
