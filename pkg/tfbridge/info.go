@@ -149,6 +149,9 @@ type SchemaInfo struct {
 
 	// to remove empty object array elements
 	SuppressEmptyMapElements *bool
+
+	// this will make the parameter as computed and not allow the user to set it
+	MarkAsComputedOnly *bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
