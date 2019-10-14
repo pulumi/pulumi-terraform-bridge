@@ -8,3 +8,6 @@ CHANGELOG
 
 ---
 
+## 1.0.0 (2019-10-02)
+* Initial release of the library
+
