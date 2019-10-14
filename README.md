@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.com/pulumi/pulumi-terraform-bridge.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-terraform-bridge)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pulumi/pulumi-terraform-bridge)](https://goreportcard.com/report/github.com/pulumi/pulumi-terraform-bridge)
+[![GoDoc](https://godoc.org/github.com/pulumi/pulumi-terraform-bridge?status.svg)](https://godoc.org/github.com/pulumi/pulumi-terraform-bridge)
 
 # Pulumi Terraform Bridge
 
