@@ -596,7 +596,7 @@ func (g *generator) gatherResource(rawname string,
 		}
 
 		// If an input, generate the input property metadata.
-		if input(propschema) {
+		if input(propschema, propinfo) {
 			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
@@ -734,7 +734,7 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := info.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
-		if input(args[arg]) {
+		if input(args[arg], cust) {
 			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
@@ -860,8 +860,8 @@ func (g *generator) emitProjectMetadata(pack *pkg) error {
 }
 
 // input checks whether the given property is supplied by the user (versus being always computed).
-func input(sch *schema.Schema) bool {
-	return sch.Optional || sch.Required
+func input(sch *schema.Schema, info *tfbridge.SchemaInfo) bool {
+	return (sch.Optional || sch.Required) && !(info != nil && info.MarkAsComputedOnly != nil && *info.MarkAsComputedOnly)
 }
 
 // propertyName translates a Terraform underscore_cased_property_name into a JavaScript camelCasedPropertyName.
