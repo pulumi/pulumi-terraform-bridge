@@ -986,3 +986,17 @@ func generateManifestDescription(info tfbridge.ProviderInfo) string {
 	return fmt.Sprintf("%s. Based on terraform-provider-%s: version v%s", info.Description, info.Name,
 		info.TFProviderVersion)
 }
+
+func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
+	switch license {
+	case tfbridge.MITLicenseType:
+		return "https://mit-license.org/"
+	case tfbridge.MPL20LicenseType:
+		return "https://www.mozilla.org/en-US/MPL/2.0/"
+	case tfbridge.Apache20LicenseType:
+		return "https://www.apache.org/licenses/LICENSE-2.0.html"
+	default:
+		contract.Failf("Unrecognized license: %v", license)
+		return ""
+	}
+}

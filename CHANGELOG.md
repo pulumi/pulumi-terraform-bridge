@@ -7,5 +7,6 @@ CHANGELOG
 * Add ability to pass the TF provider version that the pulumi provider was generated against
 * Remove the need for Pandoc in generating Python SDK readme files.
 * Allow a schema variable to be overridden as being `Computed`
+* Allow passing a License Type for the upstream Terraform provider.
 
 ---
