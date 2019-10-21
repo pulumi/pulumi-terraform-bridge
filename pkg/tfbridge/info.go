@@ -21,6 +21,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
+const (
+	MPL20LicenseType    TFProviderLicense = "MPL 2.0"
+	MITLicenseType      TFProviderLicense = "MIT"
+	Apache20LicenseType TFProviderLicense = "Apache 2.0"
+)
+
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
 // metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
 type ProviderInfo struct {
@@ -41,9 +47,13 @@ type ProviderInfo struct {
 	Python            *PythonInfo                // optional overlay information for augmented Python code-generation.
 	Golang            *GolangInfo                // optional overlay information for augmented Golang code-generation.
 	TFProviderVersion string                     // the version of the TF provider on which this was based
+	TFProviderLicense *TFProviderLicense         // license that the TF provider is distributed under. Default `MPL 2.0`.
 
 	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 }
+
+// TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
+type TFProviderLicense string
 
 // GetResourcePrefix returns the resource prefix for the provider: info.ResourcePrefix
 // if that is set, or info.Name if not. This is to avoid unexpected behaviour with providers
@@ -62,6 +72,14 @@ func (info ProviderInfo) GetGitHubOrg() string {
 	}
 
 	return info.GitHubOrg
+}
+
+func (info ProviderInfo) GetTFProviderLicense() TFProviderLicense {
+	if info.TFProviderLicense == nil {
+		return MPL20LicenseType
+	}
+
+	return *info.TFProviderLicense
 }
 
 // AliasInfo is a partial description of prior named used for a resource. It can be processed in the

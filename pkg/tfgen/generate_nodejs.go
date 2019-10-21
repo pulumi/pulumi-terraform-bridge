@@ -475,7 +475,9 @@ func (g *nodeJSGenerator) ensureReadme(dir string) error {
 	}
 	defer contract.IgnoreClose(w)
 
-	w.Writefmtln(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg())
+	downstreamLicense := g.info.GetTFProviderLicense()
+	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
+	w.Writefmtln(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
 	return nil
 }
 
