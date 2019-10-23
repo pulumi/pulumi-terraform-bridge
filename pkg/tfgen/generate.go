@@ -215,6 +215,9 @@ const (
 	kindObject
 )
 
+// Avoid an unused warning from varcheck.
+var _ = kindInvalid
+
 // propertyType represents a non-resource, non-datasource type. Property types may be simple
 type propertyType struct {
 	name       string
@@ -282,7 +285,9 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool, p
 	return t
 }
 
-func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out bool, parsedDocs parsedDoc) *propertyType {
+func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
+	parsedDocs parsedDoc) *propertyType {
+
 	t := &propertyType{
 		kind: kindObject,
 	}
@@ -562,7 +567,8 @@ func (g *generator) gatherConfig() *module {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
 		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, parsedDoc{}); prop != nil {
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, parsedDoc{})
+		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
