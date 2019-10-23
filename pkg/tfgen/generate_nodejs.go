@@ -613,7 +613,7 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	if v.schema.Type != schema.TypeString {
 		// Only try to parse a JSON object if the config isn't a straight string.
 		getfunc = fmt.Sprintf("getObject<%s>",
-			tsType("", "", v, parsedDoc{}, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/))
+			tsType("", "", v, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/))
 	}
 	var anycast string
 	if v.info != nil && v.info.Type != "" {
@@ -632,7 +632,7 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	}
 
 	w.Writefmtln("export let %s: %s | undefined = %s%s;", v.name,
-		tsType("", "", v, parsedDoc{}, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/),
+		tsType("", "", v, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/),
 		anycast, configFetch)
 }
 
@@ -697,21 +697,21 @@ func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 	}
 }
 
-func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType, module, prefix string,
-	parsedDocs parsedDoc, nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, wrapInput,
+func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *propertyType, module, prefix string,
+	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, wrapInput,
 	isInputType bool) {
 
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "", "")
 	}
 	w.Writefmtln("export interface %s {", pot.name)
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
 		} else if prop.rawdoc != "" {
 			g.emitRawDocComment(w, prop.rawdoc, "    ")
 		}
-		w.Writefmtln("    readonly %s%s: %s;", prop.name, tsFlags(prop), tsType(module, prefix, prop, parsedDocs,
+		w.Writefmtln("    readonly %s%s: %s;", prop.name, tsFlags(prop), tsType(module, prefix, prop,
 			nestedTypeDeclarations, nestedInputOverlays, false /*noflags*/, wrapInput, isInputType))
 	}
 	w.Writefmtln("}")
@@ -821,7 +821,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 		}
 
 		w.Writefmtln("    public %sreadonly %s!: pulumi.Output<%s>;",
-			outcomment, prop.name, tsType(mod.name, name, prop, res.parsedDocs, nested.outputs, nil,
+			outcomment, prop.name, tsType(mod.name, name, prop, nested.outputs, nil,
 				true /*noflags*/, !prop.out /*wrapInput*/, false /*isInputType*/))
 	}
 	w.Writefmtln("")
@@ -948,13 +948,13 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 	// Emit the state type for get methods.
 	if !res.IsProvider() {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, res.statet, mod.name, name, res.parsedDocs, nested.inputs, nested.inputOverlays,
+		g.emitPlainOldType(w, res.statet, mod.name, name, nested.inputs, nested.inputOverlays,
 			true /*wrapInput*/, true /*isInputType*/)
 	}
 
 	// Emit the argument type for construction.
 	w.Writefmtln("")
-	g.emitPlainOldType(w, res.argst, mod.name, name, res.parsedDocs, nested.inputs, nested.inputOverlays,
+	g.emitPlainOldType(w, res.argst, mod.name, name, nested.inputs, nested.inputOverlays,
 		true /*wrapInput*/, true /*isInputType*/)
 
 	// If we generated any nested types, regenerate the type to add the proper imports at the top.
@@ -1069,12 +1069,12 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, fun.argst, mod.name, strings.Title(fun.name), fun.parsedDocs, nested.inputs,
+		g.emitPlainOldType(w, fun.argst, mod.name, strings.Title(fun.name), nested.inputs,
 			nested.inputOverlays, false /*wrapInput*/, true /*isInputType*/)
 	}
 	if fun.retst != nil {
 		w.Writefmtln("")
-		g.emitPlainOldType(w, fun.retst, mod.name, strings.Title(fun.name), fun.parsedDocs, nested.outputs, nil,
+		g.emitPlainOldType(w, fun.retst, mod.name, strings.Title(fun.name), nested.outputs, nil,
 			false /*wrapInput*/, false /*isInputType*/)
 	}
 
@@ -1389,12 +1389,7 @@ func getCustomImportTypeName(typeName string) string {
 
 // tsFlags returns the TypeScript flags for a given variable.
 func tsFlags(v *variable) string {
-	return tsFlagsComplex(v.schema, v.info, v.opt, v.out, v.config)
-}
-
-// tsFlagsComplex is just like tsFlags, except that it permits recursing into component pieces individually.
-func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt, out, config bool) string {
-	if opt || optionalComplex(sch, info, out, config) {
+	if v.optional() {
 		return "?"
 	}
 	return ""
@@ -1406,70 +1401,27 @@ func tsFlagsComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, opt, out, con
 // wrapInput can be set to true to cause the generated type to be deeply wrapped with `pulumi.Input<T>`.
 // module is the name of the type's module.
 // typeNamePrefix is the prefix to use when generating the name of nested types.
-// parsedDocs contains docs that can be used on nested types.
 // Nested types are added to the nestedTypeDeclarations map.
 // Imports for custom types (overlays) used in nested types are added to the nestedInputOverlays map when it is non-nil.
 // isInputType indicates whether the type is an input type; setting to false indicates an output type.
-func tsType(module, typeNamePrefix string, v *variable, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
+func tsType(module, typeNamePrefix string, v *variable, nestedTypeDeclarations map[string]string,
 	nestedInputOverlays map[string]bool, noflags, wrapInput, isInputType bool) string {
 
-	return tsTypeComplex(module, typeNamePrefix, v.name, v.schema, v.info, parsedDocs, nestedTypeDeclarations,
-		nestedInputOverlays, noflags, v.out, wrapInput, isInputType, v.config, 0)
+	return tsVariableType(module, typeNamePrefix, v, nestedTypeDeclarations,
+		nestedInputOverlays, noflags, wrapInput, isInputType, 0)
 }
 
-// tsTypeComplex is just like tsType, but permits recursing using component pieces rather than a true variable.
-func tsTypeComplex(module, typeNamePrefix, name string, sch *schema.Schema, info *tfbridge.SchemaInfo,
-	parsedDocs parsedDoc, nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, noflags, out,
-	wrapInput, isInputType, config bool, level int) string {
+// tsVariableType is the inner implementation of tsType.
+func tsVariableType(module, typeNamePrefix string, v *variable,
+	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool,
+	noflags, wrapInput, isInputType bool, level int) string {
 
-	// First, see if there is a custom override.  If yes, use it directly.
-	var t string
-	var elem *tfbridge.SchemaInfo
-	if info != nil {
-		if info.Type != "" {
-			t = string(info.Type.Name())
-			if !out {
-				// Only include AltTypes on inputs, as outputs will always have a concrete type
-				if len(info.AltTypes) > 0 {
-					for _, at := range info.AltTypes {
-						t = fmt.Sprintf("%s | %s", t, at.Name())
-
-						// If this is for a nested structure and the overlaps map is non-nil, add the
-						// custom type to the map.
-						if level > 0 && nestedInputOverlays != nil {
-							nestedInputOverlays[at.Name().String()] = true
-						}
-					}
-				}
-			}
-			if wrapInput {
-				t = fmt.Sprintf("pulumi.Input<%s>", t)
-			}
-		} else if info.Asset != nil {
-			if info.Asset.IsArchive() {
-				t = "pulumi.asset." + info.Asset.Type()
-			} else {
-				t = "pulumi.asset.Asset | pulumi.asset.Archive"
-			}
-
-			if wrapInput {
-				t = fmt.Sprintf("pulumi.Input<%s>", t)
-			}
-		}
-
-		elem = info.Elem
-	}
-
-	// If nothing was found, generate the primitive type name for this.
-	if t == "" {
-		flatten := tfbridge.IsMaxItemsOne(sch, info)
-		t = tsPrimitive(module, typeNamePrefix, name, sch.Type, sch.Elem, elem, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, flatten, out, wrapInput, isInputType, config, level)
-	}
+	t := tsPropertyType(module, typeNamePrefix, v.name, v.typ, nestedTypeDeclarations,
+		nestedInputOverlays, v.out, wrapInput, isInputType, level)
 
 	// If we aren't using optional flags, we need to use TypeScript union types to permit undefined values.
 	if noflags {
-		if opt := optionalComplex(sch, info, out, config); opt {
+		if v.optional() {
 			t += " | undefined"
 		}
 	}
@@ -1477,41 +1429,60 @@ func tsTypeComplex(module, typeNamePrefix, name string, sch *schema.Schema, info
 	return t
 }
 
-// tsPrimitive returns the TypeScript type name for a given schema value type and element kind.
-func tsPrimitive(module, typeNamePrefix, name string, vt schema.ValueType, elem interface{},
-	eleminfo *tfbridge.SchemaInfo, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
-	nestedInputOverlays map[string]bool, flatten, out, wrapInput, isInputType, config bool, level int) string {
+// tsPropertyType returns the TypeScript type name for a given schema value type and element kind.
+func tsPropertyType(module, typeNamePrefix, name string, typ *propertyType,
+	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool,
+	out, wrapInput, isInputType bool, level int) string {
 
-	// First figure out the raw type.
+	// Prefer overrides over the underlying type.
 	var t string
-	switch vt {
-	case schema.TypeBool:
-		t = "boolean"
-	case schema.TypeInt, schema.TypeFloat:
-		t = "number"
-	case schema.TypeString:
-		t = "string"
-	case schema.TypeSet, schema.TypeList:
-		if !flatten {
-			name = inflector.Singularize(name)
+	switch {
+	case typ == nil:
+		return "any"
+	case typ.typ != "":
+		t = typ.typ.Name().String()
+		if !out {
+			// Only include AltTypes on inputs, as outputs will always have a concrete type
+			for _, at := range typ.altTypes {
+				t = fmt.Sprintf("%s | %s", t, at.Name())
+
+				// If this is for a nested structure and the overlaps map is non-nil, add the
+				// custom type to the map.
+				if level > 0 && nestedInputOverlays != nil {
+					nestedInputOverlays[at.Name().String()] = true
+				}
+			}
 		}
-		elemType := tsElemType(module, typeNamePrefix, name, elem, eleminfo, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, out, wrapInput, isInputType, config, level)
-		if flatten {
-			return elemType
+	case typ.asset != nil:
+		if typ.asset.IsArchive() {
+			t = "pulumi.asset." + typ.asset.Type()
+		} else {
+			t = "pulumi.asset.Asset | pulumi.asset.Archive"
 		}
-		t = fmt.Sprintf("%s[]", elemType)
-	case schema.TypeMap:
-		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
-		// TF that effectively forces this behavior.
-		elemType := tsElemType(module, typeNamePrefix, name, elem, eleminfo, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, out, wrapInput, isInputType, config, level)
-		if _, hasResourceElem := elem.(*schema.Resource); hasResourceElem {
-			return elemType
-		}
-		t = fmt.Sprintf("{[key: string]: %v}", elemType)
 	default:
-		contract.Failf("Unrecognized schema type: %v", vt)
+		// First figure out the raw type.
+		switch typ.kind {
+		case kindBool:
+			t = "boolean"
+		case kindInt, kindFloat:
+			t = "number"
+		case kindString:
+			t = "string"
+		case kindSet, kindList:
+			name = inflector.Singularize(name)
+			elemType := tsPropertyType(module, typeNamePrefix, name, typ.element, nestedTypeDeclarations,
+				nestedInputOverlays, out, wrapInput, isInputType, level)
+			t = fmt.Sprintf("%s[]", elemType)
+		case kindMap:
+			elemType := tsPropertyType(module, typeNamePrefix, name, typ.element, nestedTypeDeclarations,
+				nestedInputOverlays, out, wrapInput, isInputType, level)
+			t = fmt.Sprintf("{[key: string]: %v}", elemType)
+		case kindObject:
+			t = tsObjectType(module, typeNamePrefix, name, typ, nestedTypeDeclarations,
+				nestedInputOverlays, out, wrapInput, isInputType, level)
+		default:
+			contract.Failf("Unrecognized schema type: %v", typ.kind)
+		}
 	}
 
 	if wrapInput {
@@ -1521,48 +1492,20 @@ func tsPrimitive(module, typeNamePrefix, name string, vt schema.ValueType, elem 
 	return t
 }
 
-// tsElemType returns the TypeScript type for a given schema element.  This element may be either a simple schema
-// property or a complex structure.  In the case of a complex structure, this will expand to its nominal type.
-func tsElemType(module, typeNamePrefix, name string, elem interface{}, info *tfbridge.SchemaInfo, parsedDocs parsedDoc,
-	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool, out, wrapInput, isInputType,
-	config bool, level int) string {
-
-	// If there is no element type specified, we will accept anything.
-	if elem == nil {
-		return "any"
-	}
-
-	switch e := elem.(type) {
-	case schema.ValueType:
-		return tsPrimitive(module, typeNamePrefix, name, e, nil, info, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, false /*noflags*/, out, wrapInput, isInputType, config, level)
-	case *schema.Schema:
-		// A simple type, just return its type name.
-		return tsTypeComplex(module, typeNamePrefix, name, e, info, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, true /*noflags*/, out, wrapInput, isInputType, config, level)
-	case *schema.Resource:
-		// A complex type, just expand to its nominal type name.
-		return tsElemComplexStructureType(module, typeNamePrefix, name, e, info, parsedDocs, nestedTypeDeclarations,
-			nestedInputOverlays, out, wrapInput, isInputType, config, level)
-	default:
-		contract.Failf("Unrecognized schema element type: %v", e)
-		return ""
-	}
-}
-
-// tsElemComplexStructureType returns the TypeScript expanded anonymous type if nestedTypeDeclarations is nil, otherwise
+// tsObjectType returns the TypeScript expanded anonymous type if nestedTypeDeclarations is nil, otherwise
 // the nested type declaration will be added to the map and full type name returned.
-func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.Resource,
-	info *tfbridge.SchemaInfo, parsedDocs parsedDoc, nestedTypeDeclarations map[string]string,
-	nestedInputOverlays map[string]bool, out, wrapInput, isInputType, config bool, level int) string {
+func tsObjectType(module, typeNamePrefix, name string, typ *propertyType,
+	nestedTypeDeclarations map[string]string, nestedInputOverlays map[string]bool,
+	out, wrapInput, isInputType bool, level int) string {
 
 	// Bump the nest level.
 	level++
 
 	typeName := typeNamePrefix + strings.Title(name)
+
 	// Override the nested type name, if necessary.
-	if info != nil && info.NestedType.Name().String() != "" {
-		typeName = info.NestedType.Name().String()
+	if typ.nestedType.Name().String() != "" {
+		typeName = typ.nestedType.Name().String()
 	}
 
 	// Values to use when generating an inline anonymous type.
@@ -1580,44 +1523,34 @@ func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.R
 	}
 
 	t := "{" + whitespace
-	for i, s := range stableSchemas(e.Schema) {
-		var fldinfo *tfbridge.SchemaInfo
-		if info != nil {
-			fldinfo = info.Fields[s]
+	for i, p := range typ.properties {
+		if i > 0 {
+			t += propertySeparator
 		}
-		sch := e.Schema[s]
-		if propName := propertyName(s, sch, fldinfo); propName != "" {
-			if i > 0 {
-				t += propertySeparator
-			}
 
-			// Emit doc comment when generating the nested type declaration.
-			doc := parsedDocs.Arguments[s]
-			if doc == "" {
-				doc = parsedDocs.Attributes[s]
-			}
-			if nestedTypeDeclarations != nil && doc != "" {
-				t += fmt.Sprintf("%v/**\n", indent)
+		// Emit doc comment when generating the nested type declaration.
+		doc := p.doc
+		if nestedTypeDeclarations != nil && doc != "" {
+			t += fmt.Sprintf("%v/**\n", indent)
 
-				lines := strings.Split(doc, "\n")
-				for i, docLine := range lines {
-					docLine = sanitizeForDocComment(docLine)
-					// Break if we get to the last line and it's empty
-					if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
-						break
-					}
-					// Print the line of documentation
-					t += fmt.Sprintf("%v * %s\n", indent, docLine)
+			lines := strings.Split(doc, "\n")
+			for i, docLine := range lines {
+				docLine = sanitizeForDocComment(docLine)
+				// Break if we get to the last line and it's empty
+				if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+					break
 				}
-
-				t += fmt.Sprintf("%v */\n", indent)
+				// Print the line of documentation
+				t += fmt.Sprintf("%v * %s\n", indent, docLine)
 			}
 
-			flg := tsFlagsComplex(sch, fldinfo, false, out, config)
-			typ := tsTypeComplex(module, typeName, propName, sch, fldinfo, parsedDocs, nestedTypeDeclarations,
-				nestedInputOverlays, false /*noflags*/, out, wrapInput, isInputType, config, level)
-			t += fmt.Sprintf("%s%s%s: %s%s", indent, propName, flg, typ, propertyLineEnding)
+			t += fmt.Sprintf("%v */\n", indent)
 		}
+
+		flg := tsFlags(p)
+		typ := tsVariableType(module, typeName, p, nestedTypeDeclarations,
+			nestedInputOverlays, false /*noflags*/, wrapInput, isInputType, level)
+		t += fmt.Sprintf("%s%s%s: %s%s", indent, p.name, flg, typ, propertyLineEnding)
 	}
 	t += whitespace + "}"
 
@@ -1643,9 +1576,6 @@ func tsElemComplexStructureType(module, typeNamePrefix, name string, e *schema.R
 		t = fullTypeName
 	}
 
-	if wrapInput {
-		t = fmt.Sprintf("pulumi.Input<%s>", t)
-	}
 	return t
 }
 

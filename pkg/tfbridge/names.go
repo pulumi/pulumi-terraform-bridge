@@ -63,7 +63,8 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
 		contract.Assertf(
 			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
-			"expected to be able to safely pluralize name: %s", name)
+			"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
+			inflector.Singularize(inflector.Pluralize(name)))
 		name = inflector.Pluralize(name)
 	}
 

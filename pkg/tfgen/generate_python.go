@@ -434,7 +434,7 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 	}
 }
 
-func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldType) string {
+func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *propertyType) string {
 	baseName := pyClassName(pot.name)
 
 	// Produce a class definition with optional """ comment.
@@ -445,11 +445,11 @@ func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldTyp
 
 	// Now generate an initializer with properties for all inputs.
 	w.Writefmt("    def __init__(__self__")
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		w.Writefmt(", %s=None", pycodegen.PyName(prop.name))
 	}
 	w.Writefmtln("):")
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := pycodegen.PyName(prop.name)
 		ptype := pyType(prop)
@@ -482,7 +482,7 @@ func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldTyp
 	w.Writefmtln("        if False:")
 	w.Writefmtln("            yield self")
 	w.Writefmtln("        return %s(", baseName)
-	for i, prop := range pot.props {
+	for i, prop := range pot.properties {
 		if i > 0 {
 			w.Writefmtln(",")
 		}
@@ -1278,7 +1278,7 @@ func elemNestedStructure(elem interface{}, info *tfbridge.SchemaInfo, parsedDocs
 			if doc == "" {
 				doc = parsedDocs.Attributes[s]
 			}
-			prop := propertyVariable(propName, sch, fldinfo, doc, "", "", false)
+			prop := propertyVariable(propName, sch, fldinfo, doc, "", "", false, parsedDocs)
 			nested = append(nested, &nestedVariable{
 				prop:   prop,
 				nested: nestedStructureFromSchema(sch, fldinfo, parsedDocs),
