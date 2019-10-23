@@ -234,6 +234,21 @@ type propertyType struct {
 
 func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool, parsedDocs parsedDoc) *propertyType {
 	t := &propertyType{}
+
+	var elemInfo *tfbridge.SchemaInfo
+	if info != nil {
+		t.typ = info.Type
+		t.nestedType = info.NestedType
+		t.altTypes = info.AltTypes
+		t.asset = info.Asset
+		elemInfo = info.Elem
+	}
+
+	if sch == nil {
+		contract.Assert(info != nil)
+		return t
+	}
+
 	switch sch.Type {
 	case schema.TypeBool:
 		t.kind = kindBool
@@ -251,17 +266,6 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool, p
 		t.kind = kindSet
 	}
 
-	if info != nil {
-		t.typ = info.Type
-		t.nestedType = info.NestedType
-		t.altTypes = info.AltTypes
-		t.asset = info.Asset
-	}
-
-	var elemInfo *tfbridge.SchemaInfo
-	if info != nil {
-		elemInfo = info.Elem
-	}
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
 		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)

@@ -154,6 +154,7 @@ func Test_TsTypes(t *testing.T) {
 			schema: test.schema,
 			info:   test.info,
 			opt:    true,
+			typ:    makePropertyType(test.schema, test.info, false, parsedDoc{}),
 		}
 
 		// Output
@@ -177,12 +178,14 @@ func Test_Issue130(t *testing.T) {
 		name:   "condition",
 		schema: schema,
 		out:    true,
+		typ:    makePropertyType(schema, nil, true, parsedDoc{}),
 	}, nil, nil, false, false, false))
 
 	assert.Equal(t, "pulumi.Input<string>", tsType("", "", &variable{
 		name:   "condition",
 		schema: schema,
 		out:    false,
+		typ:    makePropertyType(schema, nil, false, parsedDoc{}),
 	}, nil, nil, false, true, false))
 }
 
