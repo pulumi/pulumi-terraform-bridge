@@ -580,7 +580,7 @@ func (g *pythonGenerator) emitResourceType(mod *module, res *resourceType) (stri
 		//
 		// Note the use of the `json` package here - we must import it at the top of the file so
 		// that we can use it.
-		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
+		if res.IsProvider() && prop.typ.kind != kindString {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
 		}
 		w.Writefmtln("            __props__['%s'] = %s", pname, arg)
@@ -1298,12 +1298,12 @@ func pyDefaultValue(v *variable) string {
 
 	if len(defaults.EnvVars) > 0 {
 		envFunc := "utilities.get_env"
-		switch v.schema.Type {
-		case schema.TypeBool:
+		switch v.typ.kind {
+		case kindBool:
 			envFunc = "utilities.get_env_bool"
-		case schema.TypeInt:
+		case kindInt:
 			envFunc = "utilities.get_env_int"
-		case schema.TypeFloat:
+		case kindFloat:
 			envFunc = "utilities.get_env_float"
 		}
 

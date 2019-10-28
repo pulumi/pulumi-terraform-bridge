@@ -31,7 +31,6 @@ import (
 
 	"github.com/gedex/inflector"
 	"github.com/golang/glog"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -610,13 +609,13 @@ func (g *nodeJSGenerator) emitConfigVariables(mod *module) (string, error) {
 
 func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 	getfunc := "get"
-	if v.schema.Type != schema.TypeString {
+	if v.typ.kind != kindString {
 		// Only try to parse a JSON object if the config isn't a straight string.
 		getfunc = fmt.Sprintf("getObject<%s>",
 			tsType("", "", v, nil, nil, false /*noflags*/, !v.out /*wrapInput*/, false /*isInputType*/))
 	}
 	var anycast string
-	if v.info != nil && v.info.Type != "" {
+	if v.typ.typ != "" {
 		// If there's a custom type, we need to inject a cast to silence the compiler.
 		anycast = "<any>"
 	}
@@ -899,7 +898,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 		}
 
 		// provider properties must be marshaled as JSON strings.
-		if res.IsProvider() && prop.schema != nil && prop.schema.Type != schema.TypeString {
+		if res.IsProvider() && prop.typ.kind != kindString {
 			arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
 		}
 
@@ -1622,10 +1621,10 @@ func tsDefaultValue(prop *variable) string {
 
 	if len(defaults.EnvVars) != 0 {
 		getType := ""
-		switch prop.schema.Type {
-		case schema.TypeBool:
+		switch prop.typ.kind {
+		case kindBool:
 			getType = "Boolean"
-		case schema.TypeInt, schema.TypeFloat:
+		case kindInt, kindFloat:
 			getType = "Number"
 		}
 
