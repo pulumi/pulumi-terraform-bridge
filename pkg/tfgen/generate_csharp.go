@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -230,10 +231,19 @@ func (g *csharpGenerator) emitProjectFile() error {
 	}
 	defer contract.IgnoreClose(w)
 
+	version, err := semver.ParseTolerant(g.info.Version)
+	if err != nil {
+		return errors.Wrap(err, "could not parse version when emitting project file")
+	}
+
+	// Omit build metadata for .NET.
+	version.Build = nil
+
 	var buf bytes.Buffer
 	err = csharpProjectFileTemplate.Execute(&buf, csharpProjectFileTemplateContext{
-		XMLDoc: fmt.Sprintf(`.\%s.xml`, assemblyName),
-		Info:   g.info,
+		XMLDoc:  fmt.Sprintf(`.\%s.xml`, assemblyName),
+		Info:    g.info,
+		Version: version.String(),
 	})
 	if err != nil {
 		return err
