@@ -446,8 +446,6 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 	defer contract.IgnoreClose(w)
 
 	// Open the namespace.
-	w.Writefmtln("#nullable enable")
-	w.Writefmtln("")
 	w.Writefmtln("using System.Collections.Immutable;")
 	w.Writefmtln("")
 	w.Writefmtln("namespace %s", g.moduleNamespace(mod))
@@ -458,7 +456,7 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 	w.Writefmtln("    {")
 
 	// Create a config bag for the variables to pull from.
-	w.Writefmtln("        private static Pulumi.Config __config = new Pulumi.Config(\"%v\");", g.pkg)
+	w.Writefmtln("        private static readonly Pulumi.Config __config = new Pulumi.Config(\"%v\");", g.pkg)
 	w.Writefmtln("")
 
 	// Emit an entry for all config variables.
@@ -672,8 +670,6 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 }
 
 func (rg *csharpResourceGenerator) openNamespace() {
-	rg.w.Writefmtln("#nullable enable")
-	rg.w.Writefmtln("")
 	rg.w.Writefmtln("using System.Collections.Immutable;")
 	rg.w.Writefmtln("using System.Threading.Tasks;")
 	rg.w.Writefmtln("using Pulumi.Serialization;")
@@ -698,7 +694,7 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 	if rg.res.IsProvider() {
 		baseType = "Pulumi.ProviderResource"
 	}
-	rg.w.Writefmtln("    public class %s : %s", className, baseType)
+	rg.w.Writefmtln("    public partial class %s : %s", className, baseType)
 	rg.w.Writefmtln("    {")
 
 	// Emit all output properties.
@@ -741,11 +737,11 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 	// Write a comment prior to the constructor.
 	rg.w.Writefmtln("        /// <summary>")
 	rg.w.Writefmtln("        /// Create a %s resource with the given unique name, arguments, and options.", className)
+	rg.w.Writefmtln("        /// </summary>")
 	rg.w.Writefmtln("        ///")
 	rg.w.Writefmtln("        /// <param name=\"name\">The unique name of the resource</param>")
 	rg.w.Writefmtln("        /// <param name=\"args\">The arguments used to populate this resource's properties</param>")
 	rg.w.Writefmtln("        /// <param name=\"options\">A bag of options that control this resource's behavior</param>")
-	rg.w.Writefmtln("        /// </summary>")
 
 	rg.w.Writefmtln("        public %s(string name, %s args%s, %s? options = null)",
 		className, argsType, argsDefault, optionsType)
@@ -770,28 +766,24 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 	rg.w.Writefmtln("            var defaultOptions = new %s", optionsType)
 	rg.w.Writefmtln("            {")
 	rg.w.Writefmtln("                Id = id,")
-	rg.w.Writefmt("                Version = Utilities.Version")
+	rg.w.Writefmt("                Version = Utilities.Version,")
 
 	switch len(rg.res.info.Aliases) {
 	case 0:
 		rg.w.Writefmtln("")
 	case 1:
-		rg.w.Writefmtln(",")
 		rg.w.Writefmt("                Aliases = { ")
 		rg.generateAlias(rg.res.info.Aliases[0])
-		rg.w.Writefmtln(" }")
+		rg.w.Writefmtln(" },")
 	default:
-		rg.w.Writefmtln(",")
 		rg.w.Writefmtln("                Aliases =")
 		rg.w.Writefmtln("                {")
 		for i, alias := range rg.res.info.Aliases {
 			rg.w.Writefmt("                    ")
 			rg.generateAlias(alias)
-			if i < len(rg.res.info.Aliases)-1 {
-				rg.w.Writefmtln(",")
-			}
+			rg.w.Writefmtln(",")
 		}
-		rg.w.Writefmtln("                }")
+		rg.w.Writefmtln("                },")
 	}
 
 	rg.w.Writefmtln("            };")
@@ -882,13 +874,10 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	}
 
 	// Emit the datasource method.
-	rg.w.Writefmtln("        public static Task%s %s(%sInvokeOptions? options = null)",
+	rg.w.Writefmt("        public static Task%s %s(%sInvokeOptions? options = null)",
 		typeParameter, methodName, argsParamDef)
-	rg.w.Writefmtln("        {")
-
-	rg.w.Writefmtln("            return Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
+	rg.w.Writefmtln(" => return Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
 		typeParameter, rg.fun.info.Tok, argsParamRef)
-	rg.w.Writefmtln("        }")
 
 	// Close the class.
 	rg.w.Writefmtln("    }")
@@ -967,7 +956,7 @@ func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, baseType
 	if baseType != "" {
 		baseType = " : " + baseType
 	}
-	rg.w.Writefmtln("    public class %s%s", typ.name, baseType)
+	rg.w.Writefmtln("    public sealed class %s%s", typ.name, baseType)
 	rg.w.Writefmtln("    {")
 
 	// Declare each input property.
@@ -1003,7 +992,7 @@ func (rg *csharpResourceGenerator) generateOutputType(typ *propertyType, nested 
 
 	// Open the class and attribute it appropriately.
 	rg.w.Writefmtln("    [OutputType]")
-	rg.w.Writefmtln("    public class %s", typ.name)
+	rg.w.Writefmtln("    public sealed class %s", typ.name)
 	rg.w.Writefmtln("    {")
 
 	// Generate each output field.
