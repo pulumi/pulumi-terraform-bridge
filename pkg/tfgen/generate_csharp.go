@@ -778,7 +778,7 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 	default:
 		rg.w.Writefmtln("                Aliases =")
 		rg.w.Writefmtln("                {")
-		for i, alias := range rg.res.info.Aliases {
+		for _, alias := range rg.res.info.Aliases {
 			rg.w.Writefmt("                    ")
 			rg.generateAlias(alias)
 			rg.w.Writefmtln(",")
@@ -830,12 +830,12 @@ func (rg *csharpResourceGenerator) generateAlias(alias tfbridge.AliasInfo) {
 }
 
 func (rg *csharpResourceGenerator) generateResourceArgs() {
-	rg.generateInputType(rg.res.argst, "Pulumi.ResourceArgs", false /*nested*/, false /*plainType*/)
+	rg.generateInputType(rg.res.argst, false /*nested*/)
 }
 
 func (rg *csharpResourceGenerator) generateResourceState() {
 	if !rg.res.IsProvider() {
-		rg.generateInputType(rg.res.statet, "Pulumi.ResourceArgs", false /*nested*/, false /*plainType*/)
+		rg.generateInputType(rg.res.statet, false /*nested*/)
 	}
 }
 
@@ -886,7 +886,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 func (rg *csharpResourceGenerator) generateDatasourceArgs() {
 	if rg.fun.argst != nil {
 		// TODO(pdg): this should pass true for plainType
-		rg.generateInputType(rg.fun.argst, "ResourceArgs", false /*nested*/, false /*plainType*/)
+		rg.generateInputType(rg.fun.argst, false /*nested*/)
 	}
 }
 
@@ -896,7 +896,7 @@ func (rg *csharpResourceGenerator) generateDatasourceResult() {
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested, plainType bool) {
+func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested bool) {
 	qualifier := ""
 	if !nested {
 		qualifier = "Inputs"
@@ -904,7 +904,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested,
 
 	wireName := prop.name
 	propertyName := csharpPropertyName(prop)
-	propertyType := qualifiedCSharpPropertyType(prop, qualifier, !plainType /*wrapInput*/)
+	propertyType := qualifiedCSharpPropertyType(prop, qualifier, true /*wrapInput*/)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -920,7 +920,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested,
 	switch prop.typ.kind {
 	case kindList, kindSet, kindMap:
 		backingFieldName := "_" + prop.name
-		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, !plainType /*wrapInput*/)
+		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, true /*wrapInput*/)
 
 		rg.w.Writefmtln("        [Input(\"%s\"%s)]", wireName, attributeArgs)
 		rg.w.Writefmtln("        private %s? %s;", backingFieldType, backingFieldName)
@@ -947,21 +947,18 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested,
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, baseType string, nested, plainType bool) {
+func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, nested bool) {
 	contract.Assert(typ.kind == kindObject)
 
 	rg.w.Writefmtln("")
 
 	// Open the class.
-	if baseType != "" {
-		baseType = " : " + baseType
-	}
-	rg.w.Writefmtln("    public sealed class %s%s", typ.name, baseType)
+	rg.w.Writefmtln("    public sealed class %s : Pulumi.ResourceArgs", typ.name)
 	rg.w.Writefmtln("    {")
 
 	// Declare each input property.
 	for _, p := range typ.properties {
-		rg.generateInputProperty(p, nested, plainType)
+		rg.generateInputProperty(p, nested)
 		rg.w.Writefmtln("")
 	}
 
@@ -1050,7 +1047,7 @@ func (rg *csharpResourceGenerator) generateInputTypes(nts []*csharpNestedType) {
 	// Write each input type.
 	for _, nt := range nts {
 		contract.Assert(nt.isInput)
-		rg.generateInputType(nt.typ, "Pulumi.ResourceArgs", true /*nested*/, false /*plainType*/)
+		rg.generateInputType(nt.typ, true /*nested*/)
 	}
 
 	// Close the namespace
