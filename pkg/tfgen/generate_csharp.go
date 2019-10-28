@@ -876,7 +876,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	// Emit the datasource method.
 	rg.w.Writefmt("        public static Task%s %s(%sInvokeOptions? options = null)",
 		typeParameter, methodName, argsParamDef)
-	rg.w.Writefmtln(" => return Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
+	rg.w.Writefmtln(" => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
 		typeParameter, rg.fun.info.Tok, argsParamRef)
 
 	// Close the class.
