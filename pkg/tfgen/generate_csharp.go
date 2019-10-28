@@ -796,12 +796,12 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 		rg.w.Writefmtln("        /// Get an existing %s resource's state with the given name, ID, and optional extra",
 			className)
 		rg.w.Writefmtln("        /// properties used to qualify the lookup.")
+		rg.w.Writefmtln("        /// </summary>")
 		rg.w.Writefmtln("        ///")
 		rg.w.Writefmtln("        /// <param name=\"name\">The unique name of the resulting resource.</param>")
 		rg.w.Writefmtln("        /// <param name=\"id\">The unique provider ID of the resource to lookup.</param>")
 		rg.w.Writefmtln("        /// <param name=\"state\">Any extra arguments used during the lookup.</param>")
 		rg.w.Writefmtln("        /// <param name=\"options\">A bag of options that control this resource's behavior</param>")
-		rg.w.Writefmtln("        /// </summary>")
 		rg.w.Writefmtln("        public static %s Get(string name, Input<string> id, %s? state = null, %s? options = null)",
 			className, rg.res.statet.name, optionsType)
 		rg.w.Writefmtln("        {")
@@ -930,7 +930,10 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 		}
 		emitCSharpPropertyDocComment(rg.w, prop, "        ")
 
-		rg.w.Writefmtln("        public %s %s", propertyType, propertyName)
+		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
+		// ensure that the user does not see warnings when initializing these properties using object or collection
+		// initializers.
+		rg.w.Writefmtln("        public %s %s", backingFieldType, propertyName)
 		rg.w.Writefmtln("        {")
 		rg.w.Writefmtln("            get => %s ?? (%s = new %s());", backingFieldName, backingFieldName, backingFieldType)
 		rg.w.Writefmtln("            set => %s = value;", backingFieldName)
