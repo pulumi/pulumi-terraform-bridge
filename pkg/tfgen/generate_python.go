@@ -192,10 +192,10 @@ func (g *pythonGenerator) emitModule(mod *module, submods []string) error {
 	for _, member := range mod.members {
 		if res, ok := member.(*resourceType); ok {
 			for _, prop := range res.inprops {
-				g.recordProperty(prop.name, prop.schema, prop.info)
+				g.recordProperty(prop)
 			}
 			for _, prop := range res.outprops {
-				g.recordProperty(prop.name, prop.schema, prop.info)
+				g.recordProperty(prop)
 			}
 		}
 	}
@@ -434,7 +434,7 @@ func (g *pythonGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 	}
 }
 
-func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldType) string {
+func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *propertyType) string {
 	baseName := pyClassName(pot.name)
 
 	// Produce a class definition with optional """ comment.
@@ -445,11 +445,11 @@ func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldTyp
 
 	// Now generate an initializer with properties for all inputs.
 	w.Writefmt("    def __init__(__self__")
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		w.Writefmt(", %s=None", pycodegen.PyName(prop.name))
 	}
 	w.Writefmtln("):")
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := pycodegen.PyName(prop.name)
 		ptype := pyType(prop)
@@ -482,7 +482,7 @@ func (g *pythonGenerator) emitAwaitableType(w *tools.GenWriter, pot *plainOldTyp
 	w.Writefmtln("        if False:")
 	w.Writefmtln("            yield self")
 	w.Writefmtln("        return %s(", baseName)
-	for i, prop := range pot.props {
+	for i, prop := range pot.properties {
 		if i > 0 {
 			w.Writefmtln(",")
 		}
@@ -717,7 +717,7 @@ func (g *pythonGenerator) emitResourceFunc(mod *module, fun *resourceFunc) (stri
 	}
 
 	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-	g.emitNestedStructuresDocstring(&buf, fun.args, fun.parsedDocs, false /*wrapInput*/)
+	g.emitNestedStructuresDocstring(&buf, fun.args, false /*wrapInput*/)
 
 	g.emitDocComment(w, buf.String(), fun.docURL, "    ")
 
@@ -980,55 +980,17 @@ func (g *pythonGenerator) emitPropertyConversionTables(tableModule *module) erro
 //
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
-func (g *pythonGenerator) recordProperty(name string, sch *schema.Schema, info *tfbridge.SchemaInfo) {
-	snakeCaseName := pycodegen.PyName(name)
-	g.snakeCaseToCamelCase[snakeCaseName] = name
-	g.camelCaseToSnakeCase[name] = snakeCaseName
-	g.recordPropertyRec(sch, info)
-}
+func (g *pythonGenerator) recordProperty(prop *variable) {
+	snakeCaseName := pycodegen.PyName(prop.name)
+	g.snakeCaseToCamelCase[snakeCaseName] = prop.name
+	g.camelCaseToSnakeCase[prop.name] = snakeCaseName
 
-// recordPropertyRec recurses through a property's schema and recursively records any properties contained within it.
-func (g *pythonGenerator) recordPropertyRec(sch *schema.Schema, info *tfbridge.SchemaInfo) {
-	switch sch.Type {
-	case schema.TypeList, schema.TypeSet:
-		// If this property that we are recursing on is a list or a set, we do not need to record any properties at this
-		// step but we do need to recurse into the element schema of the list or set.
-		if elem, ok := sch.Elem.(*schema.Schema); ok {
-			var schInfo *tfbridge.SchemaInfo
-			if info != nil {
-				schInfo = info.Elem
-			}
-
-			g.recordPropertyRec(elem, schInfo)
-			return
+	// Due to bugs in earlier versions of the bride, we only recurse on properties with TypeMap and an object-typed
+	// element. This is consistent with the earlier behavior.
+	if prop.schema.Type == schema.TypeMap && prop.typ.kind == kindObject {
+		for _, p := range prop.typ.properties {
+			g.recordProperty(p)
 		}
-
-		// If this list or set doesn't have an element schema, it does not need to be recorded.
-	case schema.TypeMap:
-		// If this property that we are recursing on is a map, and that map has associated with it a Resource schema,
-		// this is a map with well-known keys that we will need to record in our table.
-		if res, ok := sch.Elem.(*schema.Resource); ok {
-			for _, prop := range stableSchemas(res.Schema) {
-				// If this field was overridden in SchemaInfo, keep track of that here.
-				var fldinfo *tfbridge.SchemaInfo
-				if info != nil {
-					fldinfo = info.Fields[prop]
-				}
-
-				childSchema := res.Schema[prop]
-				// If this field has a non-empty property name, record it.
-				if name := propertyName(prop, childSchema, fldinfo); name != "" {
-					// Note: recordProperty recurses into childSchema so there is no need to invoke recordPropertyRec
-					// to do so.
-					g.recordProperty(name, childSchema, fldinfo)
-				}
-			}
-		}
-
-		// If this map isn't a resource, there's no need to recurse any further.
-	default:
-		// Primitives do not need to be recorded.
-		return
 	}
 }
 
@@ -1041,7 +1003,7 @@ func (g *pythonGenerator) emitMembers(w *tools.GenWriter, mod *module, res *reso
 		if prop.doc != "" {
 			doc := prop.doc
 
-			nested := nestedStructure(prop, res.parsedDocs)
+			nested := nestedStructure(prop)
 			if len(nested) > 0 {
 				doc = fmt.Sprintf("%s\n\n", doc)
 
@@ -1093,7 +1055,7 @@ func (g *pythonGenerator) emitInitDocstring(w *tools.GenWriter, mod *module, res
 	}
 
 	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-	g.emitNestedStructuresDocstring(&buf, res.inprops, res.parsedDocs, true /*wrapInput*/)
+	g.emitNestedStructuresDocstring(&buf, res.inprops, true /*wrapInput*/)
 
 	// emitDocComment handles the prefix and triple quotes.
 	g.emitDocComment(w, buf.String(), res.docURL, "        ")
@@ -1115,7 +1077,7 @@ func (g *pythonGenerator) emitGetDocstring(w *tools.GenWriter, mod *module, res 
 	}
 
 	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-	g.emitNestedStructuresDocstring(&buf, res.outprops, res.parsedDocs, true /*wrapInput*/)
+	g.emitNestedStructuresDocstring(&buf, res.outprops, true /*wrapInput*/)
 
 	// emitDocComment handles the prefix and triple quotes.
 	g.emitDocComment(w, buf.String(), res.docURL, "        ")
@@ -1151,13 +1113,11 @@ func (g *pythonGenerator) emitPropDocstring(buf io.Writer, prop *variable, wrapI
 	}
 }
 
-func (g *pythonGenerator) emitNestedStructuresDocstring(buf io.Writer, props []*variable, parsedDocs parsedDoc,
-	wrapInput bool) {
-
+func (g *pythonGenerator) emitNestedStructuresDocstring(buf io.Writer, props []*variable, wrapInput bool) {
 	var names []string
 	nestedMap := make(map[string][]*nestedVariable)
 	for _, prop := range props {
-		nested := nestedStructure(prop, parsedDocs)
+		nested := nestedStructure(prop)
 		if len(nested) > 0 {
 			nestedMap[prop.Name()] = nested
 			names = append(names, prop.Name())
@@ -1230,101 +1190,55 @@ type nestedVariable struct {
 	nested []*nestedVariable
 }
 
-func nestedStructure(v *variable, parsedDocs parsedDoc) []*nestedVariable {
-	return nestedStructureFromSchema(v.schema, v.info, parsedDocs)
+func nestedStructure(v *variable) []*nestedVariable {
+	return nestedStructureFromPropertyType(v.typ)
 }
 
-func nestedStructureFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo, parsedDocs parsedDoc) []*nestedVariable {
-	var elem *tfbridge.SchemaInfo
-	if info != nil {
-		elem = info.Elem
-	}
-
-	switch sch.Type {
-	case schema.TypeSet, schema.TypeList:
-		return elemNestedStructure(sch.Elem, elem, parsedDocs)
-
-	case schema.TypeMap:
-		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
-		// TF that effectively forces this behavior.
-		if _, hasResourceElem := sch.Elem.(*schema.Resource); hasResourceElem {
-			return elemNestedStructure(sch.Elem, elem, parsedDocs)
-		}
+func nestedStructureFromPropertyType(typ *propertyType) []*nestedVariable {
+	if typ == nil {
 		return nil
 	}
 
-	return nil
-}
-
-func elemNestedStructure(elem interface{}, info *tfbridge.SchemaInfo, parsedDocs parsedDoc) []*nestedVariable {
-	if elem == nil {
-		return nil
-	}
-
-	e, isResource := elem.(*schema.Resource)
-	if !isResource {
-		return nil
-	}
-
-	var nested []*nestedVariable
-	for _, s := range stableSchemas(e.Schema) {
-		var fldinfo *tfbridge.SchemaInfo
-		if info != nil {
-			fldinfo = info.Fields[s]
-		}
-		sch := e.Schema[s]
-		if propName := propertyName(s, sch, fldinfo); propName != "" {
-			doc := parsedDocs.Arguments[s]
-			if doc == "" {
-				doc = parsedDocs.Attributes[s]
+	switch typ.kind {
+	case kindSet, kindList:
+		return nestedStructureFromPropertyType(typ.element)
+	case kindObject:
+		nested := make([]*nestedVariable, len(typ.properties))
+		for i, p := range typ.properties {
+			nested[i] = &nestedVariable{
+				prop:   p,
+				nested: nestedStructure(p),
 			}
-			prop := propertyVariable(propName, sch, fldinfo, doc, "", "", false)
-			nested = append(nested, &nestedVariable{
-				prop:   prop,
-				nested: nestedStructureFromSchema(sch, fldinfo, parsedDocs),
-			})
 		}
+		return nested
+	default:
+		return nil
 	}
-
-	return nested
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
 // check is not exhaustive, but it should be good enough to catch 80% of the cases early on.
 func pyType(v *variable) string {
-	return pyTypeFromSchema(v.schema, v.info)
+	return pyTypeFromPropertyType(v.typ)
 }
 
-func pyTypeFromSchema(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
+func pyTypeFromPropertyType(typ *propertyType) string {
 	// If this is an asset or archive type, return the proper Pulumi SDK type name.
-	if info != nil && info.Asset != nil {
-		if info.Asset.IsArchive() {
-			return "pulumi." + info.Asset.Type()
+	if typ.asset != nil {
+		if typ.asset.IsArchive() {
+			return "pulumi." + typ.asset.Type()
 		}
 		return "Union[pulumi.Asset, pulumi.Archive]"
 	}
 
-	switch sch.Type {
-	case schema.TypeBool:
+	switch typ.kind {
+	case kindBool:
 		return "bool"
-	case schema.TypeInt, schema.TypeFloat:
+	case kindInt, kindFloat:
 		return "float"
-	case schema.TypeString:
+	case kindString:
 		return "str"
-	case schema.TypeSet, schema.TypeList:
-		if tfbridge.IsMaxItemsOne(sch, info) {
-			// This isn't supposed to be projected as a list; project it as a scalar.
-			if elem, ok := sch.Elem.(*schema.Schema); ok {
-				var schInfo *tfbridge.SchemaInfo
-				if info != nil {
-					schInfo = info.Elem
-				}
-				// If the elem is a schema type, see if we can do better than just "dict".
-				return pyTypeFromSchema(elem, schInfo)
-			}
-			// Otherwise, return "dict".
-			return "dict"
-		}
+	case kindSet, kindList:
 		return "list"
 	default:
 		return "dict"

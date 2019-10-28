@@ -154,15 +154,16 @@ func Test_TsTypes(t *testing.T) {
 			schema: test.schema,
 			info:   test.info,
 			opt:    true,
+			typ:    makePropertyType(test.schema, test.info, false, parsedDoc{}),
 		}
 
 		// Output
 		v.out = true
-		assert.Equal(t, test.expectedOutput, tsType("", "", v, parsedDoc{}, nil, nil, false, false, false))
+		assert.Equal(t, test.expectedOutput, tsType("", "", v, nil, nil, false, false, false))
 
 		// Input
 		v.out = false
-		assert.Equal(t, test.expectedInput, tsType("", "", v, parsedDoc{}, nil, nil, false, true, false))
+		assert.Equal(t, test.expectedInput, tsType("", "", v, nil, nil, false, true, false))
 	}
 }
 
@@ -177,13 +178,15 @@ func Test_Issue130(t *testing.T) {
 		name:   "condition",
 		schema: schema,
 		out:    true,
-	}, parsedDoc{}, nil, nil, false, false, false))
+		typ:    makePropertyType(schema, nil, true, parsedDoc{}),
+	}, nil, nil, false, false, false))
 
 	assert.Equal(t, "pulumi.Input<string>", tsType("", "", &variable{
 		name:   "condition",
 		schema: schema,
 		out:    false,
-	}, parsedDoc{}, nil, nil, false, true, false))
+		typ:    makePropertyType(schema, nil, false, parsedDoc{}),
+	}, nil, nil, false, true, false))
 }
 
 func Test_GatherCustomImports_ComplexArrayAltType(t *testing.T) {

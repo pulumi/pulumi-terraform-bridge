@@ -392,12 +392,12 @@ func (g *goGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix stri
 	}
 }
 
-func (g *goGenerator) emitPlainOldType(w *tools.GenWriter, pot *plainOldType) {
+func (g *goGenerator) emitPlainOldType(w *tools.GenWriter, pot *propertyType) {
 	if pot.doc != "" {
 		g.emitDocComment(w, pot.doc, "", "")
 	}
 	w.Writefmtln("type %s struct {", pot.name)
-	for _, prop := range pot.props {
+	for _, prop := range pot.properties {
 		if prop.doc != "" && prop.doc != elidedDocComment {
 			g.emitDocComment(w, prop.doc, prop.docURL, "\t")
 		} else if prop.rawdoc != "" {

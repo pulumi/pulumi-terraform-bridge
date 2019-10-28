@@ -201,6 +201,134 @@ type moduleMember interface {
 	Doc() string
 }
 
+type typeKind int
+
+const (
+	kindInvalid = iota
+	kindBool
+	kindInt
+	kindFloat
+	kindString
+	kindList
+	kindMap
+	kindSet
+	kindObject
+)
+
+// Avoid an unused warning from varcheck.
+var _ = kindInvalid
+
+// propertyType represents a non-resource, non-datasource type. Property types may be simple
+type propertyType struct {
+	name       string
+	doc        string
+	kind       typeKind
+	element    *propertyType
+	properties []*variable
+
+	typ        tokens.Type
+	nestedType tokens.Type
+	altTypes   []tokens.Type
+	asset      *tfbridge.AssetTranslation
+}
+
+func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool, parsedDocs parsedDoc) *propertyType {
+	t := &propertyType{}
+
+	var elemInfo *tfbridge.SchemaInfo
+	if info != nil {
+		t.typ = info.Type
+		t.nestedType = info.NestedType
+		t.altTypes = info.AltTypes
+		t.asset = info.Asset
+		elemInfo = info.Elem
+	}
+
+	if sch == nil {
+		contract.Assert(info != nil)
+		return t
+	}
+
+	switch sch.Type {
+	case schema.TypeBool:
+		t.kind = kindBool
+	case schema.TypeInt:
+		t.kind = kindInt
+	case schema.TypeFloat:
+		t.kind = kindFloat
+	case schema.TypeString:
+		t.kind = kindString
+	case schema.TypeList:
+		t.kind = kindList
+	case schema.TypeMap:
+		t.kind = kindMap
+	case schema.TypeSet:
+		t.kind = kindSet
+	}
+
+	switch elem := sch.Elem.(type) {
+	case *schema.Schema:
+		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)
+	case *schema.Resource:
+		t.element = makeObjectPropertyType(elem, elemInfo, out, parsedDocs)
+	}
+
+	switch t.kind {
+	case kindList, kindSet:
+		if tfbridge.IsMaxItemsOne(sch, info) {
+			t = t.element
+		}
+	case kindMap:
+		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
+		// TF that effectively forces this behavior.
+		if t.element != nil && t.element.kind == kindObject {
+			t = t.element
+		}
+	}
+
+	return t
+}
+
+func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
+	parsedDocs parsedDoc) *propertyType {
+
+	t := &propertyType{
+		kind: kindObject,
+	}
+
+	if info != nil {
+		t.typ = info.Type
+		t.nestedType = info.NestedType
+		t.altTypes = info.AltTypes
+		t.asset = info.Asset
+	}
+
+	var propertyInfos map[string]*tfbridge.SchemaInfo
+	if info != nil {
+		propertyInfos = info.Fields
+	}
+
+	for _, key := range stableSchemas(res.Schema) {
+		propertySchema := res.Schema[key]
+
+		var propertyInfo *tfbridge.SchemaInfo
+		if propertyInfos != nil {
+			propertyInfo = propertyInfos[key]
+		}
+
+		doc := parsedDocs.Arguments[key]
+		if doc == "" {
+			doc = parsedDocs.Attributes[key]
+		}
+
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, parsedDocs); v != nil {
+			t.properties = append(t.properties, v)
+		}
+	}
+
+	return t
+}
+
 // variable is a schematized variable, property, argument, or return type.
 type variable struct {
 	name   string
@@ -209,9 +337,12 @@ type variable struct {
 	config bool // config is true if this variable represents a Pulumi config value.
 	doc    string
 	rawdoc string
+	docURL string
+
 	schema *schema.Schema
 	info   *tfbridge.SchemaInfo
-	docURL string
+
+	typ *propertyType
 }
 
 func (v *variable) Name() string { return v.name }
@@ -219,20 +350,18 @@ func (v *variable) Doc() string  { return v.doc }
 
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool {
-	return v.opt || optionalComplex(v.schema, v.info, v.out, v.config)
-}
+	if v.opt {
+		return true
+	}
 
-// optionalComplex takes the constituent parts of a variable, rather than a variable itself, and returns whether it is
-// optional based on the Terraform or custom overlay properties.
-func optionalComplex(sch *schema.Schema, info *tfbridge.SchemaInfo, out, config bool) bool {
 	// If we're checking a property used in an output position, it isn't optional if it's computed.
 	//
 	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.
-	customDefault := !config && info != nil && info.HasDefault()
-	if out {
-		return sch != nil && sch.Optional && !sch.Computed && !customDefault
+	customDefault := !v.config && v.info != nil && v.info.HasDefault()
+	if v.out {
+		return v.schema != nil && v.schema.Optional && !v.schema.Computed && !customDefault
 	}
-	return (sch != nil && sch.Optional || sch.Computed) || customDefault
+	return (v.schema != nil && v.schema.Optional || v.schema.Computed) || customDefault
 }
 
 // resourceType is a generated resource type that represents a Pulumi CustomResource definition.
@@ -243,8 +372,8 @@ type resourceType struct {
 	inprops    []*variable
 	outprops   []*variable
 	reqprops   map[string]bool
-	argst      *plainOldType // input properties.
-	statet     *plainOldType // output properties (all optional).
+	argst      *propertyType // input properties.
+	statet     *propertyType // output properties (all optional).
 	schema     *schema.Resource
 	info       *tfbridge.ResourceInfo
 	docURL     string
@@ -279,8 +408,8 @@ type resourceFunc struct {
 	args       []*variable
 	rets       []*variable
 	reqargs    map[string]bool
-	argst      *plainOldType
-	retst      *plainOldType
+	argst      *propertyType
+	retst      *propertyType
 	schema     *schema.Resource
 	info       *tfbridge.DataSourceInfo
 	docURL     string
@@ -299,14 +428,6 @@ type overlayFile struct {
 func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
-
-// plainOldType is any simple type definition that doesn't correspond to Pulumi CustomResources.  Note that this is not
-// a legal top-level module definition; instead, this type is embedded within others (see resourceType and Func).
-type plainOldType struct {
-	name  string
-	doc   string
-	props []*variable
-}
 
 // newGenerator returns a code-generator for the given language runtime and package info.
 func newGenerator(pkg, version string, language language, info tfbridge.ProviderInfo,
@@ -450,7 +571,8 @@ func (g *generator) gatherConfig() *module {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
 		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		if prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/); prop != nil {
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, parsedDoc{})
+		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -466,7 +588,7 @@ func (g *generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, parsedDoc{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -589,7 +711,7 @@ func (g *generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, parsedDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -597,7 +719,7 @@ func (g *generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -607,23 +729,23 @@ func (g *generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
 
 	// Generate a state type for looking up instances of this resource.
-	res.statet = &plainOldType{
-		name:  fmt.Sprintf("%sState", res.name),
-		doc:   fmt.Sprintf("Input properties used for looking up and filtering %s resources.", res.name),
-		props: stateVars,
+	res.statet = &propertyType{
+		name:       fmt.Sprintf("%sState", res.name),
+		doc:        fmt.Sprintf("Input properties used for looking up and filtering %s resources.", res.name),
+		properties: stateVars,
 	}
 
 	// Next, generate the args interface for this class, and add it first to the list (since the res type uses it).
-	res.argst = &plainOldType{
-		name:  fmt.Sprintf("%sArgs", res.name),
-		doc:   fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
-		props: res.inprops,
+	res.argst = &propertyType{
+		name:       fmt.Sprintf("%sArgs", res.name),
+		doc:        fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
+		properties: res.inprops,
 	}
 
 	// Ensure there weren't any custom fields that were unrecognized.
@@ -735,7 +857,7 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/)
+			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/, parsedDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -745,7 +867,7 @@ func (g *generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", "", true /*out*/))
+			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", "", true /*out*/, parsedDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -758,22 +880,22 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := &tfbridge.SchemaInfo{}
 		rawdoc := "id is the provider-assigned unique ID for this managed resource."
 		fun.rets = append(fun.rets,
-			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/))
+			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, parsedDocs))
 	}
 
 	// Produce the args/return types, if needed.
 	if len(fun.args) > 0 {
-		fun.argst = &plainOldType{
-			name:  fmt.Sprintf("%sArgs", upperFirst(name)),
-			doc:   fmt.Sprintf("A collection of arguments for invoking %s.", name),
-			props: fun.args,
+		fun.argst = &propertyType{
+			name:       fmt.Sprintf("%sArgs", upperFirst(name)),
+			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
+			properties: fun.args,
 		}
 	}
 	if len(fun.rets) > 0 {
-		fun.retst = &plainOldType{
-			name:  fmt.Sprintf("%sResult", upperFirst(name)),
-			doc:   fmt.Sprintf("A collection of values returned by %s.", name),
-			props: fun.rets,
+		fun.retst = &propertyType{
+			name:       fmt.Sprintf("%sResult", upperFirst(name)),
+			doc:        fmt.Sprintf("A collection of values returned by %s.", name),
+			properties: fun.rets,
 		}
 	}
 
@@ -886,7 +1008,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, docURL string, out bool) *variable {
+	doc string, rawdoc string, docURL string, out bool, parsedDocs parsedDoc) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -896,6 +1018,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			schema: sch,
 			info:   info,
 			docURL: docURL,
+			typ:    makePropertyType(sch, info, out, parsedDocs),
 		}
 	}
 	return nil
