@@ -6,9 +6,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
 
-const csharpUtilitiesTemplateText = `#nullable enable
-
-using System;
+// nolint:lll
+const csharpUtilitiesTemplateText = `using System;
+using System.IO;
+using System.Reflection;
 using Pulumi;
 
 namespace {{.Namespace}}
@@ -80,8 +81,6 @@ namespace {{.Namespace}}
 
         }
 
-        public static string Version => "{{.Version}}";
-
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
             if (options?.Version != null)
@@ -94,6 +93,19 @@ namespace {{.Namespace}}
                 Provider = options?.Provider,
                 Version = Version,
             };
+        }
+
+        private readonly static string version;
+        public static string Version => version;
+
+        static Utilities()
+        {
+            var assembly = typeof(Utilities).GetTypeInfo().Assembly;
+            using (var stream = assembly.GetManifestResourceStream("{{.Namespace}}.version.txt"))
+            using (var reader = new StreamReader(stream))
+            {
+                version = reader.ReadToEnd().Trim();
+            }
         }
     }
 }
@@ -118,7 +130,6 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <PackageLicenseExpression>{{.Info.License}}</PackageLicenseExpression>
     <PackageProjectUrl>{{.Info.Homepage}}</PackageProjectUrl>
     <RepositoryUrl>{{.Info.Repository}}</RepositoryUrl>
-    <Version>{{.Version}}</Version>
 
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -128,7 +139,11 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>1701;1702;1591;8604;8625</NoWarn>
   </PropertyGroup>
-    
+
+  <ItemGroup>
+    <EmbeddedResource Include="version.txt" />
+  </ItemGroup>
+
   <ItemGroup>
     {{- range $package, $version := .Info.CSharp.PackageReferences}}
     <PackageReference Include="{{$package}}" Version="{{$version}}" />
