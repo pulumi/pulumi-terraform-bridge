@@ -1,4 +1,4 @@
-name: CI & Downstream Testing
+name: Pull Request & Downstream Testing
 on: [pull_request]
 
 jobs:
@@ -26,7 +26,6 @@ jobs:
         run: go test -v ./...
 
   downstream-aws:
-    needs: build
     name: Test AWS Downstream
     runs-on: ubuntu-latest
     steps:
@@ -52,15 +51,16 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: jen20/action-test-provider-downstream@releases/v1
+        uses: pulumi/action-test-provider-downstream@releases/v1
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
           downstream-name: pulumi-aws
           downstream-url: https://github.com/pulumi/pulumi-aws
+          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
 
   downstream-azure:
-    needs: build
     name: Test Azure Downstream
     runs-on: ubuntu-latest
     steps:
@@ -86,15 +86,16 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: jen20/action-test-provider-downstream@releases/v1
+        uses: pulumi/action-test-provider-downstream@releases/v1
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
           downstream-name: pulumi-azure
           downstream-url: https://github.com/pulumi/pulumi-azure
+          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
 
   downstream-gcp:
-    needs: build
     name: Test GCP Downstream
     runs-on: ubuntu-latest
     steps:
@@ -120,9 +121,46 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: jen20/action-test-provider-downstream@releases/v1
+        uses: pulumi/action-test-provider-downstream@releases/v1
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
           downstream-name: pulumi-gcp
           downstream-url: https://github.com/pulumi/pulumi-gcp
+          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
+
+  downstream-vault:
+    name: Test Vault Downstream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13.x
+      - name: Install Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '10.x'
+      - name: Install Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6.9
+      - name: Install Pulumi CLI
+        uses: jen20/action-install-pulumi-cli@releases/v1
+      - name: Install tf2pulumi
+        uses: jen20/action-install-tf2pulumi@releases/v1
+        with:
+          tf2pulumi-version: 0.6.0
+
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Test Downstream
+        uses: pulumi/action-test-provider-downstream@releases/v1
+        env:
+          GOPROXY: "https://proxy.golang.org"
+        with:
+          downstream-name: pulumi-vault
+          downstream-url: https://github.com/pulumi/pulumi-vault
+          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
