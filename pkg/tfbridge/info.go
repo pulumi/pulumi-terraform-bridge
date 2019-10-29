@@ -39,6 +39,7 @@ type ProviderInfo struct {
 	License           string                     // the license, if any, the resulting package has (default is none).
 	Homepage          string                     // the URL to the project homepage.
 	Repository        string                     // the URL to the project source code repository.
+	Version           string                     // the version of the provider package.
 	Config            map[string]*SchemaInfo     // a map of TF name to config schema overrides.
 	ExtraConfig       map[string]*ConfigInfo     // a list of Pulumi-only configuration variables.
 	Resources         map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
@@ -46,6 +47,7 @@ type ProviderInfo struct {
 	JavaScript        *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
 	Python            *PythonInfo                // optional overlay information for augmented Python code-generation.
 	Golang            *GolangInfo                // optional overlay information for augmented Golang code-generation.
+	CSharp            *CSharpInfo                // optional overlay information for augmented C# code-generation.
 	TFProviderVersion string                     // the version of the TF provider on which this was based
 	TFProviderLicense *TFProviderLicense         // license that the TF provider is distributed under. Default `MPL 2.0`.
 
@@ -134,6 +136,9 @@ func (info *DataSourceInfo) GetDocs() *DocInfo                 { return info.Doc
 type SchemaInfo struct {
 	// a name to override the default; "" uses the default.
 	Name string
+
+	// a name to override the default when targeting C#; "" uses the default.
+	CSharpName string
 
 	// a type to override the default; "" uses the default.
 	Type tokens.Type
@@ -250,6 +255,12 @@ type PythonInfo struct {
 // GolangInfo contains optional overlay information for Golang code-generation.
 type GolangInfo struct {
 	Overlay *OverlayInfo // optional overlay information for augmented code-generation.
+}
+
+// CSharpInfo contains optional overlay information for C# code-generation.
+type CSharpInfo struct {
+	PackageReferences map[string]string // NuGet package reference information.
+	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
@@ -407,6 +418,7 @@ func (m *MarshallableProvider) Unmarshal() *schema.Provider {
 // MarshallableSchemaInfo is the JSON-marshallable form of a Pulumi SchemaInfo value.
 type MarshallableSchemaInfo struct {
 	Name        string                             `json:"name,omitempty"`
+	CSharpName  string                             `json:"csharpName,omitempty"`
 	Type        tokens.Type                        `json:"typeomitempty"`
 	AltTypes    []tokens.Type                      `json:"altTypes,omitempty"`
 	Elem        *MarshallableSchemaInfo            `json:"element,omitempty"`
@@ -428,6 +440,7 @@ func MarshalSchemaInfo(s *SchemaInfo) *MarshallableSchemaInfo {
 	}
 	return &MarshallableSchemaInfo{
 		Name:        s.Name,
+		CSharpName:  s.CSharpName,
 		Type:        s.Type,
 		AltTypes:    s.AltTypes,
 		Elem:        MarshalSchemaInfo(s.Elem),
@@ -450,6 +463,7 @@ func (m *MarshallableSchemaInfo) Unmarshal() *SchemaInfo {
 	}
 	return &SchemaInfo{
 		Name:        m.Name,
+		CSharpName:  m.CSharpName,
 		Type:        m.Type,
 		AltTypes:    m.AltTypes,
 		Elem:        m.Elem.Unmarshal(),

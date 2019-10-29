@@ -60,9 +60,10 @@ const (
 	golang language = "go"
 	nodeJS language = "nodejs"
 	python language = "python"
+	csharp language = "dotnet"
 )
 
-var allLanguages = []language{golang, nodeJS, python}
+var allLanguages = []language{golang, nodeJS, python, csharp}
 
 // langGenerator is the interfact for language-specific logic and formatting.
 type langGenerator interface {
@@ -218,6 +219,10 @@ const (
 // Avoid an unused warning from varcheck.
 var _ = kindInvalid
 
+func isPrimitiveKind(k typeKind) bool {
+	return k < kindList
+}
+
 // propertyType represents a non-resource, non-datasource type. Property types may be simple
 type propertyType struct {
 	name       string
@@ -232,7 +237,9 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool, parsedDocs parsedDoc) *propertyType {
+func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
+	parsedDocs parsedDoc) *propertyType {
+
 	t := &propertyType{}
 
 	var elemInfo *tfbridge.SchemaInfo
@@ -455,6 +462,8 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		lg = newNodeJSGenerator(pkg, version, info, overlaysDir, outDir)
 	case python:
 		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
+	case csharp:
+		lg = newCSharpGenerator(pkg, version, info, overlaysDir, outDir)
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
@@ -736,6 +745,7 @@ func (g *generator) gatherResource(rawname string,
 
 	// Generate a state type for looking up instances of this resource.
 	res.statet = &propertyType{
+		kind:       kindObject,
 		name:       fmt.Sprintf("%sState", res.name),
 		doc:        fmt.Sprintf("Input properties used for looking up and filtering %s resources.", res.name),
 		properties: stateVars,
@@ -743,6 +753,7 @@ func (g *generator) gatherResource(rawname string,
 
 	// Next, generate the args interface for this class, and add it first to the list (since the res type uses it).
 	res.argst = &propertyType{
+		kind:       kindObject,
 		name:       fmt.Sprintf("%sArgs", res.name),
 		doc:        fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
 		properties: res.inprops,
@@ -886,6 +897,7 @@ func (g *generator) gatherDataSource(rawname string,
 	// Produce the args/return types, if needed.
 	if len(fun.args) > 0 {
 		fun.argst = &propertyType{
+			kind:       kindObject,
 			name:       fmt.Sprintf("%sArgs", upperFirst(name)),
 			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
 			properties: fun.args,
@@ -893,6 +905,7 @@ func (g *generator) gatherDataSource(rawname string,
 	}
 	if len(fun.rets) > 0 {
 		fun.retst = &propertyType{
+			kind:       kindObject,
 			name:       fmt.Sprintf("%sResult", upperFirst(name)),
 			doc:        fmt.Sprintf("A collection of values returned by %s.", name),
 			properties: fun.rets,
@@ -921,6 +934,8 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 		if goinfo := g.info.Golang; goinfo != nil {
 			overlay = goinfo.Overlay
 		}
+	case csharp:
+		// TODO(patg): CSharp overlays
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
 	}
