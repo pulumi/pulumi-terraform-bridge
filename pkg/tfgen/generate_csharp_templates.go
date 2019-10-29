@@ -48,38 +48,9 @@ namespace {{.Namespace}}
             return null;
         }
 
-        public static int? GetEnvInt32(params string[] names)
-        {
-            var s = GetEnv(names);
-            if (s != null)
-            {
-                try
-                {
-                    return int.Parse(s);
-                }
-                catch (Exception)
-                {
-                }
-            }
-            return null;
-        }
+        public static int? GetEnvInt32(params string[] names) => int.TryParse(GetEnv(names), out int v) ? (int?)v : null;
 
-        public static double? GetEnvDouble(params string[] names)
-        {
-            var s = GetEnv(names);
-            if (s != null)
-            {
-                try
-                {
-                    return double.Parse(s);
-                }
-                catch (Exception)
-                {
-                }
-            }
-            return null;
-
-        }
+        public static double? GetEnvDouble(params string[] names) => double.TryParse(GetEnv(names), out double v) ? (double?)v : null;
 
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
