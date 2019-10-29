@@ -184,10 +184,10 @@ func TestTerraformInputs(t *testing.T) {
 		"float_property_value":  99.6767932,
 		"string_property_value": "ognirts",
 		"array_property_value":  []interface{}{"an array"},
-		"unknown_array_value":   []interface{}{terraformUnknownVariableValue},
+		"unknown_array_value":   []interface{}{TerraformUnknownVariableValue},
 		"unknown_array_value2": []interface{}{
 			map[string]interface{}{
-				"required_property": terraformUnknownVariableValue,
+				"required_property": TerraformUnknownVariableValue,
 			},
 		},
 		"object_property_value": map[string]interface{}{
@@ -950,7 +950,7 @@ func TestComputedAsset(t *testing.T) {
 	}
 	olds := resource.PropertyMap{}
 	props := resource.PropertyMap{
-		"zzz": resource.NewStringProperty(terraformUnknownVariableValue),
+		"zzz": resource.NewStringProperty(TerraformUnknownVariableValue),
 	}
 	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
 	assert.NoError(t, err)
@@ -1041,13 +1041,13 @@ func TestCustomTransforms(t *testing.T) {
 		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
-	assert.Equal(t, terraformUnknownVariableValue, v3)
+	assert.Equal(t, TerraformUnknownVariableValue, v3)
 
 	v4, err := MakeTerraformInput(
 		nil, "v", resource.PropertyValue{}, resource.MakeComputed(resource.NewStringProperty("")),
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
-	assert.Equal(t, terraformUnknownVariableValue, v4)
+	assert.Equal(t, TerraformUnknownVariableValue, v4)
 }
 
 func TestImporterOnRead(t *testing.T) {
