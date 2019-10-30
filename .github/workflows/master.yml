@@ -1,4 +1,4 @@
-name: Pushing to master and tags
+name: Master and Tag Builds
 on:
   push:
     branches:
