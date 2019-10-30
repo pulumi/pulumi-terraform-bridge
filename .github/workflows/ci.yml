@@ -42,9 +42,9 @@ jobs:
         with:
           python-version: 3.6.9
       - name: Install Pulumi CLI
-        uses: jen20/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
-        uses: jen20/action-install-tf2pulumi@releases/v1
+        uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
           tf2pulumi-version: 0.6.0
 
@@ -77,9 +77,9 @@ jobs:
         with:
           python-version: 3.6.9
       - name: Install Pulumi CLI
-        uses: jen20/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
-        uses: jen20/action-install-tf2pulumi@releases/v1
+        uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
           tf2pulumi-version: 0.6.0
 
@@ -112,9 +112,9 @@ jobs:
         with:
           python-version: 3.6.9
       - name: Install Pulumi CLI
-        uses: jen20/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
-        uses: jen20/action-install-tf2pulumi@releases/v1
+        uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
           tf2pulumi-version: 0.6.0
 
@@ -147,9 +147,9 @@ jobs:
         with:
           python-version: 3.6.9
       - name: Install Pulumi CLI
-        uses: jen20/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
-        uses: jen20/action-install-tf2pulumi@releases/v1
+        uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
           tf2pulumi-version: 0.6.0
 
