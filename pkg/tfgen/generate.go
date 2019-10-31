@@ -287,8 +287,10 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 		}
 	case kindMap:
 		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
-		// TF that effectively forces this behavior.
-		if t.element != nil && t.element.kind == kindObject {
+		// TF that effectively forces this behavior. If this map has _no_ element type, use type string.
+		if t.element == nil {
+			t.element = &propertyType{kind: kindString}
+		} else if t.element.kind == kindObject {
 			t = t.element
 		}
 	}
