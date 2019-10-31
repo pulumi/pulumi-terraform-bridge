@@ -274,6 +274,8 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	}
 
 	switch elem := sch.Elem.(type) {
+	case schema.ValueType:
+		t.element = makePropertyType(&schema.Schema{Type: elem}, elemInfo, out, parsedDocs)
 	case *schema.Schema:
 		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)
 	case *schema.Resource:
