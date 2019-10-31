@@ -76,6 +76,7 @@ func Test_NodeDefaults(t *testing.T) {
 			schema: &dvt.schema,
 			info:   &tfbridge.SchemaInfo{Default: &dvt.info},
 		}
+		v.typ = makePropertyType(v.schema, v.info, false, parsedDoc{})
 
 		actual := tsDefaultValue(v)
 		assert.Equal(t, dvt.expectedNode, actual)
@@ -163,6 +164,7 @@ func Test_PythonDefaults(t *testing.T) {
 			schema: &dvt.schema,
 			info:   &tfbridge.SchemaInfo{Default: &dvt.info},
 		}
+		v.typ = makePropertyType(v.schema, v.info, false, parsedDoc{})
 
 		actual := pyDefaultValue(v)
 		assert.Equal(t, dvt.expectedPython, actual)
