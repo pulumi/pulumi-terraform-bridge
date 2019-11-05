@@ -113,6 +113,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
+    <Content Include="version.txt" />
   </ItemGroup>
 
   <ItemGroup>
