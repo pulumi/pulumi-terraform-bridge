@@ -174,7 +174,7 @@ func (g *csharpGenerator) moduleDir(mod *module) string {
 
 // assemblyName returns the assembly name for the package.
 func (g *csharpGenerator) assemblyName() string {
-	return "Pulumi." + strings.Title(g.pkg)
+	return "Pulumi." + g.namespaceName(g.pkg)
 }
 
 // moduleNamespace returns the C# namespace for the given module.
@@ -183,7 +183,18 @@ func (g *csharpGenerator) moduleNamespace(mod *module) string {
 	if mod.root() {
 		return pkgNamespace
 	}
-	return pkgNamespace + "." + strings.Title(mod.name)
+	return pkgNamespace + "." + g.namespaceName(mod.name)
+}
+
+// namespaceName returns the C# namespace for the given module name.
+func (g *csharpGenerator) namespaceName(name string) string {
+	// lookup a well-known properly-capitalized name
+	if val, ok := g.info.CSharp.Namespaces[name]; ok {
+		return val
+	}
+
+	// Fallback to capitalizing the first word
+	return strings.Title(name)
 }
 
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
