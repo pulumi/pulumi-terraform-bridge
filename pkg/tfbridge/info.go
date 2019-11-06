@@ -261,6 +261,7 @@ type GolangInfo struct {
 type CSharpInfo struct {
 	PackageReferences map[string]string // NuGet package reference information.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
+	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
