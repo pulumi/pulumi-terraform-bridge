@@ -1149,9 +1149,14 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 		packageName = fmt.Sprintf("@pulumi/%s", pack.name)
 	}
 
-	typeScriptVersion := "^3.4.1"
-	if g.info.JavaScript != nil && g.info.JavaScript.TypeScriptVersion != "" {
+	typeScriptVersion := ""
+	if g.info.JavaScript != nil {
 		typeScriptVersion = g.info.JavaScript.TypeScriptVersion
+	}
+
+	devDependencies := map[string]string{}
+	if typeScriptVersion != "" {
+		devDependencies["typescript"] = typeScriptVersion
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -1170,9 +1175,7 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 		Scripts: map[string]string{
 			"build": "tsc",
 		},
-		DevDependencies: map[string]string{
-			"typescript": typeScriptVersion,
-		},
+		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
 			Resource: true,
 		},
