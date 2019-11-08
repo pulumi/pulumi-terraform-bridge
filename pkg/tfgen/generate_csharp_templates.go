@@ -73,9 +73,12 @@ namespace {{.Namespace}}
         {
             var assembly = typeof(Utilities).GetTypeInfo().Assembly;
             using (var stream = assembly.GetManifestResourceStream("{{.Namespace}}.version.txt"))
-            using (var reader = new StreamReader(stream))
             {
-                version = reader.ReadToEnd().Trim();
+                if (stream == null) throw new Exception("Embedded version.txt file failed to load");
+                using (var reader = new StreamReader(stream))
+                {
+                    version = reader.ReadToEnd().Trim();
+                }
             }
         }
     }
@@ -108,7 +111,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>1701;1702;1591;8604;8625</NoWarn>
+    <NoWarn>1701;1702;1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
