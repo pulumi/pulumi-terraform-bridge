@@ -602,6 +602,9 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
 
+// Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
+var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
+
 const elidedDocComment = "<elided>"
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
@@ -615,6 +618,13 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
 	text = strings.Replace(text, "-> ", "> ", -1)
 	text = strings.Replace(text, "~> ", "> ", -1)
+
+	// Find markdown Terraform docs site reference links.
+	text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
+		parts := strings.Split(referenceLink, " ")
+		// Add Terraform domain to avoid broken links.
+		return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
+	})
 
 	// Find URLs and re-write local links
 	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
