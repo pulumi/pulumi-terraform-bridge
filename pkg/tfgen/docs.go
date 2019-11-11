@@ -603,7 +603,7 @@ var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
 
 // Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
-var markdownPageReferenceLink = regexp.MustCompile(`\[([1-9]+)]: /docs/providers/([a-z]+)/([a-z]+)/([a-z]+).([a-z]+)`)
+var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
 
 const elidedDocComment = "<elided>"
 
