@@ -439,8 +439,8 @@ func (g *csharpGenerator) emitConfigVariableType(w *tools.GenWriter, typ *proper
 
 // emitConfigVariables emits all config vaiables in the given module, returning the resulting file.
 func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNestedTypes) (string, error) {
-	// Create a Variables.cs file into which all configuration variables will go.
-	w, config, err := g.openWriter(mod, "Variables.cs")
+	// Create a Config.cs file into which all configuration variables will go.
+	w, config, err := g.openWriter(mod, "Config.cs")
 	if err != nil {
 		return "", err
 	}
@@ -449,7 +449,8 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 	// Open the namespace.
 	w.Writefmtln("using System.Collections.Immutable;")
 	w.Writefmtln("")
-	w.Writefmtln("namespace %s", g.moduleNamespace(mod))
+	// Use the root namespace to avoid `Pulumi.Provider.Config.Config.VarName` usage.
+	w.Writefmtln("namespace %s", g.assemblyName())
 	w.Writefmtln("{")
 
 	// Open the config class.
