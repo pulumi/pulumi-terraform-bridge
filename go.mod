@@ -5,7 +5,6 @@ go 1.12
 replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
 
 require (
-	cloud.google.com/go/logging v1.0.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
