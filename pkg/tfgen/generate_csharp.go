@@ -748,7 +748,7 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 
 	rg.w.Writefmtln("        public %s(string name, %s args%s, %s? options = null)",
 		className, argsType, argsDefault, optionsType)
-	rg.w.Writefmtln("            : base(\"%s\", name, args, MakeResourceOptions(options, \"\"))", rg.res.info.Tok)
+	rg.w.Writefmtln("            : base(\"%s\", name, args ?? ResourceArgs.Empty, MakeResourceOptions(options, \"\"))", rg.res.info.Tok)
 	rg.w.Writefmtln("        {")
 	rg.w.Writefmtln("        }")
 
@@ -858,7 +858,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	}
 
 	var argsParamDef string
-	argsParamRef := "null"
+	argsParamRef := "ResourceArgs.Empty"
 	if rg.fun.argst != nil {
 		argsType := rg.fun.argst.name
 
@@ -870,7 +870,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 		}
 
 		argsParamDef = fmt.Sprintf("%s args%s, ", argsType, argsDefault)
-		argsParamRef = "args"
+		argsParamRef = "args ?? ResourceArgs.Empty"
 	}
 
 	// Emit the doc comment, if any.
