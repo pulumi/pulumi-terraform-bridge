@@ -9,5 +9,6 @@ CHANGELOG
 * Remove the need for Pandoc in generating Python SDK readme files.
 * Allow a schema variable to be overridden as being `Computed`
 * Allow passing a License Type for the upstream Terraform provider.
+* Centralise the work for Autonaming in providers.
 
 ---

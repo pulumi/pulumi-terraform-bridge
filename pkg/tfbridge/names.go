@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"github.com/pkg/errors"
 	"unicode"
 
 	"github.com/gedex/inflector"
@@ -95,12 +96,44 @@ func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
 	return result
 }
 
-// AutoName creates custom schema for a Terraform name property which is automatically populated from the
-// resource's URN name, with an 8 character random suffix ("-"+7 random chars), and maximum length of maxlen.  This
-// makes it easy to propagate the Pulumi resource's URN name part as the Terraform name as a convenient default, while
-// still permitting it to be overridden.
-func AutoName(name string, maxlen int) *SchemaInfo {
-	return AutoNameTransform(name, maxlen, nil)
+// AutoNameOptions provides parameters to AutoName to control how names will be generated
+type AutoNameOptions struct {
+	// A separator between name and random portions of the
+	Separator string
+	// Maximum length of the generated name
+	Maxlen int
+	// Number of characters of random hex digits to add to the name
+	Randlen int
+	// A transform to apply to the name prior to adding random characters
+	Transform func(string) string
+}
+
+// AutoName creates custom schema for a Terraform name property which is automatically populated
+// from the resource's URN name, and transformed based on the provided options.
+func AutoName(name string, maxlength int) *SchemaInfo {
+	return &SchemaInfo{
+		Name: name,
+		Default: &DefaultInfo{
+			AutoNamed: true,
+			From: FromName(AutoNameOptions{
+				Separator: "-",
+				Maxlen:    maxlength,
+				Randlen:   7,
+			}),
+		},
+	}
+}
+
+// AutoNameWithCustomOptions creates a custom schema for a Terraform name property and allows setting options to allow
+// transforms, custom separators and maxLength combinations.
+func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo {
+	return &SchemaInfo{
+		Name: name,
+		Default: &DefaultInfo{
+			AutoNamed: true,
+			From:      FromName(options),
+		},
+	}
 }
 
 // AutoNameTransform creates custom schema for a Terraform name property which is automatically populated from the
@@ -112,21 +145,34 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			From:      FromName(true, maxlen, transform),
+			From: FromName(AutoNameOptions{
+				Separator:      "-",
+				Maxlen:         maxlen,
+				Randlen:        7,
+				Transform:      transform,
+			}),
 		},
 	}
 }
 
 // FromName automatically propagates a resource's URN onto the resulting default info.
-func FromName(rand bool, maxlen int, transform func(string) string) func(res *PulumiResource) (interface{}, error) {
+func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
 	return func(res *PulumiResource) (interface{}, error) {
-		// Take the URN name part, transform it if required, and then append some unique characters.
+		// Take the URN name part, transform it if required, and then append some unique characters if requested.
 		vs := string(res.URN.Name())
-		if transform != nil {
-			vs = transform(vs)
+		if options.Transform != nil {
+			vs = options.Transform(vs)
 		}
-		if rand {
-			return resource.NewUniqueHex(vs+"-", 7, maxlen)
+		if options.Randlen > 0 {
+			uniqueHex, err := resource.NewUniqueHex(vs+options.Separator, options.Randlen, options.Maxlen)
+			if err != nil {
+				return uniqueHex, errors.Wrapf(err, "Could not make instance of '%v'.", res.URN.Type())
+			}
+
+			return uniqueHex, nil
+		}
+		if len(vs) > options.Maxlen {
+			return "", errors.Errorf("name '%s' is longer than maximum length %d", vs, options.Maxlen)
 		}
 		return vs, nil
 	}
