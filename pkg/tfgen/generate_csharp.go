@@ -748,7 +748,8 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 
 	rg.w.Writefmtln("        public %s(string name, %s args%s, %s? options = null)",
 		className, argsType, argsDefault, optionsType)
-	rg.w.Writefmtln("            : base(\"%s\", name, args ?? ResourceArgs.Empty, MakeResourceOptions(options, \"\"))", rg.res.info.Tok)
+	rg.w.Writefmtln("            : base(\"%s\", name, args ?? ResourceArgs.Empty, MakeResourceOptions(options, \"\"))",
+		rg.res.info.Tok)
 	rg.w.Writefmtln("        {")
 	rg.w.Writefmtln("        }")
 
