@@ -965,6 +965,15 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	}, nil
 }
 
+// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
+// back as a series of messages.
+func (p *Provider) StreamInvoke(
+	req *pulumirpc.InvokeRequest, server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+
+	tok := tokens.ModuleMember(req.GetTok())
+	return errors.Errorf("unrecognized data function (StreamInvoke): %s", tok)
+}
+
 // GetPluginInfo implements an RPC call that returns the version of this plugin.
 func (p *Provider) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{

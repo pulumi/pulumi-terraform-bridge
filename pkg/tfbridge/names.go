@@ -146,10 +146,10 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 		Default: &DefaultInfo{
 			AutoNamed: true,
 			From: FromName(AutoNameOptions{
-				Separator:      "-",
-				Maxlen:         maxlen,
-				Randlen:        7,
-				Transform:      transform,
+				Separator: "-",
+				Maxlen:    maxlen,
+				Randlen:   7,
+				Transform: transform,
 			}),
 		},
 	}
