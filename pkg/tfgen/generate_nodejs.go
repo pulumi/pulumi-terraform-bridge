@@ -896,7 +896,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 			}
 
 			// There is a chance that we do have a SchemaInfo but we may not have EnvVars or a Default Value set
-			if  prop.info != nil && len(prop.info.Default.EnvVars) == 0 && prop.info.Default.Value == nil {
+			if prop.info != nil && len(prop.info.Default.EnvVars) == 0 && prop.info.Default.Value == nil {
 				cmdutil.Diag().Warningf(
 					diag.Message("", "property %s has a DefaultFunc that isn't projected"), prop.name)
 			}
