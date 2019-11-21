@@ -64,7 +64,7 @@ type declarer interface {
 type csharpNestedType struct {
 	declarer declarer
 	isInput  bool
-	isPlain  bool
+	isInvoke bool
 	typ      *propertyType
 }
 
@@ -90,10 +90,10 @@ func gatherNestedTypesForModule(mod *module) *csharpNestedTypes {
 		case *resourceFunc:
 			name := strings.Title(member.name)
 			nt.gatherFromProperties(member, name, "Args", member.args, true, true)
-			nt.gatherFromProperties(member, name, "Result", member.rets, false, false)
+			nt.gatherFromProperties(member, name, "Result", member.rets, false, true)
 		case *variable:
 			typ, name := member.typ, csharpPropertyName(member)
-			nt.gatherFromPropertyType(member, name, "", "", typ, false, true)
+			nt.gatherFromPropertyType(member, name, "", "", typ, false, false)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (nt *csharpNestedTypes) getDeclaredTypes(declarer declarer) []*csharpNested
 }
 
 func (nt *csharpNestedTypes) declareType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isPlain bool) string {
+	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isInvoke bool) string {
 
 	// Generate a name for this nested type.
 	baseName := namePrefix + strings.Title(name)
@@ -126,7 +126,7 @@ func (nt *csharpNestedTypes) declareType(
 	t := &csharpNestedType{
 		declarer: declarer,
 		isInput:  isInput,
-		isPlain:  isPlain,
+		isInvoke: isInvoke,
 		typ:      typ,
 	}
 
@@ -137,24 +137,24 @@ func (nt *csharpNestedTypes) declareType(
 }
 
 func (nt *csharpNestedTypes) gatherFromProperties(
-	declarer declarer, namePrefix, nameSuffix string, ps []*variable, isInput, isPlain bool) {
+	declarer declarer, namePrefix, nameSuffix string, ps []*variable, isInput, isInvoke bool) {
 
 	for _, p := range ps {
-		nt.gatherFromPropertyType(declarer, namePrefix, p.name, nameSuffix, p.typ, isInput, isPlain)
+		nt.gatherFromPropertyType(declarer, namePrefix, p.name, nameSuffix, p.typ, isInput, isInvoke)
 	}
 }
 
 func (nt *csharpNestedTypes) gatherFromPropertyType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isPlain bool) {
+	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isInvoke bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, typ.element, isInput, isPlain)
+			nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, typ.element, isInput, isInvoke)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, nameSuffix, typ, isInput, isPlain)
-		nt.gatherFromProperties(declarer, baseName, nameSuffix, typ.properties, isInput, isPlain)
+		baseName := nt.declareType(declarer, namePrefix, name, nameSuffix, typ, isInput, isInvoke)
+		nt.gatherFromProperties(declarer, baseName, nameSuffix, typ.properties, isInput, isInvoke)
 	}
 }
 
@@ -492,7 +492,8 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 }
 
 func (g *csharpGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
-	propertyType := qualifiedCSharpType(v.typ, "ConfigTypes", false /*wrapInputs*/)
+	propertyType := qualifiedCSharpType(
+		v.typ, "ConfigTypes", false /*wrapInputs*/, false /*requireInitializers*/)
 
 	var getFunc string
 	nullableSigil := "?"
@@ -672,6 +673,7 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 }
 
 func (rg *csharpResourceGenerator) openNamespace() {
+	rg.w.Writefmtln("using System.Collections.Generic;")
 	rg.w.Writefmtln("using System.Collections.Immutable;")
 	rg.w.Writefmtln("using System.Threading.Tasks;")
 	rg.w.Writefmtln("using Pulumi.Serialization;")
@@ -837,12 +839,14 @@ func (rg *csharpResourceGenerator) generateAlias(alias tfbridge.AliasInfo) {
 }
 
 func (rg *csharpResourceGenerator) generateResourceArgs() {
-	rg.generateInputType(rg.res.argst, false /*nested*/)
+	rg.generateInputType(
+		rg.res.argst, "ResourceArgs", false /*nested*/, true /*wrapInput*/)
 }
 
 func (rg *csharpResourceGenerator) generateResourceState() {
 	if !rg.res.IsProvider() {
-		rg.generateInputType(rg.res.statet, false /*nested*/)
+		rg.generateInputType(
+			rg.res.statet, "ResourceArgs", false /*nested*/, true /*wrapInput*/)
 	}
 }
 
@@ -860,7 +864,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	}
 
 	var argsParamDef string
-	argsParamRef := "ResourceArgs.Empty"
+	argsParamRef := "InvokeArgs.Empty"
 	if rg.fun.argst != nil {
 		argsType := rg.fun.argst.name
 
@@ -872,7 +876,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 		}
 
 		argsParamDef = fmt.Sprintf("%s args%s, ", argsType, argsDefault)
-		argsParamRef = "args ?? ResourceArgs.Empty"
+		argsParamRef = "args ?? InvokeArgs.Empty"
 	}
 
 	// Emit the doc comment, if any.
@@ -893,7 +897,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 func (rg *csharpResourceGenerator) generateDatasourceArgs() {
 	if rg.fun.argst != nil {
 		// TODO(pdg): this should pass true for plainType
-		rg.generateInputType(rg.fun.argst, false /*nested*/)
+		rg.generateInputType(rg.fun.argst, "InvokeArgs", false /*nested*/, false /*wrapInput*/)
 	}
 }
 
@@ -903,7 +907,7 @@ func (rg *csharpResourceGenerator) generateDatasourceResult() {
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested bool) {
+func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested bool, wrapInput bool) {
 	qualifier := ""
 	if !nested {
 		qualifier = "Inputs"
@@ -911,7 +915,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 
 	wireName := prop.name
 	propertyName := csharpPropertyName(prop)
-	propertyType := qualifiedCSharpPropertyType(prop, qualifier, true /*wrapInput*/)
+	propertyType := qualifiedCSharpPropertyType(prop, qualifier, wrapInput)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -927,7 +931,8 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 	switch prop.typ.kind {
 	case kindList, kindSet, kindMap:
 		backingFieldName := "_" + prop.name
-		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, true /*wrapInput*/)
+		requireInitializers := !wrapInput
+		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, wrapInput, requireInitializers)
 
 		rg.w.Writefmtln("        [Input(\"%s\"%s)]", wireName, attributeArgs)
 		rg.w.Writefmtln("        private %s? %s;", backingFieldType, backingFieldName)
@@ -947,7 +952,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 		rg.w.Writefmtln("        }")
 	default:
 		initializer := ""
-		if !prop.optional() {
+		if !prop.optional() && !isValueType(propertyType) {
 			initializer = " = null!;"
 		}
 
@@ -957,18 +962,18 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, nested bool) {
+func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, baseClass string, nested bool, wrapInput bool) {
 	contract.Assert(typ.kind == kindObject)
 
 	rg.w.Writefmtln("")
 
 	// Open the class.
-	rg.w.Writefmtln("    public sealed class %s : Pulumi.ResourceArgs", typ.name)
+	rg.w.Writefmtln("    public sealed class %s : Pulumi.%s", typ.name, baseClass)
 	rg.w.Writefmtln("    {")
 
 	// Declare each input property.
 	for _, p := range typ.properties {
-		rg.generateInputProperty(p, nested)
+		rg.generateInputProperty(p, nested, wrapInput)
 		rg.w.Writefmtln("")
 	}
 
@@ -1061,7 +1066,11 @@ func (rg *csharpResourceGenerator) generateInputTypes(nts []*csharpNestedType) {
 	// Write each input type.
 	for _, nt := range nts {
 		contract.Assert(nt.isInput)
-		rg.generateInputType(nt.typ, true /*nested*/)
+		baseClass := "ResourceArgs"
+		if nt.isInvoke {
+			baseClass = "InvokeArgs"
+		}
+		rg.generateInputType(nt.typ, baseClass, true /*nested*/, !nt.isInvoke /*wrapInput*/)
 	}
 
 	// Close the namespace
@@ -1187,7 +1196,7 @@ func isImmutableArrayType(typ *propertyType, wrapInput bool) bool {
 }
 
 func qualifiedCSharpPropertyType(v *variable, qualifier string, wrapInput bool) string {
-	t := qualifiedCSharpType(v.typ, qualifier, wrapInput)
+	t := qualifiedCSharpType(v.typ, qualifier, wrapInput, false /*requireInitializers*/)
 	if v.optional() && !isImmutableArrayType(v.typ, wrapInput) {
 		t += "?"
 	}
@@ -1195,7 +1204,7 @@ func qualifiedCSharpPropertyType(v *variable, qualifier string, wrapInput bool) 
 }
 
 // qualifiedCsharpType returns the C# type name for a given schema value type and element kind.
-func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool) string {
+func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool, requireInitializers bool) string {
 	// Prefer overrides over the underlying type.
 	var t string
 	switch {
@@ -1219,15 +1228,25 @@ func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool) st
 		case kindString:
 			t = "string"
 		case kindSet, kindList:
-			elemType := qualifiedCSharpType(typ.element, qualifier, false)
+			elemType := qualifiedCSharpType(
+				typ.element, qualifier, false /*wrapInput*/, false /*requireInitializers*/)
 			if wrapInput {
 				return fmt.Sprintf("InputList<%v>", elemType)
 			}
+			if requireInitializers {
+				// Use mutable list to support collection initializer syntax
+				return fmt.Sprintf("List<%v>", elemType)
+			}
 			return fmt.Sprintf("ImmutableArray<%v>", elemType)
 		case kindMap:
-			elemType := qualifiedCSharpType(typ.element, qualifier, false)
+			elemType := qualifiedCSharpType(
+				typ.element, qualifier, false /*wrapInput*/, false /*requireInitializers*/)
 			if wrapInput {
 				return fmt.Sprintf("InputMap<%v>", elemType)
+			}
+			if requireInitializers {
+				// Use mutable dictionary to support collection initializer syntax
+				return fmt.Sprintf("Dictionary<string, %v>", elemType)
 			}
 			return fmt.Sprintf("ImmutableDictionary<string, %v>", elemType)
 		case kindObject:
@@ -1313,4 +1332,13 @@ func csharpDefaultValue(prop *variable) string {
 	}
 
 	return defaultValue
+}
+
+func isValueType(typ string) bool {
+	switch typ {
+	case "bool", "int", "double":
+		return true
+	default:
+		return false
+	}
 }
