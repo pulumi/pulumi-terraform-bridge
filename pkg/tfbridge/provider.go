@@ -453,7 +453,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	var err error
 	if req.GetOlds() != nil {
 		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
-			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true, SkipNulls: true})
+			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
 		if err != nil {
 			return nil, err
 		}
@@ -522,7 +522,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false, SkipNulls: true})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false})
 	if err != nil {
 		return nil, err
 	}
@@ -534,7 +534,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
@@ -688,7 +688,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
 	oldInputs, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true, SkipNulls: true})
+		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
@@ -768,7 +768,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false, SkipNulls: true})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false})
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +782,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	assets := make(AssetTable)
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
