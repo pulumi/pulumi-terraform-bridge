@@ -528,12 +528,12 @@ func (g *goGenerator) emitResourceType(mod *module, res *resourceType) error {
 
 	// Create accessors for all of the properties inside of the resulting resource structure.
 	w.Writefmtln("// URN is this resource's unique name assigned by Pulumi.")
-	w.Writefmtln("func (r *%s) URN() *pulumi.URNOutput {", name)
+	w.Writefmtln("func (r *%s) URN() pulumi.URNOutput {", name)
 	w.Writefmtln("\treturn r.s.URN()")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("// ID is this resource's unique identifier assigned by its provider.")
-	w.Writefmtln("func (r *%s) ID() *pulumi.IDOutput {", name)
+	w.Writefmtln("func (r *%s) ID() pulumi.IDOutput {", name)
 	w.Writefmtln("\treturn r.s.ID()")
 	w.Writefmtln("}")
 	w.Writefmtln("")
@@ -697,20 +697,20 @@ func goOutputType(v *variable) string {
 	return goSchemaOutputType(v.schema, v.info)
 }
 
-const defaultGoOutType = "*pulumi.Output"
+const defaultGoOutType = "pulumi.Output"
 
 // goSchemaOutputType returns the Go output type name for a given Terraform schema and bridge override info.
 func goSchemaOutputType(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 	if sch != nil {
 		switch sch.Type {
 		case schema.TypeBool:
-			return "*pulumi.BoolOutput"
+			return "pulumi.BoolOutput"
 		case schema.TypeInt:
-			return "*pulumi.IntOutput"
+			return "pulumi.IntOutput"
 		case schema.TypeFloat:
-			return "*pulumi.Float64Output"
+			return "pulumi.Float64Output"
 		case schema.TypeString:
-			return "*pulumi.StringOutput"
+			return "pulumi.StringOutput"
 		case schema.TypeSet, schema.TypeList:
 			if tfbridge.IsMaxItemsOne(sch, info) {
 				if elemSch, ok := sch.Elem.(*schema.Schema); ok {
@@ -722,14 +722,14 @@ func goSchemaOutputType(sch *schema.Schema, info *tfbridge.SchemaInfo) string {
 				}
 				return goSchemaOutputType(nil, nil)
 			}
-			return "*pulumi.ArrayOutput"
+			return "pulumi.ArrayOutput"
 		case schema.TypeMap:
 			// If this map has a "resource" element type, just use the generated element type. This works around a bug
 			// in TF that effectively forces this behavior.
 			if _, hasResourceElem := sch.Elem.(*schema.Resource); hasResourceElem {
 				return goSchemaOutputType(nil, nil)
 			}
-			return "*pulumi.MapOutput"
+			return "pulumi.MapOutput"
 		}
 	}
 
