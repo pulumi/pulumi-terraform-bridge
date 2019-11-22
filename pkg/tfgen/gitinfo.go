@@ -32,16 +32,24 @@ const (
 	tfProviderPrefix = "terraform-provider"
 )
 
+var repoDirs = map[string]string{}
+
 // getRepoDir gets the source repository for a given provider
 func getRepoDir(org, prov string) (string, error) {
+	repo := path.Join(tfGitHub, org, tfProviderPrefix+"-"+prov)
+	if dir, ok := repoDirs[repo]; ok {
+		return dir, nil
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	repo := path.Join(tfGitHub, org, tfProviderPrefix+"-"+prov)
 	pkg, err := build.Import(repo, wd, build.FindOnly)
 	if err != nil {
 		return "", err
 	}
+
+	repoDirs[repo] = pkg.Dir
 	return pkg.Dir, nil
 }
