@@ -171,9 +171,6 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 
 			return uniqueHex, nil
 		}
-		if len(vs) > options.Maxlen {
-			return "", errors.Errorf("name '%s' is longer than maximum length %d", vs, options.Maxlen)
-		}
 		return vs, nil
 	}
 }
