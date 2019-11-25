@@ -14,8 +14,10 @@ build::
 lint::
 	golangci-lint run
 
-test_all:: 
+test_fast::
 	$(GO_TEST) ${GOPKGS}
+
+test_all:: test_fast
 
 .PHONY: check_clean_worktree
 check_clean_worktree:

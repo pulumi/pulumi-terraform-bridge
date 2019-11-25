@@ -241,7 +241,7 @@ func TestTerraformInputs(t *testing.T) {
 		false, /*defaults*/
 		false, /*useRawNames*/
 	)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 type MyString string
