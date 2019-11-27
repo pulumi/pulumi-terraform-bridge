@@ -21,6 +21,8 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -228,6 +230,12 @@ func (g *csharpGenerator) emitPackage(pack *pkg) error {
 		return err
 	}
 
+	// Download and save the provider logo
+	err = g.emitLogo()
+	if err != nil {
+		return err
+	}
+
 	return g.emitProjectFile()
 }
 
@@ -251,6 +259,34 @@ func (g *csharpGenerator) emitProjectFile() error {
 	}
 	w.WriteString(buf.String())
 	return nil
+}
+
+// emitLogo downloads an image and saves it as logo.png into the configured output directory.
+func (g *csharpGenerator) emitLogo() error {
+	url := g.info.LogoURL
+	if url == "" {
+		// Default to a generic Pulumi logo from the parent repository.
+		url = "https://raw.githubusercontent.com/pulumi/pulumi/394c91d7f6ab7a4096f4454827690a460f665433/sdk/dotnet/" +
+			"pulumi_logo_64x64.png"
+	}
+
+	// Get the data.
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create the file.
+	out, err := os.Create(filepath.Join(g.outDir, "logo.png"))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file.
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 // emitModules emits all modules in the given package. It returns a full list of files and any error that occurred.

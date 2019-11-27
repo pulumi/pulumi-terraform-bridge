@@ -37,6 +37,7 @@ type ProviderInfo struct {
 	Description       string                     // an optional descriptive overview of the package (a default supplied).
 	Keywords          []string                   // an optional list of keywords to help discovery of this package.
 	License           string                     // the license, if any, the resulting package has (default is none).
+	LogoURL           string                     // an optional URL to the logo of the package
 	Homepage          string                     // the URL to the project homepage.
 	Repository        string                     // the URL to the project source code repository.
 	Version           string                     // the version of the provider package.

@@ -99,6 +99,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <PackageLicenseExpression>{{.Info.License}}</PackageLicenseExpression>
     <PackageProjectUrl>{{.Info.Homepage}}</PackageProjectUrl>
     <RepositoryUrl>{{.Info.Repository}}</RepositoryUrl>
+    <PackageIcon>logo.png</PackageIcon>
 
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -118,6 +119,13 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     {{- range $package, $version := .Info.CSharp.PackageReferences}}
     <PackageReference Include="{{$package}}" Version="{{$version}}" />
     {{- end}}
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
