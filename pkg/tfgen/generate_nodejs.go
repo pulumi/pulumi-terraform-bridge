@@ -1051,7 +1051,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 	} else {
 		retty = fun.retst.name
 	}
-	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> & %s {",
+	w.Writefmtln("export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {",
 		fun.name, argsig, retty, retty)
 	if fun.info.DeprecationMessage != "" {
 		w.Writefmtln("    pulumi.log.warn(\"%s is deprecated: %s\")", fun.name, fun.info.DeprecationMessage)
@@ -1072,14 +1072,12 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 	w.Writefmtln("    }")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
-	w.Writefmtln("    const promise: Promise<%s> = pulumi.runtime.invoke(\"%s\", {", retty, fun.info.Tok)
+	w.Writefmtln("    return pulumi.runtime.invoke(\"%s\", {", retty, fun.info.Tok)
 	for _, arg := range fun.args {
 		// Pass the argument to the invocation.
 		w.Writefmtln("        \"%[1]s\": args.%[1]s,", arg.name)
 	}
 	w.Writefmtln("    }, opts);")
-	w.Writefmtln("")
-	w.Writefmtln("    return pulumi.utils.liftProperties(promise, opts);")
 	w.Writefmtln("}")
 
 	// If there are argument and/or return types, emit them.
