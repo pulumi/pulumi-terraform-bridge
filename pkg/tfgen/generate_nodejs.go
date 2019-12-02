@@ -1072,7 +1072,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 	w.Writefmtln("    }")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
-	w.Writefmtln("    return pulumi.runtime.invoke(\"%s\", {", retty, fun.info.Tok)
+	w.Writefmtln("    return pulumi.runtime.invoke(\"%s\", {", fun.info.Tok)
 	for _, arg := range fun.args {
 		// Pass the argument to the invocation.
 		w.Writefmtln("        \"%[1]s\": args.%[1]s,", arg.name)
