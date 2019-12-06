@@ -1369,7 +1369,7 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 				}
 				modname := ct.Module().Name()
 				modfile := filepath.Join(g.outDir,
-					strings.Replace(string(modname), tokens.TokenDelimiter, string("/"), -1))
+					strings.Replace(string(modname), tokens.TokenDelimiter, string(filepath.Separator), -1))
 				relmod, err := g.relModule(mod, modfile)
 				if err != nil {
 					return err
