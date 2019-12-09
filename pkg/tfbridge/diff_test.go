@@ -451,6 +451,134 @@ func TestListIgnore(t *testing.T) {
 		"prop")
 }
 
+func TestMaxItemsOneListAdd(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "foo",
+		},
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": A,
+		})
+}
+
+func TestMaxItemsOneListAddReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "foo",
+		},
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": AR,
+		})
+}
+
+func TestMaxItemsOneListDelete(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": D,
+		})
+}
+
+func TestMaxItemsOneListDeleteReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": DR,
+		})
+}
+
+func TestMaxItemsOneListUpdate(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": U,
+		})
+}
+
+func TestMaxItemsOneListUpdateReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": UR,
+		})
+}
+
+func TestMaxItemsOneListIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
+}
+
 func TestSetAdd(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -592,6 +720,156 @@ func TestSetUpdateReplace(t *testing.T) {
 		},
 		map[string]DiffKind{
 			"prop[0]": UR,
+		})
+}
+
+func TestMaxItemsOneSetAdd(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Set:      func(_ interface{}) int { return 0 },
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				MaxItems: 1,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "foo",
+		},
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": A,
+		})
+}
+
+func TestMaxItemsOneSetAddReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Set:      func(_ interface{}) int { return 0 },
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				MaxItems: 1,
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "foo",
+		},
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": AR,
+		})
+}
+
+func TestMaxItemsOneSetDelete(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Set:      func(_ interface{}) int { return 0 },
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				MaxItems: 1,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": D,
+		})
+}
+
+func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Set:      func(_ interface{}) int { return 0 },
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				MaxItems: 1,
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": DR,
+		})
+}
+
+func TestMaxItemsOneSetUpdate(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": U,
+		})
+}
+
+func TestMaxItemsOneSetIgnore(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{},
+		"prop")
+}
+
+func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "baz",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": UR,
 		})
 }
 
