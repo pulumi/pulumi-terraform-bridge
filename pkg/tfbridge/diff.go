@@ -70,7 +70,11 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema
 	rawNames bool, visitor propertyVisitor) {
 
 	if IsMaxItemsOne(tfs, ps) {
-		v = resource.NewArrayProperty([]resource.PropertyValue{v})
+		if v.IsNull() {
+			v = resource.NewArrayProperty([]resource.PropertyValue{})
+		} else {
+			v = resource.NewArrayProperty([]resource.PropertyValue{v})
+		}
 	}
 
 	if !visitor(name, path, v) {
