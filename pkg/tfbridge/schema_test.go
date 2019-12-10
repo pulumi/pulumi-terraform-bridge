@@ -939,8 +939,8 @@ func TestDefaults(t *testing.T) {
 		"ll2": "OL2",
 		"mmm": "OLM",
 		"mm2": "OM2",
-		// nnn/nn2 are NOT set as they conflict to each other
-		// ooo is NOT set as it conflicts to oo2
+		// nnn/nn2 are NOT set as they conflict with each other
+		// ooo is NOT set as it conflicts with oo2
 		"oo2": "PO2",
 		"uuu": "PSU",
 		"vvv": 1337,
