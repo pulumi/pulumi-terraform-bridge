@@ -824,6 +824,10 @@ func TestDefaults(t *testing.T) {
 		"ll2": {Type: schema.TypeString, Default: "TL2"},
 		"mmm": {Type: schema.TypeString},
 		"mm2": {Type: schema.TypeString},
+		"nnn": {Type: schema.TypeString, ConflictsWith: []string{"nn2"}, Default: "NNN"},
+		"nn2": {Type: schema.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
+		"ooo": {Type: schema.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
+		"oo2": {Type: schema.TypeString, ConflictsWith: []string{"ooo"}},
 		"sss": {Type: schema.TypeString, Removed: "removed"},
 		"ttt": {Type: schema.TypeString, Removed: "removed", Default: "TFD"},
 		"uuu": {Type: schema.TypeString},
@@ -843,6 +847,7 @@ func TestDefaults(t *testing.T) {
 		"iii": {Default: &DefaultInfo{Value: "PSI"}},
 		"mmm": {Default: &DefaultInfo{Value: "PSM"}},
 		"mm2": {Default: &DefaultInfo{Value: "PM2"}},
+		"oo2": {Default: &DefaultInfo{Value: "PO2"}},
 		"sss": {Default: &DefaultInfo{Value: "PSS"}},
 		"uuu": {Default: &DefaultInfo{Value: "PSU", EnvVars: []string{"PTFU", "PTFU2"}}},
 		"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
@@ -879,7 +884,7 @@ func TestDefaults(t *testing.T) {
 	sortDefaultsList(outputs)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		defaultsKey: []interface{}{
-			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "uuu", "vvv", "www",
+			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
 		},
 		"bbb": "BBB",
 		"ccc": "CCC",
@@ -897,6 +902,7 @@ func TestDefaults(t *testing.T) {
 		"ll2": "TL2",
 		"mmm": "OLM",
 		"mm2": "PM2",
+		"oo2": "PO2",
 		"uuu": "PSU",
 		"vvv": 1337,
 		"www": "OLW",
@@ -915,7 +921,7 @@ func TestDefaults(t *testing.T) {
 	sortDefaultsList(outputs)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		defaultsKey: []interface{}{
-			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "uuu", "vvv", "www",
+			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
 		},
 		"bbb": "BBB",
 		"ccc": "CCC",
@@ -933,6 +939,9 @@ func TestDefaults(t *testing.T) {
 		"ll2": "OL2",
 		"mmm": "OLM",
 		"mm2": "OM2",
+		// nnn/nn2 are NOT set as they conflict with each other
+		// ooo is NOT set as it conflicts with oo2
+		"oo2": "PO2",
 		"uuu": "PSU",
 		"vvv": 1337,
 		"www": "OLW",
