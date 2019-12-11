@@ -175,28 +175,40 @@ func (g *csharpGenerator) moduleDir(mod *module) string {
 }
 
 // assemblyName returns the assembly name for the package.
-func (g *csharpGenerator) assemblyName() string {
-	return "Pulumi." + g.namespaceName(g.pkg)
+func (g *csharpGenerator) assemblyName() (string, error) {
+	namespace, err := g.namespaceName(g.pkg)
+	if err != nil {
+		return "", err
+	}
+	return "Pulumi." + namespace, nil
 }
 
 // moduleNamespace returns the C# namespace for the given module.
-func (g *csharpGenerator) moduleNamespace(mod *module) string {
-	pkgNamespace := g.assemblyName()
-	if mod.root() {
-		return pkgNamespace
+func (g *csharpGenerator) moduleNamespace(mod *module) (string, error) {
+	pkgNamespace, err := g.assemblyName()
+	if err != nil {
+		return "", err
 	}
-	return pkgNamespace + "." + g.namespaceName(mod.name)
+	if mod.root() {
+		return pkgNamespace, nil
+	}
+
+	name, err := g.namespaceName(mod.name)
+	if err != nil {
+		return "", err
+	}
+
+	return pkgNamespace + "." + name, nil
 }
 
 // namespaceName returns the C# namespace for the given module name.
-func (g *csharpGenerator) namespaceName(name string) string {
+func (g *csharpGenerator) namespaceName(name string) (string, error) {
 	// lookup a well-known properly-capitalized name
 	if val, ok := g.info.CSharp.Namespaces[name]; ok {
-		return val
+		return val, nil
 	}
 
-	// Fallback to capitalizing the first word
-	return strings.Title(name)
+	return "", errors.Errorf("C# name not found for namespace '%s'", name)
 }
 
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
@@ -249,7 +261,10 @@ func (g *csharpGenerator) emitPackage(pack *pkg) error {
 
 // emitProjectFile emits a C# project file into the configured output directory.
 func (g *csharpGenerator) emitProjectFile() error {
-	assemblyName := g.assemblyName()
+	assemblyName, err := g.assemblyName()
+	if err != nil {
+		return err
+	}
 
 	w, err := tools.NewGenWriter(tfgen, filepath.Join(g.outDir, assemblyName+".csproj"))
 	if err != nil {
@@ -416,9 +431,14 @@ func (g *csharpGenerator) emitUtilities(mod *module) (string, error) {
 		version = version[1:]
 	}
 
+	namespace, err := g.moduleNamespace(mod)
+	if err != nil {
+		return "", err
+	}
+
 	var buf bytes.Buffer
 	err = csharpUtilitiesTemplate.Execute(&buf, csharpUtilitiesTemplateContext{
-		Namespace: g.moduleNamespace(mod),
+		Namespace: namespace,
 		ClassName: "Utilities",
 		Version:   version,
 	})
@@ -483,6 +503,11 @@ func (g *csharpGenerator) emitConfigVariableType(w *tools.GenWriter, typ *proper
 
 // emitConfigVariables emits all config vaiables in the given module, returning the resulting file.
 func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNestedTypes) (string, error) {
+	assemblyName, err := g.assemblyName()
+	if err != nil {
+		return "", err
+	}
+
 	// Create a Config.cs file into which all configuration variables will go.
 	w, config, err := g.openWriter(mod, "Config.cs")
 	if err != nil {
@@ -494,7 +519,7 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 	w.Writefmtln("using System.Collections.Immutable;")
 	w.Writefmtln("")
 	// Use the root namespace to avoid `Pulumi.Provider.Config.Config.VarName` usage.
-	w.Writefmtln("namespace %s", g.assemblyName())
+	w.Writefmtln("namespace %s", assemblyName)
 	w.Writefmtln("{")
 
 	// Open the config class.
@@ -699,7 +724,11 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 	defer contract.IgnoreClose(w)
 	rg.w = w
 
-	rg.openNamespace()
+	err = rg.openNamespace()
+	if err != nil {
+		return "", err
+	}
+
 	if rg.res != nil {
 		rg.generateResourceClass()
 		rg.generateResourceArgs()
@@ -716,14 +745,20 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 	return file, nil
 }
 
-func (rg *csharpResourceGenerator) openNamespace() {
+func (rg *csharpResourceGenerator) openNamespace() error {
+	namespace, err := rg.g.moduleNamespace(rg.mod)
+	if err != nil {
+		return err
+	}
+
 	rg.w.Writefmtln("using System.Collections.Generic;")
 	rg.w.Writefmtln("using System.Collections.Immutable;")
 	rg.w.Writefmtln("using System.Threading.Tasks;")
 	rg.w.Writefmtln("using Pulumi.Serialization;")
 	rg.w.Writefmtln("")
-	rg.w.Writefmtln("namespace %s", rg.g.moduleNamespace(rg.mod))
+	rg.w.Writefmtln("namespace %s", namespace)
 	rg.w.Writefmtln("{")
+	return nil
 }
 
 func (rg *csharpResourceGenerator) closeNamespace() {
