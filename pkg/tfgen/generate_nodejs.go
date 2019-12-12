@@ -135,6 +135,11 @@ func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter, needsIn
 	w.Writefmtln("")
 }
 
+// typeName returns a type name for a given resource type.
+func (g *nodeJSGenerator) typeName(r *resourceType) string {
+	return r.name
+}
+
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 	// Return an error if the provider has its own `types` module, which is reserved for now.
@@ -1398,6 +1403,8 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 
 	return nil
 }
+
+
 
 // getCustomImportTypeName returns the import name to use for custom types.
 func getCustomImportTypeName(typeName string) string {

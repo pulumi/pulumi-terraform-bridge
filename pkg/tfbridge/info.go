@@ -115,6 +115,7 @@ type ResourceInfo struct {
 	DeleteBeforeReplace bool                   // if true, Pulumi will delete before creating new replacement resources.
 	Aliases             []AliasInfo            // aliases for this resources, if any.
 	DeprecationMessage  string                 // message to use in deprecation warning
+	CSharpName          string                 // .NET-specific name
 }
 
 func (info *ResourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
