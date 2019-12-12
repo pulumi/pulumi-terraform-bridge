@@ -1404,8 +1404,6 @@ func (g *nodeJSGenerator) gatherCustomImports(mod *module, info *tfbridge.Schema
 	return nil
 }
 
-
-
 // getCustomImportTypeName returns the import name to use for custom types.
 func getCustomImportTypeName(typeName string) string {
 	// We allow types to have a `[]` suffix to indicate an array.
