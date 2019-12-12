@@ -253,9 +253,11 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 
 			// If a conflicting field has a default value, don't set the default for the current field
 			for _, conflictingName := range sch.ConflictsWith {
-				dv, _ := tfs[conflictingName].DefaultValue()
-				if dv != nil {
-					continue fields
+				if conflictingSchema, exists := tfs[conflictingName]; exists {
+					dv, _ := conflictingSchema.DefaultValue()
+					if dv != nil {
+						continue fields
+					}
 				}
 			}
 

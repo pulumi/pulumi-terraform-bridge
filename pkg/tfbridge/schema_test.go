@@ -828,6 +828,7 @@ func TestDefaults(t *testing.T) {
 		"nn2": {Type: schema.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
 		"ooo": {Type: schema.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
 		"oo2": {Type: schema.TypeString, ConflictsWith: []string{"ooo"}},
+		"oo3": {Type: schema.TypeString, ConflictsWith: []string{"nonexisting"}},
 		"sss": {Type: schema.TypeString, Removed: "removed"},
 		"ttt": {Type: schema.TypeString, Removed: "removed", Default: "TFD"},
 		"uuu": {Type: schema.TypeString},
