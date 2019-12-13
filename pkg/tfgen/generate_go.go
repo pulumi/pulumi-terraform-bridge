@@ -125,6 +125,11 @@ func (g *goGenerator) emitImports(w *tools.GenWriter, ims imports) {
 	}
 }
 
+// typeName returns a type name for a given resource type.
+func (g *goGenerator) typeName(r *resourceType) string {
+	return r.name
+}
+
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *goGenerator) emitPackage(pack *pkg) error {
 	// Generate individual modules and their contents as packages.

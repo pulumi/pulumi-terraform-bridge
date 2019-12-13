@@ -216,6 +216,14 @@ func (g *csharpGenerator) openWriter(mod *module, name string) (
 	return w, file, nil
 }
 
+// typeName returns a type name for a given resource type.
+func (g *csharpGenerator) typeName(r *resourceType) string {
+	if r.info != nil && r.info.CSharpName != "" {
+		return r.info.CSharpName
+	}
+	return r.name
+}
+
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *csharpGenerator) emitPackage(pack *pkg) error {
 	// Ensure that we have a root module.
@@ -660,7 +668,7 @@ func newCSharpResourceGenerator(g *csharpGenerator, mod *module, res *resourceTy
 		mod:    mod,
 		res:    res,
 		nested: nested.getDeclaredTypes(res),
-		name:   res.name,
+		name:   g.typeName(res),
 	}
 }
 

@@ -65,10 +65,12 @@ const (
 
 var allLanguages = []language{golang, nodeJS, python, csharp}
 
-// langGenerator is the interfact for language-specific logic and formatting.
+// langGenerator is the interface for language-specific logic and formatting.
 type langGenerator interface {
 	// emitPackage emits an entire package pack into the configured output directory with the configured settings.
 	emitPackage(pack *pkg) error
+	// typeName returns a type name for a given resource type.
+	typeName(rt *resourceType) string
 }
 
 // pkg is a directory containing one or more modules.
@@ -743,10 +745,12 @@ func (g *generator) gatherResource(rawname string,
 		stateVars = append(stateVars, stateVar)
 	}
 
+	className := g.lg.typeName(res)
+
 	// Generate a state type for looking up instances of this resource.
 	res.statet = &propertyType{
 		kind:       kindObject,
-		name:       fmt.Sprintf("%sState", res.name),
+		name:       fmt.Sprintf("%sState", className),
 		doc:        fmt.Sprintf("Input properties used for looking up and filtering %s resources.", res.name),
 		properties: stateVars,
 	}
@@ -754,7 +758,7 @@ func (g *generator) gatherResource(rawname string,
 	// Next, generate the args interface for this class, and add it first to the list (since the res type uses it).
 	res.argst = &propertyType{
 		kind:       kindObject,
-		name:       fmt.Sprintf("%sArgs", res.name),
+		name:       fmt.Sprintf("%sArgs", className),
 		doc:        fmt.Sprintf("The set of arguments for constructing a %s resource.", name),
 		properties: res.inprops,
 	}
