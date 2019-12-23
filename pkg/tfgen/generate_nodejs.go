@@ -1274,7 +1274,8 @@ func (g *nodeJSGenerator) emitTypeScriptProjectFile(pack *pkg, files []string) e
 		if err != nil {
 			return err
 		}
-		w.Writefmtln("        \"%s\"%s", relfile, suffix)
+		nodePath := filepath.ToSlash(relfile)
+		w.Writefmtln("        \"%s\"%s", nodePath, suffix)
 	}
 	w.Writefmtln(`    ]
 }
@@ -1293,7 +1294,8 @@ func (g *nodeJSGenerator) relModule(mod *module, path string) (string, error) {
 	if !strings.HasPrefix(file, ".") {
 		file = "./" + file
 	}
-	return removeExtension(file, ".ts"), nil
+	nodePath := filepath.ToSlash(file)
+	return removeExtension(nodePath, ".ts"), nil
 }
 
 // removeExtension removes the file extension, if any.
