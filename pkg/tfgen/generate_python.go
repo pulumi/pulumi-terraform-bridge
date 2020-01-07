@@ -116,6 +116,11 @@ func (g *pythonGenerator) emitSDKImport(mod *module, w *tools.GenWriter) {
 	w.Writefmtln("")
 }
 
+// typeName returns a type name for a given resource type.
+func (g *pythonGenerator) typeName(r *resourceType) string {
+	return r.name
+}
+
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *pythonGenerator) emitPackage(pack *pkg) error {
 	// First, generate the individual modules and their contents.

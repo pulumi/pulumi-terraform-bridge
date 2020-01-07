@@ -227,11 +227,19 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 					glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, defaultValue, source)
 					result[name] = defaultValue
 					newDefaults = append(newDefaults, key)
+
+					// Expand the conflicts map
+					if sch != nil {
+						for _, conflictingName := range sch.ConflictsWith {
+							conflictsWith[conflictingName] = struct{}{}
+						}
+					}
 				}
 			}
 		}
 
 		// Next, populate defaults from the Terraform schema.
+	fields:
 		for name, sch := range tfs {
 			if sch.Removed != "" {
 				continue
@@ -241,6 +249,16 @@ func MakeTerraformInputs(res *PulumiResource, olds, news resource.PropertyMap,
 			}
 			if _, conflicts := conflictsWith[name]; conflicts {
 				continue
+			}
+
+			// If a conflicting field has a default value, don't set the default for the current field
+			for _, conflictingName := range sch.ConflictsWith {
+				if conflictingSchema, exists := tfs[conflictingName]; exists {
+					dv, _ := conflictingSchema.DefaultValue()
+					if dv != nil {
+						continue fields
+					}
+				}
 			}
 
 			if _, has := result[name]; !has {

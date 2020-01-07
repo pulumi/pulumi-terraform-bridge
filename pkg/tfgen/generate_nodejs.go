@@ -135,6 +135,11 @@ func (g *nodeJSGenerator) emitSDKImport(mod *module, w *tools.GenWriter, needsIn
 	w.Writefmtln("")
 }
 
+// typeName returns a type name for a given resource type.
+func (g *nodeJSGenerator) typeName(r *resourceType) string {
+	return r.name
+}
+
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
 func (g *nodeJSGenerator) emitPackage(pack *pkg) error {
 	// Return an error if the provider has its own `types` module, which is reserved for now.
@@ -1267,7 +1272,8 @@ func (g *nodeJSGenerator) emitTypeScriptProjectFile(pack *pkg, files []string) e
 		if err != nil {
 			return err
 		}
-		w.Writefmtln("        \"%s\"%s", relfile, suffix)
+		nodePath := filepath.ToSlash(relfile)
+		w.Writefmtln("        \"%s\"%s", nodePath, suffix)
 	}
 	w.Writefmtln(`    ]
 }
@@ -1286,7 +1292,8 @@ func (g *nodeJSGenerator) relModule(mod *module, path string) (string, error) {
 	if !strings.HasPrefix(file, ".") {
 		file = "./" + file
 	}
-	return removeExtension(file, ".ts"), nil
+	nodePath := filepath.ToSlash(file)
+	return removeExtension(nodePath, ".ts"), nil
 }
 
 // removeExtension removes the file extension, if any.

@@ -11,5 +11,7 @@ CHANGELOG
 * Allow passing a License Type for the upstream Terraform provider.
 * Warn when config with default values are not reflected in providers.
 * Centralise the work for Autonaming in providers.
+* Avoid setting conflicting default values ([91](https://github.com/pulumi/pulumi-terraform-bridge/pull/91)).
+* Require explict C# namespaces.
 
 ---

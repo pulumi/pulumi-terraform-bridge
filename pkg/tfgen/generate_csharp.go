@@ -66,7 +66,7 @@ type declarer interface {
 type csharpNestedType struct {
 	declarer declarer
 	isInput  bool
-	isPlain  bool
+	isInvoke bool
 	typ      *propertyType
 }
 
@@ -92,10 +92,10 @@ func gatherNestedTypesForModule(mod *module) *csharpNestedTypes {
 		case *resourceFunc:
 			name := strings.Title(member.name)
 			nt.gatherFromProperties(member, name, "Args", member.args, true, true)
-			nt.gatherFromProperties(member, name, "Result", member.rets, false, false)
+			nt.gatherFromProperties(member, name, "Result", member.rets, false, true)
 		case *variable:
 			typ, name := member.typ, csharpPropertyName(member)
-			nt.gatherFromPropertyType(member, name, "", "", typ, false, true)
+			nt.gatherFromPropertyType(member, name, "", "", typ, false, false)
 		}
 	}
 
@@ -107,7 +107,7 @@ func (nt *csharpNestedTypes) getDeclaredTypes(declarer declarer) []*csharpNested
 }
 
 func (nt *csharpNestedTypes) declareType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isPlain bool) string {
+	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isInvoke bool) string {
 
 	// Generate a name for this nested type.
 	baseName := namePrefix + strings.Title(name)
@@ -128,7 +128,7 @@ func (nt *csharpNestedTypes) declareType(
 	t := &csharpNestedType{
 		declarer: declarer,
 		isInput:  isInput,
-		isPlain:  isPlain,
+		isInvoke: isInvoke,
 		typ:      typ,
 	}
 
@@ -139,24 +139,24 @@ func (nt *csharpNestedTypes) declareType(
 }
 
 func (nt *csharpNestedTypes) gatherFromProperties(
-	declarer declarer, namePrefix, nameSuffix string, ps []*variable, isInput, isPlain bool) {
+	declarer declarer, namePrefix, nameSuffix string, ps []*variable, isInput, isInvoke bool) {
 
 	for _, p := range ps {
-		nt.gatherFromPropertyType(declarer, namePrefix, p.name, nameSuffix, p.typ, isInput, isPlain)
+		nt.gatherFromPropertyType(declarer, namePrefix, p.name, nameSuffix, p.typ, isInput, isInvoke)
 	}
 }
 
 func (nt *csharpNestedTypes) gatherFromPropertyType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isPlain bool) {
+	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, isInput, isInvoke bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, typ.element, isInput, isPlain)
+			nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, typ.element, isInput, isInvoke)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, nameSuffix, typ, isInput, isPlain)
-		nt.gatherFromProperties(declarer, baseName, nameSuffix, typ.properties, isInput, isPlain)
+		baseName := nt.declareType(declarer, namePrefix, name, nameSuffix, typ, isInput, isInvoke)
+		nt.gatherFromProperties(declarer, baseName, nameSuffix, typ.properties, isInput, isInvoke)
 	}
 }
 
@@ -175,28 +175,40 @@ func (g *csharpGenerator) moduleDir(mod *module) string {
 }
 
 // assemblyName returns the assembly name for the package.
-func (g *csharpGenerator) assemblyName() string {
-	return "Pulumi." + g.namespaceName(g.pkg)
+func (g *csharpGenerator) assemblyName() (string, error) {
+	namespace, err := g.namespaceName(g.pkg)
+	if err != nil {
+		return "", err
+	}
+	return "Pulumi." + namespace, nil
 }
 
 // moduleNamespace returns the C# namespace for the given module.
-func (g *csharpGenerator) moduleNamespace(mod *module) string {
-	pkgNamespace := g.assemblyName()
-	if mod.root() {
-		return pkgNamespace
+func (g *csharpGenerator) moduleNamespace(mod *module) (string, error) {
+	pkgNamespace, err := g.assemblyName()
+	if err != nil {
+		return "", err
 	}
-	return pkgNamespace + "." + g.namespaceName(mod.name)
+	if mod.root() {
+		return pkgNamespace, nil
+	}
+
+	name, err := g.namespaceName(mod.name)
+	if err != nil {
+		return "", err
+	}
+
+	return pkgNamespace + "." + name, nil
 }
 
 // namespaceName returns the C# namespace for the given module name.
-func (g *csharpGenerator) namespaceName(name string) string {
+func (g *csharpGenerator) namespaceName(name string) (string, error) {
 	// lookup a well-known properly-capitalized name
 	if val, ok := g.info.CSharp.Namespaces[name]; ok {
-		return val
+		return val, nil
 	}
 
-	// Fallback to capitalizing the first word
-	return strings.Title(name)
+	return "", errors.Errorf("C# name not found for namespace '%s'", name)
 }
 
 // openWriter opens a writer for the given module and file name, emitting the standard header automatically.
@@ -214,6 +226,14 @@ func (g *csharpGenerator) openWriter(mod *module, name string) (
 	w.EmitHeaderWarning(g.commentChars())
 
 	return w, file, nil
+}
+
+// typeName returns a type name for a given resource type.
+func (g *csharpGenerator) typeName(r *resourceType) string {
+	if r.info != nil && r.info.CSharpName != "" {
+		return r.info.CSharpName
+	}
+	return r.name
 }
 
 // emitPackage emits an entire package pack into the configured output directory with the configured settings.
@@ -241,7 +261,10 @@ func (g *csharpGenerator) emitPackage(pack *pkg) error {
 
 // emitProjectFile emits a C# project file into the configured output directory.
 func (g *csharpGenerator) emitProjectFile() error {
-	assemblyName := g.assemblyName()
+	assemblyName, err := g.assemblyName()
+	if err != nil {
+		return err
+	}
 
 	w, err := tools.NewGenWriter(tfgen, filepath.Join(g.outDir, assemblyName+".csproj"))
 	if err != nil {
@@ -408,9 +431,14 @@ func (g *csharpGenerator) emitUtilities(mod *module) (string, error) {
 		version = version[1:]
 	}
 
+	namespace, err := g.moduleNamespace(mod)
+	if err != nil {
+		return "", err
+	}
+
 	var buf bytes.Buffer
 	err = csharpUtilitiesTemplate.Execute(&buf, csharpUtilitiesTemplateContext{
-		Namespace: g.moduleNamespace(mod),
+		Namespace: namespace,
 		ClassName: "Utilities",
 		Version:   version,
 	})
@@ -475,6 +503,11 @@ func (g *csharpGenerator) emitConfigVariableType(w *tools.GenWriter, typ *proper
 
 // emitConfigVariables emits all config vaiables in the given module, returning the resulting file.
 func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNestedTypes) (string, error) {
+	assemblyName, err := g.assemblyName()
+	if err != nil {
+		return "", err
+	}
+
 	// Create a Config.cs file into which all configuration variables will go.
 	w, config, err := g.openWriter(mod, "Config.cs")
 	if err != nil {
@@ -486,7 +519,7 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 	w.Writefmtln("using System.Collections.Immutable;")
 	w.Writefmtln("")
 	// Use the root namespace to avoid `Pulumi.Provider.Config.Config.VarName` usage.
-	w.Writefmtln("namespace %s", g.assemblyName())
+	w.Writefmtln("namespace %s", assemblyName)
 	w.Writefmtln("{")
 
 	// Open the config class.
@@ -528,7 +561,8 @@ func (g *csharpGenerator) emitConfigVariables(mod *module, nestedTypes *csharpNe
 }
 
 func (g *csharpGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
-	propertyType := qualifiedCSharpType(v.typ, "ConfigTypes", false /*wrapInputs*/)
+	propertyType := qualifiedCSharpType(
+		v.typ, "ConfigTypes", false /*wrapInputs*/, false /*requireInitializers*/)
 
 	var getFunc string
 	nullableSigil := "?"
@@ -659,7 +693,7 @@ func newCSharpResourceGenerator(g *csharpGenerator, mod *module, res *resourceTy
 		mod:    mod,
 		res:    res,
 		nested: nested.getDeclaredTypes(res),
-		name:   res.name,
+		name:   g.typeName(res),
 	}
 }
 
@@ -690,7 +724,11 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 	defer contract.IgnoreClose(w)
 	rg.w = w
 
-	rg.openNamespace()
+	err = rg.openNamespace()
+	if err != nil {
+		return "", err
+	}
+
 	if rg.res != nil {
 		rg.generateResourceClass()
 		rg.generateResourceArgs()
@@ -707,13 +745,20 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 	return file, nil
 }
 
-func (rg *csharpResourceGenerator) openNamespace() {
+func (rg *csharpResourceGenerator) openNamespace() error {
+	namespace, err := rg.g.moduleNamespace(rg.mod)
+	if err != nil {
+		return err
+	}
+
+	rg.w.Writefmtln("using System.Collections.Generic;")
 	rg.w.Writefmtln("using System.Collections.Immutable;")
 	rg.w.Writefmtln("using System.Threading.Tasks;")
 	rg.w.Writefmtln("using Pulumi.Serialization;")
 	rg.w.Writefmtln("")
-	rg.w.Writefmtln("namespace %s", rg.g.moduleNamespace(rg.mod))
+	rg.w.Writefmtln("namespace %s", namespace)
 	rg.w.Writefmtln("{")
+	return nil
 }
 
 func (rg *csharpResourceGenerator) closeNamespace() {
@@ -873,12 +918,14 @@ func (rg *csharpResourceGenerator) generateAlias(alias tfbridge.AliasInfo) {
 }
 
 func (rg *csharpResourceGenerator) generateResourceArgs() {
-	rg.generateInputType(rg.res.argst, false /*nested*/)
+	rg.generateInputType(
+		rg.res.argst, "ResourceArgs", false /*nested*/, true /*wrapInput*/)
 }
 
 func (rg *csharpResourceGenerator) generateResourceState() {
 	if !rg.res.IsProvider() {
-		rg.generateInputType(rg.res.statet, false /*nested*/)
+		rg.generateInputType(
+			rg.res.statet, "ResourceArgs", false /*nested*/, true /*wrapInput*/)
 	}
 }
 
@@ -896,7 +943,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	}
 
 	var argsParamDef string
-	argsParamRef := "ResourceArgs.Empty"
+	argsParamRef := "InvokeArgs.Empty"
 	if rg.fun.argst != nil {
 		argsType := rg.fun.argst.name
 
@@ -908,7 +955,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 		}
 
 		argsParamDef = fmt.Sprintf("%s args%s, ", argsType, argsDefault)
-		argsParamRef = "args ?? ResourceArgs.Empty"
+		argsParamRef = "args ?? InvokeArgs.Empty"
 	}
 
 	// Emit the doc comment, if any.
@@ -929,7 +976,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 func (rg *csharpResourceGenerator) generateDatasourceArgs() {
 	if rg.fun.argst != nil {
 		// TODO(pdg): this should pass true for plainType
-		rg.generateInputType(rg.fun.argst, false /*nested*/)
+		rg.generateInputType(rg.fun.argst, "InvokeArgs", false /*nested*/, false /*wrapInput*/)
 	}
 }
 
@@ -939,7 +986,7 @@ func (rg *csharpResourceGenerator) generateDatasourceResult() {
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested bool) {
+func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested bool, wrapInput bool) {
 	qualifier := ""
 	if !nested {
 		qualifier = "Inputs"
@@ -947,7 +994,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 
 	wireName := prop.name
 	propertyName := csharpPropertyName(prop)
-	propertyType := qualifiedCSharpPropertyType(prop, qualifier, true /*wrapInput*/)
+	propertyType := qualifiedCSharpPropertyType(prop, qualifier, wrapInput)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -963,7 +1010,8 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 	switch prop.typ.kind {
 	case kindList, kindSet, kindMap:
 		backingFieldName := "_" + prop.name
-		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, true /*wrapInput*/)
+		requireInitializers := !wrapInput
+		backingFieldType := qualifiedCSharpType(prop.typ, qualifier, wrapInput, requireInitializers)
 
 		rg.w.Writefmtln("        [Input(\"%s\"%s)]", wireName, attributeArgs)
 		rg.w.Writefmtln("        private %s? %s;", backingFieldType, backingFieldName)
@@ -983,7 +1031,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 		rg.w.Writefmtln("        }")
 	default:
 		initializer := ""
-		if !prop.optional() {
+		if !prop.optional() && !isValueType(propertyType) {
 			initializer = " = null!;"
 		}
 
@@ -993,18 +1041,18 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 	}
 }
 
-func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, nested bool) {
+func (rg *csharpResourceGenerator) generateInputType(typ *propertyType, baseClass string, nested bool, wrapInput bool) {
 	contract.Assert(typ.kind == kindObject)
 
 	rg.w.Writefmtln("")
 
 	// Open the class.
-	rg.w.Writefmtln("    public sealed class %s : Pulumi.ResourceArgs", typ.name)
+	rg.w.Writefmtln("    public sealed class %s : Pulumi.%s", typ.name, baseClass)
 	rg.w.Writefmtln("    {")
 
 	// Declare each input property.
 	for _, p := range typ.properties {
-		rg.generateInputProperty(p, nested)
+		rg.generateInputProperty(p, nested, wrapInput)
 		rg.w.Writefmtln("")
 	}
 
@@ -1097,7 +1145,11 @@ func (rg *csharpResourceGenerator) generateInputTypes(nts []*csharpNestedType) {
 	// Write each input type.
 	for _, nt := range nts {
 		contract.Assert(nt.isInput)
-		rg.generateInputType(nt.typ, true /*nested*/)
+		baseClass := "ResourceArgs"
+		if nt.isInvoke {
+			baseClass = "InvokeArgs"
+		}
+		rg.generateInputType(nt.typ, baseClass, true /*nested*/, !nt.isInvoke /*wrapInput*/)
 	}
 
 	// Close the namespace
@@ -1223,7 +1275,7 @@ func isImmutableArrayType(typ *propertyType, wrapInput bool) bool {
 }
 
 func qualifiedCSharpPropertyType(v *variable, qualifier string, wrapInput bool) string {
-	t := qualifiedCSharpType(v.typ, qualifier, wrapInput)
+	t := qualifiedCSharpType(v.typ, qualifier, wrapInput, false /*requireInitializers*/)
 	if v.optional() && !isImmutableArrayType(v.typ, wrapInput) {
 		t += "?"
 	}
@@ -1231,7 +1283,7 @@ func qualifiedCSharpPropertyType(v *variable, qualifier string, wrapInput bool) 
 }
 
 // qualifiedCsharpType returns the C# type name for a given schema value type and element kind.
-func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool) string {
+func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool, requireInitializers bool) string {
 	// Prefer overrides over the underlying type.
 	var t string
 	switch {
@@ -1255,15 +1307,25 @@ func qualifiedCSharpType(typ *propertyType, qualifier string, wrapInput bool) st
 		case kindString:
 			t = "string"
 		case kindSet, kindList:
-			elemType := qualifiedCSharpType(typ.element, qualifier, false)
+			elemType := qualifiedCSharpType(
+				typ.element, qualifier, false /*wrapInput*/, false /*requireInitializers*/)
 			if wrapInput {
 				return fmt.Sprintf("InputList<%v>", elemType)
 			}
+			if requireInitializers {
+				// Use mutable list to support collection initializer syntax
+				return fmt.Sprintf("List<%v>", elemType)
+			}
 			return fmt.Sprintf("ImmutableArray<%v>", elemType)
 		case kindMap:
-			elemType := qualifiedCSharpType(typ.element, qualifier, false)
+			elemType := qualifiedCSharpType(
+				typ.element, qualifier, false /*wrapInput*/, false /*requireInitializers*/)
 			if wrapInput {
 				return fmt.Sprintf("InputMap<%v>", elemType)
+			}
+			if requireInitializers {
+				// Use mutable dictionary to support collection initializer syntax
+				return fmt.Sprintf("Dictionary<string, %v>", elemType)
 			}
 			return fmt.Sprintf("ImmutableDictionary<string, %v>", elemType)
 		case kindObject:
@@ -1349,4 +1411,13 @@ func csharpDefaultValue(prop *variable) string {
 	}
 
 	return defaultValue
+}
+
+func isValueType(typ string) bool {
+	switch typ {
+	case "bool", "int", "double":
+		return true
+	default:
+		return false
+	}
 }
