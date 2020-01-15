@@ -166,7 +166,7 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 		if options.Randlen > 0 {
 			uniqueHex, err := resource.NewUniqueHex(vs+options.Separator, options.Randlen, options.Maxlen)
 			if err != nil {
-				return uniqueHex, errors.Wrapf(err, "Could not make instance of '%v'.", res.URN.Type())
+				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}
 
 			return uniqueHex, nil
