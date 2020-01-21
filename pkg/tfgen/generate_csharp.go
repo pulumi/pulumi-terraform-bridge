@@ -294,7 +294,7 @@ func (g *csharpGenerator) emitLogo() error {
 	}
 
 	// Get the data.
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) // #nosec
 	if err != nil {
 		return err
 	}
