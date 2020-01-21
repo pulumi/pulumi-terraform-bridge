@@ -14,7 +14,6 @@ type defaultValueTest struct {
 	schema         schema.Schema
 	info           tfbridge.DefaultInfo
 	expectedNode   string
-	expectedGo     string
 	expectedPython string
 }
 
@@ -22,49 +21,42 @@ var defaultTests = []defaultValueTest{
 	{
 		schema:         schema.Schema{Type: schema.TypeString},
 		expectedNode:   "undefined",
-		expectedGo:     "",
 		expectedPython: "",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeBool},
 		info:           tfbridge.DefaultInfo{Value: false},
 		expectedNode:   "false",
-		expectedGo:     "false",
 		expectedPython: "False",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeBool},
 		info:           tfbridge.DefaultInfo{Value: true},
 		expectedNode:   "true",
-		expectedGo:     "true",
 		expectedPython: "True",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeInt},
 		info:           tfbridge.DefaultInfo{Value: 0x4eedface},
 		expectedNode:   "1324219086",
-		expectedGo:     "1324219086",
 		expectedPython: "1324219086",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeInt},
 		info:           tfbridge.DefaultInfo{Value: uint(0xfeedface)},
 		expectedNode:   "4277009102",
-		expectedGo:     "4277009102",
 		expectedPython: "4277009102",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeFloat},
 		info:           tfbridge.DefaultInfo{Value: math.Pi},
 		expectedNode:   "3.141592653589793",
-		expectedGo:     "3.141592653589793",
 		expectedPython: "3.141592653589793",
 	},
 	{
 		schema:         schema.Schema{Type: schema.TypeString},
 		info:           tfbridge.DefaultInfo{Value: "foo"},
 		expectedNode:   `"foo"`,
-		expectedGo:     `"foo"`,
 		expectedPython: `'foo'`,
 	},
 }
@@ -102,57 +94,6 @@ func Test_NodeDefaults(t *testing.T) {
 		v.info.Default.EnvVars = []string{"FOO", "BAR"}
 		actual = tsDefaultValue(v)
 		assert.Equal(t, multiEnv, actual)
-	}
-}
-
-func Test_GoDefaults(t *testing.T) {
-	g := &goGenerator{}
-
-	testVar := func(v *variable, dvt defaultValueTest) {
-		v.info.Default.EnvVars = nil
-		actual := g.goDefaultValue(v)
-		assert.Equal(t, dvt.expectedGo, actual)
-
-		parser, outDefault := "nil", "\"\""
-		switch dvt.schema.Type {
-		case schema.TypeBool:
-			parser, outDefault = "parseEnvBool", "false"
-		case schema.TypeInt:
-			parser, outDefault = "parseEnvInt", "0"
-		case schema.TypeFloat:
-			parser, outDefault = "parseEnvFloat", "0.0"
-		}
-
-		defaultValue := dvt.expectedGo
-		if defaultValue == "" {
-			if v.out {
-				defaultValue = outDefault
-			} else {
-				defaultValue = "nil"
-			}
-		}
-
-		v.info.Default.EnvVars = []string{"FOO"}
-		expected := fmt.Sprintf(`getEnvOrDefault(%s, %s, "FOO")`, defaultValue, parser)
-		actual = g.goDefaultValue(v)
-		assert.Equal(t, expected, actual)
-
-		v.info.Default.EnvVars = []string{"FOO", "BAR"}
-		expected = fmt.Sprintf(`getEnvOrDefault(%s, %s, "FOO", "BAR")`, defaultValue, parser)
-		actual = g.goDefaultValue(v)
-		assert.Equal(t, expected, actual)
-	}
-
-	for _, dvt := range defaultTests {
-		v := &variable{
-			name:   "v",
-			schema: &dvt.schema,
-			info:   &tfbridge.SchemaInfo{Default: &dvt.info},
-		}
-
-		testVar(v, dvt)
-		v.out = true
-		testVar(v, dvt)
 	}
 }
 
