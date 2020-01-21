@@ -139,6 +139,10 @@ func (g *pythonGenerator) emitPackage(pack *pkg) error {
 		return err
 	}
 
+	if err := g.emitPythonTypes(pack); err != nil {
+		return err
+	}
+
 	// Finally emit the package metadata (setup.py, etc).
 	return g.emitPackageMetadata(pack)
 }
@@ -875,6 +879,13 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	}
 	w.Writefmtln("      packages=find_packages(),")
 
+	// Publish type metadata: PEP 561
+	w.Writefmtln("      package_data={")
+	w.Writefmtln("			'%s': [", pyPack(pack.name))
+	w.Writefmtln("				'py.typed'")
+	w.Writefmtln("			]")
+	w.Writefmtln("		},")
+
 	// Emit all requires clauses.
 	var reqs map[string]string
 	if g.info.Python != nil {
@@ -924,6 +935,18 @@ func (g *pythonGenerator) emitPackageMetadata(pack *pkg) error {
 	w.Writefmtln("      ],")
 
 	w.Writefmtln("      zip_safe=False)")
+	return nil
+}
+
+// emitPythonTypes generates an empty py.typed file to signal type checking in accordance with PEP 561.
+func (g *pythonGenerator) emitPythonTypes(pack *pkg) error {
+	fileSuffix := fmt.Sprintf("%s/py.typed", pyPack(pack.name))
+	w, err := tools.NewGenWriter(tfgen, filepath.Join(g.outDir, fileSuffix))
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(w)
+
 	return nil
 }
 
