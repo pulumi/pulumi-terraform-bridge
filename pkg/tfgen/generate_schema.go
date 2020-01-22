@@ -288,7 +288,8 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable) pschema.Proper
 	}
 
 	// Due to bugs in earlier versions of the bridge, we want to keep the Python code generator from case-mapping
-	// properties an object-typed element that are not Map types. This is consistent with the earlier behavior.
+	// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
+	// https://github.com/pulumi/pulumi/issues/3151 for more details.
 	if prop.typ.kind == kindObject && prop.schema.Type == schema.TypeMap {
 		language["python"] = rawMessage(map[string]interface{}{"mapCase": true})
 	}
