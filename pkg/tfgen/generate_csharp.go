@@ -1001,7 +1001,7 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 	if !prop.optional() {
 		attributeArgs = ", required: true"
 	}
-	if rg.res != nil && rg.res.IsProvider() && prop.typ.kind != kindString {
+	if rg.res != nil && rg.res.IsProvider() && prop.typ.kind != kindString && !nested {
 		attributeArgs += ", json: true"
 	}
 
