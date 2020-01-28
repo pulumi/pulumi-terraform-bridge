@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/gedex/inflector"
@@ -209,13 +208,6 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 			"namespaces":        csi.Namespaces,
 		})
 	}
-
-	j := &bytes.Buffer{}
-	enc := json.NewEncoder(j)
-	enc.SetIndent("", "    ")
-	err := enc.Encode(spec)
-	contract.IgnoreError(err)
-	log.Printf("%s", j.String())
 
 	return pschema.ImportSpec(spec)
 }
