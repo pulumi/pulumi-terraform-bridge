@@ -1142,3 +1142,57 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 		return ""
 	}
 }
+
+func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir string, files map[string][]byte) error {
+	for _, f := range overlay.Files {
+		if path.Ext(f) == extension {
+			fp := path.Join(dir, f)
+			contents, err := ioutil.ReadFile(path.Join(srcRoot, fp))
+			if err != nil {
+				return err
+			}
+			files[fp] = contents
+		}
+	}
+	for _, f := range overlay.DestFiles {
+		if path.Ext(f) == extension {
+			fp := path.Join(dir, f)
+			contents, err := ioutil.ReadFile(path.Join(srcRoot, fp))
+			if err != nil {
+				return err
+			}
+			files[fp] = contents
+		}
+	}
+	for k, v := range overlay.Modules {
+		if err := getOverlayFilesImpl(v, extension, srcRoot, path.Join(dir, k), files); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension, srcRoot string) (map[string][]byte, error) {
+	files := map[string][]byte{}
+	if err := getOverlayFilesImpl(overlay, extension, srcRoot, "", files); err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func emitFile(outDir, relPath string, contents []byte) error {
+	p := path.Join(outDir, relPath)
+	if err := tools.EnsureDir(path.Dir(p)); err != nil {
+		return errors.Wrap(err, "creating directory")
+	}
+
+	f, err := os.Create(p)
+	if err != nil {
+		return errors.Wrap(err, "creating file")
+	}
+	defer contract.IgnoreClose(f)
+
+	_, err = f.Write(contents)
+	return err
+}
