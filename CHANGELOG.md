@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+* Add support for generating a new-style Go SDK ([101](https://github.com/pulumi/pulumi-terraform-bridge/pull/101)).
+* Add support for PEP 561 Python type specs ([100](https://github.com/pulumi/pulumi-terraform-bridge/pull/100)).
 * Add support for generating a .NET SDK.
 * Update Terraform bridge to be based on v1.0.0 of the Terraform Plugin SDK
 * Add support to specify a custom package name for NodeJS package
