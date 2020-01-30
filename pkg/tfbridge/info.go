@@ -246,6 +246,7 @@ type JavaScriptInfo struct {
 	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
+	AsyncDataSources  bool              // If true, only generate the async version of data-sources
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.

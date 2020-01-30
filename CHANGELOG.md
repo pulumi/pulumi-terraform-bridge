@@ -15,5 +15,6 @@ CHANGELOG
 * Centralise the work for Autonaming in providers.
 * Avoid setting conflicting default values ([91](https://github.com/pulumi/pulumi-terraform-bridge/pull/91)).
 * Require explict C# namespaces.
+* Add option to control if only asynchronous data sources should be generated in JS/TS.
 
 ---
