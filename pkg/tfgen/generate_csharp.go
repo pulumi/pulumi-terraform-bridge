@@ -489,7 +489,7 @@ func (g *csharpGenerator) emitConfigVariableType(w *tools.GenWriter, typ *proper
 		propertyType := csharpPropertyType(prop, false /*wrapInput*/)
 
 		initializer := ""
-		if !prop.optional() {
+		if !prop.optional() && !isValueType(propertyType) {
 			initializer = " = null!;"
 		}
 
