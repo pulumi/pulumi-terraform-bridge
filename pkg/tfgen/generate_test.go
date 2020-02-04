@@ -88,3 +88,13 @@ func Test_NodeDefaults(t *testing.T) {
 		assert.Equal(t, multiEnv, actual)
 	}
 }
+
+func Test_DeprecationFromTFSchema(t *testing.T) {
+	v := &variable{
+		name:   "v",
+		schema: &schema.Schema{Type: schema.TypeString, Deprecated: "This is deprecated"},
+	}
+
+	deprecationMessage := v.deprecationMessage()
+	assert.Equal(t, "This is deprecated", deprecationMessage)
+}

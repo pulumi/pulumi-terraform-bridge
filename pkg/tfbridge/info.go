@@ -177,6 +177,9 @@ type SchemaInfo struct {
 
 	// this will make the parameter as computed and not allow the user to set it
 	MarkAsComputedOnly *bool
+
+	// the deprecation message for the property
+	DeprecationMessage string
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
@@ -276,29 +279,31 @@ type PreConfigureCallback func(vars resource.PropertyMap, config *terraform.Reso
 
 // MarshallableSchema is the JSON-marshallable form of a Terraform schema.
 type MarshallableSchema struct {
-	Type          schema.ValueType  `json:"type"`
-	Optional      bool              `json:"optional,omitempty"`
-	Required      bool              `json:"required,omitempty"`
-	Computed      bool              `json:"computed,omitempty"`
-	ForceNew      bool              `json:"forceNew,omitempty"`
-	Elem          *MarshallableElem `json:"element,omitempty"`
-	MaxItems      int               `json:"maxItems,omitempty"`
-	MinItems      int               `json:"minItems,omitempty"`
-	PromoteSingle bool              `json:"promoteSingle,omitempty"`
+	Type               schema.ValueType  `json:"type"`
+	Optional           bool              `json:"optional,omitempty"`
+	Required           bool              `json:"required,omitempty"`
+	Computed           bool              `json:"computed,omitempty"`
+	ForceNew           bool              `json:"forceNew,omitempty"`
+	Elem               *MarshallableElem `json:"element,omitempty"`
+	MaxItems           int               `json:"maxItems,omitempty"`
+	MinItems           int               `json:"minItems,omitempty"`
+	PromoteSingle      bool              `json:"promoteSingle,omitempty"`
+	DeprecationMessage string            `json:"deprecated,omitempty"`
 }
 
 // MarshalSchema converts a Terraform schema into a MarshallableSchema.
 func MarshalSchema(s *schema.Schema) *MarshallableSchema {
 	return &MarshallableSchema{
-		Type:          s.Type,
-		Optional:      s.Optional,
-		Required:      s.Required,
-		Computed:      s.Computed,
-		ForceNew:      s.ForceNew,
-		Elem:          MarshalElem(s.Elem),
-		MaxItems:      s.MaxItems,
-		MinItems:      s.MinItems,
-		PromoteSingle: s.PromoteSingle,
+		Type:               s.Type,
+		Optional:           s.Optional,
+		Required:           s.Required,
+		Computed:           s.Computed,
+		ForceNew:           s.ForceNew,
+		Elem:               MarshalElem(s.Elem),
+		MaxItems:           s.MaxItems,
+		MinItems:           s.MinItems,
+		PromoteSingle:      s.PromoteSingle,
+		DeprecationMessage: s.Deprecated,
 	}
 }
 
@@ -314,6 +319,7 @@ func (m *MarshallableSchema) Unmarshal() *schema.Schema {
 		MaxItems:      m.MaxItems,
 		MinItems:      m.MinItems,
 		PromoteSingle: m.PromoteSingle,
+		Deprecated:    m.DeprecationMessage,
 	}
 }
 
@@ -430,6 +436,7 @@ type MarshallableSchemaInfo struct {
 	Asset       *AssetTranslation                  `json:"asset,omitempty"`
 	Default     *MarshallableDefaultInfo           `json:"default,omitempty"`
 	MaxItemsOne *bool                              `json:"maxItemsOne,omitempty"`
+	Deprecated  string                             `json:"deprecated,omitempty"`
 }
 
 // MarshalSchemaInfo converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
@@ -452,6 +459,7 @@ func MarshalSchemaInfo(s *SchemaInfo) *MarshallableSchemaInfo {
 		Asset:       s.Asset,
 		Default:     MarshalDefaultInfo(s.Default),
 		MaxItemsOne: s.MaxItemsOne,
+		Deprecated:  s.DeprecationMessage,
 	}
 }
 
@@ -466,15 +474,16 @@ func (m *MarshallableSchemaInfo) Unmarshal() *SchemaInfo {
 		fields[k] = v.Unmarshal()
 	}
 	return &SchemaInfo{
-		Name:        m.Name,
-		CSharpName:  m.CSharpName,
-		Type:        m.Type,
-		AltTypes:    m.AltTypes,
-		Elem:        m.Elem.Unmarshal(),
-		Fields:      fields,
-		Asset:       m.Asset,
-		Default:     m.Default.Unmarshal(),
-		MaxItemsOne: m.MaxItemsOne,
+		Name:               m.Name,
+		CSharpName:         m.CSharpName,
+		Type:               m.Type,
+		AltTypes:           m.AltTypes,
+		Elem:               m.Elem.Unmarshal(),
+		Fields:             fields,
+		Asset:              m.Asset,
+		Default:            m.Default.Unmarshal(),
+		MaxItemsOne:        m.MaxItemsOne,
+		DeprecationMessage: m.Deprecated,
 	}
 }
 

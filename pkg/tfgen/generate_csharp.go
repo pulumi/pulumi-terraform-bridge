@@ -751,6 +751,7 @@ func (rg *csharpResourceGenerator) openNamespace() error {
 		return err
 	}
 
+	rg.w.Writefmtln("using System;")
 	rg.w.Writefmtln("using System.Collections.Generic;")
 	rg.w.Writefmtln("using System.Collections.Immutable;")
 	rg.w.Writefmtln("using System.Threading.Tasks;")
@@ -1020,6 +1021,10 @@ func (rg *csharpResourceGenerator) generateInputProperty(prop *variable, nested 
 			rg.w.Writefmtln("")
 		}
 		emitCSharpPropertyDocComment(rg.w, prop, "        ")
+
+		if prop.deprecationMessage() != "" {
+			rg.w.Writefmtln("        [Obsolete(@\"%s\")]", strings.Replace(prop.deprecationMessage(), "\"", "\"\"", -1))
+		}
 
 		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
 		// ensure that the user does not see warnings when initializing these properties using object or collection

@@ -275,6 +275,11 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 		t.kind = kindSet
 	}
 
+	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
+	if sch.Deprecated != "" && elemInfo != nil {
+		elemInfo.DeprecationMessage = sch.Deprecated
+	}
+
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
 		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)
@@ -356,6 +361,18 @@ type variable struct {
 
 func (v *variable) Name() string { return v.name }
 func (v *variable) Doc() string  { return v.doc }
+
+func (v *variable) deprecationMessage() string {
+	if v.schema != nil && v.schema.Deprecated != "" {
+		return v.schema.Deprecated
+	}
+
+	if v.info != nil && v.info.DeprecationMessage != "" {
+		return v.info.DeprecationMessage
+	}
+
+	return ""
+}
 
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool {
