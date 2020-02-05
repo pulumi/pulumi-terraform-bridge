@@ -2,6 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+* Obtain module documentation from the Go Module Cache, removing the need for vendoring.
 * Add support for generating a new-style Go SDK ([101](https://github.com/pulumi/pulumi-terraform-bridge/pull/101)).
 * Add support for PEP 561 Python type specs ([100](https://github.com/pulumi/pulumi-terraform-bridge/pull/100)).
 * Add support for generating a .NET SDK.

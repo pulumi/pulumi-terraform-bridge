@@ -59,8 +59,20 @@ const (
 // TF website documentation markdown content
 func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
-	repo, err := getRepoDir(org, provider)
+
+	gomod, err := LoadGoMod()
 	if err != nil {
+		return parsedDoc{}, err
+	}
+
+	calculatedImportPath := fmt.Sprintf("github.com/%s/terraform-provider-%s", org, provider)
+	importPath, version, err := FindEffectiveModuleForImportPath(gomod, calculatedImportPath)
+	if err != nil {
+		return parsedDoc{}, err
+	}
+
+	repo := GetModuleRoot(importPath, version)
+	if fileInfo, err := os.Stat(repo); err != nil || !fileInfo.IsDir() {
 		return parsedDoc{}, err
 	}
 
