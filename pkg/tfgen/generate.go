@@ -1125,12 +1125,6 @@ func copyFile(from, to string) error {
 	return ioutil.WriteFile(to, body, 0600)
 }
 
-// lowerFirst returns the string with a lower-cased first character.
-func lowerFirst(s string) string {
-	c, rest := utf8.DecodeRuneInString(s)
-	return string(unicode.ToLower(c)) + s[rest:]
-}
-
 // upperFirst returns the string with an upper-cased first character.
 func upperFirst(s string) string {
 	c, rest := utf8.DecodeRuneInString(s)
