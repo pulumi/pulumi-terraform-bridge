@@ -626,9 +626,9 @@ func (g *nodeJSGenerator) emitConfigVariable(w *tools.GenWriter, v *variable) {
 		anycast = "<any>"
 	}
 	if v.doc != "" && v.doc != elidedDocComment {
-		g.emitDocComment(w, v.doc, v.docURL, "")
+		g.emitDocComment(w, v.doc, v.docURL, "", "")
 	} else if v.rawdoc != "" {
-		g.emitRawDocComment(w, v.rawdoc, "")
+		g.emitRawDocComment(w, v.rawdoc, "", "")
 	}
 
 	configFetch := fmt.Sprintf("__config.%s(\"%s\")", getfunc, v.name)
@@ -647,7 +647,7 @@ func sanitizeForDocComment(str string) string {
 	return strings.Replace(str, "*/", "*&#47;", -1)
 }
 
-func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, prefix string) {
+func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, deprecationMessage, prefix string) {
 	if comment == elidedDocComment && docURL == "" {
 		return
 	}
@@ -675,10 +675,15 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, pr
 		w.Writefmtln("%v * > This content is derived from %s.", prefix, docURL)
 	}
 
+	if deprecationMessage != "" {
+		w.Writefmtln("%v * ", prefix)
+		w.Writefmtln("%v * @deprecated %s", prefix, deprecationMessage)
+	}
+
 	w.Writefmtln("%v */", prefix)
 }
 
-func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix string) {
+func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, deprecationMessage, prefix string) {
 	if comment != "" {
 		curr := 0
 		w.Writefmtln("%v/**", prefix)
@@ -698,6 +703,11 @@ func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, prefix 
 			curr += len(word)
 		}
 		w.Writefmtln("")
+
+		if deprecationMessage != "" {
+			w.Writefmtln("%v * ", prefix)
+			w.Writefmtln("%v * @deprecated %s", prefix, deprecationMessage)
+		}
 		w.Writefmtln("%v */", prefix)
 	}
 }
@@ -707,14 +717,14 @@ func (g *nodeJSGenerator) emitPlainOldType(w *tools.GenWriter, pot *propertyType
 	isInputType bool) {
 
 	if pot.doc != "" {
-		g.emitDocComment(w, pot.doc, "", "")
+		g.emitDocComment(w, pot.doc, "", "", "")
 	}
 	w.Writefmtln("export interface %s {", pot.name)
 	for _, prop := range pot.properties {
 		if prop.doc != "" && prop.doc != elidedDocComment {
-			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
+			g.emitDocComment(w, prop.doc, prop.docURL, prop.deprecationMessage(), "    ")
 		} else if prop.rawdoc != "" {
-			g.emitRawDocComment(w, prop.rawdoc, "    ")
+			g.emitRawDocComment(w, prop.rawdoc, prop.deprecationMessage(), "    ")
 		}
 		w.Writefmtln("    readonly %s%s: %s;", prop.name, tsFlags(prop), tsType(module, prefix, prop,
 			nestedTypeDeclarations, nestedInputOverlays, false /*noflags*/, wrapInput, isInputType))
@@ -756,7 +766,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 
 	// Write the TypeDoc/JSDoc for the resource class
 	if res.doc != "" {
-		g.emitDocComment(w, res.doc, res.docURL, "")
+		g.emitDocComment(w, res.doc, res.docURL, "", "")
 	}
 
 	baseType := "CustomResource"
@@ -814,9 +824,9 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 	}
 	for _, prop := range res.outprops {
 		if prop.doc != "" && prop.doc != elidedDocComment {
-			g.emitDocComment(w, prop.doc, prop.docURL, "    ")
+			g.emitDocComment(w, prop.doc, prop.docURL, "", "    ")
 		} else if prop.rawdoc != "" {
-			g.emitRawDocComment(w, prop.rawdoc, "    ")
+			g.emitRawDocComment(w, prop.rawdoc, "", "    ")
 		}
 
 		// Make a little comment in the code so it's easy to pick out output properties.
@@ -1034,7 +1044,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
-		g.emitDocComment(w, fun.doc, fun.docURL, "")
+		g.emitDocComment(w, fun.doc, fun.docURL, "", "")
 	}
 
 	if fun.info.DeprecationMessage != "" {
