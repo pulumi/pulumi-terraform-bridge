@@ -55,25 +55,32 @@ const (
 	DataSourceDocs DocKind = "d"
 )
 
-// getDocsForProvider extracts documentation details for the given package from
-// TF website documentation markdown content
-func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
-
+func getRepoPath(org string, provider string) (string, error) {
 	gomod, err := LoadGoMod()
 	if err != nil {
-		return parsedDoc{}, err
+		return "", err
 	}
 
 	calculatedImportPath := fmt.Sprintf("github.com/%s/terraform-provider-%s", org, provider)
 	importPath, version, err := FindEffectiveModuleForImportPath(gomod, calculatedImportPath)
 	if err != nil {
-		return parsedDoc{}, err
+		return "", err
 	}
 
 	repo := GetModuleRoot(importPath, version)
 	if fileInfo, err := os.Stat(repo); err != nil || !fileInfo.IsDir() {
-		return parsedDoc{}, err
+		return "", err
+	}
+
+	return repo, nil
+}
+
+func getMarkdownDetails(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) ([]byte, string, bool) {
+
+	repoPath, err := getRepoPath(org, provider)
+	if err != nil {
+		return nil, "", false
 	}
 
 	possibleMarkdownNames := []string{
@@ -96,18 +103,35 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
 	}
 
-	markdownBytes, err := readMarkdown(repo, kind, possibleMarkdownNames)
-	if err != nil {
+	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
+	if !found {
+		return nil, "", false
+	}
+
+	return markdownBytes, markdownFileName, true
+}
+
+// getDocsForProvider extracts documentation details for the given package from
+// TF website documentation markdown content
+func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
+
+	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info)
+	if !found {
 		cmdutil.Diag().Warningf(
 			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
 		return parsedDoc{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), resourcePrefix, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
 
+	var docinfo *tfbridge.DocInfo
+	if info != nil {
+		docinfo = info.GetDocs()
+	}
 	if docinfo != nil {
 		// Merge Attributes from source into target
 		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
@@ -142,17 +166,15 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 }
 
 // readMarkdown searches all possible locations for the markdown content
-func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, error) {
-	var markdownBytes []byte
-	var err error
+func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, string, bool) {
 	for _, name := range possibleLocations {
 		location := path.Join(repo, "website", "docs", string(kind), name)
-		markdownBytes, err = ioutil.ReadFile(location)
+		markdownBytes, err := ioutil.ReadFile(location)
 		if err == nil {
-			return markdownBytes, nil
+			return markdownBytes, name, true
 		}
 	}
-	return nil, fmt.Errorf("Could not find markdown in any of: %v", possibleLocations)
+	return nil, "", false
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
@@ -182,7 +204,7 @@ var (
 	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
 	docsBaseURL    = "https://github.com/%s/terraform-provider-%s/blob/master/website/docs"
-	docsDetailsURL = docsBaseURL + "/%s/%s.html.markdown"
+	docsDetailsURL = docsBaseURL + "/%s/%s"
 
 	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/%[3]s/terraform-provider-%[2]s)
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
@@ -218,8 +240,8 @@ func getDocsBaseURL(org, p string) string {
 }
 
 // getDocsDetailsURL gets the detailed resource or data source documentation source.
-func getDocsDetailsURL(org, p, kind, name string) string {
-	return fmt.Sprintf(docsDetailsURL, org, p, kind, name)
+func getDocsDetailsURL(org, p, kind, markdownFileName string) string {
+	return fmt.Sprintf(docsDetailsURL, org, p, kind, markdownFileName)
 }
 
 // getDocsIndexURL gets the given provider's documentation index page's source URL.
@@ -230,13 +252,12 @@ func getDocsIndexURL(org, p string) string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown, resourcePrefix, rawname string) (parsedDoc, error) {
+	markdown, markdownFileName, resourcePrefix, rawname string) (parsedDoc, error) {
 
 	ret := parsedDoc{
 		Arguments:  make(map[string]string),
 		Attributes: make(map[string]string),
-		URL: getDocsDetailsURL(g.info.GetGitHubOrg(), resourcePrefix, string(kind),
-			withoutPackageName(resourcePrefix, rawname)),
+		URL:        getDocsDetailsURL(g.info.GetGitHubOrg(), resourcePrefix, string(kind), markdownFileName),
 	}
 
 	// Replace any Windows-style newlines.
