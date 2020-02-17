@@ -55,6 +55,7 @@ func TestURLRewrite(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, test := range tests {
-		assert.Equal(t, test.Expected, cleanupText(g, nil, test.Input))
+		text, _ := cleanupText(g, nil, test.Input)
+		assert.Equal(t, test.Expected, text)
 	}
 }

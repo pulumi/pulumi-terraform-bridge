@@ -402,7 +402,13 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 		}
 	}
 
-	return cleanupDoc(g, info, ret), nil
+	doc, elided := cleanupDoc(g, info, ret)
+	if elided {
+		cmdutil.Diag().Warningf(diag.Message("",
+			"Resource %v contains an <elided> doc reference that needs updated"), rawname)
+	}
+
+	return doc, nil
 }
 
 var (
@@ -594,21 +600,35 @@ func convertHCL(hcl string) (string, string, error) {
 	return result, "", nil
 }
 
-func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) parsedDoc {
+func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) (parsedDoc, bool) {
+	elidedDoc := false
 	newargs := make(map[string]string, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		newargs[k] = cleanupText(g, info, v)
+		cleanupText, elided := cleanupText(g, info, v)
+		if elided {
+			elidedDoc = true
+		}
+		newargs[k] = cleanupText
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
-		newattrs[k] = cleanupText(g, info, v)
+		cleanupText, elided := cleanupText(g, info, v)
+		if elided {
+			elidedDoc = true
+		}
+		newattrs[k] = cleanupText
+	}
+	cleanupText, elided := cleanupText(g, info, doc.Description)
+	if elided {
+		elidedDoc = true
 	}
 	return parsedDoc{
-		Description: cleanupText(g, info, doc.Description),
+		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
 		URL:         doc.URL,
-	}
+	}, elidedDoc
+
 }
 
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
@@ -620,11 +640,11 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 const elidedDocComment = "<elided>"
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string) string {
+func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string) (string, bool) {
 	// Remove incorrect documentation that should have been cleaned up in our forks.
 	// TODO: fail the build in the face of such text, once we have a processes in place.
 	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
-		return elidedDocComment
+		return "", true
 	}
 
 	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
@@ -701,5 +721,5 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	// Finally, trim any trailing blank lines and return the result.
 	lines := strings.Split(text, "\n")
 	lines = trimTrailingBlanks(lines)
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n"), false
 }
