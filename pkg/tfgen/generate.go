@@ -61,9 +61,10 @@ const (
 	nodeJS language = "nodejs"
 	python language = "python"
 	csharp language = "dotnet"
+	docs   language = "docs"
 )
 
-var allLanguages = []language{golang, nodeJS, python, csharp}
+var allLanguages = []language{golang, nodeJS, python, csharp, docs}
 
 // langGenerator is the interface for language-specific logic and formatting.
 type langGenerator interface {
@@ -483,6 +484,8 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
 	case csharp:
 		lg = newCSharpGenerator(pkg, version, info, overlaysDir, outDir)
+	case docs:
+		lg = newDocsGenerator(pkg, version, info, overlaysDir, outDir)
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
@@ -522,8 +525,10 @@ func (g *generator) Generate() error {
 	}
 
 	// Emit the Pulumi project information.
-	if err = g.emitProjectMetadata(pack); err != nil {
-		return errors.Wrapf(err, "failed to create project file")
+	if g.language != docs {
+		if err = g.emitProjectMetadata(pack); err != nil {
+			return errors.Wrapf(err, "failed to create project file")
+		}
 	}
 
 	// Print out some documentation stats as a summary afterwards.
@@ -957,6 +962,8 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 		}
 	case csharp:
 		// TODO(patg): CSharp overlays
+	case docs:
+		// TODO(justinvp): Docs overlays?
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
 	}
