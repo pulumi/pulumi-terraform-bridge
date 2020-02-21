@@ -816,9 +816,6 @@ func (rg *csharpResourceGenerator) generateResourceClass() {
 	}
 
 	optionsType := "CustomResourceOptions"
-	if rg.res.IsProvider() {
-		optionsType = "ResourceOptions"
-	}
 
 	// Write a comment prior to the constructor.
 	rg.w.Writefmtln("        /// <summary>")
