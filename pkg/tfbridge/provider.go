@@ -644,11 +644,15 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	newstate, err := p.tf.Apply(info, state, diff)
 	if newstate == nil {
-		contract.Assertf(err != nil, "Expected non-nil error with nil state during Create of %s", urn)
+		if err == nil {
+			return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
+		}
 		return nil, err
 	}
 
-	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Create of %s", urn)
+	if newstate.ID == "" {
+		return nil, fmt.Errorf("expected non-empty ID for new state during Create of %s", urn)
+	}
 	reasons := make([]string, 0)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
@@ -822,7 +826,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 			"fixed by running `pulumi refresh` before updating.", urn)
 	}
 
-	contract.Assertf(newstate.ID != "", "Expected non-empty ID for new state during Update of %s", urn)
+	if newstate.ID == "" {
+		return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
+	}
 	reasons := make([]string, 0)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
