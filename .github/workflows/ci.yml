@@ -156,11 +156,12 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v1
+        uses: pulumi/action-test-provider-downstream@releases/v2
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
           downstream-name: pulumi-vault
           downstream-url: https://github.com/pulumi/pulumi-vault
+          use-provider-dir: true
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
