@@ -21,5 +21,6 @@ CHANGELOG
 * Add option to control if only asynchronous data sources should be generated in JS/TS.
 * Ensure Terraform deprecations are represented in Pulumi schema
 * Ensure links to Terraform documentation pages are valid
+* Prefer errors over panics for potential upstream error catches
 
 ---
