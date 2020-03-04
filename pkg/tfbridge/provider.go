@@ -54,6 +54,7 @@ type Provider struct {
 	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
 	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 	supportsSecrets bool                               // true if the engine supports secret property values
+	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -159,14 +160,15 @@ type DataSource struct {
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
 func NewProvider(ctx context.Context, host *provider.HostClient, module string, version string,
-	tf *schema.Provider, info ProviderInfo) *Provider {
+	tf *schema.Provider, info ProviderInfo, pulumiSchema []byte) *Provider {
 	p := &Provider{
-		host:    host,
-		module:  module,
-		version: version,
-		tf:      tf,
-		info:    info,
-		config:  tf.Schema,
+		host:         host,
+		module:       module,
+		version:      version,
+		tf:           tf,
+		info:         info,
+		config:       tf.Schema,
+		pulumiSchema: pulumiSchema,
 	}
 	p.setLoggingContext(ctx)
 	p.initResourceMaps()
@@ -290,6 +292,18 @@ func convertStringToPropertyValue(s string, typ schema.ValueType) (resource.Prop
 		return resource.PropertyValue{}, err
 	}
 	return resource.NewPropertyValue(jsonValue), nil
+}
+
+// GetSchema returns the JSON-encoded schema for this provider's package.
+func (p *Provider) GetSchema(ctx context.Context,
+	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+
+	if v := req.GetVersion(); v > 1 {
+		return nil, errors.Errorf("unsupported schema version %v", v)
+	}
+	return &pulumirpc.GetSchemaResponse{
+		Schema: string(p.pulumiSchema),
+	}, nil
 }
 
 // CheckConfig validates the configuration for this Terraform provider.

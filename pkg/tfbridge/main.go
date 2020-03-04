@@ -26,7 +26,7 @@ import (
 )
 
 // Main launches the tfbridge plugin for a given package pkg and provider prov.
-func Main(pkg string, version string, prov ProviderInfo) {
+func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
@@ -41,7 +41,7 @@ func Main(pkg string, version string, prov ProviderInfo) {
 	// Initialize Terraform logging.
 	logging.SetOutput()
 
-	if err := Serve(pkg, version, prov); err != nil {
+	if err := Serve(pkg, version, prov, pulumiSchema); err != nil {
 		cmdutil.ExitError(err.Error())
 	}
 }

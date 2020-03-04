@@ -57,10 +57,11 @@ type generator struct {
 type language string
 
 const (
-	golang language = "go"
-	nodeJS language = "nodejs"
-	python language = "python"
-	csharp language = "dotnet"
+	golang       language = "go"
+	nodeJS       language = "nodejs"
+	python       language = "python"
+	csharp       language = "dotnet"
+	pulumiSchema language = "schema"
 )
 
 var allLanguages = []language{golang, nodeJS, python, csharp}
@@ -483,6 +484,8 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
 	case csharp:
 		lg = newCSharpGenerator(pkg, version, info, overlaysDir, outDir)
+	case pulumiSchema:
+		lg = newSchemaGenerator(pkg, version, info, outDir)
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
@@ -957,6 +960,8 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 		}
 	case csharp:
 		// TODO(patg): CSharp overlays
+	case pulumiSchema:
+		// N/A
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
 	}

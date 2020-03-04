@@ -26,6 +26,7 @@ import (
 
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/pkg/errors"
 	pschema "github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -34,7 +35,36 @@ import (
 )
 
 type schemaGenerator struct {
-	pkg string
+	pkg     string
+	version string
+	info    tfbridge.ProviderInfo
+	outDir  string
+}
+
+// newSchemaGenerator returns a language generator that understands how to produce Pulumi schemas.
+func newSchemaGenerator(pkg, version string, info tfbridge.ProviderInfo, outDir string) langGenerator {
+	return &schemaGenerator{
+		pkg:     pkg,
+		version: version,
+		info:    info,
+		outDir:  outDir,
+	}
+}
+
+func (g *schemaGenerator) emitPackage(pack *pkg) error {
+	schema, err := json.Marshal(g.genPackageSpec(pack))
+	if err != nil {
+		return errors.Wrap(err, "marshaling Pulumi schema")
+	}
+
+	if err := emitFile(g.outDir, "schema.json", schema); err != nil {
+		return errors.Wrap(err, "emitting schema.json")
+	}
+	return nil
+}
+
+func (g *schemaGenerator) typeName(r *resourceType) string {
+	return r.name
 }
 
 type schemaNestedType struct {
@@ -137,16 +167,21 @@ func rawMessage(v interface{}) json.RawMessage {
 
 func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (*pschema.Package, error) {
 	g := &schemaGenerator{
-		pkg: name,
+		pkg:     name,
+		version: version,
+		info:    info,
 	}
+	return pschema.ImportSpec(g.genPackageSpec(pack))
+}
 
+func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
 	spec := pschema.PackageSpec{
-		Name:       name,
-		Version:    version,
-		Keywords:   info.Keywords,
-		Homepage:   info.Homepage,
-		License:    info.License,
-		Repository: info.Repository,
+		Name:       g.pkg,
+		Version:    g.version,
+		Keywords:   g.info.Keywords,
+		Homepage:   g.info.Homepage,
+		License:    g.info.License,
+		Repository: g.info.Repository,
 		Resources:  map[string]pschema.ResourceSpec{},
 		Functions:  map[string]pschema.FunctionSpec{},
 		Types:      map[string]pschema.ObjectTypeSpec{},
@@ -157,11 +192,11 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 		},
 	}
 
-	tfLicense := info.GetTFProviderLicense()
+	tfLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(tfLicense)
-	spec.Description = fmt.Sprintf(standardDocReadme, name, info.Name, info.GetGitHubOrg(), tfLicense, licenseTypeURL)
-	if info.Description != "" {
-		spec.Description = fmt.Sprintf("%s\n\n%s", info.Description, spec.Description)
+	spec.Description = fmt.Sprintf(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), tfLicense, licenseTypeURL)
+	if g.info.Description != "" {
+		spec.Description = fmt.Sprintf("%s\n\n%s", g.info.Description, spec.Description)
 	}
 
 	var config []*variable
@@ -198,30 +233,30 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 		spec.Provider = g.genResourceType("index", pack.provider)
 	}
 
-	if jsi := info.JavaScript; jsi != nil {
+	if jsi := g.info.JavaScript; jsi != nil {
 		spec.Language["nodejs"] = rawMessage(map[string]interface{}{
 			"packageName":        jsi.PackageName,
-			"packageDescription": generateManifestDescription(info),
+			"packageDescription": generateManifestDescription(g.info),
 			"dependencies":       jsi.Dependencies,
 			"devDependencies":    jsi.DevDependencies,
 			"typescriptVersion":  jsi.TypeScriptVersion,
 		})
 	}
 
-	if pi := info.Python; pi != nil {
+	if pi := g.info.Python; pi != nil {
 		spec.Language["python"] = rawMessage(map[string]interface{}{
 			"requires": pi.Requires,
 		})
 	}
 
-	if csi := info.CSharp; csi != nil {
+	if csi := g.info.CSharp; csi != nil {
 		spec.Language["csharp"] = rawMessage(map[string]interface{}{
 			"packageReferences": csi.PackageReferences,
 			"namespaces":        csi.Namespaces,
 		})
 	}
 
-	return pschema.ImportSpec(spec)
+	return spec
 }
 
 func (g *schemaGenerator) genDocComment(comment, docURL string) string {
