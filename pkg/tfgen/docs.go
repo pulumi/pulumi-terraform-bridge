@@ -504,7 +504,7 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
 			// If we found a fenced block, parse out the code from it.
-			if language == nodeJS {
+			if language == nodeJS || language == pulumiSchema {
 				var hcl string
 				for i = i + 1; i < len(lines); i++ {
 					cline := lines[i]
