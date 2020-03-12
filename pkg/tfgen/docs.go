@@ -503,6 +503,8 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
+			result = append(result, "{{% examples %}}")
+
 			// If we found a fenced block, parse out the code from it.
 			if language == nodeJS || language == pulumiSchema {
 				var hcl string
@@ -553,6 +555,8 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 				}
 				skippableExamples = true
 			}
+
+			result = append(result, "{{% /examples %}}")
 		} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
 			// Strip "Open in Cloud Shell" buttons.
 			for i = i + 1; i < len(lines); i++ {
