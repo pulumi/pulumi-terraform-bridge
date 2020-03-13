@@ -736,6 +736,7 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 	} else {
 		contract.Assert(rg.fun != nil)
 		rg.generateDatasourceFunc()
+		rg.generateDatasourceClass()
 		rg.generateDatasourceArgs()
 		rg.generateDatasourceResult()
 	}
@@ -927,9 +928,10 @@ func (rg *csharpResourceGenerator) generateResourceState() {
 	}
 }
 
+// TODO: Invoke functions are generated for smooth transition to invoke classes. To be removed in
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/131.
 func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	// Open the partial class we'll use for datasources.
-	// TODO(pdg): this needs a better name that is guaranteed to be unique.
 	rg.w.Writefmtln("    public static partial class Invokes")
 	rg.w.Writefmtln("    {")
 
@@ -962,8 +964,53 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 	}
 
 	// Emit the datasource method.
+	className := strings.Title(rg.fun.name)
+	rg.w.Writefmtln("        [Obsolete(\"Use %s.InvokeAsync() instead\")]", className)
 	rg.w.Writefmtln("        public static Task%s %s(%sInvokeOptions? options = null)",
 		typeParameter, methodName, argsParamDef)
+	rg.w.Writefmtln("            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
+		typeParameter, rg.fun.info.Tok, argsParamRef)
+
+	// Close the class.
+	rg.w.Writefmtln("    }")
+}
+
+func (rg *csharpResourceGenerator) generateDatasourceClass() {
+	className := strings.Title(rg.fun.name)
+
+	// Open the class we'll use for datasources.
+	rg.w.Writefmtln("    public static class %s", className)
+	rg.w.Writefmtln("    {")
+
+	var typeParameter string
+	if rg.fun.retst != nil {
+		typeParameter = fmt.Sprintf("<%s>", rg.fun.retst.name)
+	}
+
+	var argsParamDef string
+	argsParamRef := "InvokeArgs.Empty"
+	if rg.fun.argst != nil {
+		argsType := rg.fun.argst.name
+
+		var argsDefault string
+		if len(rg.fun.reqargs) == 0 {
+			// If the number of required input properties was zero, we can make the args object optional.
+			argsDefault = " = null"
+			argsType += "?"
+		}
+
+		argsParamDef = fmt.Sprintf("%s args%s, ", argsType, argsDefault)
+		argsParamRef = "args ?? InvokeArgs.Empty"
+	}
+
+	// Emit the doc comment, if any.
+	if rg.fun.doc != "" {
+		emitCSharpDocComment(rg.w, rg.fun.doc, rg.fun.docURL, "        ")
+	}
+
+	// Emit the datasource method.
+	rg.w.Writefmtln("        public static Task%s InvokeAsync(%sInvokeOptions? options = null)",
+		typeParameter, argsParamDef)
 	rg.w.Writefmtln("            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());",
 		typeParameter, rg.fun.info.Tok, argsParamRef)
 
