@@ -410,6 +410,8 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 					cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
 				}
 			default:
+				subsection = wrapShortcode(subsection)
+
 				// For all other sections, append them to the description section.
 				if !wroteHeader {
 					ret.Description += fmt.Sprintf("## %s\n", header)
@@ -430,6 +432,12 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 	}
 
 	return doc, nil
+}
+
+func wrapShortcode(lines []string) []string {
+	lines = append([]string{"{{% examples %}}"}, lines...)
+	lines = append(lines, "{{% /examples %}}")
+	return lines
 }
 
 var (
@@ -503,8 +511,6 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
-			result = append(result, "{{% examples %}}")
-
 			// If we found a fenced block, parse out the code from it.
 			if language == nodeJS || language == pulumiSchema {
 				var hcl string
@@ -555,8 +561,6 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 				}
 				skippableExamples = true
 			}
-
-			result = append(result, "{{% /examples %}}")
 		} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
 			// Strip "Open in Cloud Shell" buttons.
 			for i = i + 1; i < len(lines); i++ {
