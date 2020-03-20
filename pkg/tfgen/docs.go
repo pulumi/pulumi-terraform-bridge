@@ -283,6 +283,13 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			continue
 		}
 
+		// Add shortcode around each examples block.
+		var headerIsExampleUsage bool
+		if header == "Example Usage" {
+			headerIsExampleUsage = true
+			ret.Description += "{{% examples %}}\n"
+		}
+
 		// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 		// snippets that are unparseable (we don't want to ignore entire H2 sections).
 		var wroteHeader bool
@@ -418,8 +425,19 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 						ret.Description += "\n"
 					}
 				}
-				ret.Description += strings.Join(subsection, "\n") + "\n"
+
+				description := strings.Join(subsection, "\n") + "\n"
+				if headerIsExampleUsage {
+					// Wrap each example in shortcode.
+					description = "{{% example %}}\n" + description + "{{% /example %}}\n"
+				}
+				ret.Description += description
 			}
+		}
+
+		// Add the closing shortcode around the examples block.
+		if headerIsExampleUsage {
+			ret.Description += "{{% /examples %}}\n"
 		}
 	}
 
