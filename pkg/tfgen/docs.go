@@ -27,8 +27,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )

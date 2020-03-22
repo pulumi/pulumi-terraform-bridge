@@ -19,8 +19,8 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
