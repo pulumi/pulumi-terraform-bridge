@@ -331,15 +331,7 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 			propertyInfo = propertyInfos[key]
 		}
 
-		var doc string
-		if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[key] != "" {
-			doc = res.arguments[key]
-		} else if res := parsedDocs.Arguments[key]; res != nil && res.doc != "" {
-			doc = res.doc
-		} else {
-			doc = parsedDocs.Attributes[key]
-		}
-
+		doc := getNestedDescriptionFromParsedDocs(parsedDocs, objectName, key)
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, parsedDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
@@ -733,12 +725,7 @@ func (g *generator) gatherResource(rawname string,
 	for _, key := range stableSchemas(args) {
 		propschema := args[key]
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		var doc string
-		if res := parsedDocs.Arguments[key]; res != nil && parsedDocs.Arguments[key].doc != "" {
-			doc = res.doc
-		} else {
-			doc = parsedDocs.Attributes[key]
-		}
+		doc := getDescriptionFromParsedDocs(parsedDocs, key)
 		rawdoc := propschema.Description
 
 		propinfo := info.Fields[key]
@@ -898,13 +885,7 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			var doc string
-			if res := parsedDocs.Arguments[arg]; res != nil {
-				doc = res.doc
-			} else {
-				doc = parsedDocs.Attributes[arg]
-			}
-
+			doc := getDescriptionFromParsedDocs(parsedDocs, arg)
 			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, parsedDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
@@ -1230,4 +1211,17 @@ func emitFile(outDir, relPath string, contents []byte) error {
 
 	_, err = f.Write(contents)
 	return err
+}
+
+func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
+	return getNestedDescriptionFromParsedDocs(parsedDocs, "", arg)
+}
+
+func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
+	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
+		return res.arguments[arg]
+	} else if res := parsedDocs.Arguments[arg]; res != nil && res.doc != "" {
+		return res.doc
+	}
+	return parsedDocs.Attributes[arg]
 }
