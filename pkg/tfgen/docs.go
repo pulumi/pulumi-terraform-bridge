@@ -277,7 +277,8 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 		if strings.Index(header, "## ") == 0 {
 			header = header[3:]
 		}
-		if header == "Import" || header == "Imports" || header == "Timeout" || header == "Timeouts" {
+		if header == "Import" || header == "Imports" || header == "Timeout" ||
+			header == "Timeouts" || header == "User Project Overrides" || header == "User Project Override" {
 			ignoredDocSections++
 			ignoredDocHeaders[header]++
 			continue
