@@ -240,7 +240,7 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
+func makePropertyType(key string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	parsedDocs parsedDoc) *propertyType {
 
 	t := &propertyType{}
@@ -283,9 +283,9 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
-		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)
+		t.element = makePropertyType(key, elem, elemInfo, out, parsedDocs)
 	case *schema.Resource:
-		t.element = makeObjectPropertyType(elem, elemInfo, out, parsedDocs)
+		t.element = makeObjectPropertyType(key, elem, elemInfo, out, parsedDocs)
 	}
 
 	switch t.kind {
@@ -304,7 +304,7 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	return t
 }
 
-func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
+func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
 	parsedDocs parsedDoc) *propertyType {
 
 	t := &propertyType{
@@ -331,8 +331,12 @@ func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := parsedDocs.Arguments[key]
-		if doc == "" {
+		var doc string
+		if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[key] != "" {
+			doc = res.arguments[key]
+		} else if res := parsedDocs.Arguments[key]; res != nil && res.doc != "" {
+			doc = res.doc
+		} else {
 			doc = parsedDocs.Attributes[key]
 		}
 
@@ -729,8 +733,10 @@ func (g *generator) gatherResource(rawname string,
 	for _, key := range stableSchemas(args) {
 		propschema := args[key]
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := parsedDocs.Arguments[key]
-		if doc == "" {
+		var doc string
+		if res := parsedDocs.Arguments[key]; res != nil && parsedDocs.Arguments[key].doc != "" {
+			doc = res.doc
+		} else {
 			doc = parsedDocs.Attributes[key]
 		}
 		rawdoc := propschema.Description
@@ -892,7 +898,14 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/, parsedDocs)
+			var doc string
+			if res := parsedDocs.Arguments[arg]; res != nil {
+				doc = res.doc
+			} else {
+				doc = parsedDocs.Attributes[arg]
+			}
+
+			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, parsedDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1059,7 +1072,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			schema: sch,
 			info:   info,
 			docURL: docURL,
-			typ:    makePropertyType(sch, info, out, parsedDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, parsedDocs),
 		}
 	}
 	return nil
