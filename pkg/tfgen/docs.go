@@ -35,9 +35,13 @@ import (
 
 // Either doc or arguments
 type argument struct {
-	doc       string
+	// The description for this argument
+	description string
+	// The arguments for this argument
 	arguments map[string]string
-	isNested  bool
+	// Whether this argument was derived from a nested object. Used to determine
+	// whether to append descriptions that have continued to the following line
+	isNested bool
 }
 
 // parsedDoc represents the data parsed from TF markdown documentation
@@ -130,13 +134,7 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 		return parsedDoc{}, nil
 	}
 
-	return parseAndMergeDocs(g, org, provider, resourcePrefix, kind, rawname, info, string(markdownBytes), markdownFileName)
-}
-
-func parseAndMergeDocs(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, markdown string, markdownFileName string) (parsedDoc, error) {
-
-	doc, err := parseTFMarkdown(g, info, kind, markdown, markdownFileName, resourcePrefix, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
 		return parsedDoc{}, nil
 	}
@@ -147,8 +145,8 @@ func parseAndMergeDocs(g *generator, org string, provider string, resourcePrefix
 	}
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFrom,
-			true, true); err != nil {
+		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
+			docinfo.IncludeAttributesFrom, true, true); err != nil {
 			return doc, err
 		}
 
@@ -159,8 +157,8 @@ func parseAndMergeDocs(g *generator, org string, provider string, resourcePrefix
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(g, info, org, provider, provider, kind, doc, docinfo.IncludeArgumentsFrom,
-			false, false); err != nil {
+		if err := mergeDocs(g, info, org, provider, provider, kind, doc,
+			docinfo.IncludeArgumentsFrom, false, false); err != nil {
 			return doc, err
 		}
 	}
@@ -196,7 +194,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 			}
 		} else if isTargetAttributes && !isSourceAttributes {
 			for k, v := range sourceDocs.Arguments {
-				docs.Attributes[k] = v.doc
+				docs.Attributes[k] = v.description
 				for kk, vv := range v.arguments {
 					docs.Attributes[kk] = vv
 				}
@@ -209,8 +207,8 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 					docArguments[kk] = vv
 				}
 				docs.Arguments[k] = &argument{
-					doc:       v.doc,
-					arguments: docArguments,
+					description: v.description,
+					arguments:   docArguments,
 				}
 			}
 		}
@@ -389,12 +387,12 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 							// argument doesn't match the resource's argument.
 							if ret.Arguments[matches[1]] == nil {
 								ret.Arguments[matches[1]] = &argument{
-									doc:      matches[4],
-									isNested: true, // Mark that this argument comes from a nested field.
+									description: matches[4],
+									isNested:    true, // Mark that this argument comes from a nested field.
 								}
 							}
 						} else {
-							ret.Arguments[matches[1]] = &argument{doc: matches[4]}
+							ret.Arguments[matches[1]] = &argument{description: matches[4]}
 						}
 						lastMatch = matches[1]
 					} else if !isBlank(line) && lastMatch != "" {
@@ -404,10 +402,10 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 
 							// Also update the top-level argument if we took it from a nested field.
 							if ret.Arguments[lastMatch].isNested {
-								ret.Arguments[lastMatch].doc += "\n" + strings.TrimSpace(line)
+								ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 							}
 						} else {
-							ret.Arguments[lastMatch].doc += "\n" + strings.TrimSpace(line)
+							ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 						}
 					} else {
 						// This line might declare the beginning of a nested object.
@@ -690,16 +688,16 @@ func convertHCL(hcl string) (string, string, error) {
 
 func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) (parsedDoc, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argument)
+	newargs := make(map[string]*argument, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		cleanedText, elided := cleanupText(g, info, v.doc)
+		cleanedText, elided := cleanupText(g, info, v.description)
 		if elided {
 			elidedDoc = true
 		}
 
 		newargs[k] = &argument{
-			doc:       cleanedText,
-			arguments: make(map[string]string),
+			description: cleanedText,
+			arguments:   make(map[string]string, len(v.arguments)),
 		}
 
 		// Clean nested arguments (if any)
@@ -744,9 +742,9 @@ const elidedDocComment = "<elided>"
 func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string) (string, bool) {
 	// Remove incorrect documentation that should have been cleaned up in our forks.
 	// TODO: fail the build in the face of such text, once we have a processes in place.
-	/*if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
 		return "", true
-	}*/
+	}
 
 	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
 	text = strings.Replace(text, "-> ", "> ", -1)

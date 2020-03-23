@@ -1220,8 +1220,8 @@ func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
 func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
 	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
 		return res.arguments[arg]
-	} else if res := parsedDocs.Arguments[arg]; res != nil && res.doc != "" {
-		return res.doc
+	} else if res := parsedDocs.Arguments[arg]; res != nil && res.description != "" {
+		return res.description
 	}
 	return parsedDocs.Attributes[arg]
 }
