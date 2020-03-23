@@ -221,13 +221,15 @@ var (
 	argumentBulletRegexp = regexp.MustCompile(
 		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
-	argumentBlockRegexp = regexp.MustCompile("`([a-z_]+)`\\s+block[\\s\\w]*:")
-
 	nestedObjectRegexps = []*regexp.Regexp{
 		// For example:
 		// s3_bucket.html.markdown: "The `website` object supports the following:"
 		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
 		regexp.MustCompile("`([a-z_]+)`.*following"),
+
+		// For example:
+		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
 	}
 
 	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
