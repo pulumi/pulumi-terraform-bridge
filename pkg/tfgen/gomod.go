@@ -35,7 +35,7 @@ func LoadGoMod() (*modfile.File, error) {
 	if moduleRoot == "" {
 		// Some provider repos have a "provider" module, rather than a
 		// module at the root of the repo.
-		moduleRoot = findModuleRoot(exePath + "provider")
+		moduleRoot = findModuleRoot(exePath + "/provider")
 		if moduleRoot == "" {
 			return nil, errors.New("cannot find module root")
 		}
