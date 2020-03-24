@@ -33,7 +33,12 @@ func LoadGoMod() (*modfile.File, error) {
 
 	moduleRoot := findModuleRoot(exePath)
 	if moduleRoot == "" {
-		return nil, errors.New("cannot find module root")
+		// Some provider repos have a "provider" module, rather than a
+		// module at the root of the repo.
+		moduleRoot = findModuleRoot(exePath + "provider")
+		if moduleRoot == "" {
+			return nil, errors.New("cannot find module root")
+		}
 	}
 
 	gomodContent, err := ioutil.ReadFile(filepath.Join(moduleRoot, "go.mod"))
