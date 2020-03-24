@@ -33,12 +33,14 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
 
-// Either doc or arguments
+// argument the metadata for an argument of the resource.
 type argument struct {
 	// The description for this argument
 	description string
-	// The arguments for this argument
+
+	// (Optional) The names and descriptions for each argument of this argument.
 	arguments map[string]string
+
 	// Whether this argument was derived from a nested object. Used to determine
 	// whether to append descriptions that have continued to the following line
 	isNested bool
@@ -48,10 +50,34 @@ type argument struct {
 type parsedDoc struct {
 	// Description is the description of the resource
 	Description string
-	// Arguments includes the names and descriptions for each argument of the resource
+
+	// Arguments maps the name of each argument of the resource to its metadata.
+	// Each argument has a description. Some arguments have their own arguments.
+	//
+	// For example, using a couple arguments from s3_bucket.html.markdown, we
+	// expect to see a map like this, where "bucket" and "website" are top-level
+	// arguments, and "index_document" is an argument of "website":
+	//  - bucket
+	//  	- description: "(Optional, Forces new resource) The name of the bucket.
+	//  		If omitted, Terraform will assign a random, unique name."
+	//  - website
+	//  	- description: "(Optional) A website object (documented below)."
+	//  	- arguments:
+	//  		- index_document: "(Required, unless using `redirect_all_requests_to`)
+	//				Amazon S3 returns this index document when requests are made to the
+	//			 	root domain or any of the subfolders."
+	//  - index_document
+	//  	- description: "(Required, unless using `redirect_all_requests_to`)
+	// 			Amazon S3 returns this index document when requests are made to the
+	//			root domain or any of the subfolders."
+	//  	- isNested: true
+	// "index_document" is recorded like a top level argument since sometimes object names in
+	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
 	Arguments map[string]*argument
+
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
+
 	// URL is the source documentation URL page
 	URL string
 }
@@ -368,8 +394,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 			switch {
 			case headerIsArgsReference:
-				var lastMatch string
-				nested := ""
+				var lastMatch, nested string
 				for _, line := range subsection {
 					matches := argumentBulletRegexp.FindStringSubmatch(line)
 					if len(matches) >= 4 {
