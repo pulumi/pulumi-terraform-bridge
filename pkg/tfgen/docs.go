@@ -180,7 +180,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
-	resourcePrefix string, kind DocKind, docs parsedDoc, sourceFrom string, isTargetAttributes bool, isSourceAttributes bool) error {
+	resourcePrefix string, kind DocKind, docs parsedDoc, sourceFrom string, useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
@@ -188,18 +188,18 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 			return err
 		}
 
-		if isTargetAttributes && isSourceAttributes {
+		if useTargetAttributes && useSourceAttributes {
 			for k, v := range sourceDocs.Attributes {
 				docs.Attributes[k] = v
 			}
-		} else if isTargetAttributes && !isSourceAttributes {
+		} else if useTargetAttributes && !useSourceAttributes {
 			for k, v := range sourceDocs.Arguments {
 				docs.Attributes[k] = v.description
 				for kk, vv := range v.arguments {
 					docs.Attributes[kk] = vv
 				}
 			}
-		} else if !isTargetAttributes && !isSourceAttributes {
+		} else if !useTargetAttributes && !useSourceAttributes {
 			for k, v := range sourceDocs.Arguments { // string -> argument
 				arguments := sourceDocs.Arguments[k].arguments
 				docArguments := make(map[string]string)
@@ -385,8 +385,9 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 							}
 							ret.Arguments[nested].arguments[matches[1]] = matches[4]
 
-							// Also record this as a top-level argument, since sometimes the recorded nested
+							// Also record this as a top-level argument just in case, since sometimes the recorded nested
 							// argument doesn't match the resource's argument.
+							// For example, see `cors_rule` in s3_bucket.html.markdown.
 							if ret.Arguments[matches[1]] == nil {
 								ret.Arguments[matches[1]] = &argument{
 									description: matches[4],

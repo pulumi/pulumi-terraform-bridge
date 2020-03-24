@@ -240,7 +240,7 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(key string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
+func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	parsedDocs parsedDoc) *propertyType {
 
 	t := &propertyType{}
@@ -283,9 +283,9 @@ func makePropertyType(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
-		t.element = makePropertyType(key, elem, elemInfo, out, parsedDocs)
+		t.element = makePropertyType(objectName, elem, elemInfo, out, parsedDocs)
 	case *schema.Resource:
-		t.element = makeObjectPropertyType(key, elem, elemInfo, out, parsedDocs)
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, parsedDocs)
 	}
 
 	switch t.kind {
@@ -1213,10 +1213,14 @@ func emitFile(outDir, relPath string, contents []byte) error {
 	return err
 }
 
+// getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
+// attribute description if there is none.
 func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
 	return getNestedDescriptionFromParsedDocs(parsedDocs, "", arg)
 }
 
+// getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
+// top-level argument description or attribute description if there is none.
 func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
 	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
 		return res.arguments[arg]
