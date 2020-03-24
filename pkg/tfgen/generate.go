@@ -240,7 +240,7 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
+func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	parsedDocs parsedDoc) *propertyType {
 
 	t := &propertyType{}
@@ -283,9 +283,9 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
-		t.element = makePropertyType(elem, elemInfo, out, parsedDocs)
+		t.element = makePropertyType(objectName, elem, elemInfo, out, parsedDocs)
 	case *schema.Resource:
-		t.element = makeObjectPropertyType(elem, elemInfo, out, parsedDocs)
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, parsedDocs)
 	}
 
 	switch t.kind {
@@ -304,7 +304,7 @@ func makePropertyType(sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
 	return t
 }
 
-func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
+func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
 	parsedDocs parsedDoc) *propertyType {
 
 	t := &propertyType{
@@ -331,11 +331,7 @@ func makeObjectPropertyType(res *schema.Resource, info *tfbridge.SchemaInfo, out
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := parsedDocs.Arguments[key]
-		if doc == "" {
-			doc = parsedDocs.Attributes[key]
-		}
-
+		doc := getNestedDescriptionFromParsedDocs(parsedDocs, objectName, key)
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, parsedDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
@@ -729,10 +725,7 @@ func (g *generator) gatherResource(rawname string,
 	for _, key := range stableSchemas(args) {
 		propschema := args[key]
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := parsedDocs.Arguments[key]
-		if doc == "" {
-			doc = parsedDocs.Attributes[key]
-		}
+		doc := getDescriptionFromParsedDocs(parsedDocs, key)
 		rawdoc := propschema.Description
 
 		propinfo := info.Fields[key]
@@ -892,7 +885,8 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			argvar := propertyVariable(arg, sch, cust, parsedDocs.Arguments[arg], "", "", false /*out*/, parsedDocs)
+			doc := getDescriptionFromParsedDocs(parsedDocs, arg)
+			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, parsedDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1059,7 +1053,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			schema: sch,
 			info:   info,
 			docURL: docURL,
-			typ:    makePropertyType(sch, info, out, parsedDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, parsedDocs),
 		}
 	}
 	return nil
@@ -1217,4 +1211,21 @@ func emitFile(outDir, relPath string, contents []byte) error {
 
 	_, err = f.Write(contents)
 	return err
+}
+
+// getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
+// attribute description if there is none.
+func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
+	return getNestedDescriptionFromParsedDocs(parsedDocs, "", arg)
+}
+
+// getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
+// top-level argument description or attribute description if there is none.
+func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
+	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
+		return res.arguments[arg]
+	} else if res := parsedDocs.Arguments[arg]; res != nil && res.description != "" {
+		return res.description
+	}
+	return parsedDocs.Attributes[arg]
 }

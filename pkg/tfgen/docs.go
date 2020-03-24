@@ -33,14 +33,51 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
 
+// argument the metadata for an argument of the resource.
+type argument struct {
+	// The description for this argument
+	description string
+
+	// (Optional) The names and descriptions for each argument of this argument.
+	arguments map[string]string
+
+	// Whether this argument was derived from a nested object. Used to determine
+	// whether to append descriptions that have continued to the following line
+	isNested bool
+}
+
 // parsedDoc represents the data parsed from TF markdown documentation
 type parsedDoc struct {
 	// Description is the description of the resource
 	Description string
-	// Arguments includes the names and descriptions for each argument of the resource
-	Arguments map[string]string
+
+	// Arguments maps the name of each argument of the resource to its metadata.
+	// Each argument has a description. Some arguments have their own arguments.
+	//
+	// For example, using a couple arguments from s3_bucket.html.markdown, we
+	// expect to see a map like this, where "bucket" and "website" are top-level
+	// arguments, and "index_document" is an argument of "website":
+	//  - bucket
+	//  	- description: "(Optional, Forces new resource) The name of the bucket.
+	//  		If omitted, Terraform will assign a random, unique name."
+	//  - website
+	//  	- description: "(Optional) A website object (documented below)."
+	//  	- arguments:
+	//  		- index_document: "(Required, unless using `redirect_all_requests_to`)
+	//				Amazon S3 returns this index document when requests are made to the
+	//			 	root domain or any of the subfolders."
+	//  - index_document
+	//  	- description: "(Required, unless using `redirect_all_requests_to`)
+	// 			Amazon S3 returns this index document when requests are made to the
+	//			root domain or any of the subfolders."
+	//  	- isNested: true
+	// "index_document" is recorded like a top level argument since sometimes object names in
+	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
+	Arguments map[string]*argument
+
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
+
 	// URL is the source documentation URL page
 	URL string
 }
@@ -134,30 +171,20 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 	}
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc.Attributes, docinfo.IncludeAttributesFrom,
-			func(s parsedDoc) map[string]string {
-				return s.Attributes
-			},
-		); err != nil {
+		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
+			docinfo.IncludeAttributesFrom, true, true); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc.Attributes,
-			docinfo.IncludeAttributesFromArguments,
-			func(s parsedDoc) map[string]string {
-				return s.Arguments
-			},
-		); err != nil {
+		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
+			docinfo.IncludeAttributesFromArguments, true, false); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(g, info, org, provider, provider, kind, doc.Arguments, docinfo.IncludeArgumentsFrom,
-			func(s parsedDoc) map[string]string {
-				return s.Arguments
-			},
-		); err != nil {
+		if err := mergeDocs(g, info, org, provider, provider, kind, doc,
+			docinfo.IncludeArgumentsFrom, false, false); err != nil {
 			return doc, err
 		}
 	}
@@ -179,16 +206,37 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
-	resourcePrefix string, kind DocKind, targetDocs map[string]string, sourceFrom string,
-	extractDocs func(d parsedDoc) map[string]string) error {
+	resourcePrefix string, kind DocKind, docs parsedDoc, sourceFrom string, useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
 		if err != nil {
 			return err
 		}
-		for k, v := range extractDocs(sourceDocs) {
-			targetDocs[k] = v
+
+		if useTargetAttributes && useSourceAttributes {
+			for k, v := range sourceDocs.Attributes {
+				docs.Attributes[k] = v
+			}
+		} else if useTargetAttributes && !useSourceAttributes {
+			for k, v := range sourceDocs.Arguments {
+				docs.Attributes[k] = v.description
+				for kk, vv := range v.arguments {
+					docs.Attributes[kk] = vv
+				}
+			}
+		} else if !useTargetAttributes && !useSourceAttributes {
+			for k, v := range sourceDocs.Arguments { // string -> argument
+				arguments := sourceDocs.Arguments[k].arguments
+				docArguments := make(map[string]string)
+				for kk, vv := range arguments {
+					docArguments[kk] = vv
+				}
+				docs.Arguments[k] = &argument{
+					description: v.description,
+					arguments:   docArguments,
+				}
+			}
 		}
 	}
 	return nil
@@ -199,7 +247,16 @@ var (
 	argumentBulletRegexp = regexp.MustCompile(
 		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
-	argumentBlockRegexp = regexp.MustCompile("`([a-z_]+)`\\s+block[\\s\\w]*:")
+	nestedObjectRegexps = []*regexp.Regexp{
+		// For example:
+		// s3_bucket.html.markdown: "The `website` object supports the following:"
+		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+		regexp.MustCompile("`([a-z_]+)`.*following"),
+
+		// For example:
+		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+	}
 
 	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
@@ -255,7 +312,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 	markdown, markdownFileName, resourcePrefix, rawname string) (parsedDoc, error) {
 
 	ret := parsedDoc{
-		Arguments:  make(map[string]string),
+		Arguments:  make(map[string]*argument),
 		Attributes: make(map[string]string),
 		URL:        getDocsDetailsURL(g.info.GetGitHubOrg(), resourcePrefix, string(kind), markdownFileName),
 	}
@@ -338,23 +395,59 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 			switch {
 			case headerIsArgsReference:
-				var lastMatch string
+				var lastMatch, nested string
 				for _, line := range subsection {
 					matches := argumentBulletRegexp.FindStringSubmatch(line)
-					blockMatches := argumentBlockRegexp.FindStringSubmatch(line)
 					if len(matches) >= 4 {
 						// found a property bullet, extract the name and description
-						ret.Arguments[matches[1]] = matches[4]
+						if nested != "" {
+							// We found this line within a nested field. We should record it as such.
+							if ret.Arguments[nested] == nil {
+								ret.Arguments[nested] = &argument{
+									arguments: make(map[string]string),
+								}
+							} else if ret.Arguments[nested].arguments == nil {
+								ret.Arguments[nested].arguments = make(map[string]string)
+							}
+							ret.Arguments[nested].arguments[matches[1]] = matches[4]
+
+							// Also record this as a top-level argument just in case, since sometimes the recorded nested
+							// argument doesn't match the resource's argument.
+							// For example, see `cors_rule` in s3_bucket.html.markdown.
+							if ret.Arguments[matches[1]] == nil {
+								ret.Arguments[matches[1]] = &argument{
+									description: matches[4],
+									isNested:    true, // Mark that this argument comes from a nested field.
+								}
+							}
+						} else {
+							ret.Arguments[matches[1]] = &argument{description: matches[4]}
+						}
 						lastMatch = matches[1]
 					} else if !isBlank(line) && lastMatch != "" {
 						// this is a continuation of the previous bullet
-						ret.Arguments[lastMatch] += "\n" + strings.TrimSpace(line)
-					} else if len(blockMatches) >= 2 {
-						// found a block match, once we've found one of these the main attribute section is finished so
-						// exit the loop. May require changing to get docs for named nested types as part of #163.
-						break
+						if nested != "" {
+							ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+
+							// Also update the top-level argument if we took it from a nested field.
+							if ret.Arguments[lastMatch].isNested {
+								ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+							}
+						} else {
+							ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+						}
 					} else {
-						// This is an empty line or there were no bullets yet - clear the lastMatch
+						// This line might declare the beginning of a nested object.
+						// If we do not find a "nested", then this is an empty line or there were no bullets yet.
+						for _, match := range nestedObjectRegexps {
+							matches := match.FindStringSubmatch(line)
+							if len(matches) >= 2 {
+								nested = strings.ToLower(matches[1])
+								break
+							}
+						}
+
+						// Clear the lastMatch.
 						lastMatch = ""
 					}
 				}
@@ -624,13 +717,26 @@ func convertHCL(hcl string) (string, string, error) {
 
 func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) (parsedDoc, bool) {
 	elidedDoc := false
-	newargs := make(map[string]string, len(doc.Arguments))
+	newargs := make(map[string]*argument, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		cleanupText, elided := cleanupText(g, info, v)
+		cleanedText, elided := cleanupText(g, info, v.description)
 		if elided {
 			elidedDoc = true
 		}
-		newargs[k] = cleanupText
+
+		newargs[k] = &argument{
+			description: cleanedText,
+			arguments:   make(map[string]string, len(v.arguments)),
+		}
+
+		// Clean nested arguments (if any)
+		for kk, vv := range v.arguments {
+			cleanedText, elided := cleanupText(g, info, vv)
+			if elided {
+				elidedDoc = true
+			}
+			newargs[k].arguments[kk] = cleanedText
+		}
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
