@@ -20,7 +20,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 )
 
 // TransformJSONDocument permits either a string, which is presumed to represent an already-stringified JSON document,

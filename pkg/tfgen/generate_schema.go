@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	pschema "github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
