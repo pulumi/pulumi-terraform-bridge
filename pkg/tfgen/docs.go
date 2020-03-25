@@ -162,7 +162,7 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 
 	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
-		return parsedDoc{}, nil
+		return parsedDoc{}, err
 	}
 
 	var docinfo *tfbridge.DocInfo
