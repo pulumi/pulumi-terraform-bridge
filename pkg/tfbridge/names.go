@@ -26,7 +26,7 @@ import (
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
-func PulumiToTerraformName(name string, tfs map[string]*schema.Schema) string {
+func PulumiToTerraformName(name string, tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) string {
 	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
@@ -45,23 +45,46 @@ func PulumiToTerraformName(name string, tfs map[string]*schema.Schema) string {
 		// Note: If the name is not found in it's singular form in the schema map, that may be because the TF name was
 		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
 		// result.
+		var info *SchemaInfo
 		sch, ok := tfs[singularResult]
-		if ok && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
+		if ps != nil {
+			if p, ok := ps[singularResult]; ok {
+				info = p
+			}
+		}
+
+		if ok && checkTfMaxItems(sch, false) || isPulmiMaxItemsOne(info) {
 			result = singularResult
 		}
 	}
 	return result
 }
 
+func checkTfMaxItems(tfs *schema.Schema, maxItemsOne bool) bool {
+	if tfs == nil {
+		return false
+	}
+
+	if tfs.Type != schema.TypeList && tfs.Type != schema.TypeSet {
+		return false
+	}
+
+	return (tfs.MaxItems == 1) == maxItemsOne
+}
+
+func isPulmiMaxItemsOne(ps *SchemaInfo) bool {
+	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
+}
+
 // TerraformToPulumiName performs a standard transformation on the given name string, from Terraform's underscore_casing
 // to Pulumi's PascalCasing (if upper is true) or camelCasing (if upper is false).
-func TerraformToPulumiName(name string, sch *schema.Schema, upper bool) string {
+func TerraformToPulumiName(name string, sch *schema.Schema, ps *SchemaInfo, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
 
 	// Pluralize names that will become array-shaped Pulumi values
-	if sch != nil && sch.MaxItems != 1 && (sch.Type == schema.TypeList || sch.Type == schema.TypeSet) {
+	if !isPulmiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
 		contract.Assertf(
 			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),

@@ -1044,7 +1044,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 		key = key[:len(key)-1]
 	}
 
-	return tfbridge.TerraformToPulumiName(key, sch, false /*no to PascalCase; we want camelCase*/)
+	return tfbridge.TerraformToPulumiName(key, sch, custom, false /*no to PascalCase; we want camelCase*/)
 }
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
@@ -1069,9 +1069,9 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)            // strip off the pkg prefix.
-		return tfbridge.TerraformToPulumiName(name, nil, false), // camelCase the data source name.
-			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
+		name := withoutPackageName(provider, rawname)                 // strip off the pkg prefix.
+		return tfbridge.TerraformToPulumiName(name, nil, nil, false), // camelCase the data source name.
+			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}
 	// otherwise, a custom transformation exists; use it.
 	return string(info.Tok.Name()), string(info.Tok.Module().Name())
@@ -1084,9 +1084,9 @@ func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo, 
 	}
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)           // strip off the pkg prefix.
-		return tfbridge.TerraformToPulumiName(name, nil, true), // PascalCase the resource name.
-			tfbridge.TerraformToPulumiName(name, nil, false) // camelCase the filename.
+		name := withoutPackageName(provider, rawname)                // strip off the pkg prefix.
+		return tfbridge.TerraformToPulumiName(name, nil, nil, true), // PascalCase the resource name.
+			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}
 	// otherwise, a custom transformation exists; use it.
 	return string(info.Tok.Name()), string(info.Tok.Module().Name())

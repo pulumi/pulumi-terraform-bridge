@@ -21,5 +21,6 @@ CHANGELOG
 * Ensure Terraform deprecations are represented in Pulumi schema
 * Ensure links to Terraform documentation pages are valid
 * Prefer errors over panics for potential upstream error catches
+* Ensure Pulumi SchemaInfo is taken into consideration when pluralizing parameters
 
 ---

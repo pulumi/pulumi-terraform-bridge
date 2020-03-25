@@ -263,7 +263,8 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 	contract.Assertf(strings.HasPrefix(name, prefix),
 		"Expected all Terraform resources in this module to have a '%v' prefix", prefix)
 	name = name[len(prefix):]
-	return TerraformToPulumiName(name, nil, false), TerraformToPulumiName(name, nil, true)
+	return TerraformToPulumiName(name, nil, nil, false),
+		TerraformToPulumiName(name, nil, nil, true)
 }
 
 func convertStringToPropertyValue(s string, typ schema.ValueType) (resource.PropertyValue, error) {
@@ -379,7 +380,7 @@ func (p *Provider) Configure(ctx context.Context,
 	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
 	for key, meta := range p.config {
 		if meta.Required && !config.IsSet(key) {
-			name := TerraformToPulumiName(key, meta, false)
+			name := TerraformToPulumiName(key, meta, nil, false)
 			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
 
 			// TF descriptions often have newlines in inopportune positions. This makes them present
@@ -430,8 +431,9 @@ func (p *Provider) formatFailureReason(res Resource, reason string) string {
 	parts := requiredFieldRegex.FindStringSubmatch(reason)
 	if len(parts) == 2 {
 		schema := res.TF.Schema[parts[1]]
+		info := res.Schema.Fields[parts[1]]
 		if schema != nil {
-			name := TerraformToPulumiName(parts[1], schema, false)
+			name := TerraformToPulumiName(parts[1], schema, info, false)
 			message := fmt.Sprintf("Missing required property '%s'", name)
 			// If a required field is missing and the value can be set via config,
 			// extend the error with a hint to set the proper config value
