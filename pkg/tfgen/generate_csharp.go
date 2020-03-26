@@ -961,7 +961,7 @@ func (rg *csharpResourceGenerator) generateDatasourceFunc() {
 
 	// Emit the doc comment, if any.
 	if rg.fun.doc != "" {
-		emitCSharpDocComment(rg.w, rg.fun.doc, rg.fun.docURL, "        ")
+		emitCSharpDocComment(rg.w, codegen.StripNonRelevantExamples(rg.fun.doc, "csharp"), rg.fun.docURL, "        ")
 	}
 
 	// Emit the datasource method.
@@ -1006,7 +1006,7 @@ func (rg *csharpResourceGenerator) generateDatasourceClass() {
 
 	// Emit the doc comment, if any.
 	if rg.fun.doc != "" {
-		emitCSharpDocComment(rg.w, rg.fun.doc, rg.fun.docURL, "        ")
+		emitCSharpDocComment(rg.w, codegen.StripNonRelevantExamples(rg.fun.doc, "csharp"), rg.fun.docURL, "        ")
 	}
 
 	// Emit the datasource method.

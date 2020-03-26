@@ -1045,7 +1045,7 @@ func (g *nodeJSGenerator) emitResourceFunc(mod *module, fun *resourceFunc, neste
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	if fun.doc != "" {
-		g.emitDocComment(w, fun.doc, fun.docURL, "", "")
+		g.emitDocComment(w, codegen.StripNonRelevantExamples(fun.doc, "typescript"), fun.docURL, "", "")
 	}
 
 	if fun.info.DeprecationMessage != "" {
