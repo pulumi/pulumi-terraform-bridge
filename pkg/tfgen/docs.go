@@ -162,7 +162,7 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 
 	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
-		return parsedDoc{}, nil
+		return parsedDoc{}, err
 	}
 
 	var docinfo *tfbridge.DocInfo
@@ -206,7 +206,9 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
-	resourcePrefix string, kind DocKind, docs parsedDoc, sourceFrom string, useTargetAttributes bool, useSourceAttributes bool) error {
+	resourcePrefix string,
+	kind DocKind, docs parsedDoc, sourceFrom string,
+	useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
@@ -339,6 +341,13 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			ignoredDocSections++
 			ignoredDocHeaders[header]++
 			continue
+		}
+
+		// Add shortcode around each examples block.
+		var headerIsExampleUsage bool
+		if header == "Example Usage" {
+			headerIsExampleUsage = true
+			ret.Description += "{{% examples %}}\n"
 		}
 
 		// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
@@ -512,8 +521,18 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 						ret.Description += "\n"
 					}
 				}
-				ret.Description += strings.Join(subsection, "\n") + "\n"
+				description := strings.Join(subsection, "\n") + "\n"
+				if headerIsExampleUsage {
+					// Wrap each example in shortcode.
+					description = "{{% example %}}\n" + description + "{{% /example %}}\n"
+				}
+				ret.Description += description
 			}
+		}
+
+		// Add the closing shortcode around the examples block.
+		if headerIsExampleUsage {
+			ret.Description += "{{% /examples %}}\n"
 		}
 	}
 

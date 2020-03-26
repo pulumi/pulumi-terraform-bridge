@@ -19,8 +19,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/pkg/resource/provider"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
