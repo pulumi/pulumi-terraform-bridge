@@ -206,7 +206,9 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
-	resourcePrefix string, kind DocKind, docs parsedDoc, sourceFrom string, useTargetAttributes bool, useSourceAttributes bool) error {
+	resourcePrefix string,
+	kind DocKind, docs parsedDoc, sourceFrom string,
+	useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
