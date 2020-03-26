@@ -19,8 +19,8 @@ require (
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg v0.0.0-20200322194843-61928f04e052
-	github.com/pulumi/pulumi/sdk v0.0.0-20200322194843-61928f04e052
+	github.com/pulumi/pulumi/pkg v0.0.0-20200325225746-80f1989600a3
+	github.com/pulumi/pulumi/sdk v0.0.0-20200325225746-80f1989600a3
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 // indirect
 	github.com/spf13/cobra v0.0.6
