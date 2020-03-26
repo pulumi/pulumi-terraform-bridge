@@ -32,6 +32,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
@@ -770,7 +771,7 @@ func (rg *csharpResourceGenerator) closeNamespace() {
 func (rg *csharpResourceGenerator) generateResourceClass() {
 	// Write the doc comment, if any.
 	if rg.res.doc != "" {
-		emitCSharpDocComment(rg.w, rg.res.doc, rg.res.docURL, "    ")
+		emitCSharpDocComment(rg.w, codegen.StripNonRelevantExamples(rg.res.doc, "csharp"), rg.res.docURL, "    ")
 	}
 
 	// Open the class.

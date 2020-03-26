@@ -33,6 +33,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/tools"
@@ -766,7 +767,7 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 
 	// Write the TypeDoc/JSDoc for the resource class
 	if res.doc != "" {
-		g.emitDocComment(w, res.doc, res.docURL, "", "")
+		g.emitDocComment(w, codegen.StripNonRelevantExamples(res.doc, "typescript"), res.docURL, "", "")
 	}
 
 	baseType := "CustomResource"
