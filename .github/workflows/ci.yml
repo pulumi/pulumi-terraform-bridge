@@ -59,6 +59,7 @@ jobs:
           downstream-url: https://github.com/pulumi/pulumi-aws
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
+          use-provider-dir: true
 
   downstream-azure:
     name: Test Azure Downstream
@@ -94,6 +95,7 @@ jobs:
           downstream-url: https://github.com/pulumi/pulumi-azure
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
+          use-provider-dir: true
 
   downstream-gcp:
     name: Test GCP Downstream
@@ -129,6 +131,7 @@ jobs:
           downstream-url: https://github.com/pulumi/pulumi-gcp
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
+          use-provider-dir: true
 
   downstream-vault:
     name: Test Vault Downstream
