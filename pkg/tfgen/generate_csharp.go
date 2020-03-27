@@ -736,7 +736,10 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 		rg.generateResourceState()
 	} else {
 		contract.Assert(rg.fun != nil)
-		rg.generateDatasourceFunc()
+		// Treat 'JavaScript.AsyncDataSources' as '2.0 data sources', also for .NET.
+		if !rg.g.info.JavaScript.AsyncDataSources {
+			rg.generateDatasourceFunc()
+		}
 		rg.generateDatasourceClass()
 		rg.generateDatasourceArgs()
 		rg.generateDatasourceResult()
