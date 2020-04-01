@@ -194,10 +194,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
 
 	tfLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(tfLicense)
-	spec.Description = fmt.Sprintf(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), tfLicense, licenseTypeURL)
-	if g.info.Description != "" {
-		spec.Description = fmt.Sprintf("%s\n\n%s", g.info.Description, spec.Description)
-	}
+	spec.Description = g.info.Description
+	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), tfLicense, licenseTypeURL)
 
 	var config []*variable
 	for _, mod := range pack.modules.values() {
@@ -274,14 +272,6 @@ func (g *schemaGenerator) genDocComment(comment, docURL string) string {
 			}
 			fmt.Fprintf(buffer, "%s\n", docLine)
 		}
-
-		if docURL != "" {
-			fmt.Fprintf(buffer, "\n")
-		}
-	}
-
-	if docURL != "" {
-		fmt.Fprintf(buffer, "> This content is derived from %s.\n", docURL)
 	}
 
 	return buffer.String()

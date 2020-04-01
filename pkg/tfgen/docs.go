@@ -269,6 +269,8 @@ var (
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
 > first check the [` + "`pulumi/pulumi-%[1]s`" + ` repo](https://github.com/pulumi/pulumi-%[1]s/issues); however, if that doesn't turn up anything,
 > please consult the source [` + "`%[3]s/terraform-provider-%[2]s`" + ` repo](https://github.com/%[3]s/terraform-provider-%[2]s/issues).`
+	attributionFormatString = `This provider is a derived work of the [Terraform Provider](https://github.com/%[2]s/terraform-provider-%[1]s)
+distributed under [%[3]s](%[4]s).`
 )
 
 // groupLines groups a collection of strings, a, by a given separator, sep.
