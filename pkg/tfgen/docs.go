@@ -27,10 +27,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 )
 
 // argument the metadata for an argument of the resource.

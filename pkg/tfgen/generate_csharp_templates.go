@@ -3,7 +3,7 @@ package tfgen
 import (
 	"text/template"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 // nolint:lll

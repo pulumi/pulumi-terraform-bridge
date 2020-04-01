@@ -21,8 +21,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // Main launches the tfbridge plugin for a given package pkg and provider prov.

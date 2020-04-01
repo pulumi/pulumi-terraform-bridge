@@ -32,13 +32,13 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 // newCSharpGenerator returns a language generator that understands how to produce .NET packages.

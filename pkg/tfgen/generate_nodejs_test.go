@@ -17,10 +17,9 @@ package tfgen
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
-
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 

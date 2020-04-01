@@ -4,7 +4,6 @@ include build/common.mk
 PACK             := terraform
 PACKDIR          := sdk
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
-GOPKGS           := $(shell go list ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM  := 10
 
 build::
@@ -15,7 +14,7 @@ lint::
 	golangci-lint run
 
 test_fast::
-	$(GO_TEST) ${GOPKGS}
+	$(GO_TEST) ./...
 
 test_all:: test_fast
 
