@@ -192,10 +192,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
 		},
 	}
 
-	tfLicense := g.info.GetTFProviderLicense()
-	licenseTypeURL := getLicenseTypeURL(tfLicense)
 	spec.Description = g.info.Description
-	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), tfLicense, licenseTypeURL)
+	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg())
 
 	var config []*variable
 	for _, mod := range pack.modules.values() {

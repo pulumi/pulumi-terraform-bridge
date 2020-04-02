@@ -2,6 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+* Update how description is populated for schema codegen ([148](https://github.com/pulumi/pulumi-terraform-bridge/pull/148)).
 * Use the schema-based code generator for Python ([108](https://github.com/pulumi/pulumi-terraform-bridge/pull/108)).
 * Obtain module documentation from the Go Module Cache, removing the need for vendoring.
 * Add support for generating a new-style Go SDK ([101](https://github.com/pulumi/pulumi-terraform-bridge/pull/101)).
