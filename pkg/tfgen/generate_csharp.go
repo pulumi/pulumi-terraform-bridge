@@ -736,7 +736,6 @@ func (rg *csharpResourceGenerator) emit() (string, error) {
 		rg.generateResourceState()
 	} else {
 		contract.Assert(rg.fun != nil)
-		rg.generateDatasourceFunc()
 		rg.generateDatasourceClass()
 		rg.generateDatasourceArgs()
 		rg.generateDatasourceResult()
