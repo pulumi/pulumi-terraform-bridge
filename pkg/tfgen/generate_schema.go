@@ -110,6 +110,10 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	}
 }
 
+type declarer interface {
+	Name() string
+}
+
 func (nt *schemaNestedTypes) declareType(
 	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, pyMapCase bool) string {
 
