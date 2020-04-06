@@ -12,7 +12,6 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi-terraform-bridge v1.8.4 // indirect
 	github.com/pulumi/pulumi/pkg/v2 v2.0.0-beta.2.0.20200403194736-508d63ba7095
 	github.com/pulumi/pulumi/sdk/v2 v2.0.0-beta.2.0.20200403194736-508d63ba7095
 	github.com/spf13/cobra v0.0.6
