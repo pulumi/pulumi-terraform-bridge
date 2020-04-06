@@ -222,10 +222,6 @@ const (
 // Avoid an unused warning from varcheck.
 var _ = kindInvalid
 
-func isPrimitiveKind(k typeKind) bool {
-	return k < kindList
-}
-
 // propertyType represents a non-resource, non-datasource type. Property types may be simple
 type propertyType struct {
 	name       string
