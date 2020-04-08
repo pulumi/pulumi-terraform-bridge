@@ -69,6 +69,8 @@ func (g *schemaGenerator) typeName(r *resourceType) string {
 
 type schemaNestedType struct {
 	typ       *propertyType
+	declarer  declarer
+	isInput   bool
 	pyMapCase bool
 }
 
@@ -97,39 +99,68 @@ func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNes
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	switch member := member.(type) {
 	case *resourceType:
-		nt.gatherFromProperties(member, member.name, "", member.inprops, true)
-		nt.gatherFromProperties(member, member.name, "", member.outprops, true)
+		nt.gatherFromProperties(member, member.name, member.inprops, true, false, true)
+		nt.gatherFromProperties(member, member.name, member.outprops, false, false, true)
 		if !member.IsProvider() {
-			nt.gatherFromProperties(member, member.name, "", member.statet.properties, true)
+			nt.gatherFromProperties(member, member.name, member.statet.properties, false, true, true)
 		}
 	case *resourceFunc:
-		nt.gatherFromProperties(member, member.name, "", member.args, true)
-		nt.gatherFromProperties(member, member.name, "", member.rets, true)
+		nt.gatherFromProperties(member, member.name, member.args, true, false, true)
+		nt.gatherFromProperties(member, member.name, member.rets, false, false, true)
 	case *variable:
-		nt.gatherFromPropertyType(member, member.name, "", "", member.typ, true)
+		nt.gatherFromPropertyType(member, member.name, "", member.typ, false, false, true)
 	}
 }
 
-func (nt *schemaNestedTypes) declareType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, pyMapCase bool) string {
+func (nt *schemaNestedTypes) declareType(declarer declarer, namePrefix, name string, typ *propertyType,
+	isInput, isState, pyMapCase bool) string {
 
 	// Generate a name for this nested type.
-	baseName := namePrefix + strings.Title(name)
+	typeName := namePrefix + strings.Title(name)
 
 	// Override the nested type name, if necessary.
 	if typ.nestedType.Name().String() != "" {
-		baseName = typ.nestedType.Name().String()
+		typeName = typ.nestedType.Name().String()
 	}
 
-	typeName := baseName + strings.Title(nameSuffix)
-	typ.name = typeName
+	if existing, ok := nt.nameToType[typeName]; ok {
+		contract.Assert(existing.declarer == declarer)
 
-	nt.nameToType[typeName] = &schemaNestedType{typ: typ, pyMapCase: pyMapCase}
-	return baseName
+		if existing.typ.equals(typ) && pyMapCase == existing.pyMapCase {
+			return typeName
+		}
+
+		// Due to the order in which we declare types, we should only see the following sorts of conflicts:
+		// - input + output
+		// - input + state
+		// - output + state
+		contract.Assert(existing.isInput || isState)
+
+		if isState {
+			typeName = typeName + "State"
+			_, collision := nt.nameToType[typeName]
+			contract.Assert(!collision)
+		} else {
+			existing.typ.name = typeName + "Args"
+			_, collision := nt.nameToType[existing.typ.name]
+			contract.Assert(!collision)
+
+			nt.nameToType[existing.typ.name] = existing
+		}
+	}
+
+	typ.name = typeName
+	nt.nameToType[typeName] = &schemaNestedType{
+		typ:       typ,
+		declarer:  declarer,
+		isInput:   isInput,
+		pyMapCase: pyMapCase,
+	}
+	return typeName
 }
 
-func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix, nameSuffix string, ps []*variable,
-	pyMapCase bool) {
+func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix string, ps []*variable,
+	isInput, isState, pyMapCase bool) {
 
 	for _, p := range ps {
 		name := p.name
@@ -141,21 +172,21 @@ func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix,
 		// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
 		// https://github.com/pulumi/pulumi/issues/3151 for more details.
 		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type == schema.TypeMap
-		nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, p.typ, mapCase)
+		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, isState, mapCase)
 	}
 }
 
-func (nt *schemaNestedTypes) gatherFromPropertyType(
-	declarer declarer, namePrefix, name, nameSuffix string, typ *propertyType, pyMapCase bool) {
+func (nt *schemaNestedTypes) gatherFromPropertyType(declarer declarer, namePrefix, name string, typ *propertyType,
+	isInput, isState, pyMapCase bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, nameSuffix, typ.element, pyMapCase)
+			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput, isState, pyMapCase)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, nameSuffix, typ, pyMapCase)
-		nt.gatherFromProperties(declarer, baseName, nameSuffix, typ.properties, pyMapCase)
+		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput, isState, pyMapCase)
+		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput, isState, pyMapCase)
 	}
 }
 
