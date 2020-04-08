@@ -23,5 +23,6 @@ CHANGELOG
 * Ensure links to Terraform documentation pages are valid
 * Prefer errors over panics for potential upstream error catches
 * Ensure Pulumi SchemaInfo is taken into consideration when pluralizing parameters
+* Add a version flag to providers ([154](https://github.com/pulumi/pulumi-terraform-bridge/pull/91))
 
 ---
