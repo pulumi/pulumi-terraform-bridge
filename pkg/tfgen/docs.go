@@ -260,7 +260,8 @@ var (
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
 	}
 
-	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
+	attributeBulletRegexp    = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
+	subAttributeBulletRegexp = regexp.MustCompile("\\s+\\*\\s+`([a-zA-z0-9_#.]*)`\\s+[–-]?\\s+(.*)")
 
 	docsBaseURL    = "https://github.com/%s/terraform-provider-%s/blob/master/website/docs"
 	docsDetailsURL = docsBaseURL + "/%s/%s"
@@ -463,18 +464,26 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 				}
 			case headerIsAttributesReference:
 				var lastMatch string
+				var isPreviousSubAttribute bool
 				for _, line := range subsection {
 					matches := attributeBulletRegexp.FindStringSubmatch(line)
+					subAttributeMatch := subAttributeBulletRegexp.FindStringSubmatch(line)
 					if len(matches) >= 2 {
 						// found a property bullet, extract the name and description
 						ret.Attributes[matches[1]] = matches[2]
 						lastMatch = matches[1]
-					} else if !isBlank(line) && lastMatch != "" {
+						isPreviousSubAttribute = false
+					} else if len(subAttributeMatch) > 2 {
+						// This is a subattribute that is handles elsewhere. TODO-ECK
+						isPreviousSubAttribute = true
+						continue
+					} else if !isBlank(line) && lastMatch != "" && !isPreviousSubAttribute {
 						// this is a continuation of the previous bullet
 						ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
 					} else {
 						// This is an empty line or there were no bullets yet - clear the lastMatch
 						lastMatch = ""
+						isPreviousSubAttribute = false
 					}
 				}
 			case headerIsFrontMatter:
