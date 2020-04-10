@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
@@ -30,11 +31,16 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
+	providerVersion := flags.Bool("version", false, "get built provider version")
 	contract.IgnoreError(flags.Parse(os.Args[1:]))
 	if *dumpInfo {
 		if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
+		os.Exit(0)
+	}
+	if *providerVersion {
+		fmt.Println(version)
 		os.Exit(0)
 	}
 

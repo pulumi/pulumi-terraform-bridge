@@ -7,8 +7,8 @@ PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
 
 build::
-	go build ${PROJECT}/pkg/tfgen
-	go build ${PROJECT}/pkg/tfbridge
+	go build ${PROJECT}/v2/pkg/tfgen
+	go build ${PROJECT}/v2/pkg/tfbridge
 
 lint::
 	golangci-lint run
