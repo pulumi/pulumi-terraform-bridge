@@ -246,7 +246,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 // nolint:lll
 var (
 	argumentBulletRegexp = regexp.MustCompile(
-		"\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
 	nestedObjectRegexps = []*regexp.Regexp{
 		// For example:
