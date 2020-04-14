@@ -16,9 +16,9 @@ package tfgen
 
 import (
 	"github.com/pkg/errors"
-	pygen "github.com/pulumi/pulumi/pkg/codegen/python"
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 type pythonGenerator struct {

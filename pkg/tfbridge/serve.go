@@ -17,8 +17,8 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/resource/provider"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/pkg/v2/resource/provider"
+	lumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 // Serve fires up a Pulumi resource provider listening to inbound gRPC traffic,

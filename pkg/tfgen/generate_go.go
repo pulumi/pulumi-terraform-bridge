@@ -20,9 +20,9 @@ package tfgen
 
 import (
 	"github.com/pkg/errors"
-	gogen "github.com/pulumi/pulumi/pkg/codegen/go"
+	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 type goGenerator struct {

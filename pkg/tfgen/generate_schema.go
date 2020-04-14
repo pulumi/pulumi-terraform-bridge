@@ -27,11 +27,11 @@ import (
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
-	pschema "github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 type schemaGenerator struct {
@@ -108,6 +108,10 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	case *variable:
 		nt.gatherFromPropertyType(member, member.name, "", "", member.typ, true)
 	}
+}
+
+type declarer interface {
+	Name() string
 }
 
 func (nt *schemaNestedTypes) declareType(
