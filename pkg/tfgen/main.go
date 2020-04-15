@@ -19,11 +19,10 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge"
 )
 
 // Main executes the TFGen process for the given package pkg and provider prov.
