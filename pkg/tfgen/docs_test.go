@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
@@ -118,6 +119,38 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"* `website` - (Optional) A website object (documented below).",
+				"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
+				"",
+				"The `website` object supports the following:",
+				"",
+				"* `index_document` - (Required, unless using `redirect_all_requests_to`) Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+				"* `routing_rules` - (Optional) A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)",
+				"describing redirect behavior and when redirects are applied.",
+			},
+			expected: map[string]*argument{
+				"website": &argument{
+					description: "A website object (documented below)." + "\n" +
+						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
+					arguments: map[string]string{
+						"index_document": "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+						"routing_rules": "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+							"describing redirect behavior and when redirects are applied.",
+					},
+				},
+				"index_document": &argument{
+					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+					isNested:    true,
+				},
+				"routing_rules": &argument{
+					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+						"describing redirect behavior and when redirects are applied.",
+					isNested: true,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -129,7 +162,7 @@ func TestArgumentRegex(t *testing.T) {
 		assert.Len(t, ret.Arguments, len(tt.expected))
 		for k, v := range tt.expected {
 			actualArg := ret.Arguments[k]
-			assert.NotNil(t, actualArg)
+			assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
 			assert.Equal(t, v.description, actualArg.description)
 			assert.Equal(t, v.isNested, actualArg.isNested)
 			assert.Equal(t, v.arguments, actualArg.arguments)
