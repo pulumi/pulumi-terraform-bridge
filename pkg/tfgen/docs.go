@@ -246,7 +246,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 // nolint:lll
 var (
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\s*\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
 	nestedObjectRegexps = []*regexp.Regexp{
 		// For example:
@@ -517,6 +517,9 @@ func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
 					}
 				}
 			} else {
+				if _, ok := ret.Arguments[matches[1]]; ok {
+					continue
+				}
 				ret.Arguments[matches[1]] = &argument{description: matches[4]}
 			}
 			lastMatch = matches[1]
