@@ -151,6 +151,37 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"* `action` - (Optional) The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
+				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+				"* `override_action` - (Optional) Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
+				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+			},
+			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
+			expected: map[string]*argument{
+				"action": &argument{
+					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
+				},
+				"override_action": &argument{
+					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
+				},
+				"type": &argument{
+					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+				},
+			},
+		},
+		{
+			input: []string{
+				"* `priority` - (Optional) The priority associated with the rule.",
+				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
+			},
+			expected: map[string]*argument{
+				"priority": &argument{
+					description: "The priority associated with the rule.",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
