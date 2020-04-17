@@ -179,12 +179,13 @@ func TestArgumentRegex(t *testing.T) {
 			},
 			expected: map[string]*argument{
 				"priority": &argument{
-					description: "The priority associated with the rule.",
+					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
 				},
 			},
 		},
 		{
 			input: []string{
+				"* `allowed_audiences` (Optional) Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
 				"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
 				"",
 				"---",
@@ -193,6 +194,9 @@ func TestArgumentRegex(t *testing.T) {
 			expected: map[string]*argument{
 				"retention_policy": &argument{
 					description: "A `retention_policy` block as documented below.",
+				},
+				"allowed_audiences": &argument{
+					description: "Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
 				},
 			},
 		},
