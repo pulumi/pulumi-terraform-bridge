@@ -17,6 +17,7 @@ package tfgen
 import (
 	"fmt"
 	"os"
+	"runtime/pprof"
 
 	"github.com/golang/glog"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
@@ -40,6 +41,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var overlaysDir string
 	var quiet bool
 	var verbose int
+	var profile string
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -55,6 +57,15 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			"Note that there is no custom Pulumi provider code required, because the generated\n" +
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if profile != "" {
+				f, err := os.Create(profile)
+				if err != nil {
+					return err
+				}
+				pprof.StartCPUProfile(f)
+				defer pprof.StopCPUProfile()
+			}
+
 			// Create a generator with the specified settings.
 			g, err := newGenerator(pkg, version, language(args[0]), prov, overlaysDir, outDir)
 			if err != nil {
@@ -84,6 +95,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&quiet, "quiet", "q", false, "Suppress non-error output progress messages")
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	cmd.PersistentFlags().StringVar(
+		&profile, "profile", "", "Write a CPU profile to this file")
 
 	return cmd
 }
