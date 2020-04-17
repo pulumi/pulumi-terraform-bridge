@@ -174,11 +174,25 @@ func TestArgumentRegex(t *testing.T) {
 		{
 			input: []string{
 				"* `priority` - (Optional) The priority associated with the rule.",
+				"",
 				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
 			},
 			expected: map[string]*argument{
 				"priority": &argument{
-					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
+					description: "The priority associated with the rule.",
+				},
+			},
+		},
+		{
+			input: []string{
+				"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
+				"",
+				"---",
+				"* `retention_policy` supports the following:",
+			},
+			expected: map[string]*argument{
+				"retention_policy": &argument{
+					description: "A `retention_policy` block as documented below.",
 				},
 			},
 		},
