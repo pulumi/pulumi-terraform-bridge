@@ -178,7 +178,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 			expected: map[string]*argument{
 				"priority": &argument{
-					description: "The priority associated with the rule.",
+					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
 				},
 			},
 		},

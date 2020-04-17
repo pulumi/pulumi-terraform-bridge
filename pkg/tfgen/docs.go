@@ -517,9 +517,6 @@ func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
 					}
 				}
 			} else {
-				if _, ok := ret.Arguments[matches[1]]; ok {
-					continue
-				}
 				ret.Arguments[matches[1]] = &argument{description: matches[4]}
 			}
 			lastMatch = matches[1]
