@@ -247,7 +247,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 var (
 	// For example:
 	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
-	linkFooterRegexp = regexp.MustCompile("^(\\[\\d+\\]):\\s(.*)")
+	linkFooterRegexp = regexp.MustCompile("(?m)^(\\[\\d+\\]):\\s(.*)")
 
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
@@ -502,8 +502,8 @@ func getFooterLinks(markdown string) map[string]string {
 	lines := strings.Split(markdown, "\n")
 	for _, line := range lines {
 		matches := linkFooterRegexp.FindStringSubmatch(line)
-		if len(matches) == 2 {
-			links[matches[0]] = matches[1]
+		if len(matches) == 3 {
+			links[matches[1]] = matches[2]
 		}
 	}
 	return links
@@ -804,10 +804,6 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 
 }
 
-// For example:
-// [What is AWS Lambda?][1]
-var linkWithFooterRefRegexp = regexp.MustCompile("\\[[a-zA-Z?.! ]+\\](\\[[0-9]+\\])")
-
 var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
 var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
 
@@ -837,10 +833,8 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 		return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
 	})
 
-	// Find links from the footer links. TODO-ECK
-	// text = linkWithFooterRefRegexp.ReplaceAllStringFunc(text, func(link string) string {
-
-	// })
+	// Find links from the footer links.
+	text = replaceFooterLinks(text, footerLinks)
 
 	// Find URLs and re-write local links
 	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
@@ -906,4 +900,23 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	lines := strings.Split(text, "\n")
 	lines = trimTrailingBlanks(lines)
 	return strings.Join(lines, "\n"), false
+}
+
+// For example:
+// [What is AWS Lambda?][1]
+var linkWithFooterRefRegexp = regexp.MustCompile("(\\[[a-zA-Z?.! ]+\\])(\\[[0-9]+\\])")
+
+// replaceFooterLinks replaces all links with a reference to a footer link.
+func replaceFooterLinks(text string, footerLinks map[string]string) string {
+	return linkWithFooterRefRegexp.ReplaceAllStringFunc(text, func(link string) string {
+		parts := linkWithFooterRefRegexp.FindStringSubmatch(link)
+		linkText := parts[1]
+		linkRef := parts[2]
+
+		// If we have a footer link for the reference, we need to replace it.
+		if footerLink, ok := footerLinks[linkRef]; ok {
+			return linkText + "(" + footerLink + ")"
+		}
+		return link
+	})
 }

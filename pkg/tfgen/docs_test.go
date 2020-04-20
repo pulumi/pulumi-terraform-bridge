@@ -56,7 +56,7 @@ func TestURLRewrite(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, test := range tests {
-		text, _ := cleanupText(g, nil, test.Input)
+		text, _ := cleanupText(g, nil, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
 	}
 }
@@ -217,4 +217,47 @@ func TestArgumentRegex(t *testing.T) {
 			assert.Equal(t, v.arguments, actualArg.arguments)
 		}
 	}
+}
+
+func TestGetFooterLinks(t *testing.T) {
+	input := `## Attributes Reference
+
+For **environment** the following attributes are supported:
+
+[1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+[2]: https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-s3-events-adminuser-create-test-function-create-function.html
+[3]: https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-custom-events-create-test-function.html`
+
+	expected := map[string]string{
+		"[1]": "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+		"[2]": "https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-s3-events-adminuser-create-test-function-create-function.html",
+		"[3]": "https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-custom-events-create-test-function.html",
+	}
+
+	actual := getFooterLinks(input)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestReplaceFooterLinks(t *testing.T) {
+	inputText := `# Resource: aws_lambda_function
+
+	Provides a Lambda Function resource. Lambda allows you to trigger execution of code in response to events in AWS, enabling serverless backend solutions. The Lambda Function itself includes source code and runtime configuration.
+
+	For information about Lambda and how to use it, see [What is AWS Lambda?][1]
+	* (Required) The function [entrypoint][3] in your code.`
+	footerLinks := map[string]string{
+		"[1]": "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+		"[2]": "https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-s3-events-adminuser-create-test-function-create-function.html",
+		"[3]": "https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-custom-events-create-test-function.html",
+	}
+
+	expected := `# Resource: aws_lambda_function
+
+	Provides a Lambda Function resource. Lambda allows you to trigger execution of code in response to events in AWS, enabling serverless backend solutions. The Lambda Function itself includes source code and runtime configuration.
+
+	For information about Lambda and how to use it, see [What is AWS Lambda?](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html)
+	* (Required) The function [entrypoint](https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-custom-events-create-test-function.html) in your code.`
+	actual := replaceFooterLinks(inputText, footerLinks)
+	assert.Equal(t, expected, actual)
 }
