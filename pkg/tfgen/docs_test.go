@@ -260,4 +260,8 @@ func TestReplaceFooterLinks(t *testing.T) {
 	* (Required) The function [entrypoint](https://docs.aws.amazon.com/lambda/latest/dg/walkthrough-custom-events-create-test-function.html) in your code.`
 	actual := replaceFooterLinks(inputText, footerLinks)
 	assert.Equal(t, expected, actual)
+
+	// Test when there are no footer link.
+	actual = replaceFooterLinks(inputText, nil)
+	assert.Equal(t, inputText, actual)
 }

@@ -908,6 +908,9 @@ var linkWithFooterRefRegexp = regexp.MustCompile("(\\[[a-zA-Z?.! ]+\\])(\\[[0-9]
 
 // replaceFooterLinks replaces all links with a reference to a footer link.
 func replaceFooterLinks(text string, footerLinks map[string]string) string {
+	if len(footerLinks) == 0 {
+		return text
+	}
 	return linkWithFooterRefRegexp.ReplaceAllStringFunc(text, func(link string) string {
 		parts := linkWithFooterRefRegexp.FindStringSubmatch(link)
 		linkText := parts[1]
