@@ -903,7 +903,7 @@ func (g *generator) gatherDataSource(rawname string,
 			Computed: true,
 		}
 		cust := &tfbridge.SchemaInfo{}
-		rawdoc := "id is the provider-assigned unique ID for this managed resource."
+		rawdoc := "The provider-assigned unique ID for this managed resource."
 		fun.rets = append(fun.rets,
 			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, parsedDocs))
 	}
