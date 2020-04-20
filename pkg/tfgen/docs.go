@@ -246,7 +246,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 // nolint:lll
 var (
 	argumentBulletRegexp = regexp.MustCompile(
-		"\\*\\s+`([a-zA-z0-9_]*)`\\s+(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\s*\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
 	nestedObjectRegexps = []*regexp.Regexp{
 		// For example:
@@ -404,62 +404,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 			switch {
 			case headerIsArgsReference:
-				var lastMatch, nested string
-				for _, line := range subsection {
-					matches := argumentBulletRegexp.FindStringSubmatch(line)
-					if len(matches) >= 4 {
-						// found a property bullet, extract the name and description
-						if nested != "" {
-							// We found this line within a nested field. We should record it as such.
-							if ret.Arguments[nested] == nil {
-								ret.Arguments[nested] = &argument{
-									arguments: make(map[string]string),
-								}
-							} else if ret.Arguments[nested].arguments == nil {
-								ret.Arguments[nested].arguments = make(map[string]string)
-							}
-							ret.Arguments[nested].arguments[matches[1]] = matches[4]
-
-							// Also record this as a top-level argument just in case, since sometimes the recorded nested
-							// argument doesn't match the resource's argument.
-							// For example, see `cors_rule` in s3_bucket.html.markdown.
-							if ret.Arguments[matches[1]] == nil {
-								ret.Arguments[matches[1]] = &argument{
-									description: matches[4],
-									isNested:    true, // Mark that this argument comes from a nested field.
-								}
-							}
-						} else {
-							ret.Arguments[matches[1]] = &argument{description: matches[4]}
-						}
-						lastMatch = matches[1]
-					} else if !isBlank(line) && lastMatch != "" {
-						// this is a continuation of the previous bullet
-						if nested != "" {
-							ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
-
-							// Also update the top-level argument if we took it from a nested field.
-							if ret.Arguments[lastMatch].isNested {
-								ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-							}
-						} else {
-							ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-						}
-					} else {
-						// This line might declare the beginning of a nested object.
-						// If we do not find a "nested", then this is an empty line or there were no bullets yet.
-						for _, match := range nestedObjectRegexps {
-							matches := match.FindStringSubmatch(line)
-							if len(matches) >= 2 {
-								nested = strings.ToLower(matches[1])
-								break
-							}
-						}
-
-						// Clear the lastMatch.
-						lastMatch = ""
-					}
-				}
+				processArgumentReferenceSection(subsection, &ret)
 			case headerIsAttributesReference:
 				var lastMatch string
 				for _, line := range subsection {
@@ -543,6 +488,67 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 	}
 
 	return doc, nil
+}
+
+func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
+	var lastMatch, nested string
+	for _, line := range subsection {
+		matches := argumentBulletRegexp.FindStringSubmatch(line)
+		if len(matches) >= 4 {
+			// found a property bullet, extract the name and description
+			if nested != "" {
+				// We found this line within a nested field. We should record it as such.
+				if ret.Arguments[nested] == nil {
+					ret.Arguments[nested] = &argument{
+						arguments: make(map[string]string),
+					}
+				} else if ret.Arguments[nested].arguments == nil {
+					ret.Arguments[nested].arguments = make(map[string]string)
+				}
+				ret.Arguments[nested].arguments[matches[1]] = matches[4]
+
+				// Also record this as a top-level argument just in case, since sometimes the recorded nested
+				// argument doesn't match the resource's argument.
+				// For example, see `cors_rule` in s3_bucket.html.markdown.
+				if ret.Arguments[matches[1]] == nil {
+					ret.Arguments[matches[1]] = &argument{
+						description: matches[4],
+						isNested:    true, // Mark that this argument comes from a nested field.
+					}
+				}
+			} else {
+				if !strings.HasSuffix(line, "supports the following:") {
+					ret.Arguments[matches[1]] = &argument{description: matches[4]}
+				}
+			}
+			lastMatch = matches[1]
+		} else if !isBlank(line) && lastMatch != "" {
+			// this is a continuation of the previous bullet
+			if nested != "" {
+				ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+
+				// Also update the top-level argument if we took it from a nested field.
+				if ret.Arguments[lastMatch].isNested {
+					ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				}
+			} else {
+				ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+			}
+		} else {
+			// This line might declare the beginning of a nested object.
+			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
+			for _, match := range nestedObjectRegexps {
+				matches := match.FindStringSubmatch(line)
+				if len(matches) >= 2 {
+					nested = strings.ToLower(matches[1])
+					break
+				}
+			}
+
+			// Clear the lastMatch.
+			lastMatch = ""
+		}
+	}
 }
 
 var (
