@@ -175,7 +175,7 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 		version: version,
 		info:    info,
 	}
-	return pschema.ImportSpec(g.genPackageSpec(pack))
+	return pschema.ImportSpec(g.genPackageSpec(pack), nil)
 }
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
