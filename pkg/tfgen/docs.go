@@ -245,6 +245,10 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 
 // nolint:lll
 var (
+	// For example:
+	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+	linkFooterRegexp = regexp.MustCompile("(?m)^(\\[\\d+\\]):\\s(.*)")
+
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
@@ -481,13 +485,28 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 		}
 	}
 
-	doc, elided := cleanupDoc(g, info, ret)
+	// Get links.
+	footerLinks := getFooterLinks(markdown)
+
+	doc, elided := cleanupDoc(g, info, ret, footerLinks)
 	if elided {
 		cmdutil.Diag().Warningf(diag.Message("",
 			"Resource %v contains an <elided> doc reference that needs updated"), rawname)
 	}
 
 	return doc, nil
+}
+
+func getFooterLinks(markdown string) map[string]string {
+	links := make(map[string]string)
+	lines := strings.Split(markdown, "\n")
+	for _, line := range lines {
+		matches := linkFooterRegexp.FindStringSubmatch(line)
+		if len(matches) == 3 {
+			links[matches[1]] = matches[2]
+		}
+	}
+	return links
 }
 
 func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
@@ -740,11 +759,12 @@ func convertHCL(hcl string) (string, string, error) {
 	return result, "", nil
 }
 
-func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc) (parsedDoc, bool) {
+func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc,
+	footerLinks map[string]string) (parsedDoc, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argument, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		cleanedText, elided := cleanupText(g, info, v.description)
+		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
 			elidedDoc = true
 		}
@@ -756,7 +776,7 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
-			cleanedText, elided := cleanupText(g, info, vv)
+			cleanedText, elided := cleanupText(g, info, vv, footerLinks)
 			if elided {
 				elidedDoc = true
 			}
@@ -765,13 +785,13 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
-		cleanupText, elided := cleanupText(g, info, v)
+		cleanupText, elided := cleanupText(g, info, v, footerLinks)
 		if elided {
 			elidedDoc = true
 		}
 		newattrs[k] = cleanupText
 	}
-	cleanupText, elided := cleanupText(g, info, doc.Description)
+	cleanupText, elided := cleanupText(g, info, doc.Description, footerLinks)
 	if elided {
 		elidedDoc = true
 	}
@@ -793,7 +813,9 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 const elidedDocComment = "<elided>"
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string) (string, bool) {
+func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
+	footerLinks map[string]string) (string, bool) {
+
 	// Remove incorrect documentation that should have been cleaned up in our forks.
 	// TODO: fail the build in the face of such text, once we have a processes in place.
 	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
@@ -810,6 +832,9 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 		// Add Terraform domain to avoid broken links.
 		return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
 	})
+
+	// Find links from the footer links.
+	text = replaceFooterLinks(text, footerLinks)
 
 	// Find URLs and re-write local links
 	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
@@ -875,4 +900,26 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	lines := strings.Split(text, "\n")
 	lines = trimTrailingBlanks(lines)
 	return strings.Join(lines, "\n"), false
+}
+
+// For example:
+// [What is AWS Lambda?][1]
+var linkWithFooterRefRegexp = regexp.MustCompile("(\\[[a-zA-Z?.! ]+\\])(\\[[0-9]+\\])")
+
+// replaceFooterLinks replaces all links with a reference to a footer link.
+func replaceFooterLinks(text string, footerLinks map[string]string) string {
+	if len(footerLinks) == 0 {
+		return text
+	}
+	return linkWithFooterRefRegexp.ReplaceAllStringFunc(text, func(link string) string {
+		parts := linkWithFooterRefRegexp.FindStringSubmatch(link)
+		linkText := parts[1]
+		linkRef := parts[2]
+
+		// If we have a footer link for the reference, we need to replace it.
+		if footerLink, ok := footerLinks[linkRef]; ok {
+			return linkText + "(" + footerLink + ")"
+		}
+		return link
+	})
 }
