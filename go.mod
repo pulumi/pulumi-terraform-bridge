@@ -12,8 +12,8 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.0.1-0.20200421130901-e1cdd182cce3
-	github.com/pulumi/pulumi/sdk/v2 v2.0.1-0.20200421130901-e1cdd182cce3
+	github.com/pulumi/pulumi/pkg/v2 v2.0.1-0.20200421203338-6afefe050ff1
+	github.com/pulumi/pulumi/sdk/v2 v2.0.1-0.20200421203338-6afefe050ff1
 	github.com/spf13/cobra v0.0.6
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/mod v0.2.0
