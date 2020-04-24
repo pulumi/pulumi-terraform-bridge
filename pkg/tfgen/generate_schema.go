@@ -372,6 +372,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 	}
 	if !res.IsProvider() {
 		if res.info.DeprecationMessage != "" {
+			spec.DeprecationMessage = res.info.DeprecationMessage
 			description = fmt.Sprintf("%s\nDeprecated: %s\n", description, res.info.DeprecationMessage)
 		}
 	}
@@ -419,6 +420,7 @@ func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) psche
 		description = g.genDocComment(fun.doc, fun.docURL)
 	}
 	if fun.info.DeprecationMessage != "" {
+		spec.DeprecationMessage = fun.info.DeprecationMessage
 		description = fmt.Sprintf("%s\nDeprecated: %s\n", description, fun.info.DeprecationMessage)
 	}
 	spec.Description = description

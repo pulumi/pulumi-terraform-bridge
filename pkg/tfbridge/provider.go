@@ -1061,6 +1061,8 @@ func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok to
 		}
 	}
 
+	legacyInfo.DeprecationMessage = fmt.Sprintf("%s.%s has been deprecated in favour of %s.%s",
+		legacyInfo.Tok.Module().Package(), legacyInfo.Tok.Name(), currentInfo.Tok.Module().Package(), currentInfo.Tok.Name())
 	p.Resources[resourceName] = &currentInfo
 	p.Resources[legacyResourceName] = &legacyInfo
 	p.P.ResourcesMap[legacyResourceName] = p.P.ResourcesMap[resourceName]
@@ -1091,6 +1093,8 @@ func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.Mo
 		}
 	}
 
+	legacyInfo.DeprecationMessage = fmt.Sprintf("%s.%s has been deprecated in favour of %s.%s",
+		legacyInfo.Tok.Module().Package(), legacyInfo.Tok.Name(), currentInfo.Tok.Module().Package(), currentInfo.Tok.Name())
 	p.DataSources[resourceName] = &currentInfo
 	p.DataSources[legacyResourceName] = &legacyInfo
 	p.P.DataSourcesMap[legacyResourceName] = p.P.DataSourcesMap[resourceName]
