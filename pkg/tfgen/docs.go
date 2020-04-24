@@ -833,6 +833,10 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	text = strings.Replace(text, "-> ", "> ", -1)
 	text = strings.Replace(text, "~> ", "> ", -1)
 
+	// Trim Prefixes we see when the description is spread across multiple lines.
+	text = strings.TrimPrefix(text, "-\n(Required)\n")
+	text = strings.TrimPrefix(text, "-\n(Optional)\n")
+
 	// Find markdown Terraform docs site reference links.
 	text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
 		parts := strings.Split(referenceLink, " ")
