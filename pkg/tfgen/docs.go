@@ -462,6 +462,13 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 					cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
 				}
 			default:
+				// Determine if this is a nested argument section.
+				_, isArgument := ret.Arguments[header]
+				if isArgument || strings.HasSuffix(header, "Configuration Block") {
+					processArgumentReferenceSection(subsection, &ret)
+					continue
+				}
+
 				// For all other sections, append them to the description section.
 				if !wroteHeader {
 					ret.Description += fmt.Sprintf("## %s\n", header)
