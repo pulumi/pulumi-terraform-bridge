@@ -46,7 +46,7 @@ jobs:
       - name: Install tf2pulumi
         uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
-          tf2pulumi-version: 0.6.0
+          tf2pulumi-version: 0.7.0
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -82,7 +82,7 @@ jobs:
       - name: Install tf2pulumi
         uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
-          tf2pulumi-version: 0.6.0
+          tf2pulumi-version: 0.7.0
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -118,7 +118,7 @@ jobs:
       - name: Install tf2pulumi
         uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
-          tf2pulumi-version: 0.6.0
+          tf2pulumi-version: 0.7.0
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -154,7 +154,7 @@ jobs:
       - name: Install tf2pulumi
         uses: pulumi/action-install-tf2pulumi@releases/v1
         with:
-          tf2pulumi-version: 0.6.0
+          tf2pulumi-version: 0.7.0
 
       - name: Check out source code
         uses: actions/checkout@master
