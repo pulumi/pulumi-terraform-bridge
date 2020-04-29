@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -654,8 +653,9 @@ func MakeTerraformOutput(v interface{},
 
 			// Otherwise, it might be a string that needs to be coerced to match the Terraform schema type. Coerce the
 			// string to the Go value of the correct type and, if the coercion produced something different than the string
-			// value we already have, re-make the output.
-			coerced, err := CoerceTerraformString(tfs.Type, t)
+			// value we already have, re-make the output. We need to ensure that we take into account any Pulumi schema
+			// overrides as part of this coercion
+			coerced, err := CoerceTerraformString(tfs.Type, ps, t)
 			if err != nil || coerced == t {
 				return resource.NewStringProperty(t)
 			}
@@ -1022,31 +1022,65 @@ func CleanTerraformSchema(tfs map[string]*schema.Schema) map[string]*schema.Sche
 }
 
 // CoerceTerraformString coerces a string value to a Go value whose type is the type requested by the Terraform schema
-// type. Returns an error if the string can't be successfully coerced to the requested type.
-func CoerceTerraformString(schType schema.ValueType, stringValue string) (interface{}, error) {
+// type or the Pulumi SchemaInfo. We prefer the SchemaInfo overrides as it's an explicit call to action over the
+// Terraform Schema. Returns an error if the string can't be successfully coerced to the requested type.
+func CoerceTerraformString(schType schema.ValueType, ps *SchemaInfo, stringValue string) (interface{}, error) {
+	// check for the override and use that over terraform if available
+	// we do this to ensure that we are following the explicit call to action of the override
+	if ps != nil && ps.Type != "" {
+		if stringValue == "" {
+			return nil, nil
+		}
+		switch strings.ToLower(ps.Type.String()) {
+		case "boolean":
+			if stringValue == "" {
+				return nil, nil
+			}
+			return convertTfStringToBool(stringValue)
+		case "int":
+			return convertTfStringToInt(stringValue)
+		case "float":
+			return convertTfStringToFloat(stringValue)
+		}
+
+		return stringValue, nil
+	}
+
 	switch schType {
 	case schema.TypeInt:
-		intVal, err := strconv.ParseInt(stringValue, 0, 0)
-		if err != nil {
-			return nil, err
-		}
-		return float64(intVal), nil
+		return convertTfStringToInt(stringValue)
 	case schema.TypeBool:
-		boolVal, err := strconv.ParseBool(stringValue)
-		if err != nil {
-			return nil, err
-		}
-		return boolVal, nil
+		return convertTfStringToBool(stringValue)
 	case schema.TypeFloat:
-		floatVal, err := strconv.ParseFloat(stringValue, 64)
-		if err != nil {
-			return nil, err
-		}
-		return floatVal, nil
+		return convertTfStringToFloat(stringValue)
 	}
 
 	// Else it's just a string.
 	return stringValue, nil
+}
+
+func convertTfStringToBool(stringValue string) (interface{}, error) {
+	boolVal, err := strconv.ParseBool(stringValue)
+	if err != nil {
+		return nil, err
+	}
+	return boolVal, nil
+}
+
+func convertTfStringToInt(stringValue string) (interface{}, error) {
+	intVal, err := strconv.ParseInt(stringValue, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+	return float64(intVal), nil
+}
+
+func convertTfStringToFloat(stringValue string) (interface{}, error) {
+	floatVal, err := strconv.ParseFloat(stringValue, 64)
+	if err != nil {
+		return nil, err
+	}
+	return floatVal, nil
 }
 
 // propagateDefaultAnnotations recursively propagates the `__defaults` annotation on the given value.

@@ -990,6 +990,41 @@ func TestInvalidAsset(t *testing.T) {
 	}, outputs)
 }
 
+func TestOverridingTFSchema(t *testing.T) {
+	result := MakeTerraformOutputs(
+		map[string]interface{}{
+			"pulumi_override_tf_string_to_boolean":    MyString("true"),
+			"pulumi_empty_tf_override":                MyString("true"),
+			"tf_empty_string_to_pulumi_bool_override": MyString(""),
+		},
+		map[string]*schema.Schema{
+			"pulumi_override_tf_string_to_boolean":    {Type: schema.TypeString},
+			"pulumi_empty_tf_override":                {Type: schema.TypeString},
+			"tf_empty_string_to_pulumi_bool_override": {Type: schema.TypeString},
+		},
+		map[string]*SchemaInfo{
+			"pulumi_override_tf_string_to_boolean": {
+				Type: "boolean",
+			},
+			"pulumi_empty_tf_override": {
+				Type: "",
+			},
+			"tf_empty_string_to_pulumi_bool_override": {
+				Type:           "boolean",
+				MarkAsOptional: boolPointer(true),
+			},
+		},
+		nil,   /* assets */
+		false, /*useRawNames*/
+		true,
+	)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"pulumiOverrideTfStringToBoolean":   true,
+		"pulumiEmptyTfOverride":             "true",
+		"tfEmptyStringToPulumiBoolOverride": nil,
+	}), result)
+}
+
 func TestArchiveAsAsset(t *testing.T) {
 	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
