@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// nolint: lll
 package tfgen
 
 import (
@@ -75,17 +76,17 @@ func TestArgumentRegex(t *testing.T) {
 				"* `tags` - (Optional) A mapping of tags to assign to the resource.",
 			},
 			expected: map[string]*argument{
-				"iam_instance_profile": &argument{
+				"iam_instance_profile": {
 					description: "The IAM Instance Profile to" + "\n" +
 						"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
 				},
-				"ipv6_address_count": &argument{
+				"ipv6_address_count": {
 					description: "A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
 				},
-				"ipv6_addresses": &argument{
+				"ipv6_addresses": {
 					description: "Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
 				},
-				"tags": &argument{
+				"tags": {
 					description: "A mapping of tags to assign to the resource.",
 				},
 			},
@@ -101,7 +102,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `issuer` - (Optional) The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
 			},
 			expected: map[string]*argument{
-				"jwt_configuration": &argument{
+				"jwt_configuration": {
 					description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
 						"Supported only for HTTP APIs.",
 					arguments: map[string]string{
@@ -109,11 +110,11 @@ func TestArgumentRegex(t *testing.T) {
 						"issuer":   "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
 					},
 				},
-				"audience": &argument{
+				"audience": {
 					description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
 					isNested:    true,
 				},
-				"issuer": &argument{
+				"issuer": {
 					description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
 					isNested:    true,
 				},
@@ -131,7 +132,7 @@ func TestArgumentRegex(t *testing.T) {
 				"describing redirect behavior and when redirects are applied.",
 			},
 			expected: map[string]*argument{
-				"website": &argument{
+				"website": {
 					description: "A website object (documented below)." + "\n" +
 						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
 					arguments: map[string]string{
@@ -140,11 +141,11 @@ func TestArgumentRegex(t *testing.T) {
 							"describing redirect behavior and when redirects are applied.",
 					},
 				},
-				"index_document": &argument{
+				"index_document": {
 					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
 					isNested:    true,
 				},
-				"routing_rules": &argument{
+				"routing_rules": {
 					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
 						"describing redirect behavior and when redirects are applied.",
 					isNested: true,
@@ -160,13 +161,13 @@ func TestArgumentRegex(t *testing.T) {
 			},
 			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
 			expected: map[string]*argument{
-				"action": &argument{
+				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				},
-				"override_action": &argument{
+				"override_action": {
 					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
 				},
-				"type": &argument{
+				"type": {
 					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
 				},
 			},
@@ -178,7 +179,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
 			},
 			expected: map[string]*argument{
-				"priority": &argument{
+				"priority": {
 					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
 				},
 			},
@@ -192,10 +193,10 @@ func TestArgumentRegex(t *testing.T) {
 				"* `retention_policy` supports the following:",
 			},
 			expected: map[string]*argument{
-				"retention_policy": &argument{
+				"retention_policy": {
 					description: "A `retention_policy` block as documented below.",
 				},
-				"allowed_audiences": &argument{
+				"allowed_audiences": {
 					description: "Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
 				},
 			},

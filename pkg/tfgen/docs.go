@@ -247,7 +247,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 var (
 	// For example:
 	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
-	linkFooterRegexp = regexp.MustCompile("(?m)^(\\[\\d+\\]):\\s(.*)")
+	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*\\*\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
@@ -915,7 +915,7 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 
 // For example:
 // [What is AWS Lambda?][1]
-var linkWithFooterRefRegexp = regexp.MustCompile("(\\[[a-zA-Z?.! ]+\\])(\\[[0-9]+\\])")
+var linkWithFooterRefRegexp = regexp.MustCompile(`(\[[a-zA-Z?.! ]+\])(\[[0-9]+\])`)
 
 // replaceFooterLinks replaces all links with a reference to a footer link.
 func replaceFooterLinks(text string, footerLinks map[string]string) string {
