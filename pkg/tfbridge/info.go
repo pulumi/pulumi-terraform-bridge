@@ -247,6 +247,7 @@ type JavaScriptInfo struct {
 	Dependencies      map[string]string // NPM dependencies to add to package.json.
 	DevDependencies   map[string]string // NPM dev-dependencies to add to package.json.
 	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.
+	Resolutions       map[string]string // NPM resolutions to add to package.json.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
 	AsyncDataSources  bool              // If true, only generate the async version of data-sources

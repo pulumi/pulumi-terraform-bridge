@@ -1178,6 +1178,7 @@ type npmPackage struct {
 	Dependencies     map[string]string `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string `json:"devDependencies,omitempty"`
 	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string `json:"resolutions,omitempty"`
 	Pulumi           npmPulumiManifest `json:"pulumi,omitempty"`
 }
 
@@ -1248,6 +1249,12 @@ func (g *nodeJSGenerator) emitNPMPackageMetadata(pack *pkg) error {
 				npminfo.PeerDependencies = make(map[string]string)
 			}
 			npminfo.PeerDependencies[depk] = depv
+		}
+		for resk, resv := range jso.Resolutions {
+			if npminfo.Resolutions == nil {
+				npminfo.Resolutions = make(map[string]string)
+			}
+			npminfo.Resolutions[resk] = resv
 		}
 	}
 
