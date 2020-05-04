@@ -373,6 +373,11 @@ func (v *variable) optional() bool {
 		return true
 	}
 
+	//if we have an explicit marked as optional then let's return that
+	if v.info != nil && v.info.MarkAsOptional != nil {
+		return *v.info.MarkAsOptional
+	}
+
 	// If we're checking a property used in an output position, it isn't optional if it's computed.
 	//
 	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.

@@ -178,6 +178,9 @@ type SchemaInfo struct {
 	// this will make the parameter as computed and not allow the user to set it
 	MarkAsComputedOnly *bool
 
+	// this will make the parameter optional in the schema
+	MarkAsOptional *bool
+
 	// the deprecation message for the property
 	DeprecationMessage string
 }
