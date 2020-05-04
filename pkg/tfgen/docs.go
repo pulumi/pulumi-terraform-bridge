@@ -19,17 +19,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/tf2pulumi/convert"
+	"github.com/pulumi/tf2pulumi/il"
+	"github.com/spf13/afero"
 )
 
 // argument the metadata for an argument of the resource.
@@ -396,7 +400,8 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			// bail out, but most errors are ignorable and just lead to us skipping one section.
 			var skippableExamples bool
 			var err error
-			subsection, skippableExamples, err = parseExamples(g.language, subsection)
+			subsection, skippableExamples, err = parseExamples(g.language, g.pluginHost, g.packageCache, g.infoSource,
+				subsection)
 			if err != nil {
 				return parsedDoc{}, err
 			} else if skippableExamples && !headerIsArgsReference &&
@@ -639,7 +644,9 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 // parseExamples converts an examples section into code comments, including converting any code snippets.
 // If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
 // error returned will be non-nil.
-func parseExamples(language language, lines []string) ([]string, bool, error) {
+func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
+	infoSource il.ProviderInfoSource, lines []string) ([]string, bool, error) {
+
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
@@ -649,31 +656,19 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
 			// If we found a fenced block, parse out the code from it.
-			if language == nodeJS || language == pulumiSchema {
+			if language.shouldConvertExamples() {
 				var hcl string
 				for i = i + 1; i < len(lines); i++ {
 					cline := lines[i]
 					if strings.Index(cline, "```") == 0 {
 						// We've got some code -- assume it's HCL and try to convert it.
-						code, stderr, err := convertHCL(hcl)
+						lines, stderr, err := convertHCL(language, pluginHost, packageCache, infoSource, hcl)
 						if err != nil {
-							// If the conversion failed, there are two cases to consider. First, if tf2pulumi was
-							// missing from the path, we want to error eagerly, as that means the user probably
-							// forgot to add tf2pulumi to their path (and we don't want to simply silently delete
-							// all docs). Second, for all other errors, record them and proceed silently.
-							if err == errTF2PulumiMissing {
-								return result, false, err
-							}
 							skippableExamples = true
 							hclFailures[stderr] = true
 							hclBlocksFailed++
 						} else {
-							// Add a fenced code-block with the resulting TypeScript code snippet.
-							result = append(result, "```typescript")
-							codeLines := strings.Split(code, "\n")
-							codeLines = trimTrailingBlanks(codeLines)
-							result = append(result, codeLines...)
-							result = append(result, "```")
+							result = append(result, lines...)
 							hclBlocksSucceeded++
 						}
 
@@ -689,6 +684,7 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 					hcl = ""
 					skippableExamples = true
 				}
+
 			} else {
 				// TODO: support other languages.
 				for i = i + 1; i < len(lines); i++ {
@@ -714,54 +710,88 @@ func parseExamples(language language, lines []string) ([]string, bool, error) {
 	return result, skippableExamples, nil
 }
 
-// errTF2PulumiMissing is a singleton error used to convey and identify situations in which
-// tf2pulumi isn't on the PATH and/or hasn't been installed.
-var errTF2PulumiMissing = errors.New("tf2pulumi is missing, please install it and re-run")
-
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func convertHCL(hcl string) (string, string, error) {
-	// First, see if tf2pulumi is on the PATH, or not.
-	path, err := exec.LookPath("tf2pulumi")
-	if err != nil {
-		return "", "", errTF2PulumiMissing
-	}
+func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
+	infoSource il.ProviderInfoSource, hcl string) ([]string, string, error) {
 
-	// Now create a temp dir and spill the HCL into it. Terraform's module loader assumes code is in a file.
-	dir, err := ioutil.TempDir("", "pt-hcl-")
-	if err != nil {
-		return "", "", errors.Wrap(err, "creating temp HCL dir")
-	}
-	defer os.RemoveAll(dir)
-
-	// fixup the HCL as necessary.
+	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
 	}
 
-	file := filepath.Join(dir, "main.tf")
-	if err = ioutil.WriteFile(file, []byte(hcl), 0644); err != nil {
-		return "", "", errors.Wrap(err, "writing temp HCL file")
+	input := afero.NewMemMapFs()
+	f, err := input.Create("/main.tf")
+	contract.AssertNoError(err)
+	_, err = f.Write([]byte(hcl))
+	contract.AssertNoError(err)
+	contract.IgnoreClose(f)
+
+	var result []string
+	var stderr bytes.Buffer
+	convertHCL := func(languageName string) (err error) {
+		defer func() {
+			recover()
+		}()
+
+		files, diags, err := convert.Convert(convert.Options{
+			Root:                  input,
+			TargetLanguage:        languageName,
+			AllowMissingVariables: true,
+			FilterResourceNames:   true,
+			PackageCache:          packageCache,
+			PluginHost:            pluginHost,
+			ProviderInfoSource:    infoSource,
+		})
+		if err != nil {
+			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)
+		}
+		if diags.All.HasErrors() {
+			if stderr.Len() != 0 {
+				_, err := fmt.Fprintf(&stderr, "\n")
+				contract.IgnoreError(err)
+			}
+			_, err := fmt.Fprintf(&stderr, "# %s\n", languageName)
+			contract.IgnoreError(err)
+
+			_, err = fmt.Fprintf(&stderr, "%s\n\n", hcl)
+			contract.IgnoreError(err)
+
+			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
+			contract.IgnoreError(err)
+
+			return fmt.Errorf("failied to convert HCL to %v", languageName)
+		}
+
+		contract.Assert(len(files) == 1)
+
+		// Add a fenced code-block with the resulting code snippet.
+		for _, output := range files {
+			result = append(result, "```"+languageName)
+			codeLines := strings.Split(string(output), "\n")
+			codeLines = trimTrailingBlanks(codeLines)
+			result = append(result, codeLines...)
+			result = append(result, "```")
+		}
+
+		return nil
 	}
 
-	// Now run the tf2pulumi command, streaming the results into a string. This explicitly does not use
-	// tf2pulumi in library form because it greatly complicates our modules/vendoring story.
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-
-	args := []string{"--allow-missing-variables", "--filter-auto-names"}
-
-	tf2pulumi := exec.Command(path, args...)
-	tf2pulumi.Dir = dir
-	tf2pulumi.Stdout = stdout
-	tf2pulumi.Stderr = stderr
-	if err = tf2pulumi.Run(); err != nil {
-		return "", stderr.String(), errors.Wrap(err, "converting HCL to Pulumi code")
+	switch language {
+	case nodeJS:
+		err = convertHCL("typescript")
+	case python:
+		err = convertHCL("python")
+	case pulumiSchema:
+		langs := []string{"typescript", "python"}
+		for _, lang := range langs {
+			if langErr := convertHCL(lang); langErr != nil {
+				err = multierror.Append(err, langErr)
+			}
+		}
 	}
-
-	result := stdout.String()
-	if strings.Contains(result, "tf2pulumi error") {
-		return "", "", errors.New("tf2pulumi error in generated code")
+	if err != nil {
+		return nil, stderr.String(), err
 	}
 	return result, "", nil
 }

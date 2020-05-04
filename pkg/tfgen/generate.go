@@ -28,11 +28,14 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/tf2pulumi/il"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
@@ -45,13 +48,16 @@ const (
 )
 
 type generator struct {
-	pkg         string                // the Pulum package name (e.g. `gcp`)
-	version     string                // the package version.
-	language    language              // the language runtime to generate.
-	info        tfbridge.ProviderInfo // the provider info for customizing code generation
-	lg          langGenerator         // the generator with language-specific understanding.
-	overlaysDir string                // the directory in which source overlays come from.
-	outDir      string                // the directory in which to generate the code.
+	pkg          string                // the Pulum package name (e.g. `gcp`)
+	version      string                // the package version.
+	language     language              // the language runtime to generate.
+	info         tfbridge.ProviderInfo // the provider info for customizing code generation
+	lg           langGenerator         // the generator with language-specific understanding.
+	overlaysDir  string                // the directory in which source overlays come from.
+	outDir       string                // the directory in which to generate the code.
+	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
+	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
+	infoSource   il.ProviderInfoSource // the provider info source for tf2pulumi.
 }
 
 type language string
@@ -63,6 +69,14 @@ const (
 	csharp       language = "dotnet"
 	pulumiSchema language = "schema"
 )
+
+func (l language) shouldConvertExamples() bool {
+	switch l {
+	case nodeJS, python, pulumiSchema:
+		return true
+	}
+	return false
+}
 
 var allLanguages = []language{golang, nodeJS, python, csharp}
 
@@ -487,6 +501,15 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return &generator{
 		pkg:         pkg,
 		version:     version,
@@ -495,6 +518,12 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 		lg:          lg,
 		overlaysDir: overlaysDir,
 		outDir:      outDir,
+		pluginHost: &cachingProviderHost{
+			Host:  ctx.Host,
+			cache: map[string]plugin.Provider{},
+		},
+		packageCache: hcl2.NewPackageCache(),
+		infoSource:   il.NewCachingProviderInfoSource(il.PluginProviderInfoSource),
 	}, nil
 }
 
