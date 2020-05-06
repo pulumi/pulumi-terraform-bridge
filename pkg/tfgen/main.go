@@ -62,7 +62,9 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				if err != nil {
 					return err
 				}
-				pprof.StartCPUProfile(f)
+				if err = pprof.StartCPUProfile(f); err != nil {
+					return err
+				}
 				defer pprof.StopCPUProfile()
 			}
 

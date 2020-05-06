@@ -731,7 +731,8 @@ func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.Pa
 	var stderr bytes.Buffer
 	convertHCL := func(languageName string) (err error) {
 		defer func() {
-			recover()
+			v := recover()
+			contract.Ignore(v)
 		}()
 
 		files, diags, err := convert.Convert(convert.Options{
