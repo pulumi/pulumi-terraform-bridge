@@ -316,6 +316,37 @@ func getDocsIndexURL(org, p string) string {
 	return getDocsBaseURL(org, p) + "/index.html.markdown"
 }
 
+// fixExampleTitles looks at every line and fixes any title immediately preceding
+// a code snippet.
+func fixExampleTitles(lines []string) {
+	num := len(lines)
+	for i, line := range lines {
+		if strings.HasPrefix(line, "#### ") {
+			// Make sure we don't go beyond the number of lines we are dealing with.
+			if i >= num-1 {
+				break
+			}
+
+			// For every line that comes after this, process each line until we hit
+			// the beginning of a code-fence.
+			j := i + 1
+			for j < num {
+				if lines[j] == "\n" || lines[j] == "" {
+					j++
+					continue
+				}
+
+				if strings.HasPrefix(lines[j], "```") {
+					lines[i] = strings.ReplaceAll(line, "#### ", "### ")
+					// Stop searching further lines since we found the first code snippet.
+					break
+				}
+				j++
+			}
+		}
+	}
+}
+
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
@@ -330,7 +361,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 	// Replace any Windows-style newlines.
 	markdown = strings.Replace(markdown, "\r\n", "\n", -1)
 
-	// Split the sections by H2 topics in the MarkDown file.
+	// Split the sections by H2 topics in the Markdown file.
 	for _, section := range splitGroupLines(markdown, "## ") {
 		// Extract the header name, since this will drive how we process the content.
 		if len(section) == 0 {
@@ -356,6 +387,8 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 		if header == "Example Usage" {
 			headerIsExampleUsage = true
 			ret.Description += "{{% examples %}}\n"
+
+			fixExampleTitles(section[1:])
 		}
 
 		// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
