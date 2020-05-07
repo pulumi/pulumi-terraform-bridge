@@ -483,6 +483,10 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 					}
 				}
 				description := strings.Join(subsection, "\n") + "\n"
+				if headerIsExampleUsage {
+					// Wrap each example in shortcode.
+					description = "{{% example %}}\n" + description + "{{% /example %}}\n"
+				}
 				ret.Description += description
 			}
 		}
@@ -648,7 +652,6 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
 	var result []string
 	var skippableExamples bool
-	var exampleTitle string
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
@@ -659,7 +662,7 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 					cline := lines[i]
 					if strings.Index(cline, "```") == 0 {
 						// We've got some code -- assume it's HCL and try to convert it.
-						lines, stderr, err := convertHCL(exampleTitle, language, pluginHost, packageCache, infoSource, hcl)
+						lines, stderr, err := convertHCL(language, pluginHost, packageCache, infoSource, hcl)
 						if err != nil {
 							skippableExamples = true
 							hclFailures[stderr] = true
@@ -699,16 +702,8 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 				}
 			}
 		} else {
-			// If the current line is the example title, then don't append it to the lines just yet.
-			// Instead, the example title shall be inserted into each converted code snippet.
-			if strings.HasPrefix(line, "### ") || strings.HasPrefix(line, "#### ") {
-				// Some example titles use #### instead of ###, so let's opportunistically replace that as well
-				// with what we would expect to see.
-				exampleTitle = strings.ReplaceAll(line, "#### ", "### ")
-			} else {
-				// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-				result = append(result, line)
-			}
+			// Otherwise, record any text found before, in between, or after the code snippets, as-is.
+			result = append(result, line)
 		}
 	}
 
@@ -717,7 +712,7 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func convertHCL(exampleTitle string, language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
+func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
 	infoSource il.ProviderInfoSource, hcl string) ([]string, string, error) {
 
 	// Fixup the HCL as necessary.
@@ -766,23 +761,18 @@ func convertHCL(exampleTitle string, language language, pluginHost plugin.Host, 
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
-			return fmt.Errorf("failed to convert HCL to %v", languageName)
+			return fmt.Errorf("failied to convert HCL to %v", languageName)
 		}
 
 		contract.Assert(len(files) == 1)
 
 		// Add a fenced code-block with the resulting code snippet.
 		for _, output := range files {
-			result = append(result, "{{ % example "+ languageName +" % }}")
-			if exampleTitle != "" {
-				result = append(result, exampleTitle)
-			}
 			result = append(result, "```"+languageName)
 			codeLines := strings.Split(string(output), "\n")
 			codeLines = trimTrailingBlanks(codeLines)
 			result = append(result, codeLines...)
 			result = append(result, "```")
-			result = append(result, "{{ % /example % }}")
 		}
 
 		return nil
