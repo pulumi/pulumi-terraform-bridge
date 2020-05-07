@@ -266,3 +266,60 @@ func TestReplaceFooterLinks(t *testing.T) {
 	actual = replaceFooterLinks(inputText, nil)
 	assert.Equal(t, inputText, actual)
 }
+
+func TestFixExamplesHeaders(t *testing.T) {
+	codeFence := "```"
+	t.Run("WithCodeFences", func(t *testing.T) {
+		markdown := `
+# digitalocean\_cdn
+
+Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
+
+## Example Usage
+
+#### Basic Example
+
+` + codeFence + `typescript
+// Some code.
+` + codeFence + `
+## Argument Reference`
+
+		var processedMarkdown string
+		groups := splitGroupLines(markdown, "## ")
+		for _, lines := range groups {
+			fixExampleTitles(lines)
+			for _, line := range lines {
+				processedMarkdown += line
+			}
+		}
+
+		assert.NotContains(t, processedMarkdown, "#### Basic Example")
+		assert.Contains(t, processedMarkdown, "### Basic Example")
+	})
+
+	t.Run("WithoutCodeFences", func(t *testing.T) {
+		markdown := `
+# digitalocean\_cdn
+
+Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
+
+## Example Usage
+
+#### Basic Example
+
+Misleading example title without any actual code fences. We should not modify the title.
+
+## Argument Reference`
+
+		var processedMarkdown string
+		groups := splitGroupLines(markdown, "## ")
+		for _, lines := range groups {
+			fixExampleTitles(lines)
+			for _, line := range lines {
+				processedMarkdown += line
+			}
+		}
+
+		assert.Contains(t, processedMarkdown, "#### Basic Example")
+	})
+}
