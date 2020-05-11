@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -29,28 +30,31 @@ const (
 
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
 // metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
+//
+//nolint: lll
 type ProviderInfo struct {
-	P                 *schema.Provider           // the TF provider/schema.
-	Name              string                     // the TF provider name (e.g. terraform-provider-XXXX).
-	ResourcePrefix    string                     // the prefix on resources the provider exposes, if different to `Name`.
-	GitHubOrg         string                     // the GitHub org of the provider. Defaults to `terraform-providers`.
-	Description       string                     // an optional descriptive overview of the package (a default supplied).
-	Keywords          []string                   // an optional list of keywords to help discovery of this package.
-	License           string                     // the license, if any, the resulting package has (default is none).
-	LogoURL           string                     // an optional URL to the logo of the package
-	Homepage          string                     // the URL to the project homepage.
-	Repository        string                     // the URL to the project source code repository.
-	Version           string                     // the version of the provider package.
-	Config            map[string]*SchemaInfo     // a map of TF name to config schema overrides.
-	ExtraConfig       map[string]*ConfigInfo     // a list of Pulumi-only configuration variables.
-	Resources         map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	DataSources       map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
-	JavaScript        *JavaScriptInfo            // optional overlay information for augmented JavaScript code-generation.
-	Python            *PythonInfo                // optional overlay information for augmented Python code-generation.
-	Golang            *GolangInfo                // optional overlay information for augmented Golang code-generation.
-	CSharp            *CSharpInfo                // optional overlay information for augmented C# code-generation.
-	TFProviderVersion string                     // the version of the TF provider on which this was based
-	TFProviderLicense *TFProviderLicense         // license that the TF provider is distributed under. Default `MPL 2.0`.
+	P                 *schema.Provider                  // the TF provider/schema.
+	Name              string                            // the TF provider name (e.g. terraform-provider-XXXX).
+	ResourcePrefix    string                            // the prefix on resources the provider exposes, if different to `Name`.
+	GitHubOrg         string                            // the GitHub org of the provider. Defaults to `terraform-providers`.
+	Description       string                            // an optional descriptive overview of the package (a default supplied).
+	Keywords          []string                          // an optional list of keywords to help discovery of this package.
+	License           string                            // the license, if any, the resulting package has (default is none).
+	LogoURL           string                            // an optional URL to the logo of the package
+	Homepage          string                            // the URL to the project homepage.
+	Repository        string                            // the URL to the project source code repository.
+	Version           string                            // the version of the provider package.
+	Config            map[string]*SchemaInfo            // a map of TF name to config schema overrides.
+	ExtraConfig       map[string]*ConfigInfo            // a list of Pulumi-only configuration variables.
+	Resources         map[string]*ResourceInfo          // a map of TF name to Pulumi name; standard mangling occurs if no entry.
+	DataSources       map[string]*DataSourceInfo        // a map of TF name to Pulumi resource info.
+	ExtraTypes        map[string]pschema.ObjectTypeSpec // a map of Pulumi token to schema type for overlaid types.
+	JavaScript        *JavaScriptInfo                   // optional overlay information for augmented JavaScript code-generation.
+	Python            *PythonInfo                       // optional overlay information for augmented Python code-generation.
+	Golang            *GolangInfo                       // optional overlay information for augmented Golang code-generation.
+	CSharp            *CSharpInfo                       // optional overlay information for augmented C# code-generation.
+	TFProviderVersion string                            // the version of the TF provider on which this was based
+	TFProviderLicense *TFProviderLicense                // license that the TF provider is distributed under. Default `MPL 2.0`.
 
 	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 }
