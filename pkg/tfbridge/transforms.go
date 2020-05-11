@@ -39,6 +39,15 @@ func TransformJSONDocument(v resource.PropertyValue) (resource.PropertyValue, er
 		}
 		return resource.NewStringProperty(string(b)), nil
 	}
+
+	// This is a special case. Due to a regression introduced in CoerceTerraformString, there are
+	// some string overrides that not are nil rather than "". This causes this transform func to
+	// return an error that a string or JSON map was required. We can now check specifically for
+	// the null and catch this specific usecase
+	if v.IsNull() {
+		return resource.NewStringProperty(""), nil
+	}
+
 	return resource.PropertyValue{},
 		errors.Errorf("expected string or JSON map; got %T", v.V)
 }

@@ -1027,10 +1027,12 @@ func CleanTerraformSchema(tfs map[string]*schema.Schema) map[string]*schema.Sche
 func CoerceTerraformString(schType schema.ValueType, ps *SchemaInfo, stringValue string) (interface{}, error) {
 	// check for the override and use that over terraform if available
 	// we do this to ensure that we are following the explicit call to action of the override
+	// For now, we will only return nil when an override of the type is a boolean and there is no
+	// default value supplied - this will allow us to replicate the nullable-esquq bools that Terraform are
+	// creating by using strings in place of bools
+	// if we return nil for *all* override types when there is an empty string, then we can hit an edge case of
+	// breaking overrides where we have a string and a TransformJSONDocument (see pulumi/pulumi#4592)
 	if ps != nil && ps.Type != "" {
-		if stringValue == "" {
-			return nil, nil
-		}
 		switch strings.ToLower(ps.Type.String()) {
 		case "boolean":
 			if stringValue == "" {
