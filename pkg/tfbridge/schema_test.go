@@ -1093,6 +1093,18 @@ func TestCustomTransforms(t *testing.T) {
 		tfs, psi, nil, nil, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, TerraformUnknownVariableValue, v4)
+
+	// This checks the fix to the regression caused via CoerceTerraformString to ensure we handle nil in Transforms
+	v5, err := MakeTerraformInput(nil, "v", resource.PropertyValue{}, resource.NewNullProperty(), tfs,
+		psi, nil, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, "", v5)
+
+	emptyDoc := ""
+	v6, err := MakeTerraformInput(nil, "v", resource.PropertyValue{}, resource.NewStringProperty(emptyDoc), tfs,
+		psi, nil, nil, false, false)
+	assert.NoError(t, err)
+	assert.Equal(t, "", v6)
 }
 
 func TestImporterOnRead(t *testing.T) {
