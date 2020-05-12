@@ -3,9 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Populate default Tf timeouts. [#177](https://github.com/pulumi/pulumi-terraform-bridge/issues/177)
+
 - Link in tf2pulumi for preliminary HCL2 support and Python codegen.
   [#162](https://github.com/pulumi/pulumi-terraform-bridge/pull/162)
-
 
 - Update how description is populated for schema codegen.
   [#148](https://github.com/pulumi/pulumi-terraform-bridge/pull/148))

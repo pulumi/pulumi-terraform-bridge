@@ -624,7 +624,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 	p.setLoggingContext(ctx)
 	urn := resource.URN(req.GetUrn())
@@ -654,6 +654,16 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
+	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
+	timeouts := &schema.ResourceTimeout{}
+	if err = timeouts.ConfigDecode(res.TF, config); err != nil {
+		return nil, errors.Errorf("error decoding timeout: %s", err)
+	}
+	if err = timeouts.DiffEncode(diff); err != nil {
+		return nil, errors.Errorf("error setting default timeouts to diff: %s", err)
+	}
+
+	// If a custom timeout has been set for this method, overwrite the default timeout
 	if req.Timeout != 0 {
 		setTimeout(diff, req.Timeout, schema.TimeoutCreate)
 	}
@@ -1025,8 +1035,13 @@ func setTimeout(diff *terraform.InstanceDiff, timeout float64, timeoutKey string
 		diff.Meta = map[string]interface{}{}
 	}
 
-	diff.Meta[schema.TimeoutKey] = map[string]interface{}{
-		timeoutKey: timeoutValue,
+	timeouts, ok := diff.Meta[schema.TimeoutKey].(map[string]interface{})
+	if !ok {
+		diff.Meta[schema.TimeoutKey] = map[string]interface{}{
+			timeoutKey: timeoutValue,
+		}
+	} else {
+		timeouts[timeoutKey] = timeoutValue
 	}
 
 	return diff

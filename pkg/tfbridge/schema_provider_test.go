@@ -235,6 +235,10 @@ var testTFProvider = &schema.Provider{
 			Delete: func(data *schema.ResourceData, p interface{}) error {
 				return nil
 			},
+			Timeouts: &schema.ResourceTimeout{
+				Create: timeout(time.Second * 120),
+				Update: timeout(time.Second * 120),
+			},
 		},
 	},
 	DataSourcesMap: map[string]*schema.Resource{
