@@ -1035,8 +1035,13 @@ func setTimeout(diff *terraform.InstanceDiff, timeout float64, timeoutKey string
 		diff.Meta = map[string]interface{}{}
 	}
 
-	diff.Meta[schema.TimeoutKey] = map[string]interface{}{
-		timeoutKey: timeoutValue,
+	timeouts, ok := diff.Meta[schema.TimeoutKey].(map[string]interface{})
+	if !ok {
+		diff.Meta[schema.TimeoutKey] = map[string]interface{}{
+			timeoutKey: timeoutValue,
+		}
+	} else {
+		timeouts[timeoutKey] = timeoutValue
 	}
 
 	return diff
