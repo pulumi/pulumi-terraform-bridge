@@ -640,7 +640,15 @@ func TestMetaProperties(t *testing.T) {
 	// Ensure that timeouts are populated and preserved.
 	state.ID = ""
 	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{})
-	diff, err := testTFProvider.Diff(info, state, cfg)
+	diff, err := testTFProvider.SimpleDiff(info, state, cfg)
+	assert.NoError(t, err)
+
+	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
+	timeouts := &schema.ResourceTimeout{}
+	err = timeouts.ConfigDecode(res, cfg)
+	assert.NoError(t, err)
+	err = timeouts.DiffEncode(diff)
+	assert.NoError(t, err)
 
 	assert.NoError(t, err)
 	create, err := testTFProvider.Apply(info, state, diff)
@@ -705,7 +713,14 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	// Ensure that timeouts are populated and preserved.
 	state.ID = ""
 	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{})
-	diff, err := testTFProvider.Diff(info, state, cfg)
+	diff, err := testTFProvider.SimpleDiff(info, state, cfg)
+	assert.NoError(t, err)
+
+	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
+	resourceTimeout := &schema.ResourceTimeout{}
+	err = resourceTimeout.ConfigDecode(res, cfg)
+	assert.NoError(t, err)
+	err = resourceTimeout.DiffEncode(diff)
 	assert.NoError(t, err)
 
 	setTimeout(diff, float64(300), schema.TimeoutCreate)
@@ -722,11 +737,12 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	assert.NotNil(t, attrs)
 	assert.NotNil(t, meta)
 
-	timeouts := meta[schema.TimeoutKey]
+	timeouts := meta[schema.TimeoutKey].(map[string]interface{})
 	assert.NotNil(t, timeouts)
 	assert.Contains(t, timeouts, schema.TimeoutCreate)
+	assert.Equal(t, timeouts[schema.TimeoutCreate], float64(300000000000))
 	assert.NotContains(t, timeouts, schema.TimeoutDelete)
-	assert.NotContains(t, timeouts, schema.TimeoutUpdate)
+	assert.Contains(t, timeouts, schema.TimeoutUpdate)
 }
 
 // Test that MakeTerraformResult reads property values appropriately.
