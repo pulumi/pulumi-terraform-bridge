@@ -656,12 +656,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 	timeouts := &schema.ResourceTimeout{}
-	err = timeouts.ConfigDecode(res.TF, config)
-	if err != nil {
+	if err = timeouts.ConfigDecode(res.TF, config); err != nil {
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
 	if err = timeouts.DiffEncode(diff); err != nil {
-		glog.V(9).Infof("error encoding timeout to diff: %s", err)
+		return nil, errors.Errorf("error setting default timeouts to diff: %s", err)
 	}
 
 	// If a custom timeout has been set for this method, overwrite the default timeout
