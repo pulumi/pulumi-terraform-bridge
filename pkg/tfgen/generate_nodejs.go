@@ -670,18 +670,9 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, de
 				w.Writefmtln("%v * %s", prefix, docLine)
 			}
 		}
-
-		if docURL != "" {
-			w.Writefmtln("%v *", prefix)
-		}
-	}
-
-	if docURL != "" {
-		w.Writefmtln("%v * > This content is derived from %s.", prefix, docURL)
 	}
 
 	if deprecationMessage != "" {
-		w.Writefmtln("%v *", prefix)
 		w.Writefmtln("%v * @deprecated %s", prefix, deprecationMessage)
 	}
 
@@ -706,11 +697,14 @@ func (g *nodeJSGenerator) emitRawDocComment(w *tools.GenWriter, comment, depreca
 			}
 			w.Writefmt(word)
 			curr += len(word)
+
+			if deprecationMessage != "" {
+				w.Writefmtln("%v * ", prefix)
+			}
 		}
 		w.Writefmtln("")
 
 		if deprecationMessage != "" {
-			w.Writefmtln("%v * ", prefix)
 			w.Writefmtln("%v * @deprecated %s", prefix, deprecationMessage)
 		}
 		w.Writefmtln("%v */", prefix)
