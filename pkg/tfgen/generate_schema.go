@@ -250,15 +250,20 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		spec.Types[token] = typ
 	}
 
-	if jsi := g.info.JavaScript; jsi != nil {
-		spec.Language["nodejs"] = rawMessage(map[string]interface{}{
-			"packageName":        jsi.PackageName,
-			"packageDescription": generateManifestDescription(g.info),
-			"dependencies":       jsi.Dependencies,
-			"devDependencies":    jsi.DevDependencies,
-			"typescriptVersion":  jsi.TypeScriptVersion,
-		})
+	downstreamLicense := g.info.GetTFProviderLicense()
+	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
+	nodeReadme := fmt.Sprintf(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
+	nodeData := map[string]interface{}{
+		"readme": nodeReadme,
 	}
+	if jsi := g.info.JavaScript; jsi != nil {
+		nodeData["packageName"] = jsi.PackageName
+		nodeData["packageDescription"] = generateManifestDescription(g.info)
+		nodeData["dependencies"] = jsi.Dependencies
+		nodeData["devDependencies"] = jsi.DevDependencies
+		nodeData["typescriptVersion"] = jsi.TypeScriptVersion
+	}
+	spec.Language["nodejs"] = rawMessage(nodeData)
 
 	if pi := g.info.Python; pi != nil {
 		spec.Language["python"] = rawMessage(map[string]interface{}{
@@ -291,6 +296,10 @@ func (g *schemaGenerator) genDocComment(comment, docURL string) string {
 			}
 			fmt.Fprintf(buffer, "%s\n", docLine)
 		}
+	}
+
+	if docURL != "" {
+		fmt.Fprintf(buffer, "> This content is derived from %s.\n", docURL)
 	}
 
 	return buffer.String()
