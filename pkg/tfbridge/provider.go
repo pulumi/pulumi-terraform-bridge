@@ -1076,9 +1076,11 @@ func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok to
 		}
 	}
 
-	legacyInfo.DeprecationMessage = fmt.Sprintf("%s.%s.%s has been deprecated in favour of %s.%s.%s",
-		legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule), legacyInfo.Tok.Name(),
-		currentInfo.Tok.Module().Package(), strings.ToLower(newModule), currentInfo.Tok.Name())
+	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
+		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
+			legacyInfo.Tok.Name().String()),
+		generateResourceName(currentInfo.Tok.Module().Package(), strings.ToLower(newModule),
+			currentInfo.Tok.Name().String()))
 	p.Resources[resourceName] = &currentInfo
 	p.Resources[legacyResourceName] = &legacyInfo
 	p.P.ResourcesMap[legacyResourceName] = p.P.ResourcesMap[resourceName]
@@ -1109,10 +1111,23 @@ func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.Mo
 		}
 	}
 
-	legacyInfo.DeprecationMessage = fmt.Sprintf("%s.%s.%s has been deprecated in favour of %s.%s.%s",
-		legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule), legacyInfo.Tok.Name(),
-		currentInfo.Tok.Module().Package(), strings.ToLower(newModule), currentInfo.Tok.Name())
+	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
+		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
+			legacyInfo.Tok.Name().String()),
+		generateResourceName(currentInfo.Tok.Module().Package(), strings.ToLower(newModule),
+			currentInfo.Tok.Name().String()))
 	p.DataSources[resourceName] = &currentInfo
 	p.DataSources[legacyResourceName] = &legacyInfo
 	p.P.DataSourcesMap[legacyResourceName] = p.P.DataSourcesMap[resourceName]
+}
+
+func generateResourceName(packageName tokens.Package, moduleName string, moduleMemberName string) string {
+	// We don't want DeprecationMessages that read
+	// `postgresql.index.DefaultPrivileg` has been deprecated in favour of `postgresql.index.DefaultPrivileges`
+	// we would never use `index` in a reference to the Class. So we should remove this where needed
+	if moduleName == "" || moduleName == "index" {
+		return fmt.Sprintf("%s.%s", packageName, moduleMemberName)
+	}
+
+	return fmt.Sprintf("%s.%s.%s", packageName, moduleName, moduleMemberName)
 }
