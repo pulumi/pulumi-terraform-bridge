@@ -664,7 +664,11 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, de
 				break
 			}
 			// Print the line of documentation
-			w.Writefmtln("%v * %s", prefix, docLine)
+			if docLine == "" {
+				w.Writefmtln("%v *", prefix)
+			} else {
+				w.Writefmtln("%v * %s", prefix, docLine)
+			}
 		}
 
 		if docURL != "" {
@@ -677,7 +681,7 @@ func (g *nodeJSGenerator) emitDocComment(w *tools.GenWriter, comment, docURL, de
 	}
 
 	if deprecationMessage != "" {
-		w.Writefmtln("%v * ", prefix)
+		w.Writefmtln("%v *", prefix)
 		w.Writefmtln("%v * @deprecated %s", prefix, deprecationMessage)
 	}
 
