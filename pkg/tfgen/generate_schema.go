@@ -298,10 +298,6 @@ func (g *schemaGenerator) genDocComment(comment, docURL string) string {
 		}
 	}
 
-	if docURL != "" {
-		fmt.Fprintf(buffer, "> This content is derived from %s.\n", docURL)
-	}
-
 	return buffer.String()
 }
 
