@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -217,7 +219,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
-			tok, ts := g.genObjectType(mod.name, t)
+			tok, ts := g.genObjectType(mod.name, nil, t)
 			spec.Types[tok] = ts
 		}
 
@@ -241,7 +243,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	if pack.provider != nil {
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok, ts := g.genObjectType("index", t)
+			tok, ts := g.genObjectType("index", nil, t)
 			spec.Types[tok] = ts
 		}
 		spec.Provider = g.genResourceType("index", pack.provider)
@@ -289,7 +291,81 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	return spec, nil
 }
 
-func (g *schemaGenerator) genDocComment(comment, docURL string) string {
+func tokenForObjectType(pkg, mod string, typ *propertyType) string {
+	contract.Assert(typ.kind == kindObject)
+
+	name := typ.name
+	if typ.nestedType != "" {
+		name = string(typ.nestedType)
+	}
+	return fmt.Sprintf("%s:%s/%s:%s", pkg, mod, name, name)
+}
+
+type propertyScope struct {
+	name     string
+	path     string
+	children []*propertyScope
+}
+
+func newPropertyScope(pkg, mod, name, path string, properties []*variable) *propertyScope {
+	children := make([]*propertyScope, len(properties))
+	for i, p := range properties {
+		t := p.typ
+		for t.kind == kindList || t.kind == kindSet || t.kind == kindMap {
+			t = t.element
+			if t == nil {
+				t = &propertyType{kind: kindString}
+			}
+		}
+		path := ""
+		if t.kind == kindObject {
+			token := tokenForObjectType(pkg, mod, t)
+			path = "types/" + url.PathEscape(token)
+		}
+		children[i] = newPropertyScope(pkg, mod, p.name, path, t.properties)
+	}
+	return &propertyScope{
+		name:     name,
+		path:     path,
+		children: children,
+	}
+}
+
+func (s *propertyScope) resolveProperty(name string) (string, bool) {
+	if s != nil {
+		for _, child := range s.children {
+			if child.name == name {
+				return s.path, true
+			}
+		}
+		for _, child := range s.children {
+			if path, ok := child.resolveProperty(name); ok {
+				return path, true
+			}
+		}
+	}
+	return "unknown", false
+}
+
+var propertyRefRegex = regexp.MustCompile(`\[[^\]]+\]\(#/PROPERTY_CONTAINER/([^\)]*)\)`)
+
+func (g *schemaGenerator) fixupPropertyReferences(text string, scope *propertyScope) string {
+	return propertyRefRegex.ReplaceAllStringFunc(text, func(match string) string {
+		name := propertyRefRegex.FindStringSubmatch(match)[1]
+		parentPath, found := scope.resolveProperty(name)
+		if !found {
+			return "`" + name + "`"
+		}
+		return strings.Replace(match, "PROPERTY_CONTAINER", parentPath, 1)
+	})
+}
+
+func (g *schemaGenerator) genDeprecationMessage(text string, scope *propertyScope) string {
+	text = fixupPropertyReferences(pulumiSchema, g.pkg, g.info, text)
+	return g.fixupPropertyReferences(text, scope)
+}
+
+func (g *schemaGenerator) genDocComment(comment, docURL string, scope *propertyScope) string {
 	if comment == elidedDocComment && docURL == "" {
 		return ""
 	}
@@ -302,7 +378,8 @@ func (g *schemaGenerator) genDocComment(comment, docURL string) string {
 			if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
 				break
 			}
-			fmt.Fprintf(buffer, "%s\n", docLine)
+
+			fmt.Fprintf(buffer, "%s\n", g.fixupPropertyReferences(docLine, scope))
 		}
 	}
 
@@ -335,10 +412,12 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool) pschema.PropertySpec {
+func (g *schemaGenerator) genProperty(mod string, parent *propertyScope, prop *variable,
+	pyMapCase bool) pschema.PropertySpec {
+
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
-		description = g.genDocComment(prop.doc, prop.docURL)
+		description = g.genDocComment(prop.doc, prop.docURL, parent)
 	} else if prop.rawdoc != "" {
 		description = g.genRawDocComment(prop.rawdoc)
 	}
@@ -374,17 +453,19 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		Description:        description,
 		Default:            defaultValue,
 		DefaultInfo:        defaultInfo,
-		DeprecationMessage: prop.deprecationMessage(),
+		DeprecationMessage: g.genDeprecationMessage(prop.deprecationMessage(), parent),
 		Language:           language,
 	}
 }
 
 func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
+	scope := newPropertyScope(g.pkg, "config", "", "config", variables)
+
 	spec := pschema.ConfigSpec{
 		Variables: make(map[string]pschema.PropertySpec),
 	}
 	for _, v := range variables {
-		spec.Variables[v.name] = g.genProperty("config", v, true)
+		spec.Variables[v.name] = g.genProperty("config", scope, v, true)
 
 		if !v.optional() {
 			spec.Required = append(spec.Required, v.name)
@@ -396,20 +477,31 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema.ResourceSpec {
 	var spec pschema.ResourceSpec
 
+	resourcePath := "resources/" + url.PathEscape(string(res.info.Tok))
+	outputPropertyScope := newPropertyScope(g.pkg, mod, "", resourcePath+"/properties", res.outprops)
+	inputPropertyScope := newPropertyScope(g.pkg, mod, "", resourcePath+"/inputProperties", res.inprops)
+	resourceScope := &propertyScope{
+		path: resourcePath,
+		children: []*propertyScope{
+			inputPropertyScope,
+			outputPropertyScope,
+		},
+	}
+
 	description := ""
 	if res.doc != "" {
-		description = g.genDocComment(res.doc, res.docURL)
+		description = g.genDocComment(res.doc, res.docURL, resourceScope)
 	}
 	if !res.IsProvider() {
 		if res.info.DeprecationMessage != "" {
-			spec.DeprecationMessage = res.info.DeprecationMessage
+			spec.DeprecationMessage = g.genDeprecationMessage(res.info.DeprecationMessage, resourceScope)
 		}
 	}
 	spec.Description = description
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.outprops {
-		spec.Properties[prop.name] = g.genProperty(mod, prop, true)
+		spec.Properties[prop.name] = g.genProperty(mod, outputPropertyScope, prop, true)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -418,7 +510,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	spec.InputProperties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.inprops {
-		spec.InputProperties[prop.name] = g.genProperty(mod, prop, true)
+		spec.InputProperties[prop.name] = g.genProperty(mod, resourceScope, prop, true)
 
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
@@ -426,7 +518,8 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 	}
 
 	if !res.IsProvider() {
-		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet, pyMapCase: true})
+		typ := &schemaNestedType{typ: res.statet, pyMapCase: true}
+		_, stateInputs := g.genObjectType(mod, outputPropertyScope, typ)
 		spec.StateInputs = &stateInputs
 	}
 
@@ -444,22 +537,39 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) pschema.FunctionSpec {
 	var spec pschema.FunctionSpec
 
+	functionPath := "functions/" + url.PathEscape(string(fun.info.Tok))
+	functionScope := &propertyScope{
+		path: functionPath,
+	}
+
+	var inputPropertyScope *propertyScope
+	if fun.argst != nil {
+		inputPropertyScope = newPropertyScope(g.pkg, mod, "", functionPath+"/inputs/Properties", fun.argst.properties)
+		functionScope.children = append(functionScope.children, inputPropertyScope)
+	}
+
+	var outputPropertyScope *propertyScope
+	if fun.retst != nil {
+		outputPropertyScope = newPropertyScope(g.pkg, mod, "", functionPath+"/outputs/properties", fun.retst.properties)
+		functionScope.children = append(functionScope.children, outputPropertyScope)
+	}
+
 	description := ""
 	if fun.doc != "" {
-		description = g.genDocComment(fun.doc, fun.docURL)
+		description = g.genDocComment(fun.doc, fun.docURL, functionScope)
 	}
 	if fun.info.DeprecationMessage != "" {
-		spec.DeprecationMessage = fun.info.DeprecationMessage
+		spec.DeprecationMessage = g.genDeprecationMessage(fun.info.DeprecationMessage, functionScope)
 	}
 	spec.Description = description
 
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst, pyMapCase: true})
+		_, t := g.genObjectType(mod, functionScope, &schemaNestedType{typ: fun.argst, pyMapCase: true})
 		spec.Inputs = &t
 	}
 	if fun.retst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst, pyMapCase: true})
+		_, t := g.genObjectType(mod, functionScope, &schemaNestedType{typ: fun.retst, pyMapCase: true})
 		spec.Outputs = &t
 	}
 
@@ -478,27 +588,30 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
+func (g *schemaGenerator) genObjectType(mod string, scope *propertyScope,
+	typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
+
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
-	name := typ.name
-	if typ.nestedType != "" {
-		name = string(typ.nestedType)
+	token := tokenForObjectType(g.pkg, mod, typ)
+
+	if scope == nil {
+		path := fmt.Sprintf("types/%s/properties", url.PathEscape(token))
+		scope = newPropertyScope(g.pkg, mod, "", path, typ.properties)
 	}
-	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
 
 	spec := pschema.ObjectTypeSpec{
 		Type: "object",
 	}
 
 	if typ.doc != "" {
-		spec.Description = g.genDocComment(typ.doc, "")
+		spec.Description = g.genDocComment(typ.doc, "", scope)
 	}
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range typ.properties {
-		spec.Properties[prop.name] = g.genProperty(mod, prop, typInfo.pyMapCase)
+		spec.Properties[prop.name] = g.genProperty(mod, scope, prop, typInfo.pyMapCase)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -573,10 +686,8 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 				if pkg == g.pkg {
 					pkg = ""
 				}
-				spec := pschema.TypeSpec{
-					Type: defaultType,
-					Ref:  fmt.Sprintf("%s#/types/%s", pkg, strings.TrimSuffix(string(t), "[]")),
-				}
+				typePath := fmt.Sprintf("%s#/types/%s", pkg, url.PathEscape(strings.TrimSuffix(string(t), "[]")))
+				spec := pschema.TypeSpec{Type: defaultType, Ref: typePath}
 				if strings.HasSuffix(string(t), "[]") {
 					items := spec
 					spec = pschema.TypeSpec{Type: "array", Items: &items}
@@ -611,7 +722,8 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 		additionalProperties := g.schemaType(mod, typ.element, out)
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
-		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:%s/%s:%s", g.pkg, mod, typ.name, typ.name)}
+		tok := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, typ.name, typ.name)
+		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s", url.PathEscape(tok))}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
 		return pschema.TypeSpec{}

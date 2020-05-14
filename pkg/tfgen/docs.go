@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -1031,7 +1032,6 @@ var (
 	codeLikeSingleWord = regexp.MustCompile(`` + // trick gofmt into aligning the rest of the string
 		// Match code_like_words inside code and plain text
 		`((?P<open>[\s"\x60\[])(?P<name>([0-9a-z]+_)+[0-9a-z]+)(?P<close>[\s"\x60\]]))` +
-
 		// Match `code` words
 		`|(\x60(?P<name>[0-9a-z]+)\x60)`)
 )
@@ -1042,6 +1042,18 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 const elidedDocComment = "<elided>"
 
 func fixupPropertyReferences(language language, pkg string, info tfbridge.ProviderInfo, text string) string {
+	makeSchemaLink := func(open, name, path, close string) string {
+		path = path + "/" + url.PathEscape(url.PathEscape(name))
+
+		// If the entity we're linking is itself within a link, generate an HTML anchor.
+		if open == "[" || close == "]" {
+			return fmt.Sprintf(`%s<a href="%s">%s</a>%s`, open, path, name, close)
+		}
+
+		// Otherwise, generate a Markdown link.
+		return fmt.Sprintf(`%s[%s](%s)%s`, open, name, path, close)
+	}
+
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
@@ -1064,6 +1076,9 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 			case golang, python:
 				// Use `ec2.Instance` format
 				return open + modname + resname + close
+			case pulumiSchema:
+				// Use a hyperlink to the resource.
+				return makeSchemaLink(open, string(resInfo.Tok), "#/resources/", close)
 			default:
 				// Use `aws.ec2.Instance` format
 				return open + pkg + "." + modname + resname + close
@@ -1080,6 +1095,9 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 			case golang, python:
 				// Use `ec2.getAmi` format
 				return open + modname + getname + close
+			case pulumiSchema:
+				// Use a hyperlink to the function.
+				return makeSchemaLink(open, string(dataInfo.Tok), "#/functions/", close)
 			default:
 				// Use `aws.ec2.getAmi` format
 				return open + pkg + "." + modname + getname + close
@@ -1091,6 +1109,11 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 			// Use `camelCase` format
 			pname := propertyName(name, nil, nil)
 			return open + pname + close
+		case pulumiSchema:
+			// Use a hyperlink to the property. The kind (i.e. resource, function, or type) and token will be filled
+			// in later.
+			pname := propertyName(name, nil, nil)
+			return makeSchemaLink(open, pname, "#/PROPERTY_CONTAINER", close)
 		default:
 			return match
 		}
