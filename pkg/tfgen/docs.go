@@ -974,13 +974,98 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entity
 
 }
 
-var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
-var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
+//nolint:lll
+var (
+	// Match a [markdown](link)
+	markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
+
+	// Match a ```fenced code block```.
+	codeBlocks = regexp.MustCompile(`(?ms)\x60\x60\x60[^\n]*?$.*?\x60\x60\x60\s*$`)
+
+	codeLikeSingleWord = regexp.MustCompile(`` + // trick gofmt into aligning the rest of the string
+		// Match code_like_words inside code and plain text
+		`((?P<open>[\s"\x60\[])(?P<name>([0-9a-z]+_)+[0-9a-z]+)(?P<close>[\s"\x60\]]))` +
+
+		// Match `code` words
+		`|(\x60(?P<name>[0-9a-z]+)\x60)`)
+)
 
 // Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
 var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
 
 const elidedDocComment = "<elided>"
+
+func fixupPropertyReferences(language language, pkg string, info tfbridge.ProviderInfo, text string) string {
+	fixupText := func(text string) string {
+		return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
+			parts := codeLikeSingleWord.FindStringSubmatch(match)
+
+			var open, name, close string
+			if parts[2] != "" {
+				open, name, close = parts[2], parts[3], parts[5]
+			} else {
+				open, name, close = "`", parts[7], "`"
+			}
+
+			if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
+				// This is a resource name
+				resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
+				modname := extractModuleName(mod)
+				if modname != "" {
+					modname += "."
+				}
+
+				switch language {
+				case golang, python:
+					// Use `ec2.Instance` format
+					return open + modname + resname + close
+				default:
+					// Use `aws.ec2.Instance` format
+					return open + pkg + "." + modname + resname + close
+				}
+			} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
+				// This is a data source name
+				getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
+				modname := extractModuleName(mod)
+				switch language {
+				case golang, python:
+					// Use `ec2.getAmi` format
+					return open + modname + getname + close
+				default:
+					// Use `aws.ec2.getAmi` format
+					return open + pkg + "." + modname + getname + close
+				}
+			}
+			// Else just treat as a property name
+			switch language {
+			case nodeJS, golang:
+				// Use `camelCase` format
+				pname := propertyName(name, nil, nil)
+				return open + pname + close
+			default:
+				return match
+			}
+		})
+	}
+
+	// Detect all code blocks in the text so we can avoid processing them.
+	codeBlocks := codeBlocks.FindAllStringIndex(text, -1)
+
+	var parts []string
+	start, end := 0, 0
+	for _, codeBlock := range codeBlocks {
+		end = codeBlock[0]
+		parts = append(parts, fixupText(text[start:end]))
+
+		start = codeBlock[1]
+		parts = append(parts, text[end:start])
+	}
+	if start != len(text) {
+		parts = append(parts, fixupText(text[start:]))
+	}
+
+	return strings.Join(parts, "")
+}
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
@@ -1031,44 +1116,7 @@ func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 	})
 
 	// Fixup resource and property name references
-	text = codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
-		parts := codeLikeSingleWord.FindStringSubmatch(match)
-		name := parts[2]
-		if resInfo, hasResourceInfo := g.info.Resources[name]; hasResourceInfo {
-			// This is a resource name
-			resname, mod := resourceName(g.info.GetResourcePrefix(), name, resInfo, false)
-			modname := extractModuleName(mod)
-			switch g.language {
-			case golang, python:
-				// Use `ec2.Instance` format
-				return parts[1] + modname + "." + resname + parts[4]
-			default:
-				// Use `aws.ec2.Instance` format
-				return parts[1] + g.pkg + "." + modname + "." + resname + parts[4]
-			}
-		} else if dataInfo, hasDatasourceInfo := g.info.DataSources[name]; hasDatasourceInfo {
-			// This is a data source name
-			getname, mod := dataSourceName(g.info.GetResourcePrefix(), name, dataInfo)
-			modname := extractModuleName(mod)
-			switch g.language {
-			case golang, python:
-				// Use `ec2.getAmi` format
-				return parts[1] + modname + "." + getname + parts[4]
-			default:
-				// Use `aws.ec2.getAmi` format
-				return parts[1] + g.pkg + "." + modname + "." + getname + parts[4]
-			}
-		}
-		// Else just treat as a property name
-		switch g.language {
-		case nodeJS, golang:
-			// Use `camelCase` format
-			pname := propertyName(name, nil, nil)
-			return parts[1] + pname + parts[4]
-		default:
-			return match
-		}
-	})
+	text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
 
 	// Finally, trim any trailing blank lines and return the result.
 	lines := strings.Split(text, "\n")
