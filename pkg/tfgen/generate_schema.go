@@ -52,7 +52,9 @@ func newSchemaGenerator(pkg, version string, info tfbridge.ProviderInfo, outDir 
 }
 
 func (g *schemaGenerator) emitPackage(pack *pkg) error {
-	schema, err := json.MarshalIndent(g.genPackageSpec(pack), "", "    ")
+	packageSpec := g.genPackageSpec(pack)
+	packageSpec.Version = ""
+	schema, err := json.MarshalIndent(packageSpec, "", "    ")
 	if err != nil {
 		return errors.Wrap(err, "marshaling Pulumi schema")
 	}
