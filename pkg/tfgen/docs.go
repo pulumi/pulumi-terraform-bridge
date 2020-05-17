@@ -26,13 +26,10 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/tf2pulumi/convert"
-	"github.com/pulumi/tf2pulumi/il"
 	"github.com/spf13/afero"
 )
 
@@ -352,194 +349,174 @@ func fixExampleTitles(lines []string) {
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
 	markdown, markdownFileName, resourcePrefix, rawname string) (parsedDoc, error) {
 
-	ret := parsedDoc{
+	p := &tfMarkdownParser{
+		g:                g,
+		info:             info,
+		kind:             kind,
+		markdown:         markdown,
+		markdownFileName: markdownFileName,
+		resourcePrefix:   resourcePrefix,
+		rawname:          rawname,
+	}
+	return p.parse()
+}
+
+type tfMarkdownParser struct {
+	g                *generator
+	info             tfbridge.ResourceOrDataSourceInfo
+	kind             DocKind
+	markdown         string
+	markdownFileName string
+	resourcePrefix   string
+	rawname          string
+
+	ret parsedDoc
+}
+
+func (p *tfMarkdownParser) parse() (parsedDoc, error) {
+	p.ret = parsedDoc{
 		Arguments:  make(map[string]*argument),
 		Attributes: make(map[string]string),
-		URL:        getDocsDetailsURL(g.info.GetGitHubOrg(), resourcePrefix, string(kind), markdownFileName),
+		URL:        getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName),
 	}
 
 	// Replace any Windows-style newlines.
-	markdown = strings.Replace(markdown, "\r\n", "\n", -1)
+	markdown := strings.Replace(p.markdown, "\r\n", "\n", -1)
 
 	// Split the sections by H2 topics in the Markdown file.
 	for _, section := range splitGroupLines(markdown, "## ") {
-		// Extract the header name, since this will drive how we process the content.
-		if len(section) == 0 {
-			cmdutil.Diag().Warningf(diag.Message("",
-				"Unparseable H2 doc section for %v; consider overriding doc source location"), rawname)
-			continue
-		}
-
-		// Skip certain headers that we don't support.
-		header := section[0]
-		if strings.Index(header, "## ") == 0 {
-			header = header[3:]
-		}
-		if header == "Import" || header == "Imports" || header == "Timeout" ||
-			header == "Timeouts" || header == "User Project Overrides" || header == "User Project Override" {
-			ignoredDocSections++
-			ignoredDocHeaders[header]++
-			continue
-		}
-
-		// Add shortcode around each examples block.
-		var headerIsExampleUsage bool
-		if header == "Example Usage" {
-			headerIsExampleUsage = true
-			ret.Description += "{{% examples %}}\n"
-
-			fixExampleTitles(section[1:])
-		}
-
-		// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
-		// snippets that are unparseable (we don't want to ignore entire H2 sections).
-		var wroteHeader bool
-		for _, subsection := range groupLines(section[1:], "### ") {
-			if len(subsection) == 0 {
-				cmdutil.Diag().Warningf(diag.Message("",
-					"Unparseable H3 doc section for %v; consider overriding doc source location"), rawname)
-				continue
-			}
-
-			// Skip empty sections (they just add unnecessary padding and headers).
-			var allEmpty bool
-			for i, sub := range subsection {
-				if !isBlank(sub) {
-					break
-				}
-				if i == len(subsection)-1 {
-					allEmpty = true
-					break
-				}
-			}
-			if allEmpty {
-				continue
-			}
-
-			// Detect important section kinds.
-			var headerIsArgsReference bool
-			var headerIsAttributesReference bool
-			var headerIsFrontMatter bool
-			switch header {
-			case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
-				headerIsArgsReference = true
-			case "Attributes Reference", "Attribute Reference":
-				headerIsAttributesReference = true
-			case "---":
-				headerIsFrontMatter = true
-			}
-
-			// Convert any code snippets, if there are any. If this yields a fatal error, we
-			// bail out, but most errors are ignorable and just lead to us skipping one section.
-			var skippableExamples bool
-			var err error
-			subsection, skippableExamples, err = parseExamples(g.language, g.pluginHost, g.packageCache, g.infoSource,
-				subsection)
-			if err != nil {
-				return parsedDoc{}, err
-			} else if skippableExamples && !headerIsArgsReference &&
-				!headerIsAttributesReference && !headerIsFrontMatter {
-				// Skip sections with failed examples, so long as they aren't "essential" blocks.
-				continue
-			}
-
-			// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
-			switch {
-			case headerIsArgsReference:
-				processArgumentReferenceSection(subsection, &ret)
-			case headerIsAttributesReference:
-				var lastMatch string
-				for _, line := range subsection {
-					matches := attributeBulletRegexp.FindStringSubmatch(line)
-					if len(matches) >= 2 {
-						// found a property bullet, extract the name and description
-						ret.Attributes[matches[1]] = matches[2]
-						lastMatch = matches[1]
-					} else if !isBlank(line) && lastMatch != "" {
-						// this is a continuation of the previous bullet
-						ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
-					} else {
-						// This is an empty line or there were no bullets yet - clear the lastMatch
-						lastMatch = ""
-					}
-				}
-			case headerIsFrontMatter:
-				// The header of the MarkDown will have two "---"s paired up to delineate the header. Skip this.
-				var foundEndHeader bool
-				for len(subsection) > 0 {
-					curr := subsection[0]
-					subsection = subsection[1:]
-					if curr == "---" {
-						foundEndHeader = true
-						break
-					}
-				}
-				if !foundEndHeader {
-					cmdutil.Diag().Warningf(
-						diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), rawname)
-				}
-
-				// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
-				// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
-				// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
-				// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
-				lastBlank := true
-				var foundH1Resource bool
-				for _, line := range subsection {
-					if strings.Index(line, "# ") == 0 {
-						foundH1Resource = true
-						lastBlank = true
-					} else if !isBlank(line) || !lastBlank {
-						ret.Description += line + "\n"
-						lastBlank = false
-					} else if isBlank(line) {
-						lastBlank = true
-					}
-				}
-				if !foundH1Resource {
-					cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), rawname)
-				}
-			default:
-				// Determine if this is a nested argument section.
-				_, isArgument := ret.Arguments[header]
-				if isArgument || strings.HasSuffix(header, "Configuration Block") {
-					processArgumentReferenceSection(subsection, &ret)
-					continue
-				}
-
-				// For all other sections, append them to the description section.
-				if !wroteHeader {
-					ret.Description += fmt.Sprintf("## %s\n", header)
-					wroteHeader = true
-					if !isBlank(subsection[0]) {
-						ret.Description += "\n"
-					}
-				}
-				description := strings.Join(subsection, "\n") + "\n"
-				if headerIsExampleUsage {
-					// Wrap each example in shortcode.
-					description = "{{% example %}}\n" + description + "{{% /example %}}\n"
-				}
-				ret.Description += description
-			}
-		}
-
-		// Add the closing shortcode around the examples block.
-		if headerIsExampleUsage {
-			ret.Description += "{{% /examples %}}\n"
-		}
+		p.parseSection(section)
 	}
 
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, elided := cleanupDoc(g, info, ret, footerLinks)
+	doc, elided := cleanupDoc(p.g, p.info, p.ret, footerLinks)
 	if elided {
 		cmdutil.Diag().Warningf(diag.Message("",
-			"Resource %v contains an <elided> doc reference that needs updated"), rawname)
+			"Resource %v contains an <elided> doc reference that needs updated"), p.rawname)
 	}
 
 	return doc, nil
+}
+
+const (
+	sectionOther               = 0
+	sectionExampleUsage        = 1
+	sectionArgsReference       = 2
+	sectionAttributesReference = 3
+	sectionFrontMatter         = 4
+)
+
+func (p *tfMarkdownParser) parseSection(section []string) error {
+	// Extract the header name, since this will drive how we process the content.
+	if len(section) == 0 {
+		cmdutil.Diag().Warningf(diag.Message("",
+			"Unparseable H2 doc section for %v; consider overriding doc source location"), p.rawname)
+		return nil
+	}
+
+	// Skip certain headers that we don't support.
+	header := section[0]
+	if strings.Index(header, "## ") == 0 {
+		header = header[3:]
+	}
+
+	sectionKind := sectionOther
+	switch header {
+	case "Import", "Imports", "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
+		ignoredDocSections++
+		ignoredDocHeaders[header]++
+		return nil
+	case "Example Usage":
+		sectionKind = sectionExampleUsage
+	case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
+		sectionKind = sectionArgsReference
+	case "Attributes Reference", "Attribute Reference":
+		sectionKind = sectionAttributesReference
+	case "---":
+		sectionKind = sectionFrontMatter
+	}
+
+	if sectionKind == sectionExampleUsage {
+		// Add shortcode around each examples block.
+		p.ret.Description += "{{% examples %}}\n"
+		fixExampleTitles(section[1:])
+	}
+
+	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
+	// snippets that are unparseable (we don't want to ignore entire H2 sections).
+	var wroteHeader bool
+	for _, subsection := range groupLines(section[1:], "### ") {
+		if len(subsection) == 0 {
+			cmdutil.Diag().Warningf(diag.Message("",
+				"Unparseable H3 doc section for %v; consider overriding doc source location"), p.rawname)
+			continue
+		}
+
+		// Skip empty sections (they just add unnecessary padding and headers).
+		allEmpty := true
+		for _, sub := range subsection {
+			if !isBlank(sub) {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			continue
+		}
+
+		// Convert any code snippets, if there are any. If this yields a fatal error, we
+		// bail out, but most errors are ignorable and just lead to us skipping one section.
+		var skippableExamples bool
+		var err error
+		subsection, skippableExamples, err = p.parseExamples(subsection)
+		if err != nil {
+			return err
+		} else if skippableExamples && sectionKind <= sectionExampleUsage {
+			// Skip sections with failed examples, so long as they aren't "essential" blocks.
+			continue
+		}
+
+		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
+		switch sectionKind {
+		case sectionArgsReference:
+			p.parseArgReferenceSection(subsection)
+		case sectionAttributesReference:
+			p.parseAttributesReferenceSection(subsection)
+		case sectionFrontMatter:
+			p.parseFrontMatter(subsection)
+		default:
+			// Determine if this is a nested argument section.
+			_, isArgument := p.ret.Arguments[header]
+			if isArgument || strings.HasSuffix(header, "Configuration Block") {
+				p.parseArgReferenceSection(subsection)
+				continue
+			}
+
+			// For all other sections, append them to the description section.
+			if !wroteHeader {
+				p.ret.Description += fmt.Sprintf("## %s\n", header)
+				wroteHeader = true
+				if !isBlank(subsection[0]) {
+					p.ret.Description += "\n"
+				}
+			}
+			description := strings.Join(subsection, "\n") + "\n"
+			if sectionKind == sectionExampleUsage {
+				// Wrap each example in shortcode.
+				description = "{{% example %}}\n" + description + "{{% /example %}}\n"
+			}
+			p.ret.Description += description
+		}
+	}
+
+	// Add the closing shortcode around the examples block.
+	if sectionKind == sectionExampleUsage {
+		p.ret.Description += "{{% /examples %}}\n"
+	}
+
+	return nil
 }
 
 func getFooterLinks(markdown string) map[string]string {
@@ -554,7 +531,7 @@ func getFooterLinks(markdown string) map[string]string {
 	return links
 }
 
-func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
+func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	var lastMatch, nested string
 	for _, line := range subsection {
 		matches := argumentBulletRegexp.FindStringSubmatch(line)
@@ -562,41 +539,41 @@ func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
 			// found a property bullet, extract the name and description
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
-				if ret.Arguments[nested] == nil {
-					ret.Arguments[nested] = &argument{
+				if p.ret.Arguments[nested] == nil {
+					p.ret.Arguments[nested] = &argument{
 						arguments: make(map[string]string),
 					}
-				} else if ret.Arguments[nested].arguments == nil {
-					ret.Arguments[nested].arguments = make(map[string]string)
+				} else if p.ret.Arguments[nested].arguments == nil {
+					p.ret.Arguments[nested].arguments = make(map[string]string)
 				}
-				ret.Arguments[nested].arguments[matches[1]] = matches[4]
+				p.ret.Arguments[nested].arguments[matches[1]] = matches[4]
 
 				// Also record this as a top-level argument just in case, since sometimes the recorded nested
 				// argument doesn't match the resource's argument.
 				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if ret.Arguments[matches[1]] == nil {
-					ret.Arguments[matches[1]] = &argument{
+				if p.ret.Arguments[matches[1]] == nil {
+					p.ret.Arguments[matches[1]] = &argument{
 						description: matches[4],
 						isNested:    true, // Mark that this argument comes from a nested field.
 					}
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					ret.Arguments[matches[1]] = &argument{description: matches[4]}
+					p.ret.Arguments[matches[1]] = &argument{description: matches[4]}
 				}
 			}
 			lastMatch = matches[1]
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			if nested != "" {
-				ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+				p.ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
 
 				// Also update the top-level argument if we took it from a nested field.
-				if ret.Arguments[lastMatch].isNested {
-					ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				if p.ret.Arguments[lastMatch].isNested {
+					p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 				}
 			} else {
-				ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
 			// This line might declare the beginning of a nested object.
@@ -612,6 +589,62 @@ func processArgumentReferenceSection(subsection []string, ret *parsedDoc) {
 			// Clear the lastMatch.
 			lastMatch = ""
 		}
+	}
+}
+
+func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) {
+	var lastMatch string
+	for _, line := range subsection {
+		matches := attributeBulletRegexp.FindStringSubmatch(line)
+		if len(matches) >= 2 {
+			// found a property bullet, extract the name and description
+			p.ret.Attributes[matches[1]] = matches[2]
+			lastMatch = matches[1]
+		} else if !isBlank(line) && lastMatch != "" {
+			// this is a continuation of the previous bullet
+			p.ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
+		} else {
+			// This is an empty line or there were no bullets yet - clear the lastMatch
+			lastMatch = ""
+		}
+	}
+}
+
+func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
+	// The header of the MarkDown will have two "---"s paired up to delineate the header. Skip this.
+	var foundEndHeader bool
+	for len(subsection) > 0 {
+		curr := subsection[0]
+		subsection = subsection[1:]
+		if curr == "---" {
+			foundEndHeader = true
+			break
+		}
+	}
+	if !foundEndHeader {
+		cmdutil.Diag().Warningf(
+			diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), p.rawname)
+	}
+
+	// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
+	// of the resource, because we aren't detecting code fencing. Comments in HCL are prefixed with # (the
+	// same as H1 in Markdown, so we treat further H1's in this section as part of the description. If there
+	// are no matching H1s, we emit a warning for the resource as it is likely a problem with the documentation.
+	lastBlank := true
+	var foundH1Resource bool
+	for _, line := range subsection {
+		if strings.Index(line, "# ") == 0 {
+			foundH1Resource = true
+			lastBlank = true
+		} else if !isBlank(line) || !lastBlank {
+			p.ret.Description += line + "\n"
+			lastBlank = false
+		} else if isBlank(line) {
+			lastBlank = true
+		}
+	}
+	if !foundH1Resource {
+		cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), p.rawname)
 	}
 }
 
@@ -677,9 +710,7 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 // parseExamples converts an examples section into code comments, including converting any code snippets.
 // If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
 // error returned will be non-nil.
-func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
-	infoSource il.ProviderInfoSource, lines []string) ([]string, bool, error) {
-
+func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, error) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
@@ -689,13 +720,13 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 		line := lines[i]
 		if strings.Index(line, "```") == 0 {
 			// If we found a fenced block, parse out the code from it.
-			if language.shouldConvertExamples() {
+			if p.g.language.shouldConvertExamples() {
 				var hcl string
 				for i = i + 1; i < len(lines); i++ {
 					cline := lines[i]
 					if strings.Index(cline, "```") == 0 {
 						// We've got some code -- assume it's HCL and try to convert it.
-						lines, stderr, err := convertHCL(language, pluginHost, packageCache, infoSource, hcl)
+						lines, stderr, err := p.convertHCL(hcl)
 						if err != nil {
 							skippableExamples = true
 							hclFailures[stderr] = true
@@ -745,9 +776,7 @@ func parseExamples(language language, pluginHost plugin.Host, packageCache *hcl2
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.PackageCache,
-	infoSource il.ProviderInfoSource, hcl string) ([]string, string, error) {
-
+func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
@@ -773,9 +802,9 @@ func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.Pa
 			TargetLanguage:        languageName,
 			AllowMissingVariables: true,
 			FilterResourceNames:   true,
-			PackageCache:          packageCache,
-			PluginHost:            pluginHost,
-			ProviderInfoSource:    infoSource,
+			PackageCache:          p.g.packageCache,
+			PluginHost:            p.g.pluginHost,
+			ProviderInfoSource:    p.g.infoSource,
 		})
 		if err != nil {
 			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)
@@ -811,7 +840,7 @@ func convertHCL(language language, pluginHost plugin.Host, packageCache *hcl2.Pa
 		return nil
 	}
 
-	switch language {
+	switch p.g.language {
 	case nodeJS:
 		err = convertHCL("typescript")
 	case python:
