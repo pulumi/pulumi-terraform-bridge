@@ -3,7 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Populate default Tf timeouts. [#177](https://github.com/pulumi/pulumi-terraform-bridge/issues/177)
+- Allow providers to define additional object types in the schema.
+  [#192](https://github.com/pulumi/pulumi-terraform-bridge/pull/192)
+
+- Populate default TF timeouts.
+  [#177](https://github.com/pulumi/pulumi-terraform-bridge/issues/177)
 
 - Link in tf2pulumi for preliminary HCL2 support and Python codegen.
   [#162](https://github.com/pulumi/pulumi-terraform-bridge/pull/162)

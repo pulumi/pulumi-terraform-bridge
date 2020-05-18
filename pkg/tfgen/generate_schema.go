@@ -52,9 +52,13 @@ func newSchemaGenerator(pkg, version string, info tfbridge.ProviderInfo, outDir 
 }
 
 func (g *schemaGenerator) emitPackage(pack *pkg) error {
-	packageSpec := g.genPackageSpec(pack)
-	packageSpec.Version = ""
-	schema, err := json.MarshalIndent(packageSpec, "", "    ")
+	spec, err := g.genPackageSpec(pack)
+	if err != nil {
+		return errors.Wrap(err, "generating Pulumi schema")
+	}
+
+	spec.Version = ""
+	schema, err := json.MarshalIndent(spec, "", "    ")
 	if err != nil {
 		return errors.Wrap(err, "marshaling Pulumi schema")
 	}
@@ -177,10 +181,14 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 		version: version,
 		info:    info,
 	}
-	return pschema.ImportSpec(g.genPackageSpec(pack), nil)
+	spec, err := g.genPackageSpec(pack)
+	if err != nil {
+		return nil, err
+	}
+	return pschema.ImportSpec(spec, nil)
 }
 
-func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
+func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
 	spec := pschema.PackageSpec{
 		Name:       g.pkg,
 		Version:    g.version,
@@ -235,6 +243,13 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
 		spec.Provider = g.genResourceType("index", pack.provider)
 	}
 
+	for token, typ := range g.info.ExtraTypes {
+		if _, defined := spec.Types[token]; defined {
+			return pschema.PackageSpec{}, fmt.Errorf("failed to define extra types: %v is already defined", token)
+		}
+		spec.Types[token] = typ
+	}
+
 	if jsi := g.info.JavaScript; jsi != nil {
 		spec.Language["nodejs"] = rawMessage(map[string]interface{}{
 			"packageName":        jsi.PackageName,
@@ -258,7 +273,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) pschema.PackageSpec {
 		})
 	}
 
-	return spec
+	return spec, nil
 }
 
 func (g *schemaGenerator) genDocComment(comment, docURL string) string {
