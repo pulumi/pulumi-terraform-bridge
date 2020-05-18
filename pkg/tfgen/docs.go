@@ -385,7 +385,9 @@ func (p *tfMarkdownParser) parse() (parsedDoc, error) {
 
 	// Split the sections by H2 topics in the Markdown file.
 	for _, section := range splitGroupLines(markdown, "## ") {
-		p.parseSection(section)
+		if err := p.parseSection(section); err != nil {
+			return parsedDoc{}, err
+		}
 	}
 
 	// Get links.
