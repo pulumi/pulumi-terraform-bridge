@@ -57,7 +57,7 @@ func (g *schemaGenerator) emitPackage(pack *pkg) error {
 		return errors.Wrap(err, "generating Pulumi schema")
 	}
 
-	packageSpec.Version = ""
+	spec.Version = ""
 	schema, err := json.MarshalIndent(spec, "", "    ")
 	if err != nil {
 		return errors.Wrap(err, "marshaling Pulumi schema")
