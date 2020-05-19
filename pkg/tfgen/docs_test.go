@@ -204,14 +204,16 @@ func TestArgumentRegex(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ret := parsedDoc{
-			Arguments: make(map[string]*argument),
+		parser := &tfMarkdownParser{
+			ret: parsedDoc{
+				Arguments: make(map[string]*argument),
+			},
 		}
-		processArgumentReferenceSection(tt.input, &ret)
+		parser.parseArgReferenceSection(tt.input)
 
-		assert.Len(t, ret.Arguments, len(tt.expected))
+		assert.Len(t, parser.ret.Arguments, len(tt.expected))
 		for k, v := range tt.expected {
-			actualArg := ret.Arguments[k]
+			actualArg := parser.ret.Arguments[k]
 			assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
 			assert.Equal(t, v.description, actualArg.description)
 			assert.Equal(t, v.isNested, actualArg.isNested)
