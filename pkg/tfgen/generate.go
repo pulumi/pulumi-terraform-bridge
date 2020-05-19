@@ -72,7 +72,7 @@ const (
 
 func (l language) shouldConvertExamples() bool {
 	switch l {
-	case nodeJS, python, pulumiSchema:
+	case nodeJS, python, csharp, pulumiSchema:
 		return true
 	}
 	return false
