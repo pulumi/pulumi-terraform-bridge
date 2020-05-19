@@ -26,8 +26,7 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 
 func (host *cachingProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	key := fmt.Sprintf("%v@%v", pkg, version)
-	provider, ok := host.getProvider(key)
-	if ok {
+	if provider, ok := host.getProvider(key); ok {
 		return provider, nil
 	}
 
