@@ -847,8 +847,10 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 		err = convertHCL("typescript")
 	case python:
 		err = convertHCL("python")
+	case csharp:
+		err = convertHCL("csharp")
 	case pulumiSchema:
-		langs := []string{"typescript", "python"}
+		langs := []string{"typescript", "python", "csharp"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
 				err = multierror.Append(err, langErr)
