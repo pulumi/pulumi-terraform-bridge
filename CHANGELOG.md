@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support `Secret` default values.
+  [#207](https://github.com/pulumi/pulumi-terraform-bridge/pull/207)
+
 - Allow providers to define additional object types in the schema.
   [#192](https://github.com/pulumi/pulumi-terraform-bridge/pull/192)
 
