@@ -231,6 +231,8 @@ type DefaultInfo struct {
 	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)
 	// will be used as the default.
 	EnvVars []string
+	// Secret indicates whether the default value should be prepared as a secret value
+	Secret bool
 }
 
 // PulumiResource is just a little bundle that carries URN and properties around.
@@ -500,6 +502,7 @@ type MarshallableDefaultInfo struct {
 	IsFunc    bool        `json:"isFunc,omitempty"`
 	Value     interface{} `json:"value,omitempty"`
 	EnvVars   []string    `json:"envvars,omitempty"`
+	Secret    bool        `json:"secret,omitempty"`
 }
 
 // MarshalDefaultInfo converts a Pulumi DefaultInfo value into a MarshallableDefaultInfo value.
@@ -513,6 +516,7 @@ func MarshalDefaultInfo(d *DefaultInfo) *MarshallableDefaultInfo {
 		IsFunc:    d.From != nil,
 		Value:     d.Value,
 		EnvVars:   d.EnvVars,
+		Secret:    d.Secret,
 	}
 }
 
@@ -534,6 +538,7 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 		From:      f,
 		Value:     m.Value,
 		EnvVars:   m.EnvVars,
+		Secret:    m.Secret,
 	}
 }
 

@@ -348,9 +348,13 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 				defaultValue = float64(i)
 			}
 
-			if len(defaults.EnvVars) != 0 {
-				defaultInfo = &pschema.DefaultSpec{
-					Environment: defaults.EnvVars,
+			if len(defaults.EnvVars) != 0 || defaults.Secret {
+				defaultInfo = &pschema.DefaultSpec{}
+				if len(defaults.EnvVars) != 0 {
+					defaultInfo.Environment = defaults.EnvVars
+				}
+				if defaults.Secret {
+					defaultInfo.Secret = defaults.Secret
 				}
 			}
 		}

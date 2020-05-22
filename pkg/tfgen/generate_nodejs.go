@@ -926,6 +926,9 @@ func (g *nodeJSGenerator) emitResourceType(mod *module, res *resourceType, neste
 		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.name)
 		if defaultValue := tsDefaultValue(prop); defaultValue != "undefined" {
 			arg = fmt.Sprintf("(%s) || %s", arg, defaultValue)
+			if prop.info.Default.Secret {
+				arg = fmt.Sprintf("pulumi.secret(%s)", arg)
+			}
 		}
 
 		// provider properties must be marshaled as JSON strings.
