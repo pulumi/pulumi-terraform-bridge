@@ -33,9 +33,9 @@ import (
 	"github.com/spf13/afero"
 )
 
-// argument the metadata for an argument of the resource.
-type argument struct {
-	// The description for this argument
+// argumentDocs contains the documentation metadata for an argument of the resource.
+type argumentDocs struct {
+	// The description for this argument.
 	description string
 
 	// (Optional) The names and descriptions for each argument of this argument.
@@ -46,8 +46,8 @@ type argument struct {
 	isNested bool
 }
 
-// parsedDoc represents the data parsed from TF markdown documentation
-type parsedDoc struct {
+// entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
+type entityDocs struct {
 	// Description is the description of the resource
 	Description string
 
@@ -73,7 +73,7 @@ type parsedDoc struct {
 	//  	- isNested: true
 	// "index_document" is recorded like a top level argument since sometimes object names in
 	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
-	Arguments map[string]*argument
+	Arguments map[string]*argumentDocs
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
@@ -151,18 +151,18 @@ func getMarkdownDetails(g *generator, org string, provider string, resourcePrefi
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info)
 	if !found {
 		cmdutil.Diag().Warningf(
 			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
-		return parsedDoc{}, nil
+		return entityDocs{}, nil
 	}
 
 	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
-		return parsedDoc{}, err
+		return entityDocs{}, err
 	}
 
 	var docinfo *tfbridge.DocInfo
@@ -207,7 +207,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
 	resourcePrefix string,
-	kind DocKind, docs parsedDoc, sourceFrom string,
+	kind DocKind, docs entityDocs, sourceFrom string,
 	useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
@@ -234,7 +234,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 				for kk, vv := range arguments {
 					docArguments[kk] = vv
 				}
-				docs.Arguments[k] = &argument{
+				docs.Arguments[k] = &argumentDocs{
 					description: v.description,
 					arguments:   docArguments,
 				}
@@ -347,7 +347,7 @@ func fixExampleTitles(lines []string) {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown, markdownFileName, resourcePrefix, rawname string) (parsedDoc, error) {
+	markdown, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
 		g:                g,
@@ -370,12 +370,12 @@ type tfMarkdownParser struct {
 	resourcePrefix   string
 	rawname          string
 
-	ret parsedDoc
+	ret entityDocs
 }
 
-func (p *tfMarkdownParser) parse() (parsedDoc, error) {
-	p.ret = parsedDoc{
-		Arguments:  make(map[string]*argument),
+func (p *tfMarkdownParser) parse() (entityDocs, error) {
+	p.ret = entityDocs{
+		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
 		URL:        getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName),
 	}
@@ -386,7 +386,7 @@ func (p *tfMarkdownParser) parse() (parsedDoc, error) {
 	// Split the sections by H2 topics in the Markdown file.
 	for _, section := range splitGroupLines(markdown, "## ") {
 		if err := p.parseSection(section); err != nil {
-			return parsedDoc{}, err
+			return entityDocs{}, err
 		}
 	}
 
@@ -470,15 +470,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 
 		// Convert any code snippets, if there are any. If this yields a fatal error, we
 		// bail out, but most errors are ignorable and just lead to us skipping one section.
-		var skippableExamples bool
-		var err error
-		subsection, skippableExamples, err = p.parseExamples(subsection)
-		if err != nil {
-			return err
-		} else if skippableExamples && sectionKind <= sectionExampleUsage {
-			// Skip sections with failed examples, so long as they aren't "essential" blocks.
-			continue
-		}
+		subsection, _, skippedExamples := p.parseExamples(subsection)
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
@@ -489,6 +481,11 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		case sectionFrontMatter:
 			p.parseFrontMatter(subsection)
 		default:
+			// These sections are non-essential. If we skipped any examples, we will omit the entire section.
+			if skippedExamples {
+				continue
+			}
+
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
@@ -542,7 +539,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
 				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argument{
+					p.ret.Arguments[nested] = &argumentDocs{
 						arguments: make(map[string]string),
 					}
 				} else if p.ret.Arguments[nested].arguments == nil {
@@ -554,14 +551,14 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				// argument doesn't match the resource's argument.
 				// For example, see `cors_rule` in s3_bucket.html.markdown.
 				if p.ret.Arguments[matches[1]] == nil {
-					p.ret.Arguments[matches[1]] = &argument{
+					p.ret.Arguments[matches[1]] = &argumentDocs{
 						description: matches[4],
 						isNested:    true, // Mark that this argument comes from a nested field.
 					}
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[matches[1]] = &argument{description: matches[4]}
+					p.ret.Arguments[matches[1]] = &argumentDocs{description: matches[4]}
 				}
 			}
 			lastMatch = matches[1]
@@ -712,68 +709,62 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 // parseExamples converts an examples section into code comments, including converting any code snippets.
 // If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
 // error returned will be non-nil.
-func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, error) {
+func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, bool) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
 	var result []string
-	var skippableExamples bool
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		if strings.Index(line, "```") == 0 {
-			// If we found a fenced block, parse out the code from it.
+	var hasExamples bool
+	var skippedExamples bool
+	var inCodeBlock bool
+	var inOICSButton bool
+	var codeBlockStart int
+	for i, line := range lines {
+		switch {
+		case inCodeBlock:
+			if strings.Index(line, "```") != 0 {
+				continue
+			}
+
 			if p.g.language.shouldConvertExamples() {
-				var hcl string
-				for i = i + 1; i < len(lines); i++ {
-					cline := lines[i]
-					if strings.Index(cline, "```") == 0 {
-						// We've got some code -- assume it's HCL and try to convert it.
-						lines, stderr, err := p.convertHCL(hcl)
-						if err != nil {
-							skippableExamples = true
-							hclFailures[stderr] = true
-							hclBlocksFailed++
-						} else {
-							result = append(result, lines...)
-							hclBlocksSucceeded++
-						}
+				hcl := strings.Join(lines[codeBlockStart+1:i], "\n")
 
-						// Now set the index and break out of the inner loop, to consume the code string.
-						hcl = ""
-						break
-					} else {
-						hcl += cline + "\n"
-					}
-				}
-				if hcl != "" {
-					// If the HCL wasn't consumed, we had an unbalanced pair of ```s, this example is skippable.
-					hcl = ""
-					skippableExamples = true
+				// We've got some code -- assume it's HCL and try to convert it.
+				lines, stderr, err := p.convertHCL(hcl)
+				if err != nil {
+					skippedExamples = true
+					hclFailures[stderr] = true
+					hclBlocksFailed++
+				} else {
+					result = append(result, lines...)
+					hclBlocksSucceeded++
 				}
 
+				hasExamples = true
 			} else {
-				// TODO: support other languages.
-				for i = i + 1; i < len(lines); i++ {
-					if strings.Index(lines[i], "```") == 0 {
-						break
-					}
-				}
-				skippableExamples = true
+				skippedExamples = true
 			}
-		} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
-			// Strip "Open in Cloud Shell" buttons.
-			for i = i + 1; i < len(lines); i++ {
-				if strings.Index(lines[i], "</div>") == 0 {
-					break
-				}
+
+			inCodeBlock = false
+		case inOICSButton:
+			if strings.Index(lines[i], "</div>") == 0 {
+				inOICSButton = false
 			}
-		} else {
-			// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-			result = append(result, line)
+		default:
+			if strings.Index(line, "```") == 0 {
+				inCodeBlock, codeBlockStart = true, i
+			} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
+				inOICSButton = true
+			} else {
+				result = append(result, line)
+			}
 		}
 	}
+	if inCodeBlock {
+		skippedExamples = true
+	}
 
-	return result, skippableExamples, nil
+	return result, hasExamples, skippedExamples
 }
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
@@ -863,17 +854,17 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 	return result, "", nil
 }
 
-func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc,
-	footerLinks map[string]string) (parsedDoc, bool) {
+func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
+	footerLinks map[string]string) (entityDocs, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argument, len(doc.Arguments))
+	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 	for k, v := range doc.Arguments {
 		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
 			elidedDoc = true
 		}
 
-		newargs[k] = &argument{
+		newargs[k] = &argumentDocs{
 			description: cleanedText,
 			arguments:   make(map[string]string, len(v.arguments)),
 		}
@@ -899,7 +890,7 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 	if elided {
 		elidedDoc = true
 	}
-	return parsedDoc{
+	return entityDocs{
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,

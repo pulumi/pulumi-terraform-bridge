@@ -246,7 +246,7 @@ type propertyType struct {
 }
 
 func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
-	parsedDocs parsedDoc) *propertyType {
+	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{}
 
@@ -288,9 +288,9 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
-		t.element = makePropertyType(objectName, elem, elemInfo, out, parsedDocs)
+		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
 	case *schema.Resource:
-		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, parsedDocs)
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
 	}
 
 	switch t.kind {
@@ -310,7 +310,7 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 }
 
 func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
-	parsedDocs parsedDoc) *propertyType {
+	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
 		kind: kindObject,
@@ -336,8 +336,8 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := getNestedDescriptionFromParsedDocs(parsedDocs, objectName, key)
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, parsedDocs); v != nil {
+		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -465,7 +465,7 @@ type resourceType struct {
 	schema     *schema.Resource
 	info       *tfbridge.ResourceInfo
 	docURL     string
-	parsedDocs parsedDoc // parsed docs.
+	entityDocs entityDocs // parsed docs.
 }
 
 func (rt *resourceType) Name() string { return rt.name }
@@ -474,18 +474,18 @@ func (rt *resourceType) Doc() string  { return rt.doc }
 // IsProvider is true if this resource is a ProviderResource.
 func (rt *resourceType) IsProvider() bool { return rt.isProvider }
 
-func newResourceType(name string, parsedDocs parsedDoc, schema *schema.Resource, info *tfbridge.ResourceInfo,
+func newResourceType(name string, entityDocs entityDocs, schema *schema.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
 	return &resourceType{
 		name:       name,
-		doc:        parsedDocs.Description,
+		doc:        entityDocs.Description,
 		isProvider: isProvider,
 		schema:     schema,
 		info:       info,
 		reqprops:   make(map[string]bool),
-		docURL:     parsedDocs.URL,
-		parsedDocs: parsedDocs,
+		docURL:     entityDocs.URL,
+		entityDocs: entityDocs,
 	}
 }
 
@@ -501,7 +501,7 @@ type resourceFunc struct {
 	schema     *schema.Resource
 	info       *tfbridge.DataSourceInfo
 	docURL     string
-	parsedDocs parsedDoc
+	entityDocs entityDocs
 }
 
 func (rf *resourceFunc) Name() string { return rf.name }
@@ -681,7 +681,7 @@ func (g *generator) gatherConfig() *module {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
 		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, parsedDoc{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -698,7 +698,7 @@ func (g *generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, parsedDoc{}); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, entityDocs{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -780,26 +780,26 @@ func (g *generator) gatherResource(rawname string,
 	name, module := resourceName(g.info.Name, rawname, info, isProvider)
 
 	// Collect documentation information
-	var parsedDocs parsedDoc
+	var entityDocs entityDocs
 	if !isProvider {
 		pd, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
 			g.info.GetResourcePrefix(), ResourceDocs, rawname, info)
 		if err != nil {
 			return "", nil, err
 		}
-		parsedDocs = pd
+		entityDocs = pd
 	} else {
-		parsedDocs.Description = fmt.Sprintf(
+		entityDocs.Description = fmt.Sprintf(
 			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
 				"settings, however an explicit `Provider` instance may be created and passed during resource\n"+
 				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
 				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
-		parsedDocs.URL = getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
+		entityDocs.URL = getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(name, parsedDocs, schema, info, isProvider)
+	res := newResourceType(name, entityDocs, schema, info, isProvider)
 
 	args := tfbridge.CleanTerraformSchema(schema.Schema)
 
@@ -808,7 +808,7 @@ func (g *generator) gatherResource(rawname string,
 	for _, key := range stableSchemas(args) {
 		propschema := args[key]
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := getDescriptionFromParsedDocs(parsedDocs, key)
+		doc := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description
 
 		propinfo := info.Fields[key]
@@ -818,7 +818,7 @@ func (g *generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, parsedDocs)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, entityDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -826,7 +826,7 @@ func (g *generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -836,7 +836,7 @@ func (g *generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -936,7 +936,7 @@ func (g *generator) gatherDataSource(rawname string,
 	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
+	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
 		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info)
 	if err != nil {
 		return "", nil, err
@@ -945,12 +945,12 @@ func (g *generator) gatherDataSource(rawname string,
 	// Build up the function information.
 	fun := &resourceFunc{
 		name:       name,
-		doc:        parsedDocs.Description,
+		doc:        entityDocs.Description,
 		reqargs:    make(map[string]bool),
 		schema:     ds,
 		info:       info,
-		docURL:     parsedDocs.URL,
-		parsedDocs: parsedDocs,
+		docURL:     entityDocs.URL,
+		entityDocs: entityDocs,
 	}
 
 	// Sort the args and return properties so we are ready to go.
@@ -968,8 +968,8 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			doc := getDescriptionFromParsedDocs(parsedDocs, arg)
-			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, parsedDocs)
+			doc := getDescriptionFromParsedDocs(entityDocs, arg)
+			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -979,7 +979,7 @@ func (g *generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", "", true /*out*/, parsedDocs))
+			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", "", true /*out*/, entityDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -992,7 +992,7 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := &tfbridge.SchemaInfo{}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		fun.rets = append(fun.rets,
-			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, parsedDocs))
+			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1126,7 +1126,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, docURL string, out bool, parsedDocs parsedDoc) *variable {
+	doc string, rawdoc string, docURL string, out bool, entityDocs entityDocs) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -1136,7 +1136,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			schema: sch,
 			info:   info,
 			docURL: docURL,
-			typ:    makePropertyType(strings.ToLower(key), sch, info, out, parsedDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
 		}
 	}
 	return nil
@@ -1279,17 +1279,17 @@ func emitFile(outDir, relPath string, contents []byte) error {
 
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
-func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
-	return getNestedDescriptionFromParsedDocs(parsedDocs, "", arg)
+func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) string {
+	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
-func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
-	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) string {
+	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
 		return res.arguments[arg]
-	} else if res := parsedDocs.Arguments[arg]; res != nil && res.description != "" {
+	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
 		return res.description
 	}
-	return parsedDocs.Attributes[arg]
+	return entityDocs.Attributes[arg]
 }
