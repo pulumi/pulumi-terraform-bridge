@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v2
 
-go 1.13
+go 1.14
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
