@@ -76,11 +76,11 @@ func (g *schemaGenerator) typeName(r *resourceType) string {
 }
 
 type schemaNestedType struct {
-	typ             *propertyType
-	declarer        declarer
-	requiredOutputs codegen.StringSet
-	isInput         bool
-	pyMapCase       bool
+	typ            *propertyType
+	declarer       declarer
+	requiredInputs codegen.StringSet
+	isInput        bool
+	pyMapCase      bool
 }
 
 type schemaNestedTypes struct {
@@ -136,6 +136,8 @@ func (nt *schemaNestedTypes) declareType(
 		typeName = typ.nestedType.Name().String()
 	}
 
+	typ.name = typeName
+
 	if existing, ok := nt.nameToType[typeName]; ok {
 		contract.Assert(existing.declarer == declarer)
 
@@ -145,30 +147,33 @@ func (nt *schemaNestedTypes) declareType(
 		// - output + state
 		contract.Assert(existing.isInput || isState)
 
-		// For state type conflicts, reuse the input type as-is. The downstream code generators will treat all
-		// properties as optional in any case.
 		if isState {
 			return typeName
 		}
 
-		// For output type conflicts, record the output type's required properties. These will be attached to
+		// For output type conflicts, record the input type's required properties. These will be attached to
 		// a nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that matches
 		// the code produced by the old tfgen code generator.
-		existing.requiredOutputs = codegen.StringSet{}
-		for _, p := range typ.properties {
-			if !p.optional() {
-				existing.requiredOutputs.Add(p.name)
-			}
-		}
+		existing.typ, existing.isInput = typ, false
 		return typeName
 	}
 
-	typ.name = typeName
+	var requiredInputs codegen.StringSet
+	if isInput {
+		requiredInputs = codegen.StringSet{}
+		for _, p := range typ.properties {
+			if !p.optional() {
+				requiredInputs.Add(p.name)
+			}
+		}
+	}
+
 	nt.nameToType[typeName] = &schemaNestedType{
-		typ:       typ,
-		declarer:  declarer,
-		isInput:   isInput,
-		pyMapCase: pyMapCase,
+		typ:            typ,
+		declarer:       declarer,
+		requiredInputs: requiredInputs,
+		isInput:        isInput,
+		pyMapCase:      pyMapCase,
 	}
 	return typeName
 }
@@ -520,16 +525,16 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 		}
 	}
 
-	if typInfo.requiredOutputs != nil {
-		requiredOutputs := make([]string, 0, len(typInfo.requiredOutputs))
-		for name := range typInfo.requiredOutputs {
-			requiredOutputs = append(requiredOutputs, name)
+	if typInfo.requiredInputs != nil {
+		requiredInputs := make([]string, 0, len(typInfo.requiredInputs))
+		for name := range typInfo.requiredInputs {
+			requiredInputs = append(requiredInputs, name)
 		}
-		sort.Strings(requiredOutputs)
+		sort.Strings(requiredInputs)
 
 		spec.Language = map[string]json.RawMessage{
 			"nodejs": rawMessage(map[string]interface{}{
-				"requiredOutputs": requiredOutputs,
+				"requiredInputs": requiredInputs,
 			}),
 		}
 	}

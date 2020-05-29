@@ -350,61 +350,6 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 	return t
 }
 
-func (t *propertyType) equals(other *propertyType) bool {
-	if t == nil && other == nil {
-		return true
-	}
-	if (t != nil) != (other != nil) {
-		return false
-	}
-	if t.name != other.name {
-		return false
-	}
-	if t.kind != other.kind {
-		return false
-	}
-	if !t.element.equals(other.element) {
-		return false
-	}
-	if len(t.properties) != len(other.properties) {
-		return false
-	}
-	for i, p := range t.properties {
-		o := other.properties[i]
-		if p.name != o.name {
-			return false
-		}
-		if p.optional() != o.optional() {
-			return false
-		}
-		if !p.typ.equals(o.typ) {
-			return false
-		}
-	}
-
-	if t.typ != other.typ {
-		return false
-	}
-	if t.nestedType != other.nestedType {
-		return false
-	}
-	if t.asset != nil && (other.asset == nil || *t.asset != *other.asset) {
-		return false
-	} else if other.asset != nil {
-		return false
-	}
-	if len(t.altTypes) != len(other.altTypes) {
-		return false
-	}
-	for i, t := range t.altTypes {
-		if t != other.altTypes[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 // variable is a schematized variable, property, argument, or return type.
 type variable struct {
 	name   string

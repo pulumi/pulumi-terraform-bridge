@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/davecgh/go-spew v1.1.1
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
