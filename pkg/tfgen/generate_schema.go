@@ -154,7 +154,7 @@ func (nt *schemaNestedTypes) declareType(
 	}
 
 	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assert(existing.declarer == declarer)
+		contract.Assert(existing.declarer == declarer || existing.typ.equals(typ))
 
 		// For output type conflicts, record the output type's required properties. These will be attached to
 		// a nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that matches
