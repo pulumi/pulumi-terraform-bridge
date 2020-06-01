@@ -180,11 +180,6 @@ func (m *module) config() bool {
 	return m.name == configMod
 }
 
-// root returns true if this is the root module for a package.
-func (m *module) root() bool {
-	return m.name == ""
-}
-
 // addMember appends a new member.  This maintains ordering in case the code is sensitive to declaration order.
 func (m *module) addMember(member moduleMember) {
 	name := member.Name()
@@ -1139,25 +1134,6 @@ func stableSchemas(schemas map[string]*schema.Schema) []string {
 	}
 	sort.Strings(ss)
 	return ss
-}
-
-// copyFile is a stupid file copy routine.  It reads the file into memory to avoid messy OS-specific oddities.
-func copyFile(from, to string) error {
-	err := os.MkdirAll(path.Dir(to), 0700)
-	if err != nil {
-		return err
-	}
-	body, err := ioutil.ReadFile(from)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(to, body, 0600)
-}
-
-// lowerFirst returns the string with a lower-cased first character.
-func lowerFirst(s string) string {
-	c, rest := utf8.DecodeRuneInString(s)
-	return string(unicode.ToLower(c)) + s[rest:]
 }
 
 // upperFirst returns the string with an upper-cased first character.

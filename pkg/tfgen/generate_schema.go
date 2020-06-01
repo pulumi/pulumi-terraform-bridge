@@ -76,11 +76,12 @@ func (g *schemaGenerator) typeName(r *resourceType) string {
 }
 
 type schemaNestedType struct {
-	typ            *propertyType
-	declarer       declarer
-	requiredInputs codegen.StringSet
-	isInput        bool
-	pyMapCase      bool
+	typ             *propertyType
+	declarer        declarer
+	required        codegen.StringSet
+	requiredInputs  codegen.StringSet
+	requiredOutputs codegen.StringSet
+	pyMapCase       bool
 }
 
 type schemaNestedTypes struct {
@@ -108,16 +109,16 @@ func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNes
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	switch member := member.(type) {
 	case *resourceType:
-		nt.gatherFromProperties(member, member.name, member.inprops, true, false, true)
-		nt.gatherFromProperties(member, member.name, member.outprops, false, false, true)
+		nt.gatherFromProperties(member, member.name, member.inprops, true, true)
+		nt.gatherFromProperties(member, member.name, member.outprops, false, true)
 		if !member.IsProvider() {
-			nt.gatherFromProperties(member, member.name, member.statet.properties, false, true, true)
+			nt.gatherFromProperties(member, member.name, member.statet.properties, true, true)
 		}
 	case *resourceFunc:
-		nt.gatherFromProperties(member, member.name, member.args, true, false, true)
-		nt.gatherFromProperties(member, member.name, member.rets, false, false, true)
+		nt.gatherFromProperties(member, member.name, member.args, true, true)
+		nt.gatherFromProperties(member, member.name, member.rets, false, true)
 	case *variable:
-		nt.gatherFromPropertyType(member, member.name, "", member.typ, false, false, true)
+		nt.gatherFromPropertyType(member, member.name, "", member.typ, false, true)
 	}
 }
 
@@ -126,7 +127,7 @@ type declarer interface {
 }
 
 func (nt *schemaNestedTypes) declareType(
-	declarer declarer, namePrefix, name string, typ *propertyType, isInput, isState, pyMapCase bool) string {
+	declarer declarer, namePrefix, name string, typ *propertyType, isInput, pyMapCase bool) string {
 
 	// Generate a name for this nested type.
 	typeName := namePrefix + strings.Title(name)
@@ -138,48 +139,49 @@ func (nt *schemaNestedTypes) declareType(
 
 	typ.name = typeName
 
+	required := codegen.StringSet{}
+	for _, p := range typ.properties {
+		if !p.optional() {
+			required.Add(p.name)
+		}
+	}
+
+	var requiredInputs, requiredOutputs codegen.StringSet
+	if isInput {
+		requiredInputs = required
+	} else {
+		requiredOutputs = required
+	}
+
 	if existing, ok := nt.nameToType[typeName]; ok {
 		contract.Assert(existing.declarer == declarer)
 
-		// Due to the order in which we declare types, we should only see the following sorts of conflicts:
-		// - input + output
-		// - input + state
-		// - output + state
-		contract.Assert(existing.isInput || isState)
-
-		if isState {
-			return typeName
-		}
-
-		// For output type conflicts, record the input type's required properties. These will be attached to
+		// For output type conflicts, record the output type's required properties. These will be attached to
 		// a nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that matches
 		// the code produced by the old tfgen code generator.
-		existing.typ, existing.isInput = typ, false
+		if isInput {
+			existing.requiredInputs = requiredInputs
+		} else {
+			existing.requiredOutputs = requiredOutputs
+		}
+
+		existing.typ, existing.required = typ, required
 		return typeName
 	}
 
-	var requiredInputs codegen.StringSet
-	if isInput {
-		requiredInputs = codegen.StringSet{}
-		for _, p := range typ.properties {
-			if !p.optional() {
-				requiredInputs.Add(p.name)
-			}
-		}
-	}
-
 	nt.nameToType[typeName] = &schemaNestedType{
-		typ:            typ,
-		declarer:       declarer,
-		requiredInputs: requiredInputs,
-		isInput:        isInput,
-		pyMapCase:      pyMapCase,
+		typ:             typ,
+		declarer:        declarer,
+		required:        required,
+		requiredInputs:  requiredInputs,
+		requiredOutputs: requiredOutputs,
+		pyMapCase:       pyMapCase,
 	}
 	return typeName
 }
 
 func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix string, ps []*variable,
-	isInput, isState, pyMapCase bool) {
+	isInput, pyMapCase bool) {
 
 	for _, p := range ps {
 		name := p.name
@@ -191,21 +193,21 @@ func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix 
 		// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
 		// https://github.com/pulumi/pulumi/issues/3151 for more details.
 		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type == schema.TypeMap
-		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, isState, mapCase)
+		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, mapCase)
 	}
 }
 
 func (nt *schemaNestedTypes) gatherFromPropertyType(declarer declarer, namePrefix, name string, typ *propertyType,
-	isInput, isState, pyMapCase bool) {
+	isInput, pyMapCase bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput, isState, pyMapCase)
+			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput, pyMapCase)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput, isState, pyMapCase)
-		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput, isState, pyMapCase)
+		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput, pyMapCase)
+		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput, pyMapCase)
 	}
 }
 
@@ -292,7 +294,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
-	nodeReadme := fmt.Sprintf(standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
+	nodeReadme := fmt.Sprintf(
+		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
 	nodeData := map[string]interface{}{
 		"readme": nodeReadme,
 	}
@@ -498,6 +501,18 @@ func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) psche
 	return spec
 }
 
+func setEquals(a, b codegen.StringSet) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if !b.Has(k) {
+			return false
+		}
+	}
+	return true
+}
+
 func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
@@ -525,17 +540,26 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 		}
 	}
 
-	if typInfo.requiredInputs != nil {
+	nodeInfo := map[string]interface{}{}
+	if !setEquals(typInfo.required, typInfo.requiredInputs) {
 		requiredInputs := make([]string, 0, len(typInfo.requiredInputs))
 		for name := range typInfo.requiredInputs {
 			requiredInputs = append(requiredInputs, name)
 		}
 		sort.Strings(requiredInputs)
-
+		nodeInfo["requiredInputs"] = requiredInputs
+	}
+	if !setEquals(typInfo.required, typInfo.requiredOutputs) {
+		requiredOutputs := make([]string, 0, len(typInfo.requiredOutputs))
+		for name := range typInfo.requiredOutputs {
+			requiredOutputs = append(requiredOutputs, name)
+		}
+		sort.Strings(requiredOutputs)
+		nodeInfo["requiredOutputs"] = requiredOutputs
+	}
+	if len(nodeInfo) != 0 {
 		spec.Language = map[string]json.RawMessage{
-			"nodejs": rawMessage(map[string]interface{}{
-				"requiredInputs": requiredInputs,
-			}),
+			"nodejs": rawMessage(nodeInfo),
 		}
 	}
 

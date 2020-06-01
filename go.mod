@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/davecgh/go-spew v1.1.1
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
@@ -14,8 +13,8 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.3.1-0.20200528232448-75c3ccf53dcb
-	github.com/pulumi/pulumi/sdk/v2 v2.3.1-0.20200528232448-75c3ccf53dcb
+	github.com/pulumi/pulumi/pkg/v2 v2.3.1-0.20200601185010-726d43a5bd81
+	github.com/pulumi/pulumi/sdk/v2 v2.3.1-0.20200601185010-726d43a5bd81
 	github.com/pulumi/tf2pulumi v0.8.1-0.20200519092335-cb56a4dfa88d
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
