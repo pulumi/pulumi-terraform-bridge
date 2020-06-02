@@ -297,7 +297,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	nodeReadme := fmt.Sprintf(
 		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
 	nodeData := map[string]interface{}{
-		"readme": nodeReadme,
+		"readme":                  nodeReadme,
+		"disableUnionOutputTypes": true,
 	}
 	if jsi := g.info.JavaScript; jsi != nil {
 		nodeData["packageName"] = jsi.PackageName
@@ -566,12 +567,30 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 	return token, spec
 }
 
+func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
+	switch k {
+	case kindBool:
+		return "boolean"
+	case kindInt:
+		return "integer"
+	case kindFloat:
+		return "number"
+	case kindString:
+		return "string"
+	default:
+		return ""
+	}
+}
+
 func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) pschema.TypeSpec {
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:
 		return pschema.TypeSpec{Ref: "pulumi.json#/Any"}
 	case typ.typ != "" || len(typ.altTypes) != 0:
+		// Compute the default type for the union. May be empty.
+		defaultType := g.schemaPrimitiveType(typ.kind)
+
 		var toks []tokens.Type
 		if typ.typ != "" {
 			toks = []tokens.Type{typ.typ}
@@ -590,16 +609,9 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 				if pkg == g.pkg {
 					pkg = ""
 				}
-				spec := pschema.TypeSpec{Ref: fmt.Sprintf("%s#/types/%s", pkg, strings.TrimSuffix(string(t), "[]"))}
-				switch typ.kind {
-				case kindBool:
-					spec.Type = "boolean"
-				case kindInt:
-					spec.Type = "integer"
-				case kindFloat:
-					spec.Type = "number"
-				case kindString:
-					spec.Type = "string"
+				spec := pschema.TypeSpec{
+					Type: defaultType,
+					Ref:  fmt.Sprintf("%s#/types/%s", pkg, strings.TrimSuffix(string(t), "[]")),
 				}
 				if strings.HasSuffix(string(t), "[]") {
 					items := spec
@@ -611,7 +623,10 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 		if len(typs) == 1 {
 			return typs[0]
 		}
-		return pschema.TypeSpec{OneOf: typs}
+		return pschema.TypeSpec{
+			Type:  defaultType,
+			OneOf: typs,
+		}
 	case typ.asset != nil:
 		if typ.asset.IsArchive() {
 			return pschema.TypeSpec{Ref: "pulumi.json#/Archive"}
@@ -621,14 +636,10 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 
 	// First figure out the raw type.
 	switch typ.kind {
-	case kindBool:
-		return pschema.TypeSpec{Type: "boolean"}
-	case kindInt:
-		return pschema.TypeSpec{Type: "integer"}
-	case kindFloat:
-		return pschema.TypeSpec{Type: "number"}
-	case kindString:
-		return pschema.TypeSpec{Type: "string"}
+	case kindBool, kindInt, kindFloat, kindString:
+		t := g.schemaPrimitiveType(typ.kind)
+		contract.Assert(t != "")
+		return pschema.TypeSpec{Type: t}
 	case kindSet, kindList:
 		items := g.schemaType(mod, typ.element, out)
 		return pschema.TypeSpec{Type: "array", Items: &items}
