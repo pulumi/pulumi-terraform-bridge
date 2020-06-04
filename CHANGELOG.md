@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Use the schema-based code generator for NodeJS.
+  [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/194)
+
 - Allow providers to define additional object types in the schema.
   [#192](https://github.com/pulumi/pulumi-terraform-bridge/pull/192)
 

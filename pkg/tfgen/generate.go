@@ -180,11 +180,6 @@ func (m *module) config() bool {
 	return m.name == configMod
 }
 
-// root returns true if this is the root module for a package.
-func (m *module) root() bool {
-	return m.name == ""
-}
-
 // addMember appends a new member.  This maintains ordering in case the code is sensitive to declaration order.
 func (m *module) addMember(member moduleMember) {
 	name := member.Name()
@@ -348,6 +343,61 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 	}
 
 	return t
+}
+
+func (t *propertyType) equals(other *propertyType) bool {
+	if t == nil && other == nil {
+		return true
+	}
+	if (t != nil) != (other != nil) {
+		return false
+	}
+	if t.name != other.name {
+		return false
+	}
+	if t.kind != other.kind {
+		return false
+	}
+	if !t.element.equals(other.element) {
+		return false
+	}
+	if len(t.properties) != len(other.properties) {
+		return false
+	}
+	for i, p := range t.properties {
+		o := other.properties[i]
+		if p.name != o.name {
+			return false
+		}
+		if p.optional() != o.optional() {
+			return false
+		}
+		if !p.typ.equals(o.typ) {
+			return false
+		}
+	}
+
+	if t.typ != other.typ {
+		return false
+	}
+	if t.nestedType != other.nestedType {
+		return false
+	}
+	if t.asset != nil && (other.asset == nil || *t.asset != *other.asset) {
+		return false
+	} else if other.asset != nil {
+		return false
+	}
+	if len(t.altTypes) != len(other.altTypes) {
+		return false
+	}
+	for i, t := range t.altTypes {
+		if t != other.altTypes[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // variable is a schematized variable, property, argument, or return type.
@@ -557,6 +607,9 @@ func (g *generator) Generate() error {
 
 	// Print out some documentation stats as a summary afterwards.
 	printDocStats(false, false)
+
+	// Close the plugin host.
+	g.pluginHost.Close()
 
 	return nil
 }
@@ -1139,25 +1192,6 @@ func stableSchemas(schemas map[string]*schema.Schema) []string {
 	}
 	sort.Strings(ss)
 	return ss
-}
-
-// copyFile is a stupid file copy routine.  It reads the file into memory to avoid messy OS-specific oddities.
-func copyFile(from, to string) error {
-	err := os.MkdirAll(path.Dir(to), 0700)
-	if err != nil {
-		return err
-	}
-	body, err := ioutil.ReadFile(from)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(to, body, 0600)
-}
-
-// lowerFirst returns the string with a lower-cased first character.
-func lowerFirst(s string) string {
-	c, rest := utf8.DecodeRuneInString(s)
-	return string(unicode.ToLower(c)) + s[rest:]
 }
 
 // upperFirst returns the string with an upper-cased first character.
