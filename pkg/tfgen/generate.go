@@ -608,6 +608,9 @@ func (g *generator) Generate() error {
 	// Print out some documentation stats as a summary afterwards.
 	printDocStats(false, false)
 
+	// Close the plugin host.
+	g.pluginHost.Close()
+
 	return nil
 }
 
