@@ -313,37 +313,6 @@ func getDocsIndexURL(org, p string) string {
 	return getDocsBaseURL(org, p) + "/index.html.markdown"
 }
 
-// fixExampleTitles looks at every line and fixes any title immediately preceding
-// a code snippet.
-func fixExampleTitles(lines []string) {
-	num := len(lines)
-	for i, line := range lines {
-		if strings.HasPrefix(line, "#### ") {
-			// Make sure we don't go beyond the number of lines we are dealing with.
-			if i >= num-1 {
-				break
-			}
-
-			// For every line that comes after this, process each line until we hit
-			// the beginning of a code-fence.
-			j := i + 1
-			for j < num {
-				if lines[j] == "\n" || lines[j] == "" {
-					j++
-					continue
-				}
-
-				if strings.HasPrefix(lines[j], "```") {
-					lines[i] = strings.ReplaceAll(line, "#### ", "### ")
-					// Stop searching further lines since we found the first code snippet.
-					break
-				}
-				j++
-			}
-		}
-	}
-}
-
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
@@ -373,6 +342,14 @@ type tfMarkdownParser struct {
 	ret entityDocs
 }
 
+const (
+	sectionOther               = 0
+	sectionExampleUsage        = 1
+	sectionArgsReference       = 2
+	sectionAttributesReference = 3
+	sectionFrontMatter         = 4
+)
+
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
@@ -384,7 +361,12 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	markdown := strings.Replace(p.markdown, "\r\n", "\n", -1)
 
 	// Split the sections by H2 topics in the Markdown file.
-	for _, section := range splitGroupLines(markdown, "## ") {
+	sections := splitGroupLines(markdown, "## ")
+
+	// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+	sections = p.reformatExamples(sections)
+
+	for _, section := range sections {
 		if err := p.parseSection(section); err != nil {
 			return entityDocs{}, err
 		}
@@ -402,13 +384,102 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	return doc, nil
 }
 
-const (
-	sectionOther               = 0
-	sectionExampleUsage        = 1
-	sectionArgsReference       = 2
-	sectionAttributesReference = 3
-	sectionFrontMatter         = 4
-)
+// fixExampleTitles transforms H4 sections that contain code snippets into H3 sections.
+func (p *tfMarkdownParser) fixExampleTitles(lines []string) {
+	inSection, sectionIndex := false, 0
+	for i, line := range lines {
+		if inSection && strings.HasPrefix(line, "```") {
+			lines[sectionIndex] = strings.Replace(lines[sectionIndex], "#### ", "### ", 1)
+			inSection = false
+		} else if strings.HasPrefix(line, "#### ") {
+			inSection, sectionIndex = true, i
+		}
+	}
+}
+
+var exampleHeaderRegexp = regexp.MustCompile(`(?i)^(## Example Usage\s*)(?:(?:(?:for|of|[\pP]+)\s*)?(.*?)\s*)?$`)
+
+// reformatExamples reparents examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
+	canonicalExampleUsageSectionIndex := -1
+	var exampleUsageSection []string
+	var exampleSectionIndices []int
+	for i, s := range sections {
+		matches := exampleHeaderRegexp.FindStringSubmatch(s[0])
+		if len(matches) == 0 {
+			continue
+		}
+
+		if len(matches[1]) == len(s[0]) {
+			// This is the canonical example usage section. Prepend its contents to any other content we've collected.
+			// If there are multiple canonical example usage sections, treat the first such section as the canonical
+			// example usage section and append other sections under an H3.
+			if canonicalExampleUsageSectionIndex == -1 {
+				canonicalExampleUsageSectionIndex = i
+
+				// Copy the section over. Note that we intentionally avoid copying the first line and any whitespace
+				// that follows it, as we will overwrite that content with the canonical header later.
+				for s = s[1:]; len(s) > 0 && isBlank(s[0]); s = s[1:] {
+				}
+
+				sectionCopy := make([]string, len(s)+2)
+				copy(sectionCopy[2:], s)
+
+				if len(exampleUsageSection) != 0 {
+					exampleUsageSection = append(sectionCopy, exampleUsageSection...)
+				} else {
+					exampleUsageSection = sectionCopy
+				}
+			} else {
+				exampleUsageSection = append(exampleUsageSection, "", "### Additional Examples")
+				exampleUsageSection = append(exampleUsageSection, s[1:]...)
+			}
+		} else {
+			// This is a qualified example usage section. Retitle it using an H3 and its qualifier, and append it to
+			// the output.
+			exampleUsageSection = append(exampleUsageSection, "", "### "+strings.Title(matches[2]))
+			exampleUsageSection = append(exampleUsageSection, s[1:]...)
+		}
+
+		exampleSectionIndices = append(exampleSectionIndices, i)
+	}
+
+	if len(exampleSectionIndices) == 0 {
+		return sections
+	}
+
+	// If we did not find a canonical example usage section, prepend a blank line to the output. This line will be
+	// replaced by the canonical example usage H2.
+	if canonicalExampleUsageSectionIndex == -1 {
+		canonicalExampleUsageSectionIndex = exampleSectionIndices[0]
+		exampleUsageSection = append([]string{""}, exampleUsageSection...)
+	}
+
+	// Ensure that the output begins with the canonical example usage header.
+	exampleUsageSection[0] = "## Example Usage"
+
+	// Fixup example titles and replace the contents of the canonical example usage section with the output.
+	p.fixExampleTitles(exampleUsageSection)
+	sections[canonicalExampleUsageSectionIndex] = exampleUsageSection
+
+	// If there is only one example section, we're done. Otherwise, we need to remove all non-canonical example usage
+	// sections.
+	if len(exampleSectionIndices) == 1 {
+		return sections
+	}
+
+	result := sections[:0]
+	for i, s := range sections {
+		if len(exampleSectionIndices) > 0 && i == exampleSectionIndices[0] {
+			exampleSectionIndices = exampleSectionIndices[1:]
+			if i != canonicalExampleUsageSectionIndex {
+				continue
+			}
+		}
+		result = append(result, s)
+	}
+	return result
+}
 
 func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
@@ -443,7 +514,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	if sectionKind == sectionExampleUsage {
 		// Add shortcode around each examples block.
 		p.ret.Description += "{{% examples %}}\n"
-		fixExampleTitles(section[1:])
 	}
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
@@ -468,9 +538,13 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			continue
 		}
 
-		// Convert any code snippets, if there are any. If this yields a fatal error, we
+		// Convert or remove code snippets, if there are any. If this yields a fatal error, we
 		// bail out, but most errors are ignorable and just lead to us skipping one section.
-		subsection, _, skippedExamples := p.parseExamples(subsection)
+		subsection, hasExamples, skippedExamples := p.parseExamples(subsection)
+		if hasExamples && sectionKind != sectionExampleUsage {
+			cmdutil.Diag().Warningf(diag.Message("",
+				"Unexpected code snippets in section %v for resource %v"), header, p.rawname)
+		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
@@ -706,9 +780,9 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	}
 }
 
-// parseExamples converts an examples section into code comments, including converting any code snippets.
-// If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
-// error returned will be non-nil.
+// parseExamples processes any code snippets in a subsection, either converting them to Pulumi code snippets or
+// removing them. If an error converting a code example occurs or any examples are present and the caller has requested
+// they be removed, the bool (skip) will be true.
 func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, bool) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
