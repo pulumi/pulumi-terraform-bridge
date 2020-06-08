@@ -309,12 +309,13 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 	spec.Language["nodejs"] = rawMessage(nodeData)
 
-	if pi := g.info.Python; pi != nil {
-		spec.Language["python"] = rawMessage(map[string]interface{}{
-			"requires": pi.Requires,
-			"readme":   readme,
-		})
+	pythonData := map[string]interface{}{
+		"readme": readme,
 	}
+	if pi := g.info.Python; pi != nil {
+		pythonData["requires"] = pi.Requires
+	}
+	spec.Language["python"] = rawMessage(pythonData)
 
 	if csi := g.info.CSharp; csi != nil {
 		spec.Language["csharp"] = rawMessage(map[string]interface{}{
