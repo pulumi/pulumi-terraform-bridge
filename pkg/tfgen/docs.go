@@ -825,7 +825,7 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
-			return fmt.Errorf("failied to convert HCL to %v", languageName)
+			return fmt.Errorf("failed to convert HCL to %v", languageName)
 		}
 
 		contract.Assert(len(files) == 1)
@@ -849,8 +849,10 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 		err = convertHCL("python")
 	case csharp:
 		err = convertHCL("csharp")
+	case golang:
+		err = convertHCL("go")
 	case pulumiSchema:
-		langs := []string{"typescript", "python", "csharp"}
+		langs := []string{"typescript", "python", "csharp", "go"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
 				err = multierror.Append(err, langErr)
