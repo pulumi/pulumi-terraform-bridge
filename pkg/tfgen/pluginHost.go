@@ -5,9 +5,48 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/tf2pulumi/il"
 )
+
+type inmemoryProvider struct {
+	plugin.Provider
+
+	name   string
+	schema []byte
+	info   tfbridge.ProviderInfo
+}
+
+func (p *inmemoryProvider) Pkg() tokens.Package {
+	return tokens.Package(p.name)
+}
+
+func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
+	return p.schema, nil
+}
+
+type inmemoryProviderHost struct {
+	plugin.Host
+	il.ProviderInfoSource
+
+	provider *inmemoryProvider
+}
+
+func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	if pkg == host.provider.Pkg() {
+		return host.provider, nil
+	}
+	return host.Host.Provider(pkg, version)
+}
+
+func (host *inmemoryProviderHost) GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error) {
+	if tfProviderName == host.provider.info.Name {
+		return &host.provider.info, nil
+	}
+	return host.ProviderInfoSource.GetProviderInfo(tfProviderName)
+}
 
 type cachingProviderHost struct {
 	plugin.Host

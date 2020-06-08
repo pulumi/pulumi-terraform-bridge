@@ -58,6 +58,7 @@ type generator struct {
 	language     language              // the language runtime to generate.
 	info         tfbridge.ProviderInfo // the provider info for customizing code generation
 	outDir       string                // the directory in which to generate the code.
+	providerShim *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
 	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
 	infoSource   il.ProviderInfoSource // the provider info source for tf2pulumi.
@@ -578,18 +579,29 @@ func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo
 		return nil, err
 	}
 
+	providerShim := &inmemoryProvider{
+		name: pkg,
+		info: info,
+	}
+	host := &inmemoryProviderHost{
+		Host:               ctx.Host,
+		ProviderInfoSource: il.NewCachingProviderInfoSource(il.PluginProviderInfoSource),
+		provider:           providerShim,
+	}
+
 	return &generator{
-		pkg:      pkg,
-		version:  version,
-		language: lang,
-		info:     info,
-		outDir:   outDir,
+		pkg:          pkg,
+		version:      version,
+		language:     lang,
+		info:         info,
+		outDir:       outDir,
+		providerShim: providerShim,
 		pluginHost: &cachingProviderHost{
-			Host:  ctx.Host,
+			Host:  host,
 			cache: map[string]plugin.Provider{},
 		},
 		packageCache: hcl2.NewPackageCache(),
-		infoSource:   il.NewCachingProviderInfoSource(il.PluginProviderInfoSource),
+		infoSource:   host,
 	}, nil
 }
 
@@ -616,6 +628,15 @@ func (g *generator) Generate() error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
+
+	// Serialize the schema and attach it to the provider shim.
+	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
+	if err != nil {
+		return errors.Wrapf(err, "failed to marshal intermediate schema")
+	}
+
+	// Convert examples.
+	pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
 
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
