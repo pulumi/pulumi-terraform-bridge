@@ -399,7 +399,8 @@ func (p *tfMarkdownParser) fixExampleTitles(lines []string) {
 
 var exampleHeaderRegexp = regexp.MustCompile(`(?i)^(## Example Usage\s*)(?:(?:(?:for|of|[\pP]+)\s*)?(.*?)\s*)?$`)
 
-// reformatExamples reparents examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+// reformatExamples reparents examples that are peers of the "Example Usage" section (if any) and fixup some example
+// titles.
 func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 	canonicalExampleUsageSectionIndex := -1
 	var exampleUsageSection []string

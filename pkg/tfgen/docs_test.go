@@ -270,6 +270,8 @@ func TestReplaceFooterLinks(t *testing.T) {
 }
 
 func TestFixExamplesHeaders(t *testing.T) {
+	p := &tfMarkdownParser{}
+
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
 		markdown := `
@@ -289,7 +291,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			fixExampleTitles(lines)
+			p.fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}
@@ -316,7 +318,7 @@ Misleading example title without any actual code fences. We should not modify th
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			fixExampleTitles(lines)
+			p.fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}
