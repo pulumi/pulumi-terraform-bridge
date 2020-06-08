@@ -5,6 +5,9 @@ CHANGELOG
 
 - Add support for generating Go examples.
   [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/218)
+  
+- Update README generation for python. 
+  [#217](https://github.com/pulumi/pulumi-terraform-bridge/pull/217)
 
 - Use the schema-based code generator for NodeJS.
   [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/194)

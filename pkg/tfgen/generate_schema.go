@@ -294,10 +294,10 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
-	nodeReadme := fmt.Sprintf(
+	readme := fmt.Sprintf(
 		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
 	nodeData := map[string]interface{}{
-		"readme":                  nodeReadme,
+		"readme":                  readme,
 		"disableUnionOutputTypes": true,
 	}
 	if jsi := g.info.JavaScript; jsi != nil {
@@ -309,11 +309,13 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 	spec.Language["nodejs"] = rawMessage(nodeData)
 
-	if pi := g.info.Python; pi != nil {
-		spec.Language["python"] = rawMessage(map[string]interface{}{
-			"requires": pi.Requires,
-		})
+	pythonData := map[string]interface{}{
+		"readme": readme,
 	}
+	if pi := g.info.Python; pi != nil {
+		pythonData["requires"] = pi.Requires
+	}
+	spec.Language["python"] = rawMessage(pythonData)
 
 	if csi := g.info.CSharp; csi != nil {
 		spec.Language["csharp"] = rawMessage(map[string]interface{}{
