@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Update README generation for python. 
+  [#217](https://github.com/pulumi/pulumi-terraform-bridge/pull/217)
+
 - Use the schema-based code generator for NodeJS.
   [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/194)
 

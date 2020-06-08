@@ -17,6 +17,8 @@ package tfgen
 import (
 	"github.com/pkg/errors"
 	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
@@ -66,6 +68,12 @@ func (g *pythonGenerator) emitPackage(pack *pkg) error {
 	}
 
 	for f, contents := range files {
+		if f == "README.md" {
+			// Do not overwrite the root-level README.md if it exists.
+			if _, err := os.Stat(filepath.Join(g.outDir, f)); err == nil {
+				continue
+			}
+		}
 		if err := emitFile(g.outDir, f, contents); err != nil {
 			return errors.Wrapf(err, "emitting file %v", f)
 		}
