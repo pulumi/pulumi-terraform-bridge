@@ -1021,19 +1021,23 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 					return open + modname + resname + close
 				default:
 					// Use `aws.ec2.Instance` format
-					return open + pkg + "." + modname + "." + resname + close
+					return open + pkg + "." + modname + resname + close
 				}
 			} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 				// This is a data source name
 				getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
 				modname := extractModuleName(mod)
+				if modname != "" {
+					modname += "."
+				}
+
 				switch language {
 				case golang, python:
 					// Use `ec2.getAmi` format
 					return open + modname + getname + close
 				default:
 					// Use `aws.ec2.getAmi` format
-					return open + pkg + "." + modname + "." + getname + close
+					return open + pkg + "." + modname + getname + close
 				}
 			}
 			// Else just treat as a property name
