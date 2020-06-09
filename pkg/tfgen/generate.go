@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,12 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
+	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
+	nodejsgen "github.com/pulumi/pulumi/pkg/v2/codegen/nodejs"
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -41,10 +47,9 @@ import (
 )
 
 const (
-	tfgen              = "the Pulumi Terraform Bridge (tfgen) Tool"
-	defaultOutDir      = "pack/"
-	defaultOverlaysDir = "overlays/"
-	maxWidth           = 120 // the ideal maximum width of the generated file.
+	tfgen         = "the Pulumi Terraform Bridge (tfgen) Tool"
+	defaultOutDir = "sdk/"
+	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
 
 type generator struct {
@@ -52,8 +57,6 @@ type generator struct {
 	version      string                // the package version.
 	language     language              // the language runtime to generate.
 	info         tfbridge.ProviderInfo // the provider info for customizing code generation
-	lg           langGenerator         // the generator with language-specific understanding.
-	overlaysDir  string                // the directory in which source overlays come from.
 	outDir       string                // the directory in which to generate the code.
 	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
 	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
@@ -78,15 +81,43 @@ func (l language) shouldConvertExamples() bool {
 	return false
 }
 
-var allLanguages = []language{golang, nodeJS, python, csharp}
+func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outDir string) (map[string][]byte, error) {
+	var extraFiles map[string][]byte
+	var err error
 
-// langGenerator is the interface for language-specific logic and formatting.
-type langGenerator interface {
-	// emitPackage emits an entire package pack into the configured output directory with the configured settings.
-	emitPackage(pack *pkg) error
-	// typeName returns a type name for a given resource type.
-	typeName(rt *resourceType) string
+	switch l {
+	case golang:
+		return gogen.GeneratePackage(tfgen, pkg)
+	case nodeJS:
+		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
+	case python:
+		if psi := info.Python; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
+	case csharp:
+		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
+	default:
+		return nil, errors.Errorf("%v does not support SDK generation", l)
+	}
 }
+
+var allLanguages = []language{golang, nodeJS, python, csharp}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
@@ -518,37 +549,24 @@ func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
 // newGenerator returns a code-generator for the given language runtime and package info.
-func newGenerator(pkg, version string, language language, info tfbridge.ProviderInfo,
-	overlaysDir, outDir string) (*generator, error) {
-	// If outDir or overlaysDir are empty, default to pack/<language>/ and overlays/<language>/ in the pwd.
-	if outDir == "" || overlaysDir == "" {
+func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo, outDir string) (*generator, error) {
+	// Ensure the language is valid.
+	switch lang {
+	case golang, nodeJS, python, csharp, pulumiSchema:
+		// OK
+	default:
+		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
+	}
+
+	// If outDir is empty, default to sdk/<language>/ in the pwd.
+	if outDir == "" {
 		p, err := os.Getwd()
 		if err != nil {
 			return nil, err
 		}
 		if outDir == "" {
-			outDir = filepath.Join(p, defaultOutDir, string(language))
+			outDir = filepath.Join(p, defaultOutDir, string(lang))
 		}
-		if overlaysDir == "" {
-			overlaysDir = filepath.Join(p, defaultOverlaysDir, string(language))
-		}
-	}
-
-	// Ensure the language is valid and, if so, create a new language-specific code generator.
-	var lg langGenerator
-	switch language {
-	case golang:
-		lg = newGoGenerator(pkg, version, info, overlaysDir, outDir)
-	case nodeJS:
-		lg = newNodeJSGenerator(pkg, version, info, overlaysDir, outDir)
-	case python:
-		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
-	case csharp:
-		lg = newCSharpGenerator(pkg, version, info, overlaysDir, outDir)
-	case pulumiSchema:
-		lg = newSchemaGenerator(pkg, version, info, outDir)
-	default:
-		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
 
 	cwd, err := os.Getwd()
@@ -561,13 +579,11 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 	}
 
 	return &generator{
-		pkg:         pkg,
-		version:     version,
-		language:    language,
-		info:        info,
-		lg:          lg,
-		overlaysDir: overlaysDir,
-		outDir:      outDir,
+		pkg:      pkg,
+		version:  version,
+		language: lang,
+		info:     info,
+		outDir:   outDir,
 		pluginHost: &cachingProviderHost{
 			Host:  ctx.Host,
 			cache: map[string]plugin.Provider{},
@@ -590,14 +606,49 @@ func (g *generator) Generate() error {
 		return errors.Wrapf(err, "failed to gather package metadata")
 	}
 
-	// Ensure the target exists and emit the Pulumi-specific package metadata.
+	// Ensure the target exists.
 	if err = g.preparePackage(pack); err != nil {
 		return errors.Wrapf(err, "failed to prepare package")
 	}
 
-	// Go ahead and let the language generator do its thing.
-	if err = g.lg.emitPackage(pack); err != nil {
-		return errors.Wrapf(err, "failed to generate package")
+	// Convert the package to a Pulumi schema.
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create Pulumi schema")
+	}
+
+	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
+	// it out.
+	var files map[string][]byte
+	if g.language == pulumiSchema {
+		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
+		pulumiPackageSpec.Version = ""
+
+		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal schema")
+		}
+		files = map[string][]byte{"schema.json": bytes}
+	} else {
+		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
+		if err != nil {
+			return errors.Wrapf(err, "failed to import Pulumi schema")
+		}
+		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.outDir); err != nil {
+			return errors.Wrapf(err, "failed to generate package")
+		}
+	}
+
+	// Write the result to disk. Do not overwrite the root-level README.md if any exists.
+	for f, contents := range files {
+		if f == "README.md" {
+			if _, err := os.Stat(filepath.Join(g.outDir, f)); err == nil {
+				continue
+			}
+		}
+		if err := emitFile(g.outDir, f, contents); err != nil {
+			return errors.Wrapf(err, "emitting file %v", f)
+		}
 	}
 
 	// Emit the Pulumi project information.
@@ -841,7 +892,7 @@ func (g *generator) gatherResource(rawname string,
 		stateVars = append(stateVars, stateVar)
 	}
 
-	className := g.lg.typeName(res)
+	className := res.name
 
 	// Generate a state type for looking up instances of this resource.
 	res.statet = &propertyType{
@@ -1036,7 +1087,7 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			overlay = goinfo.Overlay
 		}
 	case csharp:
-		// TODO(patg): CSharp overlays
+		// TODO: CSharp overlays
 	case pulumiSchema:
 		// N/A
 	default:
@@ -1045,13 +1096,6 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 
 	if overlay != nil {
 		// Add the overlays that go in the root ("index") for the enclosing package.
-		for _, file := range overlay.Files {
-			root := modules.ensureModule("")
-			root.addMember(&overlayFile{
-				name: file,
-				src:  filepath.Join(g.overlaysDir, file),
-			})
-		}
 		for _, file := range overlay.DestFiles {
 			root := modules.ensureModule("")
 			root.addMember(&overlayFile{name: file})
@@ -1065,12 +1109,6 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			}
 
 			mod := modules.ensureModule(name)
-			for _, file := range modolay.Files {
-				mod.addMember(&overlayFile{
-					name: file,
-					src:  filepath.Join(g.overlaysDir, mod.name, file),
-				})
-			}
 			for _, file := range modolay.DestFiles {
 				mod.addMember(&overlayFile{name: file})
 			}
@@ -1224,16 +1262,6 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 }
 
 func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir string, files map[string][]byte) error {
-	for _, f := range overlay.Files {
-		if path.Ext(f) == extension {
-			fp := path.Join(dir, f)
-			contents, err := ioutil.ReadFile(path.Join(srcRoot, fp))
-			if err != nil {
-				return err
-			}
-			files[fp] = contents
-		}
-	}
 	for _, f := range overlay.DestFiles {
 		if path.Ext(f) == extension {
 			fp := path.Join(dir, f)

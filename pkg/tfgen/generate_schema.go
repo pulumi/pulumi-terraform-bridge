@@ -27,7 +27,6 @@ import (
 
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -40,39 +39,6 @@ type schemaGenerator struct {
 	pkg     string
 	version string
 	info    tfbridge.ProviderInfo
-	outDir  string
-}
-
-// newSchemaGenerator returns a language generator that understands how to produce Pulumi schemas.
-func newSchemaGenerator(pkg, version string, info tfbridge.ProviderInfo, outDir string) langGenerator {
-	return &schemaGenerator{
-		pkg:     pkg,
-		version: version,
-		info:    info,
-		outDir:  outDir,
-	}
-}
-
-func (g *schemaGenerator) emitPackage(pack *pkg) error {
-	spec, err := g.genPackageSpec(pack)
-	if err != nil {
-		return errors.Wrap(err, "generating Pulumi schema")
-	}
-
-	spec.Version = ""
-	schema, err := json.MarshalIndent(spec, "", "    ")
-	if err != nil {
-		return errors.Wrap(err, "marshaling Pulumi schema")
-	}
-
-	if err := emitFile(g.outDir, "schema.json", schema); err != nil {
-		return errors.Wrap(err, "emitting schema.json")
-	}
-	return nil
-}
-
-func (g *schemaGenerator) typeName(r *resourceType) string {
-	return r.name
 }
 
 type schemaNestedType struct {
@@ -217,17 +183,13 @@ func rawMessage(v interface{}) json.RawMessage {
 	return json.RawMessage(bytes)
 }
 
-func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (*pschema.Package, error) {
+func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:     name,
 		version: version,
 		info:    info,
 	}
-	spec, err := g.genPackageSpec(pack)
-	if err != nil {
-		return nil, err
-	}
-	return pschema.ImportSpec(spec, nil)
+	return g.genPackageSpec(pack)
 }
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
