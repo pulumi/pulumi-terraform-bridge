@@ -996,60 +996,114 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 const elidedDocComment = "<elided>"
 
 func fixupPropertyReferences(language language, pkg string, info tfbridge.ProviderInfo, text string) string {
-	fixupText := func(text string) string {
-		return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
-			parts := codeLikeSingleWord.FindStringSubmatch(match)
+	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
+		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
-			var open, name, close string
-			if parts[2] != "" {
-				open, name, close = parts[2], parts[3], parts[5]
-			} else {
-				open, name, close = "`", parts[7], "`"
+		var open, name, close string
+		if parts[2] != "" {
+			open, name, close = parts[2], parts[3], parts[5]
+		} else {
+			open, name, close = "`", parts[7], "`"
+		}
+
+		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
+			// This is a resource name
+			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
+			modname := extractModuleName(mod)
+			if modname != "" {
+				modname += "."
 			}
 
-			if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
-				// This is a resource name
-				resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
-				modname := extractModuleName(mod)
-				if modname != "" {
-					modname += "."
-				}
-
-				switch language {
-				case golang, python:
-					// Use `ec2.Instance` format
-					return open + modname + resname + close
-				default:
-					// Use `aws.ec2.Instance` format
-					return open + pkg + "." + modname + resname + close
-				}
-			} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
-				// This is a data source name
-				getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
-				modname := extractModuleName(mod)
-				if modname != "" {
-					modname += "."
-				}
-
-				switch language {
-				case golang, python:
-					// Use `ec2.getAmi` format
-					return open + modname + getname + close
-				default:
-					// Use `aws.ec2.getAmi` format
-					return open + pkg + "." + modname + getname + close
-				}
-			}
-			// Else just treat as a property name
 			switch language {
-			case nodeJS, golang:
-				// Use `camelCase` format
-				pname := propertyName(name, nil, nil)
-				return open + pname + close
+			case golang, python:
+				// Use `ec2.Instance` format
+				return open + modname + resname + close
 			default:
-				return match
+				// Use `aws.ec2.Instance` format
+				return open + pkg + "." + modname + resname + close
 			}
+		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
+			// This is a data source name
+			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
+			modname := extractModuleName(mod)
+			if modname != "" {
+				modname += "."
+			}
+
+			switch language {
+			case golang, python:
+				// Use `ec2.getAmi` format
+				return open + modname + getname + close
+			default:
+				// Use `aws.ec2.getAmi` format
+				return open + pkg + "." + modname + getname + close
+			}
+		}
+		// Else just treat as a property name
+		switch language {
+		case nodeJS, golang:
+			// Use `camelCase` format
+			pname := propertyName(name, nil, nil)
+			return open + pname + close
+		default:
+			return match
+		}
+	})
+}
+
+// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
+func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
+	footerLinks map[string]string) (string, bool) {
+
+	cleanupText := func(text string) (string, bool) {
+		// Remove incorrect documentation that should have been cleaned up in our forks.
+		// TODO: fail the build in the face of such text, once we have a processes in place.
+		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+			return "", true
+		}
+
+		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
+		text = strings.Replace(text, "-> ", "> ", -1)
+		text = strings.Replace(text, "~> ", "> ", -1)
+
+		// Trim Prefixes we see when the description is spread across multiple lines.
+		text = strings.TrimPrefix(text, "-\n(Required)\n")
+		text = strings.TrimPrefix(text, "-\n(Optional)\n")
+
+		// Find markdown Terraform docs site reference links.
+		text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
+			parts := strings.Split(referenceLink, " ")
+			// Add Terraform domain to avoid broken links.
+			return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
 		})
+
+		// Find links from the footer links.
+		text = replaceFooterLinks(text, footerLinks)
+
+		// Find URLs and re-write local links
+		text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
+			parts := markdownLink.FindStringSubmatch(link)
+			url := parts[2]
+			if strings.HasPrefix(url, "http") {
+				// Absolute URL, return as-is
+				return link
+			} else if strings.HasPrefix(url, "/") {
+				// Relative URL to the root of the Terraform docs site, rewrite to absolute
+				return fmt.Sprintf("[%s](https://www.terraform.io%s)", parts[1], url)
+			} else if strings.HasPrefix(url, "#") {
+				// Anchor in current page,  can't be resolved currently so remove the link.
+				// Note: This throws away potentially valuable information in the name of not having broken links.
+				return parts[1]
+			}
+			// Relative URL to the current page, can't be resolved currently so remove the link.
+			// Note: This throws away potentially valuable information in the name of not having broken links.
+			return parts[1]
+		})
+
+		// Fixup resource and property name references
+		text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
+
+		return text, false
 	}
 
 	// Detect all code blocks in the text so we can avoid processing them.
@@ -1059,73 +1113,25 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 	start, end := 0, 0
 	for _, codeBlock := range codeBlocks {
 		end = codeBlock[0]
-		parts = append(parts, fixupText(text[start:end]))
+
+		clean, elided := cleanupText(text[start:end])
+		if elided {
+			return "", true
+		}
+		parts = append(parts, clean)
 
 		start = codeBlock[1]
 		parts = append(parts, text[end:start])
 	}
 	if start != len(text) {
-		parts = append(parts, fixupText(text[start:]))
-	}
-
-	return strings.Join(parts, "")
-}
-
-// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
-	footerLinks map[string]string) (string, bool) {
-
-	// Remove incorrect documentation that should have been cleaned up in our forks.
-	// TODO: fail the build in the face of such text, once we have a processes in place.
-	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
-		return "", true
-	}
-
-	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
-	text = strings.Replace(text, "-> ", "> ", -1)
-	text = strings.Replace(text, "~> ", "> ", -1)
-
-	// Trim Prefixes we see when the description is spread across multiple lines.
-	text = strings.TrimPrefix(text, "-\n(Required)\n")
-	text = strings.TrimPrefix(text, "-\n(Optional)\n")
-
-	// Find markdown Terraform docs site reference links.
-	text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
-		parts := strings.Split(referenceLink, " ")
-		// Add Terraform domain to avoid broken links.
-		return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
-	})
-
-	// Find links from the footer links.
-	text = replaceFooterLinks(text, footerLinks)
-
-	// Find URLs and re-write local links
-	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
-		parts := markdownLink.FindStringSubmatch(link)
-		url := parts[2]
-		if strings.HasPrefix(url, "http") {
-			// Absolute URL, return as-is
-			return link
-		} else if strings.HasPrefix(url, "/") {
-			// Relative URL to the root of the Terraform docs site, rewrite to absolute
-			return fmt.Sprintf("[%s](https://www.terraform.io%s)", parts[1], url)
-		} else if strings.HasPrefix(url, "#") {
-			// Anchor in current page,  can't be resolved currently so remove the link.
-			// Note: This throws away potentially valuable information in the name of not having broken links.
-			return parts[1]
+		clean, elided := cleanupText(text[start:])
+		if elided {
+			return "", true
 		}
-		// Relative URL to the current page, can't be resolved currently so remove the link.
-		// Note: This throws away potentially valuable information in the name of not having broken links.
-		return parts[1]
-	})
+		parts = append(parts, clean)
+	}
 
-	// Fixup resource and property name references
-	text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
-
-	// Finally, trim any trailing blank lines and return the result.
-	lines := strings.Split(text, "\n")
-	lines = trimTrailingBlanks(lines)
-	return strings.Join(lines, "\n"), false
+	return strings.TrimSpace(strings.Join(parts, "")), false
 }
 
 // For example:
