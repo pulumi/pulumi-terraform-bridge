@@ -53,7 +53,7 @@ func TestURLRewrite(t *testing.T) {
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 		},
-	}, "", "")
+	}, "")
 	assert.NoError(t, err)
 
 	for _, test := range tests {
@@ -65,7 +65,7 @@ func TestURLRewrite(t *testing.T) {
 func TestArgumentRegex(t *testing.T) {
 	tests := []struct {
 		input    []string
-		expected map[string]*argument
+		expected map[string]*argumentDocs
 	}{
 		{
 			input: []string{
@@ -75,7 +75,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `ipv6_addresses` - (Optional) Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
 				"* `tags` - (Optional) A mapping of tags to assign to the resource.",
 			},
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"iam_instance_profile": {
 					description: "The IAM Instance Profile to" + "\n" +
 						"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
@@ -101,7 +101,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `audience` - (Optional) A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
 				"* `issuer` - (Optional) The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
 			},
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"jwt_configuration": {
 					description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
 						"Supported only for HTTP APIs.",
@@ -131,7 +131,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `routing_rules` - (Optional) A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)",
 				"describing redirect behavior and when redirects are applied.",
 			},
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"website": {
 					description: "A website object (documented below)." + "\n" +
 						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
@@ -160,7 +160,7 @@ func TestArgumentRegex(t *testing.T) {
 				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
 			},
 			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				},
@@ -178,7 +178,7 @@ func TestArgumentRegex(t *testing.T) {
 				"",
 				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
 			},
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"priority": {
 					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
 				},
@@ -192,7 +192,7 @@ func TestArgumentRegex(t *testing.T) {
 				"---",
 				"* `retention_policy` supports the following:",
 			},
-			expected: map[string]*argument{
+			expected: map[string]*argumentDocs{
 				"retention_policy": {
 					description: "A `retention_policy` block as documented below.",
 				},
@@ -205,8 +205,8 @@ func TestArgumentRegex(t *testing.T) {
 
 	for _, tt := range tests {
 		parser := &tfMarkdownParser{
-			ret: parsedDoc{
-				Arguments: make(map[string]*argument),
+			ret: entityDocs{
+				Arguments: make(map[string]*argumentDocs),
 			},
 		}
 		parser.parseArgReferenceSection(tt.input)
@@ -270,6 +270,8 @@ func TestReplaceFooterLinks(t *testing.T) {
 }
 
 func TestFixExamplesHeaders(t *testing.T) {
+	p := &tfMarkdownParser{}
+
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
 		markdown := `
@@ -289,7 +291,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			fixExampleTitles(lines)
+			p.fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}
@@ -316,7 +318,7 @@ Misleading example title without any actual code fences. We should not modify th
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			fixExampleTitles(lines)
+			p.fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}

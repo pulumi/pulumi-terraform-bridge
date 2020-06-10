@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,12 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
+	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
+	nodejsgen "github.com/pulumi/pulumi/pkg/v2/codegen/nodejs"
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -41,10 +47,9 @@ import (
 )
 
 const (
-	tfgen              = "the Pulumi Terraform Bridge (tfgen) Tool"
-	defaultOutDir      = "pack/"
-	defaultOverlaysDir = "overlays/"
-	maxWidth           = 120 // the ideal maximum width of the generated file.
+	tfgen         = "the Pulumi Terraform Bridge (tfgen) Tool"
+	defaultOutDir = "sdk/"
+	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
 
 type generator struct {
@@ -52,8 +57,6 @@ type generator struct {
 	version      string                // the package version.
 	language     language              // the language runtime to generate.
 	info         tfbridge.ProviderInfo // the provider info for customizing code generation
-	lg           langGenerator         // the generator with language-specific understanding.
-	overlaysDir  string                // the directory in which source overlays come from.
 	outDir       string                // the directory in which to generate the code.
 	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
 	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
@@ -78,15 +81,43 @@ func (l language) shouldConvertExamples() bool {
 	return false
 }
 
-var allLanguages = []language{golang, nodeJS, python, csharp}
+func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outDir string) (map[string][]byte, error) {
+	var extraFiles map[string][]byte
+	var err error
 
-// langGenerator is the interface for language-specific logic and formatting.
-type langGenerator interface {
-	// emitPackage emits an entire package pack into the configured output directory with the configured settings.
-	emitPackage(pack *pkg) error
-	// typeName returns a type name for a given resource type.
-	typeName(rt *resourceType) string
+	switch l {
+	case golang:
+		return gogen.GeneratePackage(tfgen, pkg)
+	case nodeJS:
+		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
+	case python:
+		if psi := info.Python; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
+	case csharp:
+		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", outDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
+	default:
+		return nil, errors.Errorf("%v does not support SDK generation", l)
+	}
 }
+
+var allLanguages = []language{golang, nodeJS, python, csharp}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
@@ -246,7 +277,7 @@ type propertyType struct {
 }
 
 func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
-	parsedDocs parsedDoc) *propertyType {
+	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{}
 
@@ -288,9 +319,9 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 
 	switch elem := sch.Elem.(type) {
 	case *schema.Schema:
-		t.element = makePropertyType(objectName, elem, elemInfo, out, parsedDocs)
+		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
 	case *schema.Resource:
-		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, parsedDocs)
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
 	}
 
 	switch t.kind {
@@ -310,7 +341,7 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 }
 
 func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
-	parsedDocs parsedDoc) *propertyType {
+	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
 		kind: kindObject,
@@ -336,8 +367,8 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := getNestedDescriptionFromParsedDocs(parsedDocs, objectName, key)
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, parsedDocs); v != nil {
+		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -465,7 +496,7 @@ type resourceType struct {
 	schema     *schema.Resource
 	info       *tfbridge.ResourceInfo
 	docURL     string
-	parsedDocs parsedDoc // parsed docs.
+	entityDocs entityDocs // parsed docs.
 }
 
 func (rt *resourceType) Name() string { return rt.name }
@@ -474,18 +505,18 @@ func (rt *resourceType) Doc() string  { return rt.doc }
 // IsProvider is true if this resource is a ProviderResource.
 func (rt *resourceType) IsProvider() bool { return rt.isProvider }
 
-func newResourceType(name string, parsedDocs parsedDoc, schema *schema.Resource, info *tfbridge.ResourceInfo,
+func newResourceType(name string, entityDocs entityDocs, schema *schema.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
 	return &resourceType{
 		name:       name,
-		doc:        parsedDocs.Description,
+		doc:        entityDocs.Description,
 		isProvider: isProvider,
 		schema:     schema,
 		info:       info,
 		reqprops:   make(map[string]bool),
-		docURL:     parsedDocs.URL,
-		parsedDocs: parsedDocs,
+		docURL:     entityDocs.URL,
+		entityDocs: entityDocs,
 	}
 }
 
@@ -501,7 +532,7 @@ type resourceFunc struct {
 	schema     *schema.Resource
 	info       *tfbridge.DataSourceInfo
 	docURL     string
-	parsedDocs parsedDoc
+	entityDocs entityDocs
 }
 
 func (rf *resourceFunc) Name() string { return rf.name }
@@ -518,37 +549,24 @@ func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
 // newGenerator returns a code-generator for the given language runtime and package info.
-func newGenerator(pkg, version string, language language, info tfbridge.ProviderInfo,
-	overlaysDir, outDir string) (*generator, error) {
-	// If outDir or overlaysDir are empty, default to pack/<language>/ and overlays/<language>/ in the pwd.
-	if outDir == "" || overlaysDir == "" {
+func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo, outDir string) (*generator, error) {
+	// Ensure the language is valid.
+	switch lang {
+	case golang, nodeJS, python, csharp, pulumiSchema:
+		// OK
+	default:
+		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
+	}
+
+	// If outDir is empty, default to sdk/<language>/ in the pwd.
+	if outDir == "" {
 		p, err := os.Getwd()
 		if err != nil {
 			return nil, err
 		}
 		if outDir == "" {
-			outDir = filepath.Join(p, defaultOutDir, string(language))
+			outDir = filepath.Join(p, defaultOutDir, string(lang))
 		}
-		if overlaysDir == "" {
-			overlaysDir = filepath.Join(p, defaultOverlaysDir, string(language))
-		}
-	}
-
-	// Ensure the language is valid and, if so, create a new language-specific code generator.
-	var lg langGenerator
-	switch language {
-	case golang:
-		lg = newGoGenerator(pkg, version, info, overlaysDir, outDir)
-	case nodeJS:
-		lg = newNodeJSGenerator(pkg, version, info, overlaysDir, outDir)
-	case python:
-		lg = newPythonGenerator(pkg, version, info, overlaysDir, outDir)
-	case csharp:
-		lg = newCSharpGenerator(pkg, version, info, overlaysDir, outDir)
-	case pulumiSchema:
-		lg = newSchemaGenerator(pkg, version, info, outDir)
-	default:
-		return nil, errors.Errorf("unrecognized language runtime: %s", language)
 	}
 
 	cwd, err := os.Getwd()
@@ -561,13 +579,11 @@ func newGenerator(pkg, version string, language language, info tfbridge.Provider
 	}
 
 	return &generator{
-		pkg:         pkg,
-		version:     version,
-		language:    language,
-		info:        info,
-		lg:          lg,
-		overlaysDir: overlaysDir,
-		outDir:      outDir,
+		pkg:      pkg,
+		version:  version,
+		language: lang,
+		info:     info,
+		outDir:   outDir,
 		pluginHost: &cachingProviderHost{
 			Host:  ctx.Host,
 			cache: map[string]plugin.Provider{},
@@ -590,14 +606,49 @@ func (g *generator) Generate() error {
 		return errors.Wrapf(err, "failed to gather package metadata")
 	}
 
-	// Ensure the target exists and emit the Pulumi-specific package metadata.
+	// Ensure the target exists.
 	if err = g.preparePackage(pack); err != nil {
 		return errors.Wrapf(err, "failed to prepare package")
 	}
 
-	// Go ahead and let the language generator do its thing.
-	if err = g.lg.emitPackage(pack); err != nil {
-		return errors.Wrapf(err, "failed to generate package")
+	// Convert the package to a Pulumi schema.
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create Pulumi schema")
+	}
+
+	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
+	// it out.
+	var files map[string][]byte
+	if g.language == pulumiSchema {
+		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
+		pulumiPackageSpec.Version = ""
+
+		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal schema")
+		}
+		files = map[string][]byte{"schema.json": bytes}
+	} else {
+		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
+		if err != nil {
+			return errors.Wrapf(err, "failed to import Pulumi schema")
+		}
+		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.outDir); err != nil {
+			return errors.Wrapf(err, "failed to generate package")
+		}
+	}
+
+	// Write the result to disk. Do not overwrite the root-level README.md if any exists.
+	for f, contents := range files {
+		if f == "README.md" {
+			if _, err := os.Stat(filepath.Join(g.outDir, f)); err == nil {
+				continue
+			}
+		}
+		if err := emitFile(g.outDir, f, contents); err != nil {
+			return errors.Wrapf(err, "emitting file %v", f)
+		}
 	}
 
 	// Emit the Pulumi project information.
@@ -681,7 +732,7 @@ func (g *generator) gatherConfig() *module {
 		// Generate a name and type to use for this key.
 		sch := cfg[key]
 		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, parsedDoc{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -698,7 +749,7 @@ func (g *generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, parsedDoc{}); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, entityDocs{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -780,26 +831,26 @@ func (g *generator) gatherResource(rawname string,
 	name, module := resourceName(g.info.Name, rawname, info, isProvider)
 
 	// Collect documentation information
-	var parsedDocs parsedDoc
+	var entityDocs entityDocs
 	if !isProvider {
 		pd, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
 			g.info.GetResourcePrefix(), ResourceDocs, rawname, info)
 		if err != nil {
 			return "", nil, err
 		}
-		parsedDocs = pd
+		entityDocs = pd
 	} else {
-		parsedDocs.Description = fmt.Sprintf(
+		entityDocs.Description = fmt.Sprintf(
 			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
 				"settings, however an explicit `Provider` instance may be created and passed during resource\n"+
 				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
 				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
-		parsedDocs.URL = getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
+		entityDocs.URL = getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(name, parsedDocs, schema, info, isProvider)
+	res := newResourceType(name, entityDocs, schema, info, isProvider)
 
 	args := tfbridge.CleanTerraformSchema(schema.Schema)
 
@@ -808,7 +859,7 @@ func (g *generator) gatherResource(rawname string,
 	for _, key := range stableSchemas(args) {
 		propschema := args[key]
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := getDescriptionFromParsedDocs(parsedDocs, key)
+		doc := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description
 
 		propinfo := info.Fields[key]
@@ -818,7 +869,7 @@ func (g *generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, parsedDocs)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, entityDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -826,7 +877,7 @@ func (g *generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -836,12 +887,12 @@ func (g *generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, parsedDocs)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
 
-	className := g.lg.typeName(res)
+	className := res.name
 
 	// Generate a state type for looking up instances of this resource.
 	res.statet = &propertyType{
@@ -936,7 +987,7 @@ func (g *generator) gatherDataSource(rawname string,
 	name, module := dataSourceName(g.info.Name, rawname, info)
 
 	// Collect documentation information for this data source.
-	parsedDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
+	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
 		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info)
 	if err != nil {
 		return "", nil, err
@@ -945,12 +996,12 @@ func (g *generator) gatherDataSource(rawname string,
 	// Build up the function information.
 	fun := &resourceFunc{
 		name:       name,
-		doc:        parsedDocs.Description,
+		doc:        entityDocs.Description,
 		reqargs:    make(map[string]bool),
 		schema:     ds,
 		info:       info,
-		docURL:     parsedDocs.URL,
-		parsedDocs: parsedDocs,
+		docURL:     entityDocs.URL,
+		entityDocs: entityDocs,
 	}
 
 	// Sort the args and return properties so we are ready to go.
@@ -968,8 +1019,8 @@ func (g *generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(args[arg], cust) {
-			doc := getDescriptionFromParsedDocs(parsedDocs, arg)
-			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, parsedDocs)
+			doc := getDescriptionFromParsedDocs(entityDocs, arg)
+			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -979,7 +1030,7 @@ func (g *generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, parsedDocs.Attributes[arg], "", "", true /*out*/, parsedDocs))
+			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", "", true /*out*/, entityDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -992,7 +1043,7 @@ func (g *generator) gatherDataSource(rawname string,
 		cust := &tfbridge.SchemaInfo{}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		fun.rets = append(fun.rets,
-			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, parsedDocs))
+			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1036,7 +1087,7 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			overlay = goinfo.Overlay
 		}
 	case csharp:
-		// TODO(patg): CSharp overlays
+		// TODO: CSharp overlays
 	case pulumiSchema:
 		// N/A
 	default:
@@ -1045,13 +1096,6 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 
 	if overlay != nil {
 		// Add the overlays that go in the root ("index") for the enclosing package.
-		for _, file := range overlay.Files {
-			root := modules.ensureModule("")
-			root.addMember(&overlayFile{
-				name: file,
-				src:  filepath.Join(g.overlaysDir, file),
-			})
-		}
 		for _, file := range overlay.DestFiles {
 			root := modules.ensureModule("")
 			root.addMember(&overlayFile{name: file})
@@ -1065,12 +1109,6 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			}
 
 			mod := modules.ensureModule(name)
-			for _, file := range modolay.Files {
-				mod.addMember(&overlayFile{
-					name: file,
-					src:  filepath.Join(g.overlaysDir, mod.name, file),
-				})
-			}
 			for _, file := range modolay.DestFiles {
 				mod.addMember(&overlayFile{name: file})
 			}
@@ -1126,7 +1164,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, docURL string, out bool, parsedDocs parsedDoc) *variable {
+	doc string, rawdoc string, docURL string, out bool, entityDocs entityDocs) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -1136,7 +1174,7 @@ func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
 			schema: sch,
 			info:   info,
 			docURL: docURL,
-			typ:    makePropertyType(strings.ToLower(key), sch, info, out, parsedDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
 		}
 	}
 	return nil
@@ -1224,16 +1262,6 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 }
 
 func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir string, files map[string][]byte) error {
-	for _, f := range overlay.Files {
-		if path.Ext(f) == extension {
-			fp := path.Join(dir, f)
-			contents, err := ioutil.ReadFile(path.Join(srcRoot, fp))
-			if err != nil {
-				return err
-			}
-			files[fp] = contents
-		}
-	}
 	for _, f := range overlay.DestFiles {
 		if path.Ext(f) == extension {
 			fp := path.Join(dir, f)
@@ -1279,17 +1307,17 @@ func emitFile(outDir, relPath string, contents []byte) error {
 
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
-func getDescriptionFromParsedDocs(parsedDocs parsedDoc, arg string) string {
-	return getNestedDescriptionFromParsedDocs(parsedDocs, "", arg)
+func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) string {
+	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
-func getNestedDescriptionFromParsedDocs(parsedDocs parsedDoc, objectName string, arg string) string {
-	if res := parsedDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) string {
+	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
 		return res.arguments[arg]
-	} else if res := parsedDocs.Arguments[arg]; res != nil && res.description != "" {
+	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
 		return res.description
 	}
-	return parsedDocs.Attributes[arg]
+	return entityDocs.Attributes[arg]
 }

@@ -33,9 +33,9 @@ import (
 	"github.com/spf13/afero"
 )
 
-// argument the metadata for an argument of the resource.
-type argument struct {
-	// The description for this argument
+// argumentDocs contains the documentation metadata for an argument of the resource.
+type argumentDocs struct {
+	// The description for this argument.
 	description string
 
 	// (Optional) The names and descriptions for each argument of this argument.
@@ -46,8 +46,8 @@ type argument struct {
 	isNested bool
 }
 
-// parsedDoc represents the data parsed from TF markdown documentation
-type parsedDoc struct {
+// entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
+type entityDocs struct {
 	// Description is the description of the resource
 	Description string
 
@@ -73,7 +73,7 @@ type parsedDoc struct {
 	//  	- isNested: true
 	// "index_document" is recorded like a top level argument since sometimes object names in
 	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
-	Arguments map[string]*argument
+	Arguments map[string]*argumentDocs
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
@@ -151,18 +151,18 @@ func getMarkdownDetails(g *generator, org string, provider string, resourcePrefi
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) (parsedDoc, error) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info)
 	if !found {
 		cmdutil.Diag().Warningf(
 			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
-		return parsedDoc{}, nil
+		return entityDocs{}, nil
 	}
 
 	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
-		return parsedDoc{}, err
+		return entityDocs{}, err
 	}
 
 	var docinfo *tfbridge.DocInfo
@@ -207,7 +207,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
 	resourcePrefix string,
-	kind DocKind, docs parsedDoc, sourceFrom string,
+	kind DocKind, docs entityDocs, sourceFrom string,
 	useTargetAttributes bool, useSourceAttributes bool) error {
 
 	if sourceFrom != "" {
@@ -234,7 +234,7 @@ func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string,
 				for kk, vv := range arguments {
 					docArguments[kk] = vv
 				}
-				docs.Arguments[k] = &argument{
+				docs.Arguments[k] = &argumentDocs{
 					description: v.description,
 					arguments:   docArguments,
 				}
@@ -313,41 +313,10 @@ func getDocsIndexURL(org, p string) string {
 	return getDocsBaseURL(org, p) + "/index.html.markdown"
 }
 
-// fixExampleTitles looks at every line and fixes any title immediately preceding
-// a code snippet.
-func fixExampleTitles(lines []string) {
-	num := len(lines)
-	for i, line := range lines {
-		if strings.HasPrefix(line, "#### ") {
-			// Make sure we don't go beyond the number of lines we are dealing with.
-			if i >= num-1 {
-				break
-			}
-
-			// For every line that comes after this, process each line until we hit
-			// the beginning of a code-fence.
-			j := i + 1
-			for j < num {
-				if lines[j] == "\n" || lines[j] == "" {
-					j++
-					continue
-				}
-
-				if strings.HasPrefix(lines[j], "```") {
-					lines[i] = strings.ReplaceAll(line, "#### ", "### ")
-					// Stop searching further lines since we found the first code snippet.
-					break
-				}
-				j++
-			}
-		}
-	}
-}
-
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown, markdownFileName, resourcePrefix, rawname string) (parsedDoc, error) {
+	markdown, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
 		g:                g,
@@ -370,12 +339,20 @@ type tfMarkdownParser struct {
 	resourcePrefix   string
 	rawname          string
 
-	ret parsedDoc
+	ret entityDocs
 }
 
-func (p *tfMarkdownParser) parse() (parsedDoc, error) {
-	p.ret = parsedDoc{
-		Arguments:  make(map[string]*argument),
+const (
+	sectionOther               = 0
+	sectionExampleUsage        = 1
+	sectionArgsReference       = 2
+	sectionAttributesReference = 3
+	sectionFrontMatter         = 4
+)
+
+func (p *tfMarkdownParser) parse() (entityDocs, error) {
+	p.ret = entityDocs{
+		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
 		URL:        getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName),
 	}
@@ -384,9 +361,14 @@ func (p *tfMarkdownParser) parse() (parsedDoc, error) {
 	markdown := strings.Replace(p.markdown, "\r\n", "\n", -1)
 
 	// Split the sections by H2 topics in the Markdown file.
-	for _, section := range splitGroupLines(markdown, "## ") {
+	sections := splitGroupLines(markdown, "## ")
+
+	// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+	sections = p.reformatExamples(sections)
+
+	for _, section := range sections {
 		if err := p.parseSection(section); err != nil {
-			return parsedDoc{}, err
+			return entityDocs{}, err
 		}
 	}
 
@@ -402,13 +384,103 @@ func (p *tfMarkdownParser) parse() (parsedDoc, error) {
 	return doc, nil
 }
 
-const (
-	sectionOther               = 0
-	sectionExampleUsage        = 1
-	sectionArgsReference       = 2
-	sectionAttributesReference = 3
-	sectionFrontMatter         = 4
-)
+// fixExampleTitles transforms H4 sections that contain code snippets into H3 sections.
+func (p *tfMarkdownParser) fixExampleTitles(lines []string) {
+	inSection, sectionIndex := false, 0
+	for i, line := range lines {
+		if inSection && strings.HasPrefix(line, "```") {
+			lines[sectionIndex] = strings.Replace(lines[sectionIndex], "#### ", "### ", 1)
+			inSection = false
+		} else if strings.HasPrefix(line, "#### ") {
+			inSection, sectionIndex = true, i
+		}
+	}
+}
+
+var exampleHeaderRegexp = regexp.MustCompile(`(?i)^(## Example Usage\s*)(?:(?:(?:for|of|[\pP]+)\s*)?(.*?)\s*)?$`)
+
+// reformatExamples reparents examples that are peers of the "Example Usage" section (if any) and fixup some example
+// titles.
+func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
+	canonicalExampleUsageSectionIndex := -1
+	var exampleUsageSection []string
+	var exampleSectionIndices []int
+	for i, s := range sections {
+		matches := exampleHeaderRegexp.FindStringSubmatch(s[0])
+		if len(matches) == 0 {
+			continue
+		}
+
+		if len(matches[1]) == len(s[0]) {
+			// This is the canonical example usage section. Prepend its contents to any other content we've collected.
+			// If there are multiple canonical example usage sections, treat the first such section as the canonical
+			// example usage section and append other sections under an H3.
+			if canonicalExampleUsageSectionIndex == -1 {
+				canonicalExampleUsageSectionIndex = i
+
+				// Copy the section over. Note that we intentionally avoid copying the first line and any whitespace
+				// that follows it, as we will overwrite that content with the canonical header later.
+				for s = s[1:]; len(s) > 0 && isBlank(s[0]); s = s[1:] {
+				}
+
+				sectionCopy := make([]string, len(s)+2)
+				copy(sectionCopy[2:], s)
+
+				if len(exampleUsageSection) != 0 {
+					exampleUsageSection = append(sectionCopy, exampleUsageSection...)
+				} else {
+					exampleUsageSection = sectionCopy
+				}
+			} else {
+				exampleUsageSection = append(exampleUsageSection, "", "### Additional Examples")
+				exampleUsageSection = append(exampleUsageSection, s[1:]...)
+			}
+		} else {
+			// This is a qualified example usage section. Retitle it using an H3 and its qualifier, and append it to
+			// the output.
+			exampleUsageSection = append(exampleUsageSection, "", "### "+strings.Title(matches[2]))
+			exampleUsageSection = append(exampleUsageSection, s[1:]...)
+		}
+
+		exampleSectionIndices = append(exampleSectionIndices, i)
+	}
+
+	if len(exampleSectionIndices) == 0 {
+		return sections
+	}
+
+	// If we did not find a canonical example usage section, prepend a blank line to the output. This line will be
+	// replaced by the canonical example usage H2.
+	if canonicalExampleUsageSectionIndex == -1 {
+		canonicalExampleUsageSectionIndex = exampleSectionIndices[0]
+		exampleUsageSection = append([]string{""}, exampleUsageSection...)
+	}
+
+	// Ensure that the output begins with the canonical example usage header.
+	exampleUsageSection[0] = "## Example Usage"
+
+	// Fixup example titles and replace the contents of the canonical example usage section with the output.
+	p.fixExampleTitles(exampleUsageSection)
+	sections[canonicalExampleUsageSectionIndex] = exampleUsageSection
+
+	// If there is only one example section, we're done. Otherwise, we need to remove all non-canonical example usage
+	// sections.
+	if len(exampleSectionIndices) == 1 {
+		return sections
+	}
+
+	result := sections[:0]
+	for i, s := range sections {
+		if len(exampleSectionIndices) > 0 && i == exampleSectionIndices[0] {
+			exampleSectionIndices = exampleSectionIndices[1:]
+			if i != canonicalExampleUsageSectionIndex {
+				continue
+			}
+		}
+		result = append(result, s)
+	}
+	return result
+}
 
 func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
@@ -443,7 +515,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	if sectionKind == sectionExampleUsage {
 		// Add shortcode around each examples block.
 		p.ret.Description += "{{% examples %}}\n"
-		fixExampleTitles(section[1:])
 	}
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
@@ -468,16 +539,12 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			continue
 		}
 
-		// Convert any code snippets, if there are any. If this yields a fatal error, we
+		// Convert or remove code snippets, if there are any. If this yields a fatal error, we
 		// bail out, but most errors are ignorable and just lead to us skipping one section.
-		var skippableExamples bool
-		var err error
-		subsection, skippableExamples, err = p.parseExamples(subsection)
-		if err != nil {
-			return err
-		} else if skippableExamples && sectionKind <= sectionExampleUsage {
-			// Skip sections with failed examples, so long as they aren't "essential" blocks.
-			continue
+		subsection, hasExamples, skippedExamples := p.parseExamples(subsection)
+		if hasExamples && sectionKind != sectionExampleUsage {
+			cmdutil.Diag().Warningf(diag.Message("",
+				"Unexpected code snippets in section %v for resource %v"), header, p.rawname)
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -489,6 +556,11 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		case sectionFrontMatter:
 			p.parseFrontMatter(subsection)
 		default:
+			// These sections are non-essential. If we skipped any examples, we will omit the entire section.
+			if skippedExamples {
+				continue
+			}
+
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
@@ -542,7 +614,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
 				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argument{
+					p.ret.Arguments[nested] = &argumentDocs{
 						arguments: make(map[string]string),
 					}
 				} else if p.ret.Arguments[nested].arguments == nil {
@@ -554,14 +626,14 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				// argument doesn't match the resource's argument.
 				// For example, see `cors_rule` in s3_bucket.html.markdown.
 				if p.ret.Arguments[matches[1]] == nil {
-					p.ret.Arguments[matches[1]] = &argument{
+					p.ret.Arguments[matches[1]] = &argumentDocs{
 						description: matches[4],
 						isNested:    true, // Mark that this argument comes from a nested field.
 					}
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[matches[1]] = &argument{description: matches[4]}
+					p.ret.Arguments[matches[1]] = &argumentDocs{description: matches[4]}
 				}
 			}
 			lastMatch = matches[1]
@@ -709,71 +781,65 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	}
 }
 
-// parseExamples converts an examples section into code comments, including converting any code snippets.
-// If an error converting a code example occurs, the bool (skip) will be true. If a fatal error occurs, the
-// error returned will be non-nil.
-func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, error) {
+// parseExamples processes any code snippets in a subsection, either converting them to Pulumi code snippets or
+// removing them. If an error converting a code example occurs or any examples are present and the caller has requested
+// they be removed, the bool (skip) will be true.
+func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, bool) {
 	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 	// them to the description. If we can't, we'll simply log a warning and keep moving along.
 	var result []string
-	var skippableExamples bool
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		if strings.Index(line, "```") == 0 {
-			// If we found a fenced block, parse out the code from it.
+	var hasExamples bool
+	var skippedExamples bool
+	var inCodeBlock bool
+	var inOICSButton bool
+	var codeBlockStart int
+	for i, line := range lines {
+		switch {
+		case inCodeBlock:
+			if strings.Index(line, "```") != 0 {
+				continue
+			}
+
 			if p.g.language.shouldConvertExamples() {
-				var hcl string
-				for i = i + 1; i < len(lines); i++ {
-					cline := lines[i]
-					if strings.Index(cline, "```") == 0 {
-						// We've got some code -- assume it's HCL and try to convert it.
-						lines, stderr, err := p.convertHCL(hcl)
-						if err != nil {
-							skippableExamples = true
-							hclFailures[stderr] = true
-							hclBlocksFailed++
-						} else {
-							result = append(result, lines...)
-							hclBlocksSucceeded++
-						}
+				hcl := strings.Join(lines[codeBlockStart+1:i], "\n")
 
-						// Now set the index and break out of the inner loop, to consume the code string.
-						hcl = ""
-						break
-					} else {
-						hcl += cline + "\n"
-					}
-				}
-				if hcl != "" {
-					// If the HCL wasn't consumed, we had an unbalanced pair of ```s, this example is skippable.
-					hcl = ""
-					skippableExamples = true
+				// We've got some code -- assume it's HCL and try to convert it.
+				lines, stderr, err := p.convertHCL(hcl)
+				if err != nil {
+					skippedExamples = true
+					hclFailures[stderr] = true
+					hclBlocksFailed++
+				} else {
+					result = append(result, lines...)
+					hclBlocksSucceeded++
 				}
 
+				hasExamples = true
 			} else {
-				// TODO: support other languages.
-				for i = i + 1; i < len(lines); i++ {
-					if strings.Index(lines[i], "```") == 0 {
-						break
-					}
-				}
-				skippableExamples = true
+				skippedExamples = true
 			}
-		} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
-			// Strip "Open in Cloud Shell" buttons.
-			for i = i + 1; i < len(lines); i++ {
-				if strings.Index(lines[i], "</div>") == 0 {
-					break
-				}
+
+			inCodeBlock = false
+		case inOICSButton:
+			if strings.Index(lines[i], "</div>") == 0 {
+				inOICSButton = false
 			}
-		} else {
-			// Otherwise, record any text found before, in between, or after the code snippets, as-is.
-			result = append(result, line)
+		default:
+			if strings.Index(line, "```") == 0 {
+				inCodeBlock, codeBlockStart = true, i
+			} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
+				inOICSButton = true
+			} else {
+				result = append(result, line)
+			}
 		}
 	}
+	if inCodeBlock {
+		skippedExamples = true
+	}
 
-	return result, skippableExamples, nil
+	return result, hasExamples, skippedExamples
 }
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
@@ -865,17 +931,17 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 	return result, "", nil
 }
 
-func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsedDoc,
-	footerLinks map[string]string) (parsedDoc, bool) {
+func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
+	footerLinks map[string]string) (entityDocs, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argument, len(doc.Arguments))
+	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 	for k, v := range doc.Arguments {
 		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
 			elidedDoc = true
 		}
 
-		newargs[k] = &argument{
+		newargs[k] = &argumentDocs{
 			description: cleanedText,
 			arguments:   make(map[string]string, len(v.arguments)),
 		}
@@ -901,7 +967,7 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 	if elided {
 		elidedDoc = true
 	}
-	return parsedDoc{
+	return entityDocs{
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
@@ -910,106 +976,164 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc parsed
 
 }
 
-var markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
-var codeLikeSingleWord = regexp.MustCompile("([\\s`\"\\[])(([0-9a-z]+_)+[0-9a-z]+)([\\s`\"\\]])")
+//nolint:lll
+var (
+	// Match a [markdown](link)
+	markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
+
+	// Match a ```fenced code block```.
+	codeBlocks = regexp.MustCompile(`(?ms)\x60\x60\x60[^\n]*?$.*?\x60\x60\x60\s*$`)
+
+	codeLikeSingleWord = regexp.MustCompile(`` + // trick gofmt into aligning the rest of the string
+		// Match code_like_words inside code and plain text
+		`((?P<open>[\s"\x60\[])(?P<name>([0-9a-z]+_)+[0-9a-z]+)(?P<close>[\s"\x60\]]))` +
+
+		// Match `code` words
+		`|(\x60(?P<name>[0-9a-z]+)\x60)`)
+)
 
 // Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
 var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
 
 const elidedDocComment = "<elided>"
 
-// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
-	footerLinks map[string]string) (string, bool) {
-
-	// Remove incorrect documentation that should have been cleaned up in our forks.
-	// TODO: fail the build in the face of such text, once we have a processes in place.
-	if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
-		return "", true
-	}
-
-	// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
-	text = strings.Replace(text, "-> ", "> ", -1)
-	text = strings.Replace(text, "~> ", "> ", -1)
-
-	// Trim Prefixes we see when the description is spread across multiple lines.
-	text = strings.TrimPrefix(text, "-\n(Required)\n")
-	text = strings.TrimPrefix(text, "-\n(Optional)\n")
-
-	// Find markdown Terraform docs site reference links.
-	text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
-		parts := strings.Split(referenceLink, " ")
-		// Add Terraform domain to avoid broken links.
-		return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
-	})
-
-	// Find links from the footer links.
-	text = replaceFooterLinks(text, footerLinks)
-
-	// Find URLs and re-write local links
-	text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
-		parts := markdownLink.FindStringSubmatch(link)
-		url := parts[2]
-		if strings.HasPrefix(url, "http") {
-			// Absolute URL, return as-is
-			return link
-		} else if strings.HasPrefix(url, "/") {
-			// Relative URL to the root of the Terraform docs site, rewrite to absolute
-			return fmt.Sprintf("[%s](https://www.terraform.io%s)", parts[1], url)
-		} else if strings.HasPrefix(url, "#") {
-			// Anchor in current page,  can't be resolved currently so remove the link.
-			// Note: This throws away potentially valuable information in the name of not having broken links.
-			return parts[1]
-		}
-		// Relative URL to the current page, can't be resolved currently so remove the link.
-		// Note: This throws away potentially valuable information in the name of not having broken links.
-		return parts[1]
-	})
-
-	// Fixup resource and property name references
-	text = codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
+func fixupPropertyReferences(language language, pkg string, info tfbridge.ProviderInfo, text string) string {
+	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
-		name := parts[2]
-		if resInfo, hasResourceInfo := g.info.Resources[name]; hasResourceInfo {
+
+		var open, name, close string
+		if parts[2] != "" {
+			open, name, close = parts[2], parts[3], parts[5]
+		} else {
+			open, name, close = "`", parts[7], "`"
+		}
+
+		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
 			// This is a resource name
-			resname, mod := resourceName(g.info.GetResourcePrefix(), name, resInfo, false)
+			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
 			modname := extractModuleName(mod)
-			switch g.language {
+			if modname != "" {
+				modname += "."
+			}
+
+			switch language {
 			case golang, python:
 				// Use `ec2.Instance` format
-				return parts[1] + modname + "." + resname + parts[4]
+				return open + modname + resname + close
 			default:
 				// Use `aws.ec2.Instance` format
-				return parts[1] + g.pkg + "." + modname + "." + resname + parts[4]
+				return open + pkg + "." + modname + resname + close
 			}
-		} else if dataInfo, hasDatasourceInfo := g.info.DataSources[name]; hasDatasourceInfo {
+		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
-			getname, mod := dataSourceName(g.info.GetResourcePrefix(), name, dataInfo)
+			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
 			modname := extractModuleName(mod)
-			switch g.language {
+			if modname != "" {
+				modname += "."
+			}
+
+			switch language {
 			case golang, python:
 				// Use `ec2.getAmi` format
-				return parts[1] + modname + "." + getname + parts[4]
+				return open + modname + getname + close
 			default:
 				// Use `aws.ec2.getAmi` format
-				return parts[1] + g.pkg + "." + modname + "." + getname + parts[4]
+				return open + pkg + "." + modname + getname + close
 			}
 		}
 		// Else just treat as a property name
-		switch g.language {
+		switch language {
 		case nodeJS, golang:
 			// Use `camelCase` format
 			pname := propertyName(name, nil, nil)
-			return parts[1] + pname + parts[4]
+			return open + pname + close
 		default:
 			return match
 		}
 	})
+}
 
-	// Finally, trim any trailing blank lines and return the result.
-	lines := strings.Split(text, "\n")
-	lines = trimTrailingBlanks(lines)
-	return strings.Join(lines, "\n"), false
+// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
+func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
+	footerLinks map[string]string) (string, bool) {
+
+	cleanupText := func(text string) (string, bool) {
+		// Remove incorrect documentation that should have been cleaned up in our forks.
+		// TODO: fail the build in the face of such text, once we have a processes in place.
+		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+			return "", true
+		}
+
+		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
+		text = strings.Replace(text, "-> ", "> ", -1)
+		text = strings.Replace(text, "~> ", "> ", -1)
+
+		// Trim Prefixes we see when the description is spread across multiple lines.
+		text = strings.TrimPrefix(text, "-\n(Required)\n")
+		text = strings.TrimPrefix(text, "-\n(Optional)\n")
+
+		// Find markdown Terraform docs site reference links.
+		text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
+			parts := strings.Split(referenceLink, " ")
+			// Add Terraform domain to avoid broken links.
+			return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
+		})
+
+		// Find links from the footer links.
+		text = replaceFooterLinks(text, footerLinks)
+
+		// Find URLs and re-write local links
+		text = markdownLink.ReplaceAllStringFunc(text, func(link string) string {
+			parts := markdownLink.FindStringSubmatch(link)
+			url := parts[2]
+			if strings.HasPrefix(url, "http") {
+				// Absolute URL, return as-is
+				return link
+			} else if strings.HasPrefix(url, "/") {
+				// Relative URL to the root of the Terraform docs site, rewrite to absolute
+				return fmt.Sprintf("[%s](https://www.terraform.io%s)", parts[1], url)
+			} else if strings.HasPrefix(url, "#") {
+				// Anchor in current page,  can't be resolved currently so remove the link.
+				// Note: This throws away potentially valuable information in the name of not having broken links.
+				return parts[1]
+			}
+			// Relative URL to the current page, can't be resolved currently so remove the link.
+			// Note: This throws away potentially valuable information in the name of not having broken links.
+			return parts[1]
+		})
+
+		// Fixup resource and property name references
+		text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
+
+		return text, false
+	}
+
+	// Detect all code blocks in the text so we can avoid processing them.
+	codeBlocks := codeBlocks.FindAllStringIndex(text, -1)
+
+	var parts []string
+	start, end := 0, 0
+	for _, codeBlock := range codeBlocks {
+		end = codeBlock[0]
+
+		clean, elided := cleanupText(text[start:end])
+		if elided {
+			return "", true
+		}
+		parts = append(parts, clean)
+
+		start = codeBlock[1]
+		parts = append(parts, text[end:start])
+	}
+	if start != len(text) {
+		clean, elided := cleanupText(text[start:])
+		if elided {
+			return "", true
+		}
+		parts = append(parts, clean)
+	}
+
+	return strings.TrimSpace(strings.Join(parts, "")), false
 }
 
 // For example:
