@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add JSON path links to properties when generating doc comments and deprecation messages for
+  a Pulumi schema.
+  [#202](https://github.com/pulumi/pulumi-terraform-bridge/pull/202)
+
 - Update README generation for python. 
   [#217](https://github.com/pulumi/pulumi-terraform-bridge/pull/217)
 
