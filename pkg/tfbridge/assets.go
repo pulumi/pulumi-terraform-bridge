@@ -97,7 +97,7 @@ func translateToFile(hash string, hasContents bool, writeFunc func(w io.Writer) 
 
 	// If the translation file already exists, assume it has the appropriate contents and return the file path.
 	info, err := os.Stat(memoPath)
-	if err == nil && info.Mode().IsRegular() {
+	if err == nil && info.Mode().IsRegular() && info.Size() > 0 {
 		return memoPath, nil
 	}
 
