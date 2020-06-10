@@ -69,7 +69,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			}
 
 			// Create a generator with the specified settings.
-			g, err := newGenerator(pkg, version, language(args[0]), prov, overlaysDir, outDir)
+			g, err := newGenerator(pkg, version, language(args[0]), prov, outDir)
 			if err != nil {
 				return err
 			}
@@ -90,15 +90,19 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	cmd.PersistentFlags().BoolVar(
 		&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().StringVarP(
-		&outDir, "out", "o", "", "Save generated package metadata to this directory")
-	cmd.PersistentFlags().StringVar(
-		&overlaysDir, "overlays", "", "Use the target directory for overlays rather than the default of overlays/")
+		&outDir, "out", "o", "", "Emit the generated SDK to this directory")
 	cmd.PersistentFlags().BoolVarP(
 		&quiet, "quiet", "q", false, "Suppress non-error output progress messages")
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
 		&profile, "profile", "", "Write a CPU profile to this file")
+
+	cmd.PersistentFlags().StringVar(
+		&overlaysDir, "overlays", "",
+		"Use the target directory for overlays rather than the default of overlays/ (unsupported)")
+	err := cmd.PersistentFlags().MarkHidden("overlays")
+	contract.AssertNoError(err)
 
 	return cmd
 }
