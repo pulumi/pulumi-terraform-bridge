@@ -6,6 +6,9 @@ CHANGELOG
 - Add check against empty assets.
   [#223](https://github.com/pulumi/pulumi-terraform-bridge/pull/223)
 
+- Add support for generating Go examples.
+  [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/218)
+  
 - Add JSON path links to properties when generating doc comments and deprecation messages for
   a Pulumi schema.
   [#202](https://github.com/pulumi/pulumi-terraform-bridge/pull/202)

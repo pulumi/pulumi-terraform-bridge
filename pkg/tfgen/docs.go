@@ -17,6 +17,7 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -381,6 +382,18 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 			"Resource %v contains an <elided> doc reference that needs updated"), p.rawname)
 	}
 
+	// Convert examples.
+	doc.Description = p.g.convertExamples(doc.Description, true)
+	for _, arg := range doc.Arguments {
+		arg.description = p.g.convertExamples(arg.description, false)
+		for argName, argDoc := range arg.arguments {
+			arg.arguments[argName] = p.g.convertExamples(argDoc, false)
+		}
+	}
+	for attrName, attrDoc := range doc.Attributes {
+		doc.Attributes[attrName] = p.g.convertExamples(attrDoc, false)
+	}
+
 	return doc, nil
 }
 
@@ -512,11 +525,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		sectionKind = sectionFrontMatter
 	}
 
-	if sectionKind == sectionExampleUsage {
-		// Add shortcode around each examples block.
-		p.ret.Description += "{{% examples %}}\n"
-	}
-
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
@@ -527,21 +535,12 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			continue
 		}
 
-		// Skip empty sections (they just add unnecessary padding and headers).
-		allEmpty := true
-		for _, sub := range subsection {
-			if !isBlank(sub) {
-				allEmpty = false
-				break
-			}
-		}
-		if allEmpty {
+		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
+		subsection, hasExamples, isEmpty := p.reformatSubsection(subsection)
+		if isEmpty {
+			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
 		}
-
-		// Convert or remove code snippets, if there are any. If this yields a fatal error, we
-		// bail out, but most errors are ignorable and just lead to us skipping one section.
-		subsection, hasExamples, skippedExamples := p.parseExamples(subsection)
 		if hasExamples && sectionKind != sectionExampleUsage {
 			cmdutil.Diag().Warningf(diag.Message("",
 				"Unexpected code snippets in section %v for resource %v"), header, p.rawname)
@@ -556,11 +555,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		case sectionFrontMatter:
 			p.parseFrontMatter(subsection)
 		default:
-			// These sections are non-essential. If we skipped any examples, we will omit the entire section.
-			if skippedExamples {
-				continue
-			}
-
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
@@ -576,18 +570,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 					p.ret.Description += "\n"
 				}
 			}
-			description := strings.Join(subsection, "\n") + "\n"
-			if sectionKind == sectionExampleUsage {
-				// Wrap each example in shortcode.
-				description = "{{% example %}}\n" + description + "{{% /example %}}\n"
-			}
-			p.ret.Description += description
+			p.ret.Description += strings.Join(subsection, "\n") + "\n"
 		}
-	}
-
-	// Add the closing shortcode around the examples block.
-	if sectionKind == sectionExampleUsage {
-		p.ret.Description += "{{% /examples %}}\n"
 	}
 
 	return nil
@@ -735,14 +719,6 @@ func isBlank(line string) bool {
 	return strings.TrimSpace(line) == ""
 }
 
-// trimTrailingBlanks removes any blank lines from the end of an array.
-func trimTrailingBlanks(lines []string) []string {
-	for len(lines) > 0 && isBlank(lines[len(lines)-1]) {
-		lines = lines[:len(lines)-1]
-	}
-	return lines
-}
-
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
 func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
@@ -781,70 +757,150 @@ func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
 	}
 }
 
-// parseExamples processes any code snippets in a subsection, either converting them to Pulumi code snippets or
-// removing them. If an error converting a code example occurs or any examples are present and the caller has requested
-// they be removed, the bool (skip) will be true.
-func (p *tfMarkdownParser) parseExamples(lines []string) ([]string, bool, bool) {
-	// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
-	// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
-	// them to the description. If we can't, we'll simply log a warning and keep moving along.
+// reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example
+// code snippets.
+func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, bool) {
 	var result []string
-	var hasExamples bool
-	var skippedExamples bool
-	var inCodeBlock bool
-	var inOICSButton bool
-	var codeBlockStart int
+	hasExamples, isEmpty := false, true
+
+	var inOICSButton bool // True if we are removing an "Open in Cloud Shell" button.
 	for i, line := range lines {
-		switch {
-		case inCodeBlock:
-			if strings.Index(line, "```") != 0 {
-				continue
-			}
-
-			if p.g.language.shouldConvertExamples() {
-				hcl := strings.Join(lines[codeBlockStart+1:i], "\n")
-
-				// We've got some code -- assume it's HCL and try to convert it.
-				lines, stderr, err := p.convertHCL(hcl)
-				if err != nil {
-					skippedExamples = true
-					hclFailures[stderr] = true
-					hclBlocksFailed++
-				} else {
-					result = append(result, lines...)
-					hclBlocksSucceeded++
-				}
-
-				hasExamples = true
-			} else {
-				skippedExamples = true
-			}
-
-			inCodeBlock = false
-		case inOICSButton:
+		if inOICSButton {
 			if strings.Index(lines[i], "</div>") == 0 {
 				inOICSButton = false
 			}
-		default:
-			if strings.Index(line, "```") == 0 {
-				inCodeBlock, codeBlockStart = true, i
-			} else if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
+		} else {
+			if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
 				inOICSButton = true
 			} else {
+				if strings.Index(line, "```") == 0 {
+					hasExamples = true
+				} else if !isBlank(line) {
+					isEmpty = false
+				}
+
 				result = append(result, line)
 			}
 		}
 	}
-	if inCodeBlock {
-		skippedExamples = true
+
+	return result, hasExamples, isEmpty
+}
+
+// parseExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
+// per-subsection basis; subsections with failing examples will be elided upon the caller's request.
+func (g *generator) convertExamples(docs string, stripSubsectionsWithErrors bool) string {
+	if docs == "" {
+		return ""
 	}
 
-	return result, hasExamples, skippedExamples
+	output := &bytes.Buffer{}
+
+	writeTrailingNewline := func(buf *bytes.Buffer) {
+		if b := buf.Bytes(); len(b) > 0 && b[len(b)-1] != '\n' {
+			buf.WriteByte('\n')
+		}
+	}
+	fprintf := func(w io.Writer, f string, args ...interface{}) {
+		_, err := fmt.Fprintf(w, f, args...)
+		contract.IgnoreError(err)
+	}
+
+	for _, section := range splitGroupLines(docs, "## ") {
+		if len(section) == 0 {
+			continue
+		}
+
+		header, wroteHeader := section[0], false
+		isFrontMatter, isExampleUsage := !strings.HasPrefix(header, "## "), header == "## Example Usage"
+
+		sectionStart, sectionEnd := "", ""
+		if isExampleUsage {
+			sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
+		}
+
+		for _, subsection := range groupLines(section[1:], "### ") {
+			// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
+			// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
+			// them to the description. If we can't, we'll simply log a warning and keep moving along.
+			subsectionOutput := &bytes.Buffer{}
+			skippedExamples, hasExamples := false, false
+			inCodeBlock, codeBlockStart := false, 0
+			for i, line := range subsection {
+				if inCodeBlock {
+					if strings.Index(line, "```") != 0 {
+						continue
+					}
+
+					if g.language.shouldConvertExamples() {
+						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
+
+						// We've got some code -- assume it's HCL and try to convert it.
+						codeBlock, stderr, err := g.convertHCL(hcl)
+						if err != nil {
+							skippedExamples = true
+							hclFailures[stderr] = true
+							hclBlocksFailed++
+						} else {
+							fprintf(subsectionOutput, "\n%s", codeBlock)
+							hclBlocksSucceeded++
+						}
+					} else {
+						skippedExamples = true
+					}
+
+					hasExamples = true
+					inCodeBlock = false
+				} else {
+					if strings.Index(line, "```") == 0 {
+						inCodeBlock, codeBlockStart = true, i
+					} else {
+						fprintf(subsectionOutput, "\n%s", line)
+					}
+				}
+			}
+			if inCodeBlock {
+				skippedExamples = true
+			}
+
+			// If the subsection contained skipped examples and the caller has requested that we remove such subsections,
+			// do not append its text to the output. Note that we never elide front matter.
+			if skippedExamples && stripSubsectionsWithErrors && !isFrontMatter {
+				continue
+			}
+
+			if !wroteHeader {
+				if output.Len() > 0 {
+					fprintf(output, "\n")
+				}
+				fprintf(output, "%s%s", sectionStart, header)
+				wroteHeader = true
+			}
+			if hasExamples && isExampleUsage {
+				writeTrailingNewline(output)
+				fprintf(output, "{{%% example %%}}%s", subsectionOutput.String())
+				writeTrailingNewline(output)
+				fprintf(output, "{{%% /example %%}}")
+			} else {
+				fprintf(output, "%s", subsectionOutput.String())
+			}
+		}
+
+		if !wroteHeader {
+			if isFrontMatter {
+				fprintf(output, "%s", header)
+			}
+		} else if sectionEnd != "" {
+			writeTrailingNewline(output)
+			fprintf(output, "%s", sectionEnd)
+		}
+	}
+	return output.String()
 }
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
+func (g *generator) convertHCL(hcl string) (string, string, error) {
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
@@ -857,7 +913,7 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 	contract.AssertNoError(err)
 	contract.IgnoreClose(f)
 
-	var result []string
+	var result strings.Builder
 	var stderr bytes.Buffer
 	convertHCL := func(languageName string) (err error) {
 		defer func() {
@@ -870,9 +926,9 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 			TargetLanguage:        languageName,
 			AllowMissingVariables: true,
 			FilterResourceNames:   true,
-			PackageCache:          p.g.packageCache,
-			PluginHost:            p.g.pluginHost,
-			ProviderInfoSource:    p.g.infoSource,
+			PackageCache:          g.packageCache,
+			PluginHost:            g.pluginHost,
+			ProviderInfoSource:    g.infoSource,
 		})
 		if err != nil {
 			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)
@@ -891,32 +947,34 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
-			return fmt.Errorf("failied to convert HCL to %v", languageName)
+			return fmt.Errorf("failed to convert HCL to %v", languageName)
 		}
 
 		contract.Assert(len(files) == 1)
 
 		// Add a fenced code-block with the resulting code snippet.
 		for _, output := range files {
-			result = append(result, "```"+languageName)
-			codeLines := strings.Split(string(output), "\n")
-			codeLines = trimTrailingBlanks(codeLines)
-			result = append(result, codeLines...)
-			result = append(result, "```")
+			if result.Len() > 0 {
+				result.WriteByte('\n')
+			}
+			_, err := fmt.Fprintf(&result, "```%s\n%s\n```", languageName, strings.TrimSpace(string(output)))
+			contract.IgnoreError(err)
 		}
 
 		return nil
 	}
 
-	switch p.g.language {
+	switch g.language {
 	case nodeJS:
 		err = convertHCL("typescript")
 	case python:
 		err = convertHCL("python")
 	case csharp:
 		err = convertHCL("csharp")
+	case golang:
+		err = convertHCL("go")
 	case pulumiSchema:
-		langs := []string{"typescript", "python", "csharp"}
+		langs := []string{"typescript", "python", "csharp", "go"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
 				err = multierror.Append(err, langErr)
@@ -924,9 +982,9 @@ func (p *tfMarkdownParser) convertHCL(hcl string) ([]string, string, error) {
 		}
 	}
 	if err != nil {
-		return nil, stderr.String(), err
+		return "", stderr.String(), err
 	}
-	return result, "", nil
+	return result.String(), "", nil
 }
 
 func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,

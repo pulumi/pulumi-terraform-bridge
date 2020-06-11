@@ -53,7 +53,7 @@ func TestURLRewrite(t *testing.T) {
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 		},
-	}, "", "")
+	}, "")
 	assert.NoError(t, err)
 
 	for _, test := range tests {
