@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Convert examples using the current schema.
+  [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
+  
 - Add check against empty assets.
   [#223](https://github.com/pulumi/pulumi-terraform-bridge/pull/223)
 

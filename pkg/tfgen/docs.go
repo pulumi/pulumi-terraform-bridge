@@ -382,18 +382,6 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 			"Resource %v contains an <elided> doc reference that needs updated"), p.rawname)
 	}
 
-	// Convert examples.
-	doc.Description = p.g.convertExamples(doc.Description, true)
-	for _, arg := range doc.Arguments {
-		arg.description = p.g.convertExamples(arg.description, false)
-		for argName, argDoc := range arg.arguments {
-			arg.arguments[argName] = p.g.convertExamples(argDoc, false)
-		}
-	}
-	for attrName, attrDoc := range doc.Attributes {
-		doc.Attributes[attrName] = p.g.convertExamples(attrDoc, false)
-	}
-
 	return doc, nil
 }
 
