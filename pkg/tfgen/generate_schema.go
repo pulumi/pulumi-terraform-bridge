@@ -617,3 +617,63 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 		return pschema.TypeSpec{}
 	}
 }
+
+func (g *generator) convertExamplesInPropertySpec(spec pschema.PropertySpec) pschema.PropertySpec {
+	spec.Description = g.convertExamples(spec.Description, false)
+	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, false)
+	return spec
+}
+
+func (g *generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
+	spec.Description = g.convertExamples(spec.Description, false)
+	for name, prop := range spec.Properties {
+		spec.Properties[name] = g.convertExamplesInPropertySpec(prop)
+	}
+	return spec
+}
+
+func (g *generator) convertExamplesInResourceSpec(spec pschema.ResourceSpec) pschema.ResourceSpec {
+	spec.Description = g.convertExamples(spec.Description, true)
+	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, false)
+	for name, prop := range spec.Properties {
+		spec.Properties[name] = g.convertExamplesInPropertySpec(prop)
+	}
+	for name, prop := range spec.InputProperties {
+		spec.InputProperties[name] = g.convertExamplesInPropertySpec(prop)
+	}
+	if spec.StateInputs != nil {
+		stateInputs := g.convertExamplesInObjectSpec(*spec.StateInputs)
+		spec.StateInputs = &stateInputs
+	}
+	return spec
+}
+
+func (g *generator) convertExamplesInFunctionSpec(spec pschema.FunctionSpec) pschema.FunctionSpec {
+	spec.Description = g.convertExamples(spec.Description, true)
+	if spec.Inputs != nil {
+		inputs := g.convertExamplesInObjectSpec(*spec.Inputs)
+		spec.Inputs = &inputs
+	}
+	if spec.Outputs != nil {
+		outputs := g.convertExamplesInObjectSpec(*spec.Outputs)
+		spec.Outputs = &outputs
+	}
+	return spec
+}
+
+func (g *generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.PackageSpec {
+	for name, variable := range spec.Config.Variables {
+		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(variable)
+	}
+	for token, object := range spec.Types {
+		spec.Types[token] = g.convertExamplesInObjectSpec(object)
+	}
+	spec.Provider = g.convertExamplesInResourceSpec(spec.Provider)
+	for token, resource := range spec.Resources {
+		spec.Resources[token] = g.convertExamplesInResourceSpec(resource)
+	}
+	for token, function := range spec.Functions {
+		spec.Functions[token] = g.convertExamplesInFunctionSpec(function)
+	}
+	return spec
+}
