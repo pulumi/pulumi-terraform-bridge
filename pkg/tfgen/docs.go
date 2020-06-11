@@ -1078,7 +1078,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 				return open + modname + resname + close
 			case pulumiSchema:
 				// Use a hyperlink to the resource.
-				return makeSchemaLink(open, string(resInfo.Tok), "#/resources/", close)
+				return makeSchemaLink(open, string(resInfo.Tok), "#/resources", close)
 			default:
 				// Use `aws.ec2.Instance` format
 				return open + pkg + "." + modname + resname + close
@@ -1097,7 +1097,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 				return open + modname + getname + close
 			case pulumiSchema:
 				// Use a hyperlink to the function.
-				return makeSchemaLink(open, string(dataInfo.Tok), "#/functions/", close)
+				return makeSchemaLink(open, string(dataInfo.Tok), "#/functions", close)
 			default:
 				// Use `aws.ec2.getAmi` format
 				return open + pkg + "." + modname + getname + close
