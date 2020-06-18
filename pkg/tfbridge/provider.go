@@ -314,7 +314,74 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 
 // DiffConfig diffs the configuration for this Terraform provider.
 func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
+	urn := resource.URN(req.GetUrn())
+	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
+	glog.V(9).Infof("%s executing", label)
+
+	// There is no logic in the TF provider that suggests that provider level config
+	// should force a new provider. Therefore, we are going to do this based on our
+	// own schema overrides. We should use ForceNew as part of the SchemaInfo to do this
+
+	var olds resource.PropertyMap
+	var err error
+	if req.GetOlds() != nil {
+		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
+			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+
+	var diffs, replaces []string
+	for _, key := range olds.StableKeys() {
+		// check that the old key exists in the new keys - if not, then report as a diff
+		// check if the new key and the old key are difference
+		if news[key].IsNull() || news[key] != olds[key] {
+			// we need to find out what the schema value of this is and report it as expected
+			if p.info.Config != nil && p.info.Config[string(key)] != nil {
+				config := p.info.Config[string(key)]
+				// now is it a ForceNew or not
+				if config.ForceNew != nil && *config.ForceNew {
+					replaces = append(replaces, string(key))
+				} else {
+					diffs = append(diffs, string(key))
+				}
+			}
+		}
+	}
+
+	for _, key := range news.StableKeys() {
+		// Check to see if the new key is not present in the old keys
+		if olds[key].IsNull() {
+			if p.info.Config != nil && p.info.Config[string(key)] != nil {
+				config := p.info.Config[string(key)]
+				// now is it a ForceNew or not
+				if config.ForceNew != nil && *config.ForceNew {
+					replaces = append(replaces, string(key))
+				} else {
+					diffs = append(diffs, string(key))
+				}
+			}
+		}
+	}
+
+	if len(diffs) > 0 || len(replaces) > 0 {
+		return &pulumirpc.DiffResponse{
+			Changes:  pulumirpc.DiffResponse_DIFF_SOME,
+			Diffs:    diffs,
+			Replaces: replaces,
+		}, nil
+	}
+
+	return &pulumirpc.DiffResponse{
+		Changes: pulumirpc.DiffResponse_DIFF_NONE,
+	}, nil
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.

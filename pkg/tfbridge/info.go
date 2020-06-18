@@ -187,6 +187,9 @@ type SchemaInfo struct {
 
 	// the deprecation message for the property
 	DeprecationMessage string
+
+	// whether a change in the configuration would force a new resource
+	ForceNew *bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
@@ -443,6 +446,7 @@ type MarshallableSchemaInfo struct {
 	Default     *MarshallableDefaultInfo           `json:"default,omitempty"`
 	MaxItemsOne *bool                              `json:"maxItemsOne,omitempty"`
 	Deprecated  string                             `json:"deprecated,omitempty"`
+	ForceNew    *bool                              `json:"forceNew,omitempty"`
 }
 
 // MarshalSchemaInfo converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
@@ -466,6 +470,7 @@ func MarshalSchemaInfo(s *SchemaInfo) *MarshallableSchemaInfo {
 		Default:     MarshalDefaultInfo(s.Default),
 		MaxItemsOne: s.MaxItemsOne,
 		Deprecated:  s.DeprecationMessage,
+		ForceNew:    s.ForceNew,
 	}
 }
 
@@ -490,6 +495,7 @@ func (m *MarshallableSchemaInfo) Unmarshal() *SchemaInfo {
 		Default:            m.Default.Unmarshal(),
 		MaxItemsOne:        m.MaxItemsOne,
 		DeprecationMessage: m.Deprecated,
+		ForceNew:           m.ForceNew,
 	}
 }
 
