@@ -30,7 +30,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
@@ -309,7 +308,76 @@ func (p *Provider) GetSchema(ctx context.Context,
 
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+	urn := resource.URN(req.GetUrn())
+	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	glog.V(9).Infof("%s executing", label)
+
+	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "CheckConfig failed because of malformed resource inputs")
+	}
+
+	// Strip out Pulumi-only config variables.
+	tfVars := make(resource.PropertyMap)
+	for k, v := range news {
+		if _, has := p.info.ExtraConfig[string(k)]; !has {
+			tfVars[k] = v
+		}
+	}
+
+	// First make a Terraform config map out of the variables. We do this before checking for missing properties
+	// s.t. we can pull any defaults out of the TF schema.
+	config, err := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal config state")
+	}
+
+	if p.info.PreConfigureCallback != nil {
+		if err = p.info.PreConfigureCallback(news, config); err != nil {
+			return nil, err
+		}
+	}
+
+	// So we can provide better error messages, do a quick scan of required configs for this
+	// schema and report any that haven't been supplied.
+	var missingKeys []*pulumirpc.CheckFailure
+	for key, meta := range p.config {
+		if meta.Required && !config.IsSet(key) {
+			name := TerraformToPulumiName(key, meta, nil, false)
+			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
+
+			// TF descriptions often have newlines in inopportune positions. This makes them present
+			// a little better in our console output.
+			descriptionWithoutNewlines := strings.Replace(meta.Description, "\n", " ", -1)
+			missingKeys = append(missingKeys, &pulumirpc.CheckFailure{
+				Property: fullyQualifiedName.String(),
+				Reason:   descriptionWithoutNewlines,
+			})
+		}
+	}
+
+	if len(missingKeys) > 0 {
+		return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
+	}
+
+	// Perform validation of the config state so we can offer nice errors.
+	warns, errs := p.tf.Validate(config)
+	for _, warn := range warns {
+		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn)); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.Wrap(multierror.Append(nil, errs...), "could not validate provider configuration")
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 // DiffConfig diffs the configuration for this Terraform provider.
@@ -440,45 +508,6 @@ func (p *Provider) Configure(ctx context.Context,
 		if err = p.info.PreConfigureCallback(vars, config); err != nil {
 			return nil, err
 		}
-	}
-
-	// So we can provide better error messages, do a quick scan of required configs for this
-	// schema and report any that haven't been supplied.
-	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
-	for key, meta := range p.config {
-		if meta.Required && !config.IsSet(key) {
-			name := TerraformToPulumiName(key, meta, nil, false)
-			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
-
-			// TF descriptions often have newlines in inopportune positions. This makes them present
-			// a little better in our console output.
-			descriptionWithoutNewlines := strings.Replace(meta.Description, "\n", " ", -1)
-			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
-				Name:        fullyQualifiedName.String(),
-				Description: descriptionWithoutNewlines,
-			})
-		}
-	}
-
-	if len(missingKeys) > 0 {
-		// Clients of our RPC endpoint will be looking for this detail in order to figure out
-		// which keys need descriptive error messages.
-		err = rpcerror.WithDetails(
-			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
-		return nil, err
-	}
-
-	// Perform validation of the config state so we can offer nice errors.
-	warns, errs := p.tf.Validate(config)
-	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn)); err != nil {
-			return nil, err
-		}
-	}
-
-	if len(errs) > 0 {
-		return nil, errors.Wrap(multierror.Append(nil, errs...), "could not validate provider configuration")
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
