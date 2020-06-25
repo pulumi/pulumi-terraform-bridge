@@ -25,7 +25,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -906,7 +905,9 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 	convertHCL := func(languageName string) (err error) {
 		defer func() {
 			v := recover()
-			contract.Ignore(v)
+			if v != nil {
+				err = fmt.Errorf("panic converting HCL to %v: %v", languageName, v)
+			}
 		}()
 
 		files, diags, err := convert.Convert(convert.Options{
@@ -935,7 +936,9 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
-			return fmt.Errorf("failed to convert HCL to %v", languageName)
+			// Note that we intentionally avoid returning an error here. The caller will check for an empty code block
+			// before returning and translate that into an error.
+			return nil
 		}
 
 		contract.Assert(len(files) == 1)
@@ -965,14 +968,17 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 		langs := []string{"typescript", "python", "csharp", "go"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
-				err = multierror.Append(err, langErr)
+				return "", stderr.String(), langErr
 			}
 		}
 	}
 	if err != nil {
 		return "", stderr.String(), err
 	}
-	return result.String(), "", nil
+	if result.Len() == 0 {
+		return "", stderr.String(), fmt.Errorf("failed to convert HCL to %v", g.language)
+	}
+	return result.String(), stderr.String(), nil
 }
 
 func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
