@@ -25,7 +25,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -969,7 +968,7 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 		langs := []string{"typescript", "python", "csharp", "go"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
-				return "", nil, langErr
+				return "", stderr.String(), langErr
 			}
 		}
 	}
