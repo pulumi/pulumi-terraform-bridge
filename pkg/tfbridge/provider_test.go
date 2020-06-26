@@ -1,10 +1,13 @@
 package tfbridge
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -141,4 +144,31 @@ func TestCamelPascalPulumiName(t *testing.T) {
 		})
 	})
 
+}
+
+func TestDiffConfig(t *testing.T) {
+	provider := &Provider{
+		tf:     testTFProvider,
+		config: testTFProvider.Schema,
+	}
+
+	oldConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("foo")}
+	newConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("bar")}
+
+	olds, err := plugin.MarshalProperties(oldConfig, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	news, err := plugin.MarshalProperties(newConfig, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+
+	req := &pulumirpc.DiffRequest{
+		Id:   "provider",
+		Urn:  "provider",
+		Olds: olds,
+		News: news,
+	}
+
+	resp, err := provider.DiffConfig(context.Background(), req)
+	assert.NoError(t, err)
+	assert.True(t, resp.HasDetailedDiff)
+	assert.Len(t, resp.DetailedDiff, 1)
 }
