@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/pkg/errors"
+	"github.com/ryboe/q"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 
@@ -390,6 +391,9 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 	// should force a new provider. Therefore, we are going to do this based on our
 	// own schema overrides. We should use ForceNew as part of the SchemaInfo to do this
 
+	// Create a Resource Schema from the config
+	r := &schema.Resource{Schema: p.tf.Schema}
+
 	var olds resource.PropertyMap
 	var err error
 	if req.GetOlds() != nil {
@@ -400,55 +404,61 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 		}
 	}
 
+	attrs, meta, err := MakeTerraformAttributes(r, olds, r.Schema, p.info.Config, p.configValues, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
+	}
+	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
+
+	// Create a resource Config for the new configuration
 	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
 		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-
-	var diffs, replaces []string
-	for _, key := range olds.StableKeys() {
-		// check that the old key exists in the new keys - if not, then report as a diff
-		// check if the new key and the old key are difference
-		if news[key].IsNull() || news[key] != olds[key] {
-			// we need to find out what the schema value of this is and report it as expected
-			if p.info.Config != nil && p.info.Config[string(key)] != nil {
-				config := p.info.Config[string(key)]
+	config, err := MakeTerraformConfig(nil, news, r.Schema, p.info.Config, nil, p.configValues, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+	}
+	diff, err := r.Diff(state, config, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+	q.Q("diff", diff)
+	detailedDiff := makeDetailedDiff(r.Schema, p.info.Config, olds, news, diff)
+	q.Q("detailedDiff", detailedDiff)
+	var replaces []string
+	var changes pulumirpc.DiffResponse_DiffChanges
+	var properties []string
+	hasChanges := len(detailedDiff) > 0
+	if hasChanges {
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+		for k, _ := range detailedDiff {
+			// Turn the attribute name into a top-level property name by trimming everything after the first dot.
+			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
+				k = k[:firstSep]
+			}
+			properties = append(properties, k)
+			if p.info.Config != nil && p.info.Config[string(k)] != nil {
+				config := p.info.Config[string(k)]
 				// now is it a ForceNew or not
 				if config.ForceNew != nil && *config.ForceNew {
-					replaces = append(replaces, string(key))
+					replaces = append(replaces, k)
 				} else {
-					diffs = append(diffs, string(key))
+					properties = append(properties, k)
 				}
 			}
 		}
-	}
-
-	for _, key := range news.StableKeys() {
-		// Check to see if the new key is not present in the old keys
-		if olds[key].IsNull() {
-			if p.info.Config != nil && p.info.Config[string(key)] != nil {
-				config := p.info.Config[string(key)]
-				// now is it a ForceNew or not
-				if config.ForceNew != nil && *config.ForceNew {
-					replaces = append(replaces, string(key))
-				} else {
-					diffs = append(diffs, string(key))
-				}
-			}
-		}
-	}
-
-	if len(diffs) > 0 || len(replaces) > 0 {
-		return &pulumirpc.DiffResponse{
-			Changes:  pulumirpc.DiffResponse_DIFF_SOME,
-			Diffs:    diffs,
-			Replaces: replaces,
-		}, nil
+	} else {
+		changes = pulumirpc.DiffResponse_DIFF_NONE
 	}
 
 	return &pulumirpc.DiffResponse{
-		Changes: pulumirpc.DiffResponse_DIFF_NONE,
+		Changes:         changes,
+		Replaces:        replaces,
+		Diffs:           properties,
+		DetailedDiff:    detailedDiff,
+		HasDetailedDiff: true,
 	}, nil
 }
 
