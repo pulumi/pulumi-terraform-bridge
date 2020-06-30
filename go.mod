@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/pkg/v2 v2.5.1-0.20200630091945-bb358c4d2173
 	github.com/pulumi/pulumi/sdk/v2 v2.5.1-0.20200630091945-bb358c4d2173
-	github.com/pulumi/tf2pulumi v0.8.1-0.20200610210702-8e5d1a569c4a
+	github.com/pulumi/tf2pulumi v0.8.1-0.20200630203740-1846524be4ec
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
