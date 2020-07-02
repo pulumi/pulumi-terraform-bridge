@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add providerURL field to package definition
+  [#231](https://github.com/pulumi/pulumi-terraform-bridge/pull/231)
+  
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
   
