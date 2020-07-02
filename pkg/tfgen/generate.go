@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -42,8 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/tf2pulumi/il"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 )
 
 const (
@@ -1290,6 +1289,15 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir 
 			if err != nil {
 				return err
 			}
+			// If we are in Python (and potentially Go) then we may need to strip the leading
+			// folder extension from the fp. Otherwise, when we write the overlay back
+			// it will write to a double nested structure
+			// eg. sdk/python/pulumi_provider/pulumi_provider/file.py
+			// We need to do this *after* we read the file so that we can assemble the package
+			// correctly later
+			if extension == ".py" {
+				fp = path.Base(fp)
+			}
 			files[fp] = contents
 		}
 	}
@@ -1298,8 +1306,8 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir 
 			return err
 		}
 	}
-	return nil
 
+	return nil
 }
 
 func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension, srcRoot string) (map[string][]byte, error) {
