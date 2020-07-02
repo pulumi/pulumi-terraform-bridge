@@ -1293,7 +1293,7 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir 
 			// folder extension from the fp. Otherwise, when we write the overlay back
 			// it will write to a double nested structure
 			// eg. sdk/python/pulumi_provider/pulumi_provider/file.py
-			// We need to do this *after* we read then file so that we can assemble the package
+			// We need to do this *after* we read the file so that we can assemble the package
 			// correctly later
 			if extension == ".py" {
 				fp = path.Base(fp)
