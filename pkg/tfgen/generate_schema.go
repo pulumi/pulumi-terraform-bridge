@@ -194,16 +194,17 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
 	spec := pschema.PackageSpec{
-		Name:       g.pkg,
-		Version:    g.version,
-		Keywords:   g.info.Keywords,
-		Homepage:   g.info.Homepage,
-		License:    g.info.License,
-		Repository: g.info.Repository,
-		Resources:  map[string]pschema.ResourceSpec{},
-		Functions:  map[string]pschema.FunctionSpec{},
-		Types:      map[string]pschema.ObjectTypeSpec{},
-		Language:   map[string]json.RawMessage{},
+		Name:        g.pkg,
+		Version:     g.version,
+		Keywords:    g.info.Keywords,
+		Homepage:    g.info.Homepage,
+		License:     g.info.License,
+		Repository:  g.info.Repository,
+		ProviderURL: g.info.ProviderURL,
+		Resources:   map[string]pschema.ResourceSpec{},
+		Functions:   map[string]pschema.FunctionSpec{},
+		Types:       map[string]pschema.ObjectTypeSpec{},
+		Language:    map[string]json.RawMessage{},
 
 		Meta: &pschema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
