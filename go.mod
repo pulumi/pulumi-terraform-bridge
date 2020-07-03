@@ -18,7 +18,6 @@ require (
 	github.com/pulumi/pulumi/pkg/v2 v2.5.1-0.20200701223250-45d2fa95d60b
 	github.com/pulumi/pulumi/sdk/v2 v2.5.1-0.20200701223250-45d2fa95d60b
 	github.com/pulumi/tf2pulumi v0.8.1-0.20200701212620-1e7538fb9a34
-	github.com/ryboe/q v1.0.11 // indirect
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1

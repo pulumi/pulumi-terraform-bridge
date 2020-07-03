@@ -322,21 +322,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
 
-	// Strip out Pulumi-only config variables.
-	tfVars := make(resource.PropertyMap)
-	for k, v := range news {
-		// we need to skip the version as adding that will cause the provider validation to fail
-		if string(k) == "version" {
-			continue
-		}
-		if _, has := p.info.ExtraConfig[string(k)]; !has {
-			tfVars[k] = v
-		}
-	}
-
-	// First make a Terraform config map out of the variables. We do this before checking for missing properties
-	// s.t. we can pull any defaults out of the TF schema.
-	config, validationErrors := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
+	config, validationErrors := buildTerraformConfig(p, news)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
 	}
@@ -357,6 +343,23 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+}
+
+func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (*terraform.ResourceConfig, error) {
+	tfVars := make(resource.PropertyMap)
+	for k, v := range vars {
+		// we need to skip the version as adding that will cause the provider validation to fail
+		if string(k) == "version" {
+			continue
+		}
+		if _, has := p.info.ExtraConfig[string(k)]; !has {
+			tfVars[k] = v
+		}
+	}
+
+	// Make a Terraform config map out of the variables. We do this before checking for missing properties
+	// s.t. we can pull any defaults out of the TF schema.
+	return MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
 }
 
 func validateProviderConfig(ctx context.Context, p *Provider, config *terraform.ResourceConfig) (
@@ -515,28 +518,19 @@ func (p *Provider) Configure(ctx context.Context,
 	// them later on for purposes of (e.g.) config-based defaults.
 	p.configValues = vars
 
-	// Strip out Pulumi-only config variables.
-	tfVars := make(resource.PropertyMap)
-	for k, v := range vars {
-		if _, has := p.info.ExtraConfig[string(k)]; !has {
-			tfVars[k] = v
-		}
-	}
-
-	// First make a Terraform config map out of the variables. We do this before checking for missing properties
-	// s.t. we can pull any defaults out of the TF schema.
-	config, err := MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
+	config, err := buildTerraformConfig(p, vars)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
 
-	if p.info.PreConfigureCallback != nil {
-		if err = p.info.PreConfigureCallback(vars, config); err != nil {
-			return nil, err
-		}
-	}
-
 	if req.Variables == nil {
+		// We only follow this path if the CLI hasbn't already called CheckConfig
+		if p.info.PreConfigureCallback != nil {
+			if err = p.info.PreConfigureCallback(vars, config); err != nil {
+				return nil, err
+			}
+		}
+
 		missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
 		if len(missingKeys) > 0 {
 			err = rpcerror.WithDetails(
