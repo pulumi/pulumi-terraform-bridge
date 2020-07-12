@@ -264,7 +264,7 @@ var (
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
 	}
 
-	attributeBulletRegexp = regexp.MustCompile("\\*\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
+	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
 	docsBaseURL    = "https://github.com/%s/terraform-provider-%s/blob/master/website/docs"
 	docsDetailsURL = docsBaseURL + "/%s/%s"
