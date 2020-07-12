@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Updating regular expressions for unordered lists in markdown
+  [#234](https://github.com/pulumi/pulumi-terraform-bridge/pull/234) 
+
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
   
