@@ -375,7 +375,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, elided := cleanupDoc(p.g, p.info, p.ret, footerLinks)
+	doc, elided := cleanupDoc(p.rawname, p.g, p.info, p.ret, footerLinks)
 	if elided {
 		cmdutil.Diag().Warningf(diag.Message("",
 			"Resource %v contains an <elided> doc reference that needs updated"), p.rawname)
@@ -499,6 +499,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	sectionKind := sectionOther
 	switch header {
 	case "Import", "Imports", "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
+		cmdutil.Diag().Debugf(diag.Message("", "Ignoring doc section [%v] for [%v]"), header, p.rawname)
 		ignoredDocSections++
 		ignoredDocHeaders[header]++
 		return nil
@@ -981,13 +982,15 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 	return result.String(), stderr.String(), nil
 }
 
-func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
+func cleanupDoc(name string, g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
 	footerLinks map[string]string) (entityDocs, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 	for k, v := range doc.Arguments {
+		cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for argument [%v] in [%v]"), k, name)
 		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
+			cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for argument [%v] in [%v]"), k, name)
 			elidedDoc = true
 		}
 
@@ -998,8 +1001,10 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entity
 
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
+			cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for nested argument [%v] in [%v]"), kk, name)
 			cleanedText, elided := cleanupText(g, info, vv, footerLinks)
 			if elided {
+				cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for nested argument [%v] in [%v]"), kk, name)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = cleanedText
@@ -1007,14 +1012,18 @@ func cleanupDoc(g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entity
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
+		cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for attribute [%v] in [%v]"), k, name)
 		cleanupText, elided := cleanupText(g, info, v, footerLinks)
 		if elided {
+			cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for attribute [%v] in [%v]"), k, name)
 			elidedDoc = true
 		}
 		newattrs[k] = cleanupText
 	}
+	cmdutil.Diag().Debugf(diag.Message("", "Cleaning up description text for [%v]"), name)
 	cleanupText, elided := cleanupText(g, info, doc.Description, footerLinks)
 	if elided {
+		cmdutil.Diag().Warningf(diag.Message("", "Description text <elided> in [%v]"), name)
 		elidedDoc = true
 	}
 	return entityDocs{
