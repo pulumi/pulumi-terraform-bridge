@@ -95,6 +95,10 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+		err = nodejsgen.PrepareOutDir(outDir)
+		if err != nil {
+			return nil, err
+		}
 		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
 	case python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
@@ -103,6 +107,10 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+		err = pygen.PrepareOutDir(outDir, pkg.Name)
+		if err != nil {
+			return nil, err
+		}
 		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
 	case csharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
@@ -110,6 +118,10 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 			if err != nil {
 				return nil, err
 			}
+		}
+		err = dotnetgen.PrepareOutDir(outDir)
+		if err != nil {
+			return nil, err
 		}
 		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
 	default:
@@ -618,7 +630,7 @@ func (g *generator) Generate() error {
 	}
 
 	// Ensure the target exists.
-	if err = g.preparePackage(pack); err != nil {
+	if err = g.preparePackage(); err != nil {
 		return errors.Wrapf(err, "failed to prepare package")
 	}
 
@@ -1107,7 +1119,9 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			overlay = goinfo.Overlay
 		}
 	case csharp:
-		// TODO: CSharp overlays
+		if csharpinfo := g.info.CSharp; csharpinfo != nil {
+			overlay = csharpinfo.Overlay
+		}
 	case pulumiSchema:
 		// N/A
 	default:
@@ -1139,7 +1153,7 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 }
 
 // preparePackage ensures the root exists and generates any metadata required by a Pulumi package.
-func (g *generator) preparePackage(pack *pkg) error {
+func (g *generator) preparePackage() error {
 	// Ensure the output path exists.
 	return tools.EnsureDir(g.outDir)
 }
