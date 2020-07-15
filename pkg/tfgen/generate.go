@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -95,7 +96,9 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
-		err = nodejsgen.PrepareOutDir(outDir)
+		exclusions := codegen.StringSet{}
+		exclusions.Add("tests")
+		err = codegen.CleanDir(outDir, exclusions)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +110,8 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
-		err = pygen.PrepareOutDir(outDir, pkg.Name)
+		pyOutDir := filepath.Join(outDir, fmt.Sprintf("pulumi_%s", pkg.Name))
+		err = codegen.CleanDir(pyOutDir, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +123,7 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
-		err = dotnetgen.PrepareOutDir(outDir)
+		err = codegen.CleanDir(outDir, nil)
 		if err != nil {
 			return nil, err
 		}
