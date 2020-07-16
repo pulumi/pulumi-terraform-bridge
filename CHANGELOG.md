@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Clean codegen directories before generating new code.
+  [#236](https://github.com/pulumi/pulumi-terraform-bridge/pull/236)
+
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
   

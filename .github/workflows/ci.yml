@@ -40,7 +40,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.10
+          python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
@@ -76,7 +76,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.10
+          python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
@@ -112,7 +112,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.10
+          python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
@@ -148,7 +148,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.10
+          python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
@@ -184,7 +184,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.10
+          python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install tf2pulumi
