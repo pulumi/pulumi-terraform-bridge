@@ -96,8 +96,15 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+
+		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
+		// store tests here. We don't want to include them in the overlays because we don't want it
+		// exported with the module, but we don't want them deleted in a cleanup of the directory.
 		exclusions := codegen.StringSet{}
 		exclusions.Add("tests")
+
+		// We don't need to add overlays to the exclusion list because they have already been read
+		// into memory so deleting the files is not a problem.
 		err = codegen.CleanDir(outDir, exclusions)
 		if err != nil {
 			return nil, err
@@ -110,6 +117,8 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+
+		// python's outdir path follows the pattern [provider]/sdk/python/pulumi_[pkg name]
 		pyOutDir := filepath.Join(outDir, fmt.Sprintf("pulumi_%s", pkg.Name))
 		err = codegen.CleanDir(pyOutDir, nil)
 		if err != nil {
