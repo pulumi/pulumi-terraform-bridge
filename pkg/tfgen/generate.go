@@ -100,8 +100,7 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
 		// store tests here. We don't want to include them in the overlays because we don't want it
 		// exported with the module, but we don't want them deleted in a cleanup of the directory.
-		exclusions := codegen.StringSet{}
-		exclusions.Add("tests")
+		exclusions := codegen.NewStringSet("tests")
 
 		// We don't need to add overlays to the exclusion list because they have already been read
 		// into memory so deleting the files is not a problem.
