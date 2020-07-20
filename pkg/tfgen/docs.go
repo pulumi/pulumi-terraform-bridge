@@ -92,13 +92,18 @@ const (
 	DataSourceDocs DocKind = "d"
 )
 
-func getRepoPath(org string, provider string) (string, error) {
+func getRepoPath(org string, provider string, providerModuleVersion string) (string, error) {
 	gomod, err := LoadGoMod()
 	if err != nil {
 		return "", err
 	}
 
+	// This will help us to now account for the different versions of the Go mod declarations in providers
 	calculatedImportPath := fmt.Sprintf("github.com/%s/terraform-provider-%s", org, provider)
+	if providerModuleVersion != "" {
+		calculatedImportPath = fmt.Sprintf("%s/%s", calculatedImportPath, providerModuleVersion)
+	}
+
 	importPath, version, err := FindEffectiveModuleForImportPath(gomod, calculatedImportPath)
 	if err != nil {
 		return "", err
@@ -113,9 +118,9 @@ func getRepoPath(org string, provider string) (string, error) {
 }
 
 func getMarkdownDetails(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) ([]byte, string, bool) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) ([]byte, string, bool) {
 
-	repoPath, err := getRepoPath(org, provider)
+	repoPath, err := getRepoPath(org, provider, providerModuleVersion)
 	if err != nil {
 		return nil, "", false
 	}
@@ -151,9 +156,10 @@ func getMarkdownDetails(g *generator, org string, provider string, resourcePrefi
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) (entityDocs, error) {
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info)
+	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
+		providerModuleVersion)
 	if !found {
 		cmdutil.Diag().Warningf(
 			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
@@ -172,19 +178,19 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 	if docinfo != nil {
 		// Merge Attributes from source into target
 		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFrom, true, true); err != nil {
+			docinfo.IncludeAttributesFrom, true, true, providerModuleVersion); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into Attributes of target
 		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFromArguments, true, false); err != nil {
+			docinfo.IncludeAttributesFromArguments, true, false, providerModuleVersion); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into target
 		if err := mergeDocs(g, info, org, provider, provider, kind, doc,
-			docinfo.IncludeArgumentsFrom, false, false); err != nil {
+			docinfo.IncludeArgumentsFrom, false, false, providerModuleVersion); err != nil {
 			return doc, err
 		}
 	}
@@ -208,10 +214,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
 	resourcePrefix string,
 	kind DocKind, docs entityDocs, sourceFrom string,
-	useTargetAttributes bool, useSourceAttributes bool) error {
+	useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string) error {
 
 	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil)
+		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind,
+			sourceFrom, nil, providerModuleVersion)
 		if err != nil {
 			return err
 		}

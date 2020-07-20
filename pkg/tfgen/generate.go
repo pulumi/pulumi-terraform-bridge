@@ -878,7 +878,7 @@ func (g *generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		pd, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
-			g.info.GetResourcePrefix(), ResourceDocs, rawname, info)
+			g.info.GetResourcePrefix(), ResourceDocs, rawname, info, g.info.GetProviderModuleVersion())
 		if err != nil {
 			return "", nil, err
 		}
@@ -1032,7 +1032,7 @@ func (g *generator) gatherDataSource(rawname string,
 
 	// Collect documentation information for this data source.
 	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
-		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info)
+		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info, g.info.GetProviderModuleVersion())
 	if err != nil {
 		return "", nil, err
 	}
