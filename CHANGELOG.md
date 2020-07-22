@@ -3,9 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Add providerURL field to package definition
+- Add PluginDownloadURL field to package definition
   [#231](https://github.com/pulumi/pulumi-terraform-bridge/pull/231)
   
+- Clean codegen directories before generating new code.
+  [#236](https://github.com/pulumi/pulumi-terraform-bridge/pull/236)
+
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
   
