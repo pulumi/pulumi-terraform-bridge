@@ -20,7 +20,7 @@ func timeout(d time.Duration) *time.Duration {
 
 var testTFProvider = &schema.Provider{
 	Schema: map[string]*schema.Schema{
-		"config_value": {},
+		"config_value": {Type: schema.TypeString},
 	},
 	ResourcesMap: map[string]*schema.Resource{
 		"example_resource": {

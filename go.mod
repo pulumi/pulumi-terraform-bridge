@@ -11,10 +11,12 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
+	github.com/kr/pretty v0.2.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.5.1-0.20200701223250-45d2fa95d60b
-	github.com/pulumi/pulumi/sdk/v2 v2.5.1-0.20200701223250-45d2fa95d60b
+	github.com/pulumi/pulumi/pkg/v2 v2.6.2-0.20200715231137-1a10e06588f6
+	github.com/pulumi/pulumi/sdk/v2 v2.6.2-0.20200715231137-1a10e06588f6
 	github.com/pulumi/tf2pulumi v0.8.1-0.20200701212620-1e7538fb9a34
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0

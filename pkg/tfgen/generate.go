@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -95,6 +96,18 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+
+		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
+		// store tests here. We don't want to include them in the overlays because we don't want it
+		// exported with the module, but we don't want them deleted in a cleanup of the directory.
+		exclusions := codegen.NewStringSet("tests")
+
+		// We don't need to add overlays to the exclusion list because they have already been read
+		// into memory so deleting the files is not a problem.
+		err = codegen.CleanDir(outDir, exclusions)
+		if err != nil {
+			return nil, err
+		}
 		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
 	case python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
@@ -103,6 +116,13 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 				return nil, err
 			}
 		}
+
+		// python's outdir path follows the pattern [provider]/sdk/python/pulumi_[pkg name]
+		pyOutDir := filepath.Join(outDir, fmt.Sprintf("pulumi_%s", pkg.Name))
+		err = codegen.CleanDir(pyOutDir, nil)
+		if err != nil {
+			return nil, err
+		}
 		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
 	case csharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
@@ -110,6 +130,10 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 			if err != nil {
 				return nil, err
 			}
+		}
+		err = codegen.CleanDir(outDir, nil)
+		if err != nil {
+			return nil, err
 		}
 		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
 	default:
@@ -618,7 +642,7 @@ func (g *generator) Generate() error {
 	}
 
 	// Ensure the target exists.
-	if err = g.preparePackage(pack); err != nil {
+	if err = g.preparePackage(); err != nil {
 		return errors.Wrapf(err, "failed to prepare package")
 	}
 
@@ -854,7 +878,7 @@ func (g *generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		pd, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
-			g.info.GetResourcePrefix(), ResourceDocs, rawname, info)
+			g.info.GetResourcePrefix(), ResourceDocs, rawname, info, g.info.GetProviderModuleVersion())
 		if err != nil {
 			return "", nil, err
 		}
@@ -1008,7 +1032,7 @@ func (g *generator) gatherDataSource(rawname string,
 
 	// Collect documentation information for this data source.
 	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
-		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info)
+		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info, g.info.GetProviderModuleVersion())
 	if err != nil {
 		return "", nil, err
 	}
@@ -1107,7 +1131,9 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 			overlay = goinfo.Overlay
 		}
 	case csharp:
-		// TODO: CSharp overlays
+		if csharpinfo := g.info.CSharp; csharpinfo != nil {
+			overlay = csharpinfo.Overlay
+		}
 	case pulumiSchema:
 		// N/A
 	default:
@@ -1139,7 +1165,7 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 }
 
 // preparePackage ensures the root exists and generates any metadata required by a Pulumi package.
-func (g *generator) preparePackage(pack *pkg) error {
+func (g *generator) preparePackage() error {
 	// Ensure the output path exists.
 	return tools.EnsureDir(g.outDir)
 }

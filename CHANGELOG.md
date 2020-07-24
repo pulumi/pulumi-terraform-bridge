@@ -5,6 +5,9 @@ CHANGELOG
 
 - Updating regular expressions for unordered lists in markdown
   [#234](https://github.com/pulumi/pulumi-terraform-bridge/pull/234) 
+  
+- Clean codegen directories before generating new code.
+  [#236](https://github.com/pulumi/pulumi-terraform-bridge/pull/236)
 
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
