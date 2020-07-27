@@ -49,6 +49,7 @@ type ProviderInfo struct {
 	Resources               map[string]*ResourceInfo          // a map of TF name to Pulumi name; standard mangling occurs if no entry.
 	DataSources             map[string]*DataSourceInfo        // a map of TF name to Pulumi resource info.
 	ExtraTypes              map[string]pschema.ObjectTypeSpec // a map of Pulumi token to schema type for overlaid types.
+	PluginDownloadURL       string                            // an optional URL to download the provider binary from.
 	JavaScript              *JavaScriptInfo                   // optional overlay information for augmented JavaScript code-generation.
 	Python                  *PythonInfo                       // optional overlay information for augmented Python code-generation.
 	Golang                  *GolangInfo                       // optional overlay information for augmented Golang code-generation.
