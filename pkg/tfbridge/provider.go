@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc/status"
 	"log"
 	"regexp"
 	"strings"
@@ -308,41 +309,44 @@ func (p *Provider) GetSchema(ctx context.Context,
 
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
-	glog.V(9).Infof("%s executing", label)
+	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
 
-	news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: true,
-		SkipNulls:    true,
-		RejectAssets: true,
-	})
-	if validationErrors != nil {
-		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
-	}
-
-	config, validationErrors := buildTerraformConfig(p, news)
-	if validationErrors != nil {
-		return nil, errors.Wrap(validationErrors, "could not marshal config state")
-	}
-
-	if p.info.PreConfigureCallback != nil {
-		if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
-			return nil, validationErrors
-		}
-	}
-
-	// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
-	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	if len(missingKeys) > 0 {
-		return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
-	}
-	if validationErrors != nil {
-		return nil, validationErrors
-	}
-
-	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+	// TO_DO - revert this comment!!
+	//urn := resource.URN(req.GetUrn())
+	//label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	//glog.V(9).Infof("%s executing", label)
+	//
+	//news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+	//	Label:        fmt.Sprintf("%s.news", label),
+	//	KeepUnknowns: true,
+	//	SkipNulls:    true,
+	//	RejectAssets: true,
+	//})
+	//if validationErrors != nil {
+	//	return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
+	//}
+	//
+	//config, validationErrors := buildTerraformConfig(p, news)
+	//if validationErrors != nil {
+	//	return nil, errors.Wrap(validationErrors, "could not marshal config state")
+	//}
+	//
+	//if p.info.PreConfigureCallback != nil {
+	//	if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
+	//		return nil, validationErrors
+	//	}
+	//}
+	//
+	//// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
+	//missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
+	//if len(missingKeys) > 0 {
+	//	return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
+	//}
+	//if validationErrors != nil {
+	//	return nil, validationErrors
+	//}
+	//
+	//return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (*terraform.ResourceConfig, error) {
@@ -402,83 +406,86 @@ func validateProviderConfig(ctx context.Context, p *Provider, config *terraform.
 
 // DiffConfig diffs the configuration for this Terraform provider.
 func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
-	glog.V(9).Infof("%s executing", label)
+	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 
-	// There is no logic in the TF provider that suggests that provider level config
-	// should force a new provider. Therefore, we are going to do this based on our
-	// own schema overrides. We should use ForceNew as part of the SchemaInfo to do this
-
-	// Create a Resource Schema from the config
-	r := &schema.Resource{Schema: p.tf.Schema}
-
-	var olds resource.PropertyMap
-	var err error
-	if req.GetOlds() != nil {
-		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
-			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	attrs, meta, err := MakeTerraformAttributes(r, olds, r.Schema, p.info.Config, p.configValues, false)
-	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
-	}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
-
-	// Create a resource Config for the new configuration
-	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
-	if err != nil {
-		return nil, err
-	}
-	config, err := MakeTerraformConfig(nil, news, r.Schema, p.info.Config, nil, p.configValues, false)
-	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
-	}
-	diff, err := r.Diff(state, config, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "diffing %s", urn)
-	}
-
-	detailedDiff := makeDetailedDiff(r.Schema, p.info.Config, olds, news, diff)
-
-	var replaces []string
-	var changes pulumirpc.DiffResponse_DiffChanges
-	var properties []string
-	hasChanges := len(detailedDiff) > 0
-	if hasChanges {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
-		for k := range detailedDiff {
-			// Turn the attribute name into a top-level property name by trimming everything after the first dot.
-			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
-				k = k[:firstSep]
-			}
-			properties = append(properties, k)
-			if p.info.Config != nil && p.info.Config[k] != nil {
-				config := p.info.Config[k]
-				// now is it a ForceNew or not
-				if config.ForceNew != nil && *config.ForceNew {
-					replaces = append(replaces, k)
-				} else {
-					properties = append(properties, k)
-				}
-			}
-		}
-	} else {
-		changes = pulumirpc.DiffResponse_DIFF_NONE
-	}
-
-	return &pulumirpc.DiffResponse{
-		Changes:         changes,
-		Replaces:        replaces,
-		Diffs:           properties,
-		DetailedDiff:    detailedDiff,
-		HasDetailedDiff: true,
-	}, nil
+	// TO_DO - revert this comment!!
+	//urn := resource.URN(req.GetUrn())
+	//label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
+	//glog.V(9).Infof("%s executing", label)
+	//
+	//// There is no logic in the TF provider that suggests that provider level config
+	//// should force a new provider. Therefore, we are going to do this based on our
+	//// own schema overrides. We should use ForceNew as part of the SchemaInfo to do this
+	//
+	//// Create a Resource Schema from the config
+	//r := &schema.Resource{Schema: p.tf.Schema}
+	//
+	//var olds resource.PropertyMap
+	//var err error
+	//if req.GetOlds() != nil {
+	//	olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
+	//		Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//
+	//attrs, meta, err := MakeTerraformAttributes(r, olds, r.Schema, p.info.Config, p.configValues, false)
+	//if err != nil {
+	//	return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
+	//}
+	//state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
+	//
+	//// Create a resource Config for the new configuration
+	//news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+	//	Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+	//if err != nil {
+	//	return nil, err
+	//}
+	//config, err := MakeTerraformConfig(nil, news, r.Schema, p.info.Config, nil, p.configValues, false)
+	//if err != nil {
+	//	return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+	//}
+	//diff, err := r.Diff(state, config, nil)
+	//if err != nil {
+	//	return nil, errors.Wrapf(err, "diffing %s", urn)
+	//}
+	//
+	//detailedDiff := makeDetailedDiff(r.Schema, p.info.Config, olds, news, diff)
+	//
+	//var replaces []string
+	//var changes pulumirpc.DiffResponse_DiffChanges
+	//var properties []string
+	//hasChanges := len(detailedDiff) > 0
+	//if hasChanges {
+	//	changes = pulumirpc.DiffResponse_DIFF_SOME
+	//	for k := range detailedDiff {
+	//		// Turn the attribute name into a top-level property name by trimming everything after the first dot.
+	//		if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
+	//			k = k[:firstSep]
+	//		}
+	//		properties = append(properties, k)
+	//		if p.info.Config != nil && p.info.Config[k] != nil {
+	//			config := p.info.Config[k]
+	//			// now is it a ForceNew or not
+	//			if config.ForceNew != nil && *config.ForceNew {
+	//				replaces = append(replaces, k)
+	//			} else {
+	//				properties = append(properties, k)
+	//			}
+	//		}
+	//	}
+	//} else {
+	//	changes = pulumirpc.DiffResponse_DIFF_NONE
+	//}
+	//
+	//return &pulumirpc.DiffResponse{
+	//	Changes:         changes,
+	//	Replaces:        replaces,
+	//	Diffs:           properties,
+	//	DetailedDiff:    detailedDiff,
+	//	HasDetailedDiff: true,
+	//}, nil
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.
