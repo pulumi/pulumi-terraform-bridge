@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add UsesIOClasses field to PythonInfo.
+  [#241](https://github.com/pulumi/pulumi-terraform-bridge/pull/241)
+
 - Add PluginDownloadURL field to package definition
   [#231](https://github.com/pulumi/pulumi-terraform-bridge/pull/231)
 
