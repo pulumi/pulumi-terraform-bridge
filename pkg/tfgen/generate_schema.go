@@ -277,6 +277,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 	if pi := g.info.Python; pi != nil {
 		pythonData["requires"] = pi.Requires
+		pythonData["usesIOClasses"] = pi.UsesIOClasses
 	}
 	spec.Language["python"] = rawMessage(pythonData)
 
