@@ -914,7 +914,8 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 		defer func() {
 			v := recover()
 			if v != nil {
-				err = fmt.Errorf("panic converting HCL to %v: %v", languageName, v)
+				cmdutil.Diag().Warningf(diag.Message("", fmt.Sprintf("failed to convert HCL example to %v", languageName)))
+				cmdutil.Diag().Debugf(diag.Message("", fmt.Sprintf("panic converting HCL to %v: %v", languageName, v)))
 			}
 		}()
 
