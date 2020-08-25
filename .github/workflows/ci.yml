@@ -1,6 +1,7 @@
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 name: Pull Request & Downstream Testing
 on: [pull_request]
-
 jobs:
   build:
     name: Build and Test Bridge
@@ -43,11 +44,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install tf2pulumi
-        uses: pulumi/action-install-tf2pulumi@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          tf2pulumi-version: 0.7.0
-
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
@@ -79,11 +79,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install tf2pulumi
-        uses: pulumi/action-install-tf2pulumi@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          tf2pulumi-version: 0.7.0
-
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
@@ -115,11 +114,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install tf2pulumi
-        uses: pulumi/action-install-tf2pulumi@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          tf2pulumi-version: 0.7.0
-
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
@@ -151,11 +149,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install tf2pulumi
-        uses: pulumi/action-install-tf2pulumi@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          tf2pulumi-version: 0.7.0
-
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
@@ -187,11 +184,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install tf2pulumi
-        uses: pulumi/action-install-tf2pulumi@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
-          tf2pulumi-version: 0.7.0
-
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
