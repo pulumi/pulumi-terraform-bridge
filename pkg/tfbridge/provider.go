@@ -17,10 +17,11 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc/status"
 	"log"
 	"regexp"
 	"strings"
+
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -1046,6 +1047,11 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
+}
+
+// Construct creates a new instance of the provided component resource and returns its state.
+func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
 // Invoke dynamically executes a built-in function in the provider.
