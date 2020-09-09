@@ -117,8 +117,8 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs *schema
 				// forms part of the key. We round-trip through a config field reader so that TF has the opportunity to
 				// fill in default values for empty fields (note that this is a property of the field reader, not of
 				// the schema) as it does when computing the hash code for a set element.
-				ev, err := MakeTerraformInput(
-					nil, ep, resource.PropertyValue{}, e, etfs, eps, make(AssetTable), nil, false, rawNames)
+				ctx := &conversionContext{}
+				ev, err := ctx.MakeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
 				if err != nil {
 					return
 				}

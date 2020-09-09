@@ -34,10 +34,40 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
+func makeTerraformInputs(olds, news resource.PropertyMap,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+
+	ctx := &conversionContext{Assets: AssetTable{}}
+	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	return inputs, ctx.Assets, err
+}
+
+func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
+	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+
+	ctx := &conversionContext{
+		Assets:        AssetTable{},
+		ApplyDefaults: true,
+	}
+	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	return inputs, ctx.Assets, err
+}
+
+func makeTerraformInput(v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo) (interface{}, error) {
+
+	ctx := &conversionContext{}
+	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+}
+
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
 func TestTerraformInputs(t *testing.T) {
-	result, err := MakeTerraformInputs(
-		nil, /*res*/
+	result, _, err := makeTerraformInputs(
 		nil, /*olds*/
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"boolPropertyValue":   false,
@@ -169,12 +199,7 @@ func TestTerraformInputs(t *testing.T) {
 			"array_with_nested_optional_computed_arrays": {
 				SuppressEmptyMapElements: boolPointer(true),
 			},
-		},
-		nil,   /* assets */
-		nil,   /* config */
-		false, /*defaults*/
-		false, /*useRawNames*/
-	)
+		})
 	assert.Nil(t, err)
 
 	var nilInterfaceSlice []interface{}
@@ -228,18 +253,13 @@ func TestTerraformInputs(t *testing.T) {
 		"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
 	}, result)
 
-	_, err = MakeTerraformInputs(
-		nil, /*res*/
+	_, _, err = makeTerraformInputs(
 		nil, /*olds*/
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"nilPropertyValue": nil,
 		}),
-		nil,   /* tfs */
-		nil,   /* ps */
-		nil,   /* assets */
-		nil,   /* config */
-		false, /*defaults*/
-		false, /*useRawNames*/
+		nil, /* tfs */
+		nil, /* ps */
 	)
 	assert.NoError(t, err)
 }
@@ -818,7 +838,6 @@ func TestDefaults(t *testing.T) {
 	assert.Nil(t, err)
 	asset, err := resource.NewTextAsset("hello")
 	assert.Nil(t, err)
-	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"ccc": {Type: schema.TypeString, Default: "CCC"},
 		"cc2": {Type: schema.TypeString, DefaultFunc: func() (interface{}, error) { return "CC2", nil }},
@@ -885,7 +904,7 @@ func TestDefaults(t *testing.T) {
 		"hhh": resource.NewStringProperty("HHH"),
 		"zzz": resource.NewAssetProperty(asset),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
+	inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 
@@ -921,8 +940,7 @@ func TestDefaults(t *testing.T) {
 	// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
 	// will be pulled from the old inputs instead of regenerated.
 	delete(olds, defaultsKey)
-	assets = make(AssetTable)
-	inputs, err = MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, true, false)
+	inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs = MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 
@@ -959,7 +977,6 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestComputedAsset(t *testing.T) {
-	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"zzz": {Type: schema.TypeString},
 	}
@@ -970,7 +987,7 @@ func TestComputedAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty(TerraformUnknownVariableValue),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
+	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
@@ -979,7 +996,6 @@ func TestComputedAsset(t *testing.T) {
 }
 
 func TestInvalidAsset(t *testing.T) {
-	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"zzz": {Type: schema.TypeString},
 	}
@@ -990,7 +1006,7 @@ func TestInvalidAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
+	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
@@ -1034,7 +1050,6 @@ func TestOverridingTFSchema(t *testing.T) {
 }
 
 func TestArchiveAsAsset(t *testing.T) {
-	assets := make(AssetTable)
 	tfs := map[string]*schema.Schema{
 		"zzz": {Type: schema.TypeString},
 	}
@@ -1052,7 +1067,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": arch,
 	}
-	inputs, err := MakeTerraformInputs(nil, olds, props, tfs, ps, assets, nil, false, false)
+	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
@@ -1070,47 +1085,35 @@ func TestCustomTransforms(t *testing.T) {
 	tfs := &schema.Schema{Type: schema.TypeString}
 	psi := &SchemaInfo{Transform: TransformJSONDocument}
 
-	v1, err := MakeTerraformInput(
-		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
-		tfs, psi, nil, nil, false, false)
+	v1, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v1)
 
 	array := []resource.PropertyValue{resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc))}
-	v1Array, err := MakeTerraformInput(
-		nil, "v", resource.PropertyValue{}, resource.NewArrayProperty(array),
-		tfs, psi, nil, nil, false, false)
+	v1Array, err := makeTerraformInput(resource.NewArrayProperty(array), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, `[{"a":99,"b":false}]`, v1Array)
 
-	v2, err := MakeTerraformInput(
-		nil, "v", resource.PropertyValue{}, resource.NewStringProperty(`{"a":99,"b":false}`),
-		tfs, psi, nil, nil, false, false)
+	v2, err := makeTerraformInput(resource.NewStringProperty(`{"a":99,"b":false}`), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v2)
 
 	doc["c"] = resource.Computed{Element: resource.PropertyValue{V: ""}}
-	v3, err := MakeTerraformInput(
-		nil, "v", resource.PropertyValue{}, resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)),
-		tfs, psi, nil, nil, false, false)
+	v3, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, TerraformUnknownVariableValue, v3)
 
-	v4, err := MakeTerraformInput(
-		nil, "v", resource.PropertyValue{}, resource.MakeComputed(resource.NewStringProperty("")),
-		tfs, psi, nil, nil, false, false)
+	v4, err := makeTerraformInput(resource.MakeComputed(resource.NewStringProperty("")), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, TerraformUnknownVariableValue, v4)
 
 	// This checks the fix to the regression caused via CoerceTerraformString to ensure we handle nil in Transforms
-	v5, err := MakeTerraformInput(nil, "v", resource.PropertyValue{}, resource.NewNullProperty(), tfs,
-		psi, nil, nil, false, false)
+	v5, err := makeTerraformInput(resource.NewNullProperty(), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, "", v5)
 
 	emptyDoc := ""
-	v6, err := MakeTerraformInput(nil, "v", resource.PropertyValue{}, resource.NewStringProperty(emptyDoc), tfs,
-		psi, nil, nil, false, false)
+	v6, err := makeTerraformInput(resource.NewStringProperty(emptyDoc), tfs, psi)
 	assert.NoError(t, err)
 	assert.Equal(t, "", v6)
 }

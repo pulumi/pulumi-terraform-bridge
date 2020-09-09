@@ -74,7 +74,7 @@ func (res *Resource) runTerraformImporter(id string, provider *Provider) (string
 
 	// Prepare a Terraform ResourceData for the importer
 	data := res.TF.Data(nil)
-	data.SetId(string(id))
+	data.SetId(id)
 	data.SetType(res.TFName)
 
 	// Run the importer defined in the Terraform resource schema
@@ -138,7 +138,7 @@ func (res *Resource) runTerraformImporter(id string, provider *Provider) (string
 	} else {
 		// Search for a resource with a matching ID. If one exists, take it.
 		for _, result := range candidates {
-			if result.Id() == string(id) {
+			if result.Id() == id {
 				primaryInstanceState = result.State()
 				break
 			}
@@ -364,7 +364,11 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (*terraform.Re
 
 	// Make a Terraform config map out of the variables. We do this before checking for missing properties
 	// s.t. we can pull any defaults out of the TF schema.
-	return MakeTerraformConfig(nil, tfVars, p.config, p.info.Config, nil, p.configValues, true)
+	config, _, err := MakeTerraformConfig(p.configValues, tfVars, p.config, p.info.Config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 func validateProviderConfig(ctx context.Context, p *Provider, config *terraform.ResourceConfig) (
@@ -621,10 +625,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
-	assets := make(AssetTable)
-	inputs, err := MakeTerraformInputs(
-		&PulumiResource{URN: urn, Properties: news},
-		olds, news, res.TF.Schema, res.Schema.Fields, assets, p.configValues, true, false)
+	inputs, assets, err := MakeTerraformInputs(
+		&PulumiResource{URN: urn, Properties: news}, p.configValues, olds, news, res.TF.Schema, res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
@@ -690,7 +692,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, nil, p.configValues, false)
+	config, _, err := MakeTerraformConfig(p.configValues, news, res.TF.Schema, res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -777,10 +779,9 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{Meta: make(map[string]interface{})}
-	assets := make(AssetTable)
-	config, err := UnmarshalTerraformConfig(
-		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields, assets,
-		p.configValues, true, false, fmt.Sprintf("%s.news", label))
+	config, assets, err := UnmarshalTerraformConfig(
+		p.configValues, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
+		fmt.Sprintf("%s.news", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -941,14 +942,13 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	assets := make(AssetTable)
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
 		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
-	config, err := MakeTerraformConfig(nil, news, res.TF.Schema, res.Schema.Fields, assets, p.configValues, false)
+	config, assets, err := MakeTerraformConfig(p.configValues, news, res.TF.Schema, res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -1066,9 +1066,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// First, create the inputs.
 	tfname := ds.TFName
-	inputs, err := MakeTerraformInputs(
-		&PulumiResource{Properties: args},
-		nil, args, ds.TF.Schema, ds.Schema.Fields, nil, p.configValues, true, false)
+	inputs, _, err := MakeTerraformInputs(
+		&PulumiResource{Properties: args}, p.configValues, nil, args, ds.TF.Schema, ds.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
