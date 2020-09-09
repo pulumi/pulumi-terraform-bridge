@@ -741,8 +741,8 @@ func MakeTerraformConfig(res *PulumiResource, m resource.PropertyMap,
 	return MakeTerraformConfigFromInputs(inputs)
 }
 
-// MakeTerraformConfigFromRPC creates a Terraform config map from a Pulumi RPC property map.
-func MakeTerraformConfigFromRPC(res *PulumiResource, m *pbstruct.Struct,
+// UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
+func UnmarshalTerraformConfig(res *PulumiResource, m *pbstruct.Struct,
 	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, assets AssetTable,
 	config resource.PropertyMap, allowUnknowns, defaults bool, label string) (*terraform.ResourceConfig, error) {
 	props, err := plugin.UnmarshalProperties(m,
@@ -792,49 +792,51 @@ func MakeTerraformConfigFromInputs(inputs map[string]interface{}) (*terraform.Re
 	}, nil
 }
 
-// MakeTerraformAttributes converts a Pulumi property bag into its Terraform equivalent.  This requires
+// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformAttributes(res *schema.Resource, m resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, config resource.PropertyMap,
-	defaults bool) (map[string]string, map[string]interface{}, error) {
-
+func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (*terraform.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-	} else if res.SchemaVersion > 0 {
+	} else if res.TF.SchemaVersion > 0 {
 		// If there was no metadata in the inputs and this resource has a non-zero schema version, return a meta bag
 		// with the current schema version. This helps avoid migration issues.
-		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.SchemaVersion)}
+		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.TF.SchemaVersion)}
 	}
 
-	// Turn the resource properties into a map.  For the most part, this is a straight Mappable, but we use MapReplace
+	// Turn the resource properties into a map. For the most part, this is a straight Mappable, but we use MapReplace
 	// because we use float64s and Terraform uses ints, to represent numbers.
-	inputs, err := MakeTerraformInputs(nil, nil, m, tfs, ps, nil, config, defaults, false)
+	inputs, err := MakeTerraformInputs(nil, nil, m, res.TF.Schema, res.Schema.Fields, nil, nil, false, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	attrs, err := MakeTerraformAttributesFromInputs(inputs, tfs)
+	attrs, err := makeTerraformAttributesFromInputs(inputs, res.TF.Schema)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return attrs, meta, nil
+
+	return &terraform.InstanceState{
+		ID:         id,
+		Attributes: attrs,
+		Meta:       meta,
+	}, nil
 }
 
-// MakeTerraformAttributesFromRPC unmarshals an RPC property map and calls through to MakeTerraformAttributes.
-func MakeTerraformAttributesFromRPC(res *schema.Resource, m *pbstruct.Struct,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo, config resource.PropertyMap,
-	allowUnknowns, defaults bool, label string) (map[string]string, map[string]interface{}, error) {
-	props, err := plugin.UnmarshalProperties(m,
-		plugin.MarshalOptions{Label: label, KeepUnknowns: allowUnknowns, SkipNulls: true})
+// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
+func UnmarshalTerraformState(r Resource, id string, m *pbstruct.Struct, l string) (*terraform.InstanceState, error) {
+	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
+		Label:     fmt.Sprintf("%s.state", l),
+		SkipNulls: true,
+	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return MakeTerraformAttributes(res, props, tfs, ps, config, defaults)
+	return MakeTerraformState(r, id, props)
 }
 
 // flattenValue takes a single value and recursively flattens its properties into the given string -> string map under
@@ -900,8 +902,8 @@ func flattenValue(result map[string]string, prefix string, value interface{}) {
 	}
 }
 
-// MakeTerraformAttributesFromInputs creates a flat Terraform map from a structured set of Terraform inputs.
-func MakeTerraformAttributesFromInputs(inputs map[string]interface{},
+// makeTerraformAttributesFromInputs creates a flat Terraform map from a structured set of Terraform inputs.
+func makeTerraformAttributesFromInputs(inputs map[string]interface{},
 	tfs map[string]*schema.Schema) (map[string]string, error) {
 
 	// In order to flatten the TF inputs into a TF attribute map, we must first schema-ify them by reading them out of
