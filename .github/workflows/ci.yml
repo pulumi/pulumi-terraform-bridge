@@ -41,7 +41,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.11
+          python-version: 3.6
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
@@ -76,7 +76,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.11
+          python-version: 3.6
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
@@ -111,7 +111,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.11
+          python-version: 3.6
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
@@ -146,7 +146,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.11
+          python-version: 3.6
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
@@ -181,7 +181,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.11
+          python-version: 3.6
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
