@@ -4,105 +4,107 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"github.com/stretchr/testify/assert"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
 	type testcase struct {
 		str      string
-		typ      schema.ValueType
+		typ      shim.ValueType
 		expected interface{}
 	}
 
 	cases := []testcase{
 		{
-			typ:      schema.TypeBool,
+			typ:      shim.TypeBool,
 			expected: false,
 		},
 		{
 			str:      "false",
-			typ:      schema.TypeBool,
+			typ:      shim.TypeBool,
 			expected: false,
 		},
 		{
 			str:      "true",
-			typ:      schema.TypeBool,
+			typ:      shim.TypeBool,
 			expected: true,
 		},
 		{
 			str: "root",
-			typ: schema.TypeBool,
+			typ: shim.TypeBool,
 		},
 
 		{
-			typ:      schema.TypeString,
+			typ:      shim.TypeString,
 			expected: "",
 		},
 		{
 			str:      "stringP",
-			typ:      schema.TypeString,
+			typ:      shim.TypeString,
 			expected: "stringP",
 		},
 
 		{
-			typ:      schema.TypeInt,
+			typ:      shim.TypeInt,
 			expected: 0,
 		},
 		{
 			str:      "42",
-			typ:      schema.TypeInt,
+			typ:      shim.TypeInt,
 			expected: 42,
 		},
 		{
 			str: "root",
-			typ: schema.TypeInt,
+			typ: shim.TypeInt,
 		},
 
 		{
-			typ:      schema.TypeFloat,
+			typ:      shim.TypeFloat,
 			expected: 0,
 		},
 		{
 			str:      "42",
-			typ:      schema.TypeFloat,
+			typ:      shim.TypeFloat,
 			expected: 42,
 		},
 		{
 			str: "root",
-			typ: schema.TypeFloat,
+			typ: shim.TypeFloat,
 		},
 
 		{
-			typ:      schema.TypeList,
+			typ:      shim.TypeList,
 			expected: []interface{}{},
 		},
 		{
 			str:      "[ \"foo\", \"bar\" ]",
-			typ:      schema.TypeList,
+			typ:      shim.TypeList,
 			expected: []interface{}{"foo", "bar"},
 		},
 
 		{
-			typ:      schema.TypeSet,
+			typ:      shim.TypeSet,
 			expected: []interface{}{},
 		},
 		{
 			str:      "[ \"foo\", \"bar\" ]",
-			typ:      schema.TypeSet,
+			typ:      shim.TypeSet,
 			expected: []interface{}{"foo", "bar"},
 		},
 
 		{
-			typ:      schema.TypeMap,
+			typ:      shim.TypeMap,
 			expected: map[string]interface{}{},
 		},
 		{
 			str: "{ \"foo\": { \"bar\": 42 }, \"baz\": [ true ] }",
-			typ: schema.TypeMap,
+			typ: shim.TypeMap,
 			expected: map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": 42,
@@ -149,8 +151,8 @@ func TestCamelPascalPulumiName(t *testing.T) {
 func TestDiffConfig(t *testing.T) {
 	t.Skip("Temporarily skipped")
 	provider := &Provider{
-		tf:     testTFProvider,
-		config: testTFProvider.Schema,
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
 	}
 
 	oldConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("foo")}

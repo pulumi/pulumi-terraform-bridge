@@ -15,11 +15,12 @@
 package tfbridge
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
 )
 
 const (
@@ -33,7 +34,7 @@ const (
 //
 //nolint: lll
 type ProviderInfo struct {
-	P                       *schema.Provider                  // the TF provider/schema.
+	P                       shim.Provider                     // the TF provider/schema.
 	Name                    string                            // the TF provider name (e.g. terraform-provider-XXXX).
 	ResourcePrefix          string                            // the prefix on resources the provider exposes, if different to `Name`.
 	GitHubOrg               string                            // the GitHub org of the provider. Defaults to `terraform-providers`.
@@ -200,6 +201,9 @@ type SchemaInfo struct {
 
 	// whether a change in the configuration would force a new resource
 	ForceNew *bool
+
+	// whether or not this property has been removed from the Terraform schema
+	Removed bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
@@ -207,7 +211,7 @@ type ConfigInfo struct {
 	// Info is the Pulumi schema for this variable.
 	Info *SchemaInfo
 	// Schema is the Terraform schema for this variable.
-	Schema *schema.Schema
+	Schema shim.Schema
 }
 
 // Transformer is given the option to transform a value in situ before it is processed by the bridge. This
@@ -291,7 +295,7 @@ type CSharpInfo struct {
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
-type PreConfigureCallback func(vars resource.PropertyMap, config *terraform.ResourceConfig) error
+type PreConfigureCallback func(vars resource.PropertyMap, config shim.ResourceConfig) error
 
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
 // marshalling a provider info as JSON; Note that these types only represent a subset of the informatino associated
@@ -299,7 +303,7 @@ type PreConfigureCallback func(vars resource.PropertyMap, config *terraform.Reso
 
 // MarshallableSchema is the JSON-marshallable form of a Terraform schema.
 type MarshallableSchema struct {
-	Type               schema.ValueType  `json:"type"`
+	Type               shim.ValueType    `json:"type"`
 	Optional           bool              `json:"optional,omitempty"`
 	Required           bool              `json:"required,omitempty"`
 	Computed           bool              `json:"computed,omitempty"`
@@ -307,61 +311,59 @@ type MarshallableSchema struct {
 	Elem               *MarshallableElem `json:"element,omitempty"`
 	MaxItems           int               `json:"maxItems,omitempty"`
 	MinItems           int               `json:"minItems,omitempty"`
-	PromoteSingle      bool              `json:"promoteSingle,omitempty"`
 	DeprecationMessage string            `json:"deprecated,omitempty"`
 }
 
 // MarshalSchema converts a Terraform schema into a MarshallableSchema.
-func MarshalSchema(s *schema.Schema) *MarshallableSchema {
+func MarshalSchema(s shim.Schema) *MarshallableSchema {
 	return &MarshallableSchema{
-		Type:               s.Type,
-		Optional:           s.Optional,
-		Required:           s.Required,
-		Computed:           s.Computed,
-		ForceNew:           s.ForceNew,
+		Type:               s.Type(),
+		Optional:           s.Optional(),
+		Required:           s.Required(),
+		Computed:           s.Computed(),
+		ForceNew:           s.ForceNew(),
 		Elem:               MarshalElem(s.Elem),
-		MaxItems:           s.MaxItems,
-		MinItems:           s.MinItems,
-		PromoteSingle:      s.PromoteSingle,
-		DeprecationMessage: s.Deprecated,
+		MaxItems:           s.MaxItems(),
+		MinItems:           s.MinItems(),
+		DeprecationMessage: s.Deprecated(),
 	}
 }
 
 // Unmarshal creates a mostly-initialized Terraform schema from the given MarshallableSchema.
-func (m *MarshallableSchema) Unmarshal() *schema.Schema {
-	return &schema.Schema{
-		Type:          m.Type,
-		Optional:      m.Optional,
-		Required:      m.Required,
-		Computed:      m.Computed,
-		ForceNew:      m.ForceNew,
-		Elem:          m.Elem.Unmarshal(),
-		MaxItems:      m.MaxItems,
-		MinItems:      m.MinItems,
-		PromoteSingle: m.PromoteSingle,
-		Deprecated:    m.DeprecationMessage,
-	}
+func (m *MarshallableSchema) Unmarshal() shim.Schema {
+	return (&schema.Schema{
+		Type:       m.Type,
+		Optional:   m.Optional,
+		Required:   m.Required,
+		Computed:   m.Computed,
+		ForceNew:   m.ForceNew,
+		Elem:       m.Elem.Unmarshal(),
+		MaxItems:   m.MaxItems,
+		MinItems:   m.MinItems,
+		Deprecated: m.DeprecationMessage,
+	}).Shim()
 }
 
 // MarshallableResource is the JSON-marshallable form of a Terraform resource schema.
 type MarshallableResource map[string]*MarshallableSchema
 
 // MarshalResource converts a Terraform resource schema into a MarshallableResource.
-func MarshalResource(r *schema.Resource) MarshallableResource {
+func MarshalResource(r shim.Resource) MarshallableResource {
 	m := make(MarshallableResource)
-	for k, v := range r.Schema {
+	r.Schema().Range(func(k string, v shim.Schema) bool {
 		m[k] = MarshalSchema(v)
-	}
+		return true
+	})
 	return m
 }
 
 // Unmarshal creates a mostly-initialized Terraform resource schema from the given MarshallableResource.
-func (m MarshallableResource) Unmarshal() *schema.Resource {
-	s := make(map[string]*schema.Schema)
+func (m MarshallableResource) Unmarshal() shim.Resource {
+	s := schema.SchemaMap{}
 	for k, v := range m {
 		s[k] = v.Unmarshal()
 	}
-	return &schema.Resource{Schema: s}
+	return (&schema.Resource{Schema: s}).Shim()
 }
 
 // MarshallableElem is the JSON-marshallable form of a Terraform schema's element field.
@@ -373,9 +375,9 @@ type MarshallableElem struct {
 // MarshalElem converts a Terraform schema's element field into a MarshallableElem.
 func MarshalElem(e interface{}) *MarshallableElem {
 	switch v := e.(type) {
-	case *schema.Schema:
+	case shim.Schema:
 		return &MarshallableElem{Schema: MarshalSchema(v)}
-	case *schema.Resource:
+	case shim.Resource:
 		return &MarshallableElem{Resource: MarshalResource(v)}
 	default:
 		return nil
@@ -404,19 +406,26 @@ type MarshallableProvider struct {
 }
 
 // MarshalProvider converts a Terraform provider schema into a MarshallableProvider.
-func MarshalProvider(p *schema.Provider) *MarshallableProvider {
+func MarshalProvider(p shim.Provider) *MarshallableProvider {
+	if p == nil {
+		return nil
+	}
+
 	config := make(map[string]*MarshallableSchema)
-	for k, v := range p.Schema {
+	p.Schema().Range(func(k string, v shim.Schema) bool {
 		config[k] = MarshalSchema(v)
-	}
+		return true
+	})
 	resources := make(map[string]MarshallableResource)
-	for k, v := range p.ResourcesMap {
+	p.ResourcesMap().Range(func(k string, v shim.Resource) bool {
 		resources[k] = MarshalResource(v)
-	}
+		return true
+	})
 	dataSources := make(map[string]MarshallableResource)
-	for k, v := range p.DataSourcesMap {
+	p.DataSourcesMap().Range(func(k string, v shim.Resource) bool {
 		dataSources[k] = MarshalResource(v)
-	}
+		return true
+	})
 	return &MarshallableProvider{
 		Schema:      config,
 		Resources:   resources,
@@ -425,24 +434,28 @@ func MarshalProvider(p *schema.Provider) *MarshallableProvider {
 }
 
 // Unmarshal creates a mostly-initialized Terraform provider schema from a MarshallableProvider
-func (m *MarshallableProvider) Unmarshal() *schema.Provider {
-	config := make(map[string]*schema.Schema)
+func (m *MarshallableProvider) Unmarshal() shim.Provider {
+	if m == nil {
+		return nil
+	}
+
+	config := schema.SchemaMap{}
 	for k, v := range m.Schema {
 		config[k] = v.Unmarshal()
 	}
-	resources := make(map[string]*schema.Resource)
+	resources := schema.ResourceMap{}
 	for k, v := range m.Resources {
 		resources[k] = v.Unmarshal()
 	}
-	dataSources := make(map[string]*schema.Resource)
+	dataSources := schema.ResourceMap{}
 	for k, v := range m.DataSources {
 		dataSources[k] = v.Unmarshal()
 	}
-	return &schema.Provider{
+	return (&schema.Provider{
 		Schema:         config,
 		ResourcesMap:   resources,
 		DataSourcesMap: dataSources,
-	}
+	}).Shim()
 }
 
 // MarshallableSchemaInfo is the JSON-marshallable form of a Pulumi SchemaInfo value.

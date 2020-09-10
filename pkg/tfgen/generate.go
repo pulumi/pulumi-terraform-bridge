@@ -27,7 +27,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
@@ -45,6 +44,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
 )
 
 const (
@@ -301,7 +302,7 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.SchemaInfo, out bool,
+func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
 	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{}
@@ -320,32 +321,32 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 		return t
 	}
 
-	switch sch.Type {
-	case schema.TypeBool:
+	switch sch.Type() {
+	case shim.TypeBool:
 		t.kind = kindBool
-	case schema.TypeInt:
+	case shim.TypeInt:
 		t.kind = kindInt
-	case schema.TypeFloat:
+	case shim.TypeFloat:
 		t.kind = kindFloat
-	case schema.TypeString:
+	case shim.TypeString:
 		t.kind = kindString
-	case schema.TypeList:
+	case shim.TypeList:
 		t.kind = kindList
-	case schema.TypeMap:
+	case shim.TypeMap:
 		t.kind = kindMap
-	case schema.TypeSet:
+	case shim.TypeSet:
 		t.kind = kindSet
 	}
 
 	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
-	if sch.Deprecated != "" && elemInfo != nil {
-		elemInfo.DeprecationMessage = sch.Deprecated
+	if sch.Deprecated() != "" && elemInfo != nil {
+		elemInfo.DeprecationMessage = sch.Deprecated()
 	}
 
-	switch elem := sch.Elem.(type) {
-	case *schema.Schema:
+	switch elem := sch.Elem().(type) {
+	case shim.Schema:
 		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
-	case *schema.Resource:
+	case shim.Resource:
 		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
 	}
 
@@ -365,7 +366,7 @@ func makePropertyType(objectName string, sch *schema.Schema, info *tfbridge.Sche
 	return t
 }
 
-func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbridge.SchemaInfo, out bool,
+func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge.SchemaInfo, out bool,
 	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
@@ -384,8 +385,8 @@ func makeObjectPropertyType(objectName string, res *schema.Resource, info *tfbri
 		propertyInfos = info.Fields
 	}
 
-	for _, key := range stableSchemas(res.Schema) {
-		propertySchema := res.Schema[key]
+	for _, key := range stableSchemas(res.Schema()) {
+		propertySchema := res.Schema().Get(key)
 
 		var propertyInfo *tfbridge.SchemaInfo
 		if propertyInfos != nil {
@@ -466,7 +467,7 @@ type variable struct {
 	rawdoc string
 	docURL string
 
-	schema *schema.Schema
+	schema shim.Schema
 	info   *tfbridge.SchemaInfo
 
 	typ *propertyType
@@ -476,8 +477,8 @@ func (v *variable) Name() string { return v.name }
 func (v *variable) Doc() string  { return v.doc }
 
 func (v *variable) deprecationMessage() string {
-	if v.schema != nil && v.schema.Deprecated != "" {
-		return v.schema.Deprecated
+	if v.schema != nil && v.schema.Deprecated() != "" {
+		return v.schema.Deprecated()
 	}
 
 	if v.info != nil && v.info.DeprecationMessage != "" {
@@ -503,9 +504,9 @@ func (v *variable) optional() bool {
 	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.
 	customDefault := !v.config && v.info != nil && v.info.HasDefault()
 	if v.out {
-		return v.schema != nil && v.schema.Optional && !v.schema.Computed && !customDefault
+		return v.schema != nil && v.schema.Optional() && !v.schema.Computed() && !customDefault
 	}
-	return (v.schema != nil && v.schema.Optional || v.schema.Computed) || customDefault
+	return (v.schema != nil && v.schema.Optional() || v.schema.Computed()) || customDefault
 }
 
 // resourceType is a generated resource type that represents a Pulumi CustomResource definition.
@@ -518,7 +519,7 @@ type resourceType struct {
 	reqprops   map[string]bool
 	argst      *propertyType // input properties.
 	statet     *propertyType // output properties (all optional).
-	schema     *schema.Resource
+	schema     shim.Resource
 	info       *tfbridge.ResourceInfo
 	docURL     string
 	entityDocs entityDocs // parsed docs.
@@ -530,7 +531,7 @@ func (rt *resourceType) Doc() string  { return rt.doc }
 // IsProvider is true if this resource is a ProviderResource.
 func (rt *resourceType) IsProvider() bool { return rt.isProvider }
 
-func newResourceType(name string, entityDocs entityDocs, schema *schema.Resource, info *tfbridge.ResourceInfo,
+func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
 	return &resourceType{
@@ -554,7 +555,7 @@ type resourceFunc struct {
 	reqargs    map[string]bool
 	argst      *propertyType
 	retst      *propertyType
-	schema     *schema.Resource
+	schema     shim.Resource
 	info       *tfbridge.DataSourceInfo
 	docURL     string
 	entityDocs entityDocs
@@ -603,10 +604,7 @@ func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo
 		return nil, err
 	}
 
-	providerShim := &inmemoryProvider{
-		name: pkg,
-		info: info,
-	}
+	providerShim := newInMemoryProvider(pkg, nil, info)
 	host := &inmemoryProviderHost{
 		Host:               ctx.Host,
 		ProviderInfoSource: il.NewCachingProviderInfoSource(il.PluginProviderInfoSource),
@@ -629,7 +627,7 @@ func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo
 	}, nil
 }
 
-func (g *generator) provider() *schema.Provider {
+func (g *generator) provider() shim.Provider {
 	return g.info.P
 }
 
@@ -758,8 +756,8 @@ func (g *generator) gatherPackage() (*pkg, error) {
 // gatherConfig returns the configuration module for this package.
 func (g *generator) gatherConfig() *module {
 	// If there's no config, skip creating the module.
-	cfg := g.provider().Schema
-	if len(cfg) == 0 {
+	cfg := g.provider().Schema()
+	if cfg.Len() == 0 {
 		return nil
 	}
 	config := newModule(configMod)
@@ -767,17 +765,18 @@ func (g *generator) gatherConfig() *module {
 	// Sort the config variables to ensure they are emitted in a deterministic order.
 	custom := g.info.Config
 	var cfgkeys []string
-	for key := range cfg {
+	cfg.Range(func(key string, _ shim.Schema) bool {
 		cfgkeys = append(cfgkeys, key)
-	}
+		return true
+	})
 	sort.Strings(cfgkeys)
 
 	// Add an entry for each config variable.
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
-		sch := cfg[key]
+		sch := cfg.Get(key)
 		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description, docURL, true /*out*/, entityDocs{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), docURL, true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -786,7 +785,7 @@ func (g *generator) gatherConfig() *module {
 
 	// Ensure there weren't any keys that were unrecognized.
 	for key := range custom {
-		if _, has := cfg[key]; !has {
+		if _, has := cfg.GetOk(key); !has {
 			cmdutil.Diag().Warningf(
 				diag.Message("", "custom config schema %s was not present in the Terraform metadata"), key)
 		}
@@ -805,23 +804,23 @@ func (g *generator) gatherConfig() *module {
 
 // gatherProvider returns the provider resource for this package.
 func (g *generator) gatherProvider() (*resourceType, error) {
-	cfg := g.provider().Schema
+	cfg := g.provider().Schema()
 	if cfg == nil {
-		cfg = map[string]*schema.Schema{}
+		cfg = schema.SchemaMap{}
 	}
 	info := &tfbridge.ResourceInfo{
 		Tok:    tokens.Type(g.pkg),
 		Fields: g.info.Config,
 	}
-	_, res, err := g.gatherResource("", &schema.Resource{Schema: cfg}, info, true)
+	_, res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
 	return res, err
 }
 
 // gatherResources returns all modules and their resources.
 func (g *generator) gatherResources() (moduleMap, error) {
 	// If there aren't any resources, skip this altogether.
-	resources := g.provider().ResourcesMap
-	if len(resources) == 0 {
+	resources := g.provider().ResourcesMap()
+	if resources.Len() == 0 {
 		return nil, nil
 	}
 	modules := make(moduleMap)
@@ -839,7 +838,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 		}
 		seen[r] = true
 
-		module, res, err := g.gatherResource(r, resources[r], info, false)
+		module, res, err := g.gatherResource(r, resources.Get(r), info, false)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
 			reserr = multierror.Append(reserr, err)
@@ -871,7 +870,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *generator) gatherResource(rawname string,
-	schema *schema.Resource, info *tfbridge.ResourceInfo, isProvider bool) (string, *resourceType, error) {
+	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (string, *resourceType, error) {
 	// Get the resource's module and name.
 	name, module := resourceName(g.info.Name, rawname, info, isProvider)
 
@@ -897,15 +896,17 @@ func (g *generator) gatherResource(rawname string,
 	// Create an empty module and associated resource type.
 	res := newResourceType(name, entityDocs, schema, info, isProvider)
 
-	args := tfbridge.CleanTerraformSchema(schema.Schema)
-
 	// Next, gather up all properties.
 	var stateVars []*variable
-	for _, key := range stableSchemas(args) {
-		propschema := args[key]
+	for _, key := range stableSchemas(schema.Schema()) {
+		propschema := schema.Schema().Get(key)
+		if propschema.Removed() != "" {
+			continue
+		}
+
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
 		doc := getDescriptionFromParsedDocs(entityDocs, key)
-		rawdoc := propschema.Description
+		rawdoc := propschema.Description()
 
 		propinfo := info.Fields[key]
 
@@ -957,7 +958,7 @@ func (g *generator) gatherResource(rawname string,
 
 	// Ensure there weren't any custom fields that were unrecognized.
 	for key := range info.Fields {
-		if _, has := schema.Schema[key]; !has {
+		if _, has := schema.Schema().GetOk(key); !has {
 			cmdutil.Diag().Warningf(
 				diag.Message("", "custom resource schema %s.%s was not present in the Terraform metadata"),
 				name, key)
@@ -969,23 +970,16 @@ func (g *generator) gatherResource(rawname string,
 
 func (g *generator) gatherDataSources() (moduleMap, error) {
 	// If there aren't any data sources, skip this altogether.
-	sources := g.provider().DataSourcesMap
-	if len(sources) == 0 {
+	sources := g.provider().DataSourcesMap()
+	if sources.Len() == 0 {
 		return nil, nil
 	}
 	modules := make(moduleMap)
 
-	// Sort and enumerate all variables in a deterministic order.
-	var srckeys []string
-	for key := range sources {
-		srckeys = append(srckeys, key)
-	}
-	sort.Strings(srckeys)
-
 	// For each data source, create its own dedicated function and module export.
 	var dserr error
 	seen := make(map[string]bool)
-	for _, ds := range srckeys {
+	for _, ds := range stableResources(sources) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
 			// if this data source was missing, issue a warning and skip it.
@@ -995,7 +989,7 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 		}
 		seen[ds] = true
 
-		module, fun, err := g.gatherDataSource(ds, sources[ds], dsinfo)
+		module, fun, err := g.gatherDataSource(ds, sources.Get(ds), dsinfo)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
 			dserr = multierror.Append(dserr, err)
@@ -1027,7 +1021,7 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 
 // gatherDataSource returns the module name and members for the given data source function.
 func (g *generator) gatherDataSource(rawname string,
-	ds *schema.Resource, info *tfbridge.DataSourceInfo) (string, *resourceFunc, error) {
+	ds shim.Resource, info *tfbridge.DataSourceInfo) (string, *resourceFunc, error) {
 	// Generate the name and module for this data source.
 	name, module := dataSourceName(g.info.Name, rawname, info)
 
@@ -1049,21 +1043,16 @@ func (g *generator) gatherDataSource(rawname string,
 		entityDocs: entityDocs,
 	}
 
-	// Sort the args and return properties so we are ready to go.
-	args := tfbridge.CleanTerraformSchema(ds.Schema)
-	var argkeys []string
-	for arg := range args {
-		argkeys = append(argkeys, arg)
-	}
-	sort.Strings(argkeys)
-
 	// See if arguments for this function are optional, and generate detailed metadata.
-	for _, arg := range argkeys {
-		sch := args[arg]
+	for _, arg := range stableSchemas(ds.Schema()) {
+		sch := ds.Schema().Get(arg)
+		if sch.Removed() != "" {
+			continue
+		}
 		cust := info.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
-		if input(args[arg], cust) {
+		if input(sch, cust) {
 			doc := getDescriptionFromParsedDocs(entityDocs, arg)
 			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
@@ -1080,15 +1069,12 @@ func (g *generator) gatherDataSource(rawname string,
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
 	// sources.
-	if _, has := args["id"]; !has {
-		sch := &schema.Schema{
-			Type:     schema.TypeString,
-			Computed: true,
-		}
+	if id, has := ds.Schema().GetOk("id"); !has || id.Removed() != "" {
 		cust := &tfbridge.SchemaInfo{}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
+		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
 		fun.rets = append(fun.rets,
-			propertyVariable("id", sch, cust, "", rawdoc, "", true /*out*/, entityDocs))
+			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, "", true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1185,15 +1171,16 @@ func (g *generator) emitProjectMetadata(pack *pkg) error {
 }
 
 // input checks whether the given property is supplied by the user (versus being always computed).
-func input(sch *schema.Schema, info *tfbridge.SchemaInfo) bool {
-	return (sch.Optional || sch.Required) && !(info != nil && info.MarkAsComputedOnly != nil && *info.MarkAsComputedOnly)
+func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
+	return (sch.Optional() || sch.Required()) &&
+		!(info != nil && info.MarkAsComputedOnly != nil && *info.MarkAsComputedOnly)
 }
 
 // propertyName translates a Terraform underscore_cased_property_name into a JavaScript camelCasedPropertyName.
 // IDEA: ideally specific languages could override this, to ensure "idiomatic naming", however then the bridge
 //     would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
 //     name transformation process).  This isn't impossible, but certainly complicates matters.
-func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) string {
+func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) string {
 	// Use the name override, if one exists, or use the standard name mangling otherwise.
 	if custom != nil {
 		if custom.Name != "" {
@@ -1210,7 +1197,7 @@ func propertyName(key string, sch *schema.Schema, custom *tfbridge.SchemaInfo) s
 }
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
-func propertyVariable(key string, sch *schema.Schema, info *tfbridge.SchemaInfo,
+func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 	doc string, rawdoc string, docURL string, out bool, entityDocs entityDocs) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
@@ -1261,20 +1248,22 @@ func withoutPackageName(pkg string, rawname string) string {
 	return name
 }
 
-func stableResources(resources map[string]*schema.Resource) []string {
+func stableResources(resources shim.ResourceMap) []string {
 	var rs []string
-	for r := range resources {
+	resources.Range(func(r string, _ shim.Resource) bool {
 		rs = append(rs, r)
-	}
+		return true
+	})
 	sort.Strings(rs)
 	return rs
 }
 
-func stableSchemas(schemas map[string]*schema.Schema) []string {
+func stableSchemas(schemas shim.SchemaMap) []string {
 	var ss []string
-	for s := range schemas {
+	schemas.Range(func(s string, _ shim.Schema) bool {
 		ss = append(ss, s)
-	}
+		return true
+	})
 	sort.Strings(ss)
 	return ss
 }

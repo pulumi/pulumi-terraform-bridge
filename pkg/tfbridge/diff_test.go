@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"github.com/stretchr/testify/assert"
+
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
 )
 
 type DiffKind = pulumirpc.PropertyDiff_Kind
@@ -23,37 +24,39 @@ const (
 
 var computedValue = resource.Computed{Element: resource.NewStringProperty("")}
 
-func diffTest(t *testing.T, sch map[string]*schema.Schema, info map[string]*SchemaInfo,
+func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind, ignoreChanges ...string) {
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
 	stateMap := resource.NewPropertyMapFromMap(state)
 
+	sch := shimv1.NewSchemaMap(tfs)
+
 	// Fake up a TF resource and a TF provider.
 	res := &schema.Resource{
-		Schema: sch,
+		Schema: tfs,
 		CustomizeDiff: func(d *schema.ResourceDiff, _ interface{}) error {
 			return d.SetNewComputed("outp")
 		},
 	}
-	provider := &schema.Provider{
+	provider := shimv1.NewProvider(&schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"resource": res,
 		},
-	}
+	})
 
 	// Convert the inputs and state to TF config and resource attributes.
 	r := Resource{
-		TF:     res,
+		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
 	tfState, err := MakeTerraformState(r, "id", stateMap)
 	assert.NoError(t, err)
 
-	config, _, err := MakeTerraformConfig(nil, inputsMap, sch, info)
+	config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
 	assert.NoError(t, err)
 
-	tfDiff, err := provider.SimpleDiff(&terraform.InstanceInfo{Type: "resource"}, tfState, config)
+	tfDiff, err := provider.Diff("resource", tfState, config)
 	assert.NoError(t, err)
 
 	// ProcessIgnoreChanges

@@ -19,14 +19,15 @@ import (
 	"unicode"
 
 	"github.com/gedex/inflector"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
-func PulumiToTerraformName(name string, tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) string {
+func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) string {
 	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
@@ -46,7 +47,7 @@ func PulumiToTerraformName(name string, tfs map[string]*schema.Schema, ps map[st
 		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
 		// result.
 		var info *SchemaInfo
-		sch, ok := tfs[singularResult]
+		sch, ok := tfs.GetOk(singularResult)
 		if ps != nil {
 			if p, ok := ps[singularResult]; ok {
 				info = p
@@ -60,16 +61,16 @@ func PulumiToTerraformName(name string, tfs map[string]*schema.Schema, ps map[st
 	return result
 }
 
-func checkTfMaxItems(tfs *schema.Schema, maxItemsOne bool) bool {
+func checkTfMaxItems(tfs shim.Schema, maxItemsOne bool) bool {
 	if tfs == nil {
 		return false
 	}
 
-	if tfs.Type != schema.TypeList && tfs.Type != schema.TypeSet {
+	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
 		return false
 	}
 
-	return (tfs.MaxItems == 1) == maxItemsOne
+	return (tfs.MaxItems() == 1) == maxItemsOne
 }
 
 func isPulmiMaxItemsOne(ps *SchemaInfo) bool {
@@ -78,7 +79,7 @@ func isPulmiMaxItemsOne(ps *SchemaInfo) bool {
 
 // TerraformToPulumiName performs a standard transformation on the given name string, from Terraform's underscore_casing
 // to Pulumi's PascalCasing (if upper is true) or camelCasing (if upper is false).
-func TerraformToPulumiName(name string, sch *schema.Schema, ps *SchemaInfo, upper bool) string {
+func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune

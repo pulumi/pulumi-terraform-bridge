@@ -17,18 +17,18 @@ package il
 import (
 	"strconv"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 // Schemas bundles a property's Terraform and Pulumi schema information into a single type. This information is then
 // used to determine type and name information for the property. If the Terraform property is of a composite type--a
 // map, list, or set--the property's schemas may also be used to access child schemas.
 type Schemas struct {
-	TF     *schema.Schema
-	TFRes  *schema.Resource
+	TF     shim.Schema
+	TFRes  shim.Resource
 	Pulumi *tfbridge.SchemaInfo
 }
 
@@ -41,12 +41,12 @@ func (s Schemas) PropertySchemas(key string) Schemas {
 		return s.ElemSchemas()
 	}
 
-	if s.TFRes != nil && s.TFRes.Schema != nil {
-		propSch.TF = s.TFRes.Schema[key]
+	if s.TFRes != nil && s.TFRes.Schema() != nil {
+		propSch.TF = s.TFRes.Schema().Get(key)
 	}
 
 	if propSch.TF != nil {
-		if propResource, ok := propSch.TF.Elem.(*schema.Resource); ok {
+		if propResource, ok := propSch.TF.Elem().(shim.Resource); ok {
 			propSch.TFRes = propResource
 		}
 	}
@@ -63,10 +63,10 @@ func (s Schemas) ElemSchemas() Schemas {
 	var elemSch Schemas
 
 	if s.TF != nil {
-		switch e := s.TF.Elem.(type) {
-		case *schema.Schema:
+		switch e := s.TF.Elem().(type) {
+		case shim.Schema:
 			elemSch.TF = e
-		case *schema.Resource:
+		case shim.Resource:
 			elemSch.TFRes = e
 		}
 	}
@@ -81,16 +81,16 @@ func (s Schemas) ElemSchemas() Schemas {
 // Type returns the appropriate bound type for the property associated with these Schemas.
 func (s Schemas) Type() Type {
 	if s.TF != nil {
-		switch s.TF.Type {
-		case schema.TypeBool:
+		switch s.TF.Type() {
+		case shim.TypeBool:
 			return TypeBool
-		case schema.TypeInt, schema.TypeFloat:
+		case shim.TypeInt, shim.TypeFloat:
 			return TypeNumber
-		case schema.TypeString:
+		case shim.TypeString:
 			return TypeString
-		case schema.TypeList, schema.TypeSet:
+		case shim.TypeList, shim.TypeSet:
 			return s.ElemSchemas().Type().ListOf()
-		case schema.TypeMap:
+		case shim.TypeMap:
 			return TypeMap
 		default:
 			return TypeUnknown
@@ -103,16 +103,16 @@ func (s Schemas) Type() Type {
 // ModelType returns the appropriate model type for the property associated with these Schemas.
 func (s Schemas) ModelType() model.Type {
 	if s.TF != nil {
-		switch s.TF.Type {
-		case schema.TypeBool:
+		switch s.TF.Type() {
+		case shim.TypeBool:
 			return model.BoolType
-		case schema.TypeInt, schema.TypeFloat:
+		case shim.TypeInt, shim.TypeFloat:
 			return model.NumberType
-		case schema.TypeString:
+		case shim.TypeString:
 			return model.StringType
-		case schema.TypeList, schema.TypeSet:
+		case shim.TypeList, shim.TypeSet:
 			return model.NewListType(s.ElemSchemas().ModelType())
-		case schema.TypeMap:
+		case shim.TypeMap:
 			if s.TFRes == nil {
 				return model.NewMapType(model.StringType)
 			}
@@ -125,9 +125,10 @@ func (s Schemas) ModelType() model.Type {
 
 	if s.TFRes != nil {
 		properties := map[string]model.Type{}
-		for prop := range s.TFRes.Schema {
+		s.TFRes.Schema().Range(func(prop string, _ shim.Schema) bool {
 			properties[prop] = s.PropertySchemas(prop).ModelType()
-		}
+			return true
+		})
 		return model.NewObjectType(properties)
 	}
 

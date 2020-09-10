@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 // genListProperty generates code for as single list property.
@@ -71,7 +70,7 @@ func (g *generator) GenMapProperty(w io.Writer, n *il.BoundMapProperty) {
 	if len(n.Elements) == 0 {
 		g.Fgen(w, "{}")
 	} else {
-		useExactKeys := n.Schemas.TF != nil && n.Schemas.TF.Type == schema.TypeMap
+		useExactKeys := n.Schemas.TF != nil && n.Schemas.TF.Type() == shim.TypeMap
 
 		g.Fgen(w, "{")
 		g.Indented(func() {

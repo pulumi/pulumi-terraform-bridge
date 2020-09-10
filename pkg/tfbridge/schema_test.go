@@ -23,19 +23,23 @@ import (
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	"github.com/stretchr/testify/assert"
-
+	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/stretchr/testify/assert"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v2"
 )
 
 func makeTerraformInputs(olds, news resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{Assets: AssetTable{}}
 	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
@@ -46,7 +50,7 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 }
 
 func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
-	tfs map[string]*schema.Schema, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{
 		Assets:        AssetTable{},
@@ -59,209 +63,212 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 	return inputs, ctx.Assets, err
 }
 
-func makeTerraformInput(v resource.PropertyValue, tfs *schema.Schema, ps *SchemaInfo) (interface{}, error) {
-
+func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
 	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
 }
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
 func TestTerraformInputs(t *testing.T) {
-	result, _, err := makeTerraformInputs(
-		nil, /*olds*/
-		resource.NewPropertyMapFromMap(map[string]interface{}{
-			"boolPropertyValue":   false,
-			"numberPropertyValue": 42,
-			"floatPropertyValue":  99.6767932,
-			"stringo":             "ognirts",
-			"arrayPropertyValue":  []interface{}{"an array"},
-			"unknownArrayValue":   resource.Computed{Element: resource.NewStringProperty("")},
-			"unknownArrayValue2":  resource.Computed{Element: resource.NewStringProperty("")},
-			"objectPropertyValue": map[string]interface{}{
-				"propertyA": "a",
-				"propertyB": true,
-			},
-			"mapPropertyValue": map[string]interface{}{
-				"propertyA": "a",
-				"propertyB": true,
-				"propertyC": map[string]interface{}{
-					"nestedPropertyA": true,
-				},
-			},
-			"nestedResources": []map[string]interface{}{{
-				"configuration": map[string]interface{}{
-					"configurationValue": true,
-				},
-			}},
-			"optionalConfig": map[string]interface{}{
-				"someValue":      true,
-				"someOtherValue": "a value",
-			},
-			"optionalConfigOther": map[string]interface{}{
-				"someValue":      true,
-				"someOtherValue": "a value",
-			},
-			"mapWithResourceElem": map[string]interface{}{
-				"someValue": "a value",
-			},
-			"arrayWithNestedOptionalComputedArrays": []interface{}{
-				map[string]interface{}{},
-			},
-		}),
-		map[string]*schema.Schema{
-			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-			"float_property_value": {Type: schema.TypeFloat},
-			"unknown_array_value":  {Type: schema.TypeList},
-			"unknown_array_value2": {
-				Type:     schema.TypeList,
-				MinItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"required_property": {Type: schema.TypeString, Required: true},
-						"conflicts_a":       {Type: schema.TypeString, ConflictsWith: []string{"conflicts_b"}},
-						"conflicts_b":       {Type: schema.TypeString, ConflictsWith: []string{"conflicts_a"}},
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			result, _, err := makeTerraformInputs(
+				nil, /*olds*/
+				resource.NewPropertyMapFromMap(map[string]interface{}{
+					"boolPropertyValue":   false,
+					"numberPropertyValue": 42,
+					"floatPropertyValue":  99.6767932,
+					"stringo":             "ognirts",
+					"arrayPropertyValue":  []interface{}{"an array"},
+					"unknownArrayValue":   resource.Computed{Element: resource.NewStringProperty("")},
+					"unknownArrayValue2":  resource.Computed{Element: resource.NewStringProperty("")},
+					"objectPropertyValue": map[string]interface{}{
+						"propertyA": "a",
+						"propertyB": true,
 					},
-				},
-			},
-			"map_property_value": {Type: schema.TypeMap},
-			"nested_resource": {
-				Type:     schema.TypeList,
-				MaxItems: 2,
-				// Embed a `*schema.Resource` to validate that type directed
-				// walk of the schema successfully walks inside Resources as well
-				// as Schemas.
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"configuration": {Type: schema.TypeMap},
+					"mapPropertyValue": map[string]interface{}{
+						"propertyA": "a",
+						"propertyB": true,
+						"propertyC": map[string]interface{}{
+							"nestedPropertyA": true,
+						},
 					},
-				},
-			},
-			"optional_config": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"some_value":       {Type: schema.TypeBool},
-						"some_other_value": {Type: schema.TypeString},
+					"nestedResources": []map[string]interface{}{{
+						"configuration": map[string]interface{}{
+							"configurationValue": true,
+						},
+					}},
+					"optionalConfig": map[string]interface{}{
+						"someValue":      true,
+						"someOtherValue": "a value",
 					},
-				},
-			},
-			"optional_config_other": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"some_value":       {Type: schema.TypeBool},
-						"some_other_value": {Type: schema.TypeString},
+					"optionalConfigOther": map[string]interface{}{
+						"someValue":      true,
+						"someOtherValue": "a value",
 					},
-				},
-			},
-			"map_with_resource_elem": {
-				Type: schema.TypeMap,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"some_value": {Type: schema.TypeString},
+					"mapWithResourceElem": map[string]interface{}{
+						"someValue": "a value",
 					},
-				},
-			},
-			"array_with_nested_optional_computed_arrays": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nested_value": {
-							Type:     schema.TypeList,
-							MaxItems: 1,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"nested_inner_value": {
-										Type:     schema.TypeBool,
-										Required: true,
-									},
+					"arrayWithNestedOptionalComputedArrays": []interface{}{
+						map[string]interface{}{},
+					},
+				}),
+				f.NewSchemaMap(map[string]*schema.Schema{
+					// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
+					"float_property_value": {Type: shim.TypeFloat},
+					"unknown_array_value":  {Type: shim.TypeList},
+					"unknown_array_value2": {
+						Type:     shim.TypeList,
+						MinItems: 1,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"required_property": {Type: shim.TypeString, Required: true},
+								"conflicts_a":       {Type: shim.TypeString, ConflictsWith: []string{"conflicts_b"}},
+								"conflicts_b":       {Type: shim.TypeString, ConflictsWith: []string{"conflicts_a"}},
+							}),
+						}).Shim(),
+					},
+					"map_property_value": {Type: shim.TypeMap},
+					"nested_resource": {
+						Type:     shim.TypeList,
+						MaxItems: 2,
+						// Embed a `*schema.Resource` to validate that type directed
+						// walk of the schema successfully walks inside Resources as well
+						// as Schemas.
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"configuration": {Type: shim.TypeMap},
+							}),
+						}).Shim(),
+					},
+					"optional_config": {
+						Type:     shim.TypeList,
+						MaxItems: 1,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"some_value":       {Type: shim.TypeBool},
+								"some_other_value": {Type: shim.TypeString},
+							}),
+						}).Shim(),
+					},
+					"optional_config_other": {
+						Type: shim.TypeList,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"some_value":       {Type: shim.TypeBool},
+								"some_other_value": {Type: shim.TypeString},
+							}),
+						}).Shim(),
+					},
+					"map_with_resource_elem": {
+						Type: shim.TypeMap,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"some_value": {Type: shim.TypeString},
+							}),
+						}).Shim(),
+					},
+					"array_with_nested_optional_computed_arrays": {
+						Type:     shim.TypeList,
+						Optional: true,
+						Computed: true,
+						MaxItems: 1,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"nested_value": {
+									Type:     shim.TypeList,
+									MaxItems: 1,
+									Optional: true,
+									Elem: (&schema.Resource{
+										Schema: schemaMap(map[string]*schema.Schema{
+											"nested_inner_value": {
+												Type:     shim.TypeBool,
+												Required: true,
+											},
+										}),
+									}).Shim(),
 								},
-							},
+							}),
+						}).Shim(),
+					},
+				}),
+				map[string]*SchemaInfo{
+					// Reverse map string_property_value to the stringo property.
+					"string_property_value": {
+						Name: "stringo",
+					},
+					"optional_config_other": {
+						Name:        "optionalConfigOther",
+						MaxItemsOne: boolPointer(true),
+					},
+					"array_with_nested_optional_computed_arrays": {
+						SuppressEmptyMapElements: boolPointer(true),
+					},
+				})
+			assert.Nil(t, err)
+
+			var nilInterfaceSlice []interface{}
+			assert.Equal(t, map[string]interface{}{
+				"bool_property_value":   false,
+				"number_property_value": 42,
+				"float_property_value":  99.6767932,
+				"string_property_value": "ognirts",
+				"array_property_value":  []interface{}{"an array"},
+				"unknown_array_value":   []interface{}{TerraformUnknownVariableValue},
+				"unknown_array_value2": []interface{}{
+					map[string]interface{}{
+						"required_property": TerraformUnknownVariableValue,
+					},
+				},
+				"object_property_value": map[string]interface{}{
+					"property_a": "a",
+					"property_b": true,
+				},
+				"map_property_value": map[string]interface{}{
+					"propertyA": "a",
+					"propertyB": true,
+					"propertyC": map[string]interface{}{
+						"nestedPropertyA": true,
+					},
+				},
+				"nested_resource": []interface{}{
+					map[string]interface{}{
+						"configuration": map[string]interface{}{
+							"configurationValue": true,
 						},
 					},
 				},
-			},
-		},
-		map[string]*SchemaInfo{
-			// Reverse map string_property_value to the stringo property.
-			"string_property_value": {
-				Name: "stringo",
-			},
-			"optional_config_other": {
-				Name:        "optionalConfigOther",
-				MaxItemsOne: boolPointer(true),
-			},
-			"array_with_nested_optional_computed_arrays": {
-				SuppressEmptyMapElements: boolPointer(true),
-			},
-		})
-	assert.Nil(t, err)
-
-	var nilInterfaceSlice []interface{}
-	assert.Equal(t, map[string]interface{}{
-		"bool_property_value":   false,
-		"number_property_value": 42,
-		"float_property_value":  99.6767932,
-		"string_property_value": "ognirts",
-		"array_property_value":  []interface{}{"an array"},
-		"unknown_array_value":   []interface{}{TerraformUnknownVariableValue},
-		"unknown_array_value2": []interface{}{
-			map[string]interface{}{
-				"required_property": TerraformUnknownVariableValue,
-			},
-		},
-		"object_property_value": map[string]interface{}{
-			"property_a": "a",
-			"property_b": true,
-		},
-		"map_property_value": map[string]interface{}{
-			"propertyA": "a",
-			"propertyB": true,
-			"propertyC": map[string]interface{}{
-				"nestedPropertyA": true,
-			},
-		},
-		"nested_resource": []interface{}{
-			map[string]interface{}{
-				"configuration": map[string]interface{}{
-					"configurationValue": true,
+				"optional_config": []interface{}{
+					map[string]interface{}{
+						"some_value":       true,
+						"some_other_value": "a value",
+					},
 				},
-			},
-		},
-		"optional_config": []interface{}{
-			map[string]interface{}{
-				"some_value":       true,
-				"some_other_value": "a value",
-			},
-		},
-		"optional_config_other": []interface{}{
-			map[string]interface{}{
-				"some_value":       true,
-				"some_other_value": "a value",
-			},
-		},
-		"map_with_resource_elem": []interface{}{
-			map[string]interface{}{
-				"some_value": "a value",
-			},
-		},
-		"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
-	}, result)
+				"optional_config_other": []interface{}{
+					map[string]interface{}{
+						"some_value":       true,
+						"some_other_value": "a value",
+					},
+				},
+				"map_with_resource_elem": []interface{}{
+					map[string]interface{}{
+						"some_value": "a value",
+					},
+				},
+				"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
+			}, result)
 
-	_, _, err = makeTerraformInputs(
-		nil, /*olds*/
-		resource.NewPropertyMapFromMap(map[string]interface{}{
-			"nilPropertyValue": nil,
-		}),
-		nil, /* tfs */
-		nil, /* ps */
-	)
-	assert.NoError(t, err)
+			_, _, err = makeTerraformInputs(
+				nil, /*olds*/
+				resource.NewPropertyMapFromMap(map[string]interface{}{
+					"nilPropertyValue": nil,
+				}),
+				nil, /* tfs */
+				nil, /* ps */
+			)
+			assert.NoError(t, err)
+		})
+	}
 }
 
 type MyString string
@@ -269,538 +276,444 @@ type MyString string
 // TestTerraformOutputsWithSecretsSupported verifies that we translate Terraform outputs into Pulumi outputs and
 // treating sensitive outputs as secrets
 func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
-	result := MakeTerraformOutputs(
-		map[string]interface{}{
-			"nil_property_value":       nil,
-			"bool_property_value":      false,
-			"number_property_value":    42,
-			"float_property_value":     99.6767932,
-			"string_property_value":    "ognirts",
-			"my_string_property_value": MyString("ognirts"),
-			"array_property_value":     []interface{}{"an array"},
-			"object_property_value": map[string]interface{}{
-				"property_a": "a",
-				"property_b": true,
-			},
-			"map_property_value": map[string]interface{}{
-				"propertyA": "a",
-				"propertyB": true,
-				"propertyC": map[string]interface{}{
-					"nestedPropertyA": true,
-				},
-			},
-			"nested_resource": []interface{}{
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			result := MakeTerraformOutputs(
+				f.NewTestProvider(),
 				map[string]interface{}{
-					"configuration": map[string]interface{}{
-						"configurationValue": true,
+					"nil_property_value":       nil,
+					"bool_property_value":      false,
+					"number_property_value":    42,
+					"float_property_value":     99.6767932,
+					"string_property_value":    "ognirts",
+					"my_string_property_value": MyString("ognirts"),
+					"array_property_value":     []interface{}{"an array"},
+					"object_property_value": map[string]interface{}{
+						"property_a": "a",
+						"property_b": true,
 					},
-				},
-			},
-			"optional_config": []interface{}{
-				map[string]interface{}{
-					"some_value":       true,
-					"some_other_value": "a value",
-				},
-			},
-			"optional_config_other": []interface{}{
-				map[string]interface{}{
-					"some_value":       true,
-					"some_other_value": "a value",
-				},
-			},
-			"secret_value": "MyPassword",
-			"nested_secret_value": []interface{}{
-				map[string]interface{}{
+					"map_property_value": map[string]interface{}{
+						"propertyA": "a",
+						"propertyB": true,
+						"propertyC": map[string]interface{}{
+							"nestedPropertyA": true,
+						},
+					},
+					"nested_resource": []interface{}{
+						map[string]interface{}{
+							"configuration": map[string]interface{}{
+								"configurationValue": true,
+							},
+						},
+					},
+					"optional_config": []interface{}{
+						map[string]interface{}{
+							"some_value":       true,
+							"some_other_value": "a value",
+						},
+					},
+					"optional_config_other": []interface{}{
+						map[string]interface{}{
+							"some_value":       true,
+							"some_other_value": "a value",
+						},
+					},
 					"secret_value": "MyPassword",
-				},
-			},
-		},
-		map[string]*schema.Schema{
-			// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-			"float_property_value":     {Type: schema.TypeFloat},
-			"my_string_property_value": {Type: schema.TypeString},
-			"map_property_value":       {Type: schema.TypeMap},
-			"nested_resource": {
-				Type:     schema.TypeList,
-				MaxItems: 2,
-				// Embed a `*schema.Resource` to validate that type directed
-				// walk of the schema successfully walks inside Resources as well
-				// as Schemas.
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"configuration": {Type: schema.TypeMap},
-					},
-				},
-			},
-			"optional_config": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"some_value":       {Type: schema.TypeBool},
-						"some_other_value": {Type: schema.TypeString},
-					},
-				},
-			},
-			"optional_config_other": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"some_value":       {Type: schema.TypeBool},
-						"some_other_value": {Type: schema.TypeString},
-					},
-				},
-			},
-			"secret_value": {
-				Type:      schema.TypeString,
-				Optional:  true,
-				Sensitive: true,
-			},
-			"nested_secret_value": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"secret_value": {
-							Type:      schema.TypeString,
-							Sensitive: true,
+					"nested_secret_value": []interface{}{
+						map[string]interface{}{
+							"secret_value": "MyPassword",
 						},
 					},
 				},
-			},
-		},
-		map[string]*SchemaInfo{
-			// Reverse map string_property_value to the stringo property.
-			"string_property_value": {
-				Name: "stringo",
-			},
-			"optional_config_other": {
-				Name:        "optionalConfigOther",
-				MaxItemsOne: boolPointer(true),
-			},
-		},
-		nil,   /* assets */
-		false, /*useRawNames*/
-		true,
-	)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"nilPropertyValue":      nil,
-		"boolPropertyValue":     false,
-		"numberPropertyValue":   42,
-		"floatPropertyValue":    99.6767932,
-		"stringo":               "ognirts",
-		"myStringPropertyValue": "ognirts",
-		"arrayPropertyValue":    []interface{}{"an array"},
-		"objectPropertyValue": map[string]interface{}{
-			"propertyA": "a",
-			"propertyB": true,
-		},
-		"mapPropertyValue": map[string]interface{}{
-			"propertyA": "a",
-			"propertyB": true,
-			"propertyC": map[string]interface{}{
-				"nestedPropertyA": true,
-			},
-		},
-		"nestedResources": []map[string]interface{}{{
-			"configuration": map[string]interface{}{
-				"configurationValue": true,
-			},
-		}},
-		"optionalConfig": map[string]interface{}{
-			"someValue":      true,
-			"someOtherValue": "a value",
-		},
-		"optionalConfigOther": map[string]interface{}{
-			"someValue":      true,
-			"someOtherValue": "a value",
-		},
-		"secretValue": &resource.Secret{
-			Element: resource.PropertyValue{
-				V: "MyPassword",
-			},
-		},
-		"nestedSecretValue": map[string]interface{}{
-			"secretValue": &resource.Secret{
-				Element: resource.PropertyValue{
-					V: "MyPassword",
+				f.NewSchemaMap(map[string]*schema.Schema{
+					// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
+					"float_property_value":     {Type: shim.TypeFloat},
+					"my_string_property_value": {Type: shim.TypeString},
+					"map_property_value":       {Type: shim.TypeMap},
+					"nested_resource": {
+						Type:     shim.TypeList,
+						MaxItems: 2,
+						// Embed a `*schema.Resource` to validate that type directed
+						// walk of the schema successfully walks inside Resources as well
+						// as Schemas.
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"configuration": {Type: shim.TypeMap},
+							}),
+						}).Shim(),
+					},
+					"optional_config": {
+						Type:     shim.TypeList,
+						MaxItems: 1,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"some_value":       {Type: shim.TypeBool},
+								"some_other_value": {Type: shim.TypeString},
+							}),
+						}).Shim(),
+					},
+					"optional_config_other": {
+						Type: shim.TypeList,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"some_value":       {Type: shim.TypeBool},
+								"some_other_value": {Type: shim.TypeString},
+							}),
+						}).Shim(),
+					},
+					"secret_value": {
+						Type:      shim.TypeString,
+						Optional:  true,
+						Sensitive: true,
+					},
+					"nested_secret_value": {
+						Type:     shim.TypeList,
+						MaxItems: 1,
+						Elem: (&schema.Resource{
+							Schema: schemaMap(map[string]*schema.Schema{
+								"secret_value": {
+									Type:      shim.TypeString,
+									Sensitive: true,
+								},
+							}),
+						}).Shim(),
+					},
+				}),
+				map[string]*SchemaInfo{
+					// Reverse map string_property_value to the stringo property.
+					"string_property_value": {
+						Name: "stringo",
+					},
+					"optional_config_other": {
+						Name:        "optionalConfigOther",
+						MaxItemsOne: boolPointer(true),
+					},
 				},
-			},
-		},
-	}), result)
+				nil,   /* assets */
+				false, /* useRawNames */
+				true,  /* supportsSecrets */
+			)
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nilPropertyValue":      nil,
+				"boolPropertyValue":     false,
+				"numberPropertyValue":   42,
+				"floatPropertyValue":    99.6767932,
+				"stringo":               "ognirts",
+				"myStringPropertyValue": "ognirts",
+				"arrayPropertyValue":    []interface{}{"an array"},
+				"objectPropertyValue": map[string]interface{}{
+					"propertyA": "a",
+					"propertyB": true,
+				},
+				"mapPropertyValue": map[string]interface{}{
+					"propertyA": "a",
+					"propertyB": true,
+					"propertyC": map[string]interface{}{
+						"nestedPropertyA": true,
+					},
+				},
+				"nestedResources": []map[string]interface{}{{
+					"configuration": map[string]interface{}{
+						"configurationValue": true,
+					},
+				}},
+				"optionalConfig": map[string]interface{}{
+					"someValue":      true,
+					"someOtherValue": "a value",
+				},
+				"optionalConfigOther": map[string]interface{}{
+					"someValue":      true,
+					"someOtherValue": "a value",
+				},
+				"secretValue": &resource.Secret{
+					Element: resource.PropertyValue{
+						V: "MyPassword",
+					},
+				},
+				"nestedSecretValue": map[string]interface{}{
+					"secretValue": &resource.Secret{
+						Element: resource.PropertyValue{
+							V: "MyPassword",
+						},
+					},
+				},
+			}), result)
+		})
+	}
 }
 
 // TestTerraformOutputsWithSecretsUnsupported verifies that we translate Terraform outputs into Pulumi outputs without
 // treating sensitive outputs as secrets
 func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
-	result := MakeTerraformOutputs(
-		map[string]interface{}{
-			"secret_value": "MyPassword",
-		},
-		map[string]*schema.Schema{
-			"secret_value": {
-				Type:      schema.TypeString,
-				Optional:  true,
-				Sensitive: true,
-			},
-		},
-		map[string]*SchemaInfo{},
-		nil,   /* assets */
-		false, /*useRawNames*/
-		false,
-	)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"secretValue": "MyPassword",
-	}), result)
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			result := MakeTerraformOutputs(
+				f.NewTestProvider(),
+				map[string]interface{}{
+					"secret_value": "MyPassword",
+				},
+				f.NewSchemaMap(map[string]*schema.Schema{
+					"secret_value": {
+						Type:      shim.TypeString,
+						Optional:  true,
+						Sensitive: true,
+					},
+				}),
+				map[string]*SchemaInfo{},
+				nil,   /* assets */
+				false, /*useRawNames*/
+				false,
+			)
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				"secretValue": "MyPassword",
+			}), result)
+		})
+	}
 }
 
-func TestTerraformAttributes(t *testing.T) {
-	result, err := makeTerraformAttributesFromInputs(
-		map[string]interface{}{
-			"nil_property_value":    nil,
-			"bool_property_value":   false,
-			"number_property_value": 42,
-			"float_property_value":  99.6767932,
-			"string_property_value": "ognirts",
-			"array_property_value":  []interface{}{"an array"},
-			"object_property_value": map[string]interface{}{
-				"property_a": "a",
-				"property_b": true,
-			},
-			"map_property_value": map[string]interface{}{
-				"propertyA": "a",
-				"propertyB": true,
-				"propertyC": map[string]interface{}{
-					"nestedPropertyA": true,
-				},
-			},
-			"nested_resources": []interface{}{
-				map[string]interface{}{
-					"configuration": map[string]interface{}{
-						"configurationValue": true,
-					},
-				},
-			},
-			"set_property_value":            []interface{}{"set member 1", "set member 2"},
-			"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
-			"removed_property_value":        "a removed property",
-		},
-		map[string]*schema.Schema{
-			"nil_property_value":    {Type: schema.TypeMap},
-			"bool_property_value":   {Type: schema.TypeBool},
-			"number_property_value": {Type: schema.TypeInt},
-			"float_property_value":  {Type: schema.TypeFloat},
-			"string_property_value": {Type: schema.TypeString},
-			"array_property_value": {
-				Type: schema.TypeList,
-				Elem: &schema.Schema{Type: schema.TypeString},
-			},
-			"object_property_value": {Type: schema.TypeMap},
-			"map_property_value":    {Type: schema.TypeMap},
-			"nested_resources": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				// Embed a `*schema.Resource` to validate that type directed
-				// walk of the schema successfully walks inside Resources as well
-				// as Schemas.
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"configuration": {Type: schema.TypeMap},
-					},
-				},
-			},
-			"set_property_value": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{Type: schema.TypeString},
-			},
-			"string_with_bad_interpolation": {Type: schema.TypeString},
-			"removed_property_value": {
-				Type:    schema.TypeString,
-				Removed: "Removed in the Terraform provider",
-			},
-		})
-
-	assert.NoError(t, err)
-	assert.Equal(t, result, map[string]string{
-		"array_property_value.#":                              "1",
-		"array_property_value.0":                              "an array",
-		"bool_property_value":                                 "false",
-		"float_property_value":                                "99.6767932",
-		"map_property_value.%":                                "3",
-		"map_property_value.propertyA":                        "a",
-		"map_property_value.propertyB":                        "true",
-		"map_property_value.propertyC.%":                      "1",
-		"map_property_value.propertyC.nestedPropertyA":        "true",
-		"nested_resources.#":                                  "1",
-		"nested_resources.0.%":                                "1",
-		"nested_resources.0.configuration.%":                  "1",
-		"nested_resources.0.configuration.configurationValue": "true",
-		"number_property_value":                               "42",
-		"object_property_value.%":                             "2",
-		"object_property_value.property_a":                    "a",
-		"object_property_value.property_b":                    "true",
-		"set_property_value.#":                                "2",
-		"set_property_value.3618983862":                       "set member 2",
-		"set_property_value.4237827189":                       "set member 1",
-		"string_property_value":                               "ognirts",
-		"string_with_bad_interpolation":                       "some ${interpolated:value} with syntax errors",
-		"removed_property_value":                              "a removed property",
-	})
-
-	// MapFieldWriter has issues with values of TypeMap. Build a schema without such values s.t. we can test
-	// MakeTerraformState against the output of MapFieldWriter.
-	sharedSchema := map[string]*schema.Schema{
-		"bool_property_value":   {Type: schema.TypeBool},
-		"number_property_value": {Type: schema.TypeInt},
-		"float_property_value":  {Type: schema.TypeFloat},
-		"string_property_value": {Type: schema.TypeString},
-		"array_property_value": {
-			Type: schema.TypeList,
-			Elem: &schema.Schema{Type: schema.TypeString},
-		},
-		"nested_resource_value": {
-			Type:     schema.TypeList,
-			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"nested_set_property": {
-						Type: schema.TypeSet,
-						Elem: &schema.Schema{Type: schema.TypeString},
-					},
-					"nested_string_property": {Type: schema.TypeString},
-				},
-			},
-		},
-		"set_property_value": {
-			Type: schema.TypeSet,
-			Elem: &schema.Schema{Type: schema.TypeString},
-		},
-		"string_with_bad_interpolation": {Type: schema.TypeString},
+func clearMeta(state shim.InstanceState) bool {
+	if tf, ok := shimv1.IsInstanceState(state); ok {
+		tf.Meta = map[string]interface{}{}
+		return true
 	}
-	sharedInputs := map[string]interface{}{
-		"bool_property_value":   false,
-		"number_property_value": 42,
-		"float_property_value":  99.6767932,
-		"string_property_value": "ognirts",
-		"array_property_value":  []interface{}{"an array"},
-		"nested_resource_value": map[string]interface{}{
-			"nested_set_property":    []interface{}{"nested set member"},
-			"nested_string_property": "value",
-		},
-		"set_property_value":            []interface{}{"set member 1", "set member 2"},
-		"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
+	if tf, ok := shimv2.IsInstanceState(state); ok {
+		tf.Meta = map[string]interface{}{}
+		return true
 	}
+	return false
+}
 
-	// Build a TF attribute map using schema.MapFieldWriter.
-	cfg, err := MakeTerraformConfigFromInputs(sharedInputs)
-
-	assert.NoError(t, err)
-	reader := &schema.ConfigFieldReader{Config: cfg, Schema: sharedSchema}
-	writer := &schema.MapFieldWriter{Schema: sharedSchema}
-	for k := range sharedInputs {
-		f, ferr := reader.ReadField([]string{k})
-		assert.NoError(t, ferr)
-
-		err = writer.WriteField([]string{k}, f.Value)
-		assert.NoError(t, err)
+func clearID(state shim.InstanceState) bool {
+	if tf, ok := shimv1.IsInstanceState(state); ok {
+		tf.ID = ""
+		return true
 	}
-	expected := writer.Map()
-
-	// Build the same using makeTerraformAttributesFromInputs.
-	result, err = makeTerraformAttributesFromInputs(sharedInputs, sharedSchema)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, result)
+	if tf, ok := shimv2.IsInstanceState(state); ok {
+		tf.ID = ""
+		return true
+	}
+	return false
 }
 
 // Test that meta-properties are correctly produced.
 func TestMetaProperties(t *testing.T) {
-	const resName = "example_resource"
-	res := testTFProvider.ResourcesMap["example_resource"]
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			prov := f.NewTestProvider()
 
-	info := &terraform.InstanceInfo{Type: resName}
-	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
-	read, err := testTFProvider.Refresh(info, state)
-	assert.NoError(t, err)
-	assert.NotNil(t, read)
+			const resName = "example_resource"
+			res := prov.ResourcesMap().Get(resName)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
+			state := f.NewInstanceState("0")
+			read, err := prov.Refresh(resName, state)
+			assert.NoError(t, err)
+			assert.NotNil(t, read)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
 
-	read2, err := testTFProvider.Refresh(info, state)
-	assert.NoError(t, err)
-	assert.NotNil(t, read2)
-	assert.Equal(t, read, read2)
+			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-	// Delete the resource's meta-property and ensure that we re-populate its schema version.
-	delete(props, metaKey)
+			read2, err := prov.Refresh(resName, state)
+			assert.NoError(t, err)
+			assert.NotNil(t, read2)
+			assert.Equal(t, read, read2)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			// Delete the resource's meta-property and ensure that we re-populate its schema version.
+			delete(props, metaKey)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
 
-	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
-	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
-	assert.NotContains(t, props, metaKey)
+			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-	// Ensure that timeouts are populated and preserved.
-	state.ID = ""
-	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{})
-	diff, err := testTFProvider.SimpleDiff(info, state, cfg)
-	assert.NoError(t, err)
+			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
+			ok := clearMeta(read2)
+			assert.True(t, ok)
+			props, err = MakeTerraformResult(prov, read2, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
+			assert.NotContains(t, props, metaKey)
 
-	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
-	timeouts := &schema.ResourceTimeout{}
-	err = timeouts.ConfigDecode(res, cfg)
-	assert.NoError(t, err)
-	err = timeouts.DiffEncode(diff)
-	assert.NoError(t, err)
+			// Ensure that timeouts are populated and preserved.
+			ok = clearID(state)
+			assert.True(t, ok)
+			cfg := prov.NewResourceConfig(map[string]interface{}{})
+			diff, err := prov.Diff(resName, state, cfg)
+			assert.NoError(t, err)
 
-	assert.NoError(t, err)
-	create, err := testTFProvider.Apply(info, state, diff)
-	assert.NoError(t, err)
+			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
+			timeouts, err := res.DecodeTimeouts(cfg)
+			assert.NoError(t, err)
+			err = diff.EncodeTimeouts(timeouts)
+			assert.NoError(t, err)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
+			assert.NoError(t, err)
+			create, err := prov.Apply(resName, state, diff)
+			assert.NoError(t, err)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			props, err = MakeTerraformResult(prov, create, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
 
-	assert.Contains(t, state.Meta, schema.TimeoutKey)
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
+
+			assert.Contains(t, state.Meta(), schemav1.TimeoutKey)
+		})
+	}
 }
 
 func TestInjectingCustomTimeouts(t *testing.T) {
-	const resName = "second_resource"
-	res := testTFProvider.ResourcesMap["second_resource"]
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			prov := f.NewTestProvider()
 
-	info := &terraform.InstanceInfo{Type: resName}
-	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
-	read, err := testTFProvider.Refresh(info, state)
-	assert.NoError(t, err)
-	assert.NotNil(t, read)
+			const resName = "second_resource"
+			res := prov.ResourcesMap().Get(resName)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
+			state := f.NewInstanceState("0")
+			read, err := prov.Refresh(resName, state)
+			assert.NoError(t, err)
+			assert.NotNil(t, read)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
 
-	read2, err := testTFProvider.Refresh(info, state)
-	assert.NoError(t, err)
-	assert.NotNil(t, read2)
-	assert.Equal(t, read, read2)
+			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-	// Delete the resource's meta-property and ensure that we re-populate its schema version.
-	delete(props, metaKey)
+			read2, err := prov.Refresh(resName, state)
+			assert.NoError(t, err)
+			assert.NotNil(t, read2)
+			assert.Equal(t, read, read2)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			// Delete the resource's meta-property and ensure that we re-populate its schema version.
+			delete(props, metaKey)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
 
-	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
-	read2.Meta = map[string]interface{}{}
-	props, err = MakeTerraformResult(read2, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
-	assert.NotContains(t, props, metaKey)
+			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-	// Ensure that timeouts are populated and preserved.
-	state.ID = ""
-	cfg := terraform.NewResourceConfigRaw(map[string]interface{}{})
-	diff, err := testTFProvider.SimpleDiff(info, state, cfg)
-	assert.NoError(t, err)
+			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
+			ok := clearMeta(read2)
+			assert.True(t, ok)
+			props, err = MakeTerraformResult(prov, read2, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
+			assert.NotContains(t, props, metaKey)
 
-	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
-	resourceTimeout := &schema.ResourceTimeout{}
-	err = resourceTimeout.ConfigDecode(res, cfg)
-	assert.NoError(t, err)
-	err = resourceTimeout.DiffEncode(diff)
-	assert.NoError(t, err)
+			// Ensure that timeouts are populated and preserved.
+			ok = clearID(state)
+			assert.True(t, ok)
+			cfg := prov.NewResourceConfig(map[string]interface{}{})
+			diff, err := prov.Diff(resName, state, cfg)
+			assert.NoError(t, err)
 
-	setTimeout(diff, float64(300), schema.TimeoutCreate)
+			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
+			resourceTimeouts, err := res.DecodeTimeouts(cfg)
+			assert.NoError(t, err)
+			err = diff.EncodeTimeouts(resourceTimeouts)
+			assert.NoError(t, err)
 
-	create, err := testTFProvider.Apply(info, state, diff)
-	assert.NoError(t, err)
+			diff.SetTimeout(300, schemav1.TimeoutCreate)
 
-	props, err = MakeTerraformResult(create, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
+			assert.NoError(t, err)
+			create, err := prov.Apply(resName, state, diff)
+			assert.NoError(t, err)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			props, err = MakeTerraformResult(prov, create, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
 
-	timeouts := state.Meta[schema.TimeoutKey].(map[string]interface{})
-	assert.NotNil(t, timeouts)
-	assert.Contains(t, timeouts, schema.TimeoutCreate)
-	assert.Equal(t, timeouts[schema.TimeoutCreate], float64(300000000000))
-	assert.NotContains(t, timeouts, schema.TimeoutDelete)
-	assert.Contains(t, timeouts, schema.TimeoutUpdate)
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
+
+			switch f.SDKVersion() {
+			case "v1":
+				timeouts := state.Meta()[schemav1.TimeoutKey].(map[string]interface{})
+				assert.NotNil(t, timeouts)
+				assert.Contains(t, timeouts, schemav1.TimeoutCreate)
+				assert.Equal(t, timeouts[schemav1.TimeoutCreate], float64(300000000000))
+				assert.NotContains(t, timeouts, schemav1.TimeoutDelete)
+				assert.Contains(t, timeouts, schemav1.TimeoutUpdate)
+			case "v2":
+				timeouts := state.Meta()[schemav2.TimeoutKey].(map[string]interface{})
+				assert.NotNil(t, timeouts)
+				assert.Contains(t, timeouts, schemav2.TimeoutCreate)
+				assert.Equal(t, timeouts[schemav2.TimeoutCreate], float64(300000000000))
+				assert.NotContains(t, timeouts, schemav2.TimeoutDelete)
+				assert.Contains(t, timeouts, schemav2.TimeoutUpdate)
+			default:
+				assert.FailNow(t, "unexpected SDK version %v", f.SDKVersion())
+			}
+		})
+	}
+}
+
+func getStateAttributes(state shim.InstanceState) (map[string]string, bool) {
+	if tf, ok := shimv1.IsInstanceState(state); ok {
+		return tf.Attributes, true
+	}
+	if tf, ok := shimv2.IsInstanceState(state); ok {
+		return tf.Attributes, true
+	}
+	return nil, false
 }
 
 // Test that MakeTerraformResult reads property values appropriately.
 func TestResultAttributesRoundTrip(t *testing.T) {
-	const resName = "example_resource"
-	res := testTFProvider.ResourcesMap["example_resource"]
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			prov := f.NewTestProvider()
 
-	info := &terraform.InstanceInfo{Type: resName}
-	state := &terraform.InstanceState{ID: "0", Attributes: map[string]string{}, Meta: map[string]interface{}{}}
+			const resName = "example_resource"
+			res := prov.ResourcesMap().Get("example_resource")
 
-	read, err := testTFProvider.Refresh(info, state)
-	assert.NoError(t, err)
-	assert.NotNil(t, read)
+			state := f.NewInstanceState("0")
+			read, err := prov.Refresh(resName, state)
+			assert.NoError(t, err)
+			assert.NotNil(t, read)
 
-	props, err := MakeTerraformResult(read, res.Schema, nil, nil, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, props)
+			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			assert.NoError(t, err)
+			assert.NotNil(t, props)
 
-	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
-	assert.NoError(t, err)
-	assert.NotNil(t, state)
+			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			assert.NoError(t, err)
+			assert.NotNil(t, state)
 
-	// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
-	// attributes produced by MakeTerraformResult, ignore them.
-	for k, v := range state.Attributes {
-		expected, ok := read.Attributes[k]
-		if !ok {
-			assert.True(t, strings.HasSuffix(k, ".%"))
-		} else {
-			assert.Equal(t, expected, v)
-		}
-	}
-}
+			readAttributes, ok := getStateAttributes(read)
+			assert.True(t, ok)
+			stateAttributes, ok := getStateAttributes(state)
+			assert.True(t, ok)
 
-// Test that an unset list still generates a length attribute.
-func TestEmptyListAttribute(t *testing.T) {
-	result, err := makeTerraformAttributesFromInputs(
-		map[string]interface{}{},
-		map[string]*schema.Schema{
-			"list_property": {Type: schema.TypeList, Optional: true},
+			// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
+			// attributes produced by MakeTerraformResult, ignore them.
+			for k, v := range stateAttributes {
+				expected, ok := readAttributes[k]
+				if !ok {
+					assert.True(t, strings.HasSuffix(k, ".%"))
+				} else {
+					assert.Equal(t, expected, v)
+				}
+			}
 		})
-
-	assert.NoError(t, err)
-	assert.Equal(t, result, map[string]string{
-		"list_property.#": "0",
-	})
+	}
 }
 
 func sortDefaultsList(m resource.PropertyMap) {
@@ -810,176 +723,180 @@ func sortDefaultsList(m resource.PropertyMap) {
 }
 
 func TestDefaults(t *testing.T) {
-	// Produce maps with the following properties, and then validate them:
-	//     - aaa string; no defaults, no inputs => empty
-	//     - bbb string; no defaults, input "BBB" => "BBB"
-	//     - ccc string; TF default "CCC", no inputs => "CCC"
-	//     - cc2 string; TF default "CC2" (func), no inputs => "CC2"
-	//     - ddd string; TF default "TFD", input "DDD" => "DDD"
-	//     - dd2 string; TF default "TD2" (func), input "DDD" => "DDD"
-	//     - eee string; PS default "EEE", no inputs => "EEE"
-	//     - ee2 string; PS default "EE2" (func), no inputs => "EE2"
-	//     - fff string; PS default "PSF", input "FFF" => "FFF"
-	//     - ff2 string; PS default "PF2", input "FFF" => "FFF"
-	//     - ggg string; TF default "TFG", PS default "PSG", no inputs => "PSG" (PS wins)
-	//     - hhh string; TF default "TFH", PS default "PSH", input "HHH" => "HHH"
-	//     - iii string; old default "OLI", TF default "TFI", PS default "PSI", no input => "OLD"
-	//     - jjj string: old input "OLJ", no defaults, no input => no merged input
-	//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
-	//     - ll2: old input "OLL", TF default "TFL", no input => "TL2"
-	//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
-	//     - mm2: old input "OLM", PS default "PM2", no input => "PM2"
-	//     - uuu: PS default "PSU", envvars w/o valiues => "PSU"
-	//     - vvv: PS default 42, envvars with values => 1337
-	//     - www: old default "OLW", deprecated, required, no input -> "OLW"
-	//     - xxx: old default "OLX", deprecated, no input => nothing
-	//     - yyy: TF default "TLY", deprecated, no input => nothing
-	err := os.Setenv("PTFV2", "1337")
-	assert.Nil(t, err)
-	asset, err := resource.NewTextAsset("hello")
-	assert.Nil(t, err)
-	tfs := map[string]*schema.Schema{
-		"ccc": {Type: schema.TypeString, Default: "CCC"},
-		"cc2": {Type: schema.TypeString, DefaultFunc: func() (interface{}, error) { return "CC2", nil }},
-		"ddd": {Type: schema.TypeString, Default: "TFD"},
-		"dd2": {Type: schema.TypeString, DefaultFunc: func() (interface{}, error) { return "TD2", nil }},
-		"ggg": {Type: schema.TypeString, Default: "TFG"},
-		"hhh": {Type: schema.TypeString, Default: "TFH"},
-		"iii": {Type: schema.TypeString, Default: "TFI"},
-		"jjj": {Type: schema.TypeString},
-		"lll": {Type: schema.TypeString, Default: "TFL"},
-		"ll2": {Type: schema.TypeString, Default: "TL2"},
-		"mmm": {Type: schema.TypeString},
-		"mm2": {Type: schema.TypeString},
-		"nnn": {Type: schema.TypeString, ConflictsWith: []string{"nn2"}, Default: "NNN"},
-		"nn2": {Type: schema.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
-		"ooo": {Type: schema.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
-		"oo2": {Type: schema.TypeString, ConflictsWith: []string{"ooo"}},
-		"oo3": {Type: schema.TypeString, ConflictsWith: []string{"nonexisting"}},
-		"sss": {Type: schema.TypeString, Removed: "removed"},
-		"ttt": {Type: schema.TypeString, Removed: "removed", Default: "TFD"},
-		"uuu": {Type: schema.TypeString},
-		"vvv": {Type: schema.TypeInt},
-		"www": {Type: schema.TypeString, Deprecated: "deprecated", Required: true},
-		"xxx": {Type: schema.TypeString, Deprecated: "deprecated", Optional: true},
-		"yyy": {Type: schema.TypeString, Default: "TLY", Deprecated: "deprecated", Optional: true},
-		"zzz": {Type: schema.TypeString},
-	}
-	ps := map[string]*SchemaInfo{
-		"eee": {Default: &DefaultInfo{Value: "EEE"}},
-		"ee2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "EE2", nil }}},
-		"fff": {Default: &DefaultInfo{Value: "PSF"}},
-		"ff2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "PF2", nil }}},
-		"ggg": {Default: &DefaultInfo{Value: "PSG"}},
-		"hhh": {Default: &DefaultInfo{Value: "PSH"}},
-		"iii": {Default: &DefaultInfo{Value: "PSI"}},
-		"mmm": {Default: &DefaultInfo{Value: "PSM"}},
-		"mm2": {Default: &DefaultInfo{Value: "PM2"}},
-		"oo2": {Default: &DefaultInfo{Value: "PO2"}},
-		"sss": {Default: &DefaultInfo{Value: "PSS"}},
-		"uuu": {Default: &DefaultInfo{Value: "PSU", EnvVars: []string{"PTFU", "PTFU2"}}},
-		"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
-		"www": {Default: &DefaultInfo{Value: "PSW"}},
-		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
-	}
-	olds := resource.PropertyMap{
-		defaultsKey: resource.NewPropertyValue([]interface{}{
-			"iii", "jjj", "lll", "mmm", "www", "xxx",
-		}),
-		"iii": resource.NewStringProperty("OLI"),
-		"jjj": resource.NewStringProperty("OLJ"),
-		"lll": resource.NewStringProperty("OLL"),
-		"ll2": resource.NewStringProperty("OL2"),
-		"mmm": resource.NewStringProperty("OLM"),
-		"mm2": resource.NewStringProperty("OM2"),
-		"www": resource.NewStringProperty("OLW"),
-		"xxx": resource.NewStringProperty("OLX"),
-	}
-	props := resource.PropertyMap{
-		"bbb": resource.NewStringProperty("BBB"),
-		"ddd": resource.NewStringProperty("DDD"),
-		"dd2": resource.NewStringProperty("DDD"),
-		"fff": resource.NewStringProperty("FFF"),
-		"ff2": resource.NewStringProperty("FFF"),
-		"hhh": resource.NewStringProperty("HHH"),
-		"zzz": resource.NewAssetProperty(asset),
-	}
-	inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
-	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			// Produce maps with the following properties, and then validate them:
+			//     - aaa string; no defaults, no inputs => empty
+			//     - bbb string; no defaults, input "BBB" => "BBB"
+			//     - ccc string; TF default "CCC", no inputs => "CCC"
+			//     - cc2 string; TF default "CC2" (func), no inputs => "CC2"
+			//     - ddd string; TF default "TFD", input "DDD" => "DDD"
+			//     - dd2 string; TF default "TD2" (func), input "DDD" => "DDD"
+			//     - eee string; PS default "EEE", no inputs => "EEE"
+			//     - ee2 string; PS default "EE2" (func), no inputs => "EE2"
+			//     - fff string; PS default "PSF", input "FFF" => "FFF"
+			//     - ff2 string; PS default "PF2", input "FFF" => "FFF"
+			//     - ggg string; TF default "TFG", PS default "PSG", no inputs => "PSG" (PS wins)
+			//     - hhh string; TF default "TFH", PS default "PSH", input "HHH" => "HHH"
+			//     - iii string; old default "OLI", TF default "TFI", PS default "PSI", no input => "OLD"
+			//     - jjj string: old input "OLJ", no defaults, no input => no merged input
+			//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
+			//     - ll2: old input "OLL", TF default "TFL", no input => "TL2"
+			//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
+			//     - mm2: old input "OLM", PS default "PM2", no input => "PM2"
+			//     - uuu: PS default "PSU", envvars w/o valiues => "PSU"
+			//     - vvv: PS default 42, envvars with values => 1337
+			//     - www: old default "OLW", deprecated, required, no input -> "OLW"
+			//     - xxx: old default "OLX", deprecated, no input => nothing
+			//     - yyy: TF default "TLY", deprecated, no input => nothing
+			err := os.Setenv("PTFV2", "1337")
+			assert.Nil(t, err)
+			asset, err := resource.NewTextAsset("hello")
+			assert.Nil(t, err)
+			tfs := f.NewSchemaMap(map[string]*schema.Schema{
+				"ccc": {Type: shim.TypeString, Default: "CCC"},
+				"cc2": {Type: shim.TypeString, DefaultFunc: func() (interface{}, error) { return "CC2", nil }},
+				"ddd": {Type: shim.TypeString, Default: "TFD"},
+				"dd2": {Type: shim.TypeString, DefaultFunc: func() (interface{}, error) { return "TD2", nil }},
+				"ggg": {Type: shim.TypeString, Default: "TFG"},
+				"hhh": {Type: shim.TypeString, Default: "TFH"},
+				"iii": {Type: shim.TypeString, Default: "TFI"},
+				"jjj": {Type: shim.TypeString},
+				"lll": {Type: shim.TypeString, Default: "TFL"},
+				"ll2": {Type: shim.TypeString, Default: "TL2"},
+				"mmm": {Type: shim.TypeString},
+				"mm2": {Type: shim.TypeString},
+				"nnn": {Type: shim.TypeString, ConflictsWith: []string{"nn2"}, Default: "NNN"},
+				"nn2": {Type: shim.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
+				"ooo": {Type: shim.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
+				"oo2": {Type: shim.TypeString, ConflictsWith: []string{"ooo"}},
+				"oo3": {Type: shim.TypeString, ConflictsWith: []string{"nonexisting"}},
+				"sss": {Type: shim.TypeString, Removed: "removed"},
+				"ttt": {Type: shim.TypeString, Removed: "removed", Default: "TFD"},
+				"uuu": {Type: shim.TypeString},
+				"vvv": {Type: shim.TypeInt},
+				"www": {Type: shim.TypeString, Deprecated: "deprecated", Required: true},
+				"xxx": {Type: shim.TypeString, Deprecated: "deprecated", Optional: true},
+				"yyy": {Type: shim.TypeString, Default: "TLY", Deprecated: "deprecated", Optional: true},
+				"zzz": {Type: shim.TypeString},
+			})
+			ps := map[string]*SchemaInfo{
+				"eee": {Default: &DefaultInfo{Value: "EEE"}},
+				"ee2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "EE2", nil }}},
+				"fff": {Default: &DefaultInfo{Value: "PSF"}},
+				"ff2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "PF2", nil }}},
+				"ggg": {Default: &DefaultInfo{Value: "PSG"}},
+				"hhh": {Default: &DefaultInfo{Value: "PSH"}},
+				"iii": {Default: &DefaultInfo{Value: "PSI"}},
+				"mmm": {Default: &DefaultInfo{Value: "PSM"}},
+				"mm2": {Default: &DefaultInfo{Value: "PM2"}},
+				"oo2": {Default: &DefaultInfo{Value: "PO2"}},
+				"sss": {Default: &DefaultInfo{Value: "PSS"}, Removed: true},
+				"uuu": {Default: &DefaultInfo{Value: "PSU", EnvVars: []string{"PTFU", "PTFU2"}}},
+				"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
+				"www": {Default: &DefaultInfo{Value: "PSW"}},
+				"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+			}
+			olds := resource.PropertyMap{
+				defaultsKey: resource.NewPropertyValue([]interface{}{
+					"iii", "jjj", "lll", "mmm", "www", "xxx",
+				}),
+				"iii": resource.NewStringProperty("OLI"),
+				"jjj": resource.NewStringProperty("OLJ"),
+				"lll": resource.NewStringProperty("OLL"),
+				"ll2": resource.NewStringProperty("OL2"),
+				"mmm": resource.NewStringProperty("OLM"),
+				"mm2": resource.NewStringProperty("OM2"),
+				"www": resource.NewStringProperty("OLW"),
+				"xxx": resource.NewStringProperty("OLX"),
+			}
+			props := resource.PropertyMap{
+				"bbb": resource.NewStringProperty("BBB"),
+				"ddd": resource.NewStringProperty("DDD"),
+				"dd2": resource.NewStringProperty("DDD"),
+				"fff": resource.NewStringProperty("FFF"),
+				"ff2": resource.NewStringProperty("FFF"),
+				"hhh": resource.NewStringProperty("HHH"),
+				"zzz": resource.NewAssetProperty(asset),
+			}
+			inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
+			assert.NoError(t, err)
+			outputs := MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
-	// sort the defaults list before the equality test below.
-	sortDefaultsList(outputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{
-			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
-		},
-		"bbb": "BBB",
-		"ccc": "CCC",
-		"cc2": "CC2",
-		"ddd": "DDD",
-		"dd2": "DDD",
-		"eee": "EEE",
-		"ee2": "EE2",
-		"fff": "FFF",
-		"ff2": "FFF",
-		"ggg": "PSG",
-		"hhh": "HHH",
-		"iii": "OLI",
-		"lll": "OLL",
-		"ll2": "TL2",
-		"mmm": "OLM",
-		"mm2": "PM2",
-		"oo2": "PO2",
-		"uuu": "PSU",
-		"vvv": 1337,
-		"www": "OLW",
-		"zzz": asset,
-	}), outputs)
+			// sort the defaults list before the equality test below.
+			sortDefaultsList(outputs)
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				defaultsKey: []interface{}{
+					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+				},
+				"bbb": "BBB",
+				"ccc": "CCC",
+				"cc2": "CC2",
+				"ddd": "DDD",
+				"dd2": "DDD",
+				"eee": "EEE",
+				"ee2": "EE2",
+				"fff": "FFF",
+				"ff2": "FFF",
+				"ggg": "PSG",
+				"hhh": "HHH",
+				"iii": "OLI",
+				"lll": "OLL",
+				"ll2": "TL2",
+				"mmm": "OLM",
+				"mm2": "PM2",
+				"oo2": "PO2",
+				"uuu": "PSU",
+				"vvv": 1337,
+				"www": "OLW",
+				"zzz": asset,
+			}), outputs)
 
-	// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
-	// will be pulled from the old inputs instead of regenerated.
-	delete(olds, defaultsKey)
-	inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
-	assert.NoError(t, err)
-	outputs = MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
+			// will be pulled from the old inputs instead of regenerated.
+			delete(olds, defaultsKey)
+			inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
+			assert.NoError(t, err)
+			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
-	// sort the defaults list before the equality test below.
-	sortDefaultsList(outputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{
-			"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
-		},
-		"bbb": "BBB",
-		"ccc": "CCC",
-		"cc2": "CC2",
-		"ddd": "DDD",
-		"dd2": "DDD",
-		"eee": "EEE",
-		"ee2": "EE2",
-		"fff": "FFF",
-		"ff2": "FFF",
-		"ggg": "PSG",
-		"hhh": "HHH",
-		"iii": "OLI",
-		"lll": "OLL",
-		"ll2": "OL2",
-		"mmm": "OLM",
-		"mm2": "OM2",
-		// nnn/nn2 are NOT set as they conflict with each other
-		// ooo is NOT set as it conflicts with oo2
-		"oo2": "PO2",
-		"uuu": "PSU",
-		"vvv": 1337,
-		"www": "OLW",
-		"zzz": asset,
-	}), outputs)
+			// sort the defaults list before the equality test below.
+			sortDefaultsList(outputs)
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				defaultsKey: []interface{}{
+					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+				},
+				"bbb": "BBB",
+				"ccc": "CCC",
+				"cc2": "CC2",
+				"ddd": "DDD",
+				"dd2": "DDD",
+				"eee": "EEE",
+				"ee2": "EE2",
+				"fff": "FFF",
+				"ff2": "FFF",
+				"ggg": "PSG",
+				"hhh": "HHH",
+				"iii": "OLI",
+				"lll": "OLL",
+				"ll2": "OL2",
+				"mmm": "OLM",
+				"mm2": "OM2",
+				// nnn/nn2 are NOT set as they conflict with each other
+				// ooo is NOT set as it conflicts with oo2
+				"oo2": "PO2",
+				"uuu": "PSU",
+				"vvv": 1337,
+				"www": "OLW",
+				"zzz": asset,
+			}), outputs)
+		})
+	}
 }
 
 func TestComputedAsset(t *testing.T) {
-	tfs := map[string]*schema.Schema{
-		"zzz": {Type: schema.TypeString},
-	}
+	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+		"zzz": {Type: schemav1.TypeString},
+	})
 	ps := map[string]*SchemaInfo{
 		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
 	}
@@ -989,16 +906,16 @@ func TestComputedAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
 	}, outputs)
 }
 
 func TestInvalidAsset(t *testing.T) {
-	tfs := map[string]*schema.Schema{
-		"zzz": {Type: schema.TypeString},
-	}
+	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+		"zzz": {Type: schemav1.TypeString},
+	})
 	ps := map[string]*SchemaInfo{
 		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
 	}
@@ -1008,7 +925,7 @@ func TestInvalidAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}, outputs)
@@ -1016,16 +933,17 @@ func TestInvalidAsset(t *testing.T) {
 
 func TestOverridingTFSchema(t *testing.T) {
 	result := MakeTerraformOutputs(
+		shimv1.NewProvider(testTFProvider),
 		map[string]interface{}{
 			"pulumi_override_tf_string_to_boolean":    MyString("true"),
 			"pulumi_empty_tf_override":                MyString("true"),
 			"tf_empty_string_to_pulumi_bool_override": MyString(""),
 		},
-		map[string]*schema.Schema{
-			"pulumi_override_tf_string_to_boolean":    {Type: schema.TypeString},
-			"pulumi_empty_tf_override":                {Type: schema.TypeString},
-			"tf_empty_string_to_pulumi_bool_override": {Type: schema.TypeString},
-		},
+		shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+			"pulumi_override_tf_string_to_boolean":    {Type: schemav1.TypeString},
+			"pulumi_empty_tf_override":                {Type: schemav1.TypeString},
+			"tf_empty_string_to_pulumi_bool_override": {Type: schemav1.TypeString},
+		}),
 		map[string]*SchemaInfo{
 			"pulumi_override_tf_string_to_boolean": {
 				Type: "boolean",
@@ -1050,9 +968,9 @@ func TestOverridingTFSchema(t *testing.T) {
 }
 
 func TestArchiveAsAsset(t *testing.T) {
-	tfs := map[string]*schema.Schema{
-		"zzz": {Type: schema.TypeString},
-	}
+	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+		"zzz": {Type: schemav1.TypeString},
+	})
 	ps := map[string]*SchemaInfo{
 		"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
 	}
@@ -1069,7 +987,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
 }
 
@@ -1082,7 +1000,7 @@ func TestCustomTransforms(t *testing.T) {
 		"a": 99,
 		"b": false,
 	}
-	tfs := &schema.Schema{Type: schema.TypeString}
+	tfs := shimv1.NewSchema(&schemav1.Schema{Type: schemav1.TypeString})
 	psi := &SchemaInfo{Transform: TransformJSONDocument}
 
 	v1, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs, psi)
@@ -1120,23 +1038,23 @@ func TestCustomTransforms(t *testing.T) {
 
 func TestImporterOnRead(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
+		map[string]*schemav1.Schema{
 			"required_for_import": {
-				Type: schema.TypeString,
+				Type: schemav1.TypeString,
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			importValue := d.Id() + "-imported"
 			mustSet(d, "required_for_import", importValue)
 
-			return []*schema.ResourceData{d}, nil
+			return []*schemav1.ResourceData{d}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1176,21 +1094,21 @@ func TestImporterOnRead(t *testing.T) {
 
 func TestImporterWithNewID(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
+		map[string]*schemav1.Schema{
 			"required_for_import": {
-				Type: schema.TypeString,
+				Type: schemav1.TypeString,
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			d.SetId(d.Id() + "-imported")
-			return []*schema.ResourceData{d}, nil
+			return []*schemav1.ResourceData{d}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1213,26 +1131,26 @@ func TestImporterWithNewID(t *testing.T) {
 
 func TestImporterWithMultipleResourceTypes(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
+		map[string]*schemav1.Schema{
 			"required_for_import": {
-				Type: schema.TypeString,
+				Type: schemav1.TypeString,
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			d.SetId(d.Id() + "-imported")
 
-			d2 := &schema.ResourceData{}
+			d2 := &schemav1.ResourceData{}
 			d2.SetType("other_importable_resource")
 			d2.SetId(d.Id())
 
-			return []*schema.ResourceData{d, d2}, nil
+			return []*schemav1.ResourceData{d, d2}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1255,26 +1173,26 @@ func TestImporterWithMultipleResourceTypes(t *testing.T) {
 
 func TestImporterWithMultipleResources(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
+		map[string]*schemav1.Schema{
 			"required_for_import": {
-				Type: schema.TypeString,
+				Type: schemav1.TypeString,
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			d.SetId(d.Id())
 
-			d2 := &schema.ResourceData{}
+			d2 := &schemav1.ResourceData{}
 			d2.SetType(d.State().Ephemeral.Type)
 			d2.SetId(d.Id() + "-imported")
 
-			return []*schema.ResourceData{d, d2}, nil
+			return []*schemav1.ResourceData{d, d2}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1297,26 +1215,26 @@ func TestImporterWithMultipleResources(t *testing.T) {
 
 func TestImporterWithMultipleNewIDs(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
+		map[string]*schemav1.Schema{
 			"required_for_import": {
-				Type: schema.TypeString,
+				Type: schemav1.TypeString,
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			d.SetId(d.Id() + "-imported")
 
-			d2 := &schema.ResourceData{}
+			d2 := &schemav1.ResourceData{}
 			d2.SetType(d.State().Ephemeral.Type)
 			d2.SetId(d.Id() + "-2")
 
-			return []*schema.ResourceData{d, d2}, nil
+			return []*schemav1.ResourceData{d, d2}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1338,17 +1256,17 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 
 func TestImporterWithNoResource(t *testing.T) {
 
-	tfProvider := makeTestTFProvider(map[string]*schema.Schema{},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	tfProvider := makeTestTFProvider(map[string]*schemav1.Schema{},
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
-			return []*schema.ResourceData{}, nil
+			return []*schemav1.ResourceData{}, nil
 		})
 
 	provider := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1369,21 +1287,21 @@ func TestImporterWithNoResource(t *testing.T) {
 	}
 }
 
-func makeTestTFProvider(schemaMap map[string]*schema.Schema, importer schema.StateFunc) *schema.Provider {
-	return &schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
+func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1.StateFunc) *schemav1.Provider {
+	return &schemav1.Provider{
+		ResourcesMap: map[string]*schemav1.Resource{
 			"importable_resource": {
 				Schema: schemaMap,
-				Importer: &schema.ResourceImporter{
+				Importer: &schemav1.ResourceImporter{
 					State: importer,
 				},
-				Read: func(d *schema.ResourceData, meta interface{}) error {
+				Read: func(d *schemav1.ResourceData, meta interface{}) error {
 					return nil
 				},
-				Create: func(d *schema.ResourceData, meta interface{}) error {
+				Create: func(d *schemav1.ResourceData, meta interface{}) error {
 					return nil
 				},
-				Delete: func(d *schema.ResourceData, meta interface{}) error {
+				Delete: func(d *schemav1.ResourceData, meta interface{}) error {
 					return nil
 				},
 			},
@@ -1393,6 +1311,7 @@ func makeTestTFProvider(schemaMap map[string]*schema.Schema, importer schema.Sta
 
 func TestStringOutputsWithSchema(t *testing.T) {
 	result := MakeTerraformOutputs(
+		shimv1.NewProvider(testTFProvider),
 		map[string]interface{}{
 			"bool_property_value":      "false",
 			"number_property_value":    "42",
@@ -1402,14 +1321,14 @@ func TestStringOutputsWithSchema(t *testing.T) {
 			"not_a_bool_value":         "lmao2",
 			"not_a_float_value":        "lmao3",
 		},
-		map[string]*schema.Schema{
-			"bool_property_value":   {Type: schema.TypeBool},
-			"number_property_value": {Type: schema.TypeInt},
-			"float_property_value":  {Type: schema.TypeFloat},
-			"not_an_int_value":      {Type: schema.TypeInt},
-			"not_a_bool_value":      {Type: schema.TypeBool},
-			"not_a_float_value":     {Type: schema.TypeFloat},
-		},
+		shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+			"bool_property_value":   {Type: schemav1.TypeBool},
+			"number_property_value": {Type: schemav1.TypeInt},
+			"float_property_value":  {Type: schemav1.TypeFloat},
+			"not_an_int_value":      {Type: schemav1.TypeInt},
+			"not_a_bool_value":      {Type: schemav1.TypeBool},
+			"not_a_float_value":     {Type: schemav1.TypeFloat},
+		}),
 		map[string]*SchemaInfo{},
 		nil,   /* assets */
 		false, /* useRawNames */
@@ -1429,41 +1348,41 @@ func TestStringOutputsWithSchema(t *testing.T) {
 
 func TestExtractInputsFromOutputs(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
-			"input_a": {Type: schema.TypeString, Required: true},
-			"input_b": {Type: schema.TypeString, Optional: true},
-			"inout_c": {Type: schema.TypeString, Optional: true, Computed: true},
-			"inout_d": {Type: schema.TypeString, Optional: true, Computed: true, Default: "inout_d_default"},
+		map[string]*schemav1.Schema{
+			"input_a": {Type: schemav1.TypeString, Required: true},
+			"input_b": {Type: schemav1.TypeString, Optional: true},
+			"inout_c": {Type: schemav1.TypeString, Optional: true, Computed: true},
+			"inout_d": {Type: schemav1.TypeString, Optional: true, Computed: true, Default: "inout_d_default"},
 			"input_e": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"field_a": {Type: schema.TypeString, Optional: true, Default: "field_a_default"},
+				Type: schemav1.TypeList,
+				Elem: &schemav1.Resource{
+					Schema: map[string]*schemav1.Schema{
+						"field_a": {Type: schemav1.TypeString, Optional: true, Default: "field_a_default"},
 					},
 				},
 				MaxItems: 1,
 				Optional: true,
 			},
-			"input_f":  {Type: schema.TypeString, Required: true},
-			"output_g": {Type: schema.TypeString},
+			"input_f":  {Type: schemav1.TypeString, Required: true},
+			"output_g": {Type: schemav1.TypeString},
 			"input_h": {
-				Type:     schema.TypeString,
+				Type:     schemav1.TypeString,
 				Required: true,
 				StateFunc: func(v interface{}) string {
 					return strings.ToLower(v.(string))
 				},
 			},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			return []*schema.ResourceData{d}, nil
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
 		})
 
-	set := func(d *schema.ResourceData, key string, value interface{}) {
+	set := func(d *schemav1.ResourceData, key string, value interface{}) {
 		contract.IgnoreError(d.Set(key, value))
 	}
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
-	tfres.Read = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
 		_, ok := d.GetOk(defaultsKey)
 		assert.False(t, ok)
 
@@ -1477,7 +1396,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		set(d, "output_g", "output_g_read")
 		return nil
 	}
-	tfres.Create = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
 		_, ok := d.GetOk(defaultsKey)
 		assert.False(t, ok)
 
@@ -1490,10 +1409,10 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	}
 
 	p := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1692,20 +1611,20 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
-			"input_x": {Type: schema.TypeString, Required: true},
-			"input_y": {Type: schema.TypeString, Required: true},
+		map[string]*schemav1.Schema{
+			"input_x": {Type: schemav1.TypeString, Required: true},
+			"input_y": {Type: schemav1.TypeString, Required: true},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			return []*schema.ResourceData{d}, nil
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
 		})
 
 	// Input Y has a default info pointing to a config key
 	p := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1753,27 +1672,27 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 
 func TestAssetRoundtrip(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
-			"input_a": {Type: schema.TypeString, Required: true},
+		map[string]*schemav1.Schema{
+			"input_a": {Type: schemav1.TypeString, Required: true},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			return []*schema.ResourceData{d}, nil
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
 		})
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
-	tfres.Create = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
 		d.SetId("MyID")
 		return nil
 	}
-	tfres.Update = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Update = func(d *schemav1.ResourceData, meta interface{}) error {
 		return nil
 	}
 
 	p := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
@@ -1850,28 +1769,28 @@ func TestAssetRoundtrip(t *testing.T) {
 
 func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 	tfProvider := makeTestTFProvider(
-		map[string]*schema.Schema{
-			"input_a": {Type: schema.TypeString, Required: true},
-			"input_b": {Type: schema.TypeString, Required: true, ForceNew: true},
+		map[string]*schemav1.Schema{
+			"input_a": {Type: schemav1.TypeString, Required: true},
+			"input_b": {Type: schemav1.TypeString, Required: true, ForceNew: true},
 		},
-		func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			return []*schema.ResourceData{d}, nil
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
 		})
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
-	tfres.Create = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
 		d.SetId("MyID")
 		return nil
 	}
-	tfres.Update = func(d *schema.ResourceData, meta interface{}) error {
+	tfres.Update = func(d *schemav1.ResourceData, meta interface{}) error {
 		return nil
 	}
 
 	p := &Provider{
-		tf: tfProvider,
+		tf: shimv1.NewProvider(tfProvider),
 		resources: map[tokens.Type]Resource{
 			"importableResource": {
-				TF:     tfProvider.ResourcesMap["importable_resource"],
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 				TFName: "importable_resource",
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),

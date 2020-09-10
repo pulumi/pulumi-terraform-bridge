@@ -20,6 +20,15 @@ type inmemoryProvider struct {
 	info   tfbridge.ProviderInfo
 }
 
+func newInMemoryProvider(name string, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
+	// Round-trip the info through a marshaler to normalize the types to the schema shim.
+	return &inmemoryProvider{
+		name:   name,
+		schema: schema,
+		info:   *tfbridge.MarshalProviderInfo(&info).Unmarshal(),
+	}
+}
+
 func (p *inmemoryProvider) Pkg() tokens.Package {
 	return tokens.Package(p.name)
 }

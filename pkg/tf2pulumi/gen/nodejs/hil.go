@@ -148,7 +148,7 @@ func (g *generator) genNestedPropertyAccess(w io.Writer, v *il.BoundVariableAcce
 			}
 		} else {
 			g.Fgenf(w, ".%s", tfbridge.TerraformToPulumiName(e, sch.TF, nil, false))
-			if sch.TF != nil && sch.TF.Optional {
+			if sch.TF != nil && sch.TF.Optional() {
 				g.Fgen(w, "!")
 			}
 		}

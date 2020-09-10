@@ -19,6 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/stretchr/testify/assert"
+
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
 )
 
 func TestPulumiToTerraformName(t *testing.T) {
@@ -59,7 +61,7 @@ func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 		},
 	}
 
-	name := TerraformToPulumiName("list_property", tfs["list_property"], ps["list_property"], false)
+	name := TerraformToPulumiName("list_property", shimv1.NewSchema(tfs["list_property"]), ps["list_property"], false)
 	if name != "listProperty" {
 		t.Errorf("Expected `listProperty`, got %s", name)
 	}
@@ -79,7 +81,7 @@ func TestPulumiToTerraformNameWithSchemaInfoOverride(t *testing.T) {
 		},
 	}
 
-	name := PulumiToTerraformName("listProperty", tfs, ps)
+	name := PulumiToTerraformName("listProperty", shimv1.NewSchemaMap(tfs), ps)
 	if name != "list_property" {
 		t.Errorf("Expected `list_property`, got %s", name)
 	}
@@ -98,11 +100,20 @@ func TestPluralize(t *testing.T) {
 			Type: schema.TypeSet,
 		},
 	}
-	assert.Equal(t, "someThings", TerraformToPulumiName("some_thing", tfs["some_thing"], nil, false))
-	assert.Equal(t, "someOtherThing", TerraformToPulumiName("some_other_thing", tfs["some_other_thing"], nil, false))
-	assert.Equal(t, "allThings", TerraformToPulumiName("all_things", tfs["all_things"], nil, false))
 
-	assert.Equal(t, "some_thing", PulumiToTerraformName("someThings", tfs, nil))
-	assert.Equal(t, "some_other_things", PulumiToTerraformName("someOtherThings", tfs, nil))
-	assert.Equal(t, "all_things", PulumiToTerraformName("allThings", tfs, nil))
+	terraformToPulumiName := func(k string) string {
+		return TerraformToPulumiName(k, shimv1.NewSchema(tfs[k]), nil, false)
+	}
+
+	assert.Equal(t, "someThings", terraformToPulumiName("some_thing"))
+	assert.Equal(t, "someOtherThing", terraformToPulumiName("some_other_thing"))
+	assert.Equal(t, "allThings", terraformToPulumiName("all_things"))
+
+	pulumiToTerraformName := func(k string) string {
+		return PulumiToTerraformName(k, shimv1.NewSchemaMap(tfs), nil)
+	}
+
+	assert.Equal(t, "some_thing", pulumiToTerraformName("someThings"))
+	assert.Equal(t, "some_other_things", pulumiToTerraformName("someOtherThings"))
+	assert.Equal(t, "all_things", pulumiToTerraformName("allThings"))
 }

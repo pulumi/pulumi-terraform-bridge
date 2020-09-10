@@ -16,7 +16,6 @@ package nodejs
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
@@ -48,8 +47,6 @@ func (g *generator) lowerToLiterals(prop il.BoundNode) (il.BoundNode, error) {
 				path = rel
 			}
 
-			// Normalize the file separator.
-			path = strings.Join(filepath.SplitList(path), "/")
 			return &il.BoundLiteral{ExprType: il.TypeString, Value: path}, nil
 		case config.PathValueRoot:
 			// NOTE: this might not be the most useful or correct value. Might want Node's __directory or similar.
@@ -68,7 +65,7 @@ func (g *generator) canLiftVariableAccess(v *il.BoundVariableAccess) bool {
 	sch, elements := g.getNestedPropertyAccessElementInfo(v)
 
 	for _, e := range elements {
-		if sch.TF != nil && sch.TF.Optional {
+		if sch.TF != nil && sch.TF.Optional() {
 			return false
 		}
 		sch = sch.PropertySchemas(e)

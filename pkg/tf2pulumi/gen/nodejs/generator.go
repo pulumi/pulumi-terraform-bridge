@@ -23,7 +23,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 // Options defines parameters that are specific to the NodeJS code generator.
@@ -143,7 +143,7 @@ func cleanName(name string) string {
 }
 
 // tsName returns the Pulumi name for the property with the given Terraform name and schemas.
-func tsName(tfName string, tfSchema *schema.Schema, schemaInfo *tfbridge.SchemaInfo, isObjectKey bool) string {
+func tsName(tfName string, tfSchema shim.Schema, schemaInfo *tfbridge.SchemaInfo, isObjectKey bool) string {
 	if schemaInfo != nil && schemaInfo.Name != "" {
 		return schemaInfo.Name
 	}

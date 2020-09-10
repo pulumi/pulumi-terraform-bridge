@@ -23,22 +23,18 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/hcl/token"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config/module"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
 )
 
 // TODO
 // - provisioners
-
-// NOTE: this only exists to temporarily decouple tf2pulumi from the definition of *tfbridge.SchemaInfo.P.
-func tfProvider(p interface{}) *schema.Provider {
-	return p.(*schema.Provider)
-}
 
 // A Graph is the analyzed form of the configuration for a single Terraform module.
 type Graph struct {
@@ -289,23 +285,23 @@ func (r *ResourceNode) Schemas() Schemas {
 	switch {
 	case r.Provider == nil || r.Provider.Info == nil:
 		return Schemas{
-			TFRes: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"id": {Type: schema.TypeString},
+			TFRes: (&schema.Resource{
+				Schema: schema.SchemaMap{
+					"id": (&schema.Schema{Type: shim.TypeString}).Shim(),
 				},
-			},
+			}).Shim(),
 		}
 	case !r.IsDataSource:
 		schemaInfo := &tfbridge.SchemaInfo{}
 		if resInfo, ok := r.Provider.Info.Resources[r.Type]; ok {
 			schemaInfo.Fields = resInfo.Fields
 		}
-		tf := tfProvider(r.Provider.Info.P).ResourcesMap[r.Type]
+		tf := r.Provider.Info.P.ResourcesMap().Get(r.Type)
 		if tf == nil {
-			tf = &schema.Resource{Schema: map[string]*schema.Schema{}}
+			tf = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
 		}
-		if _, ok := tf.Schema["id"]; !ok {
-			tf.Schema["id"] = &schema.Schema{Type: schema.TypeString}
+		if _, ok := tf.Schema().GetOk("id"); !ok {
+			tf.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
 		}
 		return Schemas{
 			TFRes:  tf,
@@ -316,12 +312,12 @@ func (r *ResourceNode) Schemas() Schemas {
 		if dsInfo, ok := r.Provider.Info.DataSources[r.Type]; ok {
 			schemaInfo.Fields = dsInfo.Fields
 		}
-		tf := tfProvider(r.Provider.Info.P).DataSourcesMap[r.Type]
+		tf := r.Provider.Info.P.DataSourcesMap().Get(r.Type)
 		if tf == nil {
-			tf = &schema.Resource{Schema: map[string]*schema.Schema{}}
+			tf = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
 		}
-		if _, ok := tf.Schema["id"]; !ok {
-			tf.Schema["id"] = &schema.Schema{Type: schema.TypeString}
+		if _, ok := tf.Schema().GetOk("id"); !ok {
+			tf.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
 		}
 		return Schemas{
 			TFRes:  tf,
@@ -713,9 +709,9 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 			}
 
 			ignoreChanges = ignoreChanges[:0]
-			for k, v := range schemas.TFRes.Schema {
+			schemas.TFRes.Schema().Range(func(k string, v shim.Schema) bool {
 				if k == "id" {
-					continue
+					return true
 				}
 
 				var p *tfbridge.SchemaInfo
@@ -723,7 +719,8 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 					p = schemas.Pulumi.Fields[k]
 				}
 				ignoreChanges = append(ignoreChanges, tfbridge.TerraformToPulumiName(k, v, p, false))
-			}
+				return true
+			})
 			sort.Strings(ignoreChanges)
 			return ignoreChanges
 		}
@@ -735,7 +732,7 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 		for i, element := range elements {
 			// For the last element, we only need a prefix match. Take care of that here.
 			if i == len(elements)-1 && elemSchemas.TFRes != nil {
-				for k, v := range elemSchemas.TFRes.Schema {
+				elemSchemas.TFRes.Schema().Range(func(k string, v shim.Schema) bool {
 					var p *tfbridge.SchemaInfo
 					if schemas.Pulumi != nil {
 						p = schemas.Pulumi.Fields[k]
@@ -748,7 +745,8 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 							ignoreChanges = append(ignoreChanges, path+"."+elementKey)
 						}
 					}
-				}
+					return true
+				})
 			} else {
 				isListElement := elemSchemas.Type().IsList()
 				projectListElement := isListElement && tfbridge.IsMaxItemsOne(elemSchemas.TF, elemSchemas.Pulumi)
