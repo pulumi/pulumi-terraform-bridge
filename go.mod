@@ -11,7 +11,9 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.0.2
 	github.com/mitchellh/copystructure v1.0.0
+	github.com/mitchellh/go-testing-interface v1.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/pkg/v2 v2.10.0
 	github.com/pulumi/pulumi/sdk/v2 v2.10.0
@@ -20,8 +22,10 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/mod v0.3.0
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
-	google.golang.org/grpc v1.29.1
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	google.golang.org/grpc v1.30.0
 )
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
+
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20200910230100-328eb4ff41df
