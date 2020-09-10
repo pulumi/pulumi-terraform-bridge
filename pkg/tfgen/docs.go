@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -203,7 +203,7 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 // checkIfNewDocsExist checks if the new docs root exists
 func checkIfNewDocsExist(repo string) bool {
 	// Check if the new docs path exists
-	newDocsRoot := path.Join(repo, "docs")
+	newDocsRoot := filepath.Join(repo, "docs")
 	_, err := os.Stat(newDocsRoot)
 	return !os.IsNotExist(err)
 }
@@ -216,12 +216,12 @@ func getDocsPath(repo string, kind DocKind) string {
 	if !newDocsExist {
 		// If the new path doesn't exist, use the old docs path.
 		kindString := string([]rune(kind)[0]) // We only want the first letter because the old path uses "r" and "d"
-		return path.Join(repo, "website", "docs", kindString)
+		return filepath.Join(repo, "website", "docs", kindString)
 	}
 
 	// Otherwise use the new location path.
 	kindString := string(kind)
-	return path.Join(repo, "docs", kindString)
+	return filepath.Join(repo, "docs", kindString)
 }
 
 // readMarkdown searches all possible locations for the markdown content
@@ -229,7 +229,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 	locationPrefix := getDocsPath(repo, kind)
 
 	for _, name := range possibleLocations {
-		location := path.Join(locationPrefix, name)
+		location := filepath.Join(locationPrefix, name)
 		markdownBytes, err := ioutil.ReadFile(location)
 		if err == nil {
 			return markdownBytes, name, true
