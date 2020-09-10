@@ -435,7 +435,7 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 }
 
 func TestTerraformAttributes(t *testing.T) {
-	result, err := MakeTerraformAttributesFromInputs(
+	result, err := makeTerraformAttributesFromInputs(
 		map[string]interface{}{
 			"nil_property_value":    nil,
 			"bool_property_value":   false,
@@ -528,7 +528,7 @@ func TestTerraformAttributes(t *testing.T) {
 	})
 
 	// MapFieldWriter has issues with values of TypeMap. Build a schema without such values s.t. we can test
-	// MakeTerraformAttributes against the output of MapFieldWriter.
+	// MakeTerraformState against the output of MapFieldWriter.
 	sharedSchema := map[string]*schema.Schema{
 		"bool_property_value":   {Type: schema.TypeBool},
 		"number_property_value": {Type: schema.TypeInt},
@@ -586,8 +586,8 @@ func TestTerraformAttributes(t *testing.T) {
 	}
 	expected := writer.Map()
 
-	// Build the same using MakeTerraformAttributesFromInputs.
-	result, err = MakeTerraformAttributesFromInputs(sharedInputs, sharedSchema)
+	// Build the same using makeTerraformAttributesFromInputs.
+	result, err = makeTerraformAttributesFromInputs(sharedInputs, sharedSchema)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
@@ -607,14 +607,12 @@ func TestMetaProperties(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
-	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
 
-	state.Attributes, state.Meta = attrs, meta
 	read2, err := testTFProvider.Refresh(info, state)
 	assert.NoError(t, err)
 	assert.NotNil(t, read2)
@@ -623,12 +621,11 @@ func TestMetaProperties(t *testing.T) {
 	// Delete the resource's meta-property and ensure that we re-populate its schema version.
 	delete(props, metaKey)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
@@ -658,12 +655,11 @@ func TestMetaProperties(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	assert.Contains(t, meta, schema.TimeoutKey)
+	assert.Contains(t, state.Meta, schema.TimeoutKey)
 }
 
 func TestInjectingCustomTimeouts(t *testing.T) {
@@ -680,14 +676,12 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
-	attrs, meta, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
 
-	state.Attributes, state.Meta = attrs, meta
 	read2, err := testTFProvider.Refresh(info, state)
 	assert.NoError(t, err)
 	assert.NotNil(t, read2)
@@ -696,12 +690,11 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	// Delete the resource's meta-property and ensure that we re-populate its schema version.
 	delete(props, metaKey)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	assert.Equal(t, strconv.Itoa(res.SchemaVersion), meta["schema_version"])
+	assert.Equal(t, strconv.Itoa(res.SchemaVersion), state.Meta["schema_version"])
 
 	// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 	read2.Meta = map[string]interface{}{}
@@ -732,12 +725,11 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
-	attrs, meta, err = MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
-	assert.NotNil(t, meta)
+	assert.NotNil(t, state)
 
-	timeouts := meta[schema.TimeoutKey].(map[string]interface{})
+	timeouts := state.Meta[schema.TimeoutKey].(map[string]interface{})
 	assert.NotNil(t, timeouts)
 	assert.Contains(t, timeouts, schema.TimeoutCreate)
 	assert.Equal(t, timeouts[schema.TimeoutCreate], float64(300000000000))
@@ -761,13 +753,13 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 
-	attrs, _, err := MakeTerraformAttributes(res, props, res.Schema, nil, nil, false)
+	state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID, props)
 	assert.NoError(t, err)
-	assert.NotNil(t, attrs)
+	assert.NotNil(t, state)
 
 	// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
 	// attributes produced by MakeTerraformResult, ignore them.
-	for k, v := range attrs {
+	for k, v := range state.Attributes {
 		expected, ok := read.Attributes[k]
 		if !ok {
 			assert.True(t, strings.HasSuffix(k, ".%"))
@@ -779,7 +771,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 
 // Test that an unset list still generates a length attribute.
 func TestEmptyListAttribute(t *testing.T) {
-	result, err := MakeTerraformAttributesFromInputs(
+	result, err := makeTerraformAttributesFromInputs(
 		map[string]interface{}{},
 		map[string]*schema.Schema{
 			"list_property": {Type: schema.TypeList, Optional: true},

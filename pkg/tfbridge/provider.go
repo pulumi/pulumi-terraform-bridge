@@ -69,7 +69,7 @@ type Resource struct {
 // resource ID, and returns a replacement input map if any resources are matched. A nil map
 // with no error should be interpreted by the caller as meaning the resource does not exist,
 // but there were no errors in determining this.
-func (res *Resource) runTerraformImporter(id resource.ID, provider *Provider) (resource.ID, map[string]string, error) {
+func (res *Resource) runTerraformImporter(id string, provider *Provider) (string, map[string]string, error) {
 	contract.Assert(res.TF.Importer != nil)
 
 	// Prepare a Terraform ResourceData for the importer
@@ -100,7 +100,7 @@ func (res *Resource) runTerraformImporter(id resource.ID, provider *Provider) (r
 
 	// Allow constructing an error in the case that we have a nil InstanceState returned from
 	// Terraform, which is always a programming error.
-	makeNilStateError := func(badResourceID resource.ID) error {
+	makeNilStateError := func(badResourceID string) error {
 		return errors.Errorf("importer for %s returned a empty resource state. This is always "+
 			"the result of a bug in the resource provider - please report this "+
 			"as a bug in the Pulumi provider repository.", badResourceID)
@@ -149,7 +149,7 @@ func (res *Resource) runTerraformImporter(id resource.ID, provider *Provider) (r
 	if primaryInstanceState == nil {
 		return "", nil, errors.Errorf("importer for %s returned no matching resources", id)
 	}
-	return resource.ID(primaryInstanceState.ID), primaryInstanceState.Attributes, nil
+	return primaryInstanceState.ID, primaryInstanceState.Attributes, nil
 }
 
 // DataSource wraps both the Terraform data source (resource) type info plus the overlay resource info.
@@ -675,16 +675,15 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-	attrs, meta, err := MakeTerraformAttributes(res.TF, olds, res.TF.Schema, res.Schema.Fields, p.configValues, false)
+	state, err := MakeTerraformState(res, req.GetId(), olds)
 	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
+		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
 		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
@@ -779,7 +778,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	info := &terraform.InstanceInfo{Type: res.TFName}
 	state := &terraform.InstanceState{Meta: make(map[string]interface{})}
 	assets := make(AssetTable)
-	config, err := MakeTerraformConfigFromRPC(
+	config, err := UnmarshalTerraformConfig(
 		nil, req.GetProperties(), res.TF.Schema, res.Schema.Fields, assets,
 		p.configValues, true, false, fmt.Sprintf("%s.news", label))
 	if err != nil {
@@ -849,7 +848,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Errorf("unrecognized resource type (Read): %s", t)
 	}
 
-	id := resource.ID(req.GetId())
+	id := req.GetId()
 	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -859,11 +858,9 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	attrs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, false, false, fmt.Sprintf("%s.state", label))
+	state, err := UnmarshalTerraformState(res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
 	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's property state", urn)
+		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
 
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
@@ -871,12 +868,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if !isRefresh && res.TF.Importer != nil {
 		glog.V(9).Infof("%s has TF Importer", res.TFName)
 
-		id, attrs, err = res.runTerraformImporter(id, p)
+		state.ID, state.Attributes, err = res.runTerraformImporter(id, p)
 		if err != nil {
 			// Pass through any error running the importer
 			return nil, err
 		}
-		if attrs == nil {
+		if state.Attributes == nil {
 			// The resource is gone (or never existed). Return a gRPC response with no
 			// resource ID set to indicate this.
 			return &pulumirpc.ReadResponse{}, nil
@@ -884,7 +881,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	}
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: string(id), Attributes: attrs, Meta: meta}
 	newstate, err := p.tf.Refresh(info, state)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
@@ -935,17 +931,16 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: false})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), SkipNulls: true})
 	if err != nil {
 		return nil, err
 	}
-	attrs, meta, err := MakeTerraformAttributes(res.TF, olds, res.TF.Schema, res.Schema.Fields, p.configValues, false)
+	state, err := MakeTerraformState(res, req.GetId(), olds)
 	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
+		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
 
 	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
 	assets := make(AssetTable)
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
@@ -1027,22 +1022,18 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	glog.V(9).Infof("%s executing", label)
 
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	attrs, meta, err := MakeTerraformAttributesFromRPC(
-		res.TF, req.GetProperties(), res.TF.Schema, res.Schema.Fields,
-		p.configValues, false, false, label)
+	state, err := UnmarshalTerraformState(res, req.GetId(), req.GetProperties(), label)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a new state, with no diff, that is missing an ID.  Terraform will interpret this as a create operation.
-	info := &terraform.InstanceInfo{Type: res.TFName}
-	state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
-
+	// Create a new destroy diff.
 	diff := &terraform.InstanceDiff{Destroy: true}
 	if req.Timeout != 0 {
 		setTimeout(diff, req.Timeout, schema.TimeoutDelete)
 	}
 
+	info := &terraform.InstanceInfo{Type: res.TFName}
 	if _, err := p.tf.Apply(info, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
