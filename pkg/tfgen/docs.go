@@ -203,8 +203,8 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 // checkIfNewDocsExist checks if the new docs root exists
 func checkIfNewDocsExist(repo string) bool {
 	// Check if the new docs path exists
-	newDocsRoot := filepath.Join(repo, "docs")
-	_, err := os.Stat(newDocsRoot)
+	newDocsPath := filepath.Join(repo, "docs", "resources")
+	_, err := os.Stat(newDocsPath)
 	return !os.IsNotExist(err)
 }
 
