@@ -76,9 +76,6 @@ type entityDocs struct {
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
-
-	// URL is the source documentation URL page
-	URL string
 }
 
 // DocKind indicates what kind of entity's documentation is being requested.
@@ -302,10 +299,6 @@ var (
 
 	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
-	providerURL    = "https://github.com/%s/terraform-provider-%s"
-	docsBaseURL    = providerURL + "/blob/master/website/docs"
-	docsDetailsURL = docsBaseURL + "/%s/%s"
-
 	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/%[3]s/terraform-provider-%[2]s)
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
 > first check the [` + "`pulumi/pulumi-%[1]s`" + ` repo](https://github.com/pulumi/pulumi-%[1]s/issues); however, if that doesn't turn up anything,
@@ -333,21 +326,6 @@ func groupLines(lines []string, sep string) [][]string {
 // splitGroupLines splits and groups a string, s, by a given separator, sep.
 func splitGroupLines(s, sep string) [][]string {
 	return groupLines(strings.Split(s, "\n"), sep)
-}
-
-// getDocsBaseURL gets the base URL for a given provider's documentation source.
-func getDocsBaseURL(org, p string) string {
-	return fmt.Sprintf(docsBaseURL, org, p)
-}
-
-// getDocsDetailsURL gets the detailed resource or data source documentation source.
-func getDocsDetailsURL(org, p, kind, markdownFileName string) string {
-	return fmt.Sprintf(docsDetailsURL, org, p, kind, markdownFileName)
-}
-
-// getDocsIndexURL gets the given provider's documentation index page's source URL.
-func getDocsIndexURL(org, p string) string {
-	return getDocsBaseURL(org, p) + "/index.html.markdown"
 }
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
@@ -388,20 +366,9 @@ const (
 )
 
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
-	var url string
-	if p.info != nil {
-		if docInfo := p.info.GetDocs(); docInfo != nil {
-			url = docInfo.MarkdownURL
-		}
-	}
-	if url == "" {
-		getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName)
-	}
-
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
-		URL:        url,
 	}
 
 	// Replace any Windows-style newlines.
@@ -1072,7 +1039,6 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
-		URL:         doc.URL,
 	}, elidedDoc
 
 }

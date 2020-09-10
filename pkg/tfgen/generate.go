@@ -395,7 +395,7 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 		}
 
 		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", "", out, entityDocs); v != nil {
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -522,7 +522,6 @@ type resourceType struct {
 	statet     *propertyType // output properties (all optional).
 	schema     shim.Resource
 	info       *tfbridge.ResourceInfo
-	docURL     string
 	entityDocs entityDocs // parsed docs.
 }
 
@@ -542,7 +541,6 @@ func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, i
 		schema:     schema,
 		info:       info,
 		reqprops:   make(map[string]bool),
-		docURL:     entityDocs.URL,
 		entityDocs: entityDocs,
 	}
 }
@@ -835,8 +833,7 @@ func (g *Generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
-		docURL := getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), docURL, true /*out*/, entityDocs{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -852,7 +849,7 @@ func (g *Generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", "", true /*out*/, entityDocs{}); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -947,7 +944,6 @@ func (g *Generator) gatherResource(rawname string,
 				"construction to achieve fine-grained programmatic control over provider settings. See the\n"+
 				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
-		entityDocs.URL = getDocsIndexURL(g.info.GetGitHubOrg(), g.info.Name)
 	}
 
 	// Create an empty module and associated resource type.
@@ -972,7 +968,7 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", true /*out*/, entityDocs)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -980,7 +976,7 @@ func (g *Generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -990,7 +986,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, "", false /*out*/, entityDocs)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -1092,7 +1088,6 @@ func (g *Generator) gatherDataSource(rawname string,
 		reqargs:    make(map[string]bool),
 		schema:     ds,
 		info:       info,
-		docURL:     entityDocs.URL,
 		entityDocs: entityDocs,
 	}
 
@@ -1107,7 +1102,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Remember detailed information for every input arg (we will use it below).
 		if input(sch, cust) {
 			doc := getDescriptionFromParsedDocs(entityDocs, arg)
-			argvar := propertyVariable(arg, sch, cust, doc, "", "", false /*out*/, entityDocs)
+			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1117,7 +1112,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", "", true /*out*/, entityDocs))
+			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -1127,7 +1122,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
 		fun.rets = append(fun.rets,
-			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, "", true /*out*/, entityDocs))
+			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1245,7 +1240,7 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, docURL string, out bool, entityDocs entityDocs) *variable {
+	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -1254,7 +1249,6 @@ func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 			rawdoc: rawdoc,
 			schema: sch,
 			info:   info,
-			docURL: docURL,
 			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
 		}
 	}
