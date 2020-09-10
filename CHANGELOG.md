@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support alternative documentation path.
+  [#256](https://github.com/pulumi/pulumi-terraform-bridge/pull/256)
+
 - Add UsesIOClasses field to PythonInfo.
   [#241](https://github.com/pulumi/pulumi-terraform-bridge/pull/241)
 
