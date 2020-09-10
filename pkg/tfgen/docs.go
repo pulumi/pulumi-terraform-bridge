@@ -87,9 +87,9 @@ type DocKind string
 
 const (
 	// ResourceDocs indicates documentation pertaining to resource entities.
-	ResourceDocs DocKind = "r"
+	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
-	DataSourceDocs DocKind = "d"
+	DataSourceDocs DocKind = "data-sources"
 )
 
 func getRepoPath(org string, provider string, providerModuleVersion string) (string, error) {
@@ -130,10 +130,12 @@ func getMarkdownDetails(g *generator, org string, provider string, resourcePrefi
 		withoutPackageName(resourcePrefix, rawname) + ".html.markdown",
 		withoutPackageName(resourcePrefix, rawname) + ".markdown",
 		withoutPackageName(resourcePrefix, rawname) + ".html.md",
+		withoutPackageName(resourcePrefix, rawname) + ".md",
 		// But for some providers, the prefix is included in the name of the doc file
 		rawname + ".html.markdown",
 		rawname + ".markdown",
 		rawname + ".html.md",
+		rawname + ".md",
 	}
 
 	var docinfo *tfbridge.DocInfo
@@ -198,10 +200,36 @@ func getDocsForProvider(g *generator, org string, provider string, resourcePrefi
 	return doc, nil
 }
 
+// checkIfNewDocsExist checks if the new docs root exists
+func checkIfNewDocsExist(repo string) bool {
+	// Check if the new docs path exists
+	newDocsRoot := path.Join(repo, "docs")
+	_, err := os.Stat(newDocsRoot)
+	return !os.IsNotExist(err)
+}
+
+// getDocsPath finds the correct docs path for the repo/kind
+func getDocsPath(repo string, kind DocKind) string {
+	// Check if the new docs path exists
+	newDocsExist := checkIfNewDocsExist(repo)
+
+	if !newDocsExist {
+		// If the new path doesn't exist, use the old docs path.
+		kindString := string([]rune(kind)[0]) // We only want the first letter because the old path uses "r" and "d"
+		return path.Join(repo, "website", "docs", kindString)
+	}
+
+	// Otherwise use the new location path.
+	kindString := string(kind)
+	return path.Join(repo, "docs", kindString)
+}
+
 // readMarkdown searches all possible locations for the markdown content
 func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, string, bool) {
+	locationPrefix := getDocsPath(repo, kind)
+
 	for _, name := range possibleLocations {
-		location := path.Join(repo, "website", "docs", string(kind), name)
+		location := path.Join(locationPrefix, name)
 		markdownBytes, err := ioutil.ReadFile(location)
 		if err == nil {
 			return markdownBytes, name, true
