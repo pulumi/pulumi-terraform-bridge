@@ -50,7 +50,7 @@ func diffTest(t *testing.T, sch map[string]*schema.Schema, info map[string]*Sche
 	tfState, err := MakeTerraformState(r, "id", stateMap)
 	assert.NoError(t, err)
 
-	config, err := MakeTerraformConfig(nil, inputsMap, sch, info, nil, resource.PropertyMap{}, false)
+	config, _, err := MakeTerraformConfig(nil, inputsMap, sch, info)
 	assert.NoError(t, err)
 
 	tfDiff, err := provider.SimpleDiff(&terraform.InstanceInfo{Type: "resource"}, tfState, config)
