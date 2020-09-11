@@ -1,9 +1,14 @@
+run:
+  skip-dirs:
+    - pkg/tf2pulumi/internal/addrs
+    - pkg/tf2pulumi/internal/config
+    - pkg/tf2pulumi/internal/configs
+
 linters:
   enable-all: false
   enable:
     - deadcode
     - errcheck
-    - goconst
     - gofmt
     - golint
     - gosec
