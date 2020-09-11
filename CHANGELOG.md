@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support terraform-plugin-sdk/v2. This is an API breaking change.
+  [#264](https://github.com/pulumi/pulumi-terraform-bridge/pull/264)
+
 - Support alternative documentation path.
   [#256](https://github.com/pulumi/pulumi-terraform-bridge/pull/256)
 
