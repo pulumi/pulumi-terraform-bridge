@@ -13,9 +13,9 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.9.3-0.20200909052235-d0ba9fbdcde1
-	github.com/pulumi/pulumi/sdk/v2 v2.9.3-0.20200909052235-d0ba9fbdcde1
-	github.com/pulumi/tf2pulumi v0.8.1-0.20200701212620-1e7538fb9a34
+	github.com/pulumi/pulumi/pkg/v2 v2.10.0
+	github.com/pulumi/pulumi/sdk/v2 v2.10.0
+	github.com/pulumi/tf2pulumi v0.9.0
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
