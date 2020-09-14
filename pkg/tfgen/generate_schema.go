@@ -26,13 +26,13 @@ import (
 	"strings"
 
 	"github.com/gedex/inflector"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 type schemaGenerator struct {
@@ -158,7 +158,7 @@ func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix 
 		// Due to bugs in earlier versions of the bridge, we want to keep the Python code generator from case-mapping
 		// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
 		// https://github.com/pulumi/pulumi/issues/3151 for more details.
-		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type == schema.TypeMap
+		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type() == shim.TypeMap
 		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, mapCase)
 	}
 }

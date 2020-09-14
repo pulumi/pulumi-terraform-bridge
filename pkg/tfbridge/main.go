@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -45,7 +43,7 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	}
 
 	// Initialize Terraform logging.
-	logging.SetOutput()
+	prov.P.InitLogging()
 
 	if err := Serve(pkg, version, prov, pulumiSchema); err != nil {
 		cmdutil.ExitError(err.Error())

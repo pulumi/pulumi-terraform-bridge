@@ -19,11 +19,11 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/hil"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
 // propertyBinder is used to convert Terraform configuration properties into a form better suited for static analysis
@@ -47,7 +47,7 @@ func (b *propertyBinder) bindListProperty(path string, s reflect.Value, sch Sche
 
 	// If this is a max-single-element list that we intend to project as its element, just bind its element and return.
 	var projectListElement bool
-	if sch.TF != nil && sch.TF.Type == schema.TypeMap {
+	if sch.TF != nil && sch.TF.Type() == shim.TypeMap {
 		elemSchemas, projectListElement = sch, true
 	} else {
 		projectListElement = tfbridge.IsMaxItemsOne(sch.TF, sch.Pulumi)

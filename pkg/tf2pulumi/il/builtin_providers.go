@@ -20,6 +20,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-http/http"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
 )
 
 // builtinProviderInfo provides a static map from provider name to propvider information for the small set of providers
@@ -27,8 +28,8 @@ import (
 // archive and http providers. Resources from the former provider are translated as Pulumi assets; resources/data
 // sources from the latter should be translated as calls to the target langauge's appropriate HTTP client libraries.
 var builtinProviderInfo = map[string]*tfbridge.ProviderInfo{
-	"archive": {
-		P:      archive.Provider().(*schema.Provider),
+	"archive": tfbridge.MarshalProviderInfo(&tfbridge.ProviderInfo{
+		P:      shimv1.NewProvider(archive.Provider().(*schema.Provider)),
 		Config: map[string]*tfbridge.SchemaInfo{},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"archive_file": {Tok: "archive:archive:archiveFile"},
@@ -36,13 +37,13 @@ var builtinProviderInfo = map[string]*tfbridge.ProviderInfo{
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"archive_file": {Tok: "archive:archive/archiveFile:ArchiveFile"},
 		},
-	},
-	"http": {
-		P:      http.Provider().(*schema.Provider),
+	}).Unmarshal(),
+	"http": tfbridge.MarshalProviderInfo(&tfbridge.ProviderInfo{
+		P:      shimv1.NewProvider(http.Provider().(*schema.Provider)),
 		Config: map[string]*tfbridge.SchemaInfo{},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"http": {Tok: "http:http:http"},
 		},
 		Resources: map[string]*tfbridge.ResourceInfo{},
-	},
+	}).Unmarshal(),
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
@@ -22,12 +21,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/addrs"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/configs"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
 )
-
-// NOTE: this only exists to temporarily decouple tf2pulumi from the definition of *tfbridge.SchemaInfo.P.
-func tfProvider(p interface{}) *schema.Provider {
-	return p.(*schema.Provider)
-}
 
 func parseFile(parser *syntax.Parser, fs afero.Fs, path string) error {
 	f, err := fs.Open(path)
@@ -627,9 +623,9 @@ func (b *tf12binder) annotateExpressionsWithSchemas(item model.BodyItem) {
 								var schemas il.Schemas
 								switch {
 								case s.TF != nil:
-									schemas.TF = &schema.Schema{Type: schema.TypeList, Elem: s.TF}
+									schemas.TF = (&schema.Schema{Type: shim.TypeList, Elem: s.TF}).Shim()
 								case s.TFRes != nil:
-									schemas.TF = &schema.Schema{Type: schema.TypeList, Elem: s.TFRes}
+									schemas.TF = (&schema.Schema{Type: shim.TypeList, Elem: s.TFRes}).Shim()
 								}
 
 								if s.Pulumi != nil {
@@ -1119,7 +1115,7 @@ func (rr *resourceRewriter) rewriteObjectKeys(expr model.Expression) {
 	switch expr := expr.(type) {
 	case *model.ObjectConsExpression:
 		schemas := rr.schemas()
-		useExactKeys := schemas.TF != nil && schemas.TF.Type == schema.TypeMap
+		useExactKeys := schemas.TF != nil && schemas.TF.Type() == shim.TypeMap
 
 		for _, item := range expr.Items {
 			// Ignore non-literal keys
@@ -1714,7 +1710,7 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 			token = string(resInfo.Tok)
 			schemaInfo.Fields = resInfo.Fields
 		}
-		schemas.TFRes = tfProvider(info.P).ResourcesMap[addr.Type]
+		schemas.TFRes = info.P.ResourcesMap().Get(addr.Type)
 		schemas.Pulumi = schemaInfo
 	} else {
 		schemaInfo := &tfbridge.SchemaInfo{}
@@ -1722,13 +1718,13 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 			token = string(dsInfo.Tok)
 			schemaInfo.Fields = dsInfo.Fields
 		}
-		schemas.TFRes = tfProvider(info.P).DataSourcesMap[addr.Type]
+		schemas.TFRes = info.P.DataSourcesMap().Get(addr.Type)
 		schemas.Pulumi = schemaInfo
 	}
 	if schemas.TFRes == nil {
-		schemas.TFRes = &schema.Resource{Schema: map[string]*schema.Schema{}}
+		schemas.TFRes = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
 	}
-	schemas.TFRes.Schema["id"] = &schema.Schema{Type: schema.TypeString, Computed: true}
+	schemas.TFRes.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
 
 	return token, schemas, schemas.ModelType(), nil
 }
@@ -1755,9 +1751,9 @@ func (b *tf12binder) providerType(providerName string,
 		Pulumi: &tfbridge.SchemaInfo{
 			Fields: info.Config,
 		},
-		TFRes: &schema.Resource{
-			Schema: tfProvider(info.P).Schema,
-		},
+		TFRes: (&schema.Resource{
+			Schema: info.P.Schema(),
+		}).Shim(),
 	}
 	return tok, schemas, schemas.ModelType(), nil
 }
