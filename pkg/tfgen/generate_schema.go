@@ -203,7 +203,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		PluginDownloadURL: g.info.PluginDownloadURL,
 		Resources:         map[string]pschema.ResourceSpec{},
 		Functions:         map[string]pschema.FunctionSpec{},
-		Types:             map[string]pschema.ObjectTypeSpec{},
+		Types:             map[string]pschema.ComplexTypeSpec{},
 		Language:          map[string]json.RawMessage{},
 
 		Meta: &pschema.MetadataSpec{
@@ -480,7 +480,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
+func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ComplexTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -490,7 +490,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 	}
 	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
 
-	spec := pschema.ObjectTypeSpec{
+	spec := pschema.ComplexTypeSpec{
 		Type: "object",
 	}
 
@@ -626,7 +626,7 @@ func (g *generator) convertExamplesInPropertySpec(spec pschema.PropertySpec) psc
 	return spec
 }
 
-func (g *generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
+func (g *generator) convertExamplesInObjectSpec(spec pschema.ComplexTypeSpec) pschema.ComplexTypeSpec {
 	spec.Description = g.convertExamples(spec.Description, false)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(prop)
