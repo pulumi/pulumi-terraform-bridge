@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Refactor schematized types to support enums.
+  [#266](https://github.com/pulumi/pulumi-terraform-bridge/pull/266)
+
 - Support terraform-plugin-sdk/v2. This is an API breaking change.
   [#264](https://github.com/pulumi/pulumi-terraform-bridge/pull/264)
 
