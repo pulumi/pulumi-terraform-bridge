@@ -203,7 +203,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		PluginDownloadURL: g.info.PluginDownloadURL,
 		Resources:         map[string]pschema.ResourceSpec{},
 		Functions:         map[string]pschema.FunctionSpec{},
-		Types:             map[string]pschema.ObjectTypeSpec{},
+		Types:             map[string]pschema.ComplexTypeSpec{},
 		Language:          map[string]json.RawMessage{},
 
 		Meta: &pschema.MetadataSpec{
@@ -219,7 +219,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
 			tok, ts := g.genObjectType(mod.name, t)
-			spec.Types[tok] = ts
+			spec.Types[tok] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: ts,
+			}
 		}
 
 		// Enumerate each module member, in the order presented to us, and do the right thing.
@@ -243,7 +245,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if pack.provider != nil {
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok, ts := g.genObjectType("index", t)
-			spec.Types[tok] = ts
+			spec.Types[tok] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: ts,
+			}
 		}
 		spec.Provider = g.genResourceType("index", pack.provider)
 	}
@@ -668,7 +672,8 @@ func (g *generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(variable)
 	}
 	for token, object := range spec.Types {
-		spec.Types[token] = g.convertExamplesInObjectSpec(object)
+		object.ObjectTypeSpec = g.convertExamplesInObjectSpec(object.ObjectTypeSpec)
+		spec.Types[token] = object
 	}
 	spec.Provider = g.convertExamplesInResourceSpec(spec.Provider)
 	for token, resource := range spec.Resources {
