@@ -219,7 +219,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
 			tok, ts := g.genObjectType(mod.name, t)
-			spec.Types[tok] = ts
+			spec.Types[tok] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: ts,
+			}
 		}
 
 		// Enumerate each module member, in the order presented to us, and do the right thing.
@@ -243,7 +245,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if pack.provider != nil {
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok, ts := g.genObjectType("index", t)
-			spec.Types[tok] = ts
+			spec.Types[tok] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: ts,
+			}
 		}
 		spec.Provider = g.genResourceType("index", pack.provider)
 	}
@@ -480,7 +484,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ComplexTypeSpec) {
+func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -490,7 +494,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 	}
 	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
 
-	spec := pschema.ComplexTypeSpec{
+	spec := pschema.ObjectTypeSpec{
 		Type: "object",
 	}
 
@@ -626,7 +630,7 @@ func (g *generator) convertExamplesInPropertySpec(spec pschema.PropertySpec) psc
 	return spec
 }
 
-func (g *generator) convertExamplesInObjectSpec(spec pschema.ComplexTypeSpec) pschema.ComplexTypeSpec {
+func (g *generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
 	spec.Description = g.convertExamples(spec.Description, false)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(prop)
@@ -668,7 +672,8 @@ func (g *generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(variable)
 	}
 	for token, object := range spec.Types {
-		spec.Types[token] = g.convertExamplesInObjectSpec(object)
+		object.ObjectTypeSpec = g.convertExamplesInObjectSpec(object.ObjectTypeSpec)
+		spec.Types[token] = object
 	}
 	spec.Provider = g.convertExamplesInResourceSpec(spec.Provider)
 	for token, resource := range spec.Resources {
