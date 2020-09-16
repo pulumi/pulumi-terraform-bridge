@@ -1218,3 +1218,23 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 
 	return fmt.Sprintf("%s.%s.%s", packageName, moduleName, moduleMemberName)
 }
+
+// SetAutonaming will loop all resources with a name property, and will add an auto-name property.  It will skip
+// those that already have a name mapping entry, since those may have custom overrides set in the resource
+// declaration (e.g., for length).
+func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
+	const nameProperty = "name"
+	for resname, res := range p.Resources {
+		if schema := p.P.ResourcesMap().Get(resname); schema != nil {
+			// Only apply auto-name to input properties (Optional || Required) named `name`
+			if sch := schema.Schema().Get(nameProperty); sch != nil && (sch.Optional() || sch.Required()) {
+				if _, hasfield := res.Fields[nameProperty]; !hasfield {
+					if res.Fields == nil {
+						res.Fields = make(map[string]*SchemaInfo)
+					}
+					res.Fields[nameProperty] = AutoName(nameProperty, maxLength, separator)
+				}
+			}
+		}
+	}
+}

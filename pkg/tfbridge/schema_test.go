@@ -1795,7 +1795,7 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
 					Fields: map[string]*SchemaInfo{
-						"input_a": AutoName("inputA", 64),
+						"input_a": AutoName("inputA", 64, "-"),
 					},
 				},
 			},

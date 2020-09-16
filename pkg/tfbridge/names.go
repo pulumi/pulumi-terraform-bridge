@@ -134,13 +134,13 @@ type AutoNameOptions struct {
 
 // AutoName creates custom schema for a Terraform name property which is automatically populated
 // from the resource's URN name, and transformed based on the provided options.
-func AutoName(name string, maxlength int) *SchemaInfo {
+func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 	return &SchemaInfo{
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
 			From: FromName(AutoNameOptions{
-				Separator: "-",
+				Separator: separator,
 				Maxlen:    maxlength,
 				Randlen:   7,
 			}),
