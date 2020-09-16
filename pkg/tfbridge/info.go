@@ -18,6 +18,7 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
@@ -322,7 +323,7 @@ func MarshalSchema(s shim.Schema) *MarshallableSchema {
 		Required:           s.Required(),
 		Computed:           s.Computed(),
 		ForceNew:           s.ForceNew(),
-		Elem:               MarshalElem(s.Elem),
+		Elem:               MarshalElem(s.Elem()),
 		MaxItems:           s.MaxItems(),
 		MinItems:           s.MinItems(),
 		DeprecationMessage: s.Deprecated(),
@@ -380,6 +381,7 @@ func MarshalElem(e interface{}) *MarshallableElem {
 	case shim.Resource:
 		return &MarshallableElem{Resource: MarshalResource(v)}
 	default:
+		contract.Assertf(e == nil, "unexpected schema element of type %T", e)
 		return nil
 	}
 }
