@@ -13,6 +13,10 @@ import (
 func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	instanceState *terraform.InstanceState) (*terraform.InstanceState, error) {
 
+	if instanceState == nil {
+		return nil, nil
+	}
+
 	m := instanceState.Attributes
 
 	// Ensure that we have an ID in the attributes.
