@@ -35,10 +35,13 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
+type typeTokenFunc func(pkg, mod, name string) string
+
 type schemaGenerator struct {
-	pkg     string
-	version string
-	info    tfbridge.ProviderInfo
+	pkg       string
+	version   string
+	info      tfbridge.ProviderInfo
+	typeToken typeTokenFunc
 }
 
 type schemaNestedType struct {
@@ -183,16 +186,31 @@ func rawMessage(v interface{}) json.RawMessage {
 	return json.RawMessage(bytes)
 }
 
+func getTypeTokenFunc(info tfbridge.ProviderInfo) typeTokenFunc {
+	if info.PulumiSchema != nil && info.PulumiSchema.ModuleFormat != nil {
+		return info.PulumiSchema.ModuleFormat.NewTypeToken
+	}
+	return func(pkg, mod, name string) string {
+		return fmt.Sprintf("%s:%s/%s:%s", pkg, mod, name, name)
+	}
+}
+
 func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
-		pkg:     name,
-		version: version,
-		info:    info,
+		pkg:       name,
+		version:   version,
+		info:      info,
+		typeToken: getTypeTokenFunc(info),
 	}
 	return g.genPackageSpec(pack)
 }
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
+	moduleFormat := "(.*)(?:/[^/]*)"
+	if g.info.PulumiSchema != nil && g.info.PulumiSchema.ModuleFormat != nil {
+		moduleFormat = g.info.PulumiSchema.ModuleFormat.Format
+	}
+
 	spec := pschema.PackageSpec{
 		Name:              g.pkg,
 		Version:           g.version,
@@ -207,7 +225,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		Language:          map[string]json.RawMessage{},
 
 		Meta: &pschema.MetadataSpec{
-			ModuleFormat: "(.*)(?:/[^/]*)",
+			ModuleFormat: moduleFormat,
 		},
 	}
 
@@ -219,9 +237,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
 			tok, ts := g.genObjectType(mod.name, t)
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
-			}
+			spec.Types[tok] = pschema.ComplexTypeSpec{ObjectTypeSpec: ts}
 		}
 
 		// Enumerate each module member, in the order presented to us, and do the right thing.
@@ -245,18 +261,18 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if pack.provider != nil {
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok, ts := g.genObjectType("index", t)
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
-			}
+			spec.Types[tok] = pschema.ComplexTypeSpec{ObjectTypeSpec: ts}
 		}
 		spec.Provider = g.genResourceType("index", pack.provider)
 	}
 
-	for token, typ := range g.info.ExtraTypes {
-		if _, defined := spec.Types[token]; defined {
-			return pschema.PackageSpec{}, fmt.Errorf("failed to define extra types: %v is already defined", token)
+	if g.info.PulumiSchema != nil {
+		for token, typ := range g.info.PulumiSchema.ExtraTypes {
+			if _, defined := spec.Types[token]; defined {
+				return pschema.PackageSpec{}, fmt.Errorf("failed to define extra types: %v is already defined", token)
+			}
+			spec.Types[token] = pschema.ComplexTypeSpec{ObjectTypeSpec: typ}
 		}
-		spec.Types[token] = typ
 	}
 
 	downstreamLicense := g.info.GetTFProviderLicense()
@@ -497,7 +513,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 		mod = "index"
 	}
 
-	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
+	token := g.typeToken(g.pkg, mod, name)
 
 	spec := pschema.ObjectTypeSpec{
 		Type: "object",
@@ -626,7 +642,8 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 		additionalProperties := g.schemaType(mod, typ.element, out)
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
-		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:%s/%s:%s", g.pkg, mod, typ.name, typ.name)}
+		token := g.typeToken(g.pkg, mod, typ.name)
+		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s", token)}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
 		return pschema.TypeSpec{}
@@ -681,8 +698,7 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(variable)
 	}
 	for token, object := range spec.Types {
-		object.ObjectTypeSpec = g.convertExamplesInObjectSpec(object.ObjectTypeSpec)
-		spec.Types[token] = object
+		spec.Types[token] = pschema.ComplexTypeSpec{ObjectTypeSpec: g.convertExamplesInObjectSpec(object.ObjectTypeSpec)}
 	}
 	spec.Provider = g.convertExamplesInResourceSpec(spec.Provider)
 	for token, resource := range spec.Resources {

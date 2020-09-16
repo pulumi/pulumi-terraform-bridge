@@ -5,7 +5,9 @@ go 1.14
 require (
 	github.com/apparentlymart/go-cidr v1.0.1
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/cheggaaa/pb v1.0.27
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/go-test/deep v1.0.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -25,6 +27,8 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.0.2
 	github.com/hashicorp/terraform-svchost v0.0.0-20191119180714-d2e4933b9136
 	github.com/json-iterator/go v1.1.9
+	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/mholt/archiver/v3 v3.3.0
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -32,6 +36,7 @@ require (
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mitchellh/reflectwalk v1.0.1
+	github.com/nwaples/rardecode v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/pkg/v2 v2.10.2-0.20200916204740-92a7d717a4d1
 	github.com/pulumi/pulumi/sdk/v2 v2.10.2-0.20200916204740-92a7d717a4d1
@@ -40,6 +45,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/zclconf/go-cty v1.3.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/mod v0.3.0
@@ -50,3 +56,5 @@ require (
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20200910230100-328eb4ff41df
+
+replace github.com/pulumi/pulumi/pkg/v2 => ../pulumi/pkg
