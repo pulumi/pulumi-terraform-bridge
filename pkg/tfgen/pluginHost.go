@@ -51,11 +51,13 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 	return host.Host.Provider(pkg, version)
 }
 
-func (host *inmemoryProviderHost) GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error) {
-	if tfProviderName == host.provider.info.Name {
+func (host *inmemoryProviderHost) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	if name == host.provider.info.Name {
 		return &host.provider.info, nil
 	}
-	return host.ProviderInfoSource.GetProviderInfo(tfProviderName)
+	return host.ProviderInfoSource.GetProviderInfo(registryName, namespace, name, version)
 }
 
 type cachingProviderHost struct {

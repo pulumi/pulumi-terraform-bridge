@@ -1689,7 +1689,7 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 
 	info, ok := b.providers[providerName]
 	if !ok {
-		i, err := b.providerInfo.GetProviderInfo(providerName)
+		i, err := b.providerInfo.GetProviderInfo("", "", providerName, "")
 		if err != nil {
 			// Fake up a root-level token.
 			tok := providerName + ":index:" + addr.Type
@@ -1736,7 +1736,7 @@ func (b *tf12binder) providerType(providerName string,
 
 	info, ok := b.providers[providerName]
 	if !ok {
-		i, err := b.providerInfo.GetProviderInfo(providerName)
+		i, err := b.providerInfo.GetProviderInfo("", "", providerName, "")
 		if err != nil {
 			return tok, il.Schemas{}, model.DynamicType, hcl.Diagnostics{{
 				Subject: &subject,
