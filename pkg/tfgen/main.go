@@ -84,7 +84,13 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			}
 
 			// Create a generator with the specified settings.
-			g, err := NewGenerator(pkg, version, Language(args[0]), prov, root)
+			g, err := NewGenerator(GeneratorOptions{
+				Package:      pkg,
+				Version:      version,
+				Language:     Language(args[0]),
+				ProviderInfo: prov,
+				Root:         root,
+			})
 			if err != nil {
 				return err
 			}

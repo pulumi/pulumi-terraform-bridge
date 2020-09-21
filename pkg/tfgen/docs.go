@@ -25,8 +25,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/spf13/afero"
 
@@ -164,8 +162,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
 		providerModuleVersion)
 	if !found {
-		cmdutil.Diag().Warningf(
-			diag.Message("", "Could not find docs for resource %v; consider overriding doc source location"), rawname)
+		g.warn("Could not find docs for resource %v; consider overriding doc source location", rawname)
 		return entityDocs{}, nil
 	}
 
@@ -413,8 +410,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 
 	doc, elided := cleanupDoc(p.rawname, p.g, p.info, p.ret, footerLinks)
 	if elided {
-		cmdutil.Diag().Warningf(diag.Message("",
-			"Resource %v contains an <elided> doc reference that needs updated"), p.rawname)
+		p.g.warn("Resource %v contains an <elided> doc reference that needs updated", p.rawname)
 	}
 
 	return doc, nil
@@ -521,8 +517,7 @@ func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
 	if len(section) == 0 {
-		cmdutil.Diag().Warningf(diag.Message("",
-			"Unparseable H2 doc section for %v; consider overriding doc source location"), p.rawname)
+		p.g.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
 		return nil
 	}
 
@@ -535,7 +530,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	sectionKind := sectionOther
 	switch header {
 	case "Import", "Imports", "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
-		cmdutil.Diag().Debugf(diag.Message("", "Ignoring doc section [%v] for [%v]"), header, p.rawname)
+		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
 		ignoredDocSections++
 		ignoredDocHeaders[header]++
 		return nil
@@ -554,8 +549,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	var wroteHeader bool
 	for _, subsection := range groupLines(section[1:], "### ") {
 		if len(subsection) == 0 {
-			cmdutil.Diag().Warningf(diag.Message("",
-				"Unparseable H3 doc section for %v; consider overriding doc source location"), p.rawname)
+			p.g.warn("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
 			continue
 		}
 
@@ -566,8 +560,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			continue
 		}
 		if hasExamples && sectionKind != sectionExampleUsage {
-			cmdutil.Diag().Warningf(diag.Message("",
-				"Unexpected code snippets in section %v for resource %v"), header, p.rawname)
+			p.g.warn("Unexpected code snippets in section %v for resource %v", header, p.rawname)
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -704,8 +697,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundEndHeader {
-		cmdutil.Diag().Warningf(
-			diag.Message("", "Expected to pair --- begin/end for resource %v's Markdown header"), p.rawname)
+		p.g.warn("", "Expected to pair --- begin/end for resource %v's Markdown header", p.rawname)
 	}
 
 	// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
@@ -726,7 +718,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundH1Resource {
-		cmdutil.Diag().Warningf(diag.Message("", "Expected an H1 in markdown for resource %v"), p.rawname)
+		p.g.warn("Expected an H1 in markdown for resource %v", p.rawname)
 	}
 }
 
@@ -744,15 +736,13 @@ func isBlank(line string) bool {
 }
 
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func printDocStats(printIgnoreDetails, printHCLFailureDetails bool) {
+func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if ignoredDocSections > 0 {
-		cmdutil.Diag().Warningf(
-			diag.Message("", "%d documentation sections ignored"), ignoredDocSections)
+		g.warn("%d documentation sections ignored", ignoredDocSections)
 	}
 	if hclBlocksFailed > 0 {
-		cmdutil.Diag().Warningf(
-			diag.Message("", "%d/%d documentation code blocks failed to convert"),
+		g.warn("%d/%d documentation code blocks failed to convert",
 			hclBlocksFailed, hclBlocksFailed+hclBlocksSucceeded)
 	}
 
@@ -943,8 +933,8 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 		defer func() {
 			v := recover()
 			if v != nil {
-				cmdutil.Diag().Warningf(diag.Message("", fmt.Sprintf("failed to convert HCL example to %v", languageName)))
-				cmdutil.Diag().Debugf(diag.Message("", fmt.Sprintf("panic converting HCL to %v: %v", languageName, v)))
+				g.warn("failed to convert HCL example to %v", languageName)
+				g.debug(fmt.Sprintf("panic converting HCL to %v: %v", languageName, v))
 			}
 		}()
 
@@ -956,6 +946,7 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 			PackageCache:          g.packageCache,
 			PluginHost:            g.pluginHost,
 			ProviderInfoSource:    g.infoSource,
+			TerraformVersion:      g.terraformVersion,
 		})
 		if err != nil {
 			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)
@@ -1024,10 +1015,10 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 	for k, v := range doc.Arguments {
-		cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for argument [%v] in [%v]"), k, name)
+		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
 		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
-			cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for argument [%v] in [%v]"), k, name)
+			g.warn("Documentation <elided> for argument [%v] in [%v]", k, name)
 			elidedDoc = true
 		}
 
@@ -1038,10 +1029,10 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
-			cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for nested argument [%v] in [%v]"), kk, name)
+			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
 			cleanedText, elided := cleanupText(g, info, vv, footerLinks)
 			if elided {
-				cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for nested argument [%v] in [%v]"), kk, name)
+				g.warn("Documentation <elided> for nested argument [%v] in [%v]", kk, name)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = cleanedText
@@ -1049,18 +1040,18 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 	}
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
-		cmdutil.Diag().Debugf(diag.Message("", "Cleaning up text for attribute [%v] in [%v]"), k, name)
+		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanupText, elided := cleanupText(g, info, v, footerLinks)
 		if elided {
-			cmdutil.Diag().Warningf(diag.Message("", "Documentation <elided> for attribute [%v] in [%v]"), k, name)
+			g.warn("Documentation <elided> for attribute [%v] in [%v]", k, name)
 			elidedDoc = true
 		}
 		newattrs[k] = cleanupText
 	}
-	cmdutil.Diag().Debugf(diag.Message("", "Cleaning up description text for [%v]"), name)
+	g.debug("Cleaning up description text for [%v]", name)
 	cleanupText, elided := cleanupText(g, info, doc.Description, footerLinks)
 	if elided {
-		cmdutil.Diag().Warningf(diag.Message("", "Description text <elided> in [%v]"), name)
+		g.warn("Description text <elided> in [%v]", name)
 		elidedDoc = true
 	}
 	return entityDocs{

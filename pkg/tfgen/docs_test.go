@@ -48,12 +48,17 @@ func TestURLRewrite(t *testing.T) {
 		},
 	}
 
-	g, err := NewGenerator("google", "0.1.2", "nodejs", tfbridge.ProviderInfo{
-		Name: "google",
-		Resources: map[string]*tfbridge.ResourceInfo{
-			"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
+	g, err := NewGenerator(GeneratorOptions{
+		Package:  "google",
+		Version:  "0.1.2",
+		Language: "nodejs",
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "google",
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
+			},
 		},
-	}, nil)
+	})
 	assert.NoError(t, err)
 
 	for _, test := range tests {
