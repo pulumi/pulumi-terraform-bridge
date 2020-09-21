@@ -119,6 +119,14 @@ func getRepoPath(org string, provider string, providerModuleVersion string) (str
 func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) ([]byte, string, bool) {
 
+	var docinfo *tfbridge.DocInfo
+	if info != nil {
+		docinfo = info.GetDocs()
+	}
+	if docinfo != nil && len(docinfo.Markdown) != 0 {
+		return docinfo.Markdown, "", true
+	}
+
 	repoPath, err := getRepoPath(org, provider, providerModuleVersion)
 	if err != nil {
 		return nil, "", false
@@ -135,11 +143,6 @@ func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefi
 		rawname + ".markdown",
 		rawname + ".html.md",
 		rawname + ".md",
-	}
-
-	var docinfo *tfbridge.DocInfo
-	if info != nil {
-		docinfo = info.GetDocs()
 	}
 
 	if docinfo != nil && docinfo.Source != "" {
@@ -299,7 +302,8 @@ var (
 
 	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
-	docsBaseURL    = "https://github.com/%s/terraform-provider-%s/blob/master/website/docs"
+	providerURL    = "https://github.com/%s/terraform-provider-%s"
+	docsBaseURL    = providerURL + "/blob/master/website/docs"
 	docsDetailsURL = docsBaseURL + "/%s/%s"
 
 	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/%[3]s/terraform-provider-%[2]s)
@@ -384,10 +388,20 @@ const (
 )
 
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
+	var url string
+	if p.info != nil {
+		if docInfo := p.info.GetDocs(); docInfo != nil {
+			url = docInfo.MarkdownURL
+		}
+	}
+	if url == "" {
+		getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName)
+	}
+
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
-		URL:        getDocsDetailsURL(p.g.info.GetGitHubOrg(), p.resourcePrefix, string(p.kind), p.markdownFileName),
+		URL:        url,
 	}
 
 	// Replace any Windows-style newlines.
