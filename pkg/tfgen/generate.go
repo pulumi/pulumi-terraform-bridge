@@ -54,15 +54,17 @@ const (
 )
 
 type Generator struct {
-	pkg          string                // the Pulum package name (e.g. `gcp`)
-	version      string                // the package version.
-	language     Language              // the language runtime to generate.
-	info         tfbridge.ProviderInfo // the provider info for customizing code generation
-	root         afero.Fs              // the output virtual filesystem.
-	providerShim *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
-	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
-	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
-	infoSource   il.ProviderInfoSource // the provider info source for tf2pulumi.
+	pkg              string                // the Pulum package name (e.g. `gcp`)
+	version          string                // the package version.
+	language         Language              // the language runtime to generate.
+	info             tfbridge.ProviderInfo // the provider info for customizing code generation
+	root             afero.Fs              // the output virtual filesystem.
+	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
+	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
+	packageCache     *hcl2.PackageCache    // the package cache for tf2pulumi.
+	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
+	terraformVersion string                // the Terraform version to target for example codegen, if any
+	sink             diag.Sink
 }
 
 type Language string
@@ -573,8 +575,43 @@ func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
+func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         afero.NewMemMapFs(),
+		Sink:         sink,
+	})
+	if err != nil {
+		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create generator")
+	}
+
+	pack, err := g.gatherPackage()
+	if err != nil {
+		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to gather package metadata")
+	}
+
+	return genPulumiSchema(pack, g.pkg, g.version, g.info)
+}
+
+type GeneratorOptions struct {
+	Package            string
+	Version            string
+	Language           Language
+	ProviderInfo       tfbridge.ProviderInfo
+	Root               afero.Fs
+	ProviderInfoSource il.ProviderInfoSource
+	PluginHost         plugin.Host
+	TerraformVersion   string
+	Sink               diag.Sink
+}
+
 // NewGenerator returns a code-generator for the given language runtime and package info.
-func NewGenerator(pkg, version string, lang Language, info tfbridge.ProviderInfo, root afero.Fs) (*Generator, error) {
+func NewGenerator(opts GeneratorOptions) (*Generator, error) {
+	pkg, version, lang, info, root := opts.Package, opts.Version, opts.Language, opts.ProviderInfo, opts.Root
+
 	// Ensure the language is valid.
 	switch lang {
 	case Golang, NodeJS, Python, CSharp, Schema:
@@ -596,19 +633,32 @@ func NewGenerator(pkg, version string, lang Language, info tfbridge.ProviderInfo
 		root = afero.NewBasePathFs(afero.NewOsFs(), p)
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
+	sink := opts.Sink
+	if sink == nil {
+		sink = cmdutil.Diag()
 	}
-	ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, nil)
-	if err != nil {
-		return nil, err
+
+	pluginHost := opts.PluginHost
+	if pluginHost == nil {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+
+		ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		pluginHost = ctx.Host
 	}
+
+	infoSources := append([]il.ProviderInfoSource{}, opts.ProviderInfoSource, il.PluginProviderInfoSource)
+	infoSource := il.NewCachingProviderInfoSource(il.NewMultiProviderInfoSource(infoSources...))
 
 	providerShim := newInMemoryProvider(pkg, nil, info)
 	host := &inmemoryProviderHost{
-		Host:               ctx.Host,
-		ProviderInfoSource: il.NewCachingProviderInfoSource(il.PluginProviderInfoSource),
+		Host:               pluginHost,
+		ProviderInfoSource: infoSource,
 		provider:           providerShim,
 	}
 
@@ -623,13 +673,27 @@ func NewGenerator(pkg, version string, lang Language, info tfbridge.ProviderInfo
 			Host:  host,
 			cache: map[string]plugin.Provider{},
 		},
-		packageCache: hcl2.NewPackageCache(),
-		infoSource:   host,
+		packageCache:     hcl2.NewPackageCache(),
+		infoSource:       host,
+		terraformVersion: opts.TerraformVersion,
+		sink:             sink,
 	}, nil
+}
+
+func (g *Generator) warn(f string, args ...interface{}) {
+	g.sink.Warningf(diag.Message("", f), args...)
+}
+
+func (g *Generator) debug(f string, args ...interface{}) {
+	g.sink.Debugf(diag.Message("", f), args...)
 }
 
 func (g *Generator) provider() shim.Provider {
 	return g.info.P
+}
+
+type GenerateOptions struct {
+	ModuleFormat string
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
@@ -696,7 +760,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Print out some documentation stats as a summary afterwards.
-	printDocStats(false, false)
+	printDocStats(g, false, false)
 
 	// Close the plugin host.
 	g.pluginHost.Close()
@@ -782,8 +846,7 @@ func (g *Generator) gatherConfig() *module {
 	// Ensure there weren't any keys that were unrecognized.
 	for key := range custom {
 		if _, has := cfg.GetOk(key); !has {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "custom config schema %s was not present in the Terraform metadata"), key)
+			g.warn("custom config schema %s was not present in the Terraform metadata", key)
 		}
 	}
 
@@ -828,8 +891,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 		info := g.info.Resources[r]
 		if info == nil {
 			// if this resource was missing, issue a warning and skip it.
-			cmdutil.Diag().Warningf(
-				diag.Message("", "resource %s not found in provider map; skipping"), r)
+			g.warn("resource %s not found in provider map; skipping", r)
 			continue
 		}
 		seen[r] = true
@@ -855,8 +917,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "resource %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
+			g.warn("resource %s (%s) wasn't found in the Terraform module; possible name mismatch?",
 				name, g.info.Resources[name].Tok)
 		}
 	}
@@ -955,9 +1016,7 @@ func (g *Generator) gatherResource(rawname string,
 	// Ensure there weren't any custom fields that were unrecognized.
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "custom resource schema %s.%s was not present in the Terraform metadata"),
-				name, key)
+			g.warn("custom resource schema %s.%s was not present in the Terraform metadata", name, key)
 		}
 	}
 
@@ -979,8 +1038,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
 			// if this data source was missing, issue a warning and skip it.
-			cmdutil.Diag().Warningf(
-				diag.Message("", "data source %s not found in provider map; skipping"), ds)
+			g.warn("data source %s not found in provider map; skipping", ds)
 			continue
 		}
 		seen[ds] = true
@@ -1006,8 +1064,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "data source %s (%s) wasn't found in the Terraform module; possible name mismatch?"),
+			g.warn("data source %s (%s) wasn't found in the Terraform module; possible name mismatch?",
 				name, g.info.DataSources[name].Tok)
 		}
 	}
