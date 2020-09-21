@@ -466,7 +466,6 @@ type variable struct {
 	config bool // config is true if this variable represents a Pulumi config value.
 	doc    string
 	rawdoc string
-	docURL string
 
 	schema shim.Schema
 	info   *tfbridge.SchemaInfo
@@ -556,7 +555,6 @@ type resourceFunc struct {
 	retst      *propertyType
 	schema     shim.Resource
 	info       *tfbridge.DataSourceInfo
-	docURL     string
 	entityDocs entityDocs
 }
 
