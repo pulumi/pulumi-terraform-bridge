@@ -42,15 +42,17 @@ func (s *ProviderInfoSource) getProviderInfo(tfProviderName string) (*tfbridge.P
 
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
-func (s *ProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error) {
-	if info, ok := s.getProviderInfo(tfProviderName); ok {
+func (s *ProviderInfoSource) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	if info, ok := s.getProviderInfo(name); ok {
 		return info, nil
 	}
 
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	f, err := os.Open(filepath.Join(s.infoDirectoryPath, tfProviderName+".json"))
+	f, err := os.Open(filepath.Join(s.infoDirectoryPath, name+".json"))
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +64,7 @@ func (s *ProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridge.P
 	}
 
 	info := m.Unmarshal()
-	s.entries[tfProviderName] = info
+	s.entries[name] = info
 	return info, nil
 }
 

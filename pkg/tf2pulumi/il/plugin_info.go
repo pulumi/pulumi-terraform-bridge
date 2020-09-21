@@ -17,6 +17,7 @@ package il
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"sync"
 
@@ -32,7 +33,7 @@ import (
 // primarily for testing purposes.
 type ProviderInfoSource interface {
 	// GetProviderInfo returns the tfbridge information for the indicated Terraform provider.
-	GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error)
+	GetProviderInfo(registry, namespace, name, version string) (*tfbridge.ProviderInfo, error)
 }
 
 // CachingProviderInfoSource wraps a ProviderInfoSource in a cache for faster access.
@@ -43,29 +44,38 @@ type CachingProviderInfoSource struct {
 	entries map[string]*tfbridge.ProviderInfo
 }
 
-func (cache *CachingProviderInfoSource) getProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, bool) {
+func (cache *CachingProviderInfoSource) cacheKey(registry, namespace, name, version string) string {
+	return fmt.Sprintf("%s/%s/%s@%s",
+		url.PathEscape(registry), url.PathEscape(namespace), url.PathEscape(name), url.PathEscape(version))
+}
+
+func (cache *CachingProviderInfoSource) getProviderInfo(key string) (*tfbridge.ProviderInfo, bool) {
 	cache.m.RLock()
 	defer cache.m.RUnlock()
 
-	info, ok := cache.entries[tfProviderName]
+	info, ok := cache.entries[key]
 	return info, ok
 }
 
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
-func (cache *CachingProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error) {
-	if info, ok := cache.getProviderInfo(tfProviderName); ok {
+func (cache *CachingProviderInfoSource) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	key := cache.cacheKey(registryName, namespace, name, version)
+
+	if info, ok := cache.getProviderInfo(key); ok {
 		return info, nil
 	}
 
 	cache.m.Lock()
 	defer cache.m.Unlock()
 
-	info, err := cache.source.GetProviderInfo(tfProviderName)
+	info, err := cache.source.GetProviderInfo(registryName, namespace, name, version)
 	if err != nil {
 		return nil, err
 	}
-	cache.entries[tfProviderName] = info
+	cache.entries[key] = info
 	return info, nil
 }
 
@@ -75,6 +85,24 @@ func NewCachingProviderInfoSource(source ProviderInfoSource) *CachingProviderInf
 		source:  source,
 		entries: map[string]*tfbridge.ProviderInfo{},
 	}
+}
+
+type multiProviderInfoSource []ProviderInfoSource
+
+func NewMultiProviderInfoSource(sources ...ProviderInfoSource) ProviderInfoSource {
+	return multiProviderInfoSource(sources)
+}
+
+func (s multiProviderInfoSource) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	for _, s := range s {
+		if info, err := s.GetProviderInfo(registryName, namespace, name, version); err == nil && info != nil {
+			return info, nil
+		}
+	}
+
+	return nil, getMissingPluginError(name)
 }
 
 type pluginProviderInfoSource struct{}
@@ -92,7 +120,11 @@ var pluginNames = map[string]string{
 
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
-func (pluginProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, error) {
+func (pluginProviderInfoSource) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	tfProviderName := name
+
 	pluginName, hasPluginName := pluginNames[tfProviderName]
 	if !hasPluginName {
 		pluginName = tfProviderName
@@ -102,12 +134,7 @@ func (pluginProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridg
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		message := fmt.Sprintf("could not find plugin %s for provider %s", pluginName, tfProviderName)
-		latest := getLatestPluginVersion(pluginName)
-		if latest != "" {
-			message += fmt.Sprintf("; try running 'pulumi plugin install resource %s %s'", pluginName, latest)
-		}
-		return nil, errors.New(message)
+		return nil, getMissingPluginError(name)
 	}
 
 	// Run the plugin and decode its provider config.
@@ -132,6 +159,22 @@ func (pluginProviderInfoSource) GetProviderInfo(tfProviderName string) (*tfbridg
 	}
 
 	return info.Unmarshal(), nil
+}
+
+// getMissingPluginError returns an error that informs the user that a plugin for a Terraform provider cannot be found,
+// and how to go about acquiring it if it is hosted on Pulumi.com.
+func getMissingPluginError(providerName string) error {
+	pluginName, hasPluginName := pluginNames[providerName]
+	if !hasPluginName {
+		pluginName = providerName
+	}
+
+	message := fmt.Sprintf("could not find plugin %s for provider %s", pluginName, providerName)
+	latest := getLatestPluginVersion(pluginName)
+	if latest != "" {
+		message += fmt.Sprintf("; try running 'pulumi plugin install resource %s %s'", pluginName, latest)
+	}
+	return errors.New(message)
 }
 
 // getLatestPluginVersion returns the version number for the latest released version of the indicated plugin by

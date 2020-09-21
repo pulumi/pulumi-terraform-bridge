@@ -603,7 +603,7 @@ func (b *builder) getProviderInfo(p *ProviderNode) (*tfbridge.ProviderInfo, stri
 		return info, p.Name, nil
 	}
 
-	info, err := b.providerInfo.GetProviderInfo(p.Name)
+	info, err := b.providerInfo.GetProviderInfo("", "", p.Name, "")
 	if err != nil {
 		return nil, "", err
 	}
