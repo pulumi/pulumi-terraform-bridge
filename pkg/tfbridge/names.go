@@ -86,10 +86,15 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 
 	// Pluralize names that will become array-shaped Pulumi values
 	if !isPulmiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
-		contract.Assertf(
-			inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
-			"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
-			inflector.Singularize(inflector.Pluralize(name)))
+		pluralized := inflector.Pluralize(name)
+		if pluralized == name || inflector.Singularize(pluralized) == name {
+			//			contract.Assertf(
+			//				inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
+			//				"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
+			//				inflector.Singularize(inflector.Pluralize(name)))
+
+			name = pluralized
+		}
 		name = inflector.Pluralize(name)
 	}
 

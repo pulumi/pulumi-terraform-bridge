@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Check out source code
@@ -22,7 +22,7 @@ jobs:
           GOPROXY: "https://proxy.golang.org"
         run: go mod download
       - name: Build
-        run: go build ./...
+        run: go build ./... && go install ./cmd/...
       - name: Test
         run: go test -v ./...
 

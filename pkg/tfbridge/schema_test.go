@@ -32,6 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v2/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
@@ -1045,7 +1046,7 @@ func TestImporterOnRead(t *testing.T) {
 		},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			importValue := d.Id() + "-imported"
-			mustSet(d, "required_for_import", importValue)
+			testprovider.MustSet(d, "required_for_import", importValue)
 
 			return []*schemav1.ResourceData{d}, nil
 		})
