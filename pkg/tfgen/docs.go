@@ -118,7 +118,7 @@ func getRepoPath(org string, provider string, providerModuleVersion string) (str
 	return repo, nil
 }
 
-func getMarkdownDetails(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
+func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) ([]byte, string, bool) {
 
 	repoPath, err := getRepoPath(org, provider, providerModuleVersion)
@@ -158,7 +158,7 @@ func getMarkdownDetails(g *generator, org string, provider string, resourcePrefi
 
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(g *generator, org string, provider string, resourcePrefix string, kind DocKind,
+func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) (entityDocs, error) {
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
@@ -240,7 +240,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(g *generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
+func mergeDocs(g *Generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
 	resourcePrefix string,
 	kind DocKind, docs entityDocs, sourceFrom string,
 	useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string) error {
@@ -351,7 +351,7 @@ func getDocsIndexURL(org, p string) string {
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
+func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
 	markdown, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
@@ -367,7 +367,7 @@ func parseTFMarkdown(g *generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 }
 
 type tfMarkdownParser struct {
-	g                *generator
+	g                *Generator
 	info             tfbridge.ResourceOrDataSourceInfo
 	kind             DocKind
 	markdown         string
@@ -813,7 +813,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // parseExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *generator) convertExamples(docs string, stripSubsectionsWithErrors bool) string {
+func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool) string {
 	if docs == "" {
 		return ""
 	}
@@ -924,7 +924,7 @@ func (g *generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func (g *generator) convertHCL(hcl string) (string, string, error) {
+func (g *Generator) convertHCL(hcl string) (string, string, error) {
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
@@ -994,15 +994,15 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 	}
 
 	switch g.language {
-	case nodeJS:
+	case NodeJS:
 		err = convertHCL("typescript")
-	case python:
+	case Python:
 		err = convertHCL("python")
-	case csharp:
+	case CSharp:
 		err = convertHCL("csharp")
-	case golang:
+	case Golang:
 		err = convertHCL("go")
-	case pulumiSchema:
+	case Schema:
 		langs := []string{"typescript", "python", "csharp", "go"}
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
@@ -1019,7 +1019,7 @@ func (g *generator) convertHCL(hcl string) (string, string, error) {
 	return result.String(), stderr.String(), nil
 }
 
-func cleanupDoc(name string, g *generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
+func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
 	footerLinks map[string]string) (entityDocs, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
@@ -1093,7 +1093,7 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 
 const elidedDocComment = "<elided>"
 
-func fixupPropertyReferences(language language, pkg string, info tfbridge.ProviderInfo, text string) string {
+func fixupPropertyReferences(language Language, pkg string, info tfbridge.ProviderInfo, text string) string {
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
@@ -1113,7 +1113,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 			}
 
 			switch language {
-			case golang, python:
+			case Golang, Python:
 				// Use `ec2.Instance` format
 				return open + modname + resname + close
 			default:
@@ -1129,7 +1129,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 			}
 
 			switch language {
-			case golang, python:
+			case Golang, Python:
 				// Use `ec2.getAmi` format
 				return open + modname + getname + close
 			default:
@@ -1139,7 +1139,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 		}
 		// Else just treat as a property name
 		switch language {
-		case nodeJS, golang:
+		case NodeJS, Golang:
 			// Use `camelCase` format
 			pname := propertyName(name, nil, nil)
 			return open + pname + close
@@ -1150,7 +1150,7 @@ func fixupPropertyReferences(language language, pkg string, info tfbridge.Provid
 }
 
 // cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *generator, info tfbridge.ResourceOrDataSourceInfo, text string,
+func cleanupText(g *Generator, info tfbridge.ResourceOrDataSourceInfo, text string,
 	footerLinks map[string]string) (string, bool) {
 
 	cleanupText := func(text string) (string, bool) {

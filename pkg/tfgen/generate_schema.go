@@ -120,7 +120,7 @@ func (nt *schemaNestedTypes) declareType(
 	}
 
 	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assert(existing.declarer == declarer || existing.typ.equals(typ))
+		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
 
 		// For output type conflicts, record the output type's required properties. These will be attached to
 		// a nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that matches
@@ -492,6 +492,11 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 	if typ.nestedType != "" {
 		name = string(typ.nestedType)
 	}
+
+	if mod == "" {
+		mod = "index"
+	}
+
 	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
 
 	spec := pschema.ObjectTypeSpec{
@@ -553,6 +558,10 @@ func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
 }
 
 func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) pschema.TypeSpec {
+	if mod == "" {
+		mod = "index"
+	}
+
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:
@@ -624,13 +633,13 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 	}
 }
 
-func (g *generator) convertExamplesInPropertySpec(spec pschema.PropertySpec) pschema.PropertySpec {
+func (g *Generator) convertExamplesInPropertySpec(spec pschema.PropertySpec) pschema.PropertySpec {
 	spec.Description = g.convertExamples(spec.Description, false)
 	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, false)
 	return spec
 }
 
-func (g *generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
+func (g *Generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
 	spec.Description = g.convertExamples(spec.Description, false)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(prop)
@@ -638,7 +647,7 @@ func (g *generator) convertExamplesInObjectSpec(spec pschema.ObjectTypeSpec) psc
 	return spec
 }
 
-func (g *generator) convertExamplesInResourceSpec(spec pschema.ResourceSpec) pschema.ResourceSpec {
+func (g *Generator) convertExamplesInResourceSpec(spec pschema.ResourceSpec) pschema.ResourceSpec {
 	spec.Description = g.convertExamples(spec.Description, true)
 	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, false)
 	for name, prop := range spec.Properties {
@@ -654,7 +663,7 @@ func (g *generator) convertExamplesInResourceSpec(spec pschema.ResourceSpec) psc
 	return spec
 }
 
-func (g *generator) convertExamplesInFunctionSpec(spec pschema.FunctionSpec) pschema.FunctionSpec {
+func (g *Generator) convertExamplesInFunctionSpec(spec pschema.FunctionSpec) pschema.FunctionSpec {
 	spec.Description = g.convertExamples(spec.Description, true)
 	if spec.Inputs != nil {
 		inputs := g.convertExamplesInObjectSpec(*spec.Inputs)
@@ -667,7 +676,7 @@ func (g *generator) convertExamplesInFunctionSpec(spec pschema.FunctionSpec) psc
 	return spec
 }
 
-func (g *generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.PackageSpec {
+func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.PackageSpec {
 	for name, variable := range spec.Config.Variables {
 		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(variable)
 	}

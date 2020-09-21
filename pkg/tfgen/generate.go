@@ -17,7 +17,6 @@ package tfgen
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,9 +37,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/spf13/afero"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
@@ -54,46 +53,46 @@ const (
 	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
 
-type generator struct {
+type Generator struct {
 	pkg          string                // the Pulum package name (e.g. `gcp`)
 	version      string                // the package version.
-	language     language              // the language runtime to generate.
+	language     Language              // the language runtime to generate.
 	info         tfbridge.ProviderInfo // the provider info for customizing code generation
-	outDir       string                // the directory in which to generate the code.
+	root         afero.Fs              // the output virtual filesystem.
 	providerShim *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost   plugin.Host           // the plugin host for tf2pulumi.
 	packageCache *hcl2.PackageCache    // the package cache for tf2pulumi.
 	infoSource   il.ProviderInfoSource // the provider info source for tf2pulumi.
 }
 
-type language string
+type Language string
 
 const (
-	golang       language = "go"
-	nodeJS       language = "nodejs"
-	python       language = "python"
-	csharp       language = "dotnet"
-	pulumiSchema language = "schema"
+	Golang Language = "go"
+	NodeJS Language = "nodejs"
+	Python Language = "python"
+	CSharp Language = "dotnet"
+	Schema Language = "schema"
 )
 
-func (l language) shouldConvertExamples() bool {
+func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case golang, nodeJS, python, csharp, pulumiSchema:
+	case Golang, NodeJS, Python, CSharp, Schema:
 		return true
 	}
 	return false
 }
 
-func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outDir string) (map[string][]byte, error) {
+func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs) (map[string][]byte, error) {
 	var extraFiles map[string][]byte
 	var err error
 
 	switch l {
-	case golang:
+	case Golang:
 		return gogen.GeneratePackage(tfgen, pkg)
-	case nodeJS:
+	case NodeJS:
 		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", outDir)
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", root)
 			if err != nil {
 				return nil, err
 			}
@@ -106,35 +105,35 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 
 		// We don't need to add overlays to the exclusion list because they have already been read
 		// into memory so deleting the files is not a problem.
-		err = codegen.CleanDir(outDir, exclusions)
-		if err != nil {
+		err = cleanDir(root, "", exclusions)
+		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
 		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
-	case python:
+	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", outDir)
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		// python's outdir path follows the pattern [provider]/sdk/python/pulumi_[pkg name]
-		pyOutDir := filepath.Join(outDir, fmt.Sprintf("pulumi_%s", pkg.Name))
-		err = codegen.CleanDir(pyOutDir, nil)
-		if err != nil {
+		pyOutDir := fmt.Sprintf("pulumi_%s", pkg.Name)
+		err = cleanDir(root, pyOutDir, nil)
+		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
 		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
-	case csharp:
+	case CSharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", outDir)
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", root)
 			if err != nil {
 				return nil, err
 			}
 		}
-		err = codegen.CleanDir(outDir, nil)
-		if err != nil {
+		err = cleanDir(root, "", nil)
+		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
 		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
@@ -143,24 +142,24 @@ func (l language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, outD
 	}
 }
 
-var allLanguages = []language{golang, nodeJS, python, csharp}
+var AllLanguages = []Language{Golang, NodeJS, Python, CSharp}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
 	name     string        // the package name.
 	version  string        // the package version.
-	language language      // the package's language.
-	path     string        // the path to the package directory on disk.
+	language Language      // the package's language.
+	root     afero.Fs      // the root of the package.
 	modules  moduleMap     // the modules inside of this package.
 	provider *resourceType // the provider type for this package.
 }
 
-func newPkg(name string, version string, language language, path string) *pkg {
+func newPkg(name, version string, language Language, fs afero.Fs) *pkg {
 	return &pkg{
 		name:     name,
 		version:  version,
 		language: language,
-		path:     path,
+		root:     fs,
 		modules:  make(moduleMap),
 	}
 }
@@ -574,25 +573,27 @@ func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
-// newGenerator returns a code-generator for the given language runtime and package info.
-func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo, outDir string) (*generator, error) {
+// NewGenerator returns a code-generator for the given language runtime and package info.
+func NewGenerator(pkg, version string, lang Language, info tfbridge.ProviderInfo, root afero.Fs) (*Generator, error) {
 	// Ensure the language is valid.
 	switch lang {
-	case golang, nodeJS, python, csharp, pulumiSchema:
+	case Golang, NodeJS, Python, CSharp, Schema:
 		// OK
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
 	}
 
-	// If outDir is empty, default to sdk/<language>/ in the pwd.
-	if outDir == "" {
+	// If root is nil, default to sdk/<language>/ in the pwd.
+	if root == nil {
 		p, err := os.Getwd()
 		if err != nil {
 			return nil, err
 		}
-		if outDir == "" {
-			outDir = filepath.Join(p, defaultOutDir, string(lang))
+		p = filepath.Join(p, defaultOutDir, string(lang))
+		if err = os.MkdirAll(p, 0700); err != nil {
+			return nil, err
 		}
+		root = afero.NewBasePathFs(afero.NewOsFs(), p)
 	}
 
 	cwd, err := os.Getwd()
@@ -611,12 +612,12 @@ func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo
 		provider:           providerShim,
 	}
 
-	return &generator{
+	return &Generator{
 		pkg:          pkg,
 		version:      version,
 		language:     lang,
 		info:         info,
-		outDir:       outDir,
+		root:         root,
 		providerShim: providerShim,
 		pluginHost: &cachingProviderHost{
 			Host:  host,
@@ -627,22 +628,17 @@ func newGenerator(pkg, version string, lang language, info tfbridge.ProviderInfo
 	}, nil
 }
 
-func (g *generator) provider() shim.Provider {
+func (g *Generator) provider() shim.Provider {
 	return g.info.P
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
-func (g *generator) Generate() error {
+func (g *Generator) Generate() error {
 	// First gather up the entire package contents.  This structure is complete and sufficient to hand off
 	// to the language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return errors.Wrapf(err, "failed to gather package metadata")
-	}
-
-	// Ensure the target exists.
-	if err = g.preparePackage(); err != nil {
-		return errors.Wrapf(err, "failed to prepare package")
 	}
 
 	// Convert the package to a Pulumi schema.
@@ -663,7 +659,7 @@ func (g *generator) Generate() error {
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
 	var files map[string][]byte
-	if g.language == pulumiSchema {
+	if g.language == Schema {
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
 
@@ -677,7 +673,7 @@ func (g *generator) Generate() error {
 		if err != nil {
 			return errors.Wrapf(err, "failed to import Pulumi schema")
 		}
-		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.outDir); err != nil {
+		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
 			return errors.Wrapf(err, "failed to generate package")
 		}
 	}
@@ -685,11 +681,11 @@ func (g *generator) Generate() error {
 	// Write the result to disk. Do not overwrite the root-level README.md if any exists.
 	for f, contents := range files {
 		if f == "README.md" {
-			if _, err := os.Stat(filepath.Join(g.outDir, f)); err == nil {
+			if _, err := g.root.Stat(f); err == nil {
 				continue
 			}
 		}
-		if err := emitFile(g.outDir, f, contents); err != nil {
+		if err := emitFile(g.root, f, contents); err != nil {
 			return errors.Wrapf(err, "emitting file %v", f)
 		}
 	}
@@ -709,10 +705,10 @@ func (g *generator) Generate() error {
 }
 
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
-func (g *generator) gatherPackage() (*pkg, error) {
+func (g *Generator) gatherPackage() (*pkg, error) {
 	// First, gather up the entire package/module structure.  This includes gathering config entries, resources,
 	// data sources, and any supporting type information, and placing them into modules.
-	pack := newPkg(g.pkg, g.version, g.language, g.outDir)
+	pack := newPkg(g.pkg, g.version, g.language, g.root)
 
 	// Place all configuration variables into a single config module.
 	if cfg := g.gatherConfig(); cfg != nil {
@@ -754,7 +750,7 @@ func (g *generator) gatherPackage() (*pkg, error) {
 }
 
 // gatherConfig returns the configuration module for this package.
-func (g *generator) gatherConfig() *module {
+func (g *Generator) gatherConfig() *module {
 	// If there's no config, skip creating the module.
 	cfg := g.provider().Schema()
 	if cfg.Len() == 0 {
@@ -803,7 +799,7 @@ func (g *generator) gatherConfig() *module {
 }
 
 // gatherProvider returns the provider resource for this package.
-func (g *generator) gatherProvider() (*resourceType, error) {
+func (g *Generator) gatherProvider() (*resourceType, error) {
 	cfg := g.provider().Schema()
 	if cfg == nil {
 		cfg = schema.SchemaMap{}
@@ -817,7 +813,7 @@ func (g *generator) gatherProvider() (*resourceType, error) {
 }
 
 // gatherResources returns all modules and their resources.
-func (g *generator) gatherResources() (moduleMap, error) {
+func (g *Generator) gatherResources() (moduleMap, error) {
 	// If there aren't any resources, skip this altogether.
 	resources := g.provider().ResourcesMap()
 	if resources.Len() == 0 {
@@ -869,7 +865,7 @@ func (g *generator) gatherResources() (moduleMap, error) {
 }
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
-func (g *generator) gatherResource(rawname string,
+func (g *Generator) gatherResource(rawname string,
 	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (string, *resourceType, error) {
 	// Get the resource's module and name.
 	name, module := resourceName(g.info.Name, rawname, info, isProvider)
@@ -968,7 +964,7 @@ func (g *generator) gatherResource(rawname string,
 	return module, res, nil
 }
 
-func (g *generator) gatherDataSources() (moduleMap, error) {
+func (g *Generator) gatherDataSources() (moduleMap, error) {
 	// If there aren't any data sources, skip this altogether.
 	sources := g.provider().DataSourcesMap()
 	if sources.Len() == 0 {
@@ -1020,7 +1016,7 @@ func (g *generator) gatherDataSources() (moduleMap, error) {
 }
 
 // gatherDataSource returns the module name and members for the given data source function.
-func (g *generator) gatherDataSource(rawname string,
+func (g *Generator) gatherDataSource(rawname string,
 	ds shim.Resource, info *tfbridge.DataSourceInfo) (string, *resourceFunc, error) {
 	// Generate the name and module for this data source.
 	name, module := dataSourceName(g.info.Name, rawname, info)
@@ -1099,29 +1095,29 @@ func (g *generator) gatherDataSource(rawname string,
 }
 
 // gatherOverlays returns any overlay modules and their contents.
-func (g *generator) gatherOverlays() (moduleMap, error) {
+func (g *Generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
 
 	// Pluck out the overlay info from the right structure.  This is language dependent.
 	var overlay *tfbridge.OverlayInfo
 	switch g.language {
-	case nodeJS:
+	case NodeJS:
 		if jsinfo := g.info.JavaScript; jsinfo != nil {
 			overlay = jsinfo.Overlay
 		}
-	case python:
+	case Python:
 		if pyinfo := g.info.Python; pyinfo != nil {
 			overlay = pyinfo.Overlay
 		}
-	case golang:
+	case Golang:
 		if goinfo := g.info.Golang; goinfo != nil {
 			overlay = goinfo.Overlay
 		}
-	case csharp:
+	case CSharp:
 		if csharpinfo := g.info.CSharp; csharpinfo != nil {
 			overlay = csharpinfo.Overlay
 		}
-	case pulumiSchema:
+	case Schema:
 		// N/A
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
@@ -1151,15 +1147,9 @@ func (g *generator) gatherOverlays() (moduleMap, error) {
 	return modules, nil
 }
 
-// preparePackage ensures the root exists and generates any metadata required by a Pulumi package.
-func (g *generator) preparePackage() error {
-	// Ensure the output path exists.
-	return tools.EnsureDir(g.outDir)
-}
-
 // emitProjectMetadata emits the Pulumi.yaml project file into the package's root directory.
-func (g *generator) emitProjectMetadata(pack *pkg) error {
-	w, err := tools.NewGenWriter(tfgen, filepath.Join(g.outDir, "Pulumi.yaml"))
+func (g *Generator) emitProjectMetadata(pack *pkg) error {
+	w, err := newGenWriter(tfgen, g.root, "Pulumi.yaml")
 	if err != nil {
 		return err
 	}
@@ -1297,11 +1287,13 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 	}
 }
 
-func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir string, files map[string][]byte) error {
+func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension string,
+	fs afero.Fs, srcRoot, dir string, files map[string][]byte) error {
+
 	for _, f := range overlay.DestFiles {
 		if path.Ext(f) == extension {
 			fp := path.Join(dir, f)
-			contents, err := ioutil.ReadFile(path.Join(srcRoot, fp))
+			contents, err := afero.ReadFile(fs, path.Join(srcRoot, fp))
 			if err != nil {
 				return err
 			}
@@ -1318,7 +1310,7 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir 
 		}
 	}
 	for k, v := range overlay.Modules {
-		if err := getOverlayFilesImpl(v, extension, srcRoot, path.Join(dir, k), files); err != nil {
+		if err := getOverlayFilesImpl(v, extension, fs, srcRoot, path.Join(dir, k), files); err != nil {
 			return err
 		}
 	}
@@ -1326,21 +1318,20 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension, srcRoot, dir 
 	return nil
 }
 
-func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension, srcRoot string) (map[string][]byte, error) {
+func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension string, root afero.Fs) (map[string][]byte, error) {
 	files := map[string][]byte{}
-	if err := getOverlayFilesImpl(overlay, extension, srcRoot, "", files); err != nil {
+	if err := getOverlayFilesImpl(overlay, extension, root, "", "", files); err != nil {
 		return nil, err
 	}
 	return files, nil
 }
 
-func emitFile(outDir, relPath string, contents []byte) error {
-	p := path.Join(outDir, relPath)
-	if err := tools.EnsureDir(path.Dir(p)); err != nil {
+func emitFile(fs afero.Fs, relPath string, contents []byte) error {
+	if err := fs.MkdirAll(path.Dir(relPath), 0700); err != nil {
 		return errors.Wrap(err, "creating directory")
 	}
 
-	f, err := os.Create(p)
+	f, err := fs.Create(relPath)
 	if err != nil {
 		return errors.Wrap(err, "creating file")
 	}
@@ -1365,4 +1356,28 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string
 		return res.description
 	}
 	return entityDocs.Attributes[arg]
+}
+
+// cleanDir removes all existing files from a directory except those in the exclusions list.
+// Note: The exclusions currently don't function recursively, so you cannot exclude a single file
+// in a subdirectory, only entire subdirectories. This function will need improvements to be able to
+// target that use-case.
+func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
+	subPaths, err := afero.ReadDir(fs, dirPath)
+	if err != nil {
+		return err
+	}
+
+	if len(subPaths) > 0 {
+		for _, path := range subPaths {
+			if !exclusions.Has(path.Name()) {
+				err = fs.RemoveAll(filepath.Join(dirPath, path.Name()))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }

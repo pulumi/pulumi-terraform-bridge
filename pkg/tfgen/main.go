@@ -17,12 +17,14 @@ package tfgen
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 
 	"github.com/golang/glog"
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +54,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			"and generate all of the Pulumi metadata necessary to consume the resources.\n" +
 			"\n" +
 			"<LANGUAGE> indicates which language/runtime to target; the current supported set of\n" +
-			"languages is " + fmt.Sprintf("%v", allLanguages) + ".\n" +
+			"languages is " + fmt.Sprintf("%v", AllLanguages) + ".\n" +
 			"\n" +
 			"Note that there is no custom Pulumi provider code required, because the generated\n" +
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",
@@ -68,8 +70,21 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				defer pprof.StopCPUProfile()
 			}
 
+			// Create the output directory.
+			var root afero.Fs
+			if outDir != "" {
+				absOutDir, err := filepath.Abs(outDir)
+				if err != nil {
+					return err
+				}
+				if err = os.MkdirAll(absOutDir, 0700); err != nil {
+					return err
+				}
+				root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)
+			}
+
 			// Create a generator with the specified settings.
-			g, err := newGenerator(pkg, version, language(args[0]), prov, outDir)
+			g, err := NewGenerator(pkg, version, Language(args[0]), prov, root)
 			if err != nil {
 				return err
 			}
