@@ -22,9 +22,9 @@ jobs:
           GOPROXY: "https://proxy.golang.org"
         run: go mod download
       - name: Build
-        run: go build ./... && go install ./cmd/...
+        run: make build
       - name: Test
-        run: go test -v ./...
+        run: make test_all
 
   downstream-aws:
     name: Test AWS Downstream
