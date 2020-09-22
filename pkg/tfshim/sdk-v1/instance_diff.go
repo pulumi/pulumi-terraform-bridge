@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
@@ -52,6 +53,47 @@ func (d v1InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 		}
 	}
 	return m
+}
+
+func (d v1InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
+	schemaMap := res.Schema().(v1SchemaMap)
+
+	var prior *terraform.InstanceState
+	if priorState != nil {
+		prior = priorState.(v1InstanceState).tf
+	} else {
+		prior = &terraform.InstanceState{
+			Attributes: map[string]string{},
+			Meta:       map[string]interface{}{},
+		}
+	}
+
+	reader := schema.DiffFieldReader{
+		Diff:   d.tf,
+		Schema: schemaMap,
+		Source: &schema.MapFieldReader{
+			Map:    schema.BasicMapReader(prior.Attributes),
+			Schema: schemaMap,
+		},
+	}
+
+	writer := schema.MapFieldWriter{Schema: schemaMap}
+	for k := range schemaMap {
+		field, err := reader.ReadField([]string{k})
+		if err != nil {
+			return nil, err
+		}
+		if field.Exists && !field.Computed {
+			writer.WriteField([]string{k}, field.Value)
+		}
+	}
+
+	return v1InstanceState{&terraform.InstanceState{
+		ID:         prior.ID,
+		Attributes: writer.Map(),
+		Ephemeral:  prior.Ephemeral,
+		Meta:       prior.Meta,
+	}}, nil
 }
 
 func (d v1InstanceDiff) Destroy() bool {

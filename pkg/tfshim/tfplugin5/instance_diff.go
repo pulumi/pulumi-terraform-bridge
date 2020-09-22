@@ -51,6 +51,25 @@ func (d *instanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	return d.attributes
 }
 
+func (d *instanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
+	plannedObject, err := ctyToGo(d.planned)
+	if err != nil {
+		return nil, err
+	}
+
+	var id string
+	if priorState != nil {
+		id = priorState.ID()
+	}
+
+	return &instanceState{
+		resourceType: res.(*resource).resourceType,
+		id:           id,
+		object:       plannedObject.(map[string]interface{}),
+		meta:         d.meta,
+	}, nil
+}
+
 func (d *instanceDiff) Destroy() bool {
 	return d.destroy
 }

@@ -37,7 +37,7 @@ type ResourceAttrDiff struct {
 type InstanceDiff interface {
 	Attribute(key string) *ResourceAttrDiff
 	Attributes() map[string]ResourceAttrDiff
-
+	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
 

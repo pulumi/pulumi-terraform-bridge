@@ -549,7 +549,9 @@ func (p *Provider) Configure(ctx context.Context,
 		return nil, err
 	}
 
-	return &pulumirpc.ConfigureResponse{}, nil
+	return &pulumirpc.ConfigureResponse{
+		SupportsPreview: true,
+	}, nil
 }
 
 // Parse the TF error of a missing field:
@@ -789,20 +791,28 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		diff.SetTimeout(req.Timeout, shim.TimeoutCreate)
 	}
 
-	newstate, err := p.tf.Apply(res.TFName, nil, diff)
-	if newstate == nil {
-		if err == nil {
-			return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
+	var newstate shim.InstanceState
+	var reasons []string
+	if !req.GetPreview() {
+		newstate, err = p.tf.Apply(res.TFName, nil, diff)
+		if newstate == nil {
+			if err == nil {
+				return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
+			}
+			return nil, err
 		}
-		return nil, err
-	}
+		if newstate.ID() == "" {
+			return nil, fmt.Errorf("expected non-empty ID for new state during Create of %s", urn)
+		}
 
-	if newstate.ID() == "" {
-		return nil, fmt.Errorf("expected non-empty ID for new state during Create of %s", urn)
-	}
-	reasons := make([]string, 0)
-	if err != nil {
-		reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
+		if err != nil {
+			reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
+		}
+	} else {
+		newstate, err = diff.ProposedState(res.TF, nil)
+		if err != nil {
+			return nil, fmt.Errorf("internal error: failed to fetch proposed state during diff (%w)", err)
+		}
 	}
 
 	// Create the ID and property maps and return them.
@@ -954,23 +964,30 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		diff.SetTimeout(req.Timeout, shim.TimeoutUpdate)
 	}
 
-	newstate, err := p.tf.Apply(res.TFName, state, diff)
-	if newstate == nil {
-		if err != nil {
-			return nil, err
+	var newstate shim.InstanceState
+	var reasons []string
+	if !req.GetPreview() {
+		newstate, err = p.tf.Apply(res.TFName, state, diff)
+		if newstate == nil {
+			if err != nil {
+				return nil, err
+			}
+
+			return nil, fmt.Errorf("Resource provider reported that the resource did not exist while updating %s.\n\n"+
+				"This is usually a result of the resource having been deleted outside of Pulumi, and can often be "+
+				"fixed by running `pulumi refresh` before updating.", urn)
 		}
-
-		return nil, fmt.Errorf("Resource provider reported that the resource did not exist while updating %s.\n\n"+
-			"This is usually a result of the resource having been deleted outside of Pulumi, and can often be "+
-			"fixed by running `pulumi refresh` before updating.", urn)
-	}
-
-	if newstate.ID() == "" {
-		return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
-	}
-	reasons := make([]string, 0)
-	if err != nil {
-		reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
+		if newstate.ID() == "" {
+			return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
+		}
+		if err != nil {
+			reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
+		}
+	} else {
+		newstate, err = diff.ProposedState(res.TF, nil)
+		if err != nil {
+			return nil, fmt.Errorf("internal error: failed to fetch proposed state during diff (%w)", err)
+		}
 	}
 
 	props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
