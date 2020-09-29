@@ -227,7 +227,6 @@ type Transformer func(resource.PropertyValue) (resource.PropertyValue, error)
 type DocInfo struct {
 	Source                         string // an optional override to locate TF docs; "" uses the default.
 	Markdown                       []byte // an optional override for the source markdown.
-	MarkdownURL                    string // an optional override for the source URL.
 	IncludeAttributesFrom          string // optionally include attributes from another raw resource for docs.
 	IncludeArgumentsFrom           string // optionally include arguments from another raw resource for docs.
 	IncludeAttributesFromArguments string // optionally include attributes from another raw resource's arguments.

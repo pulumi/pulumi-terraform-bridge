@@ -295,8 +295,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	return spec, nil
 }
 
-func (g *schemaGenerator) genDocComment(comment, docURL string) string {
-	if comment == elidedDocComment && docURL == "" {
+func (g *schemaGenerator) genDocComment(comment string) string {
+	if comment == elidedDocComment {
 		return ""
 	}
 
@@ -344,7 +344,7 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
-		description = g.genDocComment(prop.doc, prop.docURL)
+		description = g.genDocComment(prop.doc)
 	} else if prop.rawdoc != "" {
 		description = g.genRawDocComment(prop.rawdoc)
 	}
@@ -404,7 +404,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	description := ""
 	if res.doc != "" {
-		description = g.genDocComment(res.doc, res.docURL)
+		description = g.genDocComment(res.doc)
 	}
 	if !res.IsProvider() {
 		if res.info.DeprecationMessage != "" {
@@ -452,7 +452,7 @@ func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) psche
 
 	description := ""
 	if fun.doc != "" {
-		description = g.genDocComment(fun.doc, fun.docURL)
+		description = g.genDocComment(fun.doc)
 	}
 	if fun.info.DeprecationMessage != "" {
 		spec.DeprecationMessage = fun.info.DeprecationMessage
@@ -504,7 +504,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 	}
 
 	if typ.doc != "" {
-		spec.Description = g.genDocComment(typ.doc, "")
+		spec.Description = g.genDocComment(typ.doc)
 	}
 
 	spec.Properties = map[string]pschema.PropertySpec{}
