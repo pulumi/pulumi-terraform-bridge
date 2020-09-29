@@ -351,10 +351,12 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 		}
 	}
 
-	// Make a Terraform config map out of the variables. We do this before checking for missing properties
-	// s.t. we can pull any defaults out of the TF schema.
-	config, _, err := MakeTerraformConfig(p, tfVars, p.config, p.info.Config)
-	return config, err
+	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, nil, p.config, p.info.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	return MakeTerraformConfigFromInputs(p.tf, inputs), nil
 }
 
 func validateProviderConfig(ctx context.Context, p *Provider, config shim.ResourceConfig) (
