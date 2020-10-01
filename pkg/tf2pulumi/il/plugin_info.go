@@ -97,8 +97,10 @@ func (s multiProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
 	for _, s := range s {
-		if info, err := s.GetProviderInfo(registryName, namespace, name, version); err == nil && info != nil {
-			return info, nil
+		if s != nil {
+			if info, err := s.GetProviderInfo(registryName, namespace, name, version); err == nil && info != nil {
+				return info, nil
+			}
 		}
 	}
 
