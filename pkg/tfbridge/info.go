@@ -205,6 +205,9 @@ type SchemaInfo struct {
 
 	// whether or not this property has been removed from the Terraform schema
 	Removed bool
+
+	// whether or not to treat this property as secret
+	Secret *bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
@@ -474,6 +477,7 @@ type MarshallableSchemaInfo struct {
 	MaxItemsOne *bool                              `json:"maxItemsOne,omitempty"`
 	Deprecated  string                             `json:"deprecated,omitempty"`
 	ForceNew    *bool                              `json:"forceNew,omitempty"`
+	Secret      *bool                              `json:"secret,omitempty"`
 }
 
 // MarshalSchemaInfo converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
@@ -498,6 +502,7 @@ func MarshalSchemaInfo(s *SchemaInfo) *MarshallableSchemaInfo {
 		MaxItemsOne: s.MaxItemsOne,
 		Deprecated:  s.DeprecationMessage,
 		ForceNew:    s.ForceNew,
+		Secret:      s.Secret,
 	}
 }
 
@@ -523,6 +528,7 @@ func (m *MarshallableSchemaInfo) Unmarshal() *SchemaInfo {
 		MaxItemsOne:        m.MaxItemsOne,
 		DeprecationMessage: m.Deprecated,
 		ForceNew:           m.ForceNew,
+		Secret:             m.Secret,
 	}
 }
 

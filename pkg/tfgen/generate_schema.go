@@ -375,6 +375,11 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		}
 	}
 
+	var secret bool
+	if prop.info != nil && prop.info.Secret != nil {
+		secret = *prop.info.Secret
+	}
+
 	return pschema.PropertySpec{
 		TypeSpec:           g.schemaType(mod, prop.typ, prop.out),
 		Description:        description,
@@ -382,6 +387,7 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		DefaultInfo:        defaultInfo,
 		DeprecationMessage: prop.deprecationMessage(),
 		Language:           language,
+		Secret:             secret,
 	}
 }
 
