@@ -175,3 +175,22 @@ func TestDiffConfig(t *testing.T) {
 	assert.True(t, resp.HasDetailedDiff)
 	assert.Len(t, resp.DetailedDiff, 1)
 }
+
+func TestBuildConfig(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+
+	configIn := resource.PropertyMap{
+		"configValue": resource.NewStringProperty("foo"),
+		"version":     resource.NewStringProperty("0.0.1"),
+	}
+	configOut, err := buildTerraformConfig(provider, configIn)
+	assert.NoError(t, err)
+
+	expected := provider.tf.NewResourceConfig(map[string]interface{}{
+		"config_value": "foo",
+	})
+	assert.Equal(t, expected, configOut)
+}

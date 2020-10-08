@@ -351,7 +351,7 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, nil, p.config, p.info.Config)
+	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, tfVars, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
