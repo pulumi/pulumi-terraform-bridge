@@ -641,7 +641,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			return nil, err
 		}
 
-		ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, nil)
+		ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, err
 		}
