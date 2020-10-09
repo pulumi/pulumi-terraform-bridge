@@ -360,9 +360,9 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 }
 
 func validateProviderConfig(ctx context.Context, p *Provider, config shim.ResourceConfig) (
-	[]*pulumirpc.CheckFailure, error) {
+	[]*pulumirpc.ConfigureErrorMissingKeys_MissingKey, error) {
 
-	var missingKeys []*pulumirpc.CheckFailure
+	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
 	p.config.Range(func(key string, meta shim.Schema) bool {
 		if meta.Required() && !config.IsSet(key) {
 			name := TerraformToPulumiName(key, meta, nil, false)
@@ -371,9 +371,9 @@ func validateProviderConfig(ctx context.Context, p *Provider, config shim.Resour
 			// TF descriptions often have newlines in inopportune positions. This makes them present
 			// a little better in our console output.
 			descriptionWithoutNewlines := strings.Replace(meta.Description(), "\n", " ", -1)
-			missingKeys = append(missingKeys, &pulumirpc.CheckFailure{
-				Property: fullyQualifiedName.String(),
-				Reason:   descriptionWithoutNewlines,
+			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
+				Name:        fullyQualifiedName.String(),
+				Description: descriptionWithoutNewlines,
 			})
 		}
 		return true
@@ -536,7 +536,7 @@ func (p *Provider) Configure(ctx context.Context,
 		if len(missingKeys) > 0 {
 			err = rpcerror.WithDetails(
 				rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-				&pulumirpc.CheckResponse{Failures: missingKeys})
+				&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
 			return nil, err
 		}
 		if validationErrors != nil {
