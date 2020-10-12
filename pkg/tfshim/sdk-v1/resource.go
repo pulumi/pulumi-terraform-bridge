@@ -49,7 +49,7 @@ func (r v1Resource) Importer() shim.ImportFunc {
 					"as a bug in the Pulumi provider repository.", id)
 			}
 			if s.Attributes != nil {
-				results[i] = v1InstanceState{s}
+				results[i] = v1InstanceState{s, nil}
 			}
 		}
 		return results, nil
@@ -97,7 +97,7 @@ func (r v1Resource) InstanceState(id string, object, meta map[string]interface{}
 		ID:         id,
 		Attributes: attributes,
 		Meta:       meta,
-	}}, nil
+	}, nil}, nil
 }
 
 func (r v1Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {

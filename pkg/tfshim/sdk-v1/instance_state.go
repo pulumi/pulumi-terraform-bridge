@@ -11,11 +11,12 @@ import (
 var _ = shim.InstanceState(v1InstanceState{})
 
 type v1InstanceState struct {
-	tf *terraform.InstanceState
+	tf   *terraform.InstanceState
+	diff *terraform.InstanceDiff
 }
 
 func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
-	return v1InstanceState{s}
+	return v1InstanceState{s, nil}
 }
 
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {
@@ -35,11 +36,23 @@ func (s v1InstanceState) ID() string {
 
 func (s v1InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
 	obj := make(map[string]interface{})
+
+	schemaMap := map[string]*schema.Schema(sch.(v1SchemaMap))
+
 	attrs := s.tf.Attributes
 
-	reader := &schema.MapFieldReader{
-		Schema: map[string]*schema.Schema(sch.(v1SchemaMap)),
+	var reader schema.FieldReader = &schema.MapFieldReader{
+		Schema: schemaMap,
 		Map:    schema.BasicMapReader(attrs),
+	}
+
+	// If this is a state + a diff, use a diff reader rather than a map reader.
+	if s.diff != nil {
+		reader = &diffFieldReader{
+			Diff:   s.diff,
+			Schema: schemaMap,
+			Source: reader,
+		}
 	}
 
 	// Read each top-level field out of the attributes.
@@ -61,7 +74,7 @@ func (s v1InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 		if err != nil {
 			return nil, err
 		}
-		if res.Value != nil {
+		if res.Value != nil && !res.Computed {
 			obj[key] = res.Value
 		}
 	}

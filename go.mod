@@ -50,7 +50,3 @@ require (
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20200910230100-328eb4ff41df
-
-replace github.com/pulumi/pulumi/sdk/v2 => ../pulumi/sdk
-
-replace github.com/pulumi/pulumi/pkg/v2 => ../pulumi/pkg

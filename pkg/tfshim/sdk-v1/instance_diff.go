@@ -56,8 +56,6 @@ func (d v1InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 }
 
 func (d v1InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
-	schemaMap := res.Schema().(v1SchemaMap)
-
 	var prior *terraform.InstanceState
 	if priorState != nil {
 		prior = priorState.(v1InstanceState).tf
@@ -68,32 +66,7 @@ func (d v1InstanceDiff) ProposedState(res shim.Resource, priorState shim.Instanc
 		}
 	}
 
-	reader := schema.DiffFieldReader{
-		Diff:   d.tf,
-		Schema: schemaMap,
-		Source: &schema.MapFieldReader{
-			Map:    schema.BasicMapReader(prior.Attributes),
-			Schema: schemaMap,
-		},
-	}
-
-	writer := schema.MapFieldWriter{Schema: schemaMap}
-	for k := range schemaMap {
-		field, err := reader.ReadField([]string{k})
-		if err != nil {
-			return nil, err
-		}
-		if field.Exists && !field.Computed {
-			writer.WriteField([]string{k}, field.Value)
-		}
-	}
-
-	return v1InstanceState{&terraform.InstanceState{
-		ID:         prior.ID,
-		Attributes: writer.Map(),
-		Ephemeral:  prior.Ephemeral,
-		Meta:       prior.Meta,
-	}}, nil
+	return v1InstanceState{tf: prior, diff: d.tf}, nil
 }
 
 func (d v1InstanceDiff) Destroy() bool {
