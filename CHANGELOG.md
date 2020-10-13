@@ -3,7 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Add support for communicating with plugins over the  TF gRPC interface.
+- Add support for previewing `Create` and `Update` operations.
+  [#276](https://github.com/pulumi/pulumi-terraform-bridge/pull/276)
+
+- Add support for communicating with plugins over the TF gRPC interface.
   [#267](https://github.com/pulumi/pulumi-terraform-bridge/pull/267)
 
 - Refactor schematized types to support enums.
