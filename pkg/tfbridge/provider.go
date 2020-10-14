@@ -984,7 +984,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 			reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 		}
 	} else {
-		newstate, err = diff.ProposedState(res.TF, nil)
+		newstate, err = diff.ProposedState(res.TF, state)
 		if err != nil {
 			return nil, fmt.Errorf("internal error: failed to fetch proposed state during diff (%w)", err)
 		}
