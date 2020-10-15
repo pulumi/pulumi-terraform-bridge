@@ -31,10 +31,11 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
           repo: pulumi/pulumictl
+      - run: npm install -g chg
       - name: Check out source code
         uses: actions/checkout@master
       - name: Generate Downstream Code
-        uses: pulumi/action-test-provider-downstream@c914c07257348cd989a0ca32acd68596beebf7dc
+        uses: pulumi/action-test-provider-downstream@5c84ae7fd7f633916e8387becb30db5d43987d43
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
