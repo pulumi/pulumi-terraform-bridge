@@ -10,7 +10,7 @@ on:
 
 jobs:
   downstream-provider:
-    name: Automate Downstream Pull Request
+    name: Upgrade ${{matrix.provider_name}} to latest pulumi-terraform-bridge
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
@@ -34,12 +34,12 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Generate Downstream Code
-        uses: pulumi/action-test-provider-downstream@317744132f8e9724dbb98ea2fbc5b212ea124594
+        uses: pulumi/action-test-provider-downstream@54c009a50e33aa0b4be185df456bdfe8baf7d72d
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
-          downstream-name: pulumi-${{ matrix.provider_name }}
-          downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider_name }}
+          downstream-name: ${{ matrix.provider_name }}
+          downstream-url: https://github.com/pulumi/${{ matrix.provider_name }}
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
           use-provider-dir: true
@@ -47,4 +47,4 @@ jobs:
     strategy:
       matrix:
         provider_name:
-          - keycloak
+          - pulumi-keycloak
