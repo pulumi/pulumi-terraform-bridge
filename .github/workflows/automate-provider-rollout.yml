@@ -34,7 +34,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Generate Downstream Code
-        uses: pulumi/action-test-provider-downstream@a858f6cc82e13752fe62ee592c223b5ceb9f8164
+        uses: pulumi/action-test-provider-downstream@517354102009356e55cba8c5b0dcaf25153b63f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
