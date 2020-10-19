@@ -57,7 +57,7 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 
 	// Read each top-level field out of the attributes.
 	keys := make(map[string]bool)
-	for key := range attrs {
+	readAttributeField := func(key string) error {
 		// Pull the top-level field out of this attribute key. If we've already read the top-level field, skip this
 		// key.
 		dot := strings.Index(key, ".")
@@ -65,23 +65,37 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 			key = key[:dot]
 		}
 		if _, ok := keys[key]; ok {
-			continue
+			return nil
 		}
 		keys[key] = true
 
 		// Read the top-level attribute for this key.
 		res, err := reader.ReadField([]string{key})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if res.Value != nil && !res.Computed {
 			obj[key] = res.Value
+		}
+		return nil
+	}
+
+	for key := range attrs {
+		if err := readAttributeField(key); err != nil {
+			return nil, err
+		}
+	}
+	if s.diff != nil {
+		for key := range s.diff.Attributes {
+			if err := readAttributeField(key); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// Populate the "id" property if it is not set. Most schemas do not include this property, and leaving it out
 	// can cause unnecessary diffs when refreshing/updating resources after a provider upgrade.
-	if _, ok := obj["id"]; !ok {
+	if _, ok := obj["id"]; !ok && attrs["id"] != "" {
 		obj["id"] = attrs["id"]
 	}
 
