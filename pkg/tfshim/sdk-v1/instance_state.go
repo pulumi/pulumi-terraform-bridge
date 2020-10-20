@@ -95,7 +95,7 @@ func (s v1InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 
 	// Populate the "id" property if it is not set. Most schemas do not include this property, and leaving it out
 	// can cause unnecessary diffs when refreshing/updating resources after a provider upgrade.
-	if _, ok := obj["id"]; !ok && attrs["id"] != "" {
+	if _, ok := obj["id"]; !ok {
 		obj["id"] = attrs["id"]
 	}
 

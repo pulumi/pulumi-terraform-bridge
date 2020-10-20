@@ -202,7 +202,7 @@ func TestProviderPreview(t *testing.T) {
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": Resource{
+		"ExampleResource": {
 			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
 			TFName: "example_resource",
 			Schema: &ResourceInfo{Tok: "ExampleResource"},
@@ -223,7 +223,7 @@ func TestProviderPreview(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Step 2a: preview the creation of a resource using the checked input bag. The inputs should be smuggled along with the state.
+	// Step 2a: preview the creation of a resource using the checked input bag.
 	createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: checkResp.GetInputs(),
@@ -234,6 +234,7 @@ func TestProviderPreview(t *testing.T) {
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":                  "",
 		"stringPropertyValue": "foo",
 		"setPropertyValues":   []interface{}{"foo"},
 	}).DeepEquals(outs))
@@ -243,9 +244,6 @@ func TestProviderPreview(t *testing.T) {
 		Urn:        string(urn),
 		Properties: checkResp.GetInputs(),
 	})
-	assert.NoError(t, err)
-
-	outs, err = plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 
 	// Step 3: preview an update to the resource we just created.
