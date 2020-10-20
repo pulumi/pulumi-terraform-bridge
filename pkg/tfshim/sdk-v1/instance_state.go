@@ -11,11 +11,12 @@ import (
 var _ = shim.InstanceState(v1InstanceState{})
 
 type v1InstanceState struct {
-	tf *terraform.InstanceState
+	tf   *terraform.InstanceState
+	diff *terraform.InstanceDiff
 }
 
 func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
-	return v1InstanceState{s}
+	return v1InstanceState{s, nil}
 }
 
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {
@@ -35,16 +36,28 @@ func (s v1InstanceState) ID() string {
 
 func (s v1InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
 	obj := make(map[string]interface{})
+
+	schemaMap := map[string]*schema.Schema(sch.(v1SchemaMap))
+
 	attrs := s.tf.Attributes
 
-	reader := &schema.MapFieldReader{
-		Schema: map[string]*schema.Schema(sch.(v1SchemaMap)),
+	var reader schema.FieldReader = &schema.MapFieldReader{
+		Schema: schemaMap,
 		Map:    schema.BasicMapReader(attrs),
+	}
+
+	// If this is a state + a diff, use a diff reader rather than a map reader.
+	if s.diff != nil {
+		reader = &diffFieldReader{
+			Diff:   s.diff,
+			Schema: schemaMap,
+			Source: reader,
+		}
 	}
 
 	// Read each top-level field out of the attributes.
 	keys := make(map[string]bool)
-	for key := range attrs {
+	readAttributeField := func(key string) error {
 		// Pull the top-level field out of this attribute key. If we've already read the top-level field, skip this
 		// key.
 		dot := strings.Index(key, ".")
@@ -52,17 +65,31 @@ func (s v1InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 			key = key[:dot]
 		}
 		if _, ok := keys[key]; ok {
-			continue
+			return nil
 		}
 		keys[key] = true
 
 		// Read the top-level attribute for this key.
 		res, err := reader.ReadField([]string{key})
 		if err != nil {
+			return err
+		}
+		if res.Value != nil && !res.Computed {
+			obj[key] = res.Value
+		}
+		return nil
+	}
+
+	for key := range attrs {
+		if err := readAttributeField(key); err != nil {
 			return nil, err
 		}
-		if res.Value != nil {
-			obj[key] = res.Value
+	}
+	if s.diff != nil {
+		for key := range s.diff.Attributes {
+			if err := readAttributeField(key); err != nil {
+				return nil, err
+			}
 		}
 	}
 

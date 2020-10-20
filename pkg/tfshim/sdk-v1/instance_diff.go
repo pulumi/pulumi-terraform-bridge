@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
 )
 
@@ -52,6 +53,20 @@ func (d v1InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 		}
 	}
 	return m
+}
+
+func (d v1InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
+	var prior *terraform.InstanceState
+	if priorState != nil {
+		prior = priorState.(v1InstanceState).tf
+	} else {
+		prior = &terraform.InstanceState{
+			Attributes: map[string]string{},
+			Meta:       map[string]interface{}{},
+		}
+	}
+
+	return v1InstanceState{tf: prior, diff: d.tf}, nil
 }
 
 func (d v1InstanceDiff) Destroy() bool {

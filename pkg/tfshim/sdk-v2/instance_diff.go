@@ -44,6 +44,20 @@ func (d v2InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	return m
 }
 
+func (d v2InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
+	var prior *terraform.InstanceState
+	if priorState != nil {
+		prior = priorState.(v2InstanceState).tf
+	} else {
+		prior = &terraform.InstanceState{
+			Attributes: map[string]string{},
+			Meta:       map[string]interface{}{},
+		}
+	}
+
+	return v2InstanceState{tf: prior, diff: d.tf}, nil
+}
+
 func (d v2InstanceDiff) Destroy() bool {
 	return d.tf.Destroy
 }

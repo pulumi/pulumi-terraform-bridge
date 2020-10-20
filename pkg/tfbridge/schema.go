@@ -623,7 +623,10 @@ func MakeTerraformOutputs(p shim.Provider, outs map[string]interface{},
 		contract.Assert(name != "")
 
 		// Next perform a translation of the value accordingly.
-		result[name] = MakeTerraformOutput(p, value, tfi, psi, assets, rawNames, supportsSecrets)
+		out := MakeTerraformOutput(p, value, tfi, psi, assets, rawNames, supportsSecrets)
+		//if !out.IsNull() {
+		result[name] = out
+		//}
 	}
 
 	if glog.V(5) {
