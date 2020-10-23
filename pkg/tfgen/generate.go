@@ -676,6 +676,10 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}, nil
 }
 
+func (g *Generator) error(f string, args ...interface{}) {
+	g.sink.Errorf(diag.Message("", f), args...)
+}
+
 func (g *Generator) warn(f string, args ...interface{}) {
 	g.sink.Warningf(diag.Message("", f), args...)
 }
@@ -879,14 +883,19 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
+	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
+
 	// For each resource, create its own dedicated type and module export.
 	var reserr error
 	seen := make(map[string]bool)
 	for _, r := range stableResources(resources) {
 		info := g.info.Resources[r]
 		if info == nil {
-			// if this resource was missing, issue a warning and skip it.
-			g.warn("resource %s not found in provider map; skipping", r)
+			if failBuildOnProviderMapError {
+				g.error("resource %s not found in provider map; exiting", r)
+			} else {
+				g.warn("resource %s not found in provider map; skipping", r)
+			}
 			continue
 		}
 		seen[r] = true
@@ -1025,14 +1034,19 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
+	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
+
 	// For each data source, create its own dedicated function and module export.
 	var dserr error
 	seen := make(map[string]bool)
 	for _, ds := range stableResources(sources) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
-			// if this data source was missing, issue a warning and skip it.
-			g.warn("data source %s not found in provider map; skipping", ds)
+			if failBuildOnProviderMapError {
+				g.error("data source %s not found in provider map; exiting", ds)
+			} else {
+				g.warn("data source %s not found in provider map; skipping", ds)
+			}
 			continue
 		}
 		seen[ds] = true
