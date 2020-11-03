@@ -212,7 +212,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	spec.Description = g.info.Description
-	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg())
+	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), g.info.GetGitHubHost())
 
 	var config []*variable
 	for _, mod := range pack.modules.values() {
@@ -262,7 +262,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
 	readme := fmt.Sprintf(
-		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL)
+		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
+		g.info.GetGitHubHost())
 	nodeData := map[string]interface{}{
 		"readme":                  readme,
 		"disableUnionOutputTypes": true,

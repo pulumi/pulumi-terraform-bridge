@@ -88,14 +88,14 @@ const (
 	DataSourceDocs DocKind = "data-sources"
 )
 
-func getRepoPath(org string, provider string, providerModuleVersion string) (string, error) {
+func getRepoPath(org string, provider string, providerModuleVersion string, githost string) (string, error) {
 	gomod, err := LoadGoMod()
 	if err != nil {
 		return "", err
 	}
 
 	// This will help us to now account for the different versions of the Go mod declarations in providers
-	calculatedImportPath := fmt.Sprintf("github.com/%s/terraform-provider-%s", org, provider)
+	calculatedImportPath := fmt.Sprintf("%s/%s/terraform-provider-%s", githost, org, provider)
 	if providerModuleVersion != "" {
 		calculatedImportPath = fmt.Sprintf("%s/%s", calculatedImportPath, providerModuleVersion)
 	}
@@ -114,7 +114,8 @@ func getRepoPath(org string, provider string, providerModuleVersion string) (str
 }
 
 func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) ([]byte, string, bool) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
+	githost string) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
@@ -124,7 +125,7 @@ func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefi
 		return docinfo.Markdown, "", true
 	}
 
-	repoPath, err := getRepoPath(org, provider, providerModuleVersion)
+	repoPath, err := getRepoPath(org, provider, providerModuleVersion, githost)
 	if err != nil {
 		return nil, "", false
 	}
@@ -157,10 +158,11 @@ func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefi
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string) (entityDocs, error) {
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
+	githost string) (entityDocs, error) {
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
-		providerModuleVersion)
+		providerModuleVersion, githost)
 	if !found {
 		g.warn("Could not find docs for resource %v; consider overriding doc source location", rawname)
 		return entityDocs{}, nil
@@ -178,19 +180,22 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	if docinfo != nil {
 		// Merge Attributes from source into target
 		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFrom, true, true, providerModuleVersion); err != nil {
+			docinfo.IncludeAttributesFrom, true, true,
+			providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into Attributes of target
 		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFromArguments, true, false, providerModuleVersion); err != nil {
+			docinfo.IncludeAttributesFromArguments, true, false,
+			providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into target
 		if err := mergeDocs(g, info, org, provider, provider, kind, doc,
-			docinfo.IncludeArgumentsFrom, false, false, providerModuleVersion); err != nil {
+			docinfo.IncludeArgumentsFrom, false, false,
+			providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 	}
@@ -240,11 +245,11 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 func mergeDocs(g *Generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
 	resourcePrefix string,
 	kind DocKind, docs entityDocs, sourceFrom string,
-	useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string) error {
+	useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string, githost string) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind,
-			sourceFrom, nil, providerModuleVersion)
+			sourceFrom, nil, providerModuleVersion, githost)
 		if err != nil {
 			return err
 		}
@@ -299,11 +304,11 @@ var (
 
 	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
-	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://github.com/%[3]s/terraform-provider-%[2]s)
+	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
 > first check the [` + "`pulumi/pulumi-%[1]s`" + ` repo](https://github.com/pulumi/pulumi-%[1]s/issues); however, if that doesn't turn up anything,
-> please consult the source [` + "`%[3]s/terraform-provider-%[2]s`" + ` repo](https://github.com/%[3]s/terraform-provider-%[2]s/issues).`
-	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://github.com/%[2]s/terraform-provider-%[1]s)."
+> please consult the source [` + "`%[3]s/terraform-provider-%[2]s`" + ` repo](https://%[6]s/%[3]s/terraform-provider-%[2]s/issues).`
+	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
 )
 
 // groupLines groups a collection of strings, a, by a given separator, sep.

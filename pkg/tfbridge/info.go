@@ -39,6 +39,7 @@ type ProviderInfo struct {
 	Name                    string                             // the TF provider name (e.g. terraform-provider-XXXX).
 	ResourcePrefix          string                             // the prefix on resources the provider exposes, if different to `Name`.
 	GitHubOrg               string                             // the GitHub org of the provider. Defaults to `terraform-providers`.
+	GitHubHost              string                             // the GitHub host for the provider. Defaults to `github.com`.
 	Description             string                             // an optional descriptive overview of the package (a default supplied).
 	Keywords                []string                           // an optional list of keywords to help discovery of this package.
 	License                 string                             // the license, if any, the resulting package has (default is none).
@@ -83,6 +84,14 @@ func (info ProviderInfo) GetGitHubOrg() string {
 	}
 
 	return info.GitHubOrg
+}
+
+func (info ProviderInfo) GetGitHubHost() string {
+	if info.GitHubHost == "" {
+		return "github.com"
+	}
+
+	return info.GitHubHost
 }
 
 func (info ProviderInfo) GetTFProviderLicense() TFProviderLicense {
