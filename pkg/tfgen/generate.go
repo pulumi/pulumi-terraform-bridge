@@ -533,9 +533,15 @@ func (rt *resourceType) IsProvider() bool { return rt.isProvider }
 func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
+	// We want to add the import details to the description so we can display those for the user
+	description := entityDocs.Description
+	if entityDocs.Import != "" {
+		description = fmt.Sprintf("%s\n\n%s", description, entityDocs.Import)
+	}
+
 	return &resourceType{
 		name:       name,
-		doc:        entityDocs.Description,
+		doc:        description,
 		isProvider: isProvider,
 		schema:     schema,
 		info:       info,

@@ -338,7 +338,6 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 		curr += len(word)
 	}
 	fmt.Fprintf(buffer, "\n")
-
 	return buffer.String()
 }
 

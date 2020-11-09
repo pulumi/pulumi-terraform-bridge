@@ -76,6 +76,9 @@ type entityDocs struct {
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
+
+	// Import is the import details for the resource
+	Import string
 }
 
 // DocKind indicates what kind of entity's documentation is being requested.
@@ -368,6 +371,7 @@ const (
 	sectionArgsReference       = 2
 	sectionAttributesReference = 3
 	sectionFrontMatter         = 4
+	sectionImports             = 5
 )
 
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
@@ -515,7 +519,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 
 	sectionKind := sectionOther
 	switch header {
-	case "Import", "Imports", "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
+	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
 		ignoredDocSections++
 		ignoredDocHeaders[header]++
@@ -526,6 +530,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		sectionKind = sectionArgsReference
 	case "Attributes Reference", "Attribute Reference":
 		sectionKind = sectionAttributesReference
+	case "Import", "Imports":
+		sectionKind = sectionImports
 	case "---":
 		sectionKind = sectionFrontMatter
 	}
@@ -557,6 +563,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			p.parseAttributesReferenceSection(subsection)
 		case sectionFrontMatter:
 			p.parseFrontMatter(subsection)
+		case sectionImports:
+			p.parseImports(subsection)
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
@@ -668,6 +676,65 @@ func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) 
 			// This is an empty line or there were no bullets yet - clear the lastMatch
 			lastMatch = ""
 		}
+	}
+}
+
+func (p *tfMarkdownParser) parseImports(subsection []string) {
+	var importDocString []string
+	for _, section := range subsection {
+		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
+			strings.Contains(section, "**Note:**") {
+			// This is a Terraform import specific comment that we don't need to parse or include in our docs
+			continue
+		}
+
+		// There are multiple variations of codeblocks for import syntax
+		section = strings.Replace(section, "```shell", "", -1)
+		section = strings.Replace(section, "```sh", "", -1)
+		section = strings.Replace(section, "```", "", -1)
+		if strings.Contains(section, "terraform import") {
+			// First, remove the `$`
+			section := strings.Replace(section, "$ ", "", -1)
+			// Next, remove `terraform import` from the codeblock
+			section = strings.Replace(section, "terraform import ", "", -1)
+			importString := ""
+			parts := strings.Split(section, " ")
+			for i, p := range parts {
+				switch i {
+				case 0:
+					if !isBlank(p) {
+						// split the string on . and take the last item
+						// this gets the identifier broken from the tf resource
+						ids := strings.Split(p, ".")
+						name := ids[len(ids)-1]
+						importString = fmt.Sprintf("%s %s", importString, name)
+					}
+				default:
+					if !isBlank(p) {
+						importString = fmt.Sprintf("%s %s", importString, p)
+					}
+				}
+			}
+			var tok string
+			if p.info != nil && p.info.GetTok() != "" {
+				tok = p.info.GetTok().String()
+			} else {
+				tok = "MISSING_TOK"
+			}
+			// We are going to use a placeholder here for the linebreak so that when we get into converting examples
+			// we can format our Import section outside of the examples section
+			importCommand := fmt.Sprintf("$ pulumi import %s%s", tok, importString)
+			importDetails := []string{"<break><break>```sh<break>", importCommand, "<break>```<break><break>"}
+			importDocString = append(importDocString, importDetails...)
+		} else {
+			if !isBlank(section) {
+				importDocString = append(importDocString, section)
+			}
+		}
+	}
+
+	if len(importDocString) > 0 {
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(importDocString, " "))
 	}
 }
 
@@ -811,8 +878,15 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 			continue
 		}
 
+		isImportSection := false
 		header, wroteHeader := section[0], false
 		isFrontMatter, isExampleUsage := !strings.HasPrefix(header, "## "), header == "## Example Usage"
+
+		if stripSubsectionsWithErrors && header == "## Import" {
+			isImportSection = true
+			isFrontMatter = false
+			wroteHeader = true
+		}
 
 		sectionStart, sectionEnd := "", ""
 		if isExampleUsage {
@@ -820,6 +894,7 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 		}
 
 		for _, subsection := range groupLines(section[1:], "### ") {
+
 			// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 			// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
 			// them to the description. If we can't, we'll simply log a warning and keep moving along.
@@ -827,6 +902,10 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 			skippedExamples, hasExamples := false, false
 			inCodeBlock, codeBlockStart := false, 0
 			for i, line := range subsection {
+				if isImportSection {
+					// we don't want to do anything with the import section
+					continue
+				}
 				if inCodeBlock {
 					if strings.Index(line, "```") != 0 {
 						continue
@@ -884,6 +963,17 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 			} else {
 				fprintf(output, "%s", subsectionOutput.String())
 			}
+		}
+
+		if isImportSection {
+			section[0] = "\n\n## Import"
+			importDetails := strings.Join(section, " ")
+			importDetails = strings.Replace(importDetails, "  ", "\n\n", -1)
+			importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
+			importDetails = strings.Replace(importDetails, ": ", "", -1)
+			importDetails = strings.Replace(importDetails, " \n", "\n", -1)
+			fprintf(output, "%s", importDetails)
+			continue
 		}
 
 		if !wroteHeader {
@@ -1044,6 +1134,7 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
+		Import:      doc.Import,
 	}, elidedDoc
 
 }
