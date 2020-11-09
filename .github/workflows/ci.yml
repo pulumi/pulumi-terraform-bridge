@@ -7,7 +7,7 @@ jobs:
     name: Build and Test Bridge
     strategy:
       matrix:
-        go-version: [1.14.x]
+        go-version: [1.15.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -26,177 +26,41 @@ jobs:
       - name: Test
         run: make test_all
 
-  downstream-aws:
-    name: Test AWS Downstream
+  downstream-test:
+    name: Test ${{ matrix.provider }} Downstream
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        provider: [ "aws", "gcp", "azure", "azuread", "random", ]
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.14.x
+          go-version: 1.15.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '10.x'
+          node-version: '14.x'
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.9.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
-      - name: Check out source code
-        uses: actions/checkout@master
-      - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v3
-        env:
-          GOPROXY: "https://proxy.golang.org"
-        with:
-          downstream-name: pulumi-aws
-          downstream-url: https://github.com/pulumi/pulumi-aws
-          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
-          use-provider-dir: true
 
-  downstream-azure:
-    name: Test Azure Downstream
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.14.x
-      - name: Install Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: '10.x'
-      - name: Install Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-      - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v3
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
-          downstream-name: pulumi-azure
-          downstream-url: https://github.com/pulumi/pulumi-azure
+          downstream-name: pulumi-${{ matrix.provider }}
+          downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider }}
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
           use-provider-dir: true
-
-  downstream-gcp:
-    name: Test GCP Downstream
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.14.x
-      - name: Install Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: '10.x'
-      - name: Install Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-      - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: pulumi/pulumictl
-      - name: Check out source code
-        uses: actions/checkout@master
-      - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v3
-        env:
-          GOPROXY: "https://proxy.golang.org"
-        with:
-          downstream-name: pulumi-gcp
-          downstream-url: https://github.com/pulumi/pulumi-gcp
-          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
-          use-provider-dir: true
-
-  downstream-azuread:
-    name: Test AzureAD Downstream
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.14.x
-      - name: Install Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: '10.x'
-      - name: Install Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-      - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: pulumi/pulumictl
-      - name: Check out source code
-        uses: actions/checkout@master
-      - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v3
-        env:
-          GOPROXY: "https://proxy.golang.org"
-        with:
-          downstream-name: pulumi-azuread
-          downstream-url: https://github.com/pulumi/pulumi-azuread
-          use-provider-dir: true
-          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
-
-  downstream-random:
-    name: Test Random Downstream
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.14.x
-      - name: Install Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: '10.x'
-      - name: Install Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-      - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: pulumi/pulumictl
-      - name: Check out source code
-        uses: actions/checkout@master
-      - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v3
-        env:
-          GOPROXY: "https://proxy.golang.org"
-        with:
-          downstream-name: pulumi-random
-          downstream-url: https://github.com/pulumi/pulumi-random
-          use-provider-dir: true
-          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
