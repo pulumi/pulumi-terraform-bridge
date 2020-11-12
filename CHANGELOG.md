@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix an edge case where replacements were not being correctly identified.
+  [#295](https://github.com/pulumi/pulumi-terraform-bridge/pull/295)
+
 - Add support for previewing `Create` and `Update` operations.
   [#276](https://github.com/pulumi/pulumi-terraform-bridge/pull/276)
 
