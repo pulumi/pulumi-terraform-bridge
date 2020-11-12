@@ -673,6 +673,30 @@ func TestSetDeleteReplace(t *testing.T) {
 		})
 }
 
+func TestSetDeleteReplaceMultipleItems(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{"ruby", "tineke"},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"burgundy", "ruby", "tineke"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop[0]": UR,
+			"prop[1]": U,
+		})
+}
+
 func TestSetUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
