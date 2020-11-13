@@ -673,30 +673,6 @@ func TestSetDeleteReplace(t *testing.T) {
 		})
 }
 
-func TestSetDeleteReplaceMultipleItems(t *testing.T) {
-	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {
-				Type:     schema.TypeSet,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				ForceNew: true,
-			},
-			"outp": {Type: schema.TypeString, Computed: true},
-		},
-		map[string]*SchemaInfo{},
-		map[string]interface{}{
-			"prop": []interface{}{"ruby", "tineke"},
-		},
-		map[string]interface{}{
-			"prop": []interface{}{"burgundy", "ruby", "tineke"},
-			"outp": "bar",
-		},
-		map[string]DiffKind{
-			"prop[0]": UR,
-			"prop[1]": U,
-		})
-}
-
 func TestSetUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -1324,4 +1300,220 @@ func TestRawElementNames(t *testing.T) {
 		map[string]DiffKind{
 			"prop.variables.DYNAMODB_ROUTE_TABLE_NAME": U,
 		})
+}
+
+// SETS AND LISTS WITH MULTIPLE ITEMS
+
+func TestCollectionsWithMultipleItems(t *testing.T) {
+	testCases := []struct {
+		name                string
+		state               []interface{}
+		input               []interface{}
+		expectedDiffForSet  map[string]DiffKind
+		expectedDiffForList map[string]DiffKind
+	}{
+		{
+			"NoChanges",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			map[string]DiffKind{},
+			map[string]DiffKind{},
+		},
+		{
+			"Reordered",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"tineke", "burgundy", "ruby"},
+			map[string]DiffKind{},
+			map[string]DiffKind{
+				"prop[0]": UR,
+				"prop[1]": UR,
+				"prop[2]": UR,
+			},
+		},
+		{
+			"RemoveFirst",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"ruby", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": U,
+				// This seems wrong.
+				// I would expect
+				// "prop[0]": DR
+			},
+			map[string]DiffKind{
+				"prop[0]": UR,
+				"prop[1]": UR,
+				"prop[2]": DR,
+			},
+		},
+		{
+			"RemoveMiddle",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"burgundy", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": U,
+				// This seems wrong.
+				// I would expect
+				// "prop[1]": DR
+			},
+			map[string]DiffKind{
+				"prop[1]": UR,
+				"prop[2]": DR,
+			},
+		},
+		{
+			"RemoveLast",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"burgundy", "ruby"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": U,
+				"prop[2]": DR,
+				// This seems wrong, the first two are not updated, there is no diff.
+				// I would expect it to match List, i.e.
+				// "prop[2]": DR,
+			},
+			map[string]DiffKind{
+				"prop[2]": DR,
+			},
+		},
+		{
+			"AddFirst",
+			[]interface{}{"ruby", "tineke"},
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": UR,
+				"prop[1]": U,
+				"prop[2]": A,
+				// This seems wrong. I would expect:
+				// "prop[0]": AR,
+				// "prop[1]": UR,
+				// "prop[2]": AR,
+			},
+			map[string]DiffKind{
+				"prop[0]": UR,
+				"prop[1]": UR,
+				"prop[2]": AR,
+			},
+		},
+		{
+			"AddMiddle",
+			[]interface{}{"burgundy", "tineke"},
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": UR,
+				"prop[2]": A,
+				// This seems wrong.  I would expect:
+				// "prop[1]": UR,
+				// "prop[2]": AR,
+			},
+			map[string]DiffKind{
+				"prop[1]": UR,
+				"prop[2]": AR,
+			},
+		},
+		{
+			"AddLast",
+			[]interface{}{"burgundy", "ruby"},
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": U,
+				"prop[2]": AR,
+				// This seems wrong, the first two are not updated, there is no diff.
+				// I would expect it to match List, i.e.
+				// "prop[2]": AR,
+			},
+			map[string]DiffKind{
+				"prop[2]": AR,
+			},
+		},
+		{
+			"UpdateFirst",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"robusta", "ruby", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": UR,
+				"prop[1]": U,
+				"prop[2]": U,
+				// This seems wrong.
+				// I would expect it to match List, i.e.
+				// "prop[0]": UR,
+			},
+			map[string]DiffKind{
+				"prop[0]": UR,
+			},
+		},
+		{
+			"UpdateMiddle",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"burgundy", "robusta", "tineke"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": UR,
+				"prop[2]": U,
+				// This seems wrong.
+				// I would expect it to match List, i.e.
+				// "prop[1]": UR,
+			},
+			map[string]DiffKind{
+				"prop[1]": UR,
+			},
+		},
+		{
+			"UpdateLast",
+			[]interface{}{"burgundy", "ruby", "tineke"},
+			[]interface{}{"burgundy", "ruby", "robusta"},
+			map[string]DiffKind{
+				"prop[0]": U,
+				"prop[1]": U,
+				"prop[2]": UR,
+				// This seems wrong.
+				// I would expect it to match List, i.e.
+				// "prop[2]": UR,
+			},
+			map[string]DiffKind{
+				"prop[2]": UR,
+			},
+		},
+	}
+
+	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{}, expected map[string]DiffKind) {
+		t.Run(name, func(t *testing.T) {
+			diffTest(t,
+				map[string]*schema.Schema{
+					"prop": {
+						Type:     typ,
+						Elem:     &schema.Schema{Type: schema.TypeString},
+						ForceNew: true,
+					},
+					"outp": {Type: schema.TypeString, Computed: true},
+				},
+				map[string]*SchemaInfo{},
+				map[string]interface{}{
+					"prop": inputs, // inputs
+				},
+				map[string]interface{}{
+					"prop": state, // state
+					"outp": "bar",
+				},
+				expected,
+			)
+		})
+	}
+
+	t.Run("Set", func(t *testing.T) {
+		for _, tc := range testCases {
+			runTestCase(t, tc.name, schema.TypeSet, tc.input, tc.state, tc.expectedDiffForSet)
+		}
+	})
+
+	t.Run("List", func(t *testing.T) {
+		for _, tc := range testCases {
+			runTestCase(t, tc.name, schema.TypeList, tc.input, tc.state, tc.expectedDiffForList)
+		}
+	})
 }
