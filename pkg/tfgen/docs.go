@@ -457,6 +457,11 @@ func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 				exampleUsageSection = append(exampleUsageSection, "", "### Additional Examples")
 				exampleUsageSection = append(exampleUsageSection, s[1:]...)
 			}
+		} else if strings.Contains(s[0], "## Example Usage -") {
+			// this is a specific usecase where all of the examples are being requalified as top level examples with a
+			// title. We should process these as children of the top level examples
+			exampleUsageSection = append(exampleUsageSection, "### "+strings.Title(matches[2]))
+			exampleUsageSection = append(exampleUsageSection, s[1:]...)
 		} else {
 			// This is a qualified example usage section. Retitle it using an H3 and its qualifier, and append it to
 			// the output.
