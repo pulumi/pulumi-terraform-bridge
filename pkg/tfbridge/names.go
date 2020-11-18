@@ -15,8 +15,9 @@
 package tfbridge
 
 import (
-	"github.com/pkg/errors"
 	"unicode"
+
+	"github.com/pkg/errors"
 
 	"github.com/gedex/inflector"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -135,6 +136,8 @@ type AutoNameOptions struct {
 	Randlen int
 	// A transform to apply to the name prior to adding random characters
 	Transform func(string) string
+	// A transform to apply after the auto naming has been computed
+	PostTransform func(res *PulumiResource, name string) (string, error)
 }
 
 // AutoName creates custom schema for a Terraform name property which is automatically populated
@@ -197,8 +200,10 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			if err != nil {
 				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}
-
-			return uniqueHex, nil
+			vs = uniqueHex
+		}
+		if options.PostTransform != nil {
+			return options.PostTransform(res, vs)
 		}
 		return vs, nil
 	}

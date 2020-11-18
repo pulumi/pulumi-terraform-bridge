@@ -15,9 +15,11 @@
 package tfbridge
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
@@ -116,4 +118,30 @@ func TestPluralize(t *testing.T) {
 	assert.Equal(t, "some_thing", pulumiToTerraformName("someThings"))
 	assert.Equal(t, "some_other_things", pulumiToTerraformName("someOtherThings"))
 	assert.Equal(t, "all_things", pulumiToTerraformName("allThings"))
+}
+
+func TestFromName(t *testing.T) {
+	res1 := &PulumiResource{
+		URN: "urn:pulumi:test::test::pkgA:index:t1::n1",
+		Properties: resource.PropertyMap{
+			"fifo": resource.NewBoolProperty(true),
+		},
+	}
+	f1 := FromName(AutoNameOptions{
+		Separator: "-",
+		Maxlen:    80,
+		Randlen:   7,
+		PostTransform: func(res *PulumiResource, name string) (string, error) {
+			if fifo, hasfifo := res.Properties["fifo"]; hasfifo {
+				if fifo.IsBool() && fifo.BoolValue() {
+					return name + ".fifo", nil
+				}
+			}
+			return name, nil
+		},
+	})
+	out1, err := f1(res1)
+	assert.NoError(t, err)
+	assert.Len(t, out1, len("n1")+1+7+len(".fifo"))
+	assert.True(t, strings.HasSuffix(out1.(string), ".fifo"))
 }
