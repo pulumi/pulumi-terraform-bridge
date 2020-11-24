@@ -293,7 +293,7 @@ type JavaScriptInfo struct {
 type PythonInfo struct {
 	Requires      map[string]string // Pip install_requires information.
 	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
-	UsesIOClasses bool              // Indicates whether the package generates input/output classes.
+	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
 }
 
 // GolangInfo contains optional overlay information for Golang code-generation.
