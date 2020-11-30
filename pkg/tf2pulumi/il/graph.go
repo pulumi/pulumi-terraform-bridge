@@ -607,10 +607,7 @@ func (b *builder) getProviderInfo(p *ProviderNode) (*tfbridge.ProviderInfo, stri
 	if err != nil {
 		return nil, "", err
 	}
-	packageName, ok := pluginNames[p.Name]
-	if !ok {
-		packageName = p.Name
-	}
+	packageName := GetPulumiProviderName(p.Name)
 	return info, packageName, nil
 }
 
