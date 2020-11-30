@@ -54,7 +54,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 func (host *inmemoryProviderHost) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
-	if name == host.provider.info.Name {
+	if name == il.GetTerraformProviderName(host.provider.info) {
 		return &host.provider.info, nil
 	}
 	return host.ProviderInfoSource.GetProviderInfo(registryName, namespace, name, version)

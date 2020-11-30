@@ -113,11 +113,28 @@ type pluginProviderInfoSource struct{}
 // the Pulumi resource provider that corresponds to a Terraform provider.
 var PluginProviderInfoSource = ProviderInfoSource(pluginProviderInfoSource{})
 
-var pluginNames = map[string]string{
+var pulumiNames = map[string]string{
 	"azurerm":  "azure",
 	"bigip":    "f5bigip",
 	"google":   "gcp",
 	"template": "terraform-template",
+}
+
+// GetPulumiProviderName returns the Pulumi name for the given Terraform provider. In most cases the two names will be
+// identical.
+func GetPulumiProviderName(terraformProviderName string) string {
+	if pulumiName, hasPulumiName := pulumiNames[terraformProviderName]; hasPulumiName {
+		return pulumiName
+	}
+	return terraformProviderName
+}
+
+// GetTerraformProviderName returns the canonical Terraform provider name for the given provider info.
+func GetTerraformProviderName(info tfbridge.ProviderInfo) string {
+	if info.Name == "google-beta" {
+		return "google"
+	}
+	return info.Name
 }
 
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
@@ -126,11 +143,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
 	tfProviderName := name
-
-	pluginName, hasPluginName := pluginNames[tfProviderName]
-	if !hasPluginName {
-		pluginName = tfProviderName
-	}
+	pluginName := GetPulumiProviderName(tfProviderName)
 
 	_, path, err := workspace.GetPluginPath(workspace.ResourcePlugin, pluginName, nil)
 	if err != nil {
@@ -166,10 +179,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 // getMissingPluginError returns an error that informs the user that a plugin for a Terraform provider cannot be found,
 // and how to go about acquiring it if it is hosted on Pulumi.com.
 func getMissingPluginError(providerName string) error {
-	pluginName, hasPluginName := pluginNames[providerName]
-	if !hasPluginName {
-		pluginName = providerName
-	}
+	pluginName := GetPulumiProviderName(providerName)
 
 	message := fmt.Sprintf("could not find plugin %s for provider %s", pluginName, providerName)
 	latest := getLatestPluginVersion(pluginName)
