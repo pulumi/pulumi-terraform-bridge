@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Deprecate UsesIOClasses bool.
+  [#300](https://github.com/pulumi/pulumi-terraform-bridge/pull/300)
+
 - Add support for previewing `Create` and `Update` operations.
   [#276](https://github.com/pulumi/pulumi-terraform-bridge/pull/276)
 
