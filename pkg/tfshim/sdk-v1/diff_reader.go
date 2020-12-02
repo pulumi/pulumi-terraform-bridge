@@ -281,29 +281,25 @@ func (r *diffFieldReader) readSet(
 		parts := strings.Split(k[len(prefix):], ".")
 		idx := parts[0]
 
-		// If the index begins with a '~', the value mst be computed.
-		if !strings.HasPrefix(idx, "~") {
-			raw, err := r.ReadField(append(address, idx))
-			if err != nil {
-				return schema.FieldReadResult{}, err
-			}
-			if !raw.Exists {
-				// This shouldn't happen because we just verified it does exist
-				panic("missing field in set: " + k + "." + idx)
-			}
-
-			if !raw.Computed {
-				set.Add(raw.Value)
-				continue
-			}
+		raw, err := r.ReadField(append(address, idx))
+		if err != nil {
+			return schema.FieldReadResult{}, err
+		}
+		if !raw.Exists {
+			// This shouldn't happen because we just verified it does exist
+			panic("missing field in set: " + k + "." + idx)
 		}
 
 		// If any element of the set is computed, we must treat the whole set as computed.
-		return schema.FieldReadResult{
-			Value:    set,
-			Exists:   true,
-			Computed: true,
-		}, nil
+		if raw.Computed {
+			return schema.FieldReadResult{
+				Value:    set,
+				Exists:   true,
+				Computed: true,
+			}, nil
+		}
+
+		set.Add(raw.Value)
 	}
 
 	// Determine if the set "exists". It exists if there are items or if
