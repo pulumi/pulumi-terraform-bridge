@@ -218,6 +218,7 @@ func (r *diffFieldReader) readListField(
 	}
 
 	// Go through each count, and get the item value out of it
+	computed := false
 	result := make([]interface{}, countResult.Value.(int))
 	for i := range result {
 		is := strconv.FormatInt(int64(i), 10)
@@ -234,14 +235,16 @@ func (r *diffFieldReader) readListField(
 		}
 		if rawResult.Computed {
 			result[i] = UnknownVariableValue
+			computed = true
 		} else {
 			result[i] = rawResult.Value
 		}
 	}
 
 	return schema.FieldReadResult{
-		Value:  result,
-		Exists: true,
+		Value:    result,
+		Exists:   true,
+		Computed: computed,
 	}, nil
 }
 
@@ -253,6 +256,7 @@ func (r *diffFieldReader) readObjectField(
 
 	result := make(map[string]interface{})
 	exists := false
+	computed := false
 	for field, s := range sch {
 		addrRead := make([]string, len(addr), len(addr)+1)
 		copy(addrRead, addr)
@@ -266,14 +270,16 @@ func (r *diffFieldReader) readObjectField(
 		}
 		if rawResult.Computed {
 			result[field] = UnknownVariableValue
+			computed = true
 		} else {
 			result[field] = rawResult.ValueOrZero(s)
 		}
 	}
 
 	return schema.FieldReadResult{
-		Value:  result,
-		Exists: exists,
+		Value:    result,
+		Exists:   exists,
+		Computed: computed,
 	}, nil
 }
 
@@ -298,6 +304,7 @@ func (r *diffFieldReader) readMap(
 	// Next, read all the elements we have in our diff, and apply
 	// the diff to our result.
 	prefix := strings.Join(address, ".") + "."
+	computed := false
 	for k, v := range r.Diff.Attributes {
 		if !strings.HasPrefix(k, prefix) {
 			continue
@@ -324,6 +331,7 @@ func (r *diffFieldReader) readMap(
 		}
 		if v.NewComputed {
 			result[k] = UnknownVariableValue
+			computed = true
 		} else {
 			result[k] = v.New
 		}
@@ -341,8 +349,9 @@ func (r *diffFieldReader) readMap(
 	}
 
 	return schema.FieldReadResult{
-		Value:  resultVal,
-		Exists: resultSet,
+		Value:    resultVal,
+		Exists:   resultSet,
+		Computed: computed,
 	}, nil
 }
 
