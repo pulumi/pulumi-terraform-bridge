@@ -194,28 +194,43 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				return false
 			}
 
-			var kind pulumirpc.PropertyDiff_Kind
+			// Set the diff kind based on whether this is a replacement or not.
+			var newKind pulumirpc.PropertyDiff_Kind
 			switch {
 			case d.NewRemoved:
 				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_DELETE_REPLACE
+					newKind = pulumirpc.PropertyDiff_DELETE_REPLACE
 				} else {
-					kind = pulumirpc.PropertyDiff_DELETE
+					newKind = pulumirpc.PropertyDiff_DELETE
 				}
 			case !hasOtherDiff:
 				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_ADD_REPLACE
+					newKind = pulumirpc.PropertyDiff_ADD_REPLACE
 				} else {
-					kind = pulumirpc.PropertyDiff_ADD
+					newKind = pulumirpc.PropertyDiff_ADD
 				}
 			default:
 				if d.RequiresNew {
-					kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
+					newKind = pulumirpc.PropertyDiff_UPDATE_REPLACE
 				} else {
-					kind = pulumirpc.PropertyDiff_UPDATE
+					newKind = pulumirpc.PropertyDiff_UPDATE
 				}
 			}
-			diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
+
+			// Ensure that the new diff kind isn't "weaker" than the existing one (i.e., the existing diff
+			// claims a replacement is needed, but the new one doesn't). This can happen for certain set operations
+			// because changes are represented using arrays and, though the paths will be the same, the name of the
+			// properties will include a hash and can have different values when elements are reordered within the set.
+			isReplacement := func(k pulumirpc.PropertyDiff_Kind) bool {
+				return k == pulumirpc.PropertyDiff_DELETE_REPLACE ||
+					k == pulumirpc.PropertyDiff_ADD_REPLACE ||
+					k == pulumirpc.PropertyDiff_UPDATE_REPLACE
+			}
+			if !isReplacement(newKind) && hasOtherDiff && isReplacement(other.Kind) {
+				newKind = other.Kind
+			}
+
+			diff[path] = &pulumirpc.PropertyDiff{Kind: newKind}
 		}
 		return false
 	}
