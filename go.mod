@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mitchellh/reflectwalk v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.15.0
-	github.com/pulumi/pulumi/sdk/v2 v2.15.0
+	github.com/pulumi/pulumi/pkg/v2 v2.15.1-0.20201202214525-260620430c4c
+	github.com/pulumi/pulumi/sdk/v2 v2.15.1-0.20201202214525-260620430c4c
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
