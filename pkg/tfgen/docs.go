@@ -16,10 +16,12 @@ package tfgen
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -91,29 +93,42 @@ const (
 	DataSourceDocs DocKind = "data-sources"
 )
 
-func getRepoPath(org string, provider string, providerModuleVersion string, githost string) (string, error) {
-	gomod, err := LoadGoMod()
+func getRepoPath(gitHost string, org string, provider string, version string) (string, error) {
+	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
+	if version != "" {
+		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
+	}
+
+	curWd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error finding current working directory: %w", err)
+	}
+	if filepath.Base(curWd) != "provider" {
+		curWd = filepath.Join(curWd, "provider")
 	}
 
-	// This will help us to now account for the different versions of the Go mod declarations in providers
-	calculatedImportPath := fmt.Sprintf("%s/%s/terraform-provider-%s", githost, org, provider)
-	if providerModuleVersion != "" {
-		calculatedImportPath = fmt.Sprintf("%s/%s", calculatedImportPath, providerModuleVersion)
-	}
-
-	importPath, version, err := FindEffectiveModuleForImportPath(gomod, calculatedImportPath)
+	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
+	command.Dir = curWd
+	output, err := command.CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error running 'go mod download -json' for module: %w", err)
 	}
 
-	repo := GetModuleRoot(importPath, version)
-	if fileInfo, err := os.Stat(repo); err != nil || !fileInfo.IsDir() {
-		return "", err
+	target := struct {
+		Version string
+		Dir     string
+		Error   string
+	}{}
+
+	if err := json.Unmarshal(output, &target); err != nil {
+		return "", fmt.Errorf("error parsing output of 'go mod download -json' for module: %w", err)
 	}
 
-	return repo, nil
+	if target.Error != "" {
+		return "", fmt.Errorf("error from 'go mod download -json' for module: %s", target.Error)
+	}
+
+	return target.Dir, nil
 }
 
 func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
@@ -128,7 +143,7 @@ func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefi
 		return docinfo.Markdown, "", true
 	}
 
-	repoPath, err := getRepoPath(org, provider, providerModuleVersion, githost)
+	repoPath, err := getRepoPath(githost, org, provider, providerModuleVersion)
 	if err != nil {
 		return nil, "", false
 	}
