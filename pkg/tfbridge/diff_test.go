@@ -1453,6 +1453,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 		},
 	}
 
+	// nolint:lll
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{}, expected map[string]DiffKind) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
