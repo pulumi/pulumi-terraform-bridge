@@ -1335,11 +1335,8 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"ruby", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": U,
+				"prop[0]": DR,
 				"prop[1]": U,
-				// This seems wrong.
-				// I would expect
-				// "prop[0]": DR
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1353,10 +1350,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "tineke"},
 			map[string]DiffKind{
 				"prop[0]": U,
-				"prop[1]": U,
-				// This seems wrong.
-				// I would expect
-				// "prop[1]": DR
+				"prop[1]": DR,
 			},
 			map[string]DiffKind{
 				"prop[1]": UR,
@@ -1371,9 +1365,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": U,
 				"prop[1]": U,
 				"prop[2]": DR,
-				// This seems wrong, the first two are not updated, there is no diff.
-				// I would expect it to match List, i.e.
-				// "prop[2]": DR,
 			},
 			map[string]DiffKind{
 				"prop[2]": DR,
@@ -1387,10 +1378,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": UR,
 				"prop[1]": U,
 				"prop[2]": A,
-				// This seems wrong. I would expect:
-				// "prop[0]": AR,
-				// "prop[1]": UR,
-				// "prop[2]": AR,
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1406,9 +1393,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": U,
 				"prop[1]": UR,
 				"prop[2]": A,
-				// This seems wrong.  I would expect:
-				// "prop[1]": UR,
-				// "prop[2]": AR,
 			},
 			map[string]DiffKind{
 				"prop[1]": UR,
@@ -1423,9 +1407,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": U,
 				"prop[1]": U,
 				"prop[2]": AR,
-				// This seems wrong, the first two are not updated, there is no diff.
-				// I would expect it to match List, i.e.
-				// "prop[2]": AR,
 			},
 			map[string]DiffKind{
 				"prop[2]": AR,
@@ -1439,9 +1420,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": UR,
 				"prop[1]": U,
 				"prop[2]": U,
-				// This seems wrong.
-				// I would expect it to match List, i.e.
-				// "prop[0]": UR,
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1455,9 +1433,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": U,
 				"prop[1]": UR,
 				"prop[2]": U,
-				// This seems wrong.
-				// I would expect it to match List, i.e.
-				// "prop[1]": UR,
 			},
 			map[string]DiffKind{
 				"prop[1]": UR,
@@ -1471,9 +1446,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 				"prop[0]": U,
 				"prop[1]": U,
 				"prop[2]": UR,
-				// This seems wrong.
-				// I would expect it to match List, i.e.
-				// "prop[2]": UR,
 			},
 			map[string]DiffKind{
 				"prop[2]": UR,
