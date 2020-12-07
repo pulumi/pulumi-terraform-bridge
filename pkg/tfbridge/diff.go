@@ -52,14 +52,14 @@ func containsComputedValues(v resource.PropertyValue) bool {
 // the value.
 type propertyVisitor func(attributeKey, propertyPath string, value resource.PropertyValue) bool
 
-// visitPropertyDiff checks the given property for diffs and invokes the given callback if a diff is found.
+// visitPropertyValue checks the given property for diffs and invokes the given callback if a diff is found.
 //
 // This function contains the core logic used to convert a terraform.InstanceDiff to a list of Pulumi property paths
 // that have changed and the type of change for each path.
 //
 // If not for the presence of sets and the fact that they are mapped to Pulumi array properties, this process would be
 // rather straightforward: we could loop over each path in the instance diff, convert its path to a Pulumi property
-// path, and convert the diff kind to a Pulumi diff kind. Unforunately, the set mapping complicates this process, as
+// path, and convert the diff kind to a Pulumi diff kind. Unfortunately, the set mapping complicates this process, as
 // the array index that corresponds to a set element cannot be derived from the set element's path: part of the path of
 // a set element is the element's hash code, and we cannot derive the corresponding array element's index from this
 // hash code.
@@ -181,7 +181,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				name += ".%"
 			}
 		}
-		if d := tfDiff.Attribute(name); d != nil {
+		if d := tfDiff.Attribute(name); d != nil && d.Old != d.New {
 			other, hasOtherDiff := diff[path]
 
 			// If we're finalizing the diff, we want to remove any ADD diffs that were only present in the state.

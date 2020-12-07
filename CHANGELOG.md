@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Improve Set diffs to correctly identify replacements.
+  [#304](https://github.com/pulumi/pulumi-terraform-bridge/pull/304)
+
 - Deprecate UsesIOClasses bool.
   [#300](https://github.com/pulumi/pulumi-terraform-bridge/pull/300)
 
