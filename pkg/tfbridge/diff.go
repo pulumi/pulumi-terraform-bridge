@@ -209,7 +209,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 					kind = pulumirpc.PropertyDiff_ADD
 				}
 			default:
-				if d.RequiresNew || other.Kind == pulumirpc.PropertyDiff_DELETE_REPLACE {
+				if d.RequiresNew {
 					kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
 				} else {
 					kind = pulumirpc.PropertyDiff_UPDATE
