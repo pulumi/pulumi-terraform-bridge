@@ -181,7 +181,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				name += ".%"
 			}
 		}
-		if d := tfDiff.Attribute(name); d != nil {
+		if d := tfDiff.Attribute(name); d != nil && d.Old != d.New {
 			other, hasOtherDiff := diff[path]
 
 			// If we're finalizing the diff, we want to remove any ADD diffs that were only present in the state.

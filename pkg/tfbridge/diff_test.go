@@ -1336,7 +1336,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"ruby", "tineke"},
 			map[string]DiffKind{
 				"prop[0]": DR,
-				"prop[1]": U,
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1349,7 +1348,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": U,
 				"prop[1]": DR,
 			},
 			map[string]DiffKind{
@@ -1362,8 +1360,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "ruby"},
 			map[string]DiffKind{
-				"prop[0]": U,
-				"prop[1]": U,
 				"prop[2]": DR,
 			},
 			map[string]DiffKind{
@@ -1375,9 +1371,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"ruby", "tineke"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": UR,
-				"prop[1]": U,
-				"prop[2]": A,
+				"prop[0]": AR,
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1390,9 +1384,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "tineke"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": U,
-				"prop[1]": UR,
-				"prop[2]": A,
+				"prop[1]": AR,
 			},
 			map[string]DiffKind{
 				"prop[1]": UR,
@@ -1404,8 +1396,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": U,
-				"prop[1]": U,
 				"prop[2]": AR,
 			},
 			map[string]DiffKind{
@@ -1418,8 +1408,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"robusta", "ruby", "tineke"},
 			map[string]DiffKind{
 				"prop[0]": UR,
-				"prop[1]": U,
-				"prop[2]": U,
 			},
 			map[string]DiffKind{
 				"prop[0]": UR,
@@ -1430,9 +1418,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "robusta", "tineke"},
 			map[string]DiffKind{
-				"prop[0]": U,
 				"prop[1]": UR,
-				"prop[2]": U,
 			},
 			map[string]DiffKind{
 				"prop[1]": UR,
@@ -1443,8 +1429,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "ruby", "robusta"},
 			map[string]DiffKind{
-				"prop[0]": U,
-				"prop[1]": U,
 				"prop[2]": UR,
 			},
 			map[string]DiffKind{
