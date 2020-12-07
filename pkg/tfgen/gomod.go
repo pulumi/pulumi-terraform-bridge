@@ -15,8 +15,6 @@
 package tfgen
 
 import (
-	"fmt"
-	"go/build"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -52,38 +50,6 @@ func LoadGoMod() (*modfile.File, error) {
 	}
 
 	return file, nil
-}
-
-func FindEffectiveModuleForImportPath(file *modfile.File, importPath string) (string, string, error) {
-	// If the module has been replaced, we need the replacement path and version
-	for _, rep := range file.Replace {
-		if rep.Old.Path != importPath {
-			continue
-		}
-
-		return rep.New.Path, rep.New.Version, nil
-	}
-
-	// Otherwise find the required version
-	for _, req := range file.Require {
-		if req.Mod.Path != importPath {
-			continue
-		}
-
-		return req.Mod.Path, req.Mod.Version, nil
-	}
-
-	return "", "", fmt.Errorf("%q does not appear to be required by go.mod", importPath)
-}
-
-func GetModuleRoot(repo string, version string) string {
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		gopath = build.Default.GOPATH
-	}
-
-	baseAndVersion := fmt.Sprintf("%s@%s", filepath.Base(repo), version)
-	return filepath.Join(gopath, "pkg", "mod", filepath.Dir(repo), baseAndVersion)
 }
 
 // Copyright 2018 The Go Authors. - Taken from src/cmd/go/internal/modload/init.go
