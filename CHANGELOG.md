@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix the diff reader s.t. reading sets with partially-known elements does not panic.
+  [#305](https://github.com/pulumi/pulumi-terraform-bridge/pull/305)
+
 - Improve Set diffs to correctly identify replacements.
   [#304](https://github.com/pulumi/pulumi-terraform-bridge/pull/304)
 

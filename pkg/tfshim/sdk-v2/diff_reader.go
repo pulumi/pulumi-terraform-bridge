@@ -34,29 +34,35 @@ type diffFieldReader struct {
 }
 
 func (r *diffFieldReader) ReadField(address []string) (schema.FieldReadResult, error) {
+	res, _, err := r.readField(address)
+	return res, err
+}
+
+func (r *diffFieldReader) readField(address []string) (schema.FieldReadResult, bool, error) {
 	schemaList := r.addrToSchema(address, r.Schema)
 	if len(schemaList) == 0 {
-		return schema.FieldReadResult{}, nil
+		return schema.FieldReadResult{}, false, nil
 	}
 
 	var res schema.FieldReadResult
+	var containsComputedValues bool
 	var err error
 
 	sch := schemaList[len(schemaList)-1]
 	switch sch.Type {
 	case schema.TypeBool, schema.TypeInt, schema.TypeFloat, schema.TypeString:
-		res, err = r.readPrimitive(address, sch)
+		res, containsComputedValues, err = r.readPrimitive(address, sch)
 	case schema.TypeList:
-		res, err = r.readListField(address, sch)
+		res, containsComputedValues, err = r.readListField(address, sch)
 	case schema.TypeMap:
-		res, err = r.readMap(address, sch)
+		res, containsComputedValues, err = r.readMap(address, sch)
 	case schema.TypeSet:
-		res, err = r.readSet(address, sch)
+		res, containsComputedValues, err = r.readSet(address, sch)
 	default:
-		res, err = r.readObjectField(address, sch.Elem.(map[string]*schema.Schema))
+		res, containsComputedValues, err = r.readObjectField(address, sch.Elem.(map[string]*schema.Schema))
 	}
 
-	return res, err
+	return res, containsComputedValues, err
 }
 
 // addrToSchema finds the final element schema for the given address
@@ -192,7 +198,7 @@ func (r *diffFieldReader) addrToSchema(addr []string, schemaMap map[string]*sche
 // "foo.#" for a list "foo" and that the indexes are "foo.0", "foo.1", etc.
 // after that point.
 func (r *diffFieldReader) readListField(
-	addr []string, sch *schema.Schema) (schema.FieldReadResult, error) {
+	addr []string, sch *schema.Schema) (schema.FieldReadResult, bool, error) {
 
 	addrPadded := make([]string, len(addr)+1)
 	copy(addrPadded, addr)
@@ -201,7 +207,7 @@ func (r *diffFieldReader) readListField(
 	// Get the number of elements in the list
 	countResult, err := r.ReadField(addrPadded)
 	if err != nil {
-		return schema.FieldReadResult{}, err
+		return schema.FieldReadResult{}, false, err
 	}
 	if !countResult.Exists {
 		// No count, means we have no list
@@ -214,17 +220,18 @@ func (r *diffFieldReader) readListField(
 			Value:    []interface{}{},
 			Exists:   countResult.Exists,
 			Computed: countResult.Computed,
-		}, nil
+		}, countResult.Computed, nil
 	}
 
 	// Go through each count, and get the item value out of it
 	result := make([]interface{}, countResult.Value.(int))
+	containsComputedValues := false
 	for i := range result {
 		is := strconv.FormatInt(int64(i), 10)
 		addrPadded[len(addrPadded)-1] = is
-		rawResult, err := r.ReadField(addrPadded)
+		rawResult, elementContainsComputedValues, err := r.readField(addrPadded)
 		if err != nil {
-			return schema.FieldReadResult{}, err
+			return schema.FieldReadResult{}, false, err
 		}
 		if !rawResult.Exists {
 			// This should never happen, because by the time the data
@@ -237,29 +244,31 @@ func (r *diffFieldReader) readListField(
 		} else {
 			result[i] = rawResult.Value
 		}
+		containsComputedValues = containsComputedValues || elementContainsComputedValues
 	}
 
 	return schema.FieldReadResult{
 		Value:  result,
 		Exists: true,
-	}, nil
+	}, containsComputedValues, nil
 }
 
 // readObjectField is a generic method for reading objects out of FieldReaders
 // based on the assumption that building an address of []string{k, FIELD}
 // will result in the proper field data.
 func (r *diffFieldReader) readObjectField(
-	addr []string, sch map[string]*schema.Schema) (schema.FieldReadResult, error) {
+	addr []string, sch map[string]*schema.Schema) (schema.FieldReadResult, bool, error) {
 
 	result := make(map[string]interface{})
+	containsComputedValues := false
 	exists := false
 	for field, s := range sch {
 		addrRead := make([]string, len(addr), len(addr)+1)
 		copy(addrRead, addr)
 		addrRead = append(addrRead, field)
-		rawResult, err := r.ReadField(addrRead)
+		rawResult, fieldContainsComputedValues, err := r.readField(addrRead)
 		if err != nil {
-			return schema.FieldReadResult{}, err
+			return schema.FieldReadResult{}, false, err
 		}
 		if rawResult.Exists {
 			exists = true
@@ -269,24 +278,26 @@ func (r *diffFieldReader) readObjectField(
 		} else {
 			result[field] = rawResult.ValueOrZero(s)
 		}
+		containsComputedValues = containsComputedValues || fieldContainsComputedValues
 	}
 
 	return schema.FieldReadResult{
 		Value:  result,
 		Exists: exists,
-	}, nil
+	}, containsComputedValues, nil
 }
 
 func (r *diffFieldReader) readMap(
-	address []string, sch *schema.Schema) (schema.FieldReadResult, error) {
+	address []string, sch *schema.Schema) (schema.FieldReadResult, bool, error) {
 
 	result := make(map[string]interface{})
+	containsComputedValues := false
 	resultSet := false
 
 	// First read the map from the underlying source
 	source, err := r.Source.ReadField(address)
 	if err != nil {
-		return schema.FieldReadResult{}, err
+		return schema.FieldReadResult{}, false, err
 	}
 	if source.Exists {
 		// readMap may return a nil value, or an unknown value placeholder in
@@ -308,7 +319,7 @@ func (r *diffFieldReader) readMap(
 					Value:    result,
 					Exists:   true,
 					Computed: true,
-				}, nil
+				}, true, nil
 			}
 
 			// Ignore the count field unless it is computed.
@@ -323,7 +334,7 @@ func (r *diffFieldReader) readMap(
 			continue
 		}
 		if v.NewComputed {
-			result[k] = UnknownVariableValue
+			result[k], containsComputedValues = UnknownVariableValue, true
 		} else {
 			result[k] = v.New
 		}
@@ -332,7 +343,7 @@ func (r *diffFieldReader) readMap(
 	key := address[len(address)-1]
 	err = r.mapValuesToPrimitive(key, result, sch)
 	if err != nil {
-		return schema.FieldReadResult{}, nil
+		return schema.FieldReadResult{}, false, nil
 	}
 
 	var resultVal interface{}
@@ -343,20 +354,20 @@ func (r *diffFieldReader) readMap(
 	return schema.FieldReadResult{
 		Value:  resultVal,
 		Exists: resultSet,
-	}, nil
+	}, containsComputedValues, nil
 }
 
 func (r *diffFieldReader) readPrimitive(
-	address []string, sch *schema.Schema) (schema.FieldReadResult, error) {
+	address []string, sch *schema.Schema) (schema.FieldReadResult, bool, error) {
 
 	result, err := r.Source.ReadField(address)
 	if err != nil {
-		return schema.FieldReadResult{}, err
+		return schema.FieldReadResult{}, false, err
 	}
 
 	attrD, ok := r.Diff.Attributes[strings.Join(address, ".")]
 	if !ok {
-		return result, nil
+		return result, result.Computed, nil
 	}
 
 	var resultVal string
@@ -365,7 +376,7 @@ func (r *diffFieldReader) readPrimitive(
 		if attrD.NewExtra != nil {
 			result.ValueProcessed = resultVal
 			if err := mapstructure.WeakDecode(attrD.NewExtra, &resultVal); err != nil {
-				return schema.FieldReadResult{}, err
+				return schema.FieldReadResult{}, false, err
 			}
 		}
 	}
@@ -374,14 +385,14 @@ func (r *diffFieldReader) readPrimitive(
 	result.Exists = true
 	result.Value, err = r.stringToPrimitive(resultVal, sch)
 	if err != nil {
-		return schema.FieldReadResult{}, err
+		return schema.FieldReadResult{}, false, err
 	}
 
-	return result, nil
+	return result, result.Computed, nil
 }
 
 func (r *diffFieldReader) readSet(
-	address []string, sch *schema.Schema) (schema.FieldReadResult, error) {
+	address []string, sch *schema.Schema) (schema.FieldReadResult, bool, error) {
 
 	// copy address to ensure we don't modify the argument
 	address = append([]string(nil), address...)
@@ -411,16 +422,16 @@ func (r *diffFieldReader) readSet(
 
 		// If the index begins with a '~', the value mst be computed.
 		if !strings.HasPrefix(idx, "~") {
-			raw, err := r.ReadField(append(address, idx))
+			raw, elementContainsComputedValues, err := r.readField(append(address, idx))
 			if err != nil {
-				return schema.FieldReadResult{}, err
+				return schema.FieldReadResult{}, false, err
 			}
 			if !raw.Exists {
 				// This shouldn't happen because we just verified it does exist
 				panic("missing field in set: " + k + "." + idx)
 			}
 
-			if !raw.Computed {
+			if !elementContainsComputedValues {
 				set.Add(raw.Value)
 				continue
 			}
@@ -431,7 +442,7 @@ func (r *diffFieldReader) readSet(
 			Value:    set,
 			Exists:   true,
 			Computed: true,
-		}, nil
+		}, true, nil
 	}
 
 	// Determine if the set "exists". It exists if there are items or if
@@ -448,7 +459,7 @@ func (r *diffFieldReader) readSet(
 					Value:    set,
 					Exists:   true,
 					Computed: true,
-				}, nil
+				}, true, nil
 			}
 
 			exists = true
@@ -458,17 +469,17 @@ func (r *diffFieldReader) readSet(
 	if !exists {
 		result, err := r.Source.ReadField(address)
 		if err != nil {
-			return schema.FieldReadResult{}, err
+			return schema.FieldReadResult{}, false, err
 		}
 		if result.Exists {
-			return result, nil
+			return result, result.Computed, nil
 		}
 	}
 
 	return schema.FieldReadResult{
 		Value:  set,
 		Exists: exists,
-	}, nil
+	}, false, nil
 }
 
 func (r *diffFieldReader) getValueType(k string, sch *schema.Schema) (schema.ValueType, error) {

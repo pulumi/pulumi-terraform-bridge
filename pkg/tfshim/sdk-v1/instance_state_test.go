@@ -212,6 +212,15 @@ func TestObjectFromInstanceDiff(t *testing.T) {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
+			"resource_set_property_value": {
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name":   {Type: schema.TypeString},
+						"labels": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeInt}},
+					},
+				},
+			},
 			"string_with_bad_interpolation": {Type: schema.TypeString},
 			"removed_property_value": {
 				Type:    schema.TypeString,
@@ -245,7 +254,13 @@ func TestObjectFromInstanceDiff(t *testing.T) {
 				},
 			},
 		},
-		"set_property_value":            []interface{}{"set member 1", "set member 2"},
+		"set_property_value": []interface{}{"set member 1", "set member 2"},
+		"resource_set_property_value": []interface{}{
+			map[string]interface{}{
+				"name":   "someName",
+				"labels": []interface{}{42},
+			},
+		},
 		"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
 		"removed_property_value":        "a removed property",
 	}, nil)
@@ -275,6 +290,10 @@ func TestObjectFromInstanceDiff(t *testing.T) {
 				NewComputed: true,
 			},
 			"set_property_value.1234": {
+				New:         UnknownVariableValue,
+				NewComputed: true,
+			},
+			"resource_set_property_value.0.labels.0": {
 				New:         UnknownVariableValue,
 				NewComputed: true,
 			},
