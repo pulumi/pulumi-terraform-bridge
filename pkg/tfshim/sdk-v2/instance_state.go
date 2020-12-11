@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 )
 
 var _ = shim.InstanceState(v2InstanceState{})
@@ -48,7 +49,7 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 
 	// If this is a state + a diff, use a diff reader rather than a map reader.
 	if s.diff != nil {
-		reader = &diffFieldReader{
+		reader = &diff_reader.DiffFieldReader{
 			Diff:   s.diff,
 			Schema: schemaMap,
 			Source: reader,
