@@ -821,7 +821,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
 
-	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: fmt.Sprintf("%s.outs", label)})
+	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.outs", label),
+		KeepUnknowns: req.GetPreview(),
+		KeepSecrets:  p.supportsSecrets,
+	})
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "marshalling %s", urn).Error())
 	}
@@ -897,7 +901,10 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		if err != nil {
 			return nil, err
 		}
-		minputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{Label: label + ".inputs"})
+		minputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+			Label:       label + ".inputs",
+			KeepSecrets: p.supportsSecrets,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -995,7 +1002,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.outs", label)})
+		Label:        fmt.Sprintf("%s.outs", label),
+		KeepUnknowns: req.GetPreview(),
+		KeepSecrets:  p.supportsSecrets,
+	})
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "marshalling %s", urn).Error())
 	}
