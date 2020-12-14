@@ -64,6 +64,7 @@ func ProviderV1() *schemav1.Provider {
 						// as Schemas.
 						Elem: &schemav1.Resource{
 							Schema: map[string]*schemav1.Schema{
+								"kind":          {Type: schemav1.TypeString, Optional: true},
 								"configuration": {Type: schemav1.TypeMap, Required: true},
 							},
 						},
@@ -368,6 +369,7 @@ func ProviderV2() *schemav2.Provider {
 						// as Schemas.
 						Elem: &schemav2.Resource{
 							Schema: map[string]*schemav2.Schema{
+								"kind":          {Type: schemav2.TypeString, Optional: true},
 								"configuration": {Type: schemav2.TypeMap, Required: true},
 							},
 						},
