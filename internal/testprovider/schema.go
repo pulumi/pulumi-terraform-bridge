@@ -77,6 +77,16 @@ func ProviderV1() *schemav1.Provider {
 						ForceNew: true,
 					},
 					"string_with_bad_interpolation": {Type: schemav1.TypeString, Optional: true},
+					"conflicting_property": {
+						Type:          schemav1.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"conflicting_property2"},
+					},
+					"conflicting_property2": {
+						Type:          schemav1.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"conflicting_property"},
+					},
 				},
 				SchemaVersion: 1,
 				MigrateState: func(v int, is *terraformv1.InstanceState, p interface{}) (*terraformv1.InstanceState, error) {
@@ -382,6 +392,16 @@ func ProviderV2() *schemav2.Provider {
 						ForceNew: true,
 					},
 					"string_with_bad_interpolation": {Type: schemav2.TypeString, Optional: true},
+					"conflicting_property": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"conflicting_property2"},
+					},
+					"conflicting_property2": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"conflicting_property"},
+					},
 				},
 				SchemaVersion: 1,
 				MigrateState: func(v int, is *terraformv2.InstanceState, p interface{}) (*terraformv2.InstanceState, error) {

@@ -13,7 +13,11 @@ func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
 	for _, d := range diags {
 		switch d.Severity {
 		case diag.Error:
-			errors = append(errors, fmt.Errorf("%s", d.Summary))
+			if d.Detail != "" {
+				errors = append(errors, fmt.Errorf("%s: %s", d.Summary, d.Detail))
+			} else {
+				errors = append(errors, fmt.Errorf("%s", d.Summary))
+			}
 		case diag.Warning:
 			warnings = append(warnings, d.Summary)
 		}
@@ -25,7 +29,11 @@ func errors(diags diag.Diagnostics) error {
 	var err error
 	for _, d := range diags {
 		if d.Severity == diag.Error {
-			err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
+			if d.Detail != "" {
+				err = multierror.Append(err, fmt.Errorf("%s: %s", d.Summary, d.Detail))
+			} else {
+				err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
+			}
 		}
 	}
 	return err
