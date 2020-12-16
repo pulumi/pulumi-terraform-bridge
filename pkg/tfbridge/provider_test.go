@@ -305,8 +305,38 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 	}).DeepEquals(outs["nestedResources"]))
 }
 
-func testCheckFailures(t *testing.T, provider *Provider) []*pulumirpc.CheckFailure {
-	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
+func TestProviderPreview(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	testProviderPreview(t, provider)
+}
+
+func TestProviderPreviewV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	testProviderPreview(t, provider)
+}
+
+func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) []*pulumirpc.CheckFailure {
+	urn := resource.NewURN("stack", "project", "", typeName, "name")
 	unknown := resource.MakeComputed(resource.NewStringProperty(""))
 
 	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -329,25 +359,22 @@ func testCheckFailures(t *testing.T, provider *Provider) []*pulumirpc.CheckFailu
 	assert.NoError(t, err)
 	assert.Len(t, checkResp.Failures, 3)
 	return checkResp.Failures
-
 }
 
-func TestProviderPreview(t *testing.T) {
+func TestProviderCheck(t *testing.T) {
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		"SecondResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["second_resource"]),
+			TFName: "second_resource",
+			Schema: &ResourceInfo{Tok: "SecondResource"},
 		},
 	}
 
-	testProviderPreview(t, provider)
-
-	failures := testCheckFailures(t, provider)
+	failures := testCheckFailures(t, provider, "SecondResource")
 	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
 	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
@@ -357,22 +384,20 @@ func TestProviderPreview(t *testing.T) {
 	assert.Equal(t, "", failures[2].Property)
 }
 
-func TestProviderPreviewV2(t *testing.T) {
+func TestProviderCheckV2(t *testing.T) {
 	provider := &Provider{
 		tf:     shimv2.NewProvider(testTFProviderV2),
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		"SecondResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["second_resource"]),
+			TFName: "second_resource",
+			Schema: &ResourceInfo{Tok: "SecondResource"},
 		},
 	}
 
-	testProviderPreview(t, provider)
-
-	failures := testCheckFailures(t, provider)
+	failures := testCheckFailures(t, provider, "SecondResource")
 	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
 	assert.Equal(t, "ConflictsWith: \"conflicting_property\": conflicts with conflicting_property2", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
