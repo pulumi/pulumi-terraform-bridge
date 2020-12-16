@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Improve `Check` error messages.
+  [#310](https://github.com/pulumi/pulumi-terraform-bridge/pull/310)
+
 - Ensure that nested unknowns are preserved during previews of `Create` and `Update` operations.
   [#308](https://github.com/pulumi/pulumi-terraform-bridge/pull/308)
 

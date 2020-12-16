@@ -2,6 +2,7 @@ package tfbridge
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -332,4 +333,76 @@ func TestProviderPreviewV2(t *testing.T) {
 		},
 	}
 	testProviderPreview(t, provider)
+}
+
+func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) []*pulumirpc.CheckFailure {
+	urn := resource.NewURN("stack", "project", "", typeName, "name")
+	unknown := resource.MakeComputed(resource.NewStringProperty(""))
+
+	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
+		"stringPropertyValue": resource.NewStringProperty("foo"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+			"kind": unknown,
+			"configuration": resource.NewObjectProperty(resource.PropertyMap{
+				"name": resource.NewStringProperty("foo"),
+			}),
+		}),
+		"conflictingProperty":  resource.NewStringProperty("foo"),
+		"conflictingProperty2": resource.NewStringProperty("foo"),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, checkResp.Failures, 3)
+	return checkResp.Failures
+}
+
+func TestProviderCheck(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"SecondResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["second_resource"]),
+			TFName: "second_resource",
+			Schema: &ResourceInfo{Tok: "SecondResource"},
+		},
+	}
+
+	failures := testCheckFailures(t, provider, "SecondResource")
+	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2", failures[0].Reason)
+	assert.Equal(t, "", failures[0].Property)
+	assert.Equal(t, "\"conflicting_property2\": conflicts with conflicting_property", failures[1].Reason)
+	assert.Equal(t, "", failures[1].Property)
+	assert.Equal(t, "Missing required property 'arrayPropertyValues'", failures[2].Reason)
+	assert.Equal(t, "", failures[2].Property)
+}
+
+func TestProviderCheckV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"SecondResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["second_resource"]),
+			TFName: "second_resource",
+			Schema: &ResourceInfo{Tok: "SecondResource"},
+		},
+	}
+
+	failures := testCheckFailures(t, provider, "SecondResource")
+	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+	assert.Equal(t, "ConflictsWith: \"conflicting_property\": conflicts with conflicting_property2", failures[0].Reason)
+	assert.Equal(t, "", failures[0].Property)
+	assert.Equal(t, "ConflictsWith: \"conflicting_property2\": conflicts with conflicting_property", failures[1].Reason)
+	assert.Equal(t, "", failures[1].Property)
+	assert.Equal(t, "Required attribute is not set", failures[2].Reason)
+	assert.Equal(t, "", failures[2].Property)
 }

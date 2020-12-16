@@ -375,6 +375,8 @@ func TestProviderResourcesMap(t *testing.T) {
 				})),
 				"set_property_value":            cty.Set(cty.String),
 				"string_with_bad_interpolation": cty.String,
+				"conflicting_property":          cty.String,
+				"conflicting_property2":         cty.String,
 			}),
 			schema: schema.SchemaMap{
 				"id": &attributeSchema{
@@ -489,6 +491,16 @@ func TestProviderResourcesMap(t *testing.T) {
 					optional: true,
 				},
 				"string_with_bad_interpolation": &attributeSchema{
+					ctyType:   cty.String,
+					valueType: shim.TypeString,
+					optional:  true,
+				},
+				"conflicting_property": &attributeSchema{
+					ctyType:   cty.String,
+					valueType: shim.TypeString,
+					optional:  true,
+				},
+				"conflicting_property2": &attributeSchema{
 					ctyType:   cty.String,
 					valueType: shim.TypeString,
 					optional:  true,

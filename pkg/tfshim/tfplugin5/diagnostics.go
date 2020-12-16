@@ -16,7 +16,11 @@ func unmarshalWarningsAndErrors(diags []*proto.Diagnostic) ([]string, []error) {
 	for _, d := range diags {
 		switch d.Severity {
 		case proto.Diagnostic_ERROR:
-			errors = append(errors, fmt.Errorf("%s", d.Summary))
+			if d.Detail != "" {
+				errors = append(errors, fmt.Errorf("%s: %s", d.Summary, d.Detail))
+			} else {
+				errors = append(errors, fmt.Errorf("%s", d.Summary))
+			}
 		case proto.Diagnostic_WARNING:
 			warnings = append(warnings, d.Summary)
 		}
@@ -30,7 +34,11 @@ func unmarshalErrors(diags []*proto.Diagnostic) error {
 	var err error
 	for _, d := range diags {
 		if d.Severity == proto.Diagnostic_ERROR {
-			err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
+			if d.Detail != "" {
+				err = multierror.Append(err, fmt.Errorf("%s: %s", d.Summary, d.Detail))
+			} else {
+				err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
+			}
 		}
 	}
 	return err
