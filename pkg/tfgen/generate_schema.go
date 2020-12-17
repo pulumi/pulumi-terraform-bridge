@@ -261,9 +261,14 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
-	readme := fmt.Sprintf(
-		standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
-		g.info.GetGitHubHost())
+
+	readme := ""
+	if downstreamLicense != tfbridge.UnlicensedLicenseType {
+		readme = fmt.Sprintf(
+			standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
+			g.info.GetGitHubHost())
+	}
+
 	nodeData := map[string]interface{}{
 		"readme":                  readme,
 		"disableUnionOutputTypes": true,
