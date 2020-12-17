@@ -1352,6 +1352,8 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 		return "https://www.mozilla.org/en-US/MPL/2.0/"
 	case tfbridge.Apache20LicenseType:
 		return "https://www.apache.org/licenses/LICENSE-2.0.html"
+	case tfbridge.UnlicensedLicenseType:
+		return ""
 	default:
 		contract.Failf("Unrecognized license: %v", license)
 		return ""

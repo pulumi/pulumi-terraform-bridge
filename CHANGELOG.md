@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add "Unlicensed" license type.
+  [#312](https://github.com/pulumi/pulumi-terraform-bridge/pull/312)
+
 - Improve `Check` error messages.
   [#310](https://github.com/pulumi/pulumi-terraform-bridge/pull/310)
 

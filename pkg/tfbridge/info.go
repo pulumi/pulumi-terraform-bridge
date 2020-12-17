@@ -25,9 +25,10 @@ import (
 )
 
 const (
-	MPL20LicenseType    TFProviderLicense = "MPL 2.0"
-	MITLicenseType      TFProviderLicense = "MIT"
-	Apache20LicenseType TFProviderLicense = "Apache 2.0"
+	MPL20LicenseType      TFProviderLicense = "MPL 2.0"
+	MITLicenseType        TFProviderLicense = "MIT"
+	Apache20LicenseType   TFProviderLicense = "Apache 2.0"
+	UnlicensedLicenseType TFProviderLicense = "UNLICENSED"
 )
 
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
