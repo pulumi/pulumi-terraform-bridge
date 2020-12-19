@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -36,13 +35,13 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	}
 
 	// First, build a JSON state from the InstanceState.
-	json, version, err := resource.UpgradeFlatmapState(context.TODO(), version, m, res, p.Meta())
+	json, version, err := schema.UpgradeFlatmapState(context.TODO(), version, m, res, p.Meta())
 	if err != nil {
 		return nil, err
 	}
 
 	// Next, migrate the JSON state up to the current version.
-	json, err = resource.UpgradeJSONState(context.TODO(), version, json, res, p.Meta())
+	json, err = schema.UpgradeJSONState(context.TODO(), version, json, res, p.Meta())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	configBlock := res.CoreConfigSchema()
 
 	// Strip out removed fields.
-	resource.RemoveAttributes(json, configBlock.ImpliedType())
+	schema.RemoveAttributes(json, configBlock.ImpliedType())
 
 	// now we need to turn the state into the default json representation, so
 	// that it can be re-decoded using the actual schema.
@@ -67,7 +66,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 		return nil, err
 	}
 	// Normalize the value and fill in any missing blocks.
-	v = resource.NormalizeObjectFromLegacySDK(v, configBlock)
+	v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
 
 	// Convert the value back to an InstanceState.
 	newState, err := res.ShimInstanceStateFromValue(v)
