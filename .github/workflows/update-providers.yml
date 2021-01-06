@@ -69,5 +69,6 @@ jobs:
           - pulumi-spotinst
           - pulumi-tls
           - pulumi-vault
+          - pulumi-venafi
           - pulumi-vsphere
           - pulumi-wavefront
