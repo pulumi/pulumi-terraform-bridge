@@ -5,6 +5,9 @@ on:
       - master
     tags:
       - v*
+    paths-ignore:
+      - '.github/workflows/update-providers.yml'
+      - 'README.md'
 
 jobs:
   build:

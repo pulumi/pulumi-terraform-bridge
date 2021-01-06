@@ -19,7 +19,7 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Trigger Update
-        run: pulumictl dispatch -r ${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
+        run: pulumictl dispatch -r pulumi/${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
     strategy:
       matrix:
         provider:
