@@ -22,5 +22,5 @@ jobs:
         run: pulumictl dispatch -r ${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
     strategy:
       matrix:
-        providers:
+        provider:
           - pulumi-aiven
