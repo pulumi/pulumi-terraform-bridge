@@ -1,0 +1,26 @@
+name: Update Providers with new bridge version
+on:
+  workflow_dispatch:
+    inputs:
+      bridgeVersion:
+        description: 'Version of Bridge to upgrade to'
+        required: true
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.event.inputs.bridgeVersion }}
+    steps:
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Trigger Update
+        run: pulumictl dispatch -r ${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
+    strategy:
+      matrix:
+        providers:
+          - pulumi-aiven
