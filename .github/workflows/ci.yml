@@ -30,6 +30,7 @@ jobs:
     name: Test ${{ matrix.provider }} Downstream
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         provider: [ "aws", "gcp", "azure", "azuread", "random", ]
     steps:
