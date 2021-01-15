@@ -962,10 +962,13 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		// moment.
 		return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
 	}
+
+	// Apply any ignoreChanges before we check that the diff doesn't require replacement or deletion since we may be
+	// ignoring changes to the keys that would result in replacement/deletion.
+	doIgnoreChanges(res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
+
 	contract.Assertf(!diff.Destroy() && !diff.RequiresNew(),
 		"Expected diff to not require deletion or replacement during Update of %s", urn)
-
-	doIgnoreChanges(res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 
 	if req.Timeout != 0 {
 		diff.SetTimeout(req.Timeout, shim.TimeoutUpdate)
