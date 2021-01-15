@@ -198,6 +198,118 @@ func TestBuildConfig(t *testing.T) {
 	assert.Equal(t, expected, configOut)
 }
 
+func testIgnoreChanges(t *testing.T, provider *Provider) {
+	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
+
+	// Step 1: create and check an input bag.
+	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
+		"stringPropertyValue": resource.NewStringProperty("foo"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	// Step 2a: preview the creation of a resource using the checked input bag.
+	createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+		Preview:    true,
+	})
+	assert.NoError(t, err)
+
+	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	assert.True(t, resource.PropertyMap{
+		"id":                  resource.NewStringProperty(""),
+		"stringPropertyValue": resource.NewStringProperty("foo"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+	}.DeepEquals(outs))
+
+	// Step 2b: actually create the resource.
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"stringPropertyValue": "foo",
+		"setPropertyValues":   []interface{}{"foo"},
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+	createResp, err = provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	// Step 3: preview an update to the resource we just created.
+	pulumiIns, err = plugin.MarshalProperties(resource.PropertyMap{
+		"stringPropertyValue": resource.NewStringProperty("bar"),
+		"setPropertyValues": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("bar"),
+		}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+		Olds: createResp.GetProperties(),
+	})
+	assert.NoError(t, err)
+
+	updateResp, err := provider.Update(context.Background(), &pulumirpc.UpdateRequest{
+		Id:            "MyID",
+		Urn:           string(urn),
+		Olds:          createResp.GetProperties(),
+		News:          checkResp.GetInputs(),
+		IgnoreChanges: []string{"setPropertyValues"},
+		Preview:       true,
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty("bar"), outs["stringPropertyValue"])
+	assert.True(t, resource.NewArrayProperty([]resource.PropertyValue{
+		resource.NewStringProperty("foo"),
+	}).DeepEquals(outs["setPropertyValues"]))
+}
+
+func TestIgnoreChanges(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	testIgnoreChanges(t, provider)
+}
+
+func TestIgnoreChangesV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	testIgnoreChanges(t, provider)
+}
+
 func testProviderPreview(t *testing.T, provider *Provider) {
 	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
 
