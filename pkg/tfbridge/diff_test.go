@@ -1474,3 +1474,161 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 		}
 	})
 }
+
+func TestSetNestedAddReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
+		},
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			// "prop[0]": AR or "prop[0].nest": AR?
+			// Currently, this results in "prop[0].nest": A
+		})
+}
+
+func TestListNestedAddReplace(t *testing.T) {
+	diffTest(t,
+		// tfSchema
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		map[string]*SchemaInfo{},
+		// inputs
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
+		},
+		// state
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		// expected
+		map[string]DiffKind{
+			// "prop[0]": AR or "prop[0].nest": AR?
+			// Currently, this results in "prop[0].nest": A
+		})
+}
+
+func TestListNestedUpdate(t *testing.T) {
+	diffTest(t,
+		// tfSchema
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		map[string]*SchemaInfo{},
+		// inputs
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
+		},
+		// state
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "bar"}},
+			"outp": "bar",
+		},
+		// expected
+		map[string]DiffKind{
+			"prop[0].nest": U,
+		})
+}
+
+func TestListNestedDeleteReplace(t *testing.T) {
+	diffTest(t,
+		// tfSchema
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		map[string]*SchemaInfo{},
+		// inputs
+		map[string]interface{}{},
+		// state
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "bar"}},
+			"outp": "bar",
+		},
+		// expected
+		map[string]DiffKind{
+			// "prop[0]": DR or "prop[0].nest": DR?
+			// Currently, this results in `"prop[0].nest": D`
+		})
+}
+
+func TestListNestedAddMaxItemsOne(t *testing.T) {
+	diffTest(t,
+		// tfSchema
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				MaxItems: 1,
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		map[string]*SchemaInfo{},
+		// inputs
+		map[string]interface{}{
+			"prop": map[string]interface{}{"nest": "foo"},
+		},
+		// state
+		map[string]interface{}{
+			"prop": nil,
+			"outp": "bar",
+		},
+		// expected
+		map[string]DiffKind{
+			// "prop": AR or "prop.nest": AR?
+			// The actual result we are getting right now is `"prop.nest": A`
+		})
+}
