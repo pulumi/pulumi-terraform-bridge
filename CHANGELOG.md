@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fixes a panic caused by ignoreChanges not being processed before the assertion leading to the panic.
+  [#317](https://github.com/pulumi/pulumi-terraform-bridge/pull/317)
+
 - Add "Unlicensed" license type.
   [#312](https://github.com/pulumi/pulumi-terraform-bridge/pull/312)
 
