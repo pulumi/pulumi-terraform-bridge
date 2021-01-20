@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add go package info options to schema
+  [#321](https://github.com/pulumi/pulumi-terraform-bridge/pull/321)
+
 - Fixes a panic caused by ignoreChanges not being processed before the assertion leading to the panic.
   [#317](https://github.com/pulumi/pulumi-terraform-bridge/pull/317)
 

@@ -297,6 +297,13 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		})
 	}
 
+	if goi := g.info.Golang; goi != nil {
+		spec.Language["go"] = rawMessage(map[string]interface{}{
+			"importBasePath":                 goi.ImportBasePath,
+			"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
+		})
+	}
+
 	return spec, nil
 }
 

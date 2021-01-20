@@ -299,7 +299,9 @@ type PythonInfo struct {
 
 // GolangInfo contains optional overlay information for Golang code-generation.
 type GolangInfo struct {
-	Overlay *OverlayInfo // optional overlay information for augmented code-generation.
+	GenerateResourceContainerTypes bool         // Generate container types for resources e.g. arrays, maps, pointers etc.
+	ImportBasePath                 string       // Base import path for package.
+	Overlay                        *OverlayInfo // optional overlay information for augmented code-generation.
 }
 
 // CSharpInfo contains optional overlay information for C# code-generation.
