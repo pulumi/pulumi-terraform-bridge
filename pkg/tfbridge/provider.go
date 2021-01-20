@@ -1270,3 +1270,20 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 		}
 	}
 }
+
+// SetProviderLicense is used to pass a license type to a provider metadata
+func SetProviderLicense(license TFProviderLicense) *TFProviderLicense {
+	return &license
+}
+
+// True is used for interations in the providers that require a pointer to true
+func True() *bool {
+	x := true
+	return &x
+}
+
+// False is used for interations in the providers that require a pointer to false
+func False() *bool {
+	x := false
+	return &x
+}
