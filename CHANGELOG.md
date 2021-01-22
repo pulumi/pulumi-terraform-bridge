@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fixes a panic caused by improper diffing of lists and sets with nested object elements.
+  [#319](https://github.com/pulumi/pulumi-terraform-bridge/pull/319)
+
 - Add go package info options to schema
   [#321](https://github.com/pulumi/pulumi-terraform-bridge/pull/321)
 
