@@ -1599,6 +1599,37 @@ func TestListNestedDeleteReplace(t *testing.T) {
 		})
 }
 
+func TestSetNestedDeleteReplace(t *testing.T) {
+	diffTest(t,
+		// tfSchema
+		map[string]*schema.Schema{
+			"prop": {
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nest": {Type: schema.TypeString, Required: true},
+					},
+				},
+				ForceNew: true,
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		map[string]*SchemaInfo{},
+		// inputs
+		map[string]interface{}{},
+		// state
+		map[string]interface{}{
+			"prop": []interface{}{map[string]interface{}{"nest": "bar"}},
+			"outp": "bar",
+		},
+		// expected
+		map[string]DiffKind{
+			"prop":         DR,
+			"prop[0].nest": D,
+		})
+}
+
 func TestListNestedAddMaxItemsOne(t *testing.T) {
 	diffTest(t,
 		// tfSchema

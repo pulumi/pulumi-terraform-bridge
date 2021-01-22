@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
@@ -212,6 +213,21 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 					kind = pulumirpc.PropertyDiff_ADD_REPLACE
 				} else {
 					kind = pulumirpc.PropertyDiff_ADD
+				}
+				// If this is an array or set where the count is decreasing (i.e. int(new) < int(old)), process this as
+				// a delete operation.
+				if strings.HasSuffix(name, ".#") {
+					numNew, err := strconv.Atoi(d.New)
+					contract.AssertNoError(err)
+					numOld, err := strconv.Atoi(d.Old)
+					contract.AssertNoError(err)
+					if numNew < numOld {
+						if d.RequiresNew {
+							kind = pulumirpc.PropertyDiff_DELETE_REPLACE
+						} else {
+							kind = pulumirpc.PropertyDiff_DELETE
+						}
+					}
 				}
 			default:
 				if d.RequiresNew {
