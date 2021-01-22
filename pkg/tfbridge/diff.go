@@ -152,21 +152,24 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 	diff map[string]*pulumirpc.PropertyDiff, tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
 	visitor := func(name, path string, v resource.PropertyValue) bool {
+		recurse := false
 		switch {
 		case v.IsArray():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".#"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".#"); d == nil {
 				return true
 			}
 			name += ".#"
+			recurse = !d.NewComputed
 		case v.IsObject():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".%"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".%"); d == nil {
 				return true
 			}
 			name += ".%"
+			recurse = !d.NewComputed
 		case v.IsComputed() || v.IsOutput():
 			// If this is a computed value, it may be replacing a map or list. To detect that case, check for attribute
 			// diffs at the various count paths and update `name` appropriately.
@@ -217,7 +220,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 			}
 			diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
 		}
-		return false
+		return recurse
 	}
 
 	visitPropertyValue(name, path, v, tfs, ps, rawNames, visitor)
