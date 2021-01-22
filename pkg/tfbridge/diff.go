@@ -157,7 +157,8 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 		case v.IsArray():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".#"); d == nil {
+			d := tfDiff.Attribute(name + ".#")
+			if d == nil {
 				return true
 			}
 			name += ".#"
@@ -165,7 +166,8 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 		case v.IsObject():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".%"); d == nil {
+			d := tfDiff.Attribute(name + ".%")
+			if d == nil {
 				return true
 			}
 			name += ".%"

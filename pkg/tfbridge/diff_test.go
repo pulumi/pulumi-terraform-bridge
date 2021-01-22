@@ -1498,8 +1498,8 @@ func TestSetNestedAddReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// "prop[0]": AR or "prop[0].nest": AR?
-			// Currently, this results in "prop[0].nest": A
+			"prop":         AR,
+			"prop[0].nest": A,
 		})
 }
 
@@ -1531,8 +1531,8 @@ func TestListNestedAddReplace(t *testing.T) {
 		},
 		// expected
 		map[string]DiffKind{
-			// "prop[0]": AR or "prop[0].nest": AR?
-			// Currently, this results in "prop[0].nest": A
+			"prop":         AR,
+			"prop[0].nest": A,
 		})
 }
 
@@ -1594,8 +1594,8 @@ func TestListNestedDeleteReplace(t *testing.T) {
 		},
 		// expected
 		map[string]DiffKind{
-			// "prop[0]": DR or "prop[0].nest": DR?
-			// Currently, this results in `"prop[0].nest": D`
+			"prop":         DR,
+			"prop[0].nest": D,
 		})
 }
 
@@ -1623,12 +1623,11 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 		},
 		// state
 		map[string]interface{}{
-			"prop": nil,
 			"outp": "bar",
 		},
 		// expected
 		map[string]DiffKind{
-			// "prop": AR or "prop.nest": AR?
-			// The actual result we are getting right now is `"prop.nest": A`
+			"prop":      AR,
+			"prop.nest": A,
 		})
 }
