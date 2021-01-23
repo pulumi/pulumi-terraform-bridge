@@ -162,6 +162,13 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 			if d == nil {
 				return true
 			}
+			// If this is a MaxItemsOne and the element is *not* an object, don't use the count diff for the details
+			// because there will be a name collision in the array path and the element path.
+			etfs, _ := elemSchemas(tfs, ps)
+			_, elemIsRes := etfs.Elem().(shim.Resource)
+			if IsMaxItemsOne(tfs, ps) && !elemIsRes {
+				return true
+			}
 			name += ".#"
 			recurse = !d.NewComputed
 		case v.IsObject():
@@ -216,9 +223,12 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				}
 				// If this is an array or set where the count is decreasing (i.e. int(new) < int(old)), process this as
 				// a delete operation.
-				if strings.HasSuffix(name, ".#") {
+				if strings.HasSuffix(name, ".#") && !d.NewComputed {
 					numNew, err := strconv.Atoi(d.New)
 					contract.AssertNoError(err)
+					if d.Old == "" {
+						d.Old = "0"
+					}
 					numOld, err := strconv.Atoi(d.Old)
 					contract.AssertNoError(err)
 					if numNew < numOld {

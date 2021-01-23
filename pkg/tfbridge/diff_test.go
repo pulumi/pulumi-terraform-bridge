@@ -219,6 +219,7 @@ func TestNestedAdd(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":      A,
 			"prop.nest": A,
 		})
 }
@@ -237,6 +238,7 @@ func TestNestedAddReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":      AR,
 			"prop.nest": AR,
 		})
 }
@@ -345,6 +347,7 @@ func TestListAdd(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    A,
 			"prop[0]": A,
 		})
 }
@@ -363,6 +366,7 @@ func TestListAddReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    AR,
 			"prop[0]": AR,
 		})
 }
@@ -380,6 +384,7 @@ func TestListDelete(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    D,
 			"prop[0]": D,
 		})
 }
@@ -397,6 +402,7 @@ func TestListDeleteReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    DR,
 			"prop[0]": DR,
 		})
 }
@@ -603,6 +609,7 @@ func TestSetAdd(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    A,
 			"prop[0]": A,
 		})
 }
@@ -626,6 +633,7 @@ func TestSetAddReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    AR,
 			"prop[0]": AR,
 		})
 }
@@ -647,6 +655,7 @@ func TestSetDelete(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    D,
 			"prop[0]": D,
 		})
 }
@@ -669,6 +678,7 @@ func TestSetDeleteReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
+			"prop":    DR,
 			"prop[0]": DR,
 		})
 }
@@ -1335,9 +1345,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"ruby", "tineke"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[0]": DR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[0]": UR,
 				"prop[1]": UR,
 				"prop[2]": DR,
@@ -1348,9 +1360,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "tineke"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[1]": DR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[1]": UR,
 				"prop[2]": DR,
 			},
@@ -1360,9 +1374,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			[]interface{}{"burgundy", "ruby"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[2]": DR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[2]": DR,
 			},
 		},
@@ -1371,9 +1387,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"ruby", "tineke"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[0]": AR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[0]": UR,
 				"prop[1]": UR,
 				"prop[2]": AR,
@@ -1384,9 +1402,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "tineke"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[1]": AR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[1]": UR,
 				"prop[2]": AR,
 			},
@@ -1396,9 +1416,11 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 			[]interface{}{"burgundy", "ruby"},
 			[]interface{}{"burgundy", "ruby", "tineke"},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[2]": AR,
 			},
 			map[string]DiffKind{
+				"prop":    UR,
 				"prop[2]": AR,
 			},
 		},
