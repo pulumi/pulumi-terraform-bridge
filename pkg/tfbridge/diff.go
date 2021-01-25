@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
@@ -153,33 +152,21 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 	diff map[string]*pulumirpc.PropertyDiff, tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
 	visitor := func(name, path string, v resource.PropertyValue) bool {
-		recurse := false
 		switch {
 		case v.IsArray():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			d := tfDiff.Attribute(name + ".#")
-			if d == nil {
-				return true
-			}
-			// If this is a MaxItemsOne and the element is *not* an object, don't use the count diff for the details
-			// because there will be a name collision in the array path and the element path.
-			etfs, _ := elemSchemas(tfs, ps)
-			_, elemIsRes := etfs.Elem().(shim.Resource)
-			if IsMaxItemsOne(tfs, ps) && !elemIsRes {
+			if d := tfDiff.Attribute(name + ".#"); d == nil || !d.NewComputed {
 				return true
 			}
 			name += ".#"
-			recurse = !d.NewComputed
 		case v.IsObject():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			d := tfDiff.Attribute(name + ".%")
-			if d == nil {
+			if d := tfDiff.Attribute(name + ".%"); d == nil || !d.NewComputed {
 				return true
 			}
 			name += ".%"
-			recurse = !d.NewComputed
 		case v.IsComputed() || v.IsOutput():
 			// If this is a computed value, it may be replacing a map or list. To detect that case, check for attribute
 			// diffs at the various count paths and update `name` appropriately.
@@ -221,24 +208,6 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				} else {
 					kind = pulumirpc.PropertyDiff_ADD
 				}
-				// If this is an array or set where the count is decreasing (i.e. int(new) < int(old)), process this as
-				// a delete operation.
-				if strings.HasSuffix(name, ".#") && !d.NewComputed {
-					numNew, err := strconv.Atoi(d.New)
-					contract.AssertNoError(err)
-					if d.Old == "" {
-						d.Old = "0"
-					}
-					numOld, err := strconv.Atoi(d.Old)
-					contract.AssertNoError(err)
-					if numNew < numOld {
-						if d.RequiresNew {
-							kind = pulumirpc.PropertyDiff_DELETE_REPLACE
-						} else {
-							kind = pulumirpc.PropertyDiff_DELETE
-						}
-					}
-				}
 			default:
 				if d.RequiresNew {
 					kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
@@ -248,7 +217,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 			}
 			diff[path] = &pulumirpc.PropertyDiff{Kind: kind}
 		}
-		return recurse
+		return false
 	}
 
 	visitPropertyValue(name, path, v, tfs, ps, rawNames, visitor)
