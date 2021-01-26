@@ -184,6 +184,14 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 		if d := tfDiff.Attribute(name); d != nil && d.Old != d.New {
 			other, hasOtherDiff := diff[path]
 
+			var arrDiff *shim.ResourceAttrDiff
+			// If this is an element of a list or set, get the count diff if it exists.
+			if strings.Contains(name, ".") {
+				arrName := strings.Split(name, ".")[0]
+				arrName += ".#"
+				arrDiff = tfDiff.Attribute(arrName)
+			}
+
 			// If we're finalizing the diff, we want to remove any ADD diffs that were only present in the state.
 			// These diffs are typically changes to output properties that we don't care about.
 			if finalize {
@@ -197,13 +205,13 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 			var kind pulumirpc.PropertyDiff_Kind
 			switch {
 			case d.NewRemoved:
-				if d.RequiresNew {
+				if d.RequiresNew || (arrDiff != nil && arrDiff.RequiresNew) {
 					kind = pulumirpc.PropertyDiff_DELETE_REPLACE
 				} else {
 					kind = pulumirpc.PropertyDiff_DELETE
 				}
 			case !hasOtherDiff:
-				if d.RequiresNew {
+				if d.RequiresNew || (arrDiff != nil && arrDiff.RequiresNew) {
 					kind = pulumirpc.PropertyDiff_ADD_REPLACE
 				} else {
 					kind = pulumirpc.PropertyDiff_ADD
