@@ -37,6 +37,7 @@ jobs:
           - pulumi-civo
           - pulumi-cloudamqp
           - pulumi-cloudflare
+          - pulumi-cloudinit
           - pulumi-consul
           - pulumi-datadog
           - pulumi-digitalocean
