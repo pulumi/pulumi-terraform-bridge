@@ -15,6 +15,8 @@
 package tfbridge
 
 import (
+	"fmt"
+	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -715,4 +717,20 @@ func (m *MarshallableProviderInfo) Unmarshal() *ProviderInfo {
 	}
 
 	return &info
+}
+
+// Calculates the major version of a go sdk
+// go module paths only care about appending a version when the version is
+// 2 or greater. github.com/org/my-repo/sdk/v1/go is not a valid
+// go module path but github.com/org/my-repo/sdk/v2/go is
+func GetModuleMajorVersion(version string) string {
+	var majorVersion string
+	sver, err := semver.ParseTolerant(version)
+	if err != nil {
+		panic(err)
+	}
+	if sver.Major > 1 {
+		majorVersion = fmt.Sprintf("v%d", sver.Major)
+	}
+	return majorVersion
 }
