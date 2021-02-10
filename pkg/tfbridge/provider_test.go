@@ -2,6 +2,7 @@ package tfbridge
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"testing"
 
@@ -517,4 +518,36 @@ func TestProviderCheckV2(t *testing.T) {
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Required attribute is not set", failures[2].Reason)
 	assert.Equal(t, "", failures[2].Property)
+}
+
+func testProviderPreConfigureCallback(t *testing.T, provider *Provider) {
+	expectedErr := errors.New("failedToPreConfigure")
+	provider.info = ProviderInfo{
+		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return expectedErr
+		},
+	}
+	_, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		Variables: map[string]string{
+			"foo:config:bar": "invalid",
+		},
+	})
+	assert.Equal(t, expectedErr, err)
+}
+
+func TestProviderPreConfigureCallbackV1(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+	testProviderPreConfigureCallback(t, provider)
+
+}
+
+func TestProviderPreConfigureCallbackV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	testProviderPreConfigureCallback(t, provider)
 }
