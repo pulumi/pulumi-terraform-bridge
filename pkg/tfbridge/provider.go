@@ -524,24 +524,21 @@ func (p *Provider) Configure(ctx context.Context,
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
 
-	if req.Variables == nil {
-		// We only follow this path if the CLI hasbn't already called CheckConfig
-		if p.info.PreConfigureCallback != nil {
-			if err = p.info.PreConfigureCallback(vars, config); err != nil {
-				return nil, err
-			}
-		}
-
-		missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-		if len(missingKeys) > 0 {
-			err = rpcerror.WithDetails(
-				rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-				&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
+	if p.info.PreConfigureCallback != nil {
+		if err = p.info.PreConfigureCallback(vars, config); err != nil {
 			return nil, err
 		}
-		if validationErrors != nil {
-			return nil, validationErrors
-		}
+	}
+
+	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
+	if len(missingKeys) > 0 {
+		err = rpcerror.WithDetails(
+			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
+			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
+		return nil, err
+	}
+	if validationErrors != nil {
+		return nil, validationErrors
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
