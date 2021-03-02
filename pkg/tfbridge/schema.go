@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -995,32 +994,29 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 	return floatVal, nil
 }
 
-// propagateDefaultAnnotations recursively propagates the `__defaults` annotation on the given value.
-//
-// An entry in the `__defaults` annotation is only propagated if the named property has a semantically identical value
-// in the old and new inputs. Otherwise, the entry is removed.
-//
-// This function returns `true` if the old and new inputs have semantically identical values.
-func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-	createIfMissing bool) bool {
+func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+	rawNames bool) (resource.PropertyValue, bool) {
 
+	possibleDefault := true
 	switch {
-	case oldInput.IsArray() && newInput.IsArray():
+	case oldInput.IsArray() && newState.IsArray():
 		etfs, eps := elemSchemas(tfs, ps)
 
-		possibleDefault := true
-		oldArray, newArray := oldInput.ArrayValue(), newInput.ArrayValue()
+		oldArray, newArray := oldInput.ArrayValue(), newState.ArrayValue()
 		for i := range oldArray {
 			if i >= len(newArray) {
 				possibleDefault = false
 				break
 			}
-			if !propagateDefaultAnnotations(oldArray[i], newArray[i], etfs, eps, createIfMissing) {
+
+			defaultElem := false
+			oldArray[i], defaultElem = extractInputs(oldArray[i], newArray[i], etfs, eps, rawNames)
+			if !defaultElem {
 				possibleDefault = false
 			}
 		}
-		return possibleDefault
-	case oldInput.IsObject() && newInput.IsObject():
+		return resource.NewArrayProperty(oldArray[:len(newArray)]), possibleDefault
+	case oldInput.IsObject() && newState.IsObject():
 		var tfflds shim.SchemaMap
 		if tfs != nil {
 			if res, isres := tfs.Elem().(shim.Resource); isres {
@@ -1032,83 +1028,115 @@ func propagateDefaultAnnotations(oldInput, newInput resource.PropertyValue, tfs 
 			psflds = ps.Fields
 		}
 
-		possibleDefaultsNames := map[resource.PropertyKey]bool{}
-
-		possibleDefault := true
-		oldMap, newMap := oldInput.ObjectValue(), newInput.ObjectValue()
-		for name, newValue := range newMap {
-			if oldValue, ok := oldMap[name]; ok {
-				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, false)
-
-				if propagateDefaultAnnotations(oldValue, newValue, etfs, eps, createIfMissing) {
-					newMap[name] = oldMap[name]
-					possibleDefaultsNames[name] = true
-				} else {
-					possibleDefault = false
-				}
-			} else {
-				possibleDefault = false
-			}
-		}
-		for name := range oldMap {
-			if _, ok := newMap[name]; !ok {
-				possibleDefault = false
-			}
-		}
+		oldMap, newMap := oldInput.ObjectValue(), newState.ObjectValue()
 
 		// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add
 		// the result to the new inputs.
-		if oldDefaultNames, ok := oldMap[defaultsKey]; ok {
-			newDefaultNames := []resource.PropertyValue{}
-			for _, nameValue := range oldDefaultNames.ArrayValue() {
-				if possibleDefaultsNames[resource.PropertyKey(nameValue.StringValue())] {
-					newDefaultNames = append(newDefaultNames, nameValue)
+		defaultNames := map[string]bool{}
+		if oldDefaultNames, ok := oldMap[defaultsKey]; ok && oldDefaultNames.IsArray() {
+			for _, k := range oldDefaultNames.ArrayValue() {
+				if k.IsString() {
+					defaultNames[k.StringValue()] = true
 				}
 			}
-			newMap[defaultsKey] = resource.NewArrayProperty(newDefaultNames)
-		} else if createIfMissing {
-			newMap[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 		}
-		return possibleDefault
-	case oldInput.IsString() && newInput.IsString():
-		oldStr, newStr := oldInput.StringValue(), newInput.StringValue()
+
+		for name, oldValue := range oldMap {
+			defaultElem := false
+			if newValue, ok := newMap[name]; ok {
+				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, rawNames || useRawNames(tfs))
+				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, rawNames || useRawNames(tfs))
+			} else {
+				delete(oldMap, name)
+			}
+			if !defaultElem {
+				possibleDefault = false
+				delete(defaultNames, string(name))
+			}
+		}
+
+		if len(defaultNames) == 0 {
+			delete(oldMap, defaultsKey)
+		} else {
+			defaults := make([]resource.PropertyValue, 0, len(defaultNames))
+			for name := range defaultNames {
+				defaults = append(defaults, resource.NewStringProperty(name))
+			}
+			sort.Slice(defaults, func(i, j int) bool { return defaults[i].StringValue() < defaults[j].StringValue() })
+
+			oldMap[defaultsKey] = resource.NewArrayProperty(defaults)
+		}
+
+		return resource.NewObjectProperty(oldMap), possibleDefault
+	case oldInput.IsString() && newState.IsString():
+		// If this value has a StateFunc, its state value may not be compatible with its
+		// input value. Ignore the difference.
 		if tfs != nil && tfs.StateFunc() != nil {
-			oldStr = tfs.StateFunc()(oldStr)
+			return oldInput, tfs.StateFunc()(oldInput.StringValue()) == newState.StringValue()
 		}
-		return oldStr == newStr
+		return newState, oldInput.StringValue() == newState.StringValue()
 	default:
-		return oldInput.DeepEquals(newInput)
+		return newState, oldInput.DeepEquals(newState)
+	}
+}
+
+func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+	rawNames bool) resource.PropertyValue {
+
+	contract.Assert(tfs == nil || !tfs.Computed())
+
+	switch {
+	case state.IsArray():
+		etfs, eps := elemSchemas(tfs, ps)
+
+		inputs := make([]resource.PropertyValue, len(state.ArrayValue()))
+		for i, e := range state.ArrayValue() {
+			inputs[i] = extractSchemaInputs(e, etfs, eps, rawNames)
+		}
+		return resource.NewArrayProperty(inputs)
+	case state.IsObject():
+		var tfflds shim.SchemaMap
+		if tfs != nil {
+			if res, isres := tfs.Elem().(shim.Resource); isres {
+				tfflds = res.Schema()
+			}
+		}
+		var psflds map[string]*SchemaInfo
+		if ps != nil {
+			psflds = ps.Fields
+		}
+
+		inputs := resource.PropertyMap{}
+		for pulumiName, value := range state.ObjectValue() {
+			_, etfs, eps := getInfoFromPulumiName(pulumiName, tfflds, psflds, rawNames || useRawNames(tfs))
+			if etfs != nil && !etfs.Computed() && (etfs.Required() || etfs.Optional()) {
+				inputs[pulumiName] = extractSchemaInputs(value, etfs, eps, rawNames || useRawNames(tfs))
+			}
+		}
+
+		return resource.NewObjectProperty(inputs)
+	default:
+		return state
 	}
 }
 
 func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, isRefresh bool) (resource.PropertyMap, error) {
 
-	inputs := make(resource.PropertyMap)
-	for name, value := range outs {
-		// If this property is not an input, ignore it.
-		_, sch, _ := getInfoFromPulumiName(name, tfs, ps, false)
-		if sch == nil || (!sch.Optional() && !sch.Required()) {
-			continue
-		}
-
-		// Otherwise, copy it to the result.
-		copy, err := copystructure.Copy(value)
-		if err != nil {
-			return nil, err
-		}
-		inputs[name] = copy.(resource.PropertyValue)
-	}
-
-	// Propagate default annotations from the old inputs.
 	sch := (&schema.Schema{
 		Elem: (&schema.Resource{
 			Schema: tfs,
 		}).Shim(),
 	}).Shim()
 	pss := &SchemaInfo{Fields: ps}
-	propagateDefaultAnnotations(
-		resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(inputs), sch, pss, !isRefresh)
 
-	return inputs, nil
+	var inputs resource.PropertyValue
+	if isRefresh {
+		// If this is a refresh, only extract new values for inputs that are already present.
+		inputs, _ = extractInputs(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(outs), sch, pss, false)
+	} else {
+		// Otherwise, take a schema-directed approach that fills out all input-only properties.
+		inputs = extractSchemaInputs(resource.NewObjectProperty(outs), sch, pss, false)
+	}
+	return inputs.ObjectValue(), nil
 }

@@ -1457,12 +1457,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-		"inputA":    "input_a_read",
-		"inoutC":    "inout_c_read",
-		"inoutD":    "inout_d_read",
+		"inputA": "input_a_read",
 	})
-	assert.True(t, expected.DeepEquals(ins))
+	assert.Equal(t, expected, ins)
 
 	// Case 2: read a resource that has old state (this is the refresh case)
 	//
@@ -1554,7 +1551,6 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		defaultsKey: []interface{}{"inputF", "inputH"},
 		"inputA":    "input_a_create",
-		"inoutC":    "inout_c_create",
 		"inoutD":    "inout_d_read",
 		"inputE": map[string]interface{}{
 			defaultsKey: []interface{}{"fieldA"},
@@ -1598,7 +1594,6 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputA": "input_a_create",
-		"inoutC": "inout_c_create",
 		"inoutD": "inout_d_read",
 		"inputE": map[string]interface{}{
 			"fieldA": "field_a_default",
