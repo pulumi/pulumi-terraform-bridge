@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v2
 
-go 1.14
+go 1.16
 
 require (
 	github.com/apparentlymart/go-cidr v1.0.1
