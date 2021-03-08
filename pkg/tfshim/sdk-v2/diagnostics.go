@@ -1,10 +1,9 @@
 package sdkv2
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
 )
 
 func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
@@ -13,11 +12,7 @@ func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
 	for _, d := range diags {
 		switch d.Severity {
 		case diag.Error:
-			if d.Detail != "" {
-				errors = append(errors, fmt.Errorf("%s: %s", d.Summary, d.Detail))
-			} else {
-				errors = append(errors, fmt.Errorf("%s", d.Summary))
-			}
+			errors = append(errors, fromV2Diag(d))
 		case diag.Warning:
 			warnings = append(warnings, d.Summary)
 		}
@@ -29,12 +24,16 @@ func errors(diags diag.Diagnostics) error {
 	var err error
 	for _, d := range diags {
 		if d.Severity == diag.Error {
-			if d.Detail != "" {
-				err = multierror.Append(err, fmt.Errorf("%s: %s", d.Summary, d.Detail))
-			} else {
-				err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
-			}
+			err = multierror.Append(err, fromV2Diag(d))
 		}
 	}
 	return err
+}
+
+func fromV2Diag(diagnostic diag.Diagnostic) error {
+	return &diagnostics.Error{
+		AttributePath: diagnostic.AttributePath,
+		Summary:       diagnostic.Summary,
+		Detail:        diagnostic.Detail,
+	}
 }

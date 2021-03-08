@@ -17,6 +17,8 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
 	"log"
 	"regexp"
 	"strings"
@@ -555,7 +557,18 @@ func (p *Provider) Configure(ctx context.Context,
 // https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
 var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
 
-func (p *Provider) formatFailureReason(res Resource, reason string) string {
+func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err error) string {
+	reason := err.Error()
+	var attributePath string
+	var d *diagnostics.Error
+	if errors.As(err, &d) {
+		path := d.AttributePath
+		if len(path) > 0 {
+			attrPath := pathToAttributePath(path, tokenType, res)
+			attributePath = strings.Join(attrPath, "")
+		}
+	}
+
 	// Translate the name in missing-required-field error from TF to Pulumi naming scheme
 	parts := requiredFieldRegex.FindStringSubmatch(reason)
 	if len(parts) == 2 {
@@ -577,7 +590,50 @@ func (p *Provider) formatFailureReason(res Resource, reason string) string {
 		}
 	}
 
+	if attributePath != "" {
+		reason += fmt.Sprintf(". See %s", attributePath)
+	}
 	return reason
+}
+
+// pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema.
+func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []string {
+	res.Schema.GetTok()
+	ap := []string{fmt.Sprintf("%#v", p), "\n"} // TODO: For debugging only. Remove before finalizing PR.
+	ap = append(ap, tokenType.Name().String())
+	var schema shim.Schema
+	var info *SchemaInfo
+	for _, step := range p {
+		switch selector := step.(type) {
+		case cty.GetAttrStep:
+			ap = append(ap, ".")
+			if schema != nil {
+				schema = getSchema(res.TF.Schema(), selector.Name)
+				info = res.Schema.Fields[selector.Name]
+			} else {
+				schema, info = elemSchemas(schema, info)
+			}
+			name := TerraformToPulumiName(selector.Name, schema, info, true)
+			ap = append(ap, name)
+		case cty.IndexStep:
+			key := selector.Key
+			if key.IsNull() {
+				continue
+			}
+			switch key.Type() {
+			case cty.String:
+				ap = append(ap, fmt.Sprintf("[\"%s\"]", key.AsString()))
+			case cty.Number:
+				i, _ := key.AsBigFloat().Int64()
+				ap = append(ap, fmt.Sprintf("[%d]", i))
+			default:
+				// We'll bail early if we encounter anything else, and just
+				// return the valid prefix.
+				return ap
+			}
+		}
+	}
+	return ap
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
@@ -632,7 +688,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	var failures []*pulumirpc.CheckFailure
 	for _, err := range errs {
 		failures = append(failures, &pulumirpc.CheckFailure{
-			Reason: p.formatFailureReason(res, err.Error()),
+			Reason: p.formatFailureReason(t, res, err),
 		})
 	}
 
