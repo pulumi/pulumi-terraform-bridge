@@ -591,7 +591,7 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 	}
 
 	if attributePath != "" {
-		reason += fmt.Sprintf(". See %s", attributePath)
+		reason += fmt.Sprintf(". Examine values at '%s'.", attributePath)
 	}
 	return reason
 }
@@ -599,15 +599,14 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 // pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema.
 func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []string {
 	res.Schema.GetTok()
-	ap := []string{fmt.Sprintf("%#v", p), "\n"} // TODO: For debugging only. Remove before finalizing PR.
-	ap = append(ap, tokenType.Name().String())
+	ap := []string{tokenType.Name().String()}
 	var schema shim.Schema
 	var info *SchemaInfo
 	for _, step := range p {
 		switch selector := step.(type) {
 		case cty.GetAttrStep:
 			ap = append(ap, ".")
-			if schema != nil {
+			if schema == nil {
 				schema = getSchema(res.TF.Schema(), selector.Name)
 				info = res.Schema.Fields[selector.Name]
 			} else {
@@ -616,6 +615,11 @@ func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []stri
 			name := TerraformToPulumiName(selector.Name, schema, info, true)
 			ap = append(ap, name)
 		case cty.IndexStep:
+			// list type with max items 1 are collapsed.
+			if IsMaxItemsOne(schema, info) {
+				schema, info = elemSchemas(schema, info)
+				continue
+			}
 			key := selector.Key
 			if key.IsNull() {
 				continue
