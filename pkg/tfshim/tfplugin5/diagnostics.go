@@ -46,6 +46,9 @@ func fromTF5ProtoDiag(diagnostic *proto.Diagnostic) error {
 
 func pathToCty(path *proto.AttributePath) cty.Path {
 	var p cty.Path
+	if path == nil {
+		return p
+	}
 	for _, s := range path.Steps {
 		switch s := s.Selector.(type) {
 		case *proto.AttributePath_Step_AttributeName:
