@@ -31,9 +31,10 @@ func errors(diags diag.Diagnostics) error {
 }
 
 func fromV2Diag(diagnostic diag.Diagnostic) error {
-	return &diagnostics.Error{
+	return &diagnostics.ValidationError{
 		AttributePath: diagnostic.AttributePath,
 		Summary:       diagnostic.Summary,
 		Detail:        diagnostic.Detail,
 	}
 }
+

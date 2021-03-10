@@ -560,7 +560,7 @@ var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not se
 func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err error) string {
 	reason := err.Error()
 	var attributePath string
-	var d *diagnostics.Error
+	var d *diagnostics.ValidationError
 	if errors.As(err, &d) {
 		path := d.AttributePath
 		if len(path) > 0 {
