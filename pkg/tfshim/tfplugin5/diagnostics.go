@@ -1,9 +1,9 @@
 package tfplugin5
 
 import (
-	"fmt"
-
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/tfplugin5/proto"
 )
@@ -16,11 +16,7 @@ func unmarshalWarningsAndErrors(diags []*proto.Diagnostic) ([]string, []error) {
 	for _, d := range diags {
 		switch d.Severity {
 		case proto.Diagnostic_ERROR:
-			if d.Detail != "" {
-				errors = append(errors, fmt.Errorf("%s: %s", d.Summary, d.Detail))
-			} else {
-				errors = append(errors, fmt.Errorf("%s", d.Summary))
-			}
+			errors = append(errors, fromTF5ProtoDiag(d))
 		case proto.Diagnostic_WARNING:
 			warnings = append(warnings, d.Summary)
 		}
@@ -34,12 +30,31 @@ func unmarshalErrors(diags []*proto.Diagnostic) error {
 	var err error
 	for _, d := range diags {
 		if d.Severity == proto.Diagnostic_ERROR {
-			if d.Detail != "" {
-				err = multierror.Append(err, fmt.Errorf("%s: %s", d.Summary, d.Detail))
-			} else {
-				err = multierror.Append(err, fmt.Errorf("%s", d.Summary))
-			}
+			err = multierror.Append(err, fromTF5ProtoDiag(d))
 		}
 	}
 	return err
+}
+
+func fromTF5ProtoDiag(diagnostic *proto.Diagnostic) error {
+	return &diagnostics.ValidationError{
+		AttributePath: pathToCty(diagnostic.Attribute),
+		Summary:       diagnostic.Summary,
+		Detail:        diagnostic.Detail,
+	}
+}
+
+func pathToCty(path *proto.AttributePath) cty.Path {
+	var p cty.Path
+	for _, s := range path.Steps {
+		switch s := s.Selector.(type) {
+		case *proto.AttributePath_Step_AttributeName:
+			p = p.GetAttr(s.AttributeName)
+		case *proto.AttributePath_Step_ElementKeyString:
+			p = p.IndexString(s.ElementKeyString)
+		case *proto.AttributePath_Step_ElementKeyInt:
+			p = p.Index(cty.NumberIntVal(s.ElementKeyInt))
+		}
+	}
+	return p
 }
