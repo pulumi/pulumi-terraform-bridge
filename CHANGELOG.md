@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Adjust input extraction in `Read` s.t. it returns a safer set of values.
+  [#330](https://github.com/pulumi/pulumi-terraform-bridge/pull/330)
+
 - Fixes a panic caused by improper diffing of lists and sets with nested object elements.
   [#319](https://github.com/pulumi/pulumi-terraform-bridge/pull/319)
 
