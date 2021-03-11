@@ -1457,7 +1457,10 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		"inputA": "input_a_read",
+		defaultsKey: []interface{}{},
+		"inputA":    "input_a_read",
+		"inoutC":    "inout_c_read",
+		"inoutD":    "inout_d_read",
 	})
 	assert.Equal(t, expected, ins)
 

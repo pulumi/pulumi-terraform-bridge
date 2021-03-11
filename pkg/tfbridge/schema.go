@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -1080,44 +1081,42 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 	}
 }
 
-func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-	rawNames bool) resource.PropertyValue {
-
-	contract.Assert(tfs == nil || !tfs.Computed())
-
+func addDefaultAnnotations(newInput resource.PropertyValue) {
 	switch {
-	case state.IsArray():
-		etfs, eps := elemSchemas(tfs, ps)
-
-		inputs := make([]resource.PropertyValue, len(state.ArrayValue()))
-		for i, e := range state.ArrayValue() {
-			inputs[i] = extractSchemaInputs(e, etfs, eps, rawNames)
+	case newInput.IsArray():
+		newArray := newInput.ArrayValue()
+		for i := range newArray {
+			addDefaultAnnotations(newArray[i])
 		}
-		return resource.NewArrayProperty(inputs)
-	case state.IsObject():
-		var tfflds shim.SchemaMap
-		if tfs != nil {
-			if res, isres := tfs.Elem().(shim.Resource); isres {
-				tfflds = res.Schema()
-			}
+	case newInput.IsObject():
+		newMap := newInput.ObjectValue()
+		for _, newValue := range newMap {
+			addDefaultAnnotations(newValue)
 		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
-
-		inputs := resource.PropertyMap{}
-		for pulumiName, value := range state.ObjectValue() {
-			_, etfs, eps := getInfoFromPulumiName(pulumiName, tfflds, psflds, rawNames || useRawNames(tfs))
-			if etfs != nil && !etfs.Computed() && (etfs.Required() || etfs.Optional()) {
-				inputs[pulumiName] = extractSchemaInputs(value, etfs, eps, rawNames || useRawNames(tfs))
-			}
-		}
-
-		return resource.NewObjectProperty(inputs)
-	default:
-		return state
+		newMap[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 	}
+}
+
+func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
+	inputs := make(resource.PropertyMap)
+	for name, value := range state.ObjectValue() {
+		// If this property is not an input, ignore it.
+		_, sch, _ := getInfoFromPulumiName(name, tfs, ps, false)
+		if sch == nil || (!sch.Optional() && !sch.Required()) {
+			continue
+		}
+
+		// Otherwise, copy it to the result.
+		copy, err := copystructure.Copy(value)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		inputs[name] = copy.(resource.PropertyValue)
+	}
+
+	inputsValue := resource.NewObjectProperty(inputs)
+	addDefaultAnnotations(inputsValue)
+	return inputsValue, nil
 }
 
 func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
@@ -1136,7 +1135,11 @@ func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 		inputs, _ = extractInputs(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(outs), sch, pss, false)
 	} else {
 		// Otherwise, take a schema-directed approach that fills out all input-only properties.
-		inputs = extractSchemaInputs(resource.NewObjectProperty(outs), sch, pss, false)
+		v, err := extractSchemaInputs(resource.NewObjectProperty(outs), tfs, ps)
+		if err != nil {
+			return nil, err
+		}
+		inputs = v
 	}
 	return inputs.ObjectValue(), nil
 }
