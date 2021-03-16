@@ -2,12 +2,14 @@ package tfplugin5
 
 import (
 	"bytes"
+	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"testing"
+	goerrors "errors"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-hclog"
@@ -732,6 +734,21 @@ func TestValidateResource(t *testing.T) {
 	}))
 	assert.Empty(t, warnings)
 	assert.Empty(t, errors)
+
+	var err *diagnostics.ValidationError
+	warnings, errors = p.ValidateResource("example_resource", p.NewResourceConfig(map[string]interface{}{
+		// missing required array_property_value
+	}))
+	assert.Empty(t, warnings)
+	assert.Len(t, errors, 1)
+	if goerrors.As(errors[0], &err) {
+		assert.Equal(t, &diagnostics.ValidationError{
+			Summary: "Required attribute is not set",
+			AttributePath: cty.GetAttrPath("array_property_value"),
+		}, err)
+	} else {
+		t.Error("Validate missing required property")
+	}
 }
 
 func TestValidateDataSource(t *testing.T) {

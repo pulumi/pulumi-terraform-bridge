@@ -55,7 +55,7 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 			}
 		}
 
-		if ok && checkTfMaxItems(sch, false) || isPulmiMaxItemsOne(info) {
+		if ok && checkTfMaxItems(sch, false) || isPulumiMaxItemsOne(info) {
 			result = singularResult
 		}
 	}
@@ -74,7 +74,7 @@ func checkTfMaxItems(tfs shim.Schema, maxItemsOne bool) bool {
 	return (tfs.MaxItems() == 1) == maxItemsOne
 }
 
-func isPulmiMaxItemsOne(ps *SchemaInfo) bool {
+func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
 	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
 }
 
@@ -86,7 +86,7 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 	var prev rune
 
 	// Pluralize names that will become array-shaped Pulumi values
-	if !isPulmiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
+	if !isPulumiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
 		pluralized := inflector.Pluralize(name)
 		if pluralized == name || inflector.Singularize(pluralized) == name {
 			//			contract.Assertf(
