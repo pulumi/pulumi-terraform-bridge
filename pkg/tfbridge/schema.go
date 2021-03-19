@@ -995,6 +995,13 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 	return floatVal, nil
 }
 
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 	rawNames bool) (resource.PropertyValue, bool) {
 
@@ -1016,7 +1023,8 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 				possibleDefault = false
 			}
 		}
-		return resource.NewArrayProperty(oldArray[:len(newArray)]), possibleDefault
+
+		return resource.NewArrayProperty(oldArray[:min(len(oldArray), len(newArray))]), possibleDefault
 	case oldInput.IsObject() && newState.IsObject():
 		var tfflds shim.SchemaMap
 		if tfs != nil {
