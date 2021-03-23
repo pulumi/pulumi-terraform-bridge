@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
 
 // computeHTTPInputs computes the arguments for a call to request-promise-native's single function from the bound input

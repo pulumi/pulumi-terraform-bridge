@@ -12,14 +12,14 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hil/ast"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen/nodejs"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen/python"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
-	tf11module "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config/module"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/nodejs"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
+	tf11module "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config/module"
 )
 
 // convertTF11 converts a TF11 graph to a set of TF12 files.

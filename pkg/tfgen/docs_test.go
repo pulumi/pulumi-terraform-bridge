@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
 )
 

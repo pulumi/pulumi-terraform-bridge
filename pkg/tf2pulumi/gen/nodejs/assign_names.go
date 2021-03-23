@@ -20,9 +20,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type nameTable struct {

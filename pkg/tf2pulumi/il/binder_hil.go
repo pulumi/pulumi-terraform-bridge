@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/hil/ast"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
 )
 
 // bindArithmetic binds an HIL arithmetic expression.

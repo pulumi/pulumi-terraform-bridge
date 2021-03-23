@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/stretchr/testify/assert"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/tfplugin5/proto"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/tfplugin5/proto"
 )
 
 func add(new string, replace bool) shim.ResourceAttrDiff {

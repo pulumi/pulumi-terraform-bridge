@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
 )
 
 func init() {

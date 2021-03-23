@@ -1,7 +1,7 @@
 package schema
 
 import (
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,

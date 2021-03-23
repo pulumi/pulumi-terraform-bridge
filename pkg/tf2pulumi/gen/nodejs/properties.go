@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // genListProperty generates code for as single list property.

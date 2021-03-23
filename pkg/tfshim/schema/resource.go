@@ -3,7 +3,7 @@ package schema
 import (
 	"fmt"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = shim.ResourceMap(ResourceMap{})

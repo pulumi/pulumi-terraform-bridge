@@ -17,10 +17,10 @@ package nodejs
 import (
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
 )
 
 // lowerToLiterals lowers certain elements--namely Module and Root path references--to bound literals. This allows the
