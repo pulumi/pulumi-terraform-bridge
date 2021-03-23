@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi-terraform-bridge/v2
+module github.com/pulumi/pulumi-terraform-bridge/v3
 
 go 1.16
 
@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.0
 	github.com/mitchellh/reflectwalk v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.22.1-0.20210310211618-1f16423ede4c
-	github.com/pulumi/pulumi/sdk/v2 v2.22.1-0.20210310211618-1f16423ede4c
+	github.com/pulumi/pulumi/pkg/v3 v3.0.0-20210323100828-ae9253ac9b76
+	github.com/pulumi/pulumi/sdk/v3 v3.0.0-20210323100828-ae9253ac9b76
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0

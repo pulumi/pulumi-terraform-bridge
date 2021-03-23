@@ -20,11 +20,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/test"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/test"
 )
 
 func assertLeading(t *testing.T, c *Comments, expected ...string) {

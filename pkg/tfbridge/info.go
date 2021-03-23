@@ -17,13 +17,13 @@ package tfbridge
 import (
 	"fmt"
 	"github.com/blang/semver"
-	pschema "github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 const (

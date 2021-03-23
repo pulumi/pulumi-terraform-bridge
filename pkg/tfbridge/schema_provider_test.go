@@ -6,11 +6,11 @@ import (
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	terraformv2 "github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/internal/testprovider"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
-	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func schemaMap(m map[string]*schema.Schema) shim.SchemaMap {

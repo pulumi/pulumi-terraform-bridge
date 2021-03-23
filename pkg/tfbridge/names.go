@@ -20,10 +20,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/gedex/inflector"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or

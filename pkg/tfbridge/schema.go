@@ -27,12 +27,12 @@ import (
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // TerraformUnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
@@ -1105,7 +1105,8 @@ func addDefaultAnnotations(newInput resource.PropertyValue) {
 	}
 }
 
-func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
+func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
 	inputs := make(resource.PropertyMap)
 	for name, value := range state.ObjectValue() {
 		// If this property is not an input, ignore it.
@@ -1140,7 +1141,8 @@ func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	var inputs resource.PropertyValue
 	if isRefresh {
 		// If this is a refresh, only extract new values for inputs that are already present.
-		inputs, _ = extractInputs(resource.NewObjectProperty(oldInputs), resource.NewObjectProperty(outs), sch, pss, false)
+		inputs, _ = extractInputs(resource.NewObjectProperty(oldInputs),
+			resource.NewObjectProperty(outs), sch, pss, false)
 	} else {
 		// Otherwise, take a schema-directed approach that fills out all input-only properties.
 		v, err := extractSchemaInputs(resource.NewObjectProperty(outs), tfs, ps)

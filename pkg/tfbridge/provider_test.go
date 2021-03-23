@@ -6,15 +6,15 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v1"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/sdk-v2"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
@@ -512,11 +512,14 @@ func TestProviderCheckV2(t *testing.T) {
 
 	failures := testCheckFailures(t, provider, "SecondResource")
 	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
-	assert.Equal(t, "ConflictsWith: \"conflicting_property\": conflicts with conflicting_property2. Examine values at 'SecondResource.ConflictingProperty'.", failures[0].Reason)
+	assert.Equal(t, "ConflictsWith: \"conflicting_property\": conflicts with conflicting_property2. "+
+		"Examine values at 'SecondResource.ConflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "ConflictsWith: \"conflicting_property2\": conflicts with conflicting_property. Examine values at 'SecondResource.ConflictingProperty2'.", failures[1].Reason)
+	assert.Equal(t, "ConflictsWith: \"conflicting_property2\": conflicts with conflicting_property. "+
+		"Examine values at 'SecondResource.ConflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
-	assert.Equal(t, "Required attribute is not set. Examine values at 'SecondResource.ArrayPropertyValues'.", failures[2].Reason)
+	assert.Equal(t, "Required attribute is not set. Examine values at 'SecondResource.ArrayPropertyValues'.",
+		failures[2].Reason)
 	assert.Equal(t, "", failures[2].Property)
 }
 

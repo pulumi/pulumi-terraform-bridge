@@ -21,17 +21,17 @@ import (
 	"os"
 
 	"github.com/hashicorp/hcl/v2"
-	hcl2dotnet "github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
-	hcl2go "github.com/pulumi/pulumi/pkg/v2/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	hcl2nodejs "github.com/pulumi/pulumi/pkg/v2/codegen/nodejs"
-	hcl2python "github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	hcl2dotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
 
 const (

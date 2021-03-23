@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = shim.InstanceState((*instanceState)(nil))

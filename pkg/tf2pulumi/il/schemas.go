@@ -17,10 +17,10 @@ package il
 import (
 	"strconv"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Schemas bundles a property's Terraform and Pulumi schema information into a single type. This information is then

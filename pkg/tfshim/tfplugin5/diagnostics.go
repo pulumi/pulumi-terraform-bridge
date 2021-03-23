@@ -3,9 +3,9 @@ package tfplugin5
 import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/tfplugin5/proto"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/tfplugin5/proto"
 )
 
 // unmarshalWarningsAndErrors converts a set of diagnostics from its wire format to a list of warnings and a list of

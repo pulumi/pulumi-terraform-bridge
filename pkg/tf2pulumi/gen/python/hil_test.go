@@ -20,8 +20,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
 
 func runGen(node il.BoundNode) string {
