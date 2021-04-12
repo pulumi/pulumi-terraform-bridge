@@ -1105,7 +1105,8 @@ func addDefaultAnnotations(newInput resource.PropertyValue) {
 	}
 }
 
-func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
+func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
 	inputs := make(resource.PropertyMap)
 	for name, value := range state.ObjectValue() {
 		// If this property is not an input, ignore it.

@@ -37,4 +37,3 @@ func fromV2Diag(diagnostic diag.Diagnostic) error {
 		Detail:        diagnostic.Detail,
 	}
 }
-
