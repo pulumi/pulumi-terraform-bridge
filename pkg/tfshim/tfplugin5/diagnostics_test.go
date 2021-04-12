@@ -29,13 +29,15 @@ func TestWarningsAndErrors(t *testing.T) {
 
 	warnings, errors = unmarshalWarningsAndErrors(errorsOnly)
 	assert.Empty(t, warnings)
-	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"}, &diagnostics.ValidationError{Summary: "error 2"}})
+	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"}})
 	assert.EqualError(t, errors[0], "error 1")
 	assert.EqualError(t, errors[1], "error 2")
 
 	warnings, errors = unmarshalWarningsAndErrors(mixed)
 	assert.Equal(t, []string{"warning 1", "warning 2"}, warnings)
-	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"}, &diagnostics.ValidationError{Summary: "error 2"}})
+	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"}})
 	assert.EqualError(t, errors[0], "error 1")
 	assert.EqualError(t, errors[1], "error 2")
 }
@@ -45,8 +47,10 @@ func TestErrors(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = unmarshalErrors(errorsOnly)
-	assert.Equal(t, multierror.Append(nil, &diagnostics.ValidationError{Summary: "error 1"}, &diagnostics.ValidationError{Summary: "error 2"}), err)
+	assert.Equal(t, multierror.Append(nil, &diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"}), err)
 
 	err = unmarshalErrors(mixed)
-	assert.Equal(t, multierror.Append(nil, &diagnostics.ValidationError{Summary: "error 1"}, &diagnostics.ValidationError{Summary: "error 2"}), err)
+	assert.Equal(t, multierror.Append(nil, &diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"}), err)
 }

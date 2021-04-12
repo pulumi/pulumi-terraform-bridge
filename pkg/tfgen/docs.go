@@ -571,7 +571,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
 		}
-		if hasExamples && sectionKind != sectionExampleUsage {
+		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports {
 			p.g.warn("Unexpected code snippets in section %v for resource %v", header, p.rawname)
 		}
 
