@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/internal/config/module"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/test"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config/module"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/test"
 )
 
 func TestLegalIdentifiers(t *testing.T) {

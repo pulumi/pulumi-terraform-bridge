@@ -3,7 +3,7 @@ package sdkv2
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {

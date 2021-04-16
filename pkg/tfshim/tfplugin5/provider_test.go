@@ -15,10 +15,10 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"github.com/stretchr/testify/assert"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/diagnostics"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type testLogger struct {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/go-cty/cty"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ctyToGo converts a cty.Value to a plain Go value with the notable exception of sets, which are left as-is. Sets can

@@ -15,7 +15,7 @@
 package python
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
 
 type trivialApplyRewriter struct{}

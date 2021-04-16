@@ -27,11 +27,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tf2pulumi/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v2/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
