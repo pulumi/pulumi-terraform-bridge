@@ -262,6 +262,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
 
+	const tfbridge20 = "tfbridge20"
+
 	readme := ""
 	if downstreamLicense != tfbridge.UnlicensedLicenseType {
 		readme = fmt.Sprintf(
@@ -270,6 +272,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	nodeData := map[string]interface{}{
+		"compatibility":           tfbridge20,
 		"readme":                  readme,
 		"disableUnionOutputTypes": true,
 	}
@@ -283,7 +286,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	spec.Language["nodejs"] = rawMessage(nodeData)
 
 	pythonData := map[string]interface{}{
-		"readme": readme,
+		"compatibility": tfbridge20,
+		"readme":        readme,
 	}
 	if pi := g.info.Python; pi != nil {
 		pythonData["requires"] = pi.Requires
@@ -292,6 +296,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	if csi := g.info.CSharp; csi != nil {
 		spec.Language["csharp"] = rawMessage(map[string]interface{}{
+			"compatibility":     tfbridge20,
 			"packageReferences": csi.PackageReferences,
 			"namespaces":        csi.Namespaces,
 		})
