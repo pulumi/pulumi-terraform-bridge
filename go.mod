@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.0
 	github.com/mitchellh/reflectwalk v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.0.0-rc.1
-	github.com/pulumi/pulumi/sdk/v3 v3.0.0-rc.1
+	github.com/pulumi/pulumi/pkg/v3 v3.0.0
+	github.com/pulumi/pulumi/sdk/v3 v3.0.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
