@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/imdario/mergo"
+	"github.com/ryboe/q"
 	"io"
 	"io/ioutil"
 	"os"
@@ -307,7 +309,11 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\s*[*+-]\\s+[`**]([a-zA-z0-9_]*)[`**]\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+
+	// This is the regex required to be able to parse the new
+	schemaStructureRegexp = regexp.MustCompile(
+		"^\\s*[-]\\s+[\\W]+([a-zA-z0-9_]*)[\\W]+([a-zA-z0-9_]*)+[\\W]+?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
 	nestedObjectRegexps = []*regexp.Regexp{
 		// For example:
@@ -387,6 +393,7 @@ const (
 	sectionAttributesReference = 3
 	sectionFrontMatter         = 4
 	sectionImports             = 5
+	sectionSchema              = 6
 )
 
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
@@ -550,6 +557,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		sectionKind = sectionArgsReference
 	case "Attributes Reference", "Attribute Reference":
 		sectionKind = sectionAttributesReference
+	case "Schema":
+		sectionKind = sectionSchema
 	case "Import", "Imports":
 		sectionKind = sectionImports
 	case "---":
@@ -585,6 +594,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			p.parseFrontMatter(subsection)
 		case sectionImports:
 			p.parseImports(subsection)
+		case sectionSchema:
+			p.parseSchemaSection(subsection)
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
@@ -605,6 +616,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		}
 	}
 
+	q.Q(p.ret.Arguments)
 	return nil
 }
 
@@ -618,6 +630,109 @@ func getFooterLinks(markdown string) map[string]string {
 		}
 	}
 	return links
+}
+
+func (p *tfMarkdownParser) parseSchemaSection(subsection []string) {
+	sectionHeader := subsection[0]
+	var requiredArgs map[string]*argumentDocs
+	var optionalArgs map[string]*argumentDocs
+	var attrs map[string]string
+	switch sectionHeader {
+	case "### Required":
+		requiredArgs = parseSchemaDocsArguments(subsection[1:], "")
+	case "### Optional":
+		optionalArgs = parseSchemaDocsArguments(subsection[1:], "")
+	case "### Read-Only":
+		attrs = parseSchemaDocsAttributes(subsection[1:], "")
+	default:
+		if strings.Contains(sectionHeader, "### Nested Schema for `widget`") {
+			nestedDetails := strings.Replace(sectionHeader, "### Nested Schema for", "", -1)
+			sectionDetails := strings.Split(nestedDetails, ".")
+			nestedSectionName := sectionDetails[len(sectionDetails)-1]
+			//nestedArgs := parseSchemaDocsArguments(subsection, nestedSectionName)
+
+			if p.ret.Arguments[nestedSectionName] == nil {
+				p.ret.Arguments[nestedSectionName] = &argumentDocs{
+					arguments: make(map[string]string),
+				}
+			}
+
+			//p.ret.Arguments[nestedSectionName].arguments = nestedArgs
+		}
+		//else {
+		//	p.g.warn("Unexpected subsection %v for resource %v", sectionHeader, p.rawname)
+		//}
+	}
+
+	if err := mergo.Map(&p.ret.Arguments, requiredArgs); err != nil {
+		p.g.error("", "unable to merge required args struct")
+	}
+	q.Q(len(p.ret.Arguments))
+	if err := mergo.Map(&p.ret.Arguments, optionalArgs); err != nil {
+		p.g.error("", "unable to merge optional args struct")
+	}
+	q.Q(len(p.ret.Arguments))
+
+	if err := mergo.Map(&p.ret.Attributes, attrs); err != nil {
+		p.g.error("", "unable to merge attributes struct")
+	}
+	q.Q(len(p.ret.Attributes))
+}
+
+func parseSchemaDocsArguments(subsection []string, nestedSection string) map[string]*argumentDocs {
+	args := make(map[string]*argumentDocs)
+	var lastMatch string
+	for _, line := range subsection {
+		matches := schemaStructureRegexp.FindStringSubmatch(line)
+		if len(matches) >= 4 {
+			//if nestedSection != "" {
+			//	if args[nestedSection] == nil {
+			//		args[nestedSection] = &argumentDocs{
+			//			arguments: make(map[string]string),
+			//		}
+			//	} else if args[nestedSection].arguments == nil {
+			//		args[nestedSection].arguments = make(map[string]string)
+			//	}
+			//	args[nestedSection].arguments[matches[1]] = matches[4]
+			//
+			//	// Also record this as a top-level argument just in case, since sometimes the recorded nested
+			//	// argument doesn't match the resource's argument.
+			//	// For example, see `cors_rule` in s3_bucket.html.markdown.
+			//	if args[matches[1]] == nil {
+			//		args[matches[1]] = &argumentDocs{
+			//			description: matches[4],
+			//			isNested:    true, // Mark that this argument comes from a nested field.
+			//		}
+			//	}
+			//}
+			args[matches[1]] = &argumentDocs{description: matches[4]}
+			lastMatch = matches[1]
+		} else if !isBlank(line) && lastMatch != "" {
+			args[lastMatch].description += "\n" + strings.TrimSpace(line)
+		}
+	}
+
+	return args
+}
+
+func parseSchemaDocsAttributes(subsection []string, nestedSection string) map[string]string {
+	attrs := make(map[string]string)
+	var lastMatch string
+	for _, line := range subsection {
+		matches := schemaStructureRegexp.FindStringSubmatch(line)
+		if len(matches) >= 4 {
+			attrs[matches[1]] = matches[4]
+			lastMatch = matches[1]
+		} else if !isBlank(line) && lastMatch != "" {
+			// this is a continuation of the previous bullet
+			attrs[lastMatch] += "\n" + strings.TrimSpace(line)
+		} else {
+			// This is an empty line or there were no bullets yet - clear the lastMatch
+			lastMatch = ""
+		}
+	}
+
+	return attrs
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {

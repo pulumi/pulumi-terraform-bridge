@@ -24,6 +24,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.0.2
 	github.com/hashicorp/terraform-svchost v0.0.0-20191119180714-d2e4933b9136
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/json-iterator/go v1.1.9
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/copystructure v1.0.0
@@ -36,6 +37,7 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0
 	github.com/pulumi/pulumi/sdk/v3 v3.0.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
+	github.com/ryboe/q v1.0.13 // indirect
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
