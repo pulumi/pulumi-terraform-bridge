@@ -186,7 +186,8 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
+	// doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
+	doc, err := parseTFMarkdownNew(markdownFileName, markdownBytes)
 	if err != nil {
 		return entityDocs{}, err
 	}

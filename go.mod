@@ -41,6 +41,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
+	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/zclconf/go-cty v1.3.1
 	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c
 	golang.org/x/mod v0.4.0
