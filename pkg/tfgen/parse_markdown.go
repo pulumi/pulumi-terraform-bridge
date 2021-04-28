@@ -31,7 +31,7 @@ func (d *doc) toEntityDocs() entityDocs {
 	// Do we need to preserve optional/required/readonly info?
 	for _, param := range append(append(d.schema.optional, d.schema.required...), d.schema.readonly...) {
 		arguments[param.name] = &argumentDocs{
-			description: "Newstyle: " + param.desc,
+			description: param.desc,
 			arguments:   make(map[string]string), // TODO this may require x-refs
 			isNested:    false,
 		}
@@ -41,7 +41,7 @@ func (d *doc) toEntityDocs() entityDocs {
 		for _, param := range append(append(ns.optional, ns.required...), ns.readonly...) {
 			// what about here? param.name  or longName?
 			arguments[param.name] = &argumentDocs{
-				description: "Newstyle: " + param.desc,
+				description: param.desc,
 				arguments:   make(map[string]string), // TODO this may require x-refs
 				isNested:    true,
 			}
@@ -71,8 +71,9 @@ type nestedSchema struct {
 }
 
 type parameter struct {
-	name string
-	desc string
+	name     string
+	desc     string
+	typeDecl string
 }
 
 type paramFlags int
@@ -343,7 +344,26 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &parameter{paramName, paramDesc}, nil
+	return parseParameterFromDescription(paramName, paramDesc), nil
+}
+
+var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile("^\\s*[(]([^[)]+)[)]\\s+")
+
+func parseParameterFromDescription(name string, description string) *parameter {
+	if descriptionTypeSectionPattern.MatchString(description) {
+		typeDecl := descriptionTypeSectionPattern.FindStringSubmatch(description)[1]
+		description = descriptionTypeSectionPattern.ReplaceAllString(description, "")
+
+		return &parameter{
+			name:     name,
+			desc:     description,
+			typeDecl: typeDecl,
+		}
+	}
+	return &parameter{
+		name: name,
+		desc: description,
+	}
 }
 
 func parseTextSeq(node *bf.Node, allowTags ...bf.NodeType) (string, error) {
