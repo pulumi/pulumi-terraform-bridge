@@ -355,21 +355,21 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	if strong == nil || strong.Type != bf.Strong {
 		return nil, nil
 	}
-	paramName, err := parseTextSeq(strong.FirstChild, bf.Text, bf.Emph)
+	paramName, err := parseTextSeq(strong.FirstChild)
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO consider back-quoting `code` literals back.
-	paramDesc, err := parseTextSeq(strong.Next, bf.Text, bf.Code, bf.Link, bf.Strong, bf.Emph)
+	paramDesc, err := parseTextSeq(strong.Next)
 	if err != nil {
 		return nil, err
 	}
 	return parseParameterFromDescription(paramName, cleanDesc(paramDesc)), nil
 }
 
+var seeBelowPattern *regexp.Regexp = regexp.MustCompile("[(]see \\[below for nested schema\\][(][^)]*[)][)]")
+
 func cleanDesc(desc string) string {
-	desc = strings.ReplaceAll(desc, "(see )", "")
+	desc = seeBelowPattern.ReplaceAllString(desc, "")
 	return strings.TrimSpace(desc)
 }
 
@@ -392,23 +392,44 @@ func parseParameterFromDescription(name string, description string) *parameter {
 	}
 }
 
-func parseTextSeq(node *bf.Node, allowTags ...bf.NodeType) (string, error) {
-	var sb strings.Builder
-	for node != nil {
-		allow := false
-		for _, t := range allowTags {
-			if node.Type == t {
-				allow = true
+// Unfortunately blackfriday does not include markdown renderer, or
+// allow accssing source locations of nodes. Here we accept a sequence of
+// inline nodes and render them as markdown text back.
+func parseTextSeq(firstNode *bf.Node) (string, error) {
+	var err error
+	buffer := strings.Builder{}
+	curNode := firstNode
+	for curNode != nil {
+		curNode.Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+			switch node.Type {
+			case bf.Text:
+				buffer.WriteString(string(node.Literal))
+			case bf.Code:
+				buffer.WriteString("`")
+				buffer.WriteString(string(node.Literal))
+				buffer.WriteString("`")
+			case bf.Link:
+				if entering {
+					buffer.WriteString("[")
+				} else {
+					buffer.WriteString("](")
+					buffer.WriteString(string(node.Destination))
+					buffer.WriteString(")")
+				}
+			case bf.Strong:
+				buffer.WriteString("**")
+			case bf.Emph:
+				buffer.WriteString("*")
+			default:
+				err = fmt.Errorf("parseTextSeq found a tag it cannot yet render back to Markdown: %s",
+					prettyPrint(node))
+				return bf.Terminate
 			}
-		}
-		if !allow {
-			return "", fmt.Errorf("parseTextSeq found a tag that is not allowed: %s",
-				prettyPrint(node))
-		}
-		sb.WriteString(string(node.Literal))
-		node = node.Next
+			return bf.GoToNext
+		})
+		curNode = curNode.Next
 	}
-	return sb.String(), nil
+	return buffer.String(), err
 }
 
 // Useful to remember and remove nodes that were consumed

@@ -11,14 +11,21 @@ import (
 )
 
 func TestParseTextSeq(t *testing.T) {
-	res, err := parseTextSeq(parseNode(`(Block List, Max: 1) The definition for a Change  widget. (see [below for nested schema](#nestedblock--widget--group_definition--widget--change_definition))`).FirstChild,
-		bf.Text, bf.Link)
-	if err != nil {
-		t.Fatal(err)
+	turnaround := func(src string) {
+		res, err := parseTextSeq(parseNode(src).FirstChild)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, src, res)
 	}
 
-	// link nodes get erased on purpose:
-	assert.Equal(t, "(Block List, Max: 1) The definition for a Change  widget. (see )", res)
+	turnaround("plain")
+	turnaround("`code`")
+	turnaround("*emph*")
+	turnaround("**strong**")
+	turnaround("[link](http://pulumi.com)")
+	turnaround("plain `code` *emph* **strong** [link](http://pulumi.com)")
+	turnaround(`(Block List, Max: 1) The definition for a Change  widget. (see [below for nested schema](#nestedblock--widget--group_definition--widget--change_definition))`)
 }
 
 func TestParsePreamble(t *testing.T) {
