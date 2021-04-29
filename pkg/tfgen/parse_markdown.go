@@ -36,6 +36,16 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 )
 
+type topLevelSchema struct {
+	optional []parameter
+	required []parameter
+	readonly []parameter
+}
+
+func (ns *topLevelSchema) allParameters() []parameter {
+	return append(append(ns.optional, ns.required...), ns.readonly...)
+}
+
 type nestedSchema struct {
 	longName string
 	linkId   *string
@@ -64,6 +74,59 @@ const (
 
 func (pf paramFlags) String() string {
 	return [...]string{"required", "optional", "readonly"}[pf]
+}
+
+func parseTopLevelSchemaIntoDocs(
+	accumulatedDocs *entityDocs,
+	topLevelSchema *topLevelSchema,
+	warn func(fmt string, arg ...interface{})) {
+	for _, param := range topLevelSchema.allParameters() {
+		args, created := accumulatedDocs.getOrCreateArgumentDocs(param.name)
+		if !created && args.description != param.desc {
+			warn("Descripton conflict for top-level param %s; candidates are `%s` and `%s`",
+				param.name,
+				args.description,
+				param.desc)
+		}
+		args.description = param.desc
+		args.isNested = false
+	}
+}
+
+func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLevelSchema, error) {
+	if consumeNode == nil {
+		consumeNode = func(node *bf.Node) {}
+	}
+	if node == nil || node.Type != bf.Heading {
+		return nil, nil
+	}
+	label := node.FirstChild
+	if label == nil || label.Type != bf.Text || string(label.Literal) != "Schema" {
+		return nil, nil
+	}
+	tls := &topLevelSchema{}
+	curNode := node.Next
+	for curNode != nil {
+		flags, par, next, err := parseParameterSection(curNode, consumeNode)
+		if err != nil {
+			return nil, err
+		}
+		if par != nil {
+			switch flags {
+			case optional:
+				tls.optional = *par
+			case required:
+				tls.required = *par
+			case readonly:
+				tls.readonly = *par
+			}
+			curNode = next
+		} else {
+			break
+		}
+	}
+	defer consumeNode(node)
+	return tls, nil
 }
 
 func parseNestedSchemaIntoDocs(
@@ -357,6 +420,9 @@ func parseNode(text string) *bf.Node {
 
 // Used for debugging blackfriday parse trees by visualizing them.
 func prettyPrint(n *bf.Node) string {
+	if n == nil {
+		return "nil"
+	}
 	bytes, err := json.MarshalIndent(treeify(n), "", "  ")
 	if err != nil {
 		panic(err)

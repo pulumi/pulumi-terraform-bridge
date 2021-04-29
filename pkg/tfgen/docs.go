@@ -572,8 +572,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 
 	sectionKind := sectionOther
 
-	// fmt.Printf("header = %s\n", header)
-
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
@@ -590,6 +588,9 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		sectionKind = sectionImports
 	case "---":
 		sectionKind = sectionFrontMatter
+	case "Schema":
+		p.parseTopLevelSchemaAsArgReferenceSection(section)
+		return nil
 	}
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
@@ -600,8 +601,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			p.g.warn("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
 			continue
 		}
-
-		// fmt.Printf("SUBSECTION = %s\n", subsection[0])
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
 		subsection, hasExamples, isEmpty := p.reformatSubsection(subsection)
@@ -662,6 +661,17 @@ func getFooterLinks(markdown string) map[string]string {
 		}
 	}
 	return links
+}
+
+func (p *tfMarkdownParser) parseTopLevelSchemaAsArgReferenceSection(subsection []string) {
+	topLevelSchema, err := parseTopLevelSchema(parseNode(strings.Join(subsection, "\n")), nil)
+	if err != nil {
+		panic(err)
+	}
+	if topLevelSchema == nil {
+		panic("Failed to parse top-level Schema section")
+	}
+	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
 }
 
 func (p *tfMarkdownParser) parseNestedSchemaAsArgReferenceSection(subsection []string) {
