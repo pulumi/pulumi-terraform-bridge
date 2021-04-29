@@ -9,51 +9,9 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 )
 
-func parseTFMarkdownNew(markdownFileName string, markdownBytes []byte) (entityDocs, error) {
-	doc, err := parseMd(string(markdownBytes))
-	if err != nil {
-		return entityDocs{}, err
-	}
-	if doc == nil {
-		return entityDocs{}, fmt.Errorf("Failed to parse markdown from %s", markdownFileName)
-	}
-	return doc.toEntityDocs(), nil
-}
-
 type doc struct {
 	schema         topLevelSchema
 	nestedSchemata []nestedSchema
-}
-
-func (d *doc) toEntityDocs() entityDocs {
-	arguments := make(map[string]*argumentDocs)
-
-	// Do we need to preserve optional/required/readonly info?
-	for _, param := range append(append(d.schema.optional, d.schema.required...), d.schema.readonly...) {
-		arguments[param.name] = &argumentDocs{
-			description: param.desc,
-			arguments:   make(map[string]string), // TODO this may require x-refs
-			isNested:    false,
-		}
-	}
-
-	for _, ns := range d.nestedSchemata {
-		for _, param := range append(append(ns.optional, ns.required...), ns.readonly...) {
-			// what about here? param.name  or longName?
-			arguments[param.name] = &argumentDocs{
-				description: param.desc,
-				arguments:   make(map[string]string), // TODO this may require x-refs
-				isNested:    true,
-			}
-		}
-	}
-
-	return entityDocs{
-		Description: "TODO",
-		Arguments:   arguments,
-		Attributes:  make(map[string]string),
-		Import:      "TODO",
-	}
 }
 
 type topLevelSchema struct {
@@ -68,6 +26,10 @@ type nestedSchema struct {
 	optional []parameter
 	required []parameter
 	readonly []parameter
+}
+
+func (ns *nestedSchema) allParameters() []parameter {
+	return append(append(ns.optional, ns.required...), ns.readonly...)
 }
 
 type parameter struct {
@@ -164,6 +126,10 @@ func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLe
 }
 
 func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedSchema, error) {
+	if consumeNode == nil {
+		consumeNode = func(node *bf.Node) {}
+	}
+
 	if node.Prev != nil && parsePreamble(node.Prev, func(x *bf.Node) {}) != nil {
 		return nil, nil
 	}
@@ -399,6 +365,11 @@ func (nu *nodeUnlinker) unlinkAll() {
 			n.Unlink()
 		}
 	}
+}
+
+func parseNode(text string) *bf.Node {
+	mdProc := bf.New(bf.WithExtensions(bf.FencedCode))
+	return mdProc.Parse([]byte(text)).FirstChild
 }
 
 func parseMd(text string) (*doc, error) {

@@ -83,6 +83,17 @@ type entityDocs struct {
 	Import string
 }
 
+func (ed *entityDocs) getOrCreateArgumentDocs(argumentName string) (*argumentDocs, bool) {
+	var created bool
+	args, has := ed.Arguments[argumentName]
+	if !has {
+		args = &argumentDocs{arguments: make(map[string]string)}
+		ed.Arguments[argumentName] = args
+		created = true
+	}
+	return args, created
+}
+
 // DocKind indicates what kind of entity's documentation is being requested.
 type DocKind string
 
@@ -186,8 +197,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	// doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
-	doc, err := parseTFMarkdownNew(markdownFileName, markdownBytes)
+	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -525,6 +535,8 @@ func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 	return result
 }
 
+var nestedSchemaPattern *regexp.Regexp = regexp.MustCompile("^[#]+ Nested Schema for [`]([^`]+)[`]")
+
 func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
 	if len(section) == 0 {
@@ -539,6 +551,9 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	}
 
 	sectionKind := sectionOther
+
+	// fmt.Printf("header = %s\n", header)
+
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
@@ -565,6 +580,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			p.g.warn("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
 			continue
 		}
+
+		// fmt.Printf("SUBSECTION = %s\n", subsection[0])
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
 		subsection, hasExamples, isEmpty := p.reformatSubsection(subsection)
@@ -594,6 +611,12 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 				continue
 			}
 
+			// Determine if this is a new-style Nested Schema
+			if nestedSchemaPattern.MatchString(subsection[0]) {
+				p.parseNestedSchemaAsArgReferenceSection(subsection)
+				continue
+			}
+
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
@@ -619,6 +642,31 @@ func getFooterLinks(markdown string) map[string]string {
 		}
 	}
 	return links
+}
+
+func (p *tfMarkdownParser) parseNestedSchemaAsArgReferenceSection(subsection []string) {
+	nestedSchema, err := parseNestedSchema(parseNode(strings.Join(subsection, "\n")), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	args, _ := p.ret.getOrCreateArgumentDocs(nestedSchema.longName)
+	args.isNested = true
+
+	for _, param := range nestedSchema.allParameters() {
+		oldDesc, hasAlready := args.arguments[param.name]
+		if hasAlready && oldDesc != param.desc {
+			panic(fmt.Sprintf("Descripton conflict for param %s from %s", param.name, nestedSchema.longName))
+		}
+		args.arguments[param.name] = param.desc
+		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
+		paramArgs, created := p.ret.getOrCreateArgumentDocs(fullParamName)
+		if !created && paramArgs.description != param.desc {
+			panic(fmt.Sprintf("Descripton conflict for param %s", fullParamName))
+		}
+		paramArgs.isNested = true
+		paramArgs.description = param.desc
+	}
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
@@ -1122,6 +1170,7 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		newargs[k] = &argumentDocs{
 			description: cleanedText,
 			arguments:   make(map[string]string, len(v.arguments)),
+			isNested:    v.isNested,
 		}
 
 		// Clean nested arguments (if any)
