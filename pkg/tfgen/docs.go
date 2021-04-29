@@ -656,13 +656,20 @@ func (p *tfMarkdownParser) parseNestedSchemaAsArgReferenceSection(subsection []s
 	for _, param := range nestedSchema.allParameters() {
 		oldDesc, hasAlready := args.arguments[param.name]
 		if hasAlready && oldDesc != param.desc {
-			panic(fmt.Sprintf("Descripton conflict for param %s from %s", param.name, nestedSchema.longName))
+			p.g.warn("Descripton conflict for param %s from %s; candidates are `%s` and `%s`",
+				param.name,
+				nestedSchema.longName,
+				oldDesc,
+				param.desc)
 		}
 		args.arguments[param.name] = param.desc
 		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
 		paramArgs, created := p.ret.getOrCreateArgumentDocs(fullParamName)
 		if !created && paramArgs.description != param.desc {
-			panic(fmt.Sprintf("Descripton conflict for param %s", fullParamName))
+			p.g.warn("Descripton conflict for param %s; candidates are `%s` and `%s`",
+				fullParamName,
+				paramArgs.description,
+				param.desc)
 		}
 		paramArgs.isNested = true
 		paramArgs.description = param.desc
