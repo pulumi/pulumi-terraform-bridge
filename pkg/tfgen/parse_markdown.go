@@ -1,3 +1,30 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Parses Markdown Terraform documentation.
+//
+// Unlike `docs.go` that is string/regex based, uses a markdown
+// (blackfriday) and AST traversals to extract the docs.
+//
+// At the moment we still rely on `docs.go` for most of our parsing
+// needs. Only `Nested Schema` sections are parsed within this module.
+//
+// Example document in the new markdown format that relies on `Nested
+// Schema` sections:
+//
+// https://raw.githubusercontent.com/DataDog/terraform-provider-datadog/v2.25.0/docs/resources/dashboard.md
+
 package tfgen
 
 import (
@@ -8,17 +35,6 @@ import (
 
 	bf "github.com/russross/blackfriday/v2"
 )
-
-type doc struct {
-	schema         topLevelSchema
-	nestedSchemata []nestedSchema
-}
-
-type topLevelSchema struct {
-	optional []parameter
-	required []parameter
-	readonly []parameter
-}
 
 type nestedSchema struct {
 	longName string
@@ -48,81 +64,6 @@ const (
 
 func (pf paramFlags) String() string {
 	return [...]string{"required", "optional", "readonly"}[pf]
-}
-
-func parseDoc(docNode *bf.Node) (*doc, error) {
-	var err error
-	result := &doc{}
-	nu := &nodeUnlinker{}
-	docNode.Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
-		if !entering {
-			return bf.GoToNext
-		}
-
-		// detect top-level Schema section
-		var tls *topLevelSchema
-		tls, err = parseTopLevelSchema(node, nu.consumeNode)
-		if err != nil {
-			return bf.Terminate
-		}
-		if tls != nil {
-			result.schema = *tls
-			return bf.GoToNext
-		}
-
-		// detect nestedSchema sections
-		var ns *nestedSchema
-		ns, err = parseNestedSchema(node, nu.consumeNode)
-		if err != nil {
-			panic(err)
-		}
-		if ns != nil {
-			result.nestedSchemata = append(result.nestedSchemata, *ns)
-			return bf.GoToNext
-		}
-
-		// ignore code blocks
-		if node.Type == bf.CodeBlock {
-			nu.consumeNode(node)
-		}
-
-		return bf.GoToNext
-	})
-	nu.unlinkAll()
-	return result, err
-}
-
-func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLevelSchema, error) {
-	if node == nil || node.Type != bf.Heading {
-		return nil, nil
-	}
-	label := node.FirstChild
-	if label == nil || label.Type != bf.Text || string(label.Literal) != "Schema" {
-		return nil, nil
-	}
-	tls := &topLevelSchema{}
-	curNode := node.Next
-	for {
-		flags, par, next, err := parseParameterSection(curNode, consumeNode)
-		if err != nil {
-			return nil, err
-		}
-		if par != nil {
-			switch flags {
-			case optional:
-				tls.optional = *par
-			case required:
-				tls.required = *par
-			case readonly:
-				tls.readonly = *par
-			}
-			curNode = next
-		} else {
-			break
-		}
-	}
-	defer consumeNode(node)
-	return tls, nil
 }
 
 func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedSchema, error) {
@@ -315,6 +256,11 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 
 var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile("^\\s*[(]([^[)]+)[)]\\s+")
 
+// TODO remove this
+func markNew(s string) string {
+	return fmt.Sprintf("NEW<%s>", s)
+}
+
 func parseParameterFromDescription(name string, description string) *parameter {
 	if descriptionTypeSectionPattern.MatchString(description) {
 		typeDecl := descriptionTypeSectionPattern.FindStringSubmatch(description)[1]
@@ -322,13 +268,13 @@ func parseParameterFromDescription(name string, description string) *parameter {
 
 		return &parameter{
 			name:     name,
-			desc:     description,
+			desc:     markNew(description),
 			typeDecl: typeDecl,
 		}
 	}
 	return &parameter{
 		name: name,
-		desc: description,
+		desc: markNew(description),
 	}
 }
 
@@ -351,6 +297,9 @@ func parseTextSeq(node *bf.Node, allowTags ...bf.NodeType) (string, error) {
 	return sb.String(), nil
 }
 
+// Useful to remember and remove nodes that were consumed
+// (successfully parsed) from the AST, for example to debug which
+// parts of the AST we fail to recognize.
 type nodeUnlinker struct {
 	nodes []*bf.Node
 }
@@ -367,25 +316,10 @@ func (nu *nodeUnlinker) unlinkAll() {
 	}
 }
 
+// Helper do the initial parse.
 func parseNode(text string) *bf.Node {
 	mdProc := bf.New(bf.WithExtensions(bf.FencedCode))
 	return mdProc.Parse([]byte(text)).FirstChild
-}
-
-func parseMd(text string) (*doc, error) {
-	mdProc := bf.New(bf.WithExtensions(bf.FencedCode))
-	docNode := mdProc.Parse([]byte(text))
-
-	doc, err := parseDoc(docNode)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("Parsed schema: %v\n", doc.schema)
-	fmt.Printf("Parsed nested: %d\n", len(doc.nestedSchemata))
-	fmt.Printf("Unparsed: %d\n", len(prettyPrint(docNode)))
-
-	return doc, nil
 }
 
 // Used for debugging blackfriday parse trees by visualizing them.
