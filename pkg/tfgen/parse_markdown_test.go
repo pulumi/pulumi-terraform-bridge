@@ -34,7 +34,6 @@ func TestParsePreamble(t *testing.T) {
 	}
 }
 
-// TODO work to remove (see below) automatically.
 func TestParseParameterFromDescription(t *testing.T) {
 	actual := parseParameterFromDescription(
 		"heatmap_definition",
