@@ -245,21 +245,20 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 		return nil, err
 	}
 
-	// TODO parse (see .. links), consider back-quoting `code` literals back.
-
+	// TODO consider back-quoting `code` literals back.
 	paramDesc, err := parseTextSeq(strong.Next, bf.Text, bf.Code, bf.Link, bf.Strong, bf.Emph)
 	if err != nil {
 		return nil, err
 	}
-	return parseParameterFromDescription(paramName, paramDesc), nil
+	return parseParameterFromDescription(paramName, cleanDesc(paramDesc)), nil
 }
 
-var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile("^\\s*[(]([^[)]+)[)]\\s+")
-
-// TODO remove this
-func markNew(s string) string {
-	return fmt.Sprintf("NEW<%s>", s)
+func cleanDesc(desc string) string {
+	desc = strings.ReplaceAll(desc, "(see )", "")
+	return strings.TrimSpace(desc)
 }
+
+var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile("^\\s*[(]([^[)]+)[)]\\s*")
 
 func parseParameterFromDescription(name string, description string) *parameter {
 	if descriptionTypeSectionPattern.MatchString(description) {
@@ -268,13 +267,13 @@ func parseParameterFromDescription(name string, description string) *parameter {
 
 		return &parameter{
 			name:     name,
-			desc:     markNew(description),
+			desc:     description,
 			typeDecl: typeDecl,
 		}
 	}
 	return &parameter{
 		name: name,
-		desc: markNew(description),
+		desc: description,
 	}
 }
 
@@ -316,10 +315,13 @@ func (nu *nodeUnlinker) unlinkAll() {
 	}
 }
 
-// Helper do the initial parse.
-func parseNode(text string) *bf.Node {
+func parseDoc(text string) *bf.Node {
 	mdProc := bf.New(bf.WithExtensions(bf.FencedCode))
-	return mdProc.Parse([]byte(text)).FirstChild
+	return mdProc.Parse([]byte(text))
+}
+
+func parseNode(text string) *bf.Node {
+	return parseDoc(text).FirstChild
 }
 
 // Used for debugging blackfriday parse trees by visualizing them.
