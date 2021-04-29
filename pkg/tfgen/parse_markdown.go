@@ -37,9 +37,10 @@ import (
 )
 
 type topLevelSchema struct {
-	optional []parameter
-	required []parameter
-	readonly []parameter
+	optional       []parameter
+	required       []parameter
+	readonly       []parameter
+	nestedSchemata []nestedSchema
 }
 
 func (ns *topLevelSchema) allParameters() []parameter {
@@ -91,6 +92,10 @@ func parseTopLevelSchemaIntoDocs(
 		args.description = param.desc
 		args.isNested = false
 	}
+
+	for _, ns := range topLevelSchema.nestedSchemata {
+		parseNestedSchemaIntoDocs(accumulatedDocs, &ns, warn)
+	}
 }
 
 func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLevelSchema, error) {
@@ -125,7 +130,23 @@ func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLe
 			break
 		}
 	}
-	defer consumeNode(node)
+
+	var nested []nestedSchema
+	curNode = node.Next
+	for curNode != nil {
+		nestedSchema, err := parseNestedSchema(curNode, consumeNode)
+		if err != nil {
+			return nil, err
+		}
+		if nestedSchema != nil {
+			nested = append(nested, *nestedSchema)
+		}
+		curNode = curNode.Next
+	}
+
+	tls.nestedSchemata = nested
+
+	consumeNode(node)
 	return tls, nil
 }
 

@@ -589,7 +589,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	case "---":
 		sectionKind = sectionFrontMatter
 	case "Schema":
-		p.parseTopLevelSchemaAsArgReferenceSection(section)
+		p.parseSchemaWithNestedSections(section)
 		return nil
 	}
 
@@ -630,12 +630,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 				continue
 			}
 
-			// Determine if this is a new-style Nested Schema
-			if nestedSchemaPattern.MatchString(subsection[0]) {
-				p.parseNestedSchemaAsArgReferenceSection(subsection)
-				continue
-			}
-
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
@@ -663,7 +657,7 @@ func getFooterLinks(markdown string) map[string]string {
 	return links
 }
 
-func (p *tfMarkdownParser) parseTopLevelSchemaAsArgReferenceSection(subsection []string) {
+func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	topLevelSchema, err := parseTopLevelSchema(parseNode(strings.Join(subsection, "\n")), nil)
 	if err != nil {
 		panic(err)
@@ -672,14 +666,6 @@ func (p *tfMarkdownParser) parseTopLevelSchemaAsArgReferenceSection(subsection [
 		panic("Failed to parse top-level Schema section")
 	}
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
-}
-
-func (p *tfMarkdownParser) parseNestedSchemaAsArgReferenceSection(subsection []string) {
-	nestedSchema, err := parseNestedSchema(parseNode(strings.Join(subsection, "\n")), nil)
-	if err != nil {
-		panic(err)
-	}
-	parseNestedSchemaIntoDocs(&p.ret, nestedSchema, p.g.warn)
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {

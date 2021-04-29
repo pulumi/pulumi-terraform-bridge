@@ -48,33 +48,41 @@ func TestParseParameterFromDescription(t *testing.T) {
 	}
 }
 
-func TestParseNestedSections(t *testing.T) {
+func TestParseTopLevelSchema(t *testing.T) {
 	markdown := readTestFile(t, "mini.md")
-	schemata := make(map[string]*nestedSchema)
+	var schema *topLevelSchema
 
 	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
 		if entering {
-			nested, err := parseNestedSchema(node, nil)
+			tls, err := parseTopLevelSchema(node, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if nested != nil {
-				schemata[nested.longName] = nested
+			if tls != nil && schema != nil {
+				t.Fatalf("Parsed Schema twice")
+			}
+			if tls != nil {
+				schema = tls
 			}
 		}
 		return bf.GoToNext
 	})
 
-	assert.Equal(t, 6, len(schemata))
+	assert.NotNil(t, schema)
+
+	assert.Equal(t, 6, len(schema.nestedSchemata))
+
+	assert.Equal(t, topParam(t, schema, "layout_type").desc,
+		"The layout type of the dashboard, either 'free' or 'ordered'.")
 
 	assert.Equal(t, "The layout type of the group, only 'ordered' for now.",
-		param(t, schemata["widget.group_definition"], "layout_type").desc)
+		param(t, nested(t, schema, "widget.group_definition"), "layout_type").desc)
 
 	assert.Equal(t, "The definition for a Group widget.",
-		param(t, schemata["widget"], "group_definition").desc)
+		param(t, nested(t, schema, "widget"), "group_definition").desc)
 
 	assert.Equal(t, "",
-		param(t, schemata["widget.group_definition"], "title").desc)
+		param(t, nested(t, schema, "widget.group_definition"), "title").desc)
 }
 
 func TestParseNestedSchemaIntoDoc(t *testing.T) {
@@ -107,6 +115,16 @@ func readTestFile(t *testing.T, name string) string {
 	return string(bytes)
 }
 
+func nested(t *testing.T, tls *topLevelSchema, name string) *nestedSchema {
+	for _, s := range tls.nestedSchemata {
+		if s.longName == name {
+			return &s
+		}
+	}
+	t.Errorf("Could not find nested schema %s", name)
+	return nil
+}
+
 func param(t *testing.T, s *nestedSchema, name string) parameter {
 	for _, p := range s.allParameters() {
 		if p.name == name {
@@ -114,5 +132,15 @@ func param(t *testing.T, s *nestedSchema, name string) parameter {
 		}
 	}
 	t.Errorf("Could not find parameter %s in schema %s", name, s.longName)
+	return parameter{}
+}
+
+func topParam(t *testing.T, s *topLevelSchema, name string) parameter {
+	for _, p := range s.allParameters() {
+		if p.name == name {
+			return p
+		}
+	}
+	t.Errorf("Could not find parameter %s in top-level schema", name)
 	return parameter{}
 }
