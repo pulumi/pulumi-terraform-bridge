@@ -66,6 +66,37 @@ func (pf paramFlags) String() string {
 	return [...]string{"required", "optional", "readonly"}[pf]
 }
 
+func parseNestedSchemaIntoDocs(
+	accumulatedDocs *entityDocs,
+	nestedSchema *nestedSchema,
+	warn func(fmt string, arg ...interface{})) {
+
+	args, _ := accumulatedDocs.getOrCreateArgumentDocs(nestedSchema.longName)
+	args.isNested = true
+
+	for _, param := range nestedSchema.allParameters() {
+		oldDesc, hasAlready := args.arguments[param.name]
+		if hasAlready && oldDesc != param.desc {
+			warn("Descripton conflict for param %s from %s; candidates are `%s` and `%s`",
+				param.name,
+				nestedSchema.longName,
+				oldDesc,
+				param.desc)
+		}
+		args.arguments[param.name] = param.desc
+		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
+		paramArgs, created := accumulatedDocs.getOrCreateArgumentDocs(fullParamName)
+		if !created && paramArgs.description != param.desc {
+			warn("Descripton conflict for param %s; candidates are `%s` and `%s`",
+				fullParamName,
+				paramArgs.description,
+				param.desc)
+		}
+		paramArgs.isNested = true
+		paramArgs.description = param.desc
+	}
+}
+
 func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedSchema, error) {
 	if consumeNode == nil {
 		consumeNode = func(node *bf.Node) {}

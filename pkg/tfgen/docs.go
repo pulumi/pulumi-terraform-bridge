@@ -47,6 +47,23 @@ type argumentDocs struct {
 	isNested bool
 }
 
+// Included for testing convenience.
+func (ad argumentDocs) MarshalJSON() ([]byte, error) {
+	j, err := json.Marshal(struct {
+		Description string
+		Arguments   map[string]string
+		IsNested    bool
+	}{
+		Description: ad.description,
+		Arguments:   ad.arguments,
+		IsNested:    ad.isNested,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
 // entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
 type entityDocs struct {
 	// Description is the description of the resource
@@ -84,6 +101,9 @@ type entityDocs struct {
 }
 
 func (ed *entityDocs) getOrCreateArgumentDocs(argumentName string) (*argumentDocs, bool) {
+	if ed.Arguments == nil {
+		ed.Arguments = make(map[string]*argumentDocs)
+	}
 	var created bool
 	args, has := ed.Arguments[argumentName]
 	if !has {
@@ -649,31 +669,7 @@ func (p *tfMarkdownParser) parseNestedSchemaAsArgReferenceSection(subsection []s
 	if err != nil {
 		panic(err)
 	}
-
-	args, _ := p.ret.getOrCreateArgumentDocs(nestedSchema.longName)
-	args.isNested = true
-
-	for _, param := range nestedSchema.allParameters() {
-		oldDesc, hasAlready := args.arguments[param.name]
-		if hasAlready && oldDesc != param.desc {
-			p.g.warn("Descripton conflict for param %s from %s; candidates are `%s` and `%s`",
-				param.name,
-				nestedSchema.longName,
-				oldDesc,
-				param.desc)
-		}
-		args.arguments[param.name] = param.desc
-		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
-		paramArgs, created := p.ret.getOrCreateArgumentDocs(fullParamName)
-		if !created && paramArgs.description != param.desc {
-			p.g.warn("Descripton conflict for param %s; candidates are `%s` and `%s`",
-				fullParamName,
-				paramArgs.description,
-				param.desc)
-		}
-		paramArgs.isNested = true
-		paramArgs.description = param.desc
-	}
+	parseNestedSchemaIntoDocs(&p.ret, nestedSchema, p.g.warn)
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {

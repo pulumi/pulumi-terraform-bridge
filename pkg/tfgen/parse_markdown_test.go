@@ -1,6 +1,8 @@
 package tfgen
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -48,12 +50,7 @@ func TestParseParameterFromDescription(t *testing.T) {
 }
 
 func TestParseNestedSections(t *testing.T) {
-	bytes, err := ioutil.ReadFile("test_data/mini.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	markdown := string(bytes)
-
+	markdown := readTestFile(t, "mini.md")
 	schemata := make(map[string]*nestedSchema)
 
 	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
@@ -79,6 +76,36 @@ func TestParseNestedSections(t *testing.T) {
 
 	assert.Equal(t, "",
 		param(t, schemata["widget.group_definition"], "title").desc)
+}
+
+func TestParseNestedSchemaIntoDoc(t *testing.T) {
+	markdown := readTestFile(t, "mini.md")
+	out := &entityDocs{}
+	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+		if entering {
+			nested, err := parseNestedSchema(node, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if nested != nil {
+				parseNestedSchemaIntoDocs(out, nested, nil)
+			}
+		}
+		return bf.GoToNext
+	})
+	actual, err := json.MarshalIndent(out.Arguments, "  ", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.JSONEq(t, readTestFile(t, "mini.json"), string(actual))
+}
+
+func readTestFile(t *testing.T, name string) string {
+	bytes, err := ioutil.ReadFile(fmt.Sprintf("test_data/%s", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(bytes)
 }
 
 func param(t *testing.T, s *nestedSchema, name string) parameter {
