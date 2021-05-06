@@ -1,0 +1,109 @@
+{
+  "widget": {
+    "Arguments": {
+      "group_definition": "The definition for a Group widget."
+    },
+    "Description": "",
+    "IsNested": true
+  },
+  "widget.group_definition": {
+    "Arguments": {
+      "layout_type": "The layout type of the group, only 'ordered' for now.",
+      "title": "",
+      "widget": "The list of widgets in this group."
+    },
+    "Description": "The definition for a Group widget.",
+    "IsNested": true
+  },
+  "widget.group_definition.layout_type": {
+    "Arguments": {},
+    "Description": "The layout type of the group, only 'ordered' for now.",
+    "IsNested": true
+  },
+  "widget.group_definition.title": {
+    "Arguments": {},
+    "Description": "",
+    "IsNested": true
+  },
+  "widget.group_definition.widget": {
+    "Arguments": {
+      "change_definition": "The definition for a Change  widget."
+    },
+    "Description": "The list of widgets in this group.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition": {
+    "Arguments": {
+      "custom_link": "Nested block describing a custom link. Multiple `custom_link` blocks are allowed with the structure below.",
+      "live_span": "The timeframe to use when displaying the widget. One of `10m`, `30m`, `1h`, `4h`, `1d`, `2d`, `1w`, `1mo`, `3mo`, `6mo`, `1y`, `alert`.",
+      "request": "Nested block describing the request to use when displaying the widget. Multiple request blocks are allowed with the structure below (exactly one of `q`, `apm_query`, `log_query`, `rum_query`, `security_query` or `process_query` is required within the request block).",
+      "time": "Nested block describing the timeframe to use when displaying the widget. The structure of this block is described below. **Deprecated.** Define `live_span` directly in the widget definition instead.",
+      "title": "The title of the widget.",
+      "title_align": "The alignment of the widget's title. One of `left`, `center`, or `right`.",
+      "title_size": "The size of the widget's title. Default is 16."
+    },
+    "Description": "The definition for a Change  widget.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.custom_link": {
+    "Arguments": {
+      "label": "The label for the custom link URL.",
+      "link": "The URL of the custom link."
+    },
+    "Description": "Nested block describing a custom link. Multiple `custom_link` blocks are allowed with the structure below.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.custom_link.label": {
+    "Arguments": {},
+    "Description": "The label for the custom link URL.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.custom_link.link": {
+    "Arguments": {},
+    "Description": "The URL of the custom link.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.live_span": {
+    "Arguments": {},
+    "Description": "The timeframe to use when displaying the widget. One of `10m`, `30m`, `1h`, `4h`, `1d`, `2d`, `1w`, `1mo`, `3mo`, `6mo`, `1y`, `alert`.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.request": {
+    "Arguments": {
+      "aggregator": "The aggregator to use for time aggregation. One of `avg`, `min`, `max`, `sum`, `last`.",
+      "alias": "The alias for the column name. Default is the metric name."
+    },
+    "Description": "Nested block describing the request to use when displaying the widget. Multiple request blocks are allowed with the structure below (exactly one of `q`, `apm_query`, `log_query`, `rum_query`, `security_query` or `process_query` is required within the request block).",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.request.aggregator": {
+    "Arguments": {},
+    "Description": "The aggregator to use for time aggregation. One of `avg`, `min`, `max`, `sum`, `last`.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.request.alias": {
+    "Arguments": {},
+    "Description": "The alias for the column name. Default is the metric name.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.time": {
+    "Arguments": {},
+    "Description": "Nested block describing the timeframe to use when displaying the widget. The structure of this block is described below. **Deprecated.** Define `live_span` directly in the widget definition instead.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.title": {
+    "Arguments": {},
+    "Description": "The title of the widget.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.title_align": {
+    "Arguments": {},
+    "Description": "The alignment of the widget's title. One of `left`, `center`, or `right`.",
+    "IsNested": true
+  },
+  "widget.group_definition.widget.change_definition.title_size": {
+    "Arguments": {},
+    "Description": "The size of the widget's title. Default is 16.",
+    "IsNested": true
+  }
+}

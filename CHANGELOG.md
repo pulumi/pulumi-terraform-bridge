@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Parse new-style "Nested Schema" sections in markdown docs
+  [#345](https://github.com/pulumi/pulumi-terraform-bridge/pull/345)
+
 - Adjust input extraction in `Read` s.t. it returns a safer set of values.
   [#330](https://github.com/pulumi/pulumi-terraform-bridge/pull/330)
 
@@ -55,25 +58,25 @@ CHANGELOG
   [#231](https://github.com/pulumi/pulumi-terraform-bridge/pull/231)
 
 - Updating regular expressions for unordered lists in markdown
-  [#234](https://github.com/pulumi/pulumi-terraform-bridge/pull/234) 
-  
+  [#234](https://github.com/pulumi/pulumi-terraform-bridge/pull/234)
+
 - Clean codegen directories before generating new code.
   [#236](https://github.com/pulumi/pulumi-terraform-bridge/pull/236)
 
 - Convert examples using the current schema.
   [#224](https://github.com/pulumi/pulumi-terraform-bridge/pull/224)
-  
+
 - Add check against empty assets.
   [#223](https://github.com/pulumi/pulumi-terraform-bridge/pull/223)
 
 - Add support for generating Go examples.
   [#194](https://github.com/pulumi/pulumi-terraform-bridge/pull/218)
-  
+
 - Add JSON path links to properties when generating doc comments and deprecation messages for
   a Pulumi schema.
   [#202](https://github.com/pulumi/pulumi-terraform-bridge/pull/202)
 
-- Update README generation for python. 
+- Update README generation for python.
   [#217](https://github.com/pulumi/pulumi-terraform-bridge/pull/217)
 
 - Use the schema-based code generator for NodeJS.
@@ -99,7 +102,7 @@ CHANGELOG
 - Add support for generating a new-style Go SDK.
   [#101](https://github.com/pulumi/pulumi-terraform-bridge/pull/101)
 
-- Add support for PEP 561 Python type specs. 
+- Add support for PEP 561 Python type specs.
   [100](https://github.com/pulumi/pulumi-terraform-bridge/pull/100)
 
 - Add support for generating a .NET SDK.
