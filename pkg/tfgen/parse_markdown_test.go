@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	bf "github.com/russross/blackfriday/v2"
@@ -63,6 +64,7 @@ func TestParseParameterFromDescription(t *testing.T) {
 
 func TestParseTopLevelSchema(t *testing.T) {
 	markdown := readTestFile(t, "mini.md")
+
 	var schema *topLevelSchema
 
 	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
@@ -125,7 +127,7 @@ func readTestFile(t *testing.T, name string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(bytes)
+	return strings.Replace("\r\n", "\n", string(bytes))
 }
 
 func nested(t *testing.T, tls *topLevelSchema, name string) *nestedSchema {
@@ -135,7 +137,7 @@ func nested(t *testing.T, tls *topLevelSchema, name string) *nestedSchema {
 		}
 	}
 	t.Errorf("Could not find nested schema %s", name)
-	return nil
+	return &nestedSchema{}
 }
 
 func param(t *testing.T, s *nestedSchema, name string) parameter {
