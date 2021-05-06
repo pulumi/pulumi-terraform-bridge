@@ -127,7 +127,7 @@ func readTestFile(t *testing.T, name string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return strings.Replace("\r\n", "\n", string(bytes))
+	return strings.Replace(string(bytes), "\r\n", "\n", -1)
 }
 
 func nested(t *testing.T, tls *topLevelSchema, name string) *nestedSchema {
