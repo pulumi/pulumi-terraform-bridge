@@ -12,7 +12,7 @@ import (
 
 func TestParseTextSeq(t *testing.T) {
 	turnaround := func(src string) {
-		res, err := parseTextSeq(parseNode(src).FirstChild)
+		res, err := parseTextSeq(parseNode(src).FirstChild, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -26,6 +26,12 @@ func TestParseTextSeq(t *testing.T) {
 	turnaround("[link](http://pulumi.com)")
 	turnaround("plain `code` *emph* **strong** [link](http://pulumi.com)")
 	turnaround(`(Block List, Max: 1) The definition for a Change  widget. (see [below for nested schema](#nestedblock--widget--group_definition--widget--change_definition))`)
+
+	res, err := parseTextSeq(parseNode("request_max_bytes").FirstChild, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "request_max_bytes", res)
 }
 
 func TestParsePreamble(t *testing.T) {

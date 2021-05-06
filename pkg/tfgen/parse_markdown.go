@@ -355,11 +355,11 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	if strong == nil || strong.Type != bf.Strong {
 		return nil, nil
 	}
-	paramName, err := parseTextSeq(strong.FirstChild)
+	paramName, err := parseTextSeq(strong.FirstChild, false)
 	if err != nil {
 		return nil, err
 	}
-	paramDesc, err := parseTextSeq(strong.Next)
+	paramDesc, err := parseTextSeq(strong.Next, true)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func parseParameterFromDescription(name string, description string) *parameter {
 // Unfortunately blackfriday does not include markdown renderer, or
 // allow accssing source locations of nodes. Here we accept a sequence of
 // inline nodes and render them as markdown text back.
-func parseTextSeq(firstNode *bf.Node) (string, error) {
+func parseTextSeq(firstNode *bf.Node, useStarsForStrongAndEmph bool) (string, error) {
 	var err error
 	buffer := strings.Builder{}
 	curNode := firstNode
@@ -417,9 +417,17 @@ func parseTextSeq(firstNode *bf.Node) (string, error) {
 					buffer.WriteString(")")
 				}
 			case bf.Strong:
-				buffer.WriteString("**")
+				if useStarsForStrongAndEmph {
+					buffer.WriteString("**")
+				} else {
+					buffer.WriteString("__")
+				}
 			case bf.Emph:
-				buffer.WriteString("*")
+				if useStarsForStrongAndEmph {
+					buffer.WriteString("*")
+				} else {
+					buffer.WriteString("_")
+				}
 			default:
 				err = fmt.Errorf("parseTextSeq found a tag it cannot yet render back to Markdown: %s",
 					prettyPrint(node))
