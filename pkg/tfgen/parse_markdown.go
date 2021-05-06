@@ -82,15 +82,14 @@ func parseTopLevelSchemaIntoDocs(
 	topLevelSchema *topLevelSchema,
 	warn func(fmt string, arg ...interface{})) {
 	for _, param := range topLevelSchema.allParameters() {
-		args, created := accumulatedDocs.getOrCreateArgumentDocs(param.name)
-		if !created && args.description != param.desc {
-			warn("Descripton conflict for top-level param %s; candidates are `%s` and `%s`",
+		oldDesc, haveOldDesc := accumulatedDocs.Attributes[param.name]
+		if haveOldDesc && oldDesc != param.desc {
+			warn("Description conflict for top-level attribute %s; candidates are `%s` and `%s`",
 				param.name,
-				args.description,
+				oldDesc,
 				param.desc)
 		}
-		args.description = param.desc
-		args.isNested = false
+		accumulatedDocs.Attributes[param.name] = param.desc
 	}
 
 	for _, ns := range topLevelSchema.nestedSchemata {
