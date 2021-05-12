@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -28,15 +29,33 @@ import (
 func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
+
+	// Discard print output by default; there might be flags such
+	// as -tracing that are unrecognized at this phase but will be
+	// parsed later by `Serve`. We do not want to print errors
+	// about them. Save `defaultOutput` for help below.
+	defaultOutput := flags.Output()
+	flags.SetOutput(ioutil.Discard)
+
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
 	providerVersion := flags.Bool("version", false, "get built provider version")
-	contract.IgnoreError(flags.Parse(os.Args[1:]))
+
+	err := flags.Parse(os.Args[1:])
+	contract.IgnoreError(err)
+
+	// Ensure we do print help message when `--help` is requested.
+	if err == flag.ErrHelp {
+		flags.SetOutput(defaultOutput)
+		flags.Parse(os.Args[1:])
+	}
+
 	if *dumpInfo {
 		if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
 		os.Exit(0)
 	}
+
 	if *providerVersion {
 		fmt.Println(version)
 		os.Exit(0)
