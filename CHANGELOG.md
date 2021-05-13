@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Provider inputs are now marked as outputs also, allowing access to provider configuration from programs.
+  [#347](https://github.com/pulumi/pulumi-terraform-bridge/pull/347)
+
 - Parse new-style "Nested Schema" sections in markdown docs
   [#345](https://github.com/pulumi/pulumi-terraform-bridge/pull/345)
 

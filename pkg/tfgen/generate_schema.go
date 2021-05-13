@@ -250,6 +250,20 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 			}
 		}
 		spec.Provider = g.genResourceType("index", pack.provider)
+
+		// Ensure that input properties are mirrored as output properties, but without fields set which
+		// are only meaningful for input properties.
+		spec.Provider.Required = spec.Provider.RequiredInputs
+		spec.Provider.Properties = map[string]pschema.PropertySpec{}
+
+		for propName, prop := range spec.Provider.InputProperties {
+			outputProp := prop
+			outputProp.Default = nil
+			outputProp.DefaultInfo = nil
+			outputProp.Const = nil
+
+			spec.Provider.Properties[propName] = outputProp
+		}
 	}
 
 	for token, typ := range g.info.ExtraTypes {
