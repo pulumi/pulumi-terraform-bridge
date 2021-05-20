@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Remove async resource option in nodejs datasources
+  [#348](https://github.com/pulumi/pulumi-terraform-bridge/pull/348)
+
 - Provider inputs are now marked as outputs also, allowing access to provider configuration from programs.
   [#347](https://github.com/pulumi/pulumi-terraform-bridge/pull/347)
 
