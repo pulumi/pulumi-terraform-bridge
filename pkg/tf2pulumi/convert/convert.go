@@ -142,6 +142,9 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 }
 
 type Options struct {
+	// AllowMissingProperties, if true, allows code-gen to continue even if the input configuration does not include.
+	// values for required properties.
+	AllowMissingProperties bool
 	// AllowMissingProviders, if true, allows code-gen to continue even if resource providers are missing.
 	AllowMissingProviders bool
 	// AllowMissingVariables, if true, allows code-gen to continue even if the input configuration references missing
