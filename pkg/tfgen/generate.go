@@ -65,6 +65,7 @@ type Generator struct {
 	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
 	terraformVersion string                // the Terraform version to target for example codegen, if any
 	sink             diag.Sink
+	printStats       bool
 }
 
 type Language string
@@ -608,6 +609,7 @@ type GeneratorOptions struct {
 	PluginHost         plugin.Host
 	TerraformVersion   string
 	Sink               diag.Sink
+	Debug              bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -637,6 +639,11 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	sink := opts.Sink
 	if sink == nil {
+		diagOpts := diag.FormatOptions{
+			Color: cmdutil.GetGlobalColorization(),
+			Debug: opts.Debug,
+		}
+		cmdutil.InitDiag(diagOpts)
 		sink = cmdutil.Diag()
 	}
 
@@ -679,6 +686,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		infoSource:       host,
 		terraformVersion: opts.TerraformVersion,
 		sink:             sink,
+		printStats:       opts.Debug,
 	}, nil
 }
 
@@ -766,7 +774,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Print out some documentation stats as a summary afterwards.
-	printDocStats(g, false, false)
+	printDocStats(g, g.printStats, g.printStats)
 
 	// Close the plugin host.
 	g.pluginHost.Close()
