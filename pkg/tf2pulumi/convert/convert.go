@@ -142,6 +142,9 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 }
 
 type Options struct {
+	// AllowMissingProperties, if true, allows code-gen to continue even if the input configuration does not include.
+	// values for required properties.
+	AllowMissingProperties bool
 	// AllowMissingProviders, if true, allows code-gen to continue even if resource providers are missing.
 	AllowMissingProviders bool
 	// AllowMissingVariables, if true, allows code-gen to continue even if the input configuration references missing
@@ -168,6 +171,8 @@ type Options struct {
 	ProviderInfoSource il.ProviderInfoSource
 	// Optional logger for diagnostic information.
 	Logger *log.Logger
+	// SkipResourceTypechecking, if true, allows code-gen to continue even if resource inputs fail to typecheck.
+	SkipResourceTypechecking bool
 	// The target language.
 	TargetLanguage string
 	// The target SDK version.

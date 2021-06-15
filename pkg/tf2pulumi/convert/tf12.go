@@ -77,6 +77,9 @@ func parseTF12(opts Options) ([]*syntax.File, hcl.Diagnostics) {
 func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *hcl2.Program, hcl.Diagnostics, error) {
 	var hcl2Options []model.BindOption
 	var pulumiOptions []hcl2.BindOption
+	if opts.AllowMissingProperties {
+		pulumiOptions = append(pulumiOptions, hcl2.AllowMissingProperties)
+	}
 	if opts.AllowMissingVariables {
 		hcl2Options = append(hcl2Options, model.AllowMissingVariables)
 		pulumiOptions = append(pulumiOptions, hcl2.AllowMissingVariables)
@@ -86,6 +89,9 @@ func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *hcl2.Prog
 	}
 	if opts.PackageCache != nil {
 		pulumiOptions = append(pulumiOptions, hcl2.Cache(opts.PackageCache))
+	}
+	if opts.SkipResourceTypechecking {
+		pulumiOptions = append(pulumiOptions, hcl2.SkipResourceTypechecking)
 	}
 
 	// Bind the files into a module.

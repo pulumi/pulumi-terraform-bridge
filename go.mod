@@ -9,14 +9,14 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/go-test/deep v1.0.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/go-getter v1.5.0
 	github.com/hashicorp/go-hclog v0.15.0
-	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.0
-	github.com/hashicorp/go-uuid v1.0.1
+	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/go-version v1.2.1
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/hcl/v2 v2.3.0
@@ -30,10 +30,10 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-testing-interface v1.0.4
 	github.com/mitchellh/hashstructure v1.0.0
-	github.com/mitchellh/mapstructure v1.4.0
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.3.2-0.20210526172205-85142462c7ed
+	github.com/pulumi/pulumi/pkg/v3 v3.4.1-0.20210615172257-af87128fb526
 	github.com/pulumi/pulumi/sdk/v3 v3.3.2-0.20210526172205-85142462c7ed
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
@@ -43,10 +43,10 @@ require (
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
 	github.com/zclconf/go-cty v1.3.1
-	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c
-	golang.org/x/mod v0.4.0
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
-	google.golang.org/grpc v1.34.0
+	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
+	golang.org/x/mod v0.4.2
+	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
+	google.golang.org/grpc v1.37.0
 )
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20201219002103-53f910a1ea61
