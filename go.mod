@@ -7,7 +7,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
-	github.com/go-ldap/ldap v3.0.2+incompatible // indirect
 	github.com/go-test/deep v1.0.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
@@ -48,7 +47,6 @@ require (
 	golang.org/x/mod v0.4.2
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
 	google.golang.org/grpc v1.37.0
-	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 )
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20201219002103-53f910a1ea61
