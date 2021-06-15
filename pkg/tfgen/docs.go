@@ -1091,15 +1091,16 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 		}()
 
 		files, diags, err := convert.Convert(convert.Options{
-			Root:                   input,
-			TargetLanguage:         languageName,
-			AllowMissingProperties: true,
-			AllowMissingVariables:  true,
-			FilterResourceNames:    true,
-			PackageCache:           g.packageCache,
-			PluginHost:             g.pluginHost,
-			ProviderInfoSource:     g.infoSource,
-			TerraformVersion:       g.terraformVersion,
+			Root:                     input,
+			TargetLanguage:           languageName,
+			AllowMissingProperties:   true,
+			AllowMissingVariables:    true,
+			FilterResourceNames:      true,
+			PackageCache:             g.packageCache,
+			PluginHost:               g.pluginHost,
+			ProviderInfoSource:       g.infoSource,
+			SkipResourceTypechecking: true,
+			TerraformVersion:         g.terraformVersion,
 		})
 		if err != nil {
 			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)

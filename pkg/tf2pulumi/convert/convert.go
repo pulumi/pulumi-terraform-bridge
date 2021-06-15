@@ -171,6 +171,8 @@ type Options struct {
 	ProviderInfoSource il.ProviderInfoSource
 	// Optional logger for diagnostic information.
 	Logger *log.Logger
+	// SkipResourceTypechecking, if true, allows code-gen to continue even if resource inputs fail to typecheck.
+	SkipResourceTypechecking bool
 	// The target language.
 	TargetLanguage string
 	// The target SDK version.
