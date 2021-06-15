@@ -1293,8 +1293,7 @@ func (rr *resourceRewriter) rewriteBodyItem(item model.BodyItem) (model.BodyItem
 			}
 
 			propSch := rr.schemas().PropertySchemas(block.Type)
-			_, isList := propSch.ModelType().(*model.ListType)
-			projectListElement := isList && tfbridge.IsMaxItemsOne(propSch.TF, propSch.Pulumi)
+			projectListElement := rr.binder.projectListElement(propSch)
 
 			name := terraformToPulumiName(block.Type, propSch)
 			tokens := syntax.NewAttributeTokens(name)
@@ -1493,14 +1492,13 @@ func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
 			}
 			newTraversal = append(newTraversal, traverser)
 		case hcl.TraverseIndex:
-			_, isList := model.GetTraversableType(parts[i]).(*model.ListType)
 			if res, isResource := n.Parts[offset].(*resource); isResource {
 				if res.isConditional {
 					// Ignore indices into conditional resources.
 					continue
 				}
 			}
-			projectListElement := isList && tfbridge.IsMaxItemsOne(schemas.TF, schemas.Pulumi)
+			projectListElement := b.projectListElement(schemas)
 
 			schemas = schemas.ElemSchemas()
 			if projectListElement {
@@ -1756,6 +1754,17 @@ func (b *tf12binder) providerType(providerName string,
 		}).Shim(),
 	}
 	return tok, schemas, schemas.ModelType(), nil
+}
+
+func (b *tf12binder) projectListElement(s il.Schemas) bool {
+	switch s.ModelType().(type) {
+	case *model.ListType, *model.TupleType:
+		// OK
+	default:
+		return false
+	}
+
+	return tfbridge.IsMaxItemsOne(s.TF, s.Pulumi)
 }
 
 var tf12builtins = map[string]*model.Function{
