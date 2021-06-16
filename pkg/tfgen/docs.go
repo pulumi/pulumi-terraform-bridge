@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1067,6 +1068,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
 func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
+	g.debug(fmt.Sprintf("converting HCL for %s", path))
+
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
@@ -1085,10 +1088,15 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		defer func() {
 			v := recover()
 			if v != nil {
-				g.warn("failed to convert HCL example to %v", languageName)
-				g.debug(fmt.Sprintf("panic converting HCL to %v: %v", languageName, v))
+				err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
+				g.debug(fmt.Sprintf("panic converting HCL for %s to %v: %v", path, languageName, v))
 			}
 		}()
+
+		var logger *log.Logger
+		if g.printStats {
+			logger = log.New(&stderr, "", log.Lshortfile)
+		}
 
 		files, diags, err := convert.Convert(convert.Options{
 			Root:                     input,
@@ -1096,6 +1104,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			AllowMissingProperties:   true,
 			AllowMissingVariables:    true,
 			FilterResourceNames:      true,
+			Logger:                   logger,
 			PackageCache:             g.packageCache,
 			PluginHost:               g.pluginHost,
 			ProviderInfoSource:       g.infoSource,
@@ -1103,7 +1112,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			TerraformVersion:         g.terraformVersion,
 		})
 		if err != nil {
-			return fmt.Errorf("failied to convert HCL %s to %v: %w", path, languageName, err)
+			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
 			if stderr.Len() != 0 {
@@ -1159,7 +1168,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		return "", stderr.String(), err
 	}
 	if result.Len() == 0 {
-		return "", stderr.String(), fmt.Errorf("failed to convert HCL %s to %v", path, g.language)
+		return "", stderr.String(), fmt.Errorf("failed to convert HCL for %s to %v", path, g.language)
 	}
 	return result.String(), stderr.String(), nil
 }
