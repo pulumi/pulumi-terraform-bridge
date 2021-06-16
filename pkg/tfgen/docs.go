@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -932,7 +933,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // parseExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool) string {
+func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithErrors bool) string {
 	if docs == "" {
 		return ""
 	}
@@ -991,7 +992,7 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
 						// We've got some code -- assume it's HCL and try to convert it.
-						codeBlock, stderr, err := g.convertHCL(hcl)
+						codeBlock, stderr, err := g.convertHCL(hcl, name)
 						if err != nil {
 							skippedExamples = true
 							hclFailures[stderr] = true
@@ -1066,14 +1067,16 @@ func (g *Generator) convertExamples(docs string, stripSubsectionsWithErrors bool
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func (g *Generator) convertHCL(hcl string) (string, string, error) {
+func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
+	g.debug(fmt.Sprintf("converting HCL for %s", path))
+
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
 	}
 
 	input := afero.NewMemMapFs()
-	f, err := input.Create("/main.tf")
+	f, err := input.Create(fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-")))
 	contract.AssertNoError(err)
 	_, err = f.Write([]byte(hcl))
 	contract.AssertNoError(err)
@@ -1085,10 +1088,15 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 		defer func() {
 			v := recover()
 			if v != nil {
-				g.warn("failed to convert HCL example to %v", languageName)
-				g.debug(fmt.Sprintf("panic converting HCL to %v: %v", languageName, v))
+				err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
+				g.debug(fmt.Sprintf("panic converting HCL for %s to %v: %v", path, languageName, v))
 			}
 		}()
+
+		var logger *log.Logger
+		if g.printStats {
+			logger = log.New(&stderr, "", log.Lshortfile)
+		}
 
 		files, diags, err := convert.Convert(convert.Options{
 			Root:                     input,
@@ -1096,6 +1104,7 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 			AllowMissingProperties:   true,
 			AllowMissingVariables:    true,
 			FilterResourceNames:      true,
+			Logger:                   logger,
 			PackageCache:             g.packageCache,
 			PluginHost:               g.pluginHost,
 			ProviderInfoSource:       g.infoSource,
@@ -1103,14 +1112,14 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 			TerraformVersion:         g.terraformVersion,
 		})
 		if err != nil {
-			return fmt.Errorf("failied to convert HCL to %v: %w", languageName, err)
+			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
 			if stderr.Len() != 0 {
 				_, err := fmt.Fprintf(&stderr, "\n")
 				contract.IgnoreError(err)
 			}
-			_, err := fmt.Fprintf(&stderr, "# %s\n", languageName)
+			_, err := fmt.Fprintf(&stderr, "# %s: %s\n", path, languageName)
 			contract.IgnoreError(err)
 
 			_, err = fmt.Fprintf(&stderr, "%s\n\n", hcl)
@@ -1159,7 +1168,7 @@ func (g *Generator) convertHCL(hcl string) (string, string, error) {
 		return "", stderr.String(), err
 	}
 	if result.Len() == 0 {
-		return "", stderr.String(), fmt.Errorf("failed to convert HCL to %v", g.language)
+		return "", stderr.String(), fmt.Errorf("failed to convert HCL for %s to %v", path, g.language)
 	}
 	return result.String(), stderr.String(), nil
 }

@@ -44,6 +44,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var quiet bool
 	var verbose int
 	var profile string
+	var debug bool
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -90,6 +91,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				Language:     Language(args[0]),
 				ProviderInfo: prov,
 				Root:         root,
+				Debug:        debug,
 			})
 			if err != nil {
 				return err
@@ -118,6 +120,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
 		&profile, "profile", "", "Write a CPU profile to this file")
+	cmd.PersistentFlags().BoolVarP(
+		&debug, "debug", "d", false, "Enable debug logging")
 
 	cmd.PersistentFlags().StringVar(
 		&overlaysDir, "overlays", "",
