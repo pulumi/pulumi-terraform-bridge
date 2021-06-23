@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.4.1-0.20210615172257-af87128fb526
-	github.com/pulumi/pulumi/sdk/v3 v3.3.2-0.20210526172205-85142462c7ed
+	github.com/pulumi/pulumi/pkg/v3 v3.5.2-0.20210623115523-414367963f50
+	github.com/pulumi/pulumi/sdk/v3 v3.5.2-0.20210623115523-414367963f50
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.2.2
