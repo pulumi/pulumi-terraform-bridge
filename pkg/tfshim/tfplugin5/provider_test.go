@@ -743,7 +743,8 @@ func TestValidateResource(t *testing.T) {
 	assert.Len(t, errors, 1)
 	if goerrors.As(errors[0], &err) {
 		assert.Equal(t, &diagnostics.ValidationError{
-			Summary:       "Required attribute is not set",
+			Summary:       "Missing required argument",
+			Detail:        "The argument \"array_property_value\" is required, but no definition was found.",
 			AttributePath: cty.GetAttrPath("array_property_value"),
 		}, err)
 	} else {
