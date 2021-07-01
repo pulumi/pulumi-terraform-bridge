@@ -17,11 +17,12 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-cty/cty"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"log"
 	"regexp"
 	"strings"
+
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 
 	"google.golang.org/grpc/status"
 
@@ -1110,6 +1111,11 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 // Construct creates a new instance of the provided component resource and returns its state.
 func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
+}
+
+// Call dynamically executes a method in the provider associated with a component resource.
+func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
 // Invoke dynamically executes a built-in function in the provider.
