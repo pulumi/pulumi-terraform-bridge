@@ -427,6 +427,8 @@ func parseTextSeq(firstNode *bf.Node, useStarsForStrongAndEmph bool) (string, er
 				} else {
 					buffer.WriteString("_")
 				}
+			case bf.HTMLSpan:
+				buffer.WriteString(`\n\n`)
 			default:
 				err = fmt.Errorf("parseTextSeq found a tag it cannot yet render back to Markdown: %s",
 					prettyPrint(node))
