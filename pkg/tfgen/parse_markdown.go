@@ -49,7 +49,7 @@ func (ns *topLevelSchema) allParameters() []parameter {
 
 type nestedSchema struct {
 	longName string
-	linkId   *string
+	linkID   *string
 	optional []parameter
 	required []parameter
 	readonly []parameter
@@ -93,7 +93,8 @@ func parseTopLevelSchemaIntoDocs(
 	}
 
 	for _, ns := range topLevelSchema.nestedSchemata {
-		parseNestedSchemaIntoDocs(accumulatedDocs, &ns, warn)
+		nestedSchema := ns // this stops implicit memory addressing
+		parseNestedSchemaIntoDocs(accumulatedDocs, &nestedSchema, warn)
 	}
 }
 
@@ -160,7 +161,7 @@ func parseNestedSchemaIntoDocs(
 	for _, param := range nestedSchema.allParameters() {
 		oldDesc, hasAlready := args.arguments[param.name]
 		if hasAlready && oldDesc != param.desc {
-			warn("Descripton conflict for param %s from %s; candidates are `%s` and `%s`",
+			warn("Description conflict for param %s from %s; candidates are `%s` and `%s`",
 				param.name,
 				nestedSchema.longName,
 				oldDesc,
@@ -170,7 +171,7 @@ func parseNestedSchemaIntoDocs(
 		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
 		paramArgs, created := accumulatedDocs.getOrCreateArgumentDocs(fullParamName)
 		if !created && paramArgs.description != param.desc {
-			warn("Descripton conflict for param %s; candidates are `%s` and `%s`",
+			warn("Description conflict for param %s; candidates are `%s` and `%s`",
 				fullParamName,
 				paramArgs.description,
 				param.desc)
@@ -189,8 +190,8 @@ func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedS
 		return nil, nil
 	}
 
-	linkId := parsePreamble(node, consumeNode)
-	if linkId != nil {
+	linkID := parsePreamble(node, consumeNode)
+	if linkID != nil {
 		node = node.Next
 	}
 
@@ -211,7 +212,7 @@ func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedS
 
 	ns := &nestedSchema{
 		longName: string(code.Literal),
-		linkId:   linkId,
+		linkID:   linkID,
 	}
 
 	curNode := node.Next
@@ -365,14 +366,14 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	return parseParameterFromDescription(paramName, cleanDesc(paramDesc)), nil
 }
 
-var seeBelowPattern *regexp.Regexp = regexp.MustCompile("[(]see \\[below for nested schema\\][(][^)]*[)][)]")
+var seeBelowPattern *regexp.Regexp = regexp.MustCompile(`[(]see \[below for nested schema\][(][^)]*[)][)]`)
 
 func cleanDesc(desc string) string {
 	desc = seeBelowPattern.ReplaceAllString(desc, "")
 	return strings.TrimSpace(desc)
 }
 
-var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile("^\\s*[(]([^[)]+)[)]\\s*")
+var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile(`^\s*[(]([^[)]+)[)]\s*`)
 
 func parseParameterFromDescription(name string, description string) *parameter {
 	if descriptionTypeSectionPattern.MatchString(description) {
@@ -437,25 +438,6 @@ func parseTextSeq(firstNode *bf.Node, useStarsForStrongAndEmph bool) (string, er
 		curNode = curNode.Next
 	}
 	return buffer.String(), err
-}
-
-// Useful to remember and remove nodes that were consumed
-// (successfully parsed) from the AST, for example to debug which
-// parts of the AST we fail to recognize.
-type nodeUnlinker struct {
-	nodes []*bf.Node
-}
-
-func (nu *nodeUnlinker) consumeNode(node *bf.Node) {
-	nu.nodes = append(nu.nodes, node)
-}
-
-func (nu *nodeUnlinker) unlinkAll() {
-	for _, n := range nu.nodes {
-		if n != nil {
-			n.Unlink()
-		}
-	}
 }
 
 func parseDoc(text string) *bf.Node {

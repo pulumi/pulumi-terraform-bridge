@@ -46,7 +46,10 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Ensure we do print help message when `--help` is requested.
 	if err == flag.ErrHelp {
 		flags.SetOutput(defaultOutput)
-		flags.Parse(os.Args[1:])
+		err := flags.Parse(os.Args[1:])
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
 	}
 
 	if *dumpInfo {

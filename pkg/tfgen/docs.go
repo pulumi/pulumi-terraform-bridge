@@ -559,8 +559,6 @@ func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 	return result
 }
 
-var nestedSchemaPattern *regexp.Regexp = regexp.MustCompile("^[#]+ Nested Schema for [`]([^`]+)[`]")
-
 func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
 	if len(section) == 0 {
