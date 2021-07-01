@@ -26,7 +26,8 @@ func TestParseTextSeq(t *testing.T) {
 	turnaround("**strong**")
 	turnaround("[link](http://pulumi.com)")
 	turnaround("plain `code` *emph* **strong** [link](http://pulumi.com)")
-	turnaround(`(Block List, Max: 1) The definition for a Change  widget. (see [below for nested schema](#nestedblock--widget--group_definition--widget--change_definition))`)
+	turnaround(`(Block List, Max: 1) The definition for a Change  widget. (see [below for nested schema]` +
+		`(#nestedblock--widget--group_definition--widget--change_definition))`)
 
 	res, err := parseTextSeq(parseNode("request_max_bytes").FirstChild, false)
 	if err != nil {
