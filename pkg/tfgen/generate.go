@@ -66,6 +66,8 @@ type Generator struct {
 	terraformVersion string                // the Terraform version to target for example codegen, if any
 	sink             diag.Sink
 	printStats       bool
+	skipDocs         bool
+	skipExamples     bool
 }
 
 type Language string
@@ -610,6 +612,8 @@ type GeneratorOptions struct {
 	TerraformVersion   string
 	Sink               diag.Sink
 	Debug              bool
+	SkipDocs           bool
+	SkipExamples       bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -687,6 +691,8 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		terraformVersion: opts.TerraformVersion,
 		sink:             sink,
 		printStats:       opts.Debug,
+		skipDocs:         opts.SkipDocs,
+		skipExamples:     opts.SkipExamples,
 	}, nil
 }
 
@@ -732,7 +738,9 @@ func (g *Generator) Generate() error {
 	}
 
 	// Convert examples.
-	pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
+	if !g.skipExamples {
+		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
+	}
 
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.

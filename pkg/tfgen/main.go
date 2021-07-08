@@ -45,6 +45,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var verbose int
 	var profile string
 	var debug bool
+	var skipDocs bool
+	var skipExamples bool
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -92,6 +94,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				ProviderInfo: prov,
 				Root:         root,
 				Debug:        debug,
+				SkipDocs:     skipDocs,
+				SkipExamples: skipExamples,
 			})
 			if err != nil {
 				return err
@@ -122,6 +126,10 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&profile, "profile", "", "Write a CPU profile to this file")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false, "Enable debug logging")
+	cmd.PersistentFlags().BoolVar(
+		&skipDocs, "skip-docs", false, "Do not convert docs from TF Markdown")
+	cmd.PersistentFlags().BoolVar(
+		&skipExamples, "skip-examples", false, "Do not convert examples from HCL")
 
 	cmd.PersistentFlags().StringVar(
 		&overlaysDir, "overlays", "",
