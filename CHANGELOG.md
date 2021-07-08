@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add flags to skip docs and examples processing.
+  [#365](https://github.com/pulumi/pulumi-terraform-bridge/pull/365)
+
 - Remove async resource option in nodejs datasources
   [#348](https://github.com/pulumi/pulumi-terraform-bridge/pull/348)
 

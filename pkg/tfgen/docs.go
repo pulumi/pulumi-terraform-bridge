@@ -211,6 +211,10 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
 	githost string) (entityDocs, error) {
 
+	if g.skipDocs {
+		return entityDocs{}, nil
+	}
+
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
 		providerModuleVersion, githost)
 	if !found {
