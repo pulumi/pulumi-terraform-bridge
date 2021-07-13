@@ -50,7 +50,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
-	tfState, err := MakeTerraformState(r, "id", stateMap)
+	tfState, _, err := MakeTerraformState(r, "id", stateMap)
 	assert.NoError(t, err)
 
 	config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)

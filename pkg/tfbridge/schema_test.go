@@ -514,7 +514,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -528,7 +528,7 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -563,7 +563,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -589,7 +589,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -603,7 +603,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -640,7 +640,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -694,7 +694,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -1683,6 +1683,9 @@ func TestAssetRoundtrip(t *testing.T) {
 		d.SetId("MyID")
 		return nil
 	}
+	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+		return nil
+	}
 	tfres.Update = func(d *schemav1.ResourceData, meta interface{}) error {
 		return nil
 	}
@@ -1759,6 +1762,22 @@ func TestAssetRoundtrip(t *testing.T) {
 	assert.NoError(t, err)
 
 	outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": asset,
+	}).DeepEquals(outs))
+
+	// Step 3: refresh the resource we created earlier. The asset input should still be an asset.
+	readResp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         "MyID",
+		Urn:        string(urn),
+		Properties: updateResp.GetProperties(),
+		Inputs:     checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(readResp.GetProperties(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"id":     "MyID",

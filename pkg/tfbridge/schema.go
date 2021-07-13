@@ -823,12 +823,12 @@ func MakeTerraformConfigFromInputs(p shim.Provider, inputs map[string]interface{
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.InstanceState, error) {
+func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.InstanceState, AssetTable, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else if res.TF.SchemaVersion() > 0 {
 		// If there was no metadata in the inputs and this resource has a non-zero schema version, return a meta bag
@@ -838,23 +838,28 @@ func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.I
 
 	// Turn the resource properties into a map. For the most part, this is a straight Mappable, but we use MapReplace
 	// because we use float64s and Terraform uses ints, to represent numbers.
-	ctx := &conversionContext{}
+	ctx := &conversionContext{Assets: AssetTable{}}
 	inputs, err := ctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return res.TF.InstanceState(id, inputs, meta)
+	state, err := res.TF.InstanceState(id, inputs, meta)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return state, ctx.Assets, nil
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-func UnmarshalTerraformState(r Resource, id string, m *pbstruct.Struct, l string) (shim.InstanceState, error) {
+func UnmarshalTerraformState(r Resource, id string, m *pbstruct.Struct, l string) (shim.InstanceState, AssetTable, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
 		Label:     fmt.Sprintf("%s.state", l),
 		SkipNulls: true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return MakeTerraformState(r, id, props)
 }
