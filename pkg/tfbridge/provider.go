@@ -727,7 +727,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := MakeTerraformState(res, req.GetId(), olds)
+	state, _, err := MakeTerraformState(res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -915,7 +915,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := UnmarshalTerraformState(res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
+	state, assets, err := UnmarshalTerraformState(res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -945,7 +945,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, nil, p.supportsSecrets)
+		props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -994,7 +994,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	state, err := MakeTerraformState(res, req.GetId(), olds)
+	state, _, err := MakeTerraformState(res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1091,7 +1091,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	glog.V(9).Infof("%s executing", label)
 
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := UnmarshalTerraformState(res, req.GetId(), req.GetProperties(), label)
+	state, _, err := UnmarshalTerraformState(res, req.GetId(), req.GetProperties(), label)
 	if err != nil {
 		return nil, err
 	}

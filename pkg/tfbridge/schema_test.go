@@ -514,7 +514,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -528,7 +528,7 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -563,7 +563,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -589,7 +589,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -603,7 +603,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -640,7 +640,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -694,7 +694,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, _, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -1670,6 +1670,7 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 }
 
 func TestAssetRoundtrip(t *testing.T) {
+	var readInputA interface{}
 	tfProvider := makeTestTFProvider(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
@@ -1681,6 +1682,12 @@ func TestAssetRoundtrip(t *testing.T) {
 	tfres := tfProvider.ResourcesMap["importable_resource"]
 	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
 		d.SetId("MyID")
+		return nil
+	}
+	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+		if readInputA != nil {
+			d.Set("input_a", readInputA)
+		}
 		return nil
 	}
 	tfres.Update = func(d *schemav1.ResourceData, meta interface{}) error {
@@ -1761,6 +1768,40 @@ func TestAssetRoundtrip(t *testing.T) {
 	outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": asset,
+	}).DeepEquals(outs))
+
+	// Step 3: refresh the resource we created earlier. The asset input should still be an asset.
+	readResp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         "MyID",
+		Urn:        string(urn),
+		Properties: updateResp.GetProperties(),
+		Inputs:     checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(readResp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.True(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": asset,
+	}).DeepEquals(outs))
+
+	// Step 4: refresh again, but with a new value for the input. The asset input should still be an asset, but should
+	// have a distinct value.
+	readInputA = "some-other-value"
+	readResp, err = p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         "MyID",
+		Urn:        string(urn),
+		Properties: updateResp.GetProperties(),
+		Inputs:     checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(readResp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.False(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"id":     "MyID",
 		"inputA": asset,
 	}).DeepEquals(outs))
