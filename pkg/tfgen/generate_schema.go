@@ -177,10 +177,10 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(declarer declarer, namePrefi
 	}
 }
 
-func rawMessage(v interface{}) json.RawMessage {
+func rawMessage(v interface{}) pschema.RawMessage {
 	bytes, err := json.Marshal(v)
 	contract.Assert(err == nil)
-	return json.RawMessage(bytes)
+	return pschema.RawMessage(bytes)
 }
 
 func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
@@ -204,7 +204,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		Resources:         map[string]pschema.ResourceSpec{},
 		Functions:         map[string]pschema.FunctionSpec{},
 		Types:             map[string]pschema.ComplexTypeSpec{},
-		Language:          map[string]json.RawMessage{},
+		Language:          map[string]pschema.RawMessage{},
 
 		Meta: &pschema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
@@ -379,7 +379,7 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		description = g.genRawDocComment(prop.rawdoc)
 	}
 
-	language := map[string]json.RawMessage{}
+	language := map[string]pschema.RawMessage{}
 	if prop.info != nil && prop.info.CSharpName != "" {
 		language["csharp"] = rawMessage(map[string]string{"name": prop.info.CSharpName})
 	}
@@ -570,7 +570,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 		nodeInfo["requiredOutputs"] = requiredOutputs
 	}
 	if len(nodeInfo) != 0 {
-		spec.Language = map[string]json.RawMessage{
+		spec.Language = map[string]pschema.RawMessage{
 			"nodejs": rawMessage(nodeInfo),
 		}
 	}
