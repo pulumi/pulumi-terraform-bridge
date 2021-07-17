@@ -16,9 +16,12 @@ package tfgen
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 
 	"github.com/golang/glog"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -44,6 +47,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var quiet bool
 	var verbose int
 	var profile string
+	var heapProfile string
+	var tracePath string
 	var debug bool
 	var skipDocs bool
 	var skipExamples bool
@@ -71,6 +76,31 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 					return err
 				}
 				defer pprof.StopCPUProfile()
+			}
+
+			if heapProfile != "" {
+				defer func() {
+					f, err := os.Create(heapProfile)
+					if err != nil {
+						log.Printf("could not write heap profile: %v", err)
+						return
+					}
+					runtime.GC() // get up-to-date statistics
+					if err := pprof.WriteHeapProfile(f); err != nil {
+						log.Printf("could not write heap profile: %v", err)
+					}
+				}()
+			}
+
+			if tracePath != "" {
+				f, err := os.Create(tracePath)
+				if err != nil {
+					return err
+				}
+				if err = trace.Start(f); err != nil {
+					return err
+				}
+				defer trace.Stop()
 			}
 
 			// Create the output directory.
@@ -124,6 +154,10 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
 		&profile, "profile", "", "Write a CPU profile to this file")
+	cmd.PersistentFlags().StringVar(
+		&heapProfile, "heap-profile", "", "Write a heap profile to this file")
+	cmd.PersistentFlags().StringVar(
+		&tracePath, "trace", "", "Write a Go runtime trace to this file")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false, "Enable debug logging")
 	cmd.PersistentFlags().BoolVar(

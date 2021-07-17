@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -125,10 +126,16 @@ const (
 	DataSourceDocs DocKind = "data-sources"
 )
 
+var repoPaths sync.Map
+
 func getRepoPath(gitHost string, org string, provider string, version string) (string, error) {
 	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
 	if version != "" {
 		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
+	}
+
+	if path, ok := repoPaths.Load(moduleCoordinates); ok {
+		return path.(string), nil
 	}
 
 	curWd, err := os.Getwd()
@@ -159,6 +166,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	if target.Error != "" {
 		return "", fmt.Errorf("error from 'go mod download -json' for module: %s", target.Error)
 	}
+
+	repoPaths.Store(moduleCoordinates, target.Dir)
 
 	return target.Dir, nil
 }
