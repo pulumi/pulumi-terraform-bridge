@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaGenerator struct {
@@ -47,7 +46,6 @@ type schemaNestedType struct {
 	required        codegen.StringSet
 	requiredInputs  codegen.StringSet
 	requiredOutputs codegen.StringSet
-	pyMapCase       bool
 }
 
 type schemaNestedTypes struct {
@@ -75,16 +73,16 @@ func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNes
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	switch member := member.(type) {
 	case *resourceType:
-		nt.gatherFromProperties(member, member.name, member.inprops, true, true)
-		nt.gatherFromProperties(member, member.name, member.outprops, false, true)
+		nt.gatherFromProperties(member, member.name, member.inprops, true)
+		nt.gatherFromProperties(member, member.name, member.outprops, false)
 		if !member.IsProvider() {
-			nt.gatherFromProperties(member, member.name, member.statet.properties, true, true)
+			nt.gatherFromProperties(member, member.name, member.statet.properties, true)
 		}
 	case *resourceFunc:
-		nt.gatherFromProperties(member, member.name, member.args, true, true)
-		nt.gatherFromProperties(member, member.name, member.rets, false, true)
+		nt.gatherFromProperties(member, member.name, member.args, true)
+		nt.gatherFromProperties(member, member.name, member.rets, false)
 	case *variable:
-		nt.gatherFromPropertyType(member, member.name, "", member.typ, false, true)
+		nt.gatherFromPropertyType(member, member.name, "", member.typ, false)
 	}
 }
 
@@ -93,7 +91,7 @@ type declarer interface {
 }
 
 func (nt *schemaNestedTypes) declareType(
-	declarer declarer, namePrefix, name string, typ *propertyType, isInput, pyMapCase bool) string {
+	declarer declarer, namePrefix, name string, typ *propertyType, isInput bool) string {
 
 	// Generate a name for this nested type.
 	typeName := namePrefix + strings.Title(name)
@@ -141,39 +139,31 @@ func (nt *schemaNestedTypes) declareType(
 		required:        required,
 		requiredInputs:  requiredInputs,
 		requiredOutputs: requiredOutputs,
-		pyMapCase:       pyMapCase,
 	}
 	return typeName
 }
 
-func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix string, ps []*variable,
-	isInput, pyMapCase bool) {
-
+func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix string, ps []*variable, isInput bool) {
 	for _, p := range ps {
 		name := p.name
 		if p.typ.kind == kindList || p.typ.kind == kindSet {
 			name = inflector.Singularize(name)
 		}
-
-		// Due to bugs in earlier versions of the bridge, we want to keep the Python code generator from case-mapping
-		// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
-		// https://github.com/pulumi/pulumi/issues/3151 for more details.
-		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type() == shim.TypeMap
-		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, mapCase)
+		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput)
 	}
 }
 
 func (nt *schemaNestedTypes) gatherFromPropertyType(declarer declarer, namePrefix, name string, typ *propertyType,
-	isInput, pyMapCase bool) {
+	isInput bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput, pyMapCase)
+			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput, pyMapCase)
-		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput, pyMapCase)
+		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput)
+		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput)
 	}
 }
 
@@ -371,7 +361,7 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool) pschema.PropertySpec {
+func (g *schemaGenerator) genProperty(mod string, prop *variable) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
 		description = g.genDocComment(prop.doc)
@@ -382,10 +372,6 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 	language := map[string]pschema.RawMessage{}
 	if prop.info != nil && prop.info.CSharpName != "" {
 		language["csharp"] = rawMessage(map[string]string{"name": prop.info.CSharpName})
-	}
-
-	if !pyMapCase {
-		language["python"] = rawMessage(map[string]interface{}{"mapCase": false})
 	}
 
 	var defaultValue interface{}
@@ -426,7 +412,7 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 		Variables: make(map[string]pschema.PropertySpec),
 	}
 	for _, v := range variables {
-		spec.Variables[v.name] = g.genProperty("config", v, true)
+		spec.Variables[v.name] = g.genProperty("config", v)
 
 		if !v.optional() {
 			spec.Required = append(spec.Required, v.name)
@@ -451,7 +437,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.outprops {
-		spec.Properties[prop.name] = g.genProperty(mod, prop, true)
+		spec.Properties[prop.name] = g.genProperty(mod, prop)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -460,7 +446,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	spec.InputProperties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.inprops {
-		spec.InputProperties[prop.name] = g.genProperty(mod, prop, true)
+		spec.InputProperties[prop.name] = g.genProperty(mod, prop)
 
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
@@ -468,7 +454,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 	}
 
 	if !res.IsProvider() {
-		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet, pyMapCase: true})
+		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet})
 		spec.StateInputs = &stateInputs
 	}
 
@@ -497,11 +483,11 @@ func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) psche
 
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst, pyMapCase: true})
+		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst})
 		spec.Inputs = &t
 	}
 	if fun.retst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst, pyMapCase: true})
+		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst})
 		spec.Outputs = &t
 	}
 
@@ -545,7 +531,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range typ.properties {
-		spec.Properties[prop.name] = g.genProperty(mod, prop, typInfo.pyMapCase)
+		spec.Properties[prop.name] = g.genProperty(mod, prop)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
