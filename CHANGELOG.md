@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Stop emitting `mapCase` for Python properties.
+  [#369](https://github.com/pulumi/pulumi-terraform-bridge/pull/369)
+
 - Add flags to skip docs and examples processing.
   [#365](https://github.com/pulumi/pulumi-terraform-bridge/pull/365)
 
