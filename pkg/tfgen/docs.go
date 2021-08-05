@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
@@ -1169,17 +1170,25 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		err = convertHCL("go")
 	case Schema:
 		langs := []string{"typescript", "python", "csharp", "go"}
+		var anySucceeded bool = false
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
-				return "", stderr.String(), langErr
+				err = multierror.Append(err, langErr)
+			} else {
+				anySucceeded = true
 			}
 		}
+		if anySucceeded {
+			// At least one language out of the given set has been generated, which is considered a success
+			err = nil
+		}
 	}
+
 	if err != nil {
 		return "", stderr.String(), err
 	}
 	if result.Len() == 0 {
-		return "", stderr.String(), fmt.Errorf("failed to convert HCL for %s to %v", path, g.language)
+		return "", stderr.String(), fmt.Errorf("failed to convert HCL for %s to %v: empty output produced", path, g.language)
 	}
 	return result.String(), stderr.String(), nil
 }
