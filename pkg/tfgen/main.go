@@ -116,16 +116,20 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)
 			}
 
+			// Creating an item to keep track of example coverage
+			var coverageTracker CoverageTracker = newCoverageTracker()
+
 			// Create a generator with the specified settings.
 			g, err := NewGenerator(GeneratorOptions{
-				Package:      pkg,
-				Version:      version,
-				Language:     Language(args[0]),
-				ProviderInfo: prov,
-				Root:         root,
-				Debug:        debug,
-				SkipDocs:     skipDocs,
-				SkipExamples: skipExamples,
+				Package:         pkg,
+				Version:         version,
+				Language:        Language(args[0]),
+				ProviderInfo:    prov,
+				Root:            root,
+				Debug:           debug,
+				SkipDocs:        skipDocs,
+				SkipExamples:    skipExamples,
+				CoverageTracker: &coverageTracker,
 			})
 			if err != nil {
 				return err
@@ -136,6 +140,9 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			if err != nil {
 				return err
 			}
+
+			// Exporting collected coverage data in a given directory
+			coverageTracker.exportResults("./test-results")
 
 			return nil
 		}),

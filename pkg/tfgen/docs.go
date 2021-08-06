@@ -1004,6 +1004,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
 						// We've got some code -- assume it's HCL and try to convert it.
+						g.coverageTracker.foundExample(name, hcl)
 						codeBlock, stderr, err := g.convertHCL(hcl, name)
 						if err != nil {
 							skippedExamples = true
@@ -1102,6 +1103,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			if v != nil {
 				err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
 				g.debug(fmt.Sprintf("panic converting HCL for %s to %v: %v", path, languageName, v))
+				g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
 			}
 		}()
 
@@ -1124,6 +1126,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			TerraformVersion:         g.terraformVersion,
 		})
 		if err != nil {
+			g.coverageTracker.languageConversionFailure(ConversionFailOpts{languageName, "Fatal", err.Error()})
 			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
@@ -1140,6 +1143,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
+			g.coverageTracker.languageConversionFailure(ConversionFailOpts{languageName, "High", err.Error()})
 			// Note that we intentionally avoid returning an error here. The caller will check for an empty code block
 			// before returning and translate that into an error.
 			return nil
@@ -1156,6 +1160,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			contract.IgnoreError(err)
 		}
 
+		g.coverageTracker.languageConversionSuccess(languageName)
 		return nil
 	}
 
