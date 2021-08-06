@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
@@ -1304,9 +1305,12 @@ func fixupPropertyReferences(language Language, pkg string, info tfbridge.Provid
 			}
 
 			switch language {
-			case Golang, Python:
+			case Golang:
 				// Use `ec2.getAmi` format
 				return open + modname + getname + close
+			case Python:
+				// Use `ec2.get_ami` format
+				return python.PyName(open + modname + getname + close)
 			default:
 				// Use `aws.ec2.getAmi` format
 				return open + pkg + "." + modname + getname + close
