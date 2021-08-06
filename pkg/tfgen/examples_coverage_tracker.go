@@ -19,6 +19,8 @@
 
 package tfgen
 
+import "fmt"
+
 // Main overarching structure for storing coverage data on how many examples were processed,
 // how many failed, and for what reason
 type CoverageTracker struct {
@@ -63,30 +65,46 @@ func (CT *CoverageTracker) foundExample(exampleName string, hcl string) {
 	CT.CurrentExampleName = exampleName
 	if val, ok := CT.EncounteredExamples[exampleName]; ok {
 		val.nameEncounteredMultipleTimes = true
+	} else {
+		CT.EncounteredExamples[exampleName] = GeneralExampleInfo{exampleName, hcl, make(map[string]LanguageConversionResult), false}
 	}
-	//TODO: NYI
 }
 
 // Current example has been successfully converted to a certain language
 func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
-	//TODO: NYI
+	CT.insertLanguageConversionResult(LanguageConversionResult{
+		targetLanguage:            targetLanguage,
+		failureSeverity:           0,
+		failureInfo:               "",
+		examplePossiblyDuplicated: false,
+	})
 }
 
 // Generator has failed to convert the current example to a certain language
 func (CT *CoverageTracker) languageConversionFailure(conversionFailOpts ConversionFailOpts) {
-	//TODO: NYI
+	CT.insertLanguageConversionResult(LanguageConversionResult{
+		targetLanguage:            conversionFailOpts.targetLanguage,
+		failureSeverity:           conversionFailOpts.failureSeverity,
+		failureInfo:               conversionFailOpts.failureInfo,
+		examplePossiblyDuplicated: false,
+	})
 }
 
 // Information about failed conversion
 type ConversionFailOpts struct {
 	targetLanguage  string
-	failureSeverity string
+	failureSeverity int
 	failureInfo     string
 }
 
 // Generator ncountered a fatal error when trying to convert the current example to a certain language
 func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
-	//TODO: NYI
+	CT.insertLanguageConversionResult(LanguageConversionResult{
+		targetLanguage:            targetLanguage,
+		failureSeverity:           3,
+		failureInfo:               panicInfo,
+		examplePossiblyDuplicated: false,
+	})
 }
 
 //=================================================================================
@@ -94,10 +112,16 @@ func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicI
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly duplicated
 func (CT *CoverageTracker) insertLanguageConversionResult(conversionResult LanguageConversionResult) {
-	//TODO: NYI
+	if val, ok := CT.EncounteredExamples[CT.CurrentExampleName]; ok {
+		val.languagesConvertedTo[conversionResult.targetLanguage] = conversionResult
+	} else {
+		fmt.Println("Error: attempted to log the result of a language conversion without first finding an example")
+		fmt.Println(conversionResult)
+		panic("")
+	}
 }
 
 // Exporting the coverage results
-func (CT *CoverageTracker) exportResults(filePath string) {
-	//TODO: NYI
+func (CT *CoverageTracker) exportResults(outputDirectory string) {
+	fmt.Println("Exporting data:\n", CT.EncounteredExamples)
 }
