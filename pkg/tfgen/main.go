@@ -117,7 +117,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			}
 
 			// Creating an item to keep track of example coverage
-			var coverageTracker CoverageTracker = newCoverageTracker()
+			var coverageTracker CoverageTracker = newCoverageTracker(prov.Name)
 
 			// Create a generator with the specified settings.
 			g, err := NewGenerator(GeneratorOptions{
