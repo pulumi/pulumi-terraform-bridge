@@ -142,9 +142,9 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 			}
 
 			// Exporting collected coverage data to a given directory if the COVERAGE_OUTPUT_DIR env is set
-			COD := os.Getenv("COVERAGE_OUTPUT_DIR")
-			if COD != "" {
-				coverageTracker.exportResults(COD)
+			cod, exists := os.LookupEnv("COVERAGE_OUTPUT_DIR")
+			if exists {
+				coverageTracker.exportResults(cod)
 			}
 
 			return nil
