@@ -140,7 +140,7 @@ func (g *generator) GenerateResource(r *il.ResourceNode) error {
 	// data source call itself into the apply.
 	if r.IsDataSource {
 		// Qualified member names are snake cased for data sources.
-		qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, subpkg, pyName(class))
+		qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, subpkg, PyName(class))
 		properties := newDataSourceCall(qualifiedMemberName, r.Properties)
 		inputs, transformed, err := g.computeProperty(properties, false, "")
 		if err != nil {
@@ -357,8 +357,8 @@ func resourceTypeName(r *il.ResourceNode) (string, string, string, error) {
 // Copy-pasted from tfgen
 //
 
-// pyName turns a variable or function name, normally using camelCase, to an underscore_case name.
-func pyName(name string) string {
+// PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
+func PyName(name string) string {
 	// This method is a state machine with four states:
 	//   stateFirst - the initial state.
 	//   stateUpper - The last character we saw was an uppercase letter and the character before it
