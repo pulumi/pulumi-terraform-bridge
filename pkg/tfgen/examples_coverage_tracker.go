@@ -54,8 +54,8 @@ const (
 	Fatal  = 3
 )
 
-func newCoverageTracker(ProviderName string, ProviderVersion string) CoverageTracker {
-	return CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]GeneralExampleInfo)}
+func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
+	return &CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]GeneralExampleInfo)}
 }
 
 //========================== Coverage Tracker Interface ===========================
@@ -64,6 +64,9 @@ func newCoverageTracker(ProviderName string, ProviderVersion string) CoverageTra
 
 // Used when: generator has found a new example with a convertible block of HCL
 func (CT *CoverageTracker) foundExample(exampleName string, hcl string) {
+	if CT == nil {
+		return
+	}
 	CT.CurrentExampleName = exampleName
 	if val, ok := CT.EncounteredExamples[exampleName]; ok {
 		val.NameEncounteredMultipleTimes = true
@@ -74,6 +77,9 @@ func (CT *CoverageTracker) foundExample(exampleName string, hcl string) {
 
 // Current example has been successfully converted to a certain language
 func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
+	if CT == nil {
+		return
+	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:            targetLanguage,
 		FailureSeverity:           0,
@@ -84,6 +90,9 @@ func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
 
 // Generator has failed to convert the current example to a certain language
 func (CT *CoverageTracker) languageConversionFailure(conversionFailOpts ConversionFailOpts) {
+	if CT == nil {
+		return
+	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:            conversionFailOpts.targetLanguage,
 		FailureSeverity:           conversionFailOpts.failureSeverity,
@@ -101,6 +110,9 @@ type ConversionFailOpts struct {
 
 // Generator ncountered a fatal error when trying to convert the current example to a certain language
 func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
+	if CT == nil {
+		return
+	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:            targetLanguage,
 		FailureSeverity:           3,
