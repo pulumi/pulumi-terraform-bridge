@@ -25,6 +25,7 @@ import "fmt"
 // how many failed, and for what reason
 type CoverageTracker struct {
 	ProviderName        string                        // Name of the provider
+	ProviderVersion     string                        // Version of the provider
 	CurrentExampleName  string                        // Name of current example that is being processed
 	EncounteredExamples map[string]GeneralExampleInfo // Mapping example names to their general information
 }
@@ -53,8 +54,8 @@ const (
 	Fatal  = 3
 )
 
-func newCoverageTracker(ProviderName string) CoverageTracker {
-	return CoverageTracker{ProviderName, "", make(map[string]GeneralExampleInfo)}
+func newCoverageTracker(ProviderName string, ProviderVersion string) CoverageTracker {
+	return CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]GeneralExampleInfo)}
 }
 
 //========================== Coverage Tracker Interface ===========================

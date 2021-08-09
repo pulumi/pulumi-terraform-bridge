@@ -59,8 +59,8 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
 	type SingleExampleResult struct {
 		ProviderName    string
+		ProviderVersion string
 		ExampleName     string
-		OriginalHCL     string
 		FailedLanguages []LanguageConversionResult
 	}
 
@@ -72,14 +72,13 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 	for _, exampleInMap := range CE.CT.EncounteredExamples {
 		singleExample := SingleExampleResult{
 			ProviderName:    CE.CT.ProviderName,
+			ProviderVersion: CE.CT.ProviderVersion,
 			ExampleName:     exampleInMap.Name,
-			OriginalHCL:     "",
 			FailedLanguages: []LanguageConversionResult{},
 		}
 
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity > 0 {
-				singleExample.OriginalHCL = exampleInMap.OriginalHCL
 				singleExample.FailedLanguages = append(singleExample.FailedLanguages, conversionResult)
 			}
 		}
