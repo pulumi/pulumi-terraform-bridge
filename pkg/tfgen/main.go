@@ -52,7 +52,6 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 	var debug bool
 	var skipDocs bool
 	var skipExamples bool
-	var coverageOutputDir string
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -142,9 +141,10 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				return err
 			}
 
-			// Exporting collected coverage data to a given directory if the path isn't empty
-			if coverageOutputDir != "" {
-				coverageTracker.exportResults(coverageOutputDir)
+			// Exporting collected coverage data to a given directory if the COVERAGE_OUTPUT_DIR env is set
+			COD := os.Getenv("COVERAGE_OUTPUT_DIR")
+			if COD != "" {
+				coverageTracker.exportResults(COD)
 			}
 
 			return nil
@@ -174,8 +174,6 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 		&skipDocs, "skip-docs", false, "Do not convert docs from TF Markdown")
 	cmd.PersistentFlags().BoolVar(
 		&skipExamples, "skip-examples", false, "Do not convert examples from HCL")
-	cmd.PersistentFlags().StringVar(
-		&coverageOutputDir, "coverageOutputDir", "", "Optional output directory for example coverage statistics")
 
 	cmd.PersistentFlags().StringVar(
 		&overlaysDir, "overlays", "",
