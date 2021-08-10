@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 // The export utility's main structure, where it stores the desired output directory
@@ -100,39 +102,82 @@ func (CE *CoverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 		Pct    float32
 	}
 
-	type CoverageStatistics struct {
-		NoErrors      NumPct
-		LowSevErrors  NumPct
-		HighSevErrors NumPct
-		Fatal         NumPct
-		Total         int
+	type ErrorMessage struct {
+		Reason string
+		Count  int
 	}
 
-	SummarizedResult := CoverageStatistics{NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, 0}
+	type LanguageStatistic struct {
+		NoErrors        NumPct
+		LowSevErrors    NumPct
+		HighSevErrors   NumPct
+		Fatal           NumPct
+		Total           int
+		_errorHistogram map[string]int
+		FrequentErrors  []ErrorMessage
+	}
 
-	//All the language conversion attempts in each example are iterated by key and analyzed
+	// Main map for holding all the language conversion statistics
+	var allLanguageStatistics = make(map[string]*LanguageStatistic)
+
+	// All the conversion attempts for each example are iterated by language name and
+	// their results are added to the main map
 	for _, exampleInMap := range CE.CT.EncounteredExamples {
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			SummarizedResult.Total += 1
-			if conversionResult.FailureSeverity == 0 {
-				SummarizedResult.NoErrors.Number += 1
-			} else if conversionResult.FailureSeverity == 1 {
-				SummarizedResult.LowSevErrors.Number += 1
-			} else if conversionResult.FailureSeverity == 2 {
-				SummarizedResult.HighSevErrors.Number += 1
+			var language *LanguageStatistic
+			if val, ok := allLanguageStatistics[conversionResult.TargetLanguage]; ok {
+
+				// The main map already contains the language entry
+				language = val
 			} else {
-				SummarizedResult.Fatal.Number += 1
+
+				// The main map doesn't yet contain this language, and it needs to be added
+				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, 0, make(map[string]int), []ErrorMessage{}}
+				language = allLanguageStatistics[conversionResult.TargetLanguage]
+			}
+
+			// The language's entry in the summarized results is updated and any
+			// error messages are saved
+			language.Total += 1
+			if conversionResult.FailureSeverity == 0 {
+				language.NoErrors.Number += 1
+			} else {
+
+				// A failure occured during conversion so we take the failure info, trim
+				// it, and add it to the histogram
+				abbreviatedReason := strings.Split(conversionResult.FailureInfo, "\n")[0]
+				language._errorHistogram[abbreviatedReason] += 1
+
+				if conversionResult.FailureSeverity == 1 {
+					language.LowSevErrors.Number += 1
+				} else if conversionResult.FailureSeverity == 2 {
+					language.HighSevErrors.Number += 1
+				} else {
+					language.Fatal.Number += 1
+				}
 			}
 		}
 	}
 
-	SummarizedResult.NoErrors.Pct = float32(SummarizedResult.NoErrors.Number) / float32(SummarizedResult.Total) * 100.0
-	SummarizedResult.LowSevErrors.Pct = float32(SummarizedResult.LowSevErrors.Number) / float32(SummarizedResult.Total) * 100.0
-	SummarizedResult.HighSevErrors.Pct = float32(SummarizedResult.HighSevErrors.Number) / float32(SummarizedResult.Total) * 100.0
-	SummarizedResult.Fatal.Pct = float32(SummarizedResult.Fatal.Number) / float32(SummarizedResult.Total) * 100.0
+	for _, language := range allLanguageStatistics {
+
+		// Calculating error percentages for all languages that were found
+		language.NoErrors.Pct = float32(language.NoErrors.Number) / float32(language.Total) * 100.0
+		language.LowSevErrors.Pct = float32(language.LowSevErrors.Number) / float32(language.Total) * 100.0
+		language.HighSevErrors.Pct = float32(language.HighSevErrors.Number) / float32(language.Total) * 100.0
+		language.Fatal.Pct = float32(language.Fatal.Number) / float32(language.Total) * 100.0
+
+		// Appending and sorting conversion errors by their frequency
+		for reason, count := range language._errorHistogram {
+			language.FrequentErrors = append(language.FrequentErrors, ErrorMessage{reason, count})
+		}
+		sort.Slice(language.FrequentErrors, func(index1, index2 int) bool {
+			return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
+		})
+	}
 
 	jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
-	marshalAndWriteJson(SummarizedResult, jsonOutputLocation)
+	marshalAndWriteJson(allLanguageStatistics, jsonOutputLocation)
 }
 
 // Minor helper functions to assist with exporting results
