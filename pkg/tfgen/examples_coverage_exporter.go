@@ -48,7 +48,7 @@ func (CE *CoverageExportUtil) tryExport(outputDirectory string) {
 func (CE *CoverageExportUtil) exportFullResults(outputDirectory string, fileName string) {
 
 	// The Coverage Tracker data structure remains identical, the only thing added in the file is the name of the provider
-	ProviderNameToExamplesMap := map[string]map[string]GeneralExampleInfo{CE.CT.ProviderName: CE.CT.EncounteredExamples}
+	ProviderNameToExamplesMap := map[string]map[string]*GeneralExampleInfo{CE.CT.ProviderName: CE.CT.EncounteredExamples}
 
 	jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
 	marshalAndWriteJson(ProviderNameToExamplesMap, jsonOutputLocation)
@@ -63,6 +63,7 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		ProviderName    string
 		ProviderVersion string
 		ExampleName     string
+		IsDuplicated    bool
 		FailedLanguages []LanguageConversionResult
 	}
 
@@ -81,8 +82,9 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity > 0 {
-				singleExample.FailedLanguages = append(singleExample.FailedLanguages, conversionResult)
+				singleExample.FailedLanguages = append(singleExample.FailedLanguages, *conversionResult)
 			}
+			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
 		}
 		marshalledExample, err := json.MarshalIndent(singleExample, "", "\t")
 		panicIfError(err, "Failed to MarshalIndent JSON file")

@@ -24,26 +24,26 @@ import "fmt"
 // Main overarching structure for storing coverage data on how many examples were processed,
 // how many failed, and for what reason
 type CoverageTracker struct {
-	ProviderName        string                        // Name of the provider
-	ProviderVersion     string                        // Version of the provider
-	CurrentExampleName  string                        // Name of current example that is being processed
-	EncounteredExamples map[string]GeneralExampleInfo // Mapping example names to their general information
+	ProviderName        string                         // Name of the provider
+	ProviderVersion     string                         // Version of the provider
+	CurrentExampleName  string                         // Name of current example that is being processed
+	EncounteredExamples map[string]*GeneralExampleInfo // Mapping example names to their general information
 }
 
 // General information about an example, and how successful it was at being converted to different languages
 type GeneralExampleInfo struct {
-	Name                         string
-	OriginalHCL                  string
-	LanguagesConvertedTo         map[string]LanguageConversionResult // Mapping language names to their conversion diagnostics
-	NameEncounteredMultipleTimes bool                                // Current name has already been encountered before
+	Name                   string
+	OriginalHCL            string
+	LanguagesConvertedTo   map[string]*LanguageConversionResult // Mapping language names to their conversion diagnostics
+	NameFoundMultipleTimes bool                                 // Current name has already been encountered before
 }
 
 // Individual language information concerning how successfully an example was converted to Pulumi
 type LanguageConversionResult struct {
-	TargetLanguage            string
-	FailureSeverity           int    // [None, Medium, High, Fatal]
-	FailureInfo               string // Additional in-depth information
-	ExamplePossiblyDuplicated bool   // !! Current example name has already been converted for this specific language before. Either the example is duplicated, or a bug is present !!
+	TargetLanguage       string
+	FailureSeverity      int    // [None, Medium, High, Fatal]
+	FailureInfo          string // Additional in-depth information
+	MultipleTranslations bool   // !! Current example name has already been converted for this specific language before. Either the example is duplicated, or a bug is present !!
 }
 
 // Failure severity values
@@ -55,7 +55,7 @@ const (
 )
 
 func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
-	return &CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]GeneralExampleInfo)}
+	return &CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]*GeneralExampleInfo)}
 }
 
 //========================== Coverage Tracker Interface ===========================
@@ -69,9 +69,9 @@ func (CT *CoverageTracker) foundExample(exampleName string, hcl string) {
 	}
 	CT.CurrentExampleName = exampleName
 	if val, ok := CT.EncounteredExamples[exampleName]; ok {
-		val.NameEncounteredMultipleTimes = true
+		val.NameFoundMultipleTimes = true
 	} else {
-		CT.EncounteredExamples[exampleName] = GeneralExampleInfo{exampleName, hcl, make(map[string]LanguageConversionResult), false}
+		CT.EncounteredExamples[exampleName] = &GeneralExampleInfo{exampleName, hcl, make(map[string]*LanguageConversionResult), false}
 	}
 }
 
@@ -81,10 +81,10 @@ func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
 		return
 	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
-		TargetLanguage:            targetLanguage,
-		FailureSeverity:           0,
-		FailureInfo:               "",
-		ExamplePossiblyDuplicated: false,
+		TargetLanguage:       targetLanguage,
+		FailureSeverity:      0,
+		FailureInfo:          "",
+		MultipleTranslations: false,
 	})
 }
 
@@ -94,10 +94,10 @@ func (CT *CoverageTracker) languageConversionFailure(conversionFailOpts Conversi
 		return
 	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
-		TargetLanguage:            conversionFailOpts.targetLanguage,
-		FailureSeverity:           conversionFailOpts.failureSeverity,
-		FailureInfo:               conversionFailOpts.failureInfo,
-		ExamplePossiblyDuplicated: false,
+		TargetLanguage:       conversionFailOpts.targetLanguage,
+		FailureSeverity:      conversionFailOpts.failureSeverity,
+		FailureInfo:          conversionFailOpts.failureInfo,
+		MultipleTranslations: false,
 	})
 }
 
@@ -114,10 +114,10 @@ func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicI
 		return
 	}
 	CT.insertLanguageConversionResult(LanguageConversionResult{
-		TargetLanguage:            targetLanguage,
-		FailureSeverity:           3,
-		FailureInfo:               panicInfo,
-		ExamplePossiblyDuplicated: false,
+		TargetLanguage:       targetLanguage,
+		FailureSeverity:      3,
+		FailureInfo:          panicInfo,
+		MultipleTranslations: false,
 	})
 }
 
@@ -128,14 +128,16 @@ func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicI
 func (CT *CoverageTracker) insertLanguageConversionResult(conversionResult LanguageConversionResult) {
 	if currentExample, ok := CT.EncounteredExamples[CT.CurrentExampleName]; ok {
 		if existingConversionResult, ok := currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage]; ok {
-			// Specific language conversion result for this example already exists
+
+			// If incoming result is of a lower severity, keep it instead of the existing one
 			if conversionResult.FailureSeverity < existingConversionResult.FailureSeverity {
-				currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage] = conversionResult
+				currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage] = &conversionResult
 			}
-			existingConversionResult.ExamplePossiblyDuplicated = true
+			existingConversionResult.MultipleTranslations = true
 		} else {
+
 			// A brand new language conversion result is being added for this example
-			currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage] = conversionResult
+			currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage] = &conversionResult
 		}
 	} else {
 		fmt.Println("Error: attempted to log the result of a language conversion without first finding an example")
