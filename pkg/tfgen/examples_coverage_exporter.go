@@ -63,6 +63,7 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		ProviderName    string
 		ProviderVersion string
 		ExampleName     string
+		_originalHCL    string
 		IsDuplicated    bool
 		FailedLanguages []LanguageConversionResult
 	}
@@ -77,11 +78,13 @@ func (CE *CoverageExportUtil) exportUploadableResults(outputDirectory string, fi
 			ProviderName:    CE.CT.ProviderName,
 			ProviderVersion: CE.CT.ProviderVersion,
 			ExampleName:     exampleInMap.Name,
+			_originalHCL:    "",
 			FailedLanguages: []LanguageConversionResult{},
 		}
 
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity > 0 {
+				singleExample._originalHCL = exampleInMap.OriginalHCL
 				singleExample.FailedLanguages = append(singleExample.FailedLanguages, *conversionResult)
 			}
 			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
