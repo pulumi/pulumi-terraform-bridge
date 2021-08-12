@@ -148,6 +148,6 @@ func (CT *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 
 // Exporting the coverage results
 func (CT *CoverageTracker) exportResults(outputDirectory string) {
-	var coverageExportUtil = newCoverageExportUtil(CT)
+	coverageExportUtil := newCoverageExportUtil(CT)
 	coverageExportUtil.tryExport(outputDirectory)
 }

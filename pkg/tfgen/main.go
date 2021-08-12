@@ -118,7 +118,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 
 			// Creating an item to keep track of example coverage if the
 			// COVERAGE_OUTPUT_DIR env is set
-			var coverageTracker *CoverageTracker = nil
+			var coverageTracker *CoverageTracker
 			coverageOutputDir, coverageTrackingEnabled := os.LookupEnv("COVERAGE_OUTPUT_DIR")
 			if coverageTrackingEnabled {
 				coverageTracker = newCoverageTracker(prov.Name, prov.Version)
