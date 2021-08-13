@@ -22,7 +22,10 @@ package tfgen
 import "fmt"
 
 // Main overarching structure for storing coverage data on how many examples were processed,
-// how many failed, and for what reason
+// how many failed, and for what reason. At different stages, the code translator notifies
+// the tracker of what is going on. Notifications are treated as an ordered stream of events.
+// INTERFACE:
+// foundExample(), languageConversionSuccess(), languageConversionFailure(), languageConversionPanic().
 type CoverageTracker struct {
 	ProviderName        string                         // Name of the provider
 	ProviderVersion     string                         // Version of the provider
@@ -41,46 +44,42 @@ type GeneralExampleInfo struct {
 // Individual language information concerning how successfully an example was converted to Pulumi
 type LanguageConversionResult struct {
 	TargetLanguage       string
-	FailureSeverity      int    // [None, Medium, High, Fatal]
+	FailureSeverity      int    // [None, Low, High, Fatal]
 	FailureInfo          string // Additional in-depth information
 	MultipleTranslations bool   // !! Current example name has already been converted for this specific language before. Either the example is duplicated, or a bug is present !!
 }
 
 // Failure severity values
 const (
-	None   = 0
-	Medium = 1
-	High   = 2
-	Fatal  = 3
+	None  = 0
+	Low   = 1
+	High  = 2
+	Fatal = 3
 )
 
 func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
 	return &CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]*GeneralExampleInfo)}
 }
 
-//========================== Coverage Tracker Interface ===========================
-// At different stages, the code translator notifies the tracker of what is going on.
-// Notifications are treated as an ordered stream of events: foundExample must be first.
-
 // Used when: generator has found a new example with a convertible block of HCL
-func (CT *CoverageTracker) foundExample(exampleName string, hcl string) {
-	if CT == nil {
+func (ct *CoverageTracker) foundExample(exampleName string, hcl string) {
+	if ct == nil {
 		return
 	}
-	CT.CurrentExampleName = exampleName
-	if val, ok := CT.EncounteredExamples[exampleName]; ok {
+	ct.CurrentExampleName = exampleName
+	if val, ok := ct.EncounteredExamples[exampleName]; ok {
 		val.NameFoundMultipleTimes = true
 	} else {
-		CT.EncounteredExamples[exampleName] = &GeneralExampleInfo{exampleName, hcl, make(map[string]*LanguageConversionResult), false}
+		ct.EncounteredExamples[exampleName] = &GeneralExampleInfo{exampleName, hcl, make(map[string]*LanguageConversionResult), false}
 	}
 }
 
-// Current example has been successfully converted to a certain language
-func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
-	if CT == nil {
+// Used when: current example has been successfully converted to a certain language
+func (ct *CoverageTracker) languageConversionSuccess(targetLanguage string) {
+	if ct == nil {
 		return
 	}
-	CT.insertLanguageConversionResult(LanguageConversionResult{
+	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      0,
 		FailureInfo:          "",
@@ -88,12 +87,12 @@ func (CT *CoverageTracker) languageConversionSuccess(targetLanguage string) {
 	})
 }
 
-// Generator has failed to convert the current example to a certain language
-func (CT *CoverageTracker) languageConversionFailure(conversionFailOpts ConversionFailOpts) {
-	if CT == nil {
+// Used when: generator has failed to convert the current example to a certain language
+func (ct *CoverageTracker) languageConversionFailure(conversionFailOpts ConversionFailOpts) {
+	if ct == nil {
 		return
 	}
-	CT.insertLanguageConversionResult(LanguageConversionResult{
+	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       conversionFailOpts.targetLanguage,
 		FailureSeverity:      conversionFailOpts.failureSeverity,
 		FailureInfo:          conversionFailOpts.failureInfo,
@@ -108,12 +107,12 @@ type ConversionFailOpts struct {
 	failureInfo     string
 }
 
-// Generator ncountered a fatal error when trying to convert the current example to a certain language
-func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
-	if CT == nil {
+// Used when: generator encountered a fatal error when trying to convert the current example to a certain language
+func (ct *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
+	if ct == nil {
 		return
 	}
-	CT.insertLanguageConversionResult(LanguageConversionResult{
+	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      3,
 		FailureInfo:          panicInfo,
@@ -121,12 +120,10 @@ func (CT *CoverageTracker) languageConversionPanic(targetLanguage string, panicI
 	})
 }
 
-//=================================================================================
-
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly duplicated
-func (CT *CoverageTracker) insertLanguageConversionResult(conversionResult LanguageConversionResult) {
-	if currentExample, ok := CT.EncounteredExamples[CT.CurrentExampleName]; ok {
+func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult LanguageConversionResult) {
+	if currentExample, ok := ct.EncounteredExamples[ct.CurrentExampleName]; ok {
 		if existingConversionResult, ok := currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage]; ok {
 
 			// If incoming result is of a lower severity, keep it instead of the existing one
@@ -147,7 +144,7 @@ func (CT *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 }
 
 // Exporting the coverage results
-func (CT *CoverageTracker) exportResults(outputDirectory string) {
-	coverageExportUtil := newCoverageExportUtil(CT)
-	coverageExportUtil.tryExport(outputDirectory)
+func (ct *CoverageTracker) exportResults(outputDirectory string) error {
+	coverageExportUtil := newCoverageExportUtil(ct)
+	return (coverageExportUtil.tryExport(outputDirectory))
 }

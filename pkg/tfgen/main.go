@@ -148,10 +148,10 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 
 			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
 			if coverageTrackingEnabled {
-				coverageTracker.exportResults(coverageOutputDir)
+				err = coverageTracker.exportResults(coverageOutputDir)
 			}
 
-			return nil
+			return err
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()

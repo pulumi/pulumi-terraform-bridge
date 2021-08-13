@@ -38,24 +38,32 @@ func newCoverageExportUtil(coverageTracker *CoverageTracker) coverageExportUtil 
 
 // The entire export utility interface. Will attempt to export the Coverage Tracker's data into the
 // specified output directory, and will panic if an error is encountered along the way
-func (ce *coverageExportUtil) tryExport(outputDirectory string) {
-	ce.exportUploadableResults(outputDirectory, "summary.json")
-	ce.exportSummarizedResults(outputDirectory, "concise.json")
+func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
+	var err = ce.exportUploadableResults(outputDirectory, "summary.json")
+	if err != nil {
+		return err
+	}
+
+	return ce.exportSummarizedResults(outputDirectory, "concise.json")
 }
 
 // Three different ways to export coverage data:
 // The first mode, using a large provider > example map
-func (ce *coverageExportUtil) exportFullResults(outputDirectory string, fileName string) {
+func (ce *coverageExportUtil) exportFullResults(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure remains identical, the only thing added in the file is the name of the provider
-	ProviderNameToExamplesMap := map[string]map[string]*GeneralExampleInfo{ce.Tracker.ProviderName: ce.Tracker.EncounteredExamples}
+	providerNameToExamplesMap := map[string]map[string]*GeneralExampleInfo{ce.Tracker.ProviderName: ce.Tracker.EncounteredExamples}
 
-	jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
-	marshalAndWriteJson(ProviderNameToExamplesMap, jsonOutputLocation)
+	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+
+	return marshalAndWriteJson(providerNameToExamplesMap, jsonOutputLocation)
 }
 
 // The second mode, similar to existing Pulumi coverage Json files uploadable to redshift
-func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fileName string) {
+func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
@@ -68,7 +76,10 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		FailedLanguages []LanguageConversionResult
 	}
 
-	jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
 
 	// All the examples in the map are iterated by key and marshalled into one large byte array
 	// separated by \n, making the end result look like a bunch of Json files that got concatenated
@@ -83,8 +94,8 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		}
 
 		// The current example's language conversion results are iterated over. If the severity is
-		// anything but zero, then it means some sort of error occured during conversion and 
-		// should be logged for future analysis. 
+		// anything but zero, then it means some sort of error occured during conversion and
+		// should be logged for future analysis.
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity != 0 {
 				singleExample._originalHCL = exampleInMap.OriginalHCL
@@ -93,16 +104,17 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
 		}
 		marshalledExample, err := json.MarshalIndent(singleExample, "", "\t")
-		panicIfError(err, "Failed to MarshalIndent JSON file")
+		if err != nil {
+			return err
+		}
 		result = append(append(result, marshalledExample...), uint8('\n'))
 	}
-	err = ioutil.WriteFile(jsonOutputLocation, result, 0600)
-	panicIfError(err, "Failed to write JSON file")
+	return ioutil.WriteFile(jsonOutputLocation, result, 0600)
 }
 
 // The third mode, meant for exporting broad information such as total number of examples,
 // and what percentage of the total each failure severity makes up
-func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fileName string) {
+func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure is used to gather general statistics about the examples
 	type NumPct struct {
@@ -156,12 +168,13 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 				abbreviatedReason := strings.Split(conversionResult.FailureInfo, "\n")[0]
 				language._errorHistogram[abbreviatedReason] += 1
 
-				if conversionResult.FailureSeverity == 1 {
-					language.LowSevErrors.Number += 1
-				} else if conversionResult.FailureSeverity == 2 {
-					language.HighSevErrors.Number += 1
-				} else {
-					language.Fatal.Number += 1
+				switch conversionResult.FailureSeverity {
+				case Low:
+					language.LowSevErrors.Number++
+				case High:
+					language.HighSevErrors.Number++
+				default:
+					language.Fatal.Number++
 				}
 			}
 		}
@@ -184,28 +197,24 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 		})
 	}
 
-	jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
-	marshalAndWriteJson(allLanguageStatistics, jsonOutputLocation)
+	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+	return marshalAndWriteJson(allLanguageStatistics, jsonOutputLocation)
 }
 
 // Minor helper functions to assist with exporting results
-func createJsonOutputLocation(outputDirectory string, fileName string) string {
+func createJsonOutputLocation(outputDirectory string, fileName string) (error, string) {
 	jsonOutputLocation := filepath.Join(outputDirectory, fileName)
 	err := os.MkdirAll(outputDirectory, 0700)
-	panicIfError(err, "Failed to create output directory for JSON file")
-	return jsonOutputLocation
+	return err, jsonOutputLocation
 }
 
-func marshalAndWriteJson(unmarshalledData interface{}, finalDestination string) {
+func marshalAndWriteJson(unmarshalledData interface{}, finalDestination string) error {
 	jsonBytes, err := json.MarshalIndent(unmarshalledData, "", "\t")
-	panicIfError(err, "Failed to MarshalIndent JSON file")
-	err2 := ioutil.WriteFile(finalDestination, jsonBytes, 0600)
-	panicIfError(err2, "Failed to write JSON file")
-
-}
-
-func panicIfError(err error, reason string) {
 	if err != nil {
-		panic(reason)
+		return err
 	}
+	return ioutil.WriteFile(finalDestination, jsonBytes, 0600)
 }
