@@ -54,7 +54,7 @@ func (ce *coverageExportUtil) exportFullResults(outputDirectory string, fileName
 	// The Coverage Tracker data structure remains identical, the only thing added in the file is the name of the provider
 	providerNameToExamplesMap := map[string]map[string]*GeneralExampleInfo{ce.Tracker.ProviderName: ce.Tracker.EncounteredExamples}
 
-	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		FailedLanguages []LanguageConversionResult
 	}
 
-	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	// The Coverage Tracker data structure is used to gather general statistics about the examples
 	type NumPct struct {
 		Number int
-		Pct    float32
+		Pct    float64
 	}
 
 	type ErrorMessage struct {
@@ -183,10 +183,10 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	for _, language := range allLanguageStatistics {
 
 		// Calculating error percentages for all languages that were found
-		language.NoErrors.Pct = float32(language.NoErrors.Number) / float32(language.Total) * 100.0
-		language.LowSevErrors.Pct = float32(language.LowSevErrors.Number) / float32(language.Total) * 100.0
-		language.HighSevErrors.Pct = float32(language.HighSevErrors.Number) / float32(language.Total) * 100.0
-		language.Fatal.Pct = float32(language.Fatal.Number) / float32(language.Total) * 100.0
+		language.NoErrors.Pct = float64(language.NoErrors.Number) / float64(language.Total) * 100.0
+		language.LowSevErrors.Pct = float64(language.LowSevErrors.Number) / float64(language.Total) * 100.0
+		language.HighSevErrors.Pct = float64(language.HighSevErrors.Number) / float64(language.Total) * 100.0
+		language.Fatal.Pct = float64(language.Fatal.Number) / float64(language.Total) * 100.0
 
 		// Appending and sorting conversion errors by their frequency
 		for reason, count := range language._errorHistogram {
@@ -197,7 +197,7 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 		})
 	}
 
-	err, jsonOutputLocation := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
@@ -205,10 +205,10 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 }
 
 // Minor helper functions to assist with exporting results
-func createJsonOutputLocation(outputDirectory string, fileName string) (error, string) {
+func createJsonOutputLocation(outputDirectory string, fileName string) (string, error) {
 	jsonOutputLocation := filepath.Join(outputDirectory, fileName)
 	err := os.MkdirAll(outputDirectory, 0700)
-	return err, jsonOutputLocation
+	return jsonOutputLocation, err
 }
 
 func marshalAndWriteJson(unmarshalledData interface{}, finalDestination string) error {
