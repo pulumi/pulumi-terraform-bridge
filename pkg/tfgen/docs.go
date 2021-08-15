@@ -1126,7 +1126,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			TerraformVersion:         g.terraformVersion,
 		})
 		if err != nil {
-			g.coverageTracker.languageConversionFailure(ConversionFailOpts{languageName, 3, err.Error()})
+			g.coverageTracker.languageConversionPanic(languageName, err.Error())
 			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
@@ -1143,7 +1143,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
 			contract.IgnoreError(err)
 
-			g.coverageTracker.languageConversionFailure(ConversionFailOpts{languageName, 2, err.Error()})
+			g.coverageTracker.languageConversionFailure(languageName, diags.All)
 			// Note that we intentionally avoid returning an error here. The caller will check for an empty code block
 			// before returning and translate that into an error.
 			return nil

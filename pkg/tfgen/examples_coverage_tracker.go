@@ -19,7 +19,11 @@
 
 package tfgen
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/hashicorp/hcl/v2"
+)
 
 // Main overarching structure for storing coverage data on how many examples were processed,
 // how many failed, and for what reason. At different stages, the code translator notifies
@@ -44,17 +48,17 @@ type GeneralExampleInfo struct {
 // Individual language information concerning how successfully an example was converted to Pulumi
 type LanguageConversionResult struct {
 	TargetLanguage       string
-	FailureSeverity      int    // [None, Low, High, Fatal]
+	FailureSeverity      int    // [Success, Warning, Failure, Fatal]
 	FailureInfo          string // Additional in-depth information
 	MultipleTranslations bool   // !! Current example name has already been converted for this specific language before. Either the example is duplicated, or a bug is present !!
 }
 
 // Failure severity values
 const (
-	None  = 0
-	Low   = 1
-	High  = 2
-	Fatal = 3
+	Success = 0
+	Warning = 1
+	Failure = 2
+	Fatal   = 3
 )
 
 func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
@@ -87,27 +91,33 @@ func (ct *CoverageTracker) languageConversionSuccess(targetLanguage string) {
 	})
 }
 
-// Used when: generator has failed to convert the current example to a certain language
-func (ct *CoverageTracker) languageConversionFailure(conversionFailOpts ConversionFailOpts) {
+// Used when: generator has successfully converted current example, but threw out some warnings
+func (ct *CoverageTracker) languageConversionWarning(targetLanguage string, warningDiagnostics hcl.Diagnostics) {
 	if ct == nil {
 		return
 	}
 	ct.insertLanguageConversionResult(LanguageConversionResult{
-		TargetLanguage:       conversionFailOpts.targetLanguage,
-		FailureSeverity:      conversionFailOpts.failureSeverity,
-		FailureInfo:          conversionFailOpts.failureInfo,
+		TargetLanguage:       targetLanguage,
+		FailureSeverity:      1,
+		FailureInfo:          GetSummaries(warningDiagnostics),
 		MultipleTranslations: false,
 	})
 }
 
-// Information about failed conversion
-type ConversionFailOpts struct {
-	targetLanguage  string
-	failureSeverity int
-	failureInfo     string
+// Used when: generator has failed to convert the current example to a certain language
+func (ct *CoverageTracker) languageConversionFailure(targetLanguage string, failureDiagnostics hcl.Diagnostics) {
+	if ct == nil {
+		return
+	}
+	ct.insertLanguageConversionResult(LanguageConversionResult{
+		TargetLanguage:       targetLanguage,
+		FailureSeverity:      2,
+		FailureInfo:          GetSummaries(failureDiagnostics),
+		MultipleTranslations: false,
+	})
 }
 
-// Used when: generator encountered a fatal error when trying to convert the current example to a certain language
+// Used when: generator encountered a fatal internal error when trying to convert the current example to a certain language
 func (ct *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
 	if ct == nil {
 		return
@@ -141,6 +151,16 @@ func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 		fmt.Println(conversionResult)
 		panic("")
 	}
+}
+
+// Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation
+// of why the converter didn't succeed
+func GetSummaries(diagnostics hcl.Diagnostics) string {
+	result := diagnostics[0].Summary
+	for i := 1; i < len(diagnostics); i++ {
+		result += "; " + diagnostics[i].Summary
+	}
+	return result
 }
 
 // Exporting the coverage results

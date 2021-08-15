@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 // The export utility's main structure, where it stores the desired output directory
@@ -128,10 +127,10 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	}
 
 	type LanguageStatistic struct {
-		NoErrors        NumPct
-		LowSevErrors    NumPct
-		HighSevErrors   NumPct
-		Fatal           NumPct
+		Successes       NumPct
+		Warnings        NumPct
+		Failures        NumPct
+		Fatals          NumPct
 		Total           int
 		_errorHistogram map[string]int
 		FrequentErrors  []ErrorMessage
@@ -160,21 +159,20 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 			// error messages are saved
 			language.Total += 1
 			if conversionResult.FailureSeverity == 0 {
-				language.NoErrors.Number += 1
+				language.Successes.Number += 1
 			} else {
 
-				// A failure occured during conversion so we take the failure info, trim
-				// it, and add it to the histogram
-				abbreviatedReason := strings.Split(conversionResult.FailureInfo, "\n")[0]
-				language._errorHistogram[abbreviatedReason] += 1
+				// A failure occured during conversion so we take the failure info
+				// and add it to the histogram
+				language._errorHistogram[conversionResult.FailureInfo] += 1
 
 				switch conversionResult.FailureSeverity {
-				case Low:
-					language.LowSevErrors.Number++
-				case High:
-					language.HighSevErrors.Number++
+				case Warning:
+					language.Warnings.Number++
+				case Failure:
+					language.Failures.Number++
 				default:
-					language.Fatal.Number++
+					language.Fatals.Number++
 				}
 			}
 		}
@@ -183,10 +181,10 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	for _, language := range allLanguageStatistics {
 
 		// Calculating error percentages for all languages that were found
-		language.NoErrors.Pct = float64(language.NoErrors.Number) / float64(language.Total) * 100.0
-		language.LowSevErrors.Pct = float64(language.LowSevErrors.Number) / float64(language.Total) * 100.0
-		language.HighSevErrors.Pct = float64(language.HighSevErrors.Number) / float64(language.Total) * 100.0
-		language.Fatal.Pct = float64(language.Fatal.Number) / float64(language.Total) * 100.0
+		language.Successes.Pct = float64(language.Successes.Number) / float64(language.Total) * 100.0
+		language.Warnings.Pct = float64(language.Warnings.Number) / float64(language.Total) * 100.0
+		language.Failures.Pct = float64(language.Failures.Number) / float64(language.Total) * 100.0
+		language.Fatals.Pct = float64(language.Fatals.Number) / float64(language.Total) * 100.0
 
 		// Appending and sorting conversion errors by their frequency
 		for reason, count := range language._errorHistogram {
