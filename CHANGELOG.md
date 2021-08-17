@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Avoid setting defaults on conflicting fields when the schema specifies
+  `ConflictsWith` in one direction but not the other.
+  [#376](https://github.com/pulumi/pulumi-terraform-bridge/pull/376)
+
 - Add flags to skip docs and examples processing.
   [#365](https://github.com/pulumi/pulumi-terraform-bridge/pull/365)
 

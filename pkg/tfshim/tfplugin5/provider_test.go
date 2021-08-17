@@ -375,10 +375,11 @@ func TestProviderResourcesMap(t *testing.T) {
 				"nested_resources": cty.List(cty.Object(map[string]cty.Type{
 					"configuration": cty.Map(cty.String),
 				})),
-				"set_property_value":            cty.Set(cty.String),
-				"string_with_bad_interpolation": cty.String,
-				"conflicting_property":          cty.String,
-				"conflicting_property2":         cty.String,
+				"set_property_value":                  cty.Set(cty.String),
+				"string_with_bad_interpolation":       cty.String,
+				"conflicting_property":                cty.String,
+				"conflicting_property2":               cty.String,
+				"conflicting_property_unidirectional": cty.Bool,
 			}),
 			schema: schema.SchemaMap{
 				"id": &attributeSchema{
@@ -505,6 +506,11 @@ func TestProviderResourcesMap(t *testing.T) {
 				"conflicting_property2": &attributeSchema{
 					ctyType:   cty.String,
 					valueType: shim.TypeString,
+					optional:  true,
+				},
+				"conflicting_property_unidirectional": &attributeSchema{
+					ctyType:   cty.Bool,
+					valueType: shim.TypeBool,
 					optional:  true,
 				},
 			},

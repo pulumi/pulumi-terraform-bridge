@@ -355,8 +355,18 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 	if tfs != nil {
 		tfs.Range(func(name string, sch shim.Schema) bool {
 			if _, has := result[name]; has {
+				// `name` is present, so mark any names that are declared to
+				// conflict with `name` for exclusiion.
 				for _, conflictingName := range sch.ConflictsWith() {
 					conflictsWith[conflictingName] = struct{}{}
+				}
+			} else {
+				// `name` is not present, so mark it for exclusion if any fields
+				// that conflict with `name` are present.
+				for _, conflictingName := range sch.ConflictsWith() {
+					if _, has := result[conflictingName]; has {
+						conflictsWith[name] = struct{}{}
+					}
 				}
 			}
 			return true
