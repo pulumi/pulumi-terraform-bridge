@@ -68,6 +68,7 @@ type Generator struct {
 	printStats       bool
 	skipDocs         bool
 	skipExamples     bool
+	coverageTracker  *CoverageTracker
 }
 
 type Language string
@@ -614,6 +615,7 @@ type GeneratorOptions struct {
 	Debug              bool
 	SkipDocs           bool
 	SkipExamples       bool
+	CoverageTracker    *CoverageTracker
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -693,6 +695,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		printStats:       opts.Debug,
 		skipDocs:         opts.SkipDocs,
 		skipExamples:     opts.SkipExamples,
+		coverageTracker:  opts.CoverageTracker,
 	}, nil
 }
 
