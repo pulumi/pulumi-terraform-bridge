@@ -521,6 +521,17 @@ func ProviderV2() *schemav2.Provider {
 						Optional:      true,
 						ConflictsWith: []string{"conflicting_property"},
 					},
+					// Conflicts with conflicting_property, but not vice-versa,
+					// and has a default. The Terraform docs don't say whether
+					// specifying a `ConflictsWith` in one direction but not the
+					// other is permissible, but providers do it in practice:
+					// https://github.com/pulumi/pulumi-snowflake/issues/11
+					"conflicting_property_unidirectional": {
+						Type:          schemav2.TypeBool,
+						Optional:      true,
+						Default:       false,
+						ConflictsWith: []string{"conflicting_property"},
+					},
 				},
 				SchemaVersion: 1,
 				MigrateState: func(v int, is *terraformv2.InstanceState, p interface{}) (*terraformv2.InstanceState, error) {
@@ -547,6 +558,7 @@ func ProviderV2() *schemav2.Provider {
 					})
 					MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
 					MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
+					MustSetIfUnset(data, "conflicting_property_unidirectional", false)
 					return nil
 				},
 				Read: func(data *schemav2.ResourceData, p interface{}) error {
@@ -569,6 +581,7 @@ func ProviderV2() *schemav2.Provider {
 					})
 					MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
 					MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
+					MustSetIfUnset(data, "conflicting_property_unidirectional", false)
 					return nil
 				},
 				Update: func(data *schemav2.ResourceData, p interface{}) error {
@@ -591,6 +604,7 @@ func ProviderV2() *schemav2.Provider {
 					})
 					MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
 					MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
+					MustSetIfUnset(data, "conflicting_property_unidirectional", false)
 					return nil
 				},
 				Delete: func(data *schemav2.ResourceData, p interface{}) error {
