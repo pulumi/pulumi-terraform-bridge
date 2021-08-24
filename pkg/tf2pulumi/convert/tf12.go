@@ -1902,6 +1902,13 @@ var tf12builtins = map[string]*model.Function{
 				ReturnType: elementType,
 			}, diagnostics
 		})),
+	"sha1": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "input string",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
+	}),
 	"split": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{
