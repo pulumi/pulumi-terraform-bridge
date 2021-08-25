@@ -70,7 +70,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		ProviderName    string
 		ProviderVersion string
 		ExampleName     string
-		_originalHCL    string
+		OriginalHCL     string
 		IsDuplicated    bool
 		FailedLanguages []LanguageConversionResult
 	}
@@ -88,7 +88,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 			ProviderName:    ce.Tracker.ProviderName,
 			ProviderVersion: ce.Tracker.ProviderVersion,
 			ExampleName:     exampleInMap.Name,
-			_originalHCL:    "",
+			OriginalHCL:     "",
 			FailedLanguages: []LanguageConversionResult{},
 		}
 
@@ -97,7 +97,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		// should be logged for future analysis.
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity != 0 {
-				singleExample._originalHCL = exampleInMap.OriginalHCL
+				singleExample.OriginalHCL = exampleInMap.OriginalHCL
 				singleExample.FailedLanguages = append(singleExample.FailedLanguages, *conversionResult)
 			}
 			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
@@ -191,7 +191,11 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 			language.FrequentErrors = append(language.FrequentErrors, ErrorMessage{reason, count})
 		}
 		sort.Slice(language.FrequentErrors, func(index1, index2 int) bool {
-			return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
+			if language.FrequentErrors[index1].Count != language.FrequentErrors[index2].Count {
+				return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
+			} else {
+				return language.FrequentErrors[index1].Reason > language.FrequentErrors[index2].Reason
+			}
 		})
 	}
 
