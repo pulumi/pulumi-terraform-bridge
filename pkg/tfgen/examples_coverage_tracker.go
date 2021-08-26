@@ -21,6 +21,7 @@ package tfgen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -99,7 +100,7 @@ func (ct *CoverageTracker) languageConversionWarning(targetLanguage string, warn
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      1,
-		FailureInfo:          formatDiagnostic(warningDiagnostics),
+		FailureInfo:          formatDiagnostics(warningDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -112,7 +113,7 @@ func (ct *CoverageTracker) languageConversionFailure(targetLanguage string, fail
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      2,
-		FailureInfo:          formatDiagnostic(failureDiagnostics),
+		FailureInfo:          formatDiagnostics(failureDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -155,25 +156,35 @@ func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 
 // Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation of
 // why the converter didn't succeed. If the diagnostics have details availible, they are included.
-func formatDiagnostic(diagnostics hcl.Diagnostics) string {
-	result := ""
-	total := len(diagnostics)
-	separator := "; "
+func formatDiagnostics(diagnostics hcl.Diagnostics) string {
+	results := []string{}
 
-	for i := 0; i < total; i++ {
-		summary := diagnostics[i].Summary
-		detail := diagnostics[i].Detail
+	// Helper method to check if results already have one of this diagnostic
+	contains := func(result []string, target string) bool {
+		for _, diag := range result {
+			if diag == target {
+				return true
+			}
+		}
+		return false
+	}
 
-		result += summary
-		if detail != "" && detail != summary {
-			result += ": " + detail
+	for i := 0; i < len(diagnostics); i++ {
+		formattedDiagnostic := diagnostics[i].Summary
+
+		// Include diagnostic details if suitable
+		if diagnostics[i].Detail != "" && diagnostics[i].Detail != formattedDiagnostic {
+			formattedDiagnostic += ": " + diagnostics[i].Detail
 		}
 
-		if i < total-1 {
-			result += separator
+		// Append formatted diagnostic if results don't have it
+		if !contains(results, formattedDiagnostic) {
+			results = append(results, formattedDiagnostic)
 		}
 	}
-	return result
+
+	// Returning all the formatted diagnostics as a single string
+	return strings.Join(results[:], "; ")
 }
 
 // Exporting the coverage results
