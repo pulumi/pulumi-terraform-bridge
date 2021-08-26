@@ -47,7 +47,7 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 }
 
 // Three different ways to export coverage data:
-// The first mode, using a large provider > example map
+// The first mode, using a large provider > example map containing every bit of data that was logged
 func (ce *coverageExportUtil) exportFullResults(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure remains identical, the only thing added in the file is the name of the provider
