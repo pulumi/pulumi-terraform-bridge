@@ -99,7 +99,7 @@ func (ct *CoverageTracker) languageConversionWarning(targetLanguage string, warn
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      1,
-		FailureInfo:          GetSummaries(warningDiagnostics),
+		FailureInfo:          FormatDiagnostic(warningDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -112,7 +112,7 @@ func (ct *CoverageTracker) languageConversionFailure(targetLanguage string, fail
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      2,
-		FailureInfo:          GetSummaries(failureDiagnostics),
+		FailureInfo:          FormatDiagnostic(failureDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -153,12 +153,25 @@ func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 	}
 }
 
-// Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation
-// of why the converter didn't succeed
-func GetSummaries(diagnostics hcl.Diagnostics) string {
-	result := diagnostics[0].Summary
-	for i := 1; i < len(diagnostics); i++ {
-		result += "; " + diagnostics[i].Summary
+// Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation of
+// why the converter didn't succeed. If the diagnostics have details availible, they are included.
+func FormatDiagnostic(diagnostics hcl.Diagnostics) string {
+	result := ""
+	total := len(diagnostics)
+	separator := "; "
+
+	for i := 0; i < total; i++ {
+		summary := diagnostics[i].Summary
+		detail := diagnostics[i].Detail
+
+		result += summary
+		if detail != "" && detail != summary {
+			result += ": " + detail
+		}
+
+		if i < total-1 {
+			result += separator
+		}
 	}
 	return result
 }

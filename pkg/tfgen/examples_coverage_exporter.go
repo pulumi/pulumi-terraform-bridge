@@ -70,9 +70,9 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		ProviderName    string
 		ProviderVersion string
 		ExampleName     string
-		OriginalHCL     string
+		OriginalHCL     string `json:"OriginalHCL,omitempty"`
 		IsDuplicated    bool
-		FailedLanguages []LanguageConversionResult
+		FailedLanguages []LanguageConversionResult `json:"FailedLanguages,omitempty"`
 	}
 
 	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
@@ -127,11 +127,11 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	}
 
 	type LanguageStatistic struct {
+		Total           int
 		Successes       NumPct
 		Warnings        NumPct
 		Failures        NumPct
 		Fatals          NumPct
-		Total           int
 		_errorHistogram map[string]int
 		FrequentErrors  []ErrorMessage
 	}
@@ -151,7 +151,7 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 			} else {
 
 				// The main map doesn't yet contain this language, and it needs to be added
-				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, 0, make(map[string]int), []ErrorMessage{}}
+				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
 				language = allLanguageStatistics[conversionResult.TargetLanguage]
 			}
 
