@@ -38,31 +38,22 @@ func newCoverageExportUtil(coverageTracker *CoverageTracker) coverageExportUtil 
 // The entire export utility interface. Will attempt to export the Coverage Tracker's data into the
 // specified output directory, and will panic if an error is encountered along the way
 func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
-	var err = ce.exportUploadableResults(outputDirectory, "summary.json")
+
+	// "summary.json" is the file name that other Pulumi coverage trackers use
+	var err = ce.exportByExample(outputDirectory, "summary.json")
 	if err != nil {
 		return err
 	}
-
-	return ce.exportSummarizedResults(outputDirectory, "concise.json")
+	err = ce.exportByLanguage(outputDirectory, "byLanguage.json")
+	if err != nil {
+		return err
+	}
+	return ce.exportOverall(outputDirectory, "overall.json")
 }
 
 // Three different ways to export coverage data:
-// The first mode, using a large provider > example map
-func (ce *coverageExportUtil) exportFullResults(outputDirectory string, fileName string) error {
-
-	// The Coverage Tracker data structure remains identical, the only thing added in the file is the name of the provider
-	providerNameToExamplesMap := map[string]map[string]*GeneralExampleInfo{ce.Tracker.ProviderName: ce.Tracker.EncounteredExamples}
-
-	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
-	if err != nil {
-		return err
-	}
-
-	return marshalAndWriteJson(providerNameToExamplesMap, jsonOutputLocation)
-}
-
-// The second mode, similar to existing Pulumi coverage Json files uploadable to redshift
-func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fileName string) error {
+// The first mode, which lists each example individually in one big file. This is the most detailed.
+func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
@@ -70,9 +61,9 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		ProviderName    string
 		ProviderVersion string
 		ExampleName     string
-		_originalHCL    string
+		OriginalHCL     string `json:"OriginalHCL,omitempty"`
 		IsDuplicated    bool
-		FailedLanguages []LanguageConversionResult
+		FailedLanguages []LanguageConversionResult `json:"FailedLanguages,omitempty"`
 	}
 
 	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
@@ -88,7 +79,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 			ProviderName:    ce.Tracker.ProviderName,
 			ProviderVersion: ce.Tracker.ProviderVersion,
 			ExampleName:     exampleInMap.Name,
-			_originalHCL:    "",
+			OriginalHCL:     "",
 			FailedLanguages: []LanguageConversionResult{},
 		}
 
@@ -97,7 +88,7 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 		// should be logged for future analysis.
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity != 0 {
-				singleExample._originalHCL = exampleInMap.OriginalHCL
+				singleExample.OriginalHCL = exampleInMap.OriginalHCL
 				singleExample.FailedLanguages = append(singleExample.FailedLanguages, *conversionResult)
 			}
 			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
@@ -111,11 +102,11 @@ func (ce *coverageExportUtil) exportUploadableResults(outputDirectory string, fi
 	return ioutil.WriteFile(jsonOutputLocation, result, 0600)
 }
 
-// The third mode, meant for exporting broad information such as total number of examples,
-// and what percentage of the total each failure severity makes up
-func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fileName string) error {
+// The second mode, which exports information about each language such as total number of
+// examples, common failure messages, and failure severity percentages.
+func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName string) error {
 
-	// The Coverage Tracker data structure is used to gather general statistics about the examples
+	// The Coverage Tracker data structure is flattened to gather statistics about each language
 	type NumPct struct {
 		Number int
 		Pct    float64
@@ -127,11 +118,11 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 	}
 
 	type LanguageStatistic struct {
+		Total           int
 		Successes       NumPct
 		Warnings        NumPct
 		Failures        NumPct
 		Fatals          NumPct
-		Total           int
 		_errorHistogram map[string]int
 		FrequentErrors  []ErrorMessage
 	}
@@ -151,7 +142,7 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 			} else {
 
 				// The main map doesn't yet contain this language, and it needs to be added
-				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, 0, make(map[string]int), []ErrorMessage{}}
+				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
 				language = allLanguageStatistics[conversionResult.TargetLanguage]
 			}
 
@@ -191,7 +182,11 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 			language.FrequentErrors = append(language.FrequentErrors, ErrorMessage{reason, count})
 		}
 		sort.Slice(language.FrequentErrors, func(index1, index2 int) bool {
-			return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
+			if language.FrequentErrors[index1].Count != language.FrequentErrors[index2].Count {
+				return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
+			} else {
+				return language.FrequentErrors[index1].Reason > language.FrequentErrors[index2].Reason
+			}
 		})
 	}
 
@@ -200,6 +195,87 @@ func (ce *coverageExportUtil) exportSummarizedResults(outputDirectory string, fi
 		return err
 	}
 	return marshalAndWriteJson(allLanguageStatistics, jsonOutputLocation)
+}
+
+// The third mode, which lists failure reaons, quantities and percentages for the provider as a whole.
+func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName string) error {
+
+	// The Coverage Tracker data structure is flattened to gather statistics about the provider
+	type NumPct struct {
+		Number int
+		Pct    float64
+	}
+
+	type ErrorMessage struct {
+		Reason string
+		Count  int
+	}
+
+	type ProviderStatistic struct {
+		Name             string
+		Version          string
+		Examples         int
+		TotalConversions int
+		Successes        NumPct
+		Warnings         NumPct
+		Failures         NumPct
+		Fatals           NumPct
+		_errorHistogram  map[string]int
+		ConversionErrors []ErrorMessage
+	}
+
+	// Main variable for holding the overall provider conversion results
+	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName, ce.Tracker.ProviderVersion, 0, 0, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
+
+	// All the conversion attempts for each example are iterated by language name and
+	// their results are added to the overall statistic
+	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
+		providerStatistic.Examples += 1
+		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
+			providerStatistic.TotalConversions += 1
+			if conversionResult.FailureSeverity == 0 {
+				providerStatistic.Successes.Number += 1
+			} else {
+
+				// A failure occured during conversion so we take the failure info
+				// and add it to the histogram
+				providerStatistic._errorHistogram[conversionResult.FailureInfo] += 1
+
+				switch conversionResult.FailureSeverity {
+				case Warning:
+					providerStatistic.Warnings.Number++
+				case Failure:
+					providerStatistic.Failures.Number++
+				default:
+					providerStatistic.Fatals.Number++
+				}
+			}
+		}
+	}
+
+	// Calculating overall error percentages
+	providerStatistic.Successes.Pct = float64(providerStatistic.Successes.Number) / float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Warnings.Pct = float64(providerStatistic.Warnings.Number) / float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Failures.Pct = float64(providerStatistic.Failures.Number) / float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Fatals.Pct = float64(providerStatistic.Fatals.Number) / float64(providerStatistic.TotalConversions) * 100.0
+
+	// Appending and sorting conversion errors by their frequency
+	for reason, count := range providerStatistic._errorHistogram {
+		providerStatistic.ConversionErrors = append(providerStatistic.ConversionErrors, ErrorMessage{reason, count})
+	}
+	sort.Slice(providerStatistic.ConversionErrors, func(index1, index2 int) bool {
+		if providerStatistic.ConversionErrors[index1].Count != providerStatistic.ConversionErrors[index2].Count {
+			return providerStatistic.ConversionErrors[index1].Count > providerStatistic.ConversionErrors[index2].Count
+		} else {
+			return providerStatistic.ConversionErrors[index1].Reason > providerStatistic.ConversionErrors[index2].Reason
+		}
+	})
+
+	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+	return marshalAndWriteJson(providerStatistic, jsonOutputLocation)
 }
 
 // Minor helper functions to assist with exporting results

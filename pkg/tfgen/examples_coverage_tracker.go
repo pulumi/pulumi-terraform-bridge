@@ -21,6 +21,7 @@ package tfgen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -33,7 +34,7 @@ import (
 type CoverageTracker struct {
 	ProviderName        string                         // Name of the provider
 	ProviderVersion     string                         // Version of the provider
-	CurrentExampleName  string                         // Name of current example that is being processed
+	currentExampleName  string                         // Name of current example that is being processed
 	EncounteredExamples map[string]*GeneralExampleInfo // Mapping example names to their general information
 }
 
@@ -70,7 +71,7 @@ func (ct *CoverageTracker) foundExample(exampleName string, hcl string) {
 	if ct == nil {
 		return
 	}
-	ct.CurrentExampleName = exampleName
+	ct.currentExampleName = exampleName
 	if val, ok := ct.EncounteredExamples[exampleName]; ok {
 		val.NameFoundMultipleTimes = true
 	} else {
@@ -99,7 +100,7 @@ func (ct *CoverageTracker) languageConversionWarning(targetLanguage string, warn
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      1,
-		FailureInfo:          GetSummaries(warningDiagnostics),
+		FailureInfo:          formatDiagnostics(warningDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -112,7 +113,7 @@ func (ct *CoverageTracker) languageConversionFailure(targetLanguage string, fail
 	ct.insertLanguageConversionResult(LanguageConversionResult{
 		TargetLanguage:       targetLanguage,
 		FailureSeverity:      2,
-		FailureInfo:          GetSummaries(failureDiagnostics),
+		FailureInfo:          formatDiagnostics(failureDiagnostics),
 		MultipleTranslations: false,
 	})
 }
@@ -133,7 +134,7 @@ func (ct *CoverageTracker) languageConversionPanic(targetLanguage string, panicI
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly duplicated
 func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult LanguageConversionResult) {
-	if currentExample, ok := ct.EncounteredExamples[ct.CurrentExampleName]; ok {
+	if currentExample, ok := ct.EncounteredExamples[ct.currentExampleName]; ok {
 		if existingConversionResult, ok := currentExample.LanguagesConvertedTo[conversionResult.TargetLanguage]; ok {
 
 			// If incoming result is of a lower severity, keep it instead of the existing one
@@ -153,14 +154,37 @@ func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 	}
 }
 
-// Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation
-// of why the converter didn't succeed
-func GetSummaries(diagnostics hcl.Diagnostics) string {
-	result := diagnostics[0].Summary
-	for i := 1; i < len(diagnostics); i++ {
-		result += "; " + diagnostics[i].Summary
+// Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation of
+// why the converter didn't succeed. If the diagnostics have details availible, they are included.
+func formatDiagnostics(diagnostics hcl.Diagnostics) string {
+	results := []string{}
+
+	// Helper method to check if results already have one of this diagnostic
+	contains := func(result []string, target string) bool {
+		for _, diag := range result {
+			if diag == target {
+				return true
+			}
+		}
+		return false
 	}
-	return result
+
+	for i := 0; i < len(diagnostics); i++ {
+		formattedDiagnostic := diagnostics[i].Summary
+
+		// Include diagnostic details if suitable
+		if diagnostics[i].Detail != "" && diagnostics[i].Detail != formattedDiagnostic {
+			formattedDiagnostic += ": " + diagnostics[i].Detail
+		}
+
+		// Append formatted diagnostic if results don't have it
+		if !contains(results, formattedDiagnostic) {
+			results = append(results, formattedDiagnostic)
+		}
+	}
+
+	// Returning all the formatted diagnostics as a single string
+	return strings.Join(results[:], "; ")
 }
 
 // Exporting the coverage results
