@@ -19,6 +19,7 @@ package tfgen
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -48,10 +49,18 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 	if err != nil {
 		return err
 	}
-	return ce.exportOverall(outputDirectory, "summary.json")
+
+	// `summary.json` & `shortSummary.txt` are magic filenames used by pulumi/ci-mgmt/provider-ci.
+	// If it finds these files, `summary.json` gets uploaded to S3 for cloudwatch analysis, and
+	// `shortSummary.txt` is read by the terminal to be visible in Github Actions for inspection
+	err = ce.exportOverall(outputDirectory, "summary.json")
+	if err != nil {
+		return err
+	}
+	return ce.exportHumanReadable(outputDirectory, "shortSummary.txt")
 }
 
-// Three different ways to export coverage data:
+// Four different ways to export coverage data:
 // The first mode, which lists each example individually in one big file. This is the most detailed.
 func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName string) error {
 
@@ -66,7 +75,7 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 		FailedLanguages []LanguageConversionResult `json:"FailedLanguages,omitempty"`
 	}
 
-	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createEmptyFile(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
@@ -149,7 +158,7 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 			// The language's entry in the summarized results is updated and any
 			// error messages are saved
 			language.Total += 1
-			if conversionResult.FailureSeverity == 0 {
+			if conversionResult.FailureSeverity == Success {
 				language.Successes.Number += 1
 			} else {
 
@@ -190,7 +199,7 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 		})
 	}
 
-	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createEmptyFile(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
@@ -233,7 +242,7 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 		providerStatistic.Examples += 1
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			providerStatistic.TotalConversions += 1
-			if conversionResult.FailureSeverity == 0 {
+			if conversionResult.FailureSeverity == Success {
 				providerStatistic.Successes.Number += 1
 			} else {
 
@@ -271,18 +280,99 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 		}
 	})
 
-	jsonOutputLocation, err := createJsonOutputLocation(outputDirectory, fileName)
+	jsonOutputLocation, err := createEmptyFile(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
 	return marshalAndWriteJson(providerStatistic, jsonOutputLocation)
 }
 
+// The fourth mode, which simply gives the provider name, and success percentage.
+func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileName string) error {
+
+	// The Coverage Tracker data structure is flattened to gather statistics about each language
+	type LanguageStatistic struct {
+		Total     int
+		Successes int
+	}
+
+	type ProviderStatistic struct {
+		Name             string
+		Examples         int
+		TotalConversions int
+		Successes        int
+	}
+
+	// Main maps for holding the overall provider summary, and each language conversion statistic
+	var allLanguageStatistics = make(map[string]*LanguageStatistic)
+	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName, 0, 0, 0}
+
+	// All the conversion attempts for each example are iterated by language name and
+	// their results are added to the main map
+	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
+		providerStatistic.Examples += 1
+		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
+			providerStatistic.TotalConversions += 1
+			var language *LanguageStatistic
+			if val, ok := allLanguageStatistics[conversionResult.TargetLanguage]; ok {
+
+				// The main map already contains the language entry
+				language = val
+			} else {
+
+				// The main map doesn't yet contain this language, and it needs to be added
+				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0, 0}
+				language = allLanguageStatistics[conversionResult.TargetLanguage]
+			}
+
+			// The language's entry in the summarized results is updated and any
+			language.Total += 1
+			if conversionResult.FailureSeverity == Success {
+				providerStatistic.Successes += 1
+				language.Successes += 1
+			}
+		}
+	}
+
+	targetFile, err := createEmptyFile(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+
+	// Forming a string which will eventually be written to the target file
+	fileString := fmt.Sprintf("Provider:     %s\nSuccess rate: %.2f%% (%d/%d)\n\n",
+		providerStatistic.Name,
+		float64(providerStatistic.Successes)/float64(providerStatistic.TotalConversions)*100.0,
+		providerStatistic.Successes,
+		providerStatistic.TotalConversions,
+	)
+
+	// Adding language results to the string in alphabetical order
+	keys := make([]string, 0, len(allLanguageStatistics))
+	for languageName, _ := range allLanguageStatistics {
+		keys = append(keys, languageName)
+	}
+	sort.Strings(keys)
+
+	for _, languageName := range keys {
+		languageStatistic := allLanguageStatistics[languageName]
+
+		fileString += fmt.Sprintf("Converted %.2f%% of %s examples (%d/%d)\n",
+			float64(languageStatistic.Successes)/float64(languageStatistic.Total)*100.0,
+			languageName,
+			languageStatistic.Successes,
+			languageStatistic.Total,
+		)
+	}
+
+	return ioutil.WriteFile(targetFile, []byte(fileString), 0600)
+}
+
 // Minor helper functions to assist with exporting results
-func createJsonOutputLocation(outputDirectory string, fileName string) (string, error) {
-	jsonOutputLocation := filepath.Join(outputDirectory, fileName)
+func createEmptyFile(outputDirectory string, fileName string) (string, error) {
+	outputLocation := filepath.Join(outputDirectory, fileName)
 	err := os.MkdirAll(outputDirectory, 0700)
-	return jsonOutputLocation, err
+	return outputLocation, err
 }
 
 func marshalAndWriteJson(unmarshalledData interface{}, finalDestination string) error {

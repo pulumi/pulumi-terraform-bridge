@@ -12,10 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file implements a system for collecting data on how many HCL examples were
-// attempted to be converted to Pulumi, and what percentage of such conversions
-// succeeded. Additionally, it allows these diagnostics to be exported in JSON
-// format for uploading and further processing.
+/*
+This file implements a system for collecting data on how many HCL examples were
+attempted to be converted to Pulumi, and what percentage of such conversions
+succeeded. Additionally, it allows these diagnostics to be exported in JSON
+format for uploading and further processing.
+
+The tracker records the results of individual translation attempts: a provider
+with 100 examples would have 400 attempts (four languages for each example).
+How many of these attempts succeeded is what the percentages reference. These
+400 attempts can either be exported as a whole, or be grouped by language into
+four categories of 100 attempts, with each corresponding to one example.
+*/
 
 package tfgen
 
