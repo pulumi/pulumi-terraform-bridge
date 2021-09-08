@@ -40,7 +40,7 @@ func newCoverageExportUtil(coverageTracker *CoverageTracker) coverageExportUtil 
 func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 
 	// "summary.json" is the file name that other Pulumi coverage trackers use
-	var err = ce.exportByExample(outputDirectory, "summary.json")
+	var err = ce.exportByExample(outputDirectory, "byExample.json")
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 	if err != nil {
 		return err
 	}
-	return ce.exportOverall(outputDirectory, "overall.json")
+	return ce.exportOverall(outputDirectory, "summary.json")
 }
 
 // Three different ways to export coverage data:
