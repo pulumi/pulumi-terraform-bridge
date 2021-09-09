@@ -56,10 +56,13 @@ type GeneralExampleInfo struct {
 
 // Individual language information concerning how successfully an example was converted to Pulumi
 type LanguageConversionResult struct {
-	TargetLanguage       string
-	FailureSeverity      int    // [Success, Warning, Failure, Fatal]
-	FailureInfo          string // Additional in-depth information
-	MultipleTranslations bool   // !! Current example name has already been converted for this specific language before. Either the example is duplicated, or a bug is present !!
+	TargetLanguage  string
+	FailureSeverity int    // [Success, Warning, Failure, Fatal]
+	FailureInfo     string // Additional in-depth information
+
+	// !! Current example name has already been converted for this specific language before.
+	// Either the example is duplicated, or a bug is present !!
+	MultipleTranslations bool
 }
 
 // Failure severity values
@@ -71,7 +74,8 @@ const (
 )
 
 func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
-	return &CoverageTracker{ProviderName, ProviderVersion, "", make(map[string]*GeneralExampleInfo)}
+	return &CoverageTracker{ProviderName, ProviderVersion, "",
+		make(map[string]*GeneralExampleInfo)}
 }
 
 // Used when: generator has found a new example with a convertible block of HCL
@@ -83,7 +87,8 @@ func (ct *CoverageTracker) foundExample(exampleName string, hcl string) {
 	if val, ok := ct.EncounteredExamples[exampleName]; ok {
 		val.NameFoundMultipleTimes = true
 	} else {
-		ct.EncounteredExamples[exampleName] = &GeneralExampleInfo{exampleName, hcl, make(map[string]*LanguageConversionResult), false}
+		ct.EncounteredExamples[exampleName] = &GeneralExampleInfo{exampleName, hcl,
+			make(map[string]*LanguageConversionResult), false}
 	}
 }
 
@@ -100,6 +105,7 @@ func (ct *CoverageTracker) languageConversionSuccess(targetLanguage string) {
 	})
 }
 
+//nolint
 // Used when: generator has successfully converted current example, but threw out some warnings
 func (ct *CoverageTracker) languageConversionWarning(targetLanguage string, warningDiagnostics hcl.Diagnostics) {
 	if ct == nil {
@@ -126,7 +132,8 @@ func (ct *CoverageTracker) languageConversionFailure(targetLanguage string, fail
 	})
 }
 
-// Used when: generator encountered a fatal internal error when trying to convert the current example to a certain language
+// Used when: generator encountered a fatal internal error when trying to convert the
+// current example to a certain language
 func (ct *CoverageTracker) languageConversionPanic(targetLanguage string, panicInfo string) {
 	if ct == nil {
 		return
@@ -163,7 +170,7 @@ func (ct *CoverageTracker) insertLanguageConversionResult(conversionResult Langu
 }
 
 // Turning the hcl.Diagnostics provided during warnings or failures into a brief explanation of
-// why the converter didn't succeed. If the diagnostics have details availible, they are included.
+// why the converter didn't succeed. If the diagnostics have details available, they are included.
 func formatDiagnostics(diagnostics hcl.Diagnostics) string {
 	results := []string{}
 
