@@ -93,7 +93,7 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 		}
 
 		// The current example's language conversion results are iterated over. If the severity is
-		// anything but zero, then it means some sort of error occured during conversion and
+		// anything but zero, then it means some sort of error occurred during conversion and
 		// should be logged for future analysis.
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
 			if conversionResult.FailureSeverity != 0 {
@@ -151,20 +151,23 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 			} else {
 
 				// The main map doesn't yet contain this language, and it needs to be added
-				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
+				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0,
+					NumPct{0, 0.0}, NumPct{0, 0.0},
+					NumPct{0, 0.0}, NumPct{0, 0.0},
+					make(map[string]int), []ErrorMessage{}}
 				language = allLanguageStatistics[conversionResult.TargetLanguage]
 			}
 
 			// The language's entry in the summarized results is updated and any
 			// error messages are saved
-			language.Total += 1
+			language.Total++
 			if conversionResult.FailureSeverity == Success {
-				language.Successes.Number += 1
+				language.Successes.Number++
 			} else {
 
-				// A failure occured during conversion so we take the failure info
+				// A failure occurred during conversion so we take the failure info
 				// and add it to the histogram
-				language._errorHistogram[conversionResult.FailureInfo] += 1
+				language._errorHistogram[conversionResult.FailureInfo]++
 
 				switch conversionResult.FailureSeverity {
 				case Warning:
@@ -193,9 +196,9 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 		sort.Slice(language.FrequentErrors, func(index1, index2 int) bool {
 			if language.FrequentErrors[index1].Count != language.FrequentErrors[index2].Count {
 				return language.FrequentErrors[index1].Count > language.FrequentErrors[index2].Count
-			} else {
-				return language.FrequentErrors[index1].Reason > language.FrequentErrors[index2].Reason
 			}
+
+			return language.FrequentErrors[index1].Reason > language.FrequentErrors[index2].Reason
 		})
 	}
 
@@ -203,7 +206,7 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 	if err != nil {
 		return err
 	}
-	return marshalAndWriteJson(allLanguageStatistics, jsonOutputLocation)
+	return marshalAndWriteJSON(allLanguageStatistics, jsonOutputLocation)
 }
 
 // The third mode, which lists failure reaons, quantities and percentages for the provider as a whole.
@@ -234,21 +237,24 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 	}
 
 	// Main variable for holding the overall provider conversion results
-	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName, ce.Tracker.ProviderVersion, 0, 0, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
+	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName,
+		ce.Tracker.ProviderVersion, 0, 0, NumPct{0, 0.0},
+		NumPct{0, 0.0}, NumPct{0, 0.0},
+		NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the overall statistic
 	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		providerStatistic.Examples += 1
+		providerStatistic.Examples++
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			providerStatistic.TotalConversions += 1
+			providerStatistic.TotalConversions++
 			if conversionResult.FailureSeverity == Success {
-				providerStatistic.Successes.Number += 1
+				providerStatistic.Successes.Number++
 			} else {
 
-				// A failure occured during conversion so we take the failure info
+				// A failure occurred during conversion so we take the failure info
 				// and add it to the histogram
-				providerStatistic._errorHistogram[conversionResult.FailureInfo] += 1
+				providerStatistic._errorHistogram[conversionResult.FailureInfo]++
 
 				switch conversionResult.FailureSeverity {
 				case Warning:
@@ -263,28 +269,33 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 	}
 
 	// Calculating overall error percentages
-	providerStatistic.Successes.Pct = float64(providerStatistic.Successes.Number) / float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Warnings.Pct = float64(providerStatistic.Warnings.Number) / float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Failures.Pct = float64(providerStatistic.Failures.Number) / float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Fatals.Pct = float64(providerStatistic.Fatals.Number) / float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Successes.Pct = float64(providerStatistic.Successes.Number) /
+		float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Warnings.Pct = float64(providerStatistic.Warnings.Number) /
+		float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Failures.Pct = float64(providerStatistic.Failures.Number) /
+		float64(providerStatistic.TotalConversions) * 100.0
+	providerStatistic.Fatals.Pct = float64(providerStatistic.Fatals.Number) /
+		float64(providerStatistic.TotalConversions) * 100.0
 
 	// Appending and sorting conversion errors by their frequency
 	for reason, count := range providerStatistic._errorHistogram {
-		providerStatistic.ConversionErrors = append(providerStatistic.ConversionErrors, ErrorMessage{reason, count})
+		providerStatistic.ConversionErrors = append(providerStatistic.ConversionErrors,
+			ErrorMessage{reason, count})
 	}
 	sort.Slice(providerStatistic.ConversionErrors, func(index1, index2 int) bool {
 		if providerStatistic.ConversionErrors[index1].Count != providerStatistic.ConversionErrors[index2].Count {
 			return providerStatistic.ConversionErrors[index1].Count > providerStatistic.ConversionErrors[index2].Count
-		} else {
-			return providerStatistic.ConversionErrors[index1].Reason > providerStatistic.ConversionErrors[index2].Reason
 		}
+
+		return providerStatistic.ConversionErrors[index1].Reason > providerStatistic.ConversionErrors[index2].Reason
 	})
 
 	jsonOutputLocation, err := createEmptyFile(outputDirectory, fileName)
 	if err != nil {
 		return err
 	}
-	return marshalAndWriteJson(providerStatistic, jsonOutputLocation)
+	return marshalAndWriteJSON(providerStatistic, jsonOutputLocation)
 }
 
 // The fourth mode, which simply gives the provider name, and success percentage.
@@ -310,9 +321,9 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
 	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		providerStatistic.Examples += 1
+		providerStatistic.Examples++
 		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			providerStatistic.TotalConversions += 1
+			providerStatistic.TotalConversions++
 			var language *LanguageStatistic
 			if val, ok := allLanguageStatistics[conversionResult.TargetLanguage]; ok {
 
@@ -326,10 +337,10 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 			}
 
 			// The language's entry in the summarized results is updated and any
-			language.Total += 1
+			language.Total++
 			if conversionResult.FailureSeverity == Success {
-				providerStatistic.Successes += 1
-				language.Successes += 1
+				providerStatistic.Successes++
+				language.Successes++
 			}
 		}
 	}
@@ -349,7 +360,7 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 
 	// Adding language results to the string in alphabetical order
 	keys := make([]string, 0, len(allLanguageStatistics))
-	for languageName, _ := range allLanguageStatistics {
+	for languageName := range allLanguageStatistics {
 		keys = append(keys, languageName)
 	}
 	sort.Strings(keys)
@@ -375,7 +386,7 @@ func createEmptyFile(outputDirectory string, fileName string) (string, error) {
 	return outputLocation, err
 }
 
-func marshalAndWriteJson(unmarshalledData interface{}, finalDestination string) error {
+func marshalAndWriteJSON(unmarshalledData interface{}, finalDestination string) error {
 	jsonBytes, err := json.MarshalIndent(unmarshalledData, "", "\t")
 	if err != nil {
 		return err
