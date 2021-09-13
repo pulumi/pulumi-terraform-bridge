@@ -1499,14 +1499,20 @@ func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
 			}
 			newTraversal = append(newTraversal, traverser)
 		case hcl.TraverseIndex:
-			_, isList := model.GetTraversableType(parts[i]).(*model.ListType)
 			if res, isResource := n.Parts[offset].(*resource); isResource {
 				if res.isConditional {
 					// Ignore indices into conditional resources.
 					continue
 				}
 			}
-			projectListElement := isList && tfbridge.IsMaxItemsOne(schemas.TF, schemas.Pulumi)
+
+			// Some HCL objects are unnecessarily represented as lists, and that has the potential to become
+			// confusing. If a list always contains just one specific, named item, the Pulumi model treats the
+			// item as if it were a property directly attached to the parent object itself.
+			traversableType := model.GetTraversableType(parts[i])
+			_, isList := traversableType.(*model.ListType)
+			_, isObject := traversableType.(*model.ObjectType)
+			projectListElement := (isList || isObject) && tfbridge.IsMaxItemsOne(schemas.TF, schemas.Pulumi)
 
 			schemas = schemas.ElemSchemas()
 			if projectListElement {
