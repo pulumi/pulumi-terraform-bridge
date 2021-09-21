@@ -218,6 +218,9 @@ type SchemaInfo struct {
 	// whether or not this property has been removed from the Terraform schema
 	Removed bool
 
+	// if set, this property will not be added to the schema and no bindings will be generated for it
+	Omit bool
+
 	// whether or not to treat this property as secret
 	Secret *bool
 }

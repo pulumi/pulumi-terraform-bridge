@@ -4,6 +4,7 @@ CHANGELOG
 ## HEAD (Unreleased)
 * Upgrade to Pulumi v3.12.0 for sdk and pkg
 * Add support for exporting provider example conversion metrics
+* Support omitting properties from `DataSources` and `Resources`.
 
 ---
 
