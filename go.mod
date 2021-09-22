@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.12.0
-	github.com/pulumi/pulumi/sdk/v3 v3.12.0
+	github.com/pulumi/pulumi/pkg/v3 v3.13.0
+	github.com/pulumi/pulumi/sdk/v3 v3.13.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.2.2
@@ -46,6 +46,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
 	golang.org/x/mod v0.4.2
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
+	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2 // indirect
 	google.golang.org/grpc v1.37.0
 )
 
