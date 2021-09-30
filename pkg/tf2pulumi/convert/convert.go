@@ -23,9 +23,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	hcl2dotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -164,7 +164,7 @@ type Options struct {
 	// Root, when set, overrides the default filesystem used to load the source Terraform module.
 	Root afero.Fs
 	// Optional package cache.
-	PackageCache *hcl2.PackageCache
+	PackageCache *pcl.PackageCache
 	// Optional plugin host.
 	PluginHost plugin.Host
 	// Optional source for provider schema information.

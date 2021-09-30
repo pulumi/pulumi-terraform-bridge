@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
@@ -74,24 +74,24 @@ func parseTF12(opts Options) ([]*syntax.File, hcl.Diagnostics) {
 	return parser.Files, parser.Diagnostics
 }
 
-func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *hcl2.Program, hcl.Diagnostics, error) {
+func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	var hcl2Options []model.BindOption
-	var pulumiOptions []hcl2.BindOption
+	var pulumiOptions []pcl.BindOption
 	if opts.AllowMissingProperties {
-		pulumiOptions = append(pulumiOptions, hcl2.AllowMissingProperties)
+		pulumiOptions = append(pulumiOptions, pcl.AllowMissingProperties)
 	}
 	if opts.AllowMissingVariables {
 		hcl2Options = append(hcl2Options, model.AllowMissingVariables)
-		pulumiOptions = append(pulumiOptions, hcl2.AllowMissingVariables)
+		pulumiOptions = append(pulumiOptions, pcl.AllowMissingVariables)
 	}
 	if opts.PluginHost != nil {
-		pulumiOptions = append(pulumiOptions, hcl2.PluginHost(opts.PluginHost))
+		pulumiOptions = append(pulumiOptions, pcl.PluginHost(opts.PluginHost))
 	}
 	if opts.PackageCache != nil {
-		pulumiOptions = append(pulumiOptions, hcl2.Cache(opts.PackageCache))
+		pulumiOptions = append(pulumiOptions, pcl.Cache(opts.PackageCache))
 	}
 	if opts.SkipResourceTypechecking {
-		pulumiOptions = append(pulumiOptions, hcl2.SkipResourceTypechecking)
+		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
 
 	// Bind the files into a module.
@@ -163,14 +163,14 @@ func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *hcl2.Prog
 		}
 	}
 
-	program, programDiags, err := hcl2.BindProgram(pulumiParser.Files, pulumiOptions...)
+	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, pulumiOptions...)
 	diagnostics = append(diagnostics, programDiags...)
 
 	return pulumiParser.Files, program, diagnostics, err
 }
 
 type tf12binder struct {
-	pulumiOptions       []hcl2.BindOption
+	pulumiOptions       []pcl.BindOption
 	hcl2Options         []model.BindOption
 	filterResourceNames bool
 	providerInfo        il.ProviderInfoSource
