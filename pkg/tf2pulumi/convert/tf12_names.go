@@ -22,7 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -162,7 +162,7 @@ func (nt *nameTable) disambiguateResourceName(n *resource) string {
 
 	// Determine the resource's Pulumi package, module, and type name. These will be used during the disambiguation
 	// process. If these names cannot be determined, return an ugly name comprised of the TF type and name.
-	packageName, moduleName, typeName, diags := hcl2.DecomposeToken(n.token, hcl.Range{})
+	packageName, moduleName, typeName, diags := pcl.DecomposeToken(n.token, hcl.Range{})
 	if len(diags) != 0 {
 		return cleanName(n.typeName + "_" + n.name)
 	}

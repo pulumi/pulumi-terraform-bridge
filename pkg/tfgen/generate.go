@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -61,7 +61,7 @@ type Generator struct {
 	root             afero.Fs              // the output virtual filesystem.
 	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
-	packageCache     *hcl2.PackageCache    // the package cache for tf2pulumi.
+	packageCache     *pcl.PackageCache     // the package cache for tf2pulumi.
 	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
 	terraformVersion string                // the Terraform version to target for example codegen, if any
 	sink             diag.Sink
@@ -688,7 +688,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			Host:  host,
 			cache: map[string]plugin.Provider{},
 		},
-		packageCache:     hcl2.NewPackageCache(),
+		packageCache:     pcl.NewPackageCache(),
 		infoSource:       host,
 		terraformVersion: opts.TerraformVersion,
 		sink:             sink,

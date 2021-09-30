@@ -1426,16 +1426,16 @@ func TestInterpolateFuncJoin(t *testing.T) {
 func TestInterpolateFuncJSONEncode(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"easy": ast.Variable{
+			"easy": {
 				Value: "test",
 				Type:  ast.TypeString,
 			},
-			"hard": ast.Variable{
+			"hard": {
 				Value: " foo \\ \n \t \" bar ",
 				Type:  ast.TypeString,
 			},
 			"list": interfaceToVariableSwallowError([]string{"foo", "bar\tbaz"}),
-			"emptylist": ast.Variable{
+			"emptylist": {
 				Value: []ast.Variable{},
 				Type:  ast.TypeList,
 			},
@@ -1756,7 +1756,7 @@ func TestInterpolateFuncSlice(t *testing.T) {
 func TestInterpolateFuncSort(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.strings": ast.Variable{
+			"var.strings": {
 				Type: ast.TypeList,
 				Value: []ast.Variable{
 					{Type: ast.TypeString, Value: "c"},
@@ -1764,7 +1764,7 @@ func TestInterpolateFuncSort(t *testing.T) {
 					{Type: ast.TypeString, Value: "b"},
 				},
 			},
-			"var.notstrings": ast.Variable{
+			"var.notstrings": {
 				Type: ast.TypeList,
 				Value: []ast.Variable{
 					{Type: ast.TypeList, Value: []ast.Variable{}},
@@ -1847,7 +1847,7 @@ func TestInterpolateFuncLookup(t *testing.T) {
 					},
 				},
 			},
-			"var.map_of_lists": ast.Variable{
+			"var.map_of_lists": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
 					"bar": {
@@ -1917,20 +1917,20 @@ func TestInterpolateFuncLookup(t *testing.T) {
 func TestInterpolateFuncKeys(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.foo": ast.Variable{
+			"var.foo": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"bar": ast.Variable{
+					"bar": {
 						Value: "baz",
 						Type:  ast.TypeString,
 					},
-					"qux": ast.Variable{
+					"qux": {
 						Value: "quack",
 						Type:  ast.TypeString,
 					},
 				},
 			},
-			"var.str": ast.Variable{
+			"var.str": {
 				Value: "astring",
 				Type:  ast.TypeString,
 			},
@@ -1971,30 +1971,30 @@ func TestInterpolateFuncKeys(t *testing.T) {
 func TestInterpolateFuncKeyValOrder(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.foo": ast.Variable{
+			"var.foo": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"D": ast.Variable{
+					"D": {
 						Value: "2",
 						Type:  ast.TypeString,
 					},
-					"C": ast.Variable{
+					"C": {
 						Value: "Y",
 						Type:  ast.TypeString,
 					},
-					"A": ast.Variable{
+					"A": {
 						Value: "X",
 						Type:  ast.TypeString,
 					},
-					"10": ast.Variable{
+					"10": {
 						Value: "Z",
 						Type:  ast.TypeString,
 					},
-					"1": ast.Variable{
+					"1": {
 						Value: "4",
 						Type:  ast.TypeString,
 					},
-					"3": ast.Variable{
+					"3": {
 						Value: "W",
 						Type:  ast.TypeString,
 					},
@@ -2020,20 +2020,20 @@ func TestInterpolateFuncKeyValOrder(t *testing.T) {
 func TestInterpolateFuncValues(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.foo": ast.Variable{
+			"var.foo": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"bar": ast.Variable{
+					"bar": {
 						Value: "quack",
 						Type:  ast.TypeString,
 					},
-					"qux": ast.Variable{
+					"qux": {
 						Value: "baz",
 						Type:  ast.TypeString,
 					},
 				},
 			},
-			"var.str": ast.Variable{
+			"var.str": {
 				Value: "astring",
 				Type:  ast.TypeString,
 			},
@@ -2727,17 +2727,17 @@ func TestInterpolateFuncURLEncode(t *testing.T) {
 func TestInterpolateFuncTranspose(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.map": ast.Variable{
+			"var.map": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"key1": ast.Variable{
+					"key1": {
 						Type: ast.TypeList,
 						Value: []ast.Variable{
 							{Type: ast.TypeString, Value: "a"},
 							{Type: ast.TypeString, Value: "b"},
 						},
 					},
-					"key2": ast.Variable{
+					"key2": {
 						Type: ast.TypeList,
 						Value: []ast.Variable{
 							{Type: ast.TypeString, Value: "a"},
@@ -2745,21 +2745,21 @@ func TestInterpolateFuncTranspose(t *testing.T) {
 							{Type: ast.TypeString, Value: "c"},
 						},
 					},
-					"key3": ast.Variable{
+					"key3": {
 						Type: ast.TypeList,
 						Value: []ast.Variable{
 							{Type: ast.TypeString, Value: "c"},
 						},
 					},
-					"key4": ast.Variable{
+					"key4": {
 						Type:  ast.TypeList,
 						Value: []ast.Variable{},
 					},
 				}},
-			"var.badmap": ast.Variable{
+			"var.badmap": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"key1": ast.Variable{
+					"key1": {
 						Type: ast.TypeList,
 						Value: []ast.Variable{
 							{Type: ast.TypeList, Value: []ast.Variable{}},
@@ -2767,10 +2767,10 @@ func TestInterpolateFuncTranspose(t *testing.T) {
 						},
 					},
 				}},
-			"var.worsemap": ast.Variable{
+			"var.worsemap": {
 				Type: ast.TypeMap,
 				Value: map[string]ast.Variable{
-					"key1": ast.Variable{
+					"key1": {
 						Type:  ast.TypeString,
 						Value: "not-a-list",
 					},
@@ -2855,11 +2855,11 @@ func TestInterpolateFuncAbs(t *testing.T) {
 func TestInterpolateFuncRsaDecrypt(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
-			"var.cipher_base64": ast.Variable{
+			"var.cipher_base64": {
 				Type:  ast.TypeString,
 				Value: "eczGaDhXDbOFRZGhjx2etVzWbRqWDlmq0bvNt284JHVbwCgObiuyX9uV0LSAMY707IEgMkExJqXmsB4OWKxvB7epRB9G/3+F+pcrQpODlDuL9oDUAsa65zEpYF0Wbn7Oh7nrMQncyUPpyr9WUlALl0gRWytOA23S+y5joa4M34KFpawFgoqTu/2EEH4Xl1zo+0fy73fEto+nfkUY+meuyGZ1nUx/+DljP7ZqxHBFSlLODmtuTMdswUbHbXbWneW51D7Jm7xB8nSdiA2JQNK5+Sg5x8aNfgvFTt/m2w2+qpsyFa5Wjeu6fZmXSl840CA07aXbk9vN4I81WmJyblD/ZA==",
 			},
-			"var.private_key": ast.Variable{
+			"var.private_key": {
 				Type: ast.TypeString,
 				Value: `
 -----BEGIN RSA PRIVATE KEY-----
@@ -2891,7 +2891,7 @@ T8UYnFu6RzkixElTf2rseEav7rkdKkI3LAeIZy7B0HulKKsmqVQ7
 -----END RSA PRIVATE KEY-----
 `,
 			},
-			"var.wrong_private_key": ast.Variable{
+			"var.wrong_private_key": {
 				Type: ast.TypeString,
 				Value: `
 -----BEGIN RSA PRIVATE KEY-----
