@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
+	hclV2 "github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -1082,7 +1083,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
 func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
-	g.debug(fmt.Sprintf("converting HCL for %s", path))
+	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
@@ -1126,8 +1127,17 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			SkipResourceTypechecking: true,
 			TerraformVersion:         g.terraformVersion,
 		})
+
 		if err != nil {
+			diags, isDiags := err.(hclV2.Diagnostics)
+			if isDiags {
+				for i, d := range diags {
+					g.debug("Diagnostic %d: %v", i, d)
+				}
+			}
+
 			g.coverageTracker.languageConversionPanic(languageName, err.Error())
+			g.error("failed to convert HCL for %s to %v: %v", path, languageName, err)
 			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
