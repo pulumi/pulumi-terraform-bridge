@@ -1085,6 +1085,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 	g.debug("converting HCL for %s", path)
 
+	originalHCL := hcl
+
 	// Fixup the HCL as necessary.
 	if fixed, ok := fixHcl(hcl); ok {
 		hcl = fixed
@@ -1126,6 +1128,8 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			ProviderInfoSource:       g.infoSource,
 			SkipResourceTypechecking: true,
 			TerraformVersion:         g.terraformVersion,
+			SourceHCL:                originalHCL,
+			JobDescription:           fmt.Sprintf("%s#%s", path, languageName),
 		})
 
 		if err != nil {

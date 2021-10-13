@@ -134,6 +134,8 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		generatedFiles, diagnostics = goFiles, append(diagnostics, genDiags...)
 	}
 
+	interceptConversion(opts, program, generatedFiles)
+
 	if diagnostics.HasErrors() {
 		return nil, Diagnostics{All: diagnostics, files: tf12Files}, nil
 	}
@@ -182,6 +184,13 @@ type Options struct {
 
 	// TargetOptions captures any target-specific options.
 	TargetOptions interface{}
+
+	// Optional human-readable description of the Convert job to
+	// simplify correlating diagnostic output.
+	JobDescription string
+
+	/// If applicable, source code in HCL.
+	SourceHCL string
 }
 
 // logf writes a formatted message to the configured logger, if any.
