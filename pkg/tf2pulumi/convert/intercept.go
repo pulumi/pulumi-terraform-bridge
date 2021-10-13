@@ -71,7 +71,7 @@ func interceptConversion(
 			funCall, isFunCall := expr.(*model.FunctionCallExpression)
 
 			if isFunCall {
-				funCalls[funCall.Syntax.Name]++
+				//funCalls[funCall.Syntax.Name]++
 
 				interceptLog("Funcall as part of %s: %v\n",
 					options.JobDescription,
