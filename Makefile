@@ -14,7 +14,7 @@ build::
 lint::
 	golangci-lint run
 
-test_fast::
+test_fast:: build
 	$(GO_TEST) ./...
 
 test_all:: test_fast
