@@ -855,7 +855,8 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		newstate, err = p.tf.Apply(res.TFName, nil, diff)
 		if newstate == nil {
 			if err == nil {
-				return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
+				// This should never happen or never bubble up to the end user
+				log.Panicf("expected non-nil error with nil state during Create of %s", urn)
 			}
 			return nil, err
 		}

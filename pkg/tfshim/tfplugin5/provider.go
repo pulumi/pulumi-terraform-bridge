@@ -407,6 +407,10 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 	if err != nil {
 		return nil, err
 	}
+	if newState == nil {
+		// Should retry before reaching here or check empty response etc.
+		return nil, fmt.Errorf("internal error: empty new state value received.")
+	}
 
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
