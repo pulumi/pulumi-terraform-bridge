@@ -22,7 +22,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.7.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.8.0
 	github.com/hashicorp/terraform-svchost v0.0.0-20191119180714-d2e4933b9136
 	github.com/json-iterator/go v1.1.9
 	github.com/mitchellh/cli v1.1.2
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.16.0
+	github.com/pulumi/pulumi/pkg/v3 v3.16.1-0.20211027195309-9a78ca1ca424
 	github.com/pulumi/pulumi/sdk/v3 v3.16.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
