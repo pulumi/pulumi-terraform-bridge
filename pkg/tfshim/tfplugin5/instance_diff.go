@@ -20,6 +20,7 @@ const timeoutsKey = "e2bfb730-ecaa-11e6-8f88-34363bc7c4c0"
 var _ = shim.InstanceDiff((*instanceDiff)(nil))
 
 type instanceDiff struct {
+	config      cty.Value
 	planned     cty.Value
 	meta        map[string]interface{}
 	destroy     bool
@@ -27,11 +28,12 @@ type instanceDiff struct {
 	attributes  map[string]shim.ResourceAttrDiff
 }
 
-func newInstanceDiff(prior, planned cty.Value, meta map[string]interface{},
+func newInstanceDiff(config, prior, planned cty.Value, meta map[string]interface{},
 	requiresReplace []*proto.AttributePath) *instanceDiff {
 
 	attributes, requiresNew := computeDiff(prior, planned, requiresReplace)
 	return &instanceDiff{
+		config:      config,
 		planned:     planned,
 		meta:        meta,
 		destroy:     planned.IsNull(),
