@@ -326,6 +326,7 @@ func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (
 		TypeName:         resource.resourceType,
 		PriorState:       &proto.DynamicValue{Msgpack: stateBytes},
 		ProposedNewState: &proto.DynamicValue{Msgpack: configBytes},
+		Config:           &proto.DynamicValue{Msgpack: configBytes},
 		PriorPrivate:     metaBytes,
 	})
 	if err != nil {
@@ -342,7 +343,7 @@ func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (
 		return nil, err
 	}
 
-	return newInstanceDiff(stateVal, plannedVal, plannedMeta, resp.RequiresReplace), nil
+	return newInstanceDiff(configVal, stateVal, plannedVal, plannedMeta, resp.RequiresReplace), nil
 }
 
 func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
@@ -381,10 +382,19 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 		return nil, err
 	}
 
+	if diff.config == (cty.Value{}) {
+		diff.config = cty.NullVal(resource.ctyType)
+	}
+	configBytes, err := msgpack.Marshal(diff.config, resource.ctyType)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.client.ApplyResourceChange(context.TODO(), &proto.ApplyResourceChange_Request{
 		TypeName:       resource.resourceType,
 		PriorState:     &proto.DynamicValue{Msgpack: stateBytes},
 		PlannedState:   &proto.DynamicValue{Msgpack: plannedStateBytes},
+		Config:         &proto.DynamicValue{Msgpack: configBytes},
 		PlannedPrivate: plannedMetaBytes,
 	})
 	if err != nil {
