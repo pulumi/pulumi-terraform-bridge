@@ -92,6 +92,7 @@ func diffTest(t *testing.T, attributes map[string]cty.Type, requiresReplace []*p
 	}
 
 	expectedDiff := &instanceDiff{
+		config:     plannedVal,
 		planned:    plannedVal,
 		attributes: expected,
 	}
@@ -102,7 +103,7 @@ func diffTest(t *testing.T, attributes map[string]cty.Type, requiresReplace []*p
 		}
 	}
 
-	actual := newInstanceDiff(priorVal, plannedVal, nil, requiresReplace)
+	actual := newInstanceDiff(plannedVal, priorVal, plannedVal, nil, requiresReplace)
 	assert.Equal(t, expectedDiff, actual)
 }
 
