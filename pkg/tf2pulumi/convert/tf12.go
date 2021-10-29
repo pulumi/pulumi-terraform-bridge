@@ -93,6 +93,9 @@ func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *pcl.Progr
 	if opts.SkipResourceTypechecking {
 		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
+	if opts.Loader != nil {
+		pulumiOptions = append(pulumiOptions, pcl.Loader(opts.Loader))
+	}
 
 	// Bind the files into a module.
 	binder := &tf12binder{

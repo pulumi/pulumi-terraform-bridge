@@ -21,17 +21,18 @@ import (
 	"os"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/spf13/afero"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	hcl2dotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/spf13/afero"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
 
 const (
@@ -167,6 +168,8 @@ type Options struct {
 	PackageCache *pcl.PackageCache
 	// Optional plugin host.
 	PluginHost plugin.Host
+	// Optional Loader.
+	Loader schema.Loader
 	// Optional source for provider schema information.
 	ProviderInfoSource il.ProviderInfoSource
 	// Optional logger for diagnostic information.
