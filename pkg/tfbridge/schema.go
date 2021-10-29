@@ -955,12 +955,12 @@ func CoerceTerraformString(schType shim.ValueType, ps *SchemaInfo, stringValue s
 	// breaking overrides where we have a string and a TransformJSONDocument (see pulumi/pulumi#4592)
 	if ps != nil && ps.Type != "" {
 		switch strings.ToLower(ps.Type.String()) {
-		case "boolean":
+		case "bool", "boolean":
 			if stringValue == "" {
 				return nil, nil
 			}
 			return convertTfStringToBool(stringValue)
-		case "int":
+		case "int", "integer":
 			return convertTfStringToInt(stringValue)
 		case "float":
 			return convertTfStringToFloat(stringValue)
