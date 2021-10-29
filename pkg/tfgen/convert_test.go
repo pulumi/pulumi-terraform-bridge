@@ -17,6 +17,7 @@ package tfgen
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -29,6 +30,11 @@ import (
 )
 
 func TestConvert(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi-terraform-bridge#408]
+		t.Skip("Skipped on windows")
+	}
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
