@@ -22,20 +22,28 @@ import (
 )
 
 type loader struct {
-	innerLoader schema.Loader
+	innerLoader   schema.Loader
+	emptyPackages map[string]bool
 }
 
 var _ schema.Loader = &loader{}
 
 func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package, error) {
-	// In the doc generation context a dummy package seems better
-	// than failing in this case.
-	if name == "" {
+	if l.emptyPackages[name] {
 		return &schema.Package{}, nil
 	}
 	return l.innerLoader.LoadPackage(name, ver)
 }
 
-func newLoader(host plugin.Host) schema.Loader {
-	return &loader{schema.NewPluginLoader(host)}
+// Overrides `schema.NewPluginLoader` to load an empty
+// `*schema.Package{}` when `name=''` is requested. In the doc
+// generation context a dummy package seems better than failing in the
+// case.
+func newLoader(host plugin.Host) *loader {
+	return &loader{
+		innerLoader: schema.NewPluginLoader(host),
+		emptyPackages: map[string]bool{
+			"": true,
+		},
+	}
 }

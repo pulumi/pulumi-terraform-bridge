@@ -40,6 +40,7 @@ func TestConvert(t *testing.T) {
 
 	host := pluginContext.Host
 	loader := newLoader(host)
+	loader.emptyPackages["aws"] = true
 
 	check := func(hcl string) {
 		_, _, err = convert.Convert(convert.Options{
