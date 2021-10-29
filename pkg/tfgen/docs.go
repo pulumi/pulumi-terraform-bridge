@@ -1115,6 +1115,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		}
 
 		files, diags, err := convert.Convert(convert.Options{
+			Loader:                   newLoader(g.pluginHost),
 			Root:                     input,
 			TargetLanguage:           languageName,
 			AllowMissingProperties:   true,
