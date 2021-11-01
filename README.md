@@ -74,9 +74,9 @@ to types and concepts that the bridge will use to generate well-typed programmat
 
 The AWS provider provides a standard blueprint to follow for this.  There are three major elements:
 
-* [`cmd/pulumi-tfgen-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/cmd/pulumi-tfgen-aws)
-* [`cmd/pulumi-resource-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/cmd/pulumi-resource-aws)
-* [`resources.go`](https://github.com/pulumi/pulumi-aws/blob/master/resources.go)
+* [`cmd/pulumi-tfgen-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/provider/cmd/pulumi-tfgen-aws)
+* [`cmd/pulumi-resource-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/provider/cmd/pulumi-resource-aws)
+* [`resources.go`](https://github.com/pulumi/pulumi-aws/blob/master/provider/resources.go)
 
 The [`Makefile`](https://github.com/pulumi/pulumi-aws/blob/master/Makefile) compiles these programs, and notably, uses
 the resulting `pulumi-tfgen-aws` binary to generate code for many different languages.  The resulting generated code is
