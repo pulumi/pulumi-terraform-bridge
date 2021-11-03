@@ -15,8 +15,7 @@ build::
 lint::
 	golangci-lint run
 
-test_fast::
-	go mod tidy
+test_fast:: build
 	$(GO_TEST) ./...
 
 test_all:: test_fast

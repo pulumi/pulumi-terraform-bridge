@@ -200,6 +200,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		Homepage:          g.info.Homepage,
 		License:           g.info.License,
 		Repository:        g.info.Repository,
+		Publisher:         g.info.Publisher,
+		DisplayName:       g.info.DisplayName,
 		PluginDownloadURL: g.info.PluginDownloadURL,
 		Resources:         map[string]pschema.ResourceSpec{},
 		Functions:         map[string]pschema.FunctionSpec{},

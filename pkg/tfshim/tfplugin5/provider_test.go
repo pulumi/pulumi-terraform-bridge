@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	goplugin "github.com/hashicorp/go-plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
@@ -49,8 +50,12 @@ func (l *testLogger) Log(level hclog.Level, msg string, args ...interface{}) {
 		hcl.Warn(msg, args...)
 	case hclog.Error:
 		hcl.Error(msg, args...)
+	default:
+		hcl.Log(level, msg, args...)
 	}
-	l.t.Log(buf.String())
+	if s := buf.String(); s != "" {
+		l.t.Log(s)
+	}
 }
 
 func (l *testLogger) Trace(msg string, args ...interface{}) {
@@ -139,9 +144,7 @@ func (l *testLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer
 
 func startTestProvider(t *testing.T) (*provider, bool) {
 	testProviderPath, err := exec.LookPath("pulumi-terraform-bridge-test-provider")
-	if !assert.NoError(t, err) {
-		return nil, false
-	}
+	require.NoError(t, err)
 
 	var logger hclog.Logger
 	switch os.Getenv("TF_LOG") {
@@ -169,13 +172,10 @@ func startTestProvider(t *testing.T) (*provider, bool) {
 		Logger:           logger,
 	})
 	client, err := pluginClient.Client()
-	if !assert.NoError(t, err) {
-		return nil, false
-	}
+	require.NoError(t, err)
+
 	p, err := client.Dispense("provider")
-	if !assert.NoError(t, err) {
-		return nil, false
-	}
+	require.NoError(t, err)
 
 	provider := p.(*provider)
 	t.Cleanup(func() {
@@ -812,17 +812,13 @@ func TestDiff(t *testing.T) {
 		return
 	}
 
-	resource, ok := p.ResourcesMap().GetOk("example_resource")
-	if !assert.True(t, ok) {
-		return
-	}
+	res, ok := p.ResourcesMap().GetOk("example_resource")
+	require.True(t, ok)
 
 	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
 		"config_value": "foo",
 	}))
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	cases := []struct {
 		state      map[string]interface{}
@@ -935,16 +931,12 @@ func TestDiff(t *testing.T) {
 			}
 			for k, v := range c.state {
 				val, err := goToCty(v, expected[k].Type())
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 				expected[k] = val
 			}
 			for k, v := range c.config {
 				val, err := goToCty(v, expected[k].Type())
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 				expected[k] = val
 			}
 
@@ -956,17 +948,15 @@ func TestDiff(t *testing.T) {
 				}
 			}
 
-			state, err := resource.InstanceState("0", c.state, nil)
-			if !assert.NoError(t, err) {
-				return
-			}
+			state, err := res.InstanceState("0", c.state, nil)
+			require.NoError(t, err)
 
 			config := p.NewResourceConfig(c.config)
+			configVal, err := goToCty(config, res.(*resource).ctyType)
+			require.NoError(t, err)
 
 			diff, err := p.Diff("example_resource", state, config)
-			if !assert.NoError(t, err) {
-				return
-			}
+			require.NoError(t, err)
 
 			var meta map[string]interface{}
 			if len(c.attributes) != 0 {
@@ -979,6 +969,7 @@ func TestDiff(t *testing.T) {
 			}
 
 			assert.Equal(t, &instanceDiff{
+				config:      configVal,
 				planned:     cty.ObjectVal(expected),
 				attributes:  c.attributes,
 				requiresNew: requiresNew,
@@ -995,16 +986,12 @@ func TestApply(t *testing.T) {
 	}
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
-	if !assert.True(t, ok) {
-		return
-	}
+	require.True(t, ok)
 
 	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
 		"config_value": "foo",
 	}))
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	cases := []struct {
 		state  map[string]interface{}
@@ -1086,30 +1073,22 @@ func TestApply(t *testing.T) {
 			}
 			for k, v := range c.state {
 				val, err := goToCty(v, expected[k].Type())
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 				expected[k] = val
 			}
 			for k, v := range c.config {
 				val, err := goToCty(v, expected[k].Type())
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 				expected[k] = val
 			}
 
 			state, err := resource.InstanceState("0", c.state, nil)
-			if !assert.NoError(t, err) {
-				return
-			}
+			require.NoError(t, err)
 
 			config := p.NewResourceConfig(c.config)
 
 			diff, err := p.Diff("example_resource", state, config)
-			if !assert.NoError(t, err) {
-				return
-			}
+			require.NoError(t, err)
 
 			if len(diff.Attributes()) == 0 {
 				return
@@ -1146,32 +1125,22 @@ func TestApply(t *testing.T) {
 				}
 				for k, v := range c.config {
 					val, err := goToCty(v, expected[k].Type())
-					if !assert.NoError(t, err) {
-						return
-					}
+					require.NoError(t, err)
 					expected[k] = val
 				}
 
 				state, err = resource.InstanceState("", map[string]interface{}{}, nil)
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 
 				diff, err = p.Diff("example_resource", state, config)
-				if !assert.NoError(t, err) {
-					return
-				}
+				require.NoError(t, err)
 			}
 
 			state, err = p.Apply("example_resource", state, diff)
-			if !assert.NoError(t, err) {
-				return
-			}
+			require.NoError(t, err)
 
 			expectedObject, err := ctyToGo(cty.ObjectVal(expected))
-			if !assert.NoError(t, err) {
-				return
-			}
+			require.NoError(t, err)
 
 			assert.Equal(t, &instanceState{
 				resourceType: "example_resource",
@@ -1195,16 +1164,12 @@ func TestRefresh(t *testing.T) {
 	}
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
-	if !assert.True(t, ok) {
-		return
-	}
+	require.True(t, ok)
 
 	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
 		"config_value": "foo",
 	}))
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	meta := map[string]interface{}{
 		timeoutsKey: map[string]interface{}{
@@ -1214,9 +1179,7 @@ func TestRefresh(t *testing.T) {
 	}
 
 	state, err := resource.InstanceState("0", map[string]interface{}{}, meta)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	expected := map[string]cty.Value{
 		"id": cty.StringVal("0"),
@@ -1248,14 +1211,10 @@ func TestRefresh(t *testing.T) {
 	}
 
 	state, err = p.Refresh("example_resource", state)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	expectedObject, err := ctyToGo(cty.ObjectVal(expected))
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	assert.Equal(t, &instanceState{
 		resourceType: "example_resource",
@@ -1276,9 +1235,7 @@ func TestReadDataDiff(t *testing.T) {
 	})
 
 	diff, err := p.ReadDataDiff("example_resource", config)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	expected := cty.ObjectVal(map[string]cty.Value{
 		"id":                    cty.NullVal(cty.String),
@@ -1311,14 +1268,10 @@ func TestReadDataApply(t *testing.T) {
 	})
 
 	diff, err := p.ReadDataDiff("example_resource", config)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	state, err := p.ReadDataApply("example_resource", diff)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	expected := cty.ObjectVal(map[string]cty.Value{
 		"id":                    cty.StringVal("0"),
@@ -1346,9 +1299,7 @@ func TestReadDataApply(t *testing.T) {
 		"string_with_bad_interpolation": cty.StringVal("some ${interpolated:value} with syntax errors"),
 	})
 	expectedObject, err := ctyToGo(expected)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	assert.Equal(t, &instanceState{
 		resourceType: "example_resource",
@@ -1364,22 +1315,14 @@ func TestImportResourceState(t *testing.T) {
 	}
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
-	if !assert.True(t, ok) {
-		return
-	}
+	require.True(t, ok)
 
 	importer := resource.Importer()
-	if !assert.NotNil(t, importer) {
-		return
-	}
+	require.NotNil(t, importer)
 
 	states, err := importer("example_resource", "0", nil)
-	if !assert.NoError(t, err) {
-		return
-	}
-	if !assert.Len(t, states, 1) {
-		return
-	}
+	require.NoError(t, err)
+	require.Len(t, states, 1)
 	state := states[0]
 
 	expected := cty.ObjectVal(map[string]cty.Value{
@@ -1401,9 +1344,7 @@ func TestImportResourceState(t *testing.T) {
 		"string_with_bad_interpolation": cty.NullVal(cty.String),
 	})
 	expectedObject, err := ctyToGo(expected)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	assert.Equal(t, &instanceState{
 		resourceType: "example_resource",

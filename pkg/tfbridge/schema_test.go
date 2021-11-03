@@ -937,20 +937,35 @@ func TestOverridingTFSchema(t *testing.T) {
 		shimv1.NewProvider(testTFProvider),
 		map[string]interface{}{
 			"pulumi_override_tf_string_to_boolean":    MyString("true"),
+			"pulumi_override_tf_string_to_bool":       MyString("true"),
 			"pulumi_empty_tf_override":                MyString("true"),
+			"pulumi_override_tf_string_to_int":        MyString("1"),
+			"pulumi_override_tf_string_to_integer":    MyString("1"),
 			"tf_empty_string_to_pulumi_bool_override": MyString(""),
 		},
 		shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 			"pulumi_override_tf_string_to_boolean":    {Type: schemav1.TypeString},
+			"pulumi_override_tf_string_to_bool":       {Type: schemav1.TypeString},
 			"pulumi_empty_tf_override":                {Type: schemav1.TypeString},
+			"pulumi_override_tf_string_to_int":        {Type: schemav1.TypeString},
+			"pulumi_override_tf_string_to_integer":    {Type: schemav1.TypeString},
 			"tf_empty_string_to_pulumi_bool_override": {Type: schemav1.TypeString},
 		}),
 		map[string]*SchemaInfo{
 			"pulumi_override_tf_string_to_boolean": {
 				Type: "boolean",
 			},
+			"pulumi_override_tf_string_to_bool": {
+				Type: "bool",
+			},
 			"pulumi_empty_tf_override": {
 				Type: "",
+			},
+			"pulumi_override_tf_string_to_int": {
+				Type: "int",
+			},
+			"pulumi_override_tf_string_to_integer": {
+				Type: "integer",
 			},
 			"tf_empty_string_to_pulumi_bool_override": {
 				Type:           "boolean",
@@ -963,7 +978,10 @@ func TestOverridingTFSchema(t *testing.T) {
 	)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"pulumiOverrideTfStringToBoolean":   true,
+		"pulumiOverrideTfStringToBool":      true,
 		"pulumiEmptyTfOverride":             "true",
+		"pulumiOverrideTfStringToInt":       1,
+		"pulumiOverrideTfStringToInteger":   1,
 		"tfEmptyStringToPulumiBoolOverride": nil,
 	}), result)
 }
