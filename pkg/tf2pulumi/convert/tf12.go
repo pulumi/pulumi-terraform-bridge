@@ -93,6 +93,9 @@ func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *pcl.Progr
 	if opts.SkipResourceTypechecking {
 		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
+	if opts.Loader != nil {
+		pulumiOptions = append(pulumiOptions, pcl.Loader(opts.Loader))
+	}
 
 	// Bind the files into a module.
 	binder := &tf12binder{
@@ -711,7 +714,7 @@ func (b *tf12binder) bindVariable(v *variable) hcl.Diagnostics {
 	if typeDecl, hasType := block.Body.Attribute("type"); hasType {
 		variableType = typeDecl.Value.Type()
 	} else if defaultDecl, hasDefault := block.Body.Attribute("default"); hasDefault {
-		variableType = defaultDecl.Value.Type()
+		variableType = generalizeConstType(defaultDecl.Value.Type())
 	}
 
 	v.terraformType, v.block = variableType, block
@@ -897,7 +900,22 @@ func (b *tf12binder) genVariable(w io.Writer, v *variable) hcl.Diagnostics {
 	v.block.Type = "config"
 	v.block.Labels[0] = v.pulumiName
 	if v.terraformType != model.DynamicType {
-		v.block.Labels = append(v.block.Labels, fmt.Sprintf("%v", v.terraformType))
+		err := setConfigBlockType(v.block, v.terraformType)
+		if err != nil {
+			msg := fmt.Sprintf(`Ignoring inferred type for %s.
+
+The default value implies that the variable has type '%s', but this type fails
+to encode correctly. Error:
+
+%v`,
+				v.pulumiName,
+				v.terraformType.String(),
+				err)
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Summary:  msg,
+			})
+		}
 	}
 
 	_, err := fmt.Fprintf(w, "%v", v.block)
