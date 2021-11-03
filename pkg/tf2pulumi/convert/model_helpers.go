@@ -21,7 +21,7 @@ package convert
 import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	//"strings"
+	"reflect"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
@@ -52,8 +52,18 @@ func setConfigBlockType(block *model.Block, variableType model.Type) error {
 		return fmt.Errorf("setConfigBlockType refuses to overwrite block.Label[1]")
 	}
 
+	err := checkTypeTurnaround(variableType)
+	if err != nil {
+		return err
+	}
+
+	block.Labels = append(block.Labels, fmt.Sprintf("%v", variableType))
+	return nil
+}
+
+func checkTypeTurnaround(t model.Type) error {
 	tempScope := model.TypeScope.Push(nil)
-	typeString := fmt.Sprintf("%v", variableType)
+	typeString := fmt.Sprintf("%v", t)
 	typeExpr, diags := model.BindExpressionText(
 		typeString,
 		tempScope,
@@ -61,21 +71,21 @@ func setConfigBlockType(block *model.Block, variableType model.Type) error {
 
 	if typeExpr == nil || diags.HasErrors() {
 		return fmt.Errorf(
-			"Type %s prints as '%s' but cannot be parsed back. Diagnostics: %v",
-			variableType.String(),
+			"Type %s (instance of %v) prints as '%s' but cannot be parsed back. Diagnostics: %v",
+			t.String(),
+			reflect.TypeOf(t),
 			typeString,
 			diags)
 	}
 
-	if variableType.String() != typeExpr.Type().String() {
+	if t.String() != typeExpr.Type().String() {
 		return fmt.Errorf(
 			"Type T1=%s prints as '%s' which parses as T2=%s, expected T1=T2",
-			variableType.String(),
+			t.String(),
 			typeString,
 			typeExpr.Type(),
 		)
 	}
 
-	block.Labels = append(block.Labels, typeString)
 	return nil
 }
