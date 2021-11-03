@@ -7,6 +7,7 @@ PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
 
 build::
+	go mod tidy
 	go build ${PROJECT}/v3/pkg/...
 	go build ${PROJECT}/v3/internal/...
 	go install ${PROJECT}/v3/cmd/...
@@ -15,6 +16,7 @@ lint::
 	golangci-lint run
 
 test_fast::
+	go mod tidy
 	$(GO_TEST) ./...
 
 test_all:: test_fast
