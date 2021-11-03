@@ -79,3 +79,61 @@ func setConfigBlockType(block *model.Block, variableType model.Type) error {
 	block.Labels = append(block.Labels, typeString)
 	return nil
 }
+
+// Substitutes `model.ConstType` with the underlying type.
+func generalizeConstType(t model.Type) model.Type {
+	return typeTransform(t, func(t model.Type) model.Type {
+		switch sT := t.(type) {
+		case *model.ConstType:
+			return sT.Type
+		default:
+			return t
+		}
+	})
+}
+
+// Views `model.Type` as a recursive tree and transforms a given tree
+// `t` by wrapping the `transform` around every node.
+func typeTransform(t model.Type, transform func(model.Type) model.Type) model.Type {
+	rec := func(t model.Type) model.Type {
+		return typeTransform(t, transform)
+	}
+	recSlice := func(ts []model.Type) []model.Type {
+		var result []model.Type
+		for _, t := range ts {
+			result = append(result, rec(t))
+		}
+		return result
+	}
+	recMap := func(ts map[string]model.Type) map[string]model.Type {
+		result := map[string]model.Type{}
+		for k, t := range ts {
+			result[k] = rec(t)
+		}
+		return result
+	}
+	var t2 model.Type
+	switch sT := t.(type) {
+	case *model.ConstType:
+		t2 = model.NewConstType(rec(sT.Type), sT.Value)
+	case *model.ListType:
+		t2 = model.NewListType(rec(sT.ElementType))
+	case *model.MapType:
+		t2 = model.NewMapType(rec(sT.ElementType))
+	case *model.ObjectType:
+		t2 = model.NewObjectType(recMap(sT.Properties), sT.Annotations...)
+	case *model.OutputType:
+		t2 = model.NewOutputType(rec(sT.ElementType))
+	case *model.PromiseType:
+		t2 = model.NewPromiseType(rec(sT.ElementType))
+	case *model.SetType:
+		t2 = model.NewSetType(rec(sT.ElementType))
+	case *model.TupleType:
+		t2 = model.NewTupleType(recSlice(sT.ElementTypes)...)
+	case *model.UnionType:
+		t2 = model.NewUnionType(recSlice(sT.ElementTypes)...)
+	default:
+		t2 = t
+	}
+	return transform(t2)
+}

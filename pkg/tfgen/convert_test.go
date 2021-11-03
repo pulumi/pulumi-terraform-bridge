@@ -48,8 +48,8 @@ func TestConvert(t *testing.T) {
 	loader := newLoader(host)
 	loader.emptyPackages["aws"] = true
 
-	check := func(hcl string) {
-		_, _, err = convert.Convert(convert.Options{
+	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {
+		files, diags, err := convert.Convert(convert.Options{
 			Root:                     hclToInput(t, hcl, "path"),
 			TargetLanguage:           "typescript",
 			AllowMissingProperties:   true,
@@ -58,11 +58,38 @@ func TestConvert(t *testing.T) {
 			Loader:                   loader,
 			SkipResourceTypechecking: true,
 		})
-
 		require.NoError(t, err)
+		return files, diags
 	}
 
 	t.Run("regress cannot bind expression", func(t *testing.T) {
+		files, diags := check(`
+                  variable "region_number" {
+                    default = {
+                      us-east-1 = 1
+                    }
+                  }`)
+
+		expectedCode := `
+import * as pulumi from "@pulumi/pulumi";
+
+const config = new pulumi.Config();
+const regionNumber = config.get("regionNumber") || {
+    "us-east-1": 1,
+};`
+
+		require.False(t, diags.All.HasErrors())
+
+		require.Equal(t,
+			strings.TrimSpace(expectedCode),
+			strings.TrimSpace(string(files["index.ts"])))
+
+		// The test extended with a random resource does
+		// currently produce erroring diags about an unknown
+		// resource (bad test setup), but is included here
+		// since for some reason including the resource was
+		// needed to reproduce non-nil `err` in the orignal
+		// bug.
 		check(`
                   variable "region_number" {
                     default = {

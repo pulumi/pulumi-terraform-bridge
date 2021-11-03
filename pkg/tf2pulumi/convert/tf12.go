@@ -714,7 +714,7 @@ func (b *tf12binder) bindVariable(v *variable) hcl.Diagnostics {
 	if typeDecl, hasType := block.Body.Attribute("type"); hasType {
 		variableType = typeDecl.Value.Type()
 	} else if defaultDecl, hasDefault := block.Body.Attribute("default"); hasDefault {
-		variableType = defaultDecl.Value.Type()
+		variableType = generalizeConstType(defaultDecl.Value.Type())
 	}
 
 	v.terraformType, v.block = variableType, block

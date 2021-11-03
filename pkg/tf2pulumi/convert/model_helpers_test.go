@@ -60,3 +60,12 @@ func TestSetConfigBlockType(t *testing.T) {
 	objTypeWithConst := model.NewObjectType(map[string]model.Type{"foo": constType})
 	checkError("objectTypeWithConstType", objTypeWithConst)
 }
+
+func TestGeneralizeConstType(t *testing.T) {
+	constType := model.NewConstType(model.IntType, cty.NumberIntVal(1))
+	assert.True(t, generalizeConstType(constType).Equals(model.IntType))
+
+	objType := model.NewObjectType(map[string]model.Type{"foo": model.IntType})
+	objTypeWithConst := model.NewObjectType(map[string]model.Type{"foo": constType})
+	assert.True(t, generalizeConstType(objTypeWithConst).Equals(objType))
+}
