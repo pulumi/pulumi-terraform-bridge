@@ -66,13 +66,10 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
-	type SingleExampleResult struct {
-		ProviderName    string
-		ProviderVersion string
-		ExampleName     string
-		OriginalHCL     string `json:"OriginalHCL,omitempty"`
-		IsDuplicated    bool
-		FailedLanguages []LanguageConversionResult `json:"FailedLanguages,omitempty"`
+	type FlattenedExample struct {
+		ExampleName       string
+		OriginalHCL       string `json:"OriginalHCL,omitempty"`
+		ConversionResults map[string]*LanguageConversionResult
 	}
 
 	jsonOutputLocation, err := createEmptyFile(outputDirectory, fileName)
@@ -80,33 +77,28 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 		return err
 	}
 
-	// All the examples in the map are iterated by key and marshalled into one large byte array
-	// separated by \n, making the end result look like a bunch of Json files that got concatenated
+	// All the examples in the tracker are iterated by page ID + index, and marshalled into one large byte
+	// array separated by \n, making the end result look like a bunch of Json files that got concatenated
 	var result []byte
-	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		singleExample := SingleExampleResult{
-			ProviderName:    ce.Tracker.ProviderName,
-			ProviderVersion: ce.Tracker.ProviderVersion,
-			ExampleName:     exampleInMap.Name,
-			OriginalHCL:     "",
-			FailedLanguages: []LanguageConversionResult{},
-		}
-
-		// The current example's language conversion results are iterated over. If the severity is
-		// anything but zero, then it means some sort of error occurred during conversion and
-		// should be logged for future analysis.
-		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			if conversionResult.FailureSeverity != 0 {
-				singleExample.OriginalHCL = exampleInMap.OriginalHCL
-				singleExample.FailedLanguages = append(singleExample.FailedLanguages, *conversionResult)
+	for _, page := range ce.Tracker.EncounteredPages {
+		for index, example := range page.Examples {
+			flattenedName := page.Name
+			if len(page.Examples) > 1 {
+				flattenedName += fmt.Sprintf("#%d", index)
 			}
-			singleExample.IsDuplicated = singleExample.IsDuplicated || conversionResult.MultipleTranslations
+
+			flattenedExample := FlattenedExample{
+				ExampleName:       flattenedName,
+				OriginalHCL:       example.OriginalHCL,
+				ConversionResults: example.ConversionResults,
+			}
+
+			marshalledExample, err := json.MarshalIndent(flattenedExample, "", "\t")
+			if err != nil {
+				return err
+			}
+			result = append(append(result, marshalledExample...), uint8('\n'))
 		}
-		marshalledExample, err := json.MarshalIndent(singleExample, "", "\t")
-		if err != nil {
-			return err
-		}
-		result = append(append(result, marshalledExample...), uint8('\n'))
 	}
 	return ioutil.WriteFile(jsonOutputLocation, result, 0600)
 }
@@ -141,41 +133,44 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
-	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			var language *LanguageStatistic
-			if val, ok := allLanguageStatistics[conversionResult.TargetLanguage]; ok {
+	for _, page := range ce.Tracker.EncounteredPages {
+		for _, example := range page.Examples {
+			for languageName, conversionResult := range example.ConversionResults {
 
-				// The main map already contains the language entry
-				language = val
-			} else {
+				// Obtaining the current language we will be creating statistics for
+				var currentLanguage *LanguageStatistic
+				if existingLanguage, ok := allLanguageStatistics[languageName]; ok {
 
-				// The main map doesn't yet contain this language, and it needs to be added
-				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0,
-					NumPct{0, 0.0}, NumPct{0, 0.0},
-					NumPct{0, 0.0}, NumPct{0, 0.0},
-					make(map[string]int), []ErrorMessage{}}
-				language = allLanguageStatistics[conversionResult.TargetLanguage]
-			}
+					// Current language already exists in main map
+					currentLanguage = existingLanguage
+				} else {
 
-			// The language's entry in the summarized results is updated and any
-			// error messages are saved
-			language.Total++
-			if conversionResult.FailureSeverity == Success {
-				language.Successes.Number++
-			} else {
+					// The main map doesn't yet contain this language, and it needs to be added
+					allLanguageStatistics[languageName] = &LanguageStatistic{0,
+						NumPct{0, 0.0}, NumPct{0, 0.0},
+						NumPct{0, 0.0}, NumPct{0, 0.0},
+						make(map[string]int), []ErrorMessage{}}
+					currentLanguage = allLanguageStatistics[languageName]
+				}
 
-				// A failure occurred during conversion so we take the failure info
-				// and add it to the histogram
-				language._errorHistogram[conversionResult.FailureInfo]++
+				// The language's entry in the main map is updated and any error messages are saved
+				currentLanguage.Total++
+				if conversionResult.FailureSeverity == Success {
+					currentLanguage.Successes.Number++
+				} else {
 
-				switch conversionResult.FailureSeverity {
-				case Warning:
-					language.Warnings.Number++
-				case Failure:
-					language.Failures.Number++
-				default:
-					language.Fatals.Number++
+					// A failure occurred during conversion so we take the failure info
+					// and add it to the histogram
+					currentLanguage._errorHistogram[conversionResult.FailureInfo]++
+
+					switch conversionResult.FailureSeverity {
+					case Warning:
+						currentLanguage.Warnings.Number++
+					case Failure:
+						currentLanguage.Failures.Number++
+					default:
+						currentLanguage.Fatals.Number++
+					}
 				}
 			}
 		}
@@ -244,25 +239,27 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the overall statistic
-	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		providerStatistic.Examples++
-		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			providerStatistic.TotalConversions++
-			if conversionResult.FailureSeverity == Success {
-				providerStatistic.Successes.Number++
-			} else {
+	for _, page := range ce.Tracker.EncounteredPages {
+		for _, example := range page.Examples {
+			providerStatistic.Examples++
+			for _, conversionResult := range example.ConversionResults {
+				providerStatistic.TotalConversions++
+				if conversionResult.FailureSeverity == Success {
+					providerStatistic.Successes.Number++
+				} else {
 
-				// A failure occurred during conversion so we take the failure info
-				// and add it to the histogram
-				providerStatistic._errorHistogram[conversionResult.FailureInfo]++
+					// A failure occurred during conversion so we take the failure info
+					// and add it to the histogram
+					providerStatistic._errorHistogram[conversionResult.FailureInfo]++
 
-				switch conversionResult.FailureSeverity {
-				case Warning:
-					providerStatistic.Warnings.Number++
-				case Failure:
-					providerStatistic.Failures.Number++
-				default:
-					providerStatistic.Fatals.Number++
+					switch conversionResult.FailureSeverity {
+					case Warning:
+						providerStatistic.Warnings.Number++
+					case Failure:
+						providerStatistic.Failures.Number++
+					default:
+						providerStatistic.Fatals.Number++
+					}
 				}
 			}
 		}
@@ -320,27 +317,31 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
-	for _, exampleInMap := range ce.Tracker.EncounteredExamples {
-		providerStatistic.Examples++
-		for _, conversionResult := range exampleInMap.LanguagesConvertedTo {
-			providerStatistic.TotalConversions++
-			var language *LanguageStatistic
-			if val, ok := allLanguageStatistics[conversionResult.TargetLanguage]; ok {
+	for _, page := range ce.Tracker.EncounteredPages {
+		for _, example := range page.Examples {
+			providerStatistic.Examples++
+			for languageName, conversionResult := range example.ConversionResults {
+				providerStatistic.TotalConversions++
 
-				// The main map already contains the language entry
-				language = val
-			} else {
+				// Obtaining the current language we will be creating statistics for
+				var currentLanguage *LanguageStatistic
+				if val, ok := allLanguageStatistics[languageName]; ok {
 
-				// The main map doesn't yet contain this language, and it needs to be added
-				allLanguageStatistics[conversionResult.TargetLanguage] = &LanguageStatistic{0, 0}
-				language = allLanguageStatistics[conversionResult.TargetLanguage]
-			}
+					// Current language already exists in main map
+					currentLanguage = val
+				} else {
 
-			// The language's entry in the summarized results is updated and any
-			language.Total++
-			if conversionResult.FailureSeverity == Success {
-				providerStatistic.Successes++
-				language.Successes++
+					// The main map doesn't yet contain this language, and it needs to be added
+					allLanguageStatistics[languageName] = &LanguageStatistic{0, 0}
+					currentLanguage = allLanguageStatistics[languageName]
+				}
+
+				// The language's entry in the summarized results is updated and any
+				currentLanguage.Total++
+				if conversionResult.FailureSeverity == Success {
+					providerStatistic.Successes++
+					currentLanguage.Successes++
+				}
 			}
 		}
 	}
