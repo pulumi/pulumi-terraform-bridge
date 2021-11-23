@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file implements a simple system for testing the HCL converter.
+// This file implements a simple system for locally testing and debugging the
+// HCL converter without the use of GitHub Actions.
 package tfgen
 
 import (
@@ -23,31 +24,76 @@ import (
 )
 
 func Test_HclConversion(t *testing.T) {
+
+	//============================= HCL code to be given to the converter =============================//
+	hcl := `
+	resource "aws_iam_role" "iam_for_lambda" {
+		name = "iam_for_lambda"
+	  
+		assume_role_policy = <<EOF
+	  {
+		"Version": "2012-10-17",
+		"Statement": [
+		  {
+			"Action": "sts:AssumeRole",
+			"Principal": {
+			  "Service": "lambda.amazonaws.com"
+			},
+			"Effect": "Allow",
+			"Sid": ""
+		  }
+		]
+	  }
+	  EOF
+	  }
+	  
+	  resource "aws_lambda_function" "test_lambda" {
+		filename      = "lambda_function_payload.zip"
+		function_name = "lambda_function_name"
+		role          = aws_iam_role.iam_for_lambda.arn
+		handler       = "index.test"
+	  
+		# The filebase64sha256() function is available in Terraform 0.11.12 and later
+		# For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
+		# source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
+		source_code_hash = filebase64sha256("lambda_function_payload.zip")
+	  
+		runtime = "nodejs12.x"
+	  
+		environment {
+		  variables = {
+			foo = "bar"
+		  }
+		}
+	  }
+	`
+	//=================================================================================================//
+
+	// [go, nodejs, python, dotnet, schema]
+	languageName := "go"
+
+	// Creating the Code Generator which will translate our HCL program
 	g, err := NewGenerator(GeneratorOptions{
-		Version:         "version",
-		Language:        Language("go"),
-		Debug:           false,
-		SkipDocs:        false,
-		SkipExamples:    false,
-		CoverageTracker: newCoverageTracker("Provider", "Version"),
+		Version:      "version",
+		Language:     Language(languageName),
+		Debug:        false,
+		SkipDocs:     false,
+		SkipExamples: false,
 	})
 	assert.NoError(t, err, "Failed to create generator")
 
-	// HCL code to be given to the converter
-	hcl := `
-	resource "aws_pinpoint_apns_voip_channel" "apns_voip" {
-		certificate = file("./certificate.pem")
-	}`
+	// Attempting to convert our HCL code
+	codeBlock, stderr, err := g.convertHCL(hcl, "EXAMPLE_NAME")
 
-	name := "EXAMPLE_NAME"
-
-	g.coverageTracker.foundExample(name, hcl)
-	codeBlock, stderr, err := g.convertHCL(hcl, name)
-
+	// Checking for error
 	if err != nil {
-		fmt.Println("Test failed: ", err.Error())
+		fmt.Println(err.Error())
+		fmt.Println(stderr)
 	}
+
+	// Printing translated code in the case that it was successfully converted
 	fmt.Println(codeBlock)
-	fmt.Println(stderr)
-	assert.NoError(t, err, "Failed to convert")
+
+	// Throwing a panic so that we see the translated code
+	panic("")
 }
