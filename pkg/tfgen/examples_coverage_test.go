@@ -18,8 +18,11 @@ package tfgen
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,6 +82,9 @@ func Test_HclConversion(t *testing.T) {
 		Debug:        false,
 		SkipDocs:     false,
 		SkipExamples: false,
+		Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+			Color: colors.Auto,
+		}),
 	})
 	assert.NoError(t, err, "Failed to create generator")
 
