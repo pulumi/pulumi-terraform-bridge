@@ -678,7 +678,8 @@ func getFooterLinks(markdown string) map[string]string {
 func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	topLevelSchema, err := parseTopLevelSchema(parseNode(strings.Join(subsection, "\n")), nil)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error: Failure in parsing resource name: %s, subsection: %s",
+			p.rawname, subsection[0]))
 	}
 	if topLevelSchema == nil {
 		panic("Failed to parse top-level Schema section")
