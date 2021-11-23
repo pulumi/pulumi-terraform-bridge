@@ -25,54 +25,75 @@ import (
 
 func Test_HclConversion(t *testing.T) {
 
-	// Test is ignored by default so as to not interrupt GitHub Actions.
-	// Set as false in order to allow the test to fail and display conversion info.
-	IGNORE_TEST := true
-	if IGNORE_TEST {
-		return
-	}
-
 	//============================= HCL code to be given to the converter =============================//
 	hcl := `
-	resource "aws_iam_role" "iam_for_lambda" {
-		name = "iam_for_lambda"
-	  
-		assume_role_policy = <<EOF
-	  {
-		"Version": "2012-10-17",
-		"Statement": [
-		  {
-			"Action": "sts:AssumeRole",
-			"Principal": {
-			  "Service": "lambda.amazonaws.com"
-			},
-			"Effect": "Allow",
-			"Sid": ""
-		  }
-		]
+	data "azurerm_client_config" "current" {}
+
+	resource "azurerm_resource_group" "example" {
+	  name     = "example-resources"
+	  location = "West Europe"
+	}
+	
+	resource "azurerm_key_vault" "example" {
+	  name                = "examplekv"
+	  location            = azurerm_resource_group.example.location
+	  resource_group_name = azurerm_resource_group.example.name
+	  tenant_id           = data.azurerm_client_config.current.tenant_id
+	  sku_name            = "standard"
+	
+	  purge_protection_enabled = true
+	}
+	
+	resource "azurerm_key_vault_access_policy" "storage" {
+	  key_vault_id = azurerm_key_vault.example.id
+	  tenant_id    = data.azurerm_client_config.current.tenant_id
+	  object_id    = azurerm_storage_account.example.identity.0.principal_id
+	
+	  key_permissions    = ["get", "create", "list", "restore", "recover", "unwrapkey", "wrapkey", "purge", "encrypt", "decrypt", "sign", "verify"]
+	  secret_permissions = ["get"]
+	}
+	
+	resource "azurerm_key_vault_access_policy" "client" {
+	  key_vault_id = azurerm_key_vault.example.id
+	  tenant_id    = data.azurerm_client_config.current.tenant_id
+	  object_id    = data.azurerm_client_config.current.object_id
+	
+	  key_permissions    = ["get", "create", "delete", "list", "restore", "recover", "unwrapkey", "wrapkey", "purge", "encrypt", "decrypt", "sign", "verify"]
+	  secret_permissions = ["get"]
+	}
+	
+	
+	resource "azurerm_key_vault_key" "example" {
+	  name         = "tfex-key"
+	  key_vault_id = azurerm_key_vault.example.id
+	  key_type     = "RSA"
+	  key_size     = 2048
+	  key_opts     = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
+	
+	  depends_on = [
+		azurerm_key_vault_access_policy.client,
+		azurerm_key_vault_access_policy.storage,
+	  ]
+	}
+	
+	
+	resource "azurerm_storage_account" "example" {
+	  name                     = "examplestor"
+	  resource_group_name      = azurerm_resource_group.example.name
+	  location                 = azurerm_resource_group.example.location
+	  account_tier             = "Standard"
+	  account_replication_type = "GRS"
+	
+	  identity {
+		type = "SystemAssigned"
 	  }
-	  EOF
-	  }
-	  
-	  resource "aws_lambda_function" "test_lambda" {
-		filename      = "lambda_function_payload.zip"
-		function_name = "lambda_function_name"
-		role          = aws_iam_role.iam_for_lambda.arn
-		handler       = "index.test"
-	  
-		# The filebase64sha256() function is available in Terraform 0.11.12 and later
-		# For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
-		# source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
-		source_code_hash = filebase64sha256("lambda_function_payload.zip")
-	  
-		runtime = "nodejs12.x"
-	  
-		environment {
-		  variables = {
-			foo = "bar"
-		  }
-		}
-	  }
+	}
+	
+	resource "azurerm_storage_account_customer_managed_key" "example" {
+	  storage_account_id = azurerm_storage_account.example.id
+	  key_vault_id       = azurerm_key_vault.example.id
+	  key_name           = azurerm_key_vault_key.example.name
+	}
 	`
 	//=================================================================================================//
 
@@ -101,6 +122,5 @@ func Test_HclConversion(t *testing.T) {
 	// Printing translated code in the case that it was successfully converted
 	fmt.Println(codeBlock)
 
-	// Failing the test so that we see the all the printed information
-	panic("")
+	assert.NoError(t, err)
 }
