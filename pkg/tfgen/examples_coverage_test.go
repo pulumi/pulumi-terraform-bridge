@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file implements a simple system for locally testing and debugging the
-// HCL converter without the use of GitHub Actions.
+// This file implements a simple system for locally testing and efficiently
+// debugging the HCL converter without the use of GitHub Actions.
 package tfgen
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_HclConversion(t *testing.T) {
+
+	// Test is ignored by default so as to not interrupt GitHub Actions.
+	// Set as false in order to allow the test to fail and display conversion info.
+	IGNORE_TEST := true
+	if IGNORE_TEST {
+		return
+	}
 
 	//============================= HCL code to be given to the converter =============================//
 	hcl := `
@@ -82,16 +86,13 @@ func Test_HclConversion(t *testing.T) {
 		Debug:        false,
 		SkipDocs:     false,
 		SkipExamples: false,
-		Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-			Color: colors.Auto,
-		}),
 	})
 	assert.NoError(t, err, "Failed to create generator")
 
 	// Attempting to convert our HCL code
 	codeBlock, stderr, err := g.convertHCL(hcl, "EXAMPLE_NAME")
 
-	// Checking for error
+	// Checking for error and printing if it exists
 	if err != nil {
 		fmt.Println(err.Error())
 		fmt.Println(stderr)
@@ -100,6 +101,6 @@ func Test_HclConversion(t *testing.T) {
 	// Printing translated code in the case that it was successfully converted
 	fmt.Println(codeBlock)
 
-	// Throwing a panic so that we see the translated code
+	// Failing the test so that we see the all the printed information
 	panic("")
 }
