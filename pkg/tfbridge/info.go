@@ -16,6 +16,8 @@ package tfbridge
 
 import (
 	"fmt"
+	"unicode"
+
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -736,3 +738,46 @@ func GetModuleMajorVersion(version string) string {
 	}
 	return majorVersion
 }
+
+// MakeMember manufactures a type token for the package and the given module and type.
+func MakeMember(pkg string, mod string, mem string) tokens.ModuleMember {
+	return tokens.ModuleMember(pkg + ":" + mod + ":" + mem)
+}
+
+// MakeType manufactures a type token for the package and the given module and type.
+func MakeType(pkg string, mod string, typ string) tokens.Type {
+	return tokens.Type(MakeMember(pkg, mod, typ))
+}
+
+// MakeDataSource manufactures a standard Pulumi function token given a package, module, and data source name.  It
+// automatically uses the main package and names the file by simply lower casing the data source's
+// first character.
+func MakeDataSource(pkg string, mod string, res string) tokens.ModuleMember {
+	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+	return MakeMember(pkg, mod+"/"+fn, res)
+}
+
+// MakeResource manufactures a standard resource token given a module and resource name.  It
+// automatically uses the main package and names the file by simply lower casing the resource's
+// first character.
+func MakeResource(pkg string, mod string, res string) tokens.Type {
+	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+	return MakeType(pkg, mod+"/"+fn, res)
+}
+
+// BoolRef returns a reference to the bool argument.
+func BoolRef(b bool) *bool {
+	return &b
+}
+
+// StringValue gets a string value from a property map if present, else ""
+func StringValue(vars resource.PropertyMap, prop resource.PropertyKey) string {
+	val, ok := vars[prop]
+	if ok && val.IsString() {
+		return val.StringValue()
+	}
+	return ""
+}
+
+// ManagedByPulumi is a default used for some managed resources, in the absence of something more meaningful.
+var ManagedByPulumi = &DefaultInfo{Value: "Managed by Pulumi"}
