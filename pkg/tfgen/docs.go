@@ -598,9 +598,9 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		return nil
 	case "Example Usage":
 		sectionKind = sectionExampleUsage
-	case "Arguments Reference", "Argument Reference", "Nested Blocks", "Nested blocks":
+	case "Arguments Reference", "Argument Reference", "Argument reference", "Nested Blocks", "Nested blocks":
 		sectionKind = sectionArgsReference
-	case "Attributes Reference", "Attribute Reference":
+	case "Attributes Reference", "Attribute Reference", "Attribute reference":
 		sectionKind = sectionAttributesReference
 	case "Import", "Imports":
 		sectionKind = sectionImports
