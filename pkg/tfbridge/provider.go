@@ -344,9 +344,10 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 
 func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
 	tfVars := make(resource.PropertyMap)
+	ignoredKeys := map[string]bool{"version": true, "pluginDownloadURL": true}
 	for k, v := range vars {
 		// we need to skip the version as adding that will cause the provider validation to fail
-		if string(k) == "version" {
+		if ignoredKeys[string(k)] {
 			continue
 		}
 		if _, has := p.info.ExtraConfig[string(k)]; !has {
