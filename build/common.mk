@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 # common.mk provides most of the scalfholding for our build system. It
 # provides default targets for each project we want to build.
@@ -147,8 +147,8 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	echo "GO111MODULE=on go mod tidy"; GO111MODULE=on go mod tidy;
-	echo "GO111MODULE=on go mod download"; GO111MODULE=on go mod download;
+	@echo "GO111MODULE=on go mod tidy"; GO111MODULE=on go mod tidy;
+	@echo "GO111MODULE=on go mod download"; GO111MODULE=on go mod download;
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::
