@@ -1,0 +1,42 @@
+name: Update Version of Pulumi
+"on":
+  repository_dispatch:
+    types:
+      - update-pulumi-version
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  PULUMI_VERSION: ${{ github.event.client_payload.ref }}
+
+jobs:
+  build:
+    name: Update Pulumi Version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [ 1.16.x ]
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Update Pulumi version
+        run: |
+          go mod edit -require github.com/pulumi/pulumi/sdk/v3@v${{ env.PULUMI_VERSION }}
+          go mod edit -require github.com/pulumi/pulumi/pkg/v3@v${{ env.PULUMI_VERSION }}
+          go mod tidy
+      - name: git status
+        run: git status && git diff
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v3
+        with:
+          path: registry
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          committer: Pulumi Bot <bot@pulumi.com>
+          author: Pulumi Bot <bot@pulumi.com>
+          commit-message: "Update version of pulumi sdk and pkg dependencies"
+          title: "Upgrade version of pulumi/pulumi dependencies to v${{ env.PULUMI_VERSION }}"
+          branch: "pulumi-sdk/${{ github.run_id }}-${{ github.run_number }}"
