@@ -322,6 +322,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		spec.Language["go"] = rawMessage(map[string]interface{}{
 			"importBasePath":                 goi.ImportBasePath,
 			"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
+			"generateExtraInputTypes":        true,
 		})
 	}
 
