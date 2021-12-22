@@ -33,8 +33,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v3 v3.19.0
-	github.com/pulumi/pulumi/sdk/v3 v3.19.0
+	github.com/pulumi/pulumi/pkg/v3 v3.20.0
+	github.com/pulumi/pulumi/sdk/v3 v3.20.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.2.2
@@ -49,4 +49,4 @@ require (
 	google.golang.org/grpc v1.37.0
 )
 
-replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20211019193655-b23eb83463bb
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20211019194827-62530c6537a4
