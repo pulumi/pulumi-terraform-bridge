@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/go-getter v1.5.3
-	github.com/hashicorp/go-hclog v0.15.0
+	github.com/hashicorp/go-hclog v0.16.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.1
 	github.com/hashicorp/go-uuid v1.0.2
@@ -22,13 +22,13 @@ require (
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.8.0
-	github.com/hashicorp/terraform-svchost v0.0.0-20191119180714-d2e4933b9136
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
+	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734
 	github.com/json-iterator/go v1.1.9
 	github.com/mitchellh/cli v1.1.2
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/go-testing-interface v1.0.4
+	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.2
@@ -42,11 +42,11 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
-	github.com/zclconf/go-cty v1.8.4
-	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
+	github.com/zclconf/go-cty v1.9.1
+	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 	golang.org/x/mod v0.4.2
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
 	google.golang.org/grpc v1.37.0
 )
 
-replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20211019194827-62530c6537a4
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20211230170131-3a7c83bfab87
