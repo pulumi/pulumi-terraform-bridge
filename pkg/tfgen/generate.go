@@ -910,6 +910,9 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 
 	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
 
+	// let's keep a list of TF mapping errors that we can present to the user
+	var resourceMappingErrors error
+
 	// For each resource, create its own dedicated type and module export.
 	var reserr error
 	seen := make(map[string]bool)
@@ -917,7 +920,8 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 		info := g.info.Resources[r]
 		if info == nil {
 			if failBuildOnProviderMapError {
-				g.error("resource %s not found in provider map; exiting", r)
+				resourceMappingErrors = multierror.Append(resourceMappingErrors,
+					fmt.Errorf("TF resource %q not mapped to the Pulumi provider", r))
 			} else {
 				g.warn("resource %s not found in provider map; skipping", r)
 			}
@@ -946,9 +950,18 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			g.warn("resource %s (%s) wasn't found in the Terraform module; possible name mismatch?",
-				name, g.info.Resources[name].Tok)
+			if failBuildOnProviderMapError {
+				resourceMappingErrors = multierror.Append(resourceMappingErrors,
+					fmt.Errorf("mapped resource %q not found in the upstream TF provider", name))
+			} else {
+				g.warn("resource %s (%s) wasn't found in the Terraform module; possible name mismatch?",
+					name, g.info.Resources[name].Tok)
+			}
 		}
+	}
+	// let's check the unmapped Resource Errors
+	if resourceMappingErrors != nil {
+		return nil, resourceMappingErrors
 	}
 
 	return modules, nil
@@ -1062,6 +1075,9 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
 
+	// let's keep a list of TF mapping errors that we can present to the user
+	var dataSourceMappingErrors error
+
 	// For each data source, create its own dedicated function and module export.
 	var dserr error
 	seen := make(map[string]bool)
@@ -1069,7 +1085,8 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
 			if failBuildOnProviderMapError {
-				g.error("data source %s not found in provider map; exiting", ds)
+				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
+					fmt.Errorf("TF data source %q not mapped to the Pulumi provider", ds))
 			} else {
 				g.warn("data source %s not found in provider map; skipping", ds)
 			}
@@ -1098,9 +1115,19 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			g.warn("data source %s (%s) wasn't found in the Terraform module; possible name mismatch?",
-				name, g.info.DataSources[name].Tok)
+			if failBuildOnProviderMapError {
+				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
+					fmt.Errorf("mapped data soource %q not found in the upstream TF provider", name))
+			} else {
+				g.warn("data source %s (%s) wasn't found in the Terraform module; possible name mismatch?",
+					name, g.info.DataSources[name].Tok)
+			}
 		}
+	}
+
+	// let's check the unmapped DataSource Errors
+	if dataSourceMappingErrors != nil {
+		return nil, dataSourceMappingErrors
 	}
 
 	return modules, nil
