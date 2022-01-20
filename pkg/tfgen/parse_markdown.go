@@ -282,9 +282,7 @@ func parseParameterSection(node *bf.Node, consumeNode func(node *bf.Node)) (para
 			if err != nil {
 				return -1, nil, nil, err
 			}
-			if ps == nil {
-				return -1, nil, nil, fmt.Errorf("Expected a parameter list, got %s", prettyPrint(node.Next))
-			}
+
 			defer consumeNode(node)
 			return *flags, ps, node.Next.Next, nil
 		}
@@ -318,7 +316,7 @@ func paramFlagsPtr(flags paramFlags) *paramFlags {
 func parseParameterList(node *bf.Node, consumeNode func(node *bf.Node)) (*[]parameter, error) {
 	var out []parameter
 	if node == nil || node.Type != bf.List {
-		return nil, nil
+		return &out, nil
 	}
 	item := node.FirstChild
 	for item != nil {
