@@ -454,6 +454,14 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.outprops {
+		// The property will be dropped from the schema
+		if prop.info != nil && prop.info.Omit {
+			if prop.schema.Required() {
+				contract.Failf("required property %q may not be omitted from binding generation", prop.name)
+			} else {
+				continue
+			}
+		}
 		spec.Properties[prop.name] = g.genProperty(mod, prop, true)
 
 		if !prop.optional() {
@@ -463,6 +471,13 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 
 	spec.InputProperties = map[string]pschema.PropertySpec{}
 	for _, prop := range res.inprops {
+		if prop.info != nil && prop.info.Omit {
+			if prop.schema.Required() {
+				contract.Failf("required input property %q may not be omitted from binding generation", prop.name)
+			} else {
+				continue
+			}
+		}
 		spec.InputProperties[prop.name] = g.genProperty(mod, prop, true)
 
 		if !prop.optional() {
@@ -548,6 +563,13 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range typ.properties {
+		if prop.info != nil && prop.info.Omit {
+			if prop.schema.Required() {
+				contract.Failf("required object property %q may not be omitted from binding generation", prop.name)
+			} else {
+				continue
+			}
+		}
 		spec.Properties[prop.name] = g.genProperty(mod, prop, typInfo.pyMapCase)
 
 		if !prop.optional() {
