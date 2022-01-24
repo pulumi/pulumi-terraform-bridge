@@ -90,6 +90,6 @@ These may specify additional types, functions, or entire modules in this directo
 package.  This can be useful for helper modules and functions, in addition to gradual typing, such as using strongly
 typed enums in places where the underlying provider may only have weakly typed strings.
 
-To do this, first add the files in the appropriate package sub-directory, and then add the requisite directives to the
-provider file.  See the [AWS overlays directory](https://github.com/pulumi/pulumi-aws/tree/master/overlays/nodejs) for
+To do this, first add the files in the appropriate package sub-directory of the sdk, and then add the requisite directives to the
+provider file.  See the [AWS overlays section in resources.go](https://github.com/pulumi/pulumi-aws/blob/master/provider/resources.go#L4486) for
 an example of this in action.
