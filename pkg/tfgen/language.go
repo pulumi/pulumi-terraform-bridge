@@ -42,6 +42,14 @@ func initializeLanguageBackend(lang Language) (languageBackend, error) {
 		return &csharpLanguageBackend{}, nil
 	case Schema:
 		return &schemaLanguageBackend{}, nil
+	default:
+		maybeBackend, err := parseExternalLanguage(lang)
+		if err != nil {
+			return nil, err
+		}
+		if maybeBackend == nil {
+			return nil, fmt.Errorf("%v does not support SDK generation", lang)
+		}
+		return maybeBackend, nil
 	}
-	return nil, fmt.Errorf("%v does not support SDK generation", lang)
 }
