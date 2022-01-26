@@ -28,11 +28,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -56,7 +52,7 @@ const (
 type Generator struct {
 	pkg              string                // the Pulum package name (e.g. `gcp`)
 	version          string                // the package version.
-	language         Language              // the language runtime to generate.
+	language         languageBackend       // the language runtime to generate.
 	info             tfbridge.ProviderInfo // the provider info for customizing code generation
 	root             afero.Fs              // the output virtual filesystem.
 	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
@@ -81,86 +77,19 @@ const (
 	Schema Language = "schema"
 )
 
-func (l Language) shouldConvertExamples() bool {
-	switch l {
-	case Golang, NodeJS, Python, CSharp, Schema:
-		return true
-	}
-	return false
-}
-
-func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs) (map[string][]byte, error) {
-	var extraFiles map[string][]byte
-	var err error
-
-	switch l {
-	case Golang:
-		return gogen.GeneratePackage(tfgen, pkg)
-	case NodeJS:
-		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", root)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
-		// store tests here. We don't want to include them in the overlays because we don't want it
-		// exported with the module, but we don't want them deleted in a cleanup of the directory.
-		exclusions := codegen.NewStringSet("tests")
-
-		// We don't need to add overlays to the exclusion list because they have already been read
-		// into memory so deleting the files is not a problem.
-		err = cleanDir(root, "", exclusions)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles)
-	case Python:
-		if psi := info.Python; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// python's outdir path follows the pattern [provider]/sdk/python/pulumi_[pkg name]
-		pyOutDir := fmt.Sprintf("pulumi_%s", pkg.Name)
-		err = cleanDir(root, pyOutDir, nil)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
-	case CSharp:
-		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
-			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", root)
-			if err != nil {
-				return nil, err
-			}
-		}
-		err = cleanDir(root, "", nil)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
-	default:
-		return nil, errors.Errorf("%v does not support SDK generation", l)
-	}
-}
-
 var AllLanguages = []Language{Golang, NodeJS, Python, CSharp}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
-	name     string        // the package name.
-	version  string        // the package version.
-	language Language      // the package's language.
-	root     afero.Fs      // the root of the package.
-	modules  moduleMap     // the modules inside of this package.
-	provider *resourceType // the provider type for this package.
+	name     string          // the package name.
+	version  string          // the package version.
+	language languageBackend // the package's language.
+	root     afero.Fs        // the root of the package.
+	modules  moduleMap       // the modules inside of this package.
+	provider *resourceType   // the provider type for this package.
 }
 
-func newPkg(name, version string, language Language, fs afero.Fs) *pkg {
+func newPkg(name, version string, language languageBackend, fs afero.Fs) *pkg {
 	return &pkg{
 		name:     name,
 		version:  version,
@@ -622,12 +551,9 @@ type GeneratorOptions struct {
 func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	pkg, version, lang, info, root := opts.Package, opts.Version, opts.Language, opts.ProviderInfo, opts.Root
 
-	// Ensure the language is valid.
-	switch lang {
-	case Golang, NodeJS, Python, CSharp, Schema:
-		// OK
-	default:
-		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
+	languageBackend, err := initializeLanguageBackend(lang)
+	if err != nil {
+		return nil, err
 	}
 
 	// If root is nil, default to sdk/<language>/ in the pwd.
@@ -680,7 +606,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	return &Generator{
 		pkg:          pkg,
 		version:      version,
-		language:     lang,
+		language:     languageBackend,
 		info:         info,
 		root:         root,
 		providerShim: providerShim,
@@ -745,26 +671,14 @@ func (g *Generator) Generate() error {
 		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
 	}
 
+	// Pluck out the overlay info from the right structure.  This is language dependent.
+	overlay := g.language.overlayInfo(&g.info)
+
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
-	var files map[string][]byte
-	if g.language == Schema {
-		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
-		pulumiPackageSpec.Version = ""
-
-		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
-		if err != nil {
-			return errors.Wrapf(err, "failed to marshal schema")
-		}
-		files = map[string][]byte{"schema.json": bytes}
-	} else {
-		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
-		if err != nil {
-			return errors.Wrapf(err, "failed to import Pulumi schema")
-		}
-		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
-			return errors.Wrapf(err, "failed to generate package")
-		}
+	files, err := g.language.emitFiles(&pulumiPackageSpec, overlay, g.root)
+	if err != nil {
+		return err
 	}
 
 	// Write the result to disk. Do not overwrite the root-level README.md if any exists.
@@ -1217,29 +1131,7 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
 
 	// Pluck out the overlay info from the right structure.  This is language dependent.
-	var overlay *tfbridge.OverlayInfo
-	switch g.language {
-	case NodeJS:
-		if jsinfo := g.info.JavaScript; jsinfo != nil {
-			overlay = jsinfo.Overlay
-		}
-	case Python:
-		if pyinfo := g.info.Python; pyinfo != nil {
-			overlay = pyinfo.Overlay
-		}
-	case Golang:
-		if goinfo := g.info.Golang; goinfo != nil {
-			overlay = goinfo.Overlay
-		}
-	case CSharp:
-		if csharpinfo := g.info.CSharp; csharpinfo != nil {
-			overlay = csharpinfo.Overlay
-		}
-	case Schema:
-		// N/A
-	default:
-		contract.Failf("unrecognized language: %s", g.language)
-	}
+	overlay := g.language.overlayInfo(&g.info)
 
 	if overlay != nil {
 		// Add the overlays that go in the root ("index") for the enclosing package.

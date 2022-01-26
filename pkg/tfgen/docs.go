@@ -1116,8 +1116,12 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		}
 
 		files, diags, err := convert.Convert(convert.Options{
-			Loader:                   newLoader(g.pluginHost),
-			Root:                     input,
+			Loader: newLoader(g.pluginHost),
+			Root:   input,
+			// TODO teach convert about pluggable
+			// languages so programgen (expressions) for
+			// examples and docs can be generated without
+			// linking in a specific language statically.
 			TargetLanguage:           languageName,
 			AllowMissingProperties:   true,
 			AllowMissingVariables:    true,
@@ -1177,7 +1181,7 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		return nil
 	}
 
-	switch g.language {
+	switch Language(g.language.name()) {
 	case NodeJS:
 		err = convertHCL("typescript")
 	case Python:
@@ -1200,6 +1204,8 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			// At least one language out of the given set has been generated, which is considered a success
 			err = nil
 		}
+	default:
+		err = fmt.Errorf("HCL conversion not supported yet for %s", g.language.name())
 	}
 
 	if err != nil {
@@ -1286,6 +1292,7 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 
 const elidedDocComment = "<elided>"
 
+// TODO this does not generalize to pluggable languages.
 func fixupPropertyReferences(language Language, pkg string, info tfbridge.ProviderInfo, text string) string {
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
@@ -1395,7 +1402,7 @@ func cleanupText(g *Generator, info tfbridge.ResourceOrDataSourceInfo, text stri
 		})
 
 		// Fixup resource and property name references
-		text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
+		text = fixupPropertyReferences(Language(g.language.name()), g.pkg, g.info, text)
 
 		return text, false
 	}
