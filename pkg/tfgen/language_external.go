@@ -71,10 +71,10 @@ func (b *externalLanguageBackend) exec(operation string, input json.RawMessage) 
 	}
 	cmd := exec.Command(exe, "-operation", operation)
 	cmd.Stdin = bytes.NewBuffer(input)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, b.errorf("Failed to execute `%s -operation %s`: %w",
-			b.executableName, operation, err)
+		return nil, b.errorf("Failed to execute `%s -operation %s`: %w\n%s",
+			exe, operation, err, out)
 	}
 	return out, err
 }
