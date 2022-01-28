@@ -908,7 +908,9 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
+	failBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_MISSING_MAPPING_ERROR")) ||
+		isTruthy(os.Getenv("PULUMI_PROVIDER_MAP_ERROR"))
+	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var resourceMappingErrors error
@@ -919,11 +921,16 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	for _, r := range stableResources(resources) {
 		info := g.info.Resources[r]
 		if info == nil {
-			if failBuildOnProviderMapError {
+			if ignoreMappingError(g.info.IgnoreMappings, r) {
+				g.debug("TF resource %q not found in provider map", r)
+				continue
+			}
+
+			if failBuildOnMissingMapError && !ignoreMappingError(g.info.IgnoreMappings, r) {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("TF resource %q not mapped to the Pulumi provider", r))
 			} else {
-				g.warn("resource %s not found in provider map; skipping", r)
+				g.warn("TF resource %q not found in provider map", r)
 			}
 			continue
 		}
@@ -950,12 +957,15 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			if failBuildOnProviderMapError {
+			if failBuildOnExtraMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
-					fmt.Errorf("mapped resource %q not found in the upstream TF provider", name))
+					fmt.Errorf("Pulumi token %q is mapped to TF provider resource %q, but no such "+
+						"resource found. The mapping will be ignored in the generated provider",
+						g.info.Resources[name].Tok, name))
 			} else {
-				g.warn("resource %s (%s) wasn't found in the Terraform module; possible name mismatch?",
-					name, g.info.Resources[name].Tok)
+				g.warn("Pulumi token %q is mapped to TF provider resource %q, but no such "+
+					"resource found. The mapping will be ignored in the generated provider",
+					g.info.Resources[name].Tok, name)
 			}
 		}
 	}
@@ -1073,7 +1083,9 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	_, failBuildOnProviderMapError := os.LookupEnv("PULUMI_PROVIDER_MAP_ERROR")
+	failBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_MISSING_MAPPING_ERROR")) ||
+		isTruthy(os.Getenv("PULUMI_PROVIDER_MAP_ERROR"))
+	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
@@ -1084,11 +1096,16 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	for _, ds := range stableResources(sources) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
-			if failBuildOnProviderMapError {
+			if ignoreMappingError(g.info.IgnoreMappings, ds) {
+				g.debug("TF data source %q not found in provider map", ds)
+				continue
+			}
+
+			if failBuildOnMissingMapError {
 				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
 					fmt.Errorf("TF data source %q not mapped to the Pulumi provider", ds))
 			} else {
-				g.warn("data source %s not found in provider map; skipping", ds)
+				g.warn("TF data source %q not found in provider map", ds)
 			}
 			continue
 		}
@@ -1115,12 +1132,15 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			if failBuildOnProviderMapError {
+			if failBuildOnExtraMapError {
 				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
-					fmt.Errorf("mapped data soource %q not found in the upstream TF provider", name))
+					fmt.Errorf("Pulumi token %q is mapped to TF provider data source %q, but no such "+
+						"data source found. Remove the mapping and try again",
+						g.info.DataSources[name].Tok, name))
 			} else {
-				g.warn("data source %s (%s) wasn't found in the Terraform module; possible name mismatch?",
-					name, g.info.DataSources[name].Tok)
+				g.warn("Pulumi token %q is mapped to TF provider data source %q, but no such "+
+					"data source found. The mapping will be ignored in the generated provider",
+					g.info.DataSources[name].Tok, name)
 			}
 		}
 	}
@@ -1499,4 +1519,17 @@ func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
 	}
 
 	return nil
+}
+
+func isTruthy(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
+}
+
+func ignoreMappingError(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
