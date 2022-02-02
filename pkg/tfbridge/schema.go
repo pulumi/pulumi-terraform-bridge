@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1100,43 +1099,93 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 	}
 }
 
-func addDefaultAnnotations(newInput resource.PropertyValue) {
+func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
+	if dv, _ := tfs.DefaultValue(); dv != nil {
+		return dv
+	}
+	if ps != nil {
+		return ps.Default
+	}
+	return nil
+}
+
+func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyValue) bool {
+	if dv := getDefaultValue(tfs, ps); dv == v.V {
+		return true
+	}
+
 	switch {
-	case newInput.IsArray():
-		newArray := newInput.ArrayValue()
-		for i := range newArray {
-			addDefaultAnnotations(newArray[i])
+	case v.IsBool():
+		return v.BoolValue() == false
+	case v.IsNumber():
+		return v.NumberValue() == 0
+	case v.IsString():
+		return v.StringValue() == ""
+	case v.IsArray():
+		return len(v.ArrayValue()) == 0
+	case v.IsObject():
+		obj := v.ObjectValue()
+		switch len(obj) {
+		case 0:
+			return true
+		case 1:
+			_, ok := obj[defaultsKey]
+			return ok
+		default:
+			return false
 		}
-	case newInput.IsObject():
-		newMap := newInput.ObjectValue()
-		for _, newValue := range newMap {
-			addDefaultAnnotations(newValue)
-		}
-		newMap[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
+	default:
+		return false
 	}
 }
 
-func extractSchemaInputs(state resource.PropertyValue, tfs shim.SchemaMap,
-	ps map[string]*SchemaInfo) (resource.PropertyValue, error) {
-	inputs := make(resource.PropertyMap)
-	for name, value := range state.ObjectValue() {
-		// If this property is not an input, ignore it.
-		_, sch, _ := getInfoFromPulumiName(name, tfs, ps, false)
-		if sch == nil || (!sch.Optional() && !sch.Required()) {
-			continue
-		}
+func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+	rawNames bool) resource.PropertyValue {
 
-		// Otherwise, copy it to the result.
-		copy, err := copystructure.Copy(value)
-		if err != nil {
-			return resource.PropertyValue{}, err
+	switch {
+	case state.IsArray():
+		etfs, eps := elemSchemas(tfs, ps)
+
+		a := state.ArrayValue()
+		v := make([]resource.PropertyValue, len(a))
+		for i := range a {
+			v[i] = extractSchemaInputs(a[i], etfs, eps, rawNames || useRawNames(tfs))
 		}
-		inputs[name] = copy.(resource.PropertyValue)
+		return resource.NewArrayProperty(v)
+	case state.IsObject():
+		var tfflds shim.SchemaMap
+		if tfs != nil {
+			if res, isres := tfs.Elem().(shim.Resource); isres {
+				tfflds = res.Schema()
+			}
+		}
+		var psflds map[string]*SchemaInfo
+		if ps != nil {
+			psflds = ps.Fields
+		}
+		isMap := tfflds == nil
+
+		obj := state.ObjectValue()
+		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
+		for k, e := range obj {
+			_, etfs, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames || useRawNames(tfs))
+			if isInput := isMap || etfs != nil && (etfs.Optional() || etfs.Required()); !isInput {
+				glog.V(9).Infof("skipping '%v' (not an input)", k)
+				continue
+			}
+
+			ev := extractSchemaInputs(e, etfs, eps, rawNames || useRawNames(tfs))
+			if mustSet := isMap || etfs != nil && (etfs.Required() || !isDefaultOrZeroValue(etfs, eps, ev)); !mustSet {
+				glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
+				continue
+			}
+			v[k] = ev
+		}
+		v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
+		return resource.NewObjectProperty(v)
+	default:
+		return state
 	}
-
-	inputsValue := resource.NewObjectProperty(inputs)
-	addDefaultAnnotations(inputsValue)
-	return inputsValue, nil
 }
 
 func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
@@ -1156,11 +1205,7 @@ func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 			resource.NewObjectProperty(outs), sch, pss, false)
 	} else {
 		// Otherwise, take a schema-directed approach that fills out all input-only properties.
-		v, err := extractSchemaInputs(resource.NewObjectProperty(outs), tfs, ps)
-		if err != nil {
-			return nil, err
-		}
-		inputs = v
+		inputs = extractSchemaInputs(resource.NewObjectProperty(outs), sch, pss, false)
 	}
 	return inputs.ObjectValue(), nil
 }
