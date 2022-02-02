@@ -1392,11 +1392,23 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 				},
 			},
 
-			// input_i, inout_j, and inout_k test import scenarios where attributes are set to "".
+			// input_i, inout_j, inout_k, inout_l test import scenarios where attributes are set to "".
 			"input_i": {Type: schemav1.TypeString, Required: true},
 			"inout_j": {Type: schemav1.TypeString, Optional: true, Computed: true},
 			"inout_k": {Type: schemav1.TypeString, Optional: true, Computed: true, Default: "inout_k_default"},
 			"inout_l": {Type: schemav1.TypeBool, Optional: true, Computed: true, Default: true},
+
+			"inout_m": {
+				Type: schemav1.TypeList,
+				Elem: &schemav1.Resource{
+					Schema: map[string]*schemav1.Schema{
+						"field_b": {Type: schemav1.TypeBool, Optional: true, Computed: true, Default: true},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				Computed: true,
+			},
 		},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			return []*schemav1.ResourceData{d}, nil
@@ -1423,6 +1435,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		set(d, "inout_j", "")
 		set(d, "inout_k", "")
 		set(d, "inout_l", false)
+		set(d, "inout_m", []interface{}{map[string]interface{}{
+			"field_b": false,
+		}})
 		return nil
 	}
 	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
@@ -1484,6 +1499,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inoutJ":  "",
 		"inoutK":  "",
 		"inoutL":  false,
+		"inoutM": map[string]interface{}{
+			"fieldB": false,
+		},
 	}), outs)
 
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1496,6 +1514,10 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputI":    "",
 		"inoutK":    "",
 		"inoutL":    false,
+		"inoutM": map[string]interface{}{
+			defaultsKey: []interface{}{},
+			"fieldB":    false,
+		},
 	})
 	assert.Equal(t, expected, ins)
 
@@ -1594,6 +1616,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inoutJ":  "",
 		"inoutK":  "",
 		"inoutL":  false,
+		"inoutM": map[string]interface{}{
+			"fieldB": false,
+		},
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1644,6 +1669,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inoutJ":  "",
 		"inoutK":  "",
 		"inoutL":  false,
+		"inoutM": map[string]interface{}{
+			"fieldB": false,
+		},
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
