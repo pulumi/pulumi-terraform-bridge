@@ -1110,8 +1110,8 @@ func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
 }
 
 func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyValue) bool {
-	if dv := getDefaultValue(tfs, ps); dv == v.V {
-		return true
+	if dv := getDefaultValue(tfs, ps); dv != nil {
+		return dv == v.V
 	}
 
 	switch {

@@ -570,7 +570,6 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 	ins, err := plugin.UnmarshalProperties(readResp.GetInputs(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
 	// Check all the expected inputs were read
-	assert.Equal(t, resource.NewBoolProperty(false), ins["boolPropertyValue"])
 	assert.Equal(t, resource.NewNumberProperty(42), ins["numberPropertyValue"])
 	assert.Equal(t, resource.NewNumberProperty(99.6767932), ins["floatPropertyValue"])
 	assert.Equal(t, resource.NewStringProperty("ognirts"), ins["stringPropertyValue"])
