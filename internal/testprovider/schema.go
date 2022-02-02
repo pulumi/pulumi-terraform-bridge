@@ -45,6 +45,7 @@ func ProviderV1() *schemav1.Provider {
 		ResourcesMap: map[string]*schemav1.Resource{
 			"example_resource": {
 				Schema: map[string]*schemav1.Schema{
+					"opt_bool":              {Type: schemav1.TypeBool, Optional: true, Default: true},
 					"nil_property_value":    {Type: schemav1.TypeMap, Optional: true},
 					"bool_property_value":   {Type: schemav1.TypeBool, Optional: true},
 					"number_property_value": {Type: schemav1.TypeInt, Optional: true},
@@ -65,6 +66,7 @@ func ProviderV1() *schemav1.Provider {
 						Elem: &schemav1.Resource{
 							Schema: map[string]*schemav1.Schema{
 								"kind":          {Type: schemav1.TypeString, Optional: true},
+								"opt_bool":      {Type: schemav1.TypeBool, Optional: true, Default: true},
 								"configuration": {Type: schemav1.TypeMap, Required: true},
 							},
 						},
@@ -106,6 +108,7 @@ func ProviderV1() *schemav1.Provider {
 					return nil
 				},
 				Read: func(data *schemav1.ResourceData, p interface{}) error {
+					MustSetIfUnset(data, "opt_bool", false)
 					MustSetIfUnset(data, "bool_property_value", false)
 					MustSetIfUnset(data, "number_property_value", 42)
 					MustSetIfUnset(data, "float_property_value", 99.6767932)

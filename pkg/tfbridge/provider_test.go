@@ -570,6 +570,8 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 	ins, err := plugin.UnmarshalProperties(readResp.GetInputs(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
 	// Check all the expected inputs were read
+	assert.Equal(t, resource.NewBoolProperty(false), ins["optBool"]) // This was "false" from Read but it's default is true so we need to keep it
+	assert.NotContains(t, ins, "boolPropertyValue")                  // This was "false" from Read, but it's default is false
 	assert.Equal(t, resource.NewNumberProperty(42), ins["numberPropertyValue"])
 	assert.Equal(t, resource.NewNumberProperty(99.6767932), ins["floatPropertyValue"])
 	assert.Equal(t, resource.NewStringProperty("ognirts"), ins["stringPropertyValue"])
@@ -588,8 +590,9 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 			"configurationValue": resource.NewStringProperty("true"),
 		}),
 		// Uncomment the line below to make the test pass:
-		// "kind": resource.NewStringProperty(""),
-		// But this is not really expected! The Read function for ExampleResource in internal/testprovider/schema.go does not set "kind"!
+		//"optBool": resource.NewBoolProperty(false),
+		// But this is not really expected! The Read function for ExampleResource in internal/testprovider/schema.go does not set "optBool" and it's default value is true!
+		// This should either be missing (like kind is missing) or be true
 	}), ins["nestedResources"])
 	assert.Equal(t, resource.NewArrayProperty(
 		[]resource.PropertyValue{
