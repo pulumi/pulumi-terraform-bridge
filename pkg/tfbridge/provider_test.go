@@ -554,3 +554,81 @@ func TestProviderPreConfigureCallbackV2(t *testing.T) {
 	}
 	testProviderPreConfigureCallback(t, provider)
 }
+
+func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
+	urn := resource.NewURN("stack", "project", "", typeName, "name")
+	readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         string("resource-id"),
+		Urn:        string(urn),
+		Properties: nil,
+	})
+	assert.NoError(t, err)
+
+	assert.NotNil(t, readResp.GetInputs())
+	assert.NotNil(t, readResp.GetProperties())
+
+	ins, err := plugin.UnmarshalProperties(readResp.GetInputs(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	// Check all the expected inputs were read
+	assert.Equal(t, resource.NewBoolProperty(false), ins["boolPropertyValue"])
+	assert.Equal(t, resource.NewNumberProperty(42), ins["numberPropertyValue"])
+	assert.Equal(t, resource.NewNumberProperty(99.6767932), ins["floatPropertyValue"])
+	assert.Equal(t, resource.NewStringProperty("ognirts"), ins["stringPropertyValue"])
+	assert.Equal(t, resource.NewArrayProperty(
+		[]resource.PropertyValue{resource.NewStringProperty("an array")}), ins["arrayPropertyValues"])
+	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
+		"__defaults": resource.NewArrayProperty([]resource.PropertyValue{}),
+		"property_a": resource.NewStringProperty("a"),
+		"property_b": resource.NewStringProperty("true"),
+		"property.c": resource.NewStringProperty("some.value"),
+	}), ins["objectPropertyValue"])
+	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
+		"__defaults": resource.NewArrayProperty([]resource.PropertyValue{}),
+		"configuration": resource.NewObjectProperty(resource.PropertyMap{
+			"__defaults":         resource.NewArrayProperty([]resource.PropertyValue{}),
+			"configurationValue": resource.NewStringProperty("true"),
+		}),
+		// Uncomment the line below to make the test pass:
+		// "kind": resource.NewStringProperty(""),
+		// But this is not really expected! The Read function for ExampleResource in internal/testprovider/schema.go does not set "kind"!
+	}), ins["nestedResources"])
+	assert.Equal(t, resource.NewArrayProperty(
+		[]resource.PropertyValue{
+			resource.NewStringProperty("set member 2"),
+			resource.NewStringProperty("set member 1"),
+		}), ins["setPropertyValues"])
+	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"), ins["stringWithBadInterpolation"])
+}
+
+func TestProviderReadV1(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+
+	testProviderRead(t, provider, "ExampleResource")
+}
+
+func TestProviderReadV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+
+	testProviderRead(t, provider, "ExampleResource")
+}
