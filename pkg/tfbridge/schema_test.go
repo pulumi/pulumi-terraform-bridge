@@ -1582,9 +1582,6 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	}), outs)
 
 	// Step 3: read the resource we just created. The read should make the following changes to the inputs:
-	// - "inoutC" should now be present in the input map. This is because it has a value in the state and the schema
-	//   indicates that it may be an input property. We could probably avoid this by checking to see if the value in
-	//   the new state matches the value in the olds state.
 	// - "inoutD" should change from "inout_d_default" to "inout_d_read", and should no longer be present in the list
 	//   of properties that were populated from defaults.
 	// - "inoutK" should change from "inout_k_default" to "", and should no longer be present in the list of
