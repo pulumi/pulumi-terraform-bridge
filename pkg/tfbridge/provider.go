@@ -355,7 +355,7 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, tfVars, -1, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +676,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
 	inputs, assets, err := MakeTerraformInputs(
-		&PulumiResource{URN: urn, Properties: news}, p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		&PulumiResource{URN: urn, Properties: news}, p.configValues,
+		olds, news, int(req.SequenceNumber), res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
@@ -1144,7 +1145,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// First, create the inputs.
 	tfname := ds.TFName
 	inputs, _, err := MakeTerraformInputs(
-		&PulumiResource{Properties: args}, p.configValues, nil, args, ds.TF.Schema(), ds.Schema.Fields)
+		&PulumiResource{Properties: args}, p.configValues, nil, args, -1, ds.TF.Schema(), ds.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}

@@ -43,7 +43,7 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{Assets: AssetTable{}}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, -1, tfs, ps, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -57,7 +57,7 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 		Assets:        AssetTable{},
 		ApplyDefaults: true,
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, -1, tfs, ps, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,7 +66,7 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
-	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, -1, tfs, ps, false)
 }
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
@@ -783,9 +783,9 @@ func TestDefaults(t *testing.T) {
 			})
 			ps := map[string]*SchemaInfo{
 				"eee": {Default: &DefaultInfo{Value: "EEE"}},
-				"ee2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "EE2", nil }}},
+				"ee2": {Default: &DefaultInfo{From: func(res *PulumiResource, sequencenumber int) (interface{}, error) { return "EE2", nil }}},
 				"fff": {Default: &DefaultInfo{Value: "PSF"}},
-				"ff2": {Default: &DefaultInfo{From: func(res *PulumiResource) (interface{}, error) { return "PF2", nil }}},
+				"ff2": {Default: &DefaultInfo{From: func(res *PulumiResource, sequencenumber int) (interface{}, error) { return "PF2", nil }}},
 				"ggg": {Default: &DefaultInfo{Value: "PSG"}},
 				"hhh": {Default: &DefaultInfo{Value: "PSH"}},
 				"iii": {Default: &DefaultInfo{Value: "PSI"}},

@@ -188,15 +188,24 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 }
 
 // FromName automatically propagates a resource's URN onto the resulting default info.
-func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
-	return func(res *PulumiResource) (interface{}, error) {
+func FromName(options AutoNameOptions) func(res *PulumiResource, sequenceNumber int) (interface{}, error) {
+	return func(res *PulumiResource, sequenceNumber int) (interface{}, error) {
 		// Take the URN name part, transform it if required, and then append some unique characters if requested.
 		vs := string(res.URN.Name())
 		if options.Transform != nil {
 			vs = options.Transform(vs)
 		}
 		if options.Randlen > 0 {
-			uniqueHex, err := resource.NewUniqueHex(vs+options.Separator, options.Randlen, options.Maxlen)
+			// It would be good to not have to assert this and pass -1 to a load of places, but currently
+			// autonames are wrapped up deep in MakeTerraformInputs, but they should only be generated during
+			// Check calls. If we could rip default logic out to another method and just call that in check it
+			// would be much cleaner.
+			contract.Assertf(
+				sequenceNumber >= 0,
+				"Expected sequenceNumber to be set to a non-negative value if autonames are being generated")
+			uniqueHex, err := resource.NewUniqueHexV2(
+				res.URN, sequenceNumber,
+				vs+options.Separator, options.Randlen, options.Maxlen)
 			if err != nil {
 				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}

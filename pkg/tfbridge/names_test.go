@@ -140,7 +140,7 @@ func TestFromName(t *testing.T) {
 			return name, nil
 		},
 	})
-	out1, err := f1(res1)
+	out1, err := f1(res1, 1)
 	assert.NoError(t, err)
 	assert.Len(t, out1, len("n1")+1+7+len(".fifo"))
 	assert.True(t, strings.HasSuffix(out1.(string), ".fifo"))

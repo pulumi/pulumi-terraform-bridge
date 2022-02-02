@@ -100,7 +100,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 				// fill in default values for empty fields (note that this is a property of the field reader, not of
 				// the schema) as it does when computing the hash code for a set element.
 				ctx := &conversionContext{}
-				ev, err := ctx.MakeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
+				ev, err := ctx.MakeTerraformInput(ep, resource.PropertyValue{}, e, -1, etfs, eps, rawNames)
 				if err != nil {
 					return
 				}
