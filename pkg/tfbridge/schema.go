@@ -1115,6 +1115,8 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 	}
 
 	switch {
+	case v.IsNull():
+		return true
 	case v.IsBool():
 		return v.BoolValue() == false
 	case v.IsNumber():
