@@ -66,7 +66,7 @@ func ProviderV1() *schemav1.Provider {
 						Elem: &schemav1.Resource{
 							Schema: map[string]*schemav1.Schema{
 								"kind":          {Type: schemav1.TypeString, Optional: true},
-								"opt_bool":      {Type: schemav1.TypeBool, Optional: true, Default: true},
+								"opt_bool":      {Type: schemav1.TypeBool, Optional: true},
 								"configuration": {Type: schemav1.TypeMap, Required: true},
 							},
 						},

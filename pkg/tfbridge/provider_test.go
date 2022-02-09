@@ -589,10 +589,6 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 			"__defaults":         resource.NewArrayProperty([]resource.PropertyValue{}),
 			"configurationValue": resource.NewStringProperty("true"),
 		}),
-		// Uncomment the line below to make the test pass:
-		//"optBool": resource.NewBoolProperty(false),
-		// But this is not really expected! The Read function for ExampleResource in internal/testprovider/schema.go does not set "optBool" and it's default value is true!
-		// This should either be missing (like kind is missing) or be true
 	}), ins["nestedResources"])
 	assert.Equal(t, resource.NewArrayProperty(
 		[]resource.PropertyValue{
