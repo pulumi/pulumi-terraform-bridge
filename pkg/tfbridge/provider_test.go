@@ -570,8 +570,7 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 	ins, err := plugin.UnmarshalProperties(readResp.GetInputs(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
 	// Check all the expected inputs were read
-	assert.Equal(t, resource.NewBoolProperty(false), ins["optBool"]) // This was "false" from Read but it's default is true so we need to keep it
-	assert.NotContains(t, ins, "boolPropertyValue")                  // This was "false" from Read, but it's default is false
+	assert.NotContains(t, ins, "boolPropertyValue") // This was "false" from Read, but it's default is false
 	assert.Equal(t, resource.NewNumberProperty(42), ins["numberPropertyValue"])
 	assert.Equal(t, resource.NewNumberProperty(99.6767932), ins["floatPropertyValue"])
 	assert.Equal(t, resource.NewStringProperty("ognirts"), ins["stringPropertyValue"])
@@ -596,6 +595,31 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 			resource.NewStringProperty("set member 1"),
 		}), ins["setPropertyValues"])
 	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"), ins["stringWithBadInterpolation"])
+
+	// Read again with the ID that results in all the optinal fields not being set
+	readResp, err = provider.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         string("resource-id-empty"),
+		Urn:        string(urn),
+		Properties: nil,
+	})
+	assert.NoError(t, err)
+
+	assert.NotNil(t, readResp.GetInputs())
+	assert.NotNil(t, readResp.GetProperties())
+
+	ins, err = plugin.UnmarshalProperties(readResp.GetInputs(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	// Check all the expected inputs were read
+	assert.NotContains(t, ins, "boolPropertyValue")
+	assert.NotContains(t, ins, "numberPropertyValue")
+	assert.NotContains(t, ins, "floatPropertyValue")
+	assert.NotContains(t, ins, "stringPropertyValue")
+	assert.Equal(t, resource.NewArrayProperty(
+		[]resource.PropertyValue{resource.NewStringProperty("an array")}), ins["arrayPropertyValues"])
+	assert.NotContains(t, ins, "objectPropertyValue")
+	assert.NotContains(t, ins, "nestedResources")
+	assert.NotContains(t, ins, "setPropertyValues")
+	assert.NotContains(t, ins, "stringWithBadInterpolation")
 }
 
 func TestProviderReadV1(t *testing.T) {
