@@ -868,11 +868,15 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 }
 
 var (
-	ignoredDocSections int
-	ignoredDocHeaders  = make(map[string]int)
-	hclBlocksSucceeded int
-	hclBlocksFailed    int
-	hclFailures        = make(map[string]bool)
+	ignoredDocSections    int
+	ignoredDocHeaders     = make(map[string]int)
+	hclBlocksSucceeded    int
+	hclBlocksFailed       int
+	hclFailures           = make(map[string]bool)
+	elidedDescriptions    int
+	elidedArguments       int
+	elidedNestedArguments int
+	elidedAttributes      int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -889,6 +893,22 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 	if hclBlocksFailed > 0 {
 		g.warn("%d/%d documentation code blocks failed to convert",
 			hclBlocksFailed, hclBlocksFailed+hclBlocksSucceeded)
+	}
+
+	if elidedDescriptions > 0 {
+		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
+	}
+
+	if elidedArguments > 0 {
+		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.", elidedArguments)
+	}
+
+	if elidedNestedArguments > 0 {
+		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.", elidedNestedArguments)
+	}
+
+	if elidedAttributes > 0 {
+		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.", elidedAttributes)
 	}
 
 	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
@@ -1219,7 +1239,8 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
 		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
 		if elided {
-			g.warn("Documentation <elided> for argument [%v] in [%v]", k, name)
+			elidedArguments++
+			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
 
@@ -1234,7 +1255,8 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
 			cleanedText, elided := cleanupText(g, info, vv, footerLinks)
 			if elided {
-				g.warn("Documentation <elided> for nested argument [%v] in [%v]", kk, name)
+				elidedNestedArguments++
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, name)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = cleanedText
@@ -1245,7 +1267,8 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanupText, elided := cleanupText(g, info, v, footerLinks)
 		if elided {
-			g.warn("Documentation <elided> for attribute [%v] in [%v]", k, name)
+			elidedAttributes++
+			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped in the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
 		newattrs[k] = cleanupText
@@ -1253,7 +1276,8 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 	g.debug("Cleaning up description text for [%v]", name)
 	cleanupText, elided := cleanupText(g, info, doc.Description, footerLinks)
 	if elided {
-		g.warn("Description text <elided> in [%v]", name)
+		elidedDescriptions++
+		g.warn("Found <elided> in description for [%v]. The description and all examples will be dropped in the Pulumi provider.", name)
 		elidedDoc = true
 	}
 	return entityDocs{
