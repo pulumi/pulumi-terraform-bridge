@@ -62,7 +62,7 @@ func TestURLRewrite(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, test := range tests {
-		text, _ := cleanupText(g, nil, test.Input, nil)
+		text, _ := reformatText(g, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
 	}
 }
@@ -331,4 +331,28 @@ Misleading example title without any actual code fences. We should not modify th
 
 		assert.Contains(t, processedMarkdown, "#### Basic Example")
 	})
+}
+
+func TestExtractExamples(t *testing.T) {
+	basic := `Previews a CIDR from an IPAM address pool. Only works for private IPv4.
+
+~> **NOTE:** This functionality is also encapsulated in a resource sharing the same name. The data source can be used when you need to use the cidr in a calculation of the same Root module, count for example. However, once a cidr range has been allocated that was previewed, the next refresh will find a **new** cidr and may force new resources downstream. Make sure to use Terraform's lifecycle ignore_changes policy if this is undesirable.
+
+## Example Usage
+Basic usage:`
+	assert.Equal(t, "## Example Usage\nBasic usage:", extractExamples(basic))
+
+	noExampleUsages := `Something mentioning Terraform`
+	assert.Equal(t, "", extractExamples(noExampleUsages))
+
+	// This use case is not known to exist in the wild, but we want to make sure our handling here is conservative given that there's no strictly defined schema to TF docs.
+	multipleExampleUsages := `Something mentioning Terraform
+
+	## Example Usage
+	Some use case
+
+	## Example Usage
+	Some other use case
+`
+	assert.Equal(t, "", extractExamples(multipleExampleUsages))
 }
