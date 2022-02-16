@@ -464,7 +464,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, elided := cleanupDoc(p.rawname, p.g, p.info, p.ret, footerLinks)
+	doc, elided := cleanupDoc(p.rawname, p.g, p.ret, footerLinks)
 	if elided {
 		p.g.warn("Resource %v contains an <elided> doc reference that needs updated", p.rawname)
 	}
@@ -868,11 +868,16 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 }
 
 var (
-	ignoredDocSections int
-	ignoredDocHeaders  = make(map[string]int)
-	hclBlocksSucceeded int
-	hclBlocksFailed    int
-	hclFailures        = make(map[string]bool)
+	ignoredDocSections     int
+	ignoredDocHeaders      = make(map[string]int)
+	hclBlocksSucceeded     int
+	hclBlocksFailed        int
+	hclFailures            = make(map[string]bool)
+	elidedDescriptions     int // i.e., we discard the entire description, including examples
+	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
+	elidedArguments        int
+	elidedNestedArguments  int
+	elidedAttributes       int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -889,6 +894,26 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 	if hclBlocksFailed > 0 {
 		g.warn("%d/%d documentation code blocks failed to convert",
 			hclBlocksFailed, hclBlocksFailed+hclBlocksSucceeded)
+	}
+
+	if elidedDescriptions > 0 {
+		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
+	}
+
+	if elidedDescriptionsOnly > 0 {
+		g.warn("%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.", elidedDescriptionsOnly)
+	}
+
+	if elidedArguments > 0 {
+		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.", elidedArguments)
+	}
+
+	if elidedNestedArguments > 0 {
+		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.", elidedNestedArguments)
+	}
+
+	if elidedAttributes > 0 {
+		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.", elidedAttributes)
 	}
 
 	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
@@ -1211,15 +1236,16 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 	return result.String(), stderr.String(), nil
 }
 
-func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInfo, doc entityDocs,
-	footerLinks map[string]string) (entityDocs, bool) {
+func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
+
 	for k, v := range doc.Arguments {
 		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
-		cleanedText, elided := cleanupText(g, info, v.description, footerLinks)
+		cleanedText, elided := reformatText(g, v.description, footerLinks)
 		if elided {
-			g.warn("Documentation <elided> for argument [%v] in [%v]", k, name)
+			elidedArguments++
+			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
 
@@ -1232,37 +1258,64 @@ func cleanupDoc(name string, g *Generator, info tfbridge.ResourceOrDataSourceInf
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
 			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := cleanupText(g, info, vv, footerLinks)
+			cleanedText, elided := reformatText(g, vv, footerLinks)
 			if elided {
-				g.warn("Documentation <elided> for nested argument [%v] in [%v]", kk, name)
+				elidedNestedArguments++
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, name)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = cleanedText
 		}
 	}
+
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanupText, elided := cleanupText(g, info, v, footerLinks)
+		cleanedText, elided := reformatText(g, v, footerLinks)
 		if elided {
-			g.warn("Documentation <elided> for attribute [%v] in [%v]", k, name)
+			elidedAttributes++
+			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped in the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
-		newattrs[k] = cleanupText
+		newattrs[k] = cleanedText
 	}
+
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText, elided := cleanupText(g, info, doc.Description, footerLinks)
+	cleanupText, elided := reformatText(g, doc.Description, footerLinks)
 	if elided {
-		g.warn("Description text <elided> in [%v]", name)
-		elidedDoc = true
+		g.debug("Found <elided> in the description. Attempting to extract examples from the description and reformat examples only.")
+
+		// Attempt to keep the Example Usage if the elided text was only in the description:
+		// TODO: *Also* attempt to keep the description if the elided text is only in the Example Usage
+		examples := extractExamples(doc.Description)
+		if examples == "" {
+			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
+
+			elidedDescriptions++
+			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the Pulumi provider.", name)
+			elidedDoc = true
+		} else {
+			g.debug("Found examples in the description text. Attempting to reformat the examples.")
+
+			cleanedupExamples, examplesElided := reformatText(g, examples, footerLinks)
+			if examplesElided {
+				elidedDescriptions++
+				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the Pulumi provider.", name)
+				elidedDoc = true
+			} else {
+				elidedDescriptionsOnly++
+				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description proper will be dropped in the Pulumi provider.", name)
+				cleanupText = cleanedupExamples
+			}
+		}
 	}
+
 	return entityDocs{
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
 		Import:      doc.Import,
 	}, elidedDoc
-
 }
 
 //nolint:lll
@@ -1345,9 +1398,21 @@ func fixupPropertyReferences(language Language, pkg string, info tfbridge.Provid
 	})
 }
 
-// cleanupText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func cleanupText(g *Generator, info tfbridge.ResourceOrDataSourceInfo, text string,
-	footerLinks map[string]string) (string, bool) {
+// extractExamples attempts to separate the description proper from the "Example Usage" section of an entity's
+// (resource or data source) description. If unable to gracefully separate these 2 parts, an empty string is returned.
+func extractExamples(description string) string {
+	separator := "## Example Usage"
+	parts := strings.Split(description, separator)
+
+	if len(parts) != 2 {
+		return ""
+	}
+
+	return strings.Replace(description, parts[0], "", -1)
+}
+
+// reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
+func reformatText(g *Generator, text string, footerLinks map[string]string) (string, bool) {
 
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
