@@ -231,6 +231,7 @@ func TestProviderResourcesMap(t *testing.T) {
 				"array_property_value":  cty.List(cty.String),
 				"object_property_value": cty.Map(cty.String),
 				"nested_resources": cty.List(cty.Object(map[string]cty.Type{
+					"opt_bool":      cty.Bool,
 					"kind":          cty.String,
 					"configuration": cty.Map(cty.String),
 				})),
@@ -311,16 +312,23 @@ func TestProviderResourcesMap(t *testing.T) {
 				},
 				"nested_resources": &attributeSchema{
 					ctyType: cty.List(cty.Object(map[string]cty.Type{
+						"opt_bool":      cty.Bool,
 						"kind":          cty.String,
 						"configuration": cty.Map(cty.String),
 					})),
 					valueType: shim.TypeList,
 					elem: &resource{
 						ctyType: cty.Object(map[string]cty.Type{
+							"opt_bool":      cty.Bool,
 							"kind":          cty.String,
 							"configuration": cty.Map(cty.String),
 						}),
 						schema: schema.SchemaMap{
+							"opt_bool": &attributeSchema{
+								ctyType:   cty.Bool,
+								valueType: shim.TypeBool,
+								optional:  true,
+							},
 							"kind": &attributeSchema{
 								ctyType:   cty.String,
 								valueType: shim.TypeString,
@@ -923,6 +931,7 @@ func TestDiff(t *testing.T) {
 				"array_property_value":  cty.ListValEmpty(cty.String),
 				"object_property_value": cty.NullVal(cty.Map(cty.String)),
 				"nested_resources": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"opt_bool":      cty.Bool,
 					"kind":          cty.String,
 					"configuration": cty.Map(cty.String),
 				})),
@@ -1032,7 +1041,8 @@ func TestApply(t *testing.T) {
 				"array_property_value": []interface{}{"foo"},
 				"nested_resources": []interface{}{
 					map[string]interface{}{
-						"kind": cty.StringVal(""),
+						"opt_bool": cty.BoolVal(false),
+						"kind":     cty.StringVal(""),
 						"configuration": map[string]interface{}{
 							"baz": "qux",
 						},
@@ -1060,7 +1070,8 @@ func TestApply(t *testing.T) {
 					"property.c": cty.StringVal("some.value"),
 				}),
 				"nested_resources": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{
-					"kind": cty.StringVal(""),
+					"opt_bool": cty.BoolVal(false),
+					"kind":     cty.StringVal(""),
 					"configuration": cty.MapVal(map[string]cty.Value{
 						"configurationValue": cty.StringVal("true"),
 					}),
@@ -1112,7 +1123,8 @@ func TestApply(t *testing.T) {
 						"property.c": cty.StringVal("some.value"),
 					}),
 					"nested_resources": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{
-						"kind": cty.StringVal(""),
+						"opt_bool": cty.BoolVal(false),
+						"kind":     cty.StringVal(""),
 						"configuration": cty.MapVal(map[string]cty.Value{
 							"configurationValue": cty.StringVal("true"),
 						}),
@@ -1198,7 +1210,8 @@ func TestRefresh(t *testing.T) {
 			"property.c": cty.StringVal("some.value"),
 		}),
 		"nested_resources": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{
-			"kind": cty.StringVal(""),
+			"opt_bool": cty.BoolVal(false),
+			"kind":     cty.StringVal(""),
 			"configuration": cty.MapVal(map[string]cty.Value{
 				"configurationValue": cty.StringVal("true"),
 			}),

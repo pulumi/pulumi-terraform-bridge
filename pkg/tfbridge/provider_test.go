@@ -353,6 +353,7 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 			"configuration": resource.NewObjectProperty(resource.PropertyMap{
 				"name": resource.NewStringProperty("foo"),
 			}),
+			"optBool": resource.NewBoolProperty(false),
 		}),
 	}.DeepEquals(outs))
 
@@ -415,6 +416,7 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 		"configuration": resource.NewObjectProperty(resource.PropertyMap{
 			"name": resource.NewStringProperty("foo"),
 		}),
+		"optBool": resource.NewBoolProperty(false),
 	}).DeepEquals(outs["nestedResources"]))
 }
 
@@ -598,7 +600,7 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 
 	// Read again with the ID that results in all the optinal fields not being set
 	readResp, err = provider.Read(context.Background(), &pulumirpc.ReadRequest{
-		Id:         string("resource-id-empty"),
+		Id:         string("empty-resource-id"),
 		Urn:        string(urn),
 		Properties: nil,
 	})

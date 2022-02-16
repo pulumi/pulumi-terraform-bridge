@@ -107,7 +107,10 @@ func ProviderV1() *schemav1.Provider {
 					return nil
 				},
 				Read: func(data *schemav1.ResourceData, p interface{}) error {
-					if data.Id() == "resource-id" {
+					if data.Id() == "empty-resource-id" {
+						MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
+						MustSetIfUnset(data, "nested_resources", nil)
+					} else {
 						MustSetIfUnset(data, "bool_property_value", false)
 						MustSetIfUnset(data, "number_property_value", 42)
 						MustSetIfUnset(data, "float_property_value", 99.6767932)
@@ -127,9 +130,6 @@ func ProviderV1() *schemav1.Provider {
 						})
 						MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
 						MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
-					} else {
-						MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
-						MustSetIfUnset(data, "nested_resources", nil)
 					}
 					return nil
 				},
@@ -386,6 +386,7 @@ func ProviderV2() *schemav2.Provider {
 						Elem: &schemav2.Resource{
 							Schema: map[string]*schemav2.Schema{
 								"kind":          {Type: schemav2.TypeString, Optional: true},
+								"opt_bool":      {Type: schemav2.TypeBool, Optional: true},
 								"configuration": {Type: schemav2.TypeMap, Required: true},
 							},
 						},
@@ -427,25 +428,30 @@ func ProviderV2() *schemav2.Provider {
 					return nil
 				},
 				Read: func(data *schemav2.ResourceData, p interface{}) error {
-					MustSetIfUnset(data, "bool_property_value", false)
-					MustSetIfUnset(data, "number_property_value", 42)
-					MustSetIfUnset(data, "float_property_value", 99.6767932)
-					MustSetIfUnset(data, "string_property_value", "ognirts")
-					MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
-					MustSetIfUnset(data, "object_property_value", map[string]interface{}{
-						"property_a": "a",
-						"property_b": "true",
-						"property.c": "some.value",
-					})
-					MustSetIfUnset(data, "nested_resources", []interface{}{
-						map[string]interface{}{
-							"configuration": map[string]interface{}{
-								"configurationValue": "true",
+					if data.Id() == "empty-resource-id" {
+						MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
+						MustSetIfUnset(data, "nested_resources", nil)
+					} else {
+						MustSetIfUnset(data, "bool_property_value", false)
+						MustSetIfUnset(data, "number_property_value", 42)
+						MustSetIfUnset(data, "float_property_value", 99.6767932)
+						MustSetIfUnset(data, "string_property_value", "ognirts")
+						MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
+						MustSetIfUnset(data, "object_property_value", map[string]interface{}{
+							"property_a": "a",
+							"property_b": "true",
+							"property.c": "some.value",
+						})
+						MustSetIfUnset(data, "nested_resources", []interface{}{
+							map[string]interface{}{
+								"configuration": map[string]interface{}{
+									"configurationValue": "true",
+								},
 							},
-						},
-					})
-					MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
-					MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
+						})
+						MustSetIfUnset(data, "set_property_value", []interface{}{"set member 1", "set member 2"})
+						MustSetIfUnset(data, "string_with_bad_interpolation", "some ${interpolated:value} with syntax errors")
+					}
 					return nil
 				},
 				Update: func(data *schemav2.ResourceData, p interface{}) error {
