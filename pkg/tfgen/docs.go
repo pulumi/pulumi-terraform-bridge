@@ -1194,7 +1194,14 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 			if result.Len() > 0 {
 				result.WriteByte('\n')
 			}
-			_, err := fmt.Fprintf(&result, "```%s\n%s\n```", languageName, strings.TrimSpace(string(output)))
+			out := strings.TrimSpace(string(output))
+
+			if g.convertedCode == nil {
+				g.convertedCode = map[string][]byte{}
+			}
+			g.convertedCode[path] = []byte(out)
+
+			_, err := fmt.Fprintf(&result, "```%s\n%s\n```", languageName, out)
 			contract.IgnoreError(err)
 		}
 
@@ -1204,13 +1211,16 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 
 	switch g.language {
 	case NodeJS:
-		err = convertHCL("typescript")
+		err = convertHCL(convert.LanguageTypescript)
 	case Python:
-		err = convertHCL("python")
+		err = convertHCL(convert.LanguagePython)
 	case CSharp:
-		err = convertHCL("csharp")
+		err = convertHCL(convert.LanguageCSharp)
 	case Golang:
-		err = convertHCL("go")
+		err = convertHCL(convert.LanguageGo)
+	case PCL:
+		convertHCL(convert.LanguagePulumi)
+
 	case Schema:
 		langs := []string{"typescript", "python", "csharp", "go"}
 		var anySucceeded bool = false
