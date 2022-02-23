@@ -1391,6 +1391,11 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 					return strings.ToLower(v.(string))
 				},
 			},
+
+			// input_i, inout_j, and inout_k test import scenarios where attributes are set to "".
+			"input_i": {Type: schemav1.TypeString, Required: true},
+			"inout_j": {Type: schemav1.TypeString, Optional: true, Computed: true},
+			"inout_k": {Type: schemav1.TypeString, Optional: true, Computed: true, Default: "inout_k_default"},
 		},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			return []*schemav1.ResourceData{d}, nil
@@ -1413,6 +1418,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		}
 		set(d, "inout_d", "inout_d_read")
 		set(d, "output_g", "output_g_read")
+		set(d, "input_i", "")
+		set(d, "inout_j", "")
+		set(d, "inout_k", "")
 		return nil
 	}
 	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
@@ -1470,6 +1478,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inoutC":  "inout_c_read",
 		"inoutD":  "inout_d_read",
 		"outputG": "output_g_read",
+		"inputI":  "",
+		"inoutJ":  "",
+		"inoutK":  "",
 	}), outs)
 
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1479,6 +1490,8 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputA":    "input_a_read",
 		"inoutC":    "inout_c_read",
 		"inoutD":    "inout_d_read",
+		"inputI":    "",
+		"inoutK":    "",
 	})
 	assert.Equal(t, expected, ins)
 
@@ -1505,7 +1518,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	assert.NoError(t, err)
 	sortDefaultsList(checkedIns)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{"inoutD", "inputF", "inputH"},
+		defaultsKey: []interface{}{"inoutD", "inoutK", "inputF", "inputH"},
 		"inputA":    "input_a_create",
 		"inoutD":    "inout_d_default",
 		"inputE": map[string]interface{}{
@@ -1514,6 +1527,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF": "input_f_default",
 		"inputH": "Input_H_Default",
+		"inoutK": "inout_k_default",
 	}), checkedIns)
 
 	// Step 2: create a resource using the checked input bag. The inputs should be smuggled along with the state.
@@ -1536,6 +1550,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputF":  "input_f_default",
 		"outputG": "output_g_create",
 		"inputH":  "input_h_default",
+		"inoutK":  "inout_k_default",
 	}), outs)
 
 	// Step 3: read the resource we just created. The read should make the following changes to the inputs:
@@ -1565,6 +1580,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputF":  "input_f_default",
 		"outputG": "output_g_read",
 		"inputH":  "input_h_default",
+		"inputI":  "",
+		"inoutJ":  "",
+		"inoutK":  "",
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1579,6 +1597,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF": "input_f_default",
 		"inputH": "Input_H_Default",
+		"inoutK": "",
 	}), ins)
 
 	// Step 3a. delete the default annotations from the checked inputs and re-run the read. No default annotations
@@ -1609,6 +1628,9 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputF":  "input_f_default",
 		"outputG": "output_g_read",
 		"inputH":  "input_h_default",
+		"inputI":  "",
+		"inoutJ":  "",
+		"inoutK":  "",
 	}), outs)
 
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -1621,6 +1643,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		},
 		"inputF": "input_f_default",
 		"inputH": "Input_H_Default",
+		"inoutK": "",
 	}), ins)
 
 }
