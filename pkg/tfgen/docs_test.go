@@ -275,8 +275,6 @@ func TestReplaceFooterLinks(t *testing.T) {
 }
 
 func TestFixExamplesHeaders(t *testing.T) {
-	p := &tfMarkdownParser{}
-
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
 		markdown := `
@@ -296,7 +294,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			p.fixExampleTitles(lines)
+			fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}
@@ -323,7 +321,7 @@ Misleading example title without any actual code fences. We should not modify th
 		var processedMarkdown string
 		groups := splitGroupLines(markdown, "## ")
 		for _, lines := range groups {
-			p.fixExampleTitles(lines)
+			fixExampleTitles(lines)
 			for _, line := range lines {
 				processedMarkdown += line
 			}
@@ -355,4 +353,98 @@ Basic usage:`
 	Some other use case
 `
 	assert.Equal(t, "", extractExamples(multipleExampleUsages))
+}
+
+func TestReformatExamples(t *testing.T) {
+	runTest := func(input string, expected [][]string) {
+		inputSections := splitGroupLines(input, "## ")
+		output := reformatExamples(inputSections)
+
+		assert.ElementsMatch(t, expected, output)
+	}
+
+	// This is a simple use case. We expect no changes to the original doc:
+	simpleDoc := `description
+
+## Example Usage
+
+example usage content`
+
+	simpleDocExpected := [][]string{
+		{
+			"description",
+			"",
+		},
+		{
+			"## Example Usage",
+			"",
+			"example usage content",
+		},
+	}
+
+	runTest(simpleDoc, simpleDocExpected)
+
+	// This use case demonstrates 2 examples at the same H2 level: a canonical Example Usage and another example
+	// for a specific use case. We expect these to be transformed into a canonical H2 "Example Usage" with an H3 for
+	// the specific use case.
+	// This scenario is common in the pulumi-gcp provider:
+	gcpDoc := `description
+
+## Example Usage
+
+example usage content
+
+## Example Usage - Specific Case
+
+specific case content`
+
+	gcpDocExpected := [][]string{
+		{
+			"description",
+			"",
+		},
+		{
+			"## Example Usage",
+			"",
+			"example usage content",
+			"",
+			"### Specific Case",
+			"",
+			"specific case content",
+		},
+	}
+
+	runTest(gcpDoc, gcpDocExpected)
+
+	// This use case demonstrates 2 no canonical Example Usage/basic case and 2 specific use cases. We expect the
+	// function to add a canonical Example Usage section with the 2 use cases as H3's beneath the canonical section.
+	// This scenario is common in the pulumi-gcp provider:
+	gcpDoc2 := `description
+
+## Example Usage - 1
+
+content 1
+
+## Example Usage - 2
+
+content 2`
+
+	gcpDoc2Expected := [][]string{
+		{
+			"description",
+			"",
+		},
+		{
+			"## Example Usage",
+			"### 1",
+			"",
+			"content 1",
+			"",
+			"### 2",
+			"",
+			"content 2",
+		},
+	}
+
+	runTest(gcpDoc2, gcpDoc2Expected)
 }

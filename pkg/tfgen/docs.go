@@ -175,9 +175,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	return target.Dir, nil
 }
 
-func getMarkdownDetails(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
-	githost string) ([]byte, string, bool) {
+func getMarkdownDetails(org string, provider string, resourcePrefix string, kind DocKind, rawname string,
+	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
@@ -227,8 +226,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g, org, provider, resourcePrefix, kind, rawname, info,
-		providerModuleVersion, githost)
+	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		g.warn("Could not find docs for resource %v; consider overriding doc source location", rawname)
 		return entityDocs{}, nil
@@ -245,23 +243,17 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	}
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFrom, true, true,
-			providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFrom, true, true, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(g, info, org, provider, resourcePrefix, kind, doc,
-			docinfo.IncludeAttributesFromArguments, true, false,
-			providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFromArguments, true, false, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(g, info, org, provider, provider, kind, doc,
-			docinfo.IncludeArgumentsFrom, false, false,
-			providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, provider, kind, doc, docinfo.IncludeArgumentsFrom, false, false, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 	}
@@ -308,10 +300,9 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 }
 
 // mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(g *Generator, info tfbridge.ResourceOrDataSourceInfo, org string, provider string,
-	resourcePrefix string,
-	kind DocKind, docs entityDocs, sourceFrom string,
-	useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string, githost string) error {
+func mergeDocs(g *Generator, org string, provider string, resourcePrefix string, kind DocKind, docs entityDocs,
+	sourceFrom string, useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string,
+	githost string) error {
 
 	if sourceFrom != "" {
 		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind,
@@ -377,7 +368,7 @@ var (
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
 )
 
-// groupLines groups a collection of strings, a, by a given separator, sep.
+// groupLines groups a collection of strings, lines, by a given separator, sep.
 func groupLines(lines []string, sep string) [][]string {
 	var buffer []string
 	var sections [][]string
@@ -453,7 +444,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	sections := splitGroupLines(markdown, "## ")
 
 	// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
-	sections = p.reformatExamples(sections)
+	sections = reformatExamples(sections)
 
 	for _, section := range sections {
 		if err := p.parseSection(section); err != nil {
@@ -473,7 +464,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 }
 
 // fixExampleTitles transforms H4 sections that contain code snippets into H3 sections.
-func (p *tfMarkdownParser) fixExampleTitles(lines []string) {
+func fixExampleTitles(lines []string) {
 	inSection, sectionIndex := false, 0
 	for i, line := range lines {
 		if inSection && strings.HasPrefix(line, "```") {
@@ -489,7 +480,7 @@ var exampleHeaderRegexp = regexp.MustCompile(`(?i)^(## Example Usage\s*)(?:(?:(?
 
 // reformatExamples reparents examples that are peers of the "Example Usage" section (if any) and fixup some example
 // titles.
-func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
+func reformatExamples(sections [][]string) [][]string {
 	canonicalExampleUsageSectionIndex := -1
 	var exampleUsageSection []string
 	var exampleSectionIndices []int
@@ -553,7 +544,7 @@ func (p *tfMarkdownParser) reformatExamples(sections [][]string) [][]string {
 	exampleUsageSection[0] = "## Example Usage"
 
 	// Fixup example titles and replace the contents of the canonical example usage section with the output.
-	p.fixExampleTitles(exampleUsageSection)
+	fixExampleTitles(exampleUsageSection)
 	sections[canonicalExampleUsageSectionIndex] = exampleUsageSection
 
 	// If there is only one example section, we're done. Otherwise, we need to remove all non-canonical example usage
@@ -971,7 +962,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 	return result, hasExamples, isEmpty
 }
 
-// parseExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
+// convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
 func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithErrors bool) string {
 	if docs == "" {
