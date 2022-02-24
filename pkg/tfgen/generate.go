@@ -767,7 +767,7 @@ func (g *Generator) Generate() error {
 		}
 		files = map[string][]byte{}
 		for path, code := range g.convertedCode {
-			path = strings.TrimPrefix(path, "#/") + ".pcl"
+			path = strings.TrimPrefix(path, "#/") + ".pp"
 			files[path] = code
 		}
 	default:
