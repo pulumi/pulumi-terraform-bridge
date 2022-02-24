@@ -869,6 +869,15 @@ var (
 	elidedArguments        int
 	elidedNestedArguments  int
 	elidedAttributes       int
+
+	hclAllLangsConversionFailures int // examples that failed to convert in any language
+
+	// examples that failed to convert in one, but not all, languages. This is less severe impact because users will
+	// at least have code in another language to reference:
+	hclGoPartialConversionFailures         int
+	hclPythonPartialConversionFailures     int
+	hclTypeScriptPartialConversionFailures int
+	hclCSharpPartialConversionFailures     int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -905,6 +914,26 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 
 	if elidedAttributes > 0 {
 		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.", elidedAttributes)
+	}
+
+	if hclAllLangsConversionFailures > 0 {
+		g.warn("%d HCL examples failed to convert in all languages", hclAllLangsConversionFailures)
+	}
+
+	if hclTypeScriptPartialConversionFailures > 0 {
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to TypeScript", hclTypeScriptPartialConversionFailures)
+	}
+
+	if hclPythonPartialConversionFailures > 0 {
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to Python", hclPythonPartialConversionFailures)
+	}
+
+	if hclGoPartialConversionFailures > 0 {
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to Go", hclGoPartialConversionFailures)
+	}
+
+	if hclCSharpPartialConversionFailures > 0 {
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#", hclCSharpPartialConversionFailures)
 	}
 
 	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
@@ -1024,7 +1053,14 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 
 						// We've got some code -- assume it's HCL and try to convert it.
 						g.coverageTracker.foundExample(name, hcl)
-						codeBlock, stderr, err := g.convertHCL(hcl, name)
+
+						exampleTitle := ""
+						if strings.Contains(subsection[0], "###") {
+							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
+						}
+
+						codeBlock, stderr, err := g.convertHCL(hcl, name, exampleTitle)
+
 						if err != nil {
 							skippedExamples = true
 							hclFailures[stderr] = true
@@ -1099,7 +1135,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
+func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1204,15 +1240,55 @@ func (g *Generator) convertHCL(hcl, path string) (string, string, error) {
 		err = convertHCL("go")
 	case Schema:
 		langs := []string{"typescript", "python", "csharp", "go"}
-		var anySucceeded bool = false
+		failedLangs := map[string]error{}
+		var passedLangs []string
+
 		for _, lang := range langs {
 			if langErr := convertHCL(lang); langErr != nil {
+				failedLangs[lang] = langErr
 				err = multierror.Append(err, langErr)
 			} else {
-				anySucceeded = true
+				passedLangs = append(passedLangs, lang)
 			}
 		}
-		if anySucceeded {
+
+		if len(failedLangs) == len(langs) {
+			hclAllLangsConversionFailures++
+
+			if exampleTitle == "" {
+				g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' for all languages. The example will be dropped from any generated docs or SDKs.", path))
+			} else {
+				g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' for all languages. The example will be dropped from any generated docs or SDKs.", exampleTitle, path))
+			}
+		}
+
+		// Log the results when an example fails to convert to some languages, but not all
+		if len(failedLangs) > 0 && len(failedLangs) < len(langs) {
+			var failedLangsStrings []string
+
+			for lang, _ := range failedLangs {
+				failedLangsStrings = append(failedLangsStrings, lang)
+
+				switch lang {
+				case "typescript":
+					hclTypeScriptPartialConversionFailures++
+				case "python":
+					hclPythonPartialConversionFailures++
+				case "csharp":
+					hclCSharpPartialConversionFailures++
+				case "go":
+					hclGoPartialConversionFailures++
+				}
+			}
+
+			if exampleTitle == "" {
+				g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", path, strings.Join(failedLangsStrings, ", ")))
+			} else {
+				g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
+			}
+		}
+
+		if len(passedLangs) > 0 {
 			// At least one language out of the given set has been generated, which is considered a success
 			err = nil
 		}
