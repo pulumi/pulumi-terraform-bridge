@@ -1244,9 +1244,17 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 		var passedLangs []string
 
 		for _, lang := range langs {
+			resultLenBefore := result.Len()
+
+			// The inner function convertHCL above will return an error in the event of a panic, but in the event of an
+			// error the function will simply not append any content to result and swallow the error. Therefore, we
+			// need to account for both of these failure conditions. If neither of these conditions occurs, we can
+			// assume the HCL was converted successfully for this language.
 			if langErr := convertHCL(lang); langErr != nil {
 				failedLangs[lang] = langErr
 				err = multierror.Append(err, langErr)
+			} else if resultLenBefore == result.Len() {
+				failedLangs[lang] = langErr
 			} else {
 				passedLangs = append(passedLangs, lang)
 			}
