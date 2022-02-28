@@ -861,8 +861,6 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 var (
 	ignoredDocSections     int
 	ignoredDocHeaders      = make(map[string]int)
-	hclBlocksSucceeded     int
-	hclBlocksFailed        int
 	hclFailures            = make(map[string]bool)
 	elidedDescriptions     int // i.e., we discard the entire description, including examples
 	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
@@ -890,10 +888,6 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if ignoredDocSections > 0 {
 		g.warn("%d documentation sections ignored", ignoredDocSections)
-	}
-	if hclBlocksFailed > 0 {
-		g.warn("%d/%d documentation code blocks failed to convert",
-			hclBlocksFailed, hclBlocksFailed+hclBlocksSucceeded)
 	}
 
 	if elidedDescriptions > 0 {
@@ -1064,10 +1058,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						if err != nil {
 							skippedExamples = true
 							hclFailures[stderr] = true
-							hclBlocksFailed++
 						} else {
 							fprintf(subsectionOutput, "\n%s", codeBlock)
-							hclBlocksSucceeded++
 						}
 					} else {
 						skippedExamples = true
