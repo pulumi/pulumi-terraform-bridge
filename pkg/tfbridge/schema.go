@@ -1103,14 +1103,27 @@ func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
 	if dv, _ := tfs.DefaultValue(); dv != nil {
 		return dv
 	}
-	if ps != nil {
-		return ps.Default
-	}
+	// TODO: We should inspect SchemaInfo.Default for the default value as well
+	// if ps != nil {
+	// 	return ps.Default
+	// }
 	return nil
 }
 
 func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyValue) bool {
 	if dv := getDefaultValue(tfs, ps); dv != nil {
+		// For numbers PropertyValue.V will always be a float64, but Schema.DefaultValue() from terraform might be float64 or int.
+
+		if v.IsNumber() {
+			if floatValue, ok := dv.(float64); ok {
+				return floatValue == v.V
+			} else if intValue, ok := dv.(int); ok {
+				return float64(intValue) == v.V
+			} else {
+				// Unexpected type, just return false
+				return false
+			}
+		}
 		return dv == v.V
 	}
 

@@ -2025,3 +2025,72 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 	})
 	assert.Equal(t, expected, ins)
 }
+
+func TestExtractDefaultIntegerInputs(t *testing.T) {
+	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for default values.
+	tfProvider := makeTestTFProvider(
+		map[string]*schemav1.Schema{
+			"input_a": {Type: schemav1.TypeInt, Optional: true},
+			"input_b": {Type: schemav1.TypeFloat, Optional: true},
+			"input_c": {Type: schemav1.TypeInt, Optional: true, Default: -1},
+			"input_d": {Type: schemav1.TypeFloat, Optional: true, Default: -1},
+		},
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
+		})
+
+	set := func(d *schemav1.ResourceData, key string, value interface{}) {
+		contract.IgnoreError(d.Set(key, value))
+	}
+
+	tfres := tfProvider.ResourcesMap["importable_resource"]
+	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+		_, ok := d.GetOk(defaultsKey)
+		assert.False(t, ok)
+
+		set(d, "input_a", 0)
+		set(d, "input_b", 0)
+		set(d, "input_c", -1)
+		set(d, "input_d", -1)
+		return nil
+	}
+
+	p := &Provider{
+		tf: shimv1.NewProvider(tfProvider),
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+	id := resource.ID("MyID")
+
+	resp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:  string(id),
+		Urn: string(urn),
+	})
+	assert.NoError(t, err)
+
+	outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": 0,
+		"inputB": 0,
+		"inputC": -1,
+		"inputD": -1,
+	}), outs)
+
+	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+		defaultsKey: []interface{}{},
+	})
+	assert.Equal(t, expected, ins)
+}
