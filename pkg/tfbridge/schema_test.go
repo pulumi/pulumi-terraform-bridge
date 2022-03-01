@@ -1963,8 +1963,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Sensitive: true, Required: true},
 			"input_b": {Type: schemav1.TypeString, Sensitive: true, Optional: true},
-			"inout_c": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Computed: true},
-			"inout_d": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Default: "inout_d_default"},
+			"input_c": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Computed: true},
+			"input_d": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Default: "input_d_default"},
 		},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			return []*schemav1.ResourceData{d}, nil
@@ -1980,8 +1980,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 		assert.False(t, ok)
 
 		set(d, "input_a", "input_a_read")
-		set(d, "inout_c", "inout_c_read")
-		set(d, "inout_d", "inout_d_default")
+		set(d, "input_c", "input_c_read")
+		set(d, "input_d", "input_d_default")
 		return nil
 	}
 
@@ -2012,8 +2012,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"id":     "MyID",
 		"inputA": "input_a_read",
-		"inoutC": "inout_c_read",
-		"inoutD": "inout_d_default",
+		"inputC": "input_c_read",
+		"inputD": "input_d_default",
 	}), outs)
 
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
@@ -2021,7 +2021,7 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		defaultsKey: []interface{}{},
 		"inputA":    "input_a_read",
-		"inoutC":    "inout_c_read",
+		"inputC":    "input_c_read",
 	})
 	assert.Equal(t, expected, ins)
 }
