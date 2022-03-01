@@ -1957,3 +1957,71 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 	assert.True(t, len(diffResp.GetReplaces()) > 0)
 	assert.False(t, diffResp.GetDeleteBeforeReplace())
 }
+
+func TestExtractDefaultSecretInputs(t *testing.T) {
+	tfProvider := makeTestTFProvider(
+		map[string]*schemav1.Schema{
+			"input_a": {Type: schemav1.TypeString, Sensitive: true, Required: true},
+			"input_b": {Type: schemav1.TypeString, Sensitive: true, Optional: true},
+			"inout_c": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Computed: true},
+			"inout_d": {Type: schemav1.TypeString, Sensitive: true, Optional: true, Default: "inout_d_default"},
+		},
+		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+			return []*schemav1.ResourceData{d}, nil
+		})
+
+	set := func(d *schemav1.ResourceData, key string, value interface{}) {
+		contract.IgnoreError(d.Set(key, value))
+	}
+
+	tfres := tfProvider.ResourcesMap["importable_resource"]
+	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+		_, ok := d.GetOk(defaultsKey)
+		assert.False(t, ok)
+
+		set(d, "input_a", "input_a_read")
+		set(d, "inout_c", "inout_c_read")
+		set(d, "inout_d", "inout_d_default")
+		return nil
+	}
+
+	p := &Provider{
+		tf: shimv1.NewProvider(tfProvider),
+		resources: map[tokens.Type]Resource{
+			"importableResource": {
+				TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
+				TFName: "importable_resource",
+				Schema: &ResourceInfo{
+					Tok: tokens.NewTypeToken("module", "importableResource"),
+				},
+			},
+		},
+	}
+
+	urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+	id := resource.ID("MyID")
+
+	resp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:  string(id),
+		Urn: string(urn),
+	})
+	assert.NoError(t, err)
+
+	outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"id":     "MyID",
+		"inputA": "input_a_read",
+		"inoutC": "inout_c_read",
+		"inoutD": "inout_d_default",
+	}), outs)
+
+	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+		defaultsKey: []interface{}{},
+		"inputA":    "input_a_read",
+		"inoutC":    "inout_c_read",
+	})
+	assert.Equal(t, expected, ins)
+}

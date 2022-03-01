@@ -1136,6 +1136,9 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 		default:
 			return false
 		}
+	case v.IsSecret():
+		secret := v.SecretValue()
+		return isDefaultOrZeroValue(tfs, ps, secret.Element)
 	default:
 		return false
 	}
