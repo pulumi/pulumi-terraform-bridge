@@ -584,7 +584,6 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
-		ignoredDocSections++
 		ignoredDocHeaders[header]++
 		return nil
 	case "Example Usage":
@@ -607,7 +606,10 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	var wroteHeader bool
 	for _, subsection := range groupLines(section[1:], "### ") {
 		if len(subsection) == 0 {
-			p.g.warn("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
+			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
+			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
+			// log it as debug output:
+			p.g.debug("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
 			continue
 		}
 
@@ -859,7 +861,6 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 }
 
 var (
-	ignoredDocSections     int
 	ignoredDocHeaders      = make(map[string]int)
 	hclFailures            = make(map[string]bool)
 	elidedDescriptions     int // i.e., we discard the entire description, including examples
@@ -886,10 +887,6 @@ func isBlank(line string) bool {
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
 func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
-	if ignoredDocSections > 0 {
-		g.warn("%d documentation sections ignored", ignoredDocSections)
-	}
-
 	if elidedDescriptions > 0 {
 		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
 	}
