@@ -1183,7 +1183,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 			}
 
 			g.coverageTracker.languageConversionPanic(languageName, err.Error())
-			g.error("failed to convert HCL for %s to %v: %v", path, languageName, err)
+			g.warn("failed to convert HCL for %s to %v: %v", path, languageName, err)
 			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
