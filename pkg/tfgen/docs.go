@@ -229,6 +229,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		g.warn("Could not find docs for resource %v; consider overriding doc source location", rawname)
+		entitiesMissingDocs++
 		return entityDocs{}, nil
 	}
 
@@ -877,6 +878,8 @@ var (
 	hclPythonPartialConversionFailures     int
 	hclTypeScriptPartialConversionFailures int
 	hclCSharpPartialConversionFailures     int
+
+	entitiesMissingDocs int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -887,6 +890,10 @@ func isBlank(line string) bool {
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
 func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
+	if entitiesMissingDocs > 0 {
+		g.warn("%d entities have missing docs.", entitiesMissingDocs)
+	}
+
 	if elidedDescriptions > 0 {
 		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
 	}
