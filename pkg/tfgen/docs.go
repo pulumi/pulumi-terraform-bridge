@@ -216,7 +216,7 @@ func getMarkdownDetails(org string, provider string, resourcePrefix string, kind
 	return markdownBytes, markdownFileName, true
 }
 
-func (k DocKind) string() string {
+func (k DocKind) String() string {
 	switch k {
 	case DataSourceDocs:
 		return "data source"
@@ -240,7 +240,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		entitiesMissingDocs++
-		msg := fmt.Sprintf("could not find docs for %s '%v'. Override the Docs property in the %s mapping. See type DocInfo in the source code for details.", kind.string(), rawname, kind.string())
+		msg := fmt.Sprintf("could not find docs for %v '%v'. Override the Docs property in the %v mapping. See type DocInfo in the source code for details.", kind, rawname, kind)
 
 		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			g.error(msg)
@@ -632,7 +632,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
-			p.g.debug("Unparseable H3 doc section for %v; consider overriding doc source location", p.rawname)
+			p.g.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location", p.rawname, p.kind)
 			continue
 		}
 
@@ -643,7 +643,8 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			continue
 		}
 		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports {
-			p.g.warn("Unexpected code snippets in section %v for resource %v", header, p.rawname)
+			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, but may not display correctly in the generated docs.", header, p.kind, p.rawname)
+			unexpectedSnippets++
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -902,6 +903,7 @@ var (
 	hclCSharpPartialConversionFailures     int
 
 	entitiesMissingDocs int
+	unexpectedSnippets  int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -914,6 +916,10 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if entitiesMissingDocs > 0 {
 		g.warn("%d entities have missing docs.", entitiesMissingDocs)
+	}
+
+	if unexpectedSnippets > 0 {
+		g.warn("%d entity document sections contained unexpected HCL code snippets. Examples will be converted, but may not display correctly in the registry, e.g. lacking tabs.", unexpectedSnippets)
 	}
 
 	if elidedDescriptions > 0 {
