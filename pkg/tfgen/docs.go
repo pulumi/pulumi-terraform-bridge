@@ -216,6 +216,17 @@ func getMarkdownDetails(org string, provider string, resourcePrefix string, kind
 	return markdownBytes, markdownFileName, true
 }
 
+func (k DocKind) string() string {
+	switch k {
+	case DataSourceDocs:
+		return "data source"
+	case ResourceDocs:
+		return "resource"
+	default:
+		return ""
+	}
+}
+
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
@@ -228,7 +239,19 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
-		g.warn("Could not find docs for resource %v; consider overriding doc source location", rawname)
+		entitiesMissingDocs++
+		msg := fmt.Sprintf("could not find docs for %s '%v'. Override the Docs property in the %s mapping. See type DocInfo in the source code for details.", kind.string(), rawname, kind.string())
+
+		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
+			g.error(msg)
+			return entityDocs{}, fmt.Errorf(msg)
+		}
+
+		// Ideally, we would still want to still return an error here and let upstream callers handle it, but at the
+		// time the option to fail the build for missing docs was added (see just above), there are multiple callers of
+		// this function who do not expect docs not being found to return an error, and the cost of doing the idiomatic
+		// thing (returning an error) was too high.
+		g.warn(msg)
 		return entityDocs{}, nil
 	}
 
@@ -877,6 +900,8 @@ var (
 	hclPythonPartialConversionFailures     int
 	hclTypeScriptPartialConversionFailures int
 	hclCSharpPartialConversionFailures     int
+
+	entitiesMissingDocs int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -887,6 +912,10 @@ func isBlank(line string) bool {
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
 func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
+	if entitiesMissingDocs > 0 {
+		g.warn("%d entities have missing docs.", entitiesMissingDocs)
+	}
+
 	if elidedDescriptions > 0 {
 		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
 	}
