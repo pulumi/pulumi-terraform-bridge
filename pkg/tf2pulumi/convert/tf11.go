@@ -175,8 +175,12 @@ func newGenerator(w io.Writer, projectName string, opts Options) (gen.Generator,
 	case LanguagePython:
 		return python.New(projectName, w), "__main__.py", nil
 	default:
+		validLanguages := make([]string, len(ValidLanguages))
+		for i, l := range ValidLanguages {
+			validLanguages[i] = string(l)
+		}
 		return nil, "", errors.Errorf("invalid language '%s', expected one of %s",
-			opts.TargetLanguage, strings.Join(ValidLanguages[:], ", "))
+			opts.TargetLanguage, strings.Join(validLanguages, ", "))
 	}
 }
 

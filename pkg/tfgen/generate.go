@@ -69,6 +69,8 @@ type Generator struct {
 	skipDocs         bool
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
+
+	convertedCode map[string][]byte
 }
 
 type Language string
@@ -79,11 +81,12 @@ const (
 	Python Language = "python"
 	CSharp Language = "dotnet"
 	Schema Language = "schema"
+	PCL    Language = "pulumi"
 )
 
 func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case Golang, NodeJS, Python, CSharp, Schema:
+	case Golang, NodeJS, Python, CSharp, Schema, PCL:
 		return true
 	}
 	return false
@@ -624,7 +627,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	// Ensure the language is valid.
 	switch lang {
-	case Golang, NodeJS, Python, CSharp, Schema:
+	case Golang, NodeJS, Python, CSharp, Schema, PCL:
 		// OK
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
@@ -748,7 +751,8 @@ func (g *Generator) Generate() error {
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
 	var files map[string][]byte
-	if g.language == Schema {
+	switch g.language {
+	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
 
@@ -757,7 +761,16 @@ func (g *Generator) Generate() error {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
 		files = map[string][]byte{"schema.json": bytes}
-	} else {
+	case PCL:
+		if g.skipExamples {
+			return fmt.Errorf("Cannot set skipExamples and get PCL")
+		}
+		files = map[string][]byte{}
+		for path, code := range g.convertedCode {
+			path = strings.TrimPrefix(path, "#/") + ".pp"
+			files[path] = code
+		}
+	default:
 		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
 		if err != nil {
 			return errors.Wrapf(err, "failed to import Pulumi schema")
@@ -1255,7 +1268,7 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 		if csharpinfo := g.info.CSharp; csharpinfo != nil {
 			overlay = csharpinfo.Overlay
 		}
-	case Schema:
+	case Schema, PCL:
 		// N/A
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
