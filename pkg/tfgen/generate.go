@@ -1081,7 +1081,13 @@ func (g *Generator) gatherResource(rawname string,
 	// Ensure there weren't any custom fields that were unrecognized.
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
-			g.warn("custom resource schema %s.%s was not present in the Terraform metadata", name, key)
+			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
+
+			if isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
+				return "", nil, fmt.Errorf(msg)
+			}
+
+			g.warn(msg)
 		}
 	}
 
@@ -1358,7 +1364,7 @@ func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)                 // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, nil, false), // camelCase the data source name.
 			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}
@@ -1373,7 +1379,7 @@ func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo, 
 	}
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)                // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, nil, true), // PascalCase the resource name.
 			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}
