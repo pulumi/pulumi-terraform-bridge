@@ -283,6 +283,10 @@ func parseParameterSection(node *bf.Node, consumeNode func(node *bf.Node)) (para
 				return -1, nil, nil, err
 			}
 
+			if ps == nil || node == nil || node.Next == nil {
+				return -1, nil, nil, fmt.Errorf("Expected a parameter list, got %s", prettyPrint(node.Next))
+			}
+
 			defer consumeNode(node)
 			return *flags, ps, node.Next.Next, nil
 		}
