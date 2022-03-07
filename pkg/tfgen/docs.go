@@ -693,13 +693,15 @@ func getFooterLinks(markdown string) map[string]string {
 }
 
 func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
-	topLevelSchema, err := parseTopLevelSchema(parseNode(strings.Join(subsection, "\n")), nil)
+	node := parseNode(strings.Join(subsection, "\n"))
+	topLevelSchema, err := parseTopLevelSchema(node, nil)
 	if err != nil {
-		panic(fmt.Errorf("error: Failure in parsing resource name: %s, subsection: %s",
-			p.rawname, subsection[0]))
+		p.g.warn(fmt.Sprintf("error: Failure in parsing resource name: %s, subsection: %s", p.rawname, subsection[0]))
+		return
 	}
 	if topLevelSchema == nil {
-		panic("Failed to parse top-level Schema section")
+		p.g.warn("Failed to parse top-level Schema section")
+		return
 	}
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
 }
