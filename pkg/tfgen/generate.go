@@ -54,21 +54,21 @@ const (
 )
 
 type Generator struct {
-	pkg              string                // the Pulum package name (e.g. `gcp`)
-	version          string                // the package version.
-	language         Language              // the language runtime to generate.
-	info             tfbridge.ProviderInfo // the provider info for customizing code generation
-	root             afero.Fs              // the output virtual filesystem.
-	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
-	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
-	packageCache     *pcl.PackageCache     // the package cache for tf2pulumi.
-	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
-	terraformVersion string                // the Terraform version to target for example codegen, if any
-	sink             diag.Sink
-	printStats       bool
-	skipDocs         bool
-	skipExamples     bool
-	coverageTracker  *CoverageTracker
+	pkg                           string                // the Pulum package name (e.g. `gcp`)
+	version                       string                // the package version.
+	language                      Language              // the language runtime to generate.
+	info                          tfbridge.ProviderInfo // the provider info for customizing code generation
+	root                          afero.Fs              // the output virtual filesystem.
+	providerShim                  *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
+	pluginHost                    plugin.Host           // the plugin host for tf2pulumi.
+	packageCache                  *pcl.PackageCache     // the package cache for tf2pulumi.
+	infoSource                    il.ProviderInfoSource // the provider info source for tf2pulumi.
+	terraformVersion              string                // the Terraform version to target for example codegen, if any
+	sink                          diag.Sink
+	printHclConversionDiagnostics bool
+	skipDocs                      bool
+	skipExamples                  bool
+	coverageTracker               *CoverageTracker
 
 	convertedCode map[string][]byte
 }
@@ -691,14 +691,14 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			Host:  host,
 			cache: map[string]plugin.Provider{},
 		},
-		packageCache:     pcl.NewPackageCache(),
-		infoSource:       host,
-		terraformVersion: opts.TerraformVersion,
-		sink:             sink,
-		printStats:       opts.Debug,
-		skipDocs:         opts.SkipDocs,
-		skipExamples:     opts.SkipExamples,
-		coverageTracker:  opts.CoverageTracker,
+		packageCache:                  pcl.NewPackageCache(),
+		infoSource:                    host,
+		terraformVersion:              opts.TerraformVersion,
+		sink:                          sink,
+		printHclConversionDiagnostics: opts.Debug,
+		skipDocs:                      opts.SkipDocs,
+		skipExamples:                  opts.SkipExamples,
+		coverageTracker:               opts.CoverageTracker,
 	}, nil
 }
 
@@ -798,7 +798,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Print out some documentation stats as a summary afterwards.
-	printDocStats(g, g.printStats, g.printStats)
+	g.printDocStats()
 
 	// Close the plugin host.
 	g.pluginHost.Close()
@@ -1364,7 +1364,7 @@ func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceInfo) (string, string) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname)                 // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, nil, false), // camelCase the data source name.
 			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}
@@ -1379,7 +1379,7 @@ func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo, 
 	}
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		name := withoutPackageName(provider, rawname)                // strip off the pkg prefix.
 		return tfbridge.TerraformToPulumiName(name, nil, nil, true), // PascalCase the resource name.
 			tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the filename.
 	}

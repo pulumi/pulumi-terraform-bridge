@@ -914,7 +914,7 @@ func isBlank(line string) bool {
 }
 
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
+func (g *Generator) printDocStats() {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if entitiesMissingDocs > 0 {
 		g.warn("%d entities have missing docs.", entitiesMissingDocs)
@@ -965,7 +965,7 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 	}
 
 	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
-	if printIgnoreDetails {
+	if g.printHclConversionDiagnostics {
 		fmt.Printf("---IGNORES---\n")
 		var ignores []string
 		for ignore := range ignoredDocHeaders {
@@ -975,8 +975,7 @@ func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool
 		for _, ignore := range ignores {
 			fmt.Printf("[%d] %s\n", ignoredDocHeaders[ignore], ignore)
 		}
-	}
-	if printHCLFailureDetails {
+
 		fmt.Printf("---HCL FAILURES---\n")
 		var failures []string
 		for failure := range hclFailures {
@@ -1189,7 +1188,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 		}()
 
 		var logger *log.Logger
-		if g.printStats {
+		if g.printHclConversionDiagnostics {
 			logger = log.New(&stderr, "", log.Lshortfile)
 		}
 
