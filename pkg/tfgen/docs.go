@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -923,7 +925,7 @@ func isBlank(line string) bool {
 }
 
 // printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func (g *Generator) printDocStats() {
+func printDocStats(g *Generator, printIgnoreDetails, printHCLFailureDetails bool) {
 	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
 	if entitiesMissingDocs > 0 {
 		g.warn("%d entities have missing docs.", entitiesMissingDocs)
@@ -971,6 +973,30 @@ func (g *Generator) printDocStats() {
 
 	if hclCSharpPartialConversionFailures > 0 {
 		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#", hclCSharpPartialConversionFailures)
+	}
+
+	// These more detailed outputs are suppressed by default, but can be enabled to track down failures.
+	if printIgnoreDetails {
+		fmt.Printf("---IGNORES---\n")
+		var ignores []string
+		for ignore := range ignoredDocHeaders {
+			ignores = append(ignores, ignore)
+		}
+		sort.Strings(ignores)
+		for _, ignore := range ignores {
+			fmt.Printf("[%d] %s\n", ignoredDocHeaders[ignore], ignore)
+		}
+	}
+	if printHCLFailureDetails {
+		fmt.Printf("---HCL FAILURES---\n")
+		var failures []string
+		for failure := range hclFailures {
+			failures = append(failures, failure)
+		}
+		sort.Strings(failures)
+		for i, failure := range failures {
+			fmt.Printf("%d: %s\n", i, failure)
+		}
 	}
 }
 
@@ -1173,6 +1199,11 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 			}
 		}()
 
+		var logger *log.Logger
+		if g.printStats {
+			logger = log.New(&stderr, "", log.Lshortfile)
+		}
+
 		files, diags, err := convert.Convert(convert.Options{
 			Loader:                   newLoader(g.pluginHost),
 			Root:                     input,
@@ -1180,6 +1211,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 			AllowMissingProperties:   true,
 			AllowMissingVariables:    true,
 			FilterResourceNames:      true,
+			Logger:                   logger,
 			PackageCache:             g.packageCache,
 			PluginHost:               g.pluginHost,
 			ProviderInfoSource:       g.infoSource,
