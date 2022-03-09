@@ -227,6 +227,17 @@ func (k DocKind) String() string {
 	}
 }
 
+// formatEntityName checks for an aliases TF entity name (ending with "_legacy") and returns it formatted for end user
+// consumption in log messages, etc. Without this conversion, users who do not have direct knowledge of how
+// aliased/renamed entities will be confused by the implicit renaming because the "_legacy" resource mapping does not
+// appear in the provider mapping, nor the upstream provider source.
+func formatEntityName(rawname string) string {
+	if strings.Contains(rawname, tfbridge.RenamedEntitySuffix) {
+		return fmt.Sprintf("'%s' (aliased or renamed)", strings.Replace(rawname, tfbridge.RenamedEntitySuffix, "", -1))
+	}
+	return fmt.Sprintf("'%s'", rawname)
+}
+
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
@@ -240,7 +251,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		entitiesMissingDocs++
-		msg := fmt.Sprintf("could not find docs for %v '%v'. Override the Docs property in the %v mapping. See type DocInfo in the source code for details.", kind, rawname, kind)
+		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
 		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			g.error(msg)
