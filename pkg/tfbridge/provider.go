@@ -1234,7 +1234,7 @@ func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok to
 	legacyModule string, newModule string, info *ResourceInfo) {
 
 	resourcePrefix := p.Name + "_"
-	legacyResourceName := resourceName + "_legacy"
+	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
 		info = &ResourceInfo{}
 	}
@@ -1269,11 +1269,15 @@ func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok to
 	p.P.ResourcesMap().Set(legacyResourceName, p.P.ResourcesMap().Get(resourceName))
 }
 
+const (
+	RenamedEntitySuffix string = "_legacy"
+)
+
 func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
 	legacyModule string, newModule string, info *DataSourceInfo) {
 
 	resourcePrefix := p.Name + "_"
-	legacyResourceName := resourceName + "_legacy"
+	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
 		info = &DataSourceInfo{}
 	}

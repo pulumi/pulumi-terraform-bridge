@@ -448,3 +448,8 @@ content 2`
 
 	runTest(gcpDoc2, gcpDoc2Expected)
 }
+
+func TestFormatEntityName(t *testing.T) {
+	assert.Equal(t, "'prov_entity'", formatEntityName("prov_entity"))
+	assert.Equal(t, "'prov_entity' (aliased or renamed)", formatEntityName("prov_entity_legacy"))
+}
