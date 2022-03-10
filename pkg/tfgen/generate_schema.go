@@ -213,6 +213,10 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		},
 	}
 
+	if g.info.LogoURL != "" {
+		spec.LogoURL = g.info.LogoURL
+	}
+
 	spec.Description = g.info.Description
 	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), g.info.GetGitHubHost())
 
