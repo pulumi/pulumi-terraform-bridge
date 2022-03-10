@@ -453,3 +453,13 @@ func TestFormatEntityName(t *testing.T) {
 	assert.Equal(t, "'prov_entity'", formatEntityName("prov_entity"))
 	assert.Equal(t, "'prov_entity' (aliased or renamed)", formatEntityName("prov_entity_legacy"))
 }
+
+func TestConvertHCLToString(t *testing.T) {
+	sampleHCL1 := `
+resource "aws_acm_certificate" "cert" {
+  domain_name       = "example.com"
+  validation_method = "DNS"
+}
+`
+	assert.Equal(t, "", convertH)
+}
