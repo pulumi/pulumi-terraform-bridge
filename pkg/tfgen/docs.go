@@ -1144,6 +1144,40 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 	return output.String()
 }
 
+// convert wraps convert.Convert which may panic if it encounters an issue parsing HCL so that it returns an error in
+// the event of panicking
+//
+// Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/477
+func (g *Generator) convert(input afero.Fs, languageName, path string) (files map[string][]byte, diags convert.Diagnostics, err error) {
+	defer func() {
+		v := recover()
+		if v != nil {
+			files = map[string][]byte{}
+			diags = convert.Diagnostics{}
+			err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
+
+			g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
+		}
+	}()
+
+	files, diags, err = convert.Convert(convert.Options{
+		Loader:                   newLoader(g.pluginHost),
+		Root:                     input,
+		TargetLanguage:           languageName,
+		AllowMissingProperties:   true,
+		AllowMissingVariables:    true,
+		FilterResourceNames:      true,
+		PackageCache:             g.packageCache,
+		PluginHost:               g.pluginHost,
+		ProviderInfoSource:       g.infoSource,
+		SkipResourceTypechecking: true,
+		TerraformVersion:         g.terraformVersion,
+	})
+
+	return
+}
+
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
 func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, error) {
@@ -1164,28 +1198,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 	var result strings.Builder
 	var stderr bytes.Buffer
 	convertHCL := func(languageName string) (err error) {
-		defer func() {
-			v := recover()
-			if v != nil {
-				err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
-				g.debug(fmt.Sprintf("panic converting HCL for %s to %v: %v", path, languageName, v))
-				g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
-			}
-		}()
-
-		files, diags, err := convert.Convert(convert.Options{
-			Loader:                   newLoader(g.pluginHost),
-			Root:                     input,
-			TargetLanguage:           languageName,
-			AllowMissingProperties:   true,
-			AllowMissingVariables:    true,
-			FilterResourceNames:      true,
-			PackageCache:             g.packageCache,
-			PluginHost:               g.pluginHost,
-			ProviderInfoSource:       g.infoSource,
-			SkipResourceTypechecking: true,
-			TerraformVersion:         g.terraformVersion,
-		})
+		files, diags, err := g.convert(input, languageName, path)
 
 		if err != nil {
 			diags, isDiags := err.(hclV2.Diagnostics)
