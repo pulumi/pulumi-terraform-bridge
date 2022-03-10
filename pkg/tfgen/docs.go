@@ -1176,6 +1176,36 @@ func (g *Generator) convert(input afero.Fs, languageName, path string) (files ma
 	return
 }
 
+func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, error) {
+	input := afero.NewMemMapFs()
+	f, err := input.Create(fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-")))
+	contract.AssertNoError(err)
+	_, err = f.Write([]byte(hcl))
+	contract.AssertNoError(err)
+	contract.IgnoreClose(f)
+
+	files, diags, err := g.convert(input, languageName, path)
+
+	if err != nil {
+		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, err)
+		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
+	}
+	if diags.All.HasErrors() {
+		g.coverageTracker.languageConversionFailure(languageName, diags.All)
+		return "", diags.All
+	}
+
+	contract.Assert(len(files) == 1)
+
+	convertedHcl := ""
+	for _, output := range files {
+		convertedHcl = strings.TrimSpace(string(output))
+	}
+
+	g.coverageTracker.languageConversionSuccess(languageName)
+	return convertedHcl, nil
+}
+
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
 func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
