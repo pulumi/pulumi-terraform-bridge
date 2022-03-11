@@ -897,7 +897,6 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 
 var (
 	ignoredDocHeaders      = make(map[string]int)
-	hclFailures            = make(map[string]bool)
 	elidedDescriptions     int // i.e., we discard the entire description, including examples
 	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
 	elidedArguments        int
@@ -1072,11 +1071,10 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
 						}
 
-						codeBlock, stderr, err := g.convertHCL(hcl, name, exampleTitle)
+						codeBlock, _, err := g.convertHCL(hcl, name, exampleTitle)
 
 						if err != nil {
 							skippedExamples = true
-							hclFailures[stderr] = true
 						} else {
 							fprintf(subsectionOutput, "\n%s", codeBlock)
 						}
