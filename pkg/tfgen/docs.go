@@ -897,7 +897,6 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 
 var (
 	ignoredDocHeaders      = make(map[string]int)
-	hclFailures            = make(map[string]bool)
 	elidedDescriptions     int // i.e., we discard the entire description, including examples
 	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
 	elidedArguments        int
@@ -1072,11 +1071,10 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
 						}
 
-						codeBlock, stderr, err := g.convertHCL(hcl, name, exampleTitle)
+						codeBlock, err := g.convertHCL(hcl, name, exampleTitle)
 
 						if err != nil {
 							skippedExamples = true
-							hclFailures[stderr] = true
 						} else {
 							fprintf(subsectionOutput, "\n%s", codeBlock)
 						}
@@ -1180,7 +1178,7 @@ func (g *Generator) convert(input afero.Fs, languageName, path string) (files ma
 
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
-func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, error) {
+func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1196,7 +1194,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 	contract.IgnoreClose(f)
 
 	var result strings.Builder
-	var stderr bytes.Buffer
 	convertHCL := func(languageName string) (err error) {
 		files, diags, err := g.convert(input, languageName, path)
 
@@ -1213,19 +1210,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 		}
 		if diags.All.HasErrors() {
-			if stderr.Len() != 0 {
-				_, err := fmt.Fprintf(&stderr, "\n")
-				contract.IgnoreError(err)
-			}
-			_, err := fmt.Fprintf(&stderr, "# %s: %s\n", path, languageName)
-			contract.IgnoreError(err)
-
-			_, err = fmt.Fprintf(&stderr, "%s\n\n", hcl)
-			contract.IgnoreError(err)
-
-			err = diags.NewDiagnosticWriter(&stderr, 0, false).WriteDiagnostics(diags.All)
-			contract.IgnoreError(err)
-
 			g.coverageTracker.languageConversionFailure(languageName, diags.All)
 			// Note that we intentionally avoid returning an error here. The caller will check for an empty code block
 			// before returning and translate that into an error.
@@ -1331,12 +1315,12 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, string, 
 	}
 
 	if err != nil {
-		return "", stderr.String(), err
+		return "", err
 	}
 	if result.Len() == 0 {
-		return "", stderr.String(), fmt.Errorf("failed to convert HCL for %s to %v: empty output produced", path, g.language)
+		return "", fmt.Errorf("failed to convert HCL for %s to %v: empty output produced", path, g.language)
 	}
-	return result.String(), stderr.String(), nil
+	return result.String(), nil
 }
 
 func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
