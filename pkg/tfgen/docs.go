@@ -28,7 +28,6 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
-	hclV2 "github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -1142,18 +1141,17 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 	return output.String()
 }
 
-// convert wraps convert.Convert which may panic if it encounters an issue parsing HCL so that it returns an error in
-// the event of panicking
+// convert wraps convert.Convert so that it returns an error in the event of a panic in convert.Convert
 //
 // Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/477
-func (g *Generator) convert(input afero.Fs, languageName, path string) (files map[string][]byte, diags convert.Diagnostics, err error) {
+func (g *Generator) convert(input afero.Fs, languageName string) (files map[string][]byte, diags convert.Diagnostics, err error) {
 	defer func() {
 		v := recover()
 		if v != nil {
 			files = map[string][]byte{}
 			diags = convert.Diagnostics{}
-			err = fmt.Errorf("panic to convert HCL for %s to %v: %v", path, languageName, v)
+			err = fmt.Errorf("panic converting HCL: %v", v)
 
 			g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
 		}
@@ -1176,8 +1174,51 @@ func (g *Generator) convert(input afero.Fs, languageName, path string) (files ma
 	return
 }
 
+// convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
+// simplified parameters and return values
+func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, error) {
+	input := afero.NewMemMapFs()
+	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
+	f, err := input.Create(fileName)
+	contract.AssertNoError(err)
+	_, err = f.Write([]byte(hcl))
+	contract.AssertNoError(err)
+	contract.IgnoreClose(f)
+
+	files, diags, err := g.convert(input, languageName)
+
+	// By observation on the GCP provider, convert.Convert() will either panic (in which case the wrapped method above
+	// will return an error) or it will return a non-zero value for diags.
+	if err != nil {
+		// Because this condition is presumably the result of a panic that we wrap as an error, we do not need to add
+		// anything to g.coverageTracker - that's covered in the panic recovery above.
+		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
+	}
+	if diags.All.HasErrors() {
+		// Remove the temp filename from the error, since it will be confusing to users of the bridge who do not know
+		// we write an example to a temp file internally in order to pass to convert.Convert().
+		//
+		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
+		errMsg := strings.Replace(diags.All.Error(), fileName[1:], "", -1)
+
+		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
+		g.coverageTracker.languageConversionFailure(languageName, diags.All)
+		return "", fmt.Errorf(errMsg)
+	}
+
+	contract.Assert(len(files) == 1)
+
+	convertedHcl := ""
+	for _, output := range files {
+		convertedHcl = strings.TrimSpace(string(output))
+	}
+
+	g.coverageTracker.languageConversionSuccess(languageName)
+	return convertedHcl, nil
+}
+
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
-// of failure, the error returned will be non-nil, and the second string contains the stderr stream of details.
+// of failure, the error returned will be non-nil.
 func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
@@ -1186,58 +1227,31 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 		hcl = fixed
 	}
 
-	input := afero.NewMemMapFs()
-	f, err := input.Create(fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-")))
-	contract.AssertNoError(err)
-	_, err = f.Write([]byte(hcl))
-	contract.AssertNoError(err)
-	contract.IgnoreClose(f)
-
 	var result strings.Builder
 	convertHCL := func(languageName string) (err error) {
-		files, diags, err := g.convert(input, languageName, path)
-
+		convertedHcl, err := g.convertHCLToString(hcl, path, languageName)
 		if err != nil {
-			diags, isDiags := err.(hclV2.Diagnostics)
-			if isDiags {
-				for i, d := range diags {
-					g.debug("Diagnostic %d: %v", i, d)
-				}
-			}
-
-			g.coverageTracker.languageConversionPanic(languageName, err.Error())
-			g.warn("failed to convert HCL for %s to %v: %v", path, languageName, err)
-			return fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
-		}
-		if diags.All.HasErrors() {
-			g.coverageTracker.languageConversionFailure(languageName, diags.All)
-			// Note that we intentionally avoid returning an error here. The caller will check for an empty code block
-			// before returning and translate that into an error.
-			return nil
+			return err
 		}
 
-		contract.Assert(len(files) == 1)
-
-		// Add a fenced code-block with the resulting code snippet.
-		for _, output := range files {
-			if result.Len() > 0 {
-				result.WriteByte('\n')
-			}
-			out := strings.TrimSpace(string(output))
-
-			if g.convertedCode == nil {
-				g.convertedCode = map[string][]byte{}
-			}
-			g.convertedCode[path] = []byte(out)
-
-			_, err := fmt.Fprintf(&result, "```%s\n%s\n```", languageName, out)
-			contract.IgnoreError(err)
+		if result.Len() > 0 {
+			result.WriteByte('\n')
 		}
+		out := strings.TrimSpace(convertedHcl)
+
+		if g.convertedCode == nil {
+			g.convertedCode = map[string][]byte{}
+		}
+		g.convertedCode[path] = []byte(out)
+
+		_, err = fmt.Fprintf(&result, "```%s\n%s\n```", languageName, out)
+		contract.IgnoreError(err)
 
 		g.coverageTracker.languageConversionSuccess(languageName)
 		return nil
 	}
 
+	var err error
 	switch g.language {
 	case NodeJS:
 		err = convertHCL(convert.LanguageTypescript)
@@ -1248,7 +1262,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 	case Golang:
 		err = convertHCL(convert.LanguageGo)
 	case PCL:
-		convertHCL(convert.LanguagePulumi)
+		err = convertHCL(convert.LanguagePulumi)
 
 	case Schema:
 		langs := []string{"typescript", "python", "csharp", "go"}
@@ -1256,17 +1270,9 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 		var passedLangs []string
 
 		for _, lang := range langs {
-			resultLenBefore := result.Len()
-
-			// The inner function convertHCL above will return an error in the event of a panic, but in the event of an
-			// error the function will simply not append any content to result and swallow the error. Therefore, we
-			// need to account for both of these failure conditions. If neither of these conditions occurs, we can
-			// assume the HCL was converted successfully for this language.
 			if langErr := convertHCL(lang); langErr != nil {
 				failedLangs[lang] = langErr
 				err = multierror.Append(err, langErr)
-			} else if resultLenBefore == result.Len() {
-				failedLangs[lang] = langErr
 			} else {
 				passedLangs = append(passedLangs, lang)
 			}
