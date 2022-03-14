@@ -62,3 +62,16 @@ func TestStringValue(t *testing.T) {
 	assert.Equal(t, "value1", StringValue(myMap, "key1"))
 	assert.Equal(t, "", StringValue(myMap, "keyThatDoesNotExist"))
 }
+
+func TestTfDataSourceToPulumi(t *testing.T) {
+	assert.Equal(t, "", TfDataSourceToPulumi("invalid"))
+	assert.Equal(t, "getFoo", TfDataSourceToPulumi("provider_foo"))
+	assert.Equal(t, "getFooBar", TfDataSourceToPulumi("provider_foo_bar"))
+	assert.Equal(t, "getFooBarBaz", TfDataSourceToPulumi("provider_foo_bar_baz"))
+}
+
+func TestTfResourceToPulumi(t *testing.T) {
+	assert.Equal(t, "", TfResourceToPulumi("invalid"))
+	assert.Equal(t, "Foo", TfResourceToPulumi("provider_foo"))
+	assert.Equal(t, "FooBarBaz", TfResourceToPulumi("provider_foo_bar_baz"))
+}

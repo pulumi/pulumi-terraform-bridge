@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -781,6 +782,42 @@ func StringValue(vars resource.PropertyMap, prop resource.PropertyKey) string {
 		return val.StringValue()
 	}
 	return ""
+}
+
+// TfDataSourceToPulumi converts a given Terraform data source name tfName (e.g. "provider_foo_bar") and returns the
+// standard conversion to a Pulumi function name (e.g. "getFooBar")
+func TfDataSourceToPulumi(tfName string) string {
+	parts := strings.Split(tfName, "_")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	// The first segment is the provider name, which we do not include in the Pulumi name.
+	parts = parts[1:]
+
+	for i, part := range parts {
+		parts[i] = strings.Title(part)
+	}
+
+	return fmt.Sprintf("get%s", strings.Join(parts, ""))
+}
+
+// TfResourceToPulumi converts a given Terraform resource name tfName (e.g. "provider_foo_bar") and returns the
+// standard conversion to a Pulumi resource name (e.g. "FooBar")
+func TfResourceToPulumi(tfName string) string {
+	parts := strings.Split(tfName, "_")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	// The first segment is the provider name, which we do not include in the Pulumi name.
+	parts = parts[1:]
+
+	for i, part := range parts {
+		parts[i] = strings.Title(part)
+	}
+
+	return strings.Join(parts, "")
 }
 
 // ManagedByPulumi is a default used for some managed resources, in the absence of something more meaningful.
