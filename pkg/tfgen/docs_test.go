@@ -16,8 +16,10 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
+	"text/template"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
@@ -452,4 +454,53 @@ content 2`
 func TestFormatEntityName(t *testing.T) {
 	assert.Equal(t, "'prov_entity'", formatEntityName("prov_entity"))
 	assert.Equal(t, "'prov_entity' (aliased or renamed)", formatEntityName("prov_entity_legacy"))
+}
+
+func TestHclConversionsToString(t *testing.T) {
+	input := map[string]string{
+		"typescript": "var foo = bar;",
+		"java":       "FooFactory fooFactory = new FooFactory();",
+		"go":         "foo := bar",
+		"python":     "foo = bar",
+		"yaml":       "# Good enough YAML example",
+		"csharp":     "var fooFactory = barProvider.Baz();",
+		"pcl":        "# Good enough PCL example",
+		"haskell":    "", // i.e., a language we could not convert, which should not appear in the output
+	}
+
+	// We use a template because we cannot escape backticks within a herestring, and concatenating this output would be
+	// very difficult without using a herestring.
+	expectedOutputTmpl := `{{ .CodeFences }}typescript
+var foo = bar;
+{{ .CodeFences }}
+{{ .CodeFences }}python
+foo = bar
+{{ .CodeFences }}
+{{ .CodeFences }}csharp
+var fooFactory = barProvider.Baz();
+{{ .CodeFences }}
+{{ .CodeFences }}go
+foo := bar
+{{ .CodeFences }}
+{{ .CodeFences }}java
+FooFactory fooFactory = new FooFactory();
+{{ .CodeFences }}
+{{ .CodeFences }}pcl
+# Good enough PCL example
+{{ .CodeFences }}
+{{ .CodeFences }}yaml
+# Good enough YAML example
+{{ .CodeFences }}`
+
+	outputTemplate, _ := template.New("dummy").Parse(expectedOutputTmpl)
+	data := struct {
+		CodeFences string
+	}{
+		CodeFences: "```",
+	}
+
+	var buf = bytes.Buffer{}
+	_ = outputTemplate.Execute(&buf, data)
+
+	assert.Equal(t, buf.String(), hclConversionsToString(input))
 }

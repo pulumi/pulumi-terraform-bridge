@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -1217,6 +1218,82 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 	return convertedHcl, nil
 }
 
+// So we can sort the keys of a map of examples in a deterministic order:
+type languages []string
+
+func (s languages) Len() int      { return len(s) }
+func (s languages) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s languages) Less(i, j int) bool {
+
+	notFound := -1
+
+	indexOf := func(item string, data []string) int {
+		for i, v := range data {
+			if item == v {
+				return i
+			}
+		}
+		return notFound
+	}
+
+	var languages languages = []string{
+		convert.LanguageTypescript,
+		convert.LanguagePython,
+		convert.LanguageCSharp,
+		convert.LanguageGo,
+	}
+
+	ii := indexOf(s[i], languages)
+	jj := indexOf(s[j], languages)
+
+	if ii != notFound && jj != notFound {
+		// Both are found, so just compare indices:
+		return ii < jj
+	} else if ii != notFound && jj == notFound {
+		// Only the first item is found, so it must come first:
+		return true
+	} else if ii == notFound && jj != notFound {
+		// Only the second item is found, so it must come first:
+		return false
+	} else {
+		// Fall back to alphabetical if neither are found:
+		return s[i] < s[j]
+	}
+}
+
+// hclMapToString takes a map of hclConversions to various languages and returns a single Markdown string for use in
+// Pulumi's docs. The key in hclConversions is expected to match the language hint in the generated code fences, e.g.
+// "typescript" -> ```typescript, and the corresponding value is expected to be the converted code.
+func hclConversionsToString(hclConversions map[string]string) string {
+	var result strings.Builder
+
+	// We have to use a custom comparator to get the keys to iterate in a deterministic order. We need a deterministic
+	// order to ensure that we have no changes to the schema when deploying this change, as well as to establish
+	// reliable tests for this function because Go iterates map keys in a non-deterministic fashion:
+	var keys languages = []string{}
+	for k, _ := range hclConversions {
+		keys = append(keys, k)
+	}
+	sort.Sort(keys)
+
+	for _, key := range keys {
+		convertedHcl := strings.TrimSpace(hclConversions[key])
+
+		if convertedHcl == "" {
+			continue
+		}
+
+		if result.Len() > 0 {
+			result.WriteByte('\n')
+		}
+
+		_, err := fmt.Fprintf(&result, "```%s\n%s\n```", key, convertedHcl)
+		contract.IgnoreError(err)
+	}
+
+	return result.String()
+}
+
 // convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
 // of failure, the error returned will be non-nil.
 func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
@@ -1265,18 +1342,29 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 		err = convertHCL(convert.LanguagePulumi)
 
 	case Schema:
-		langs := []string{"typescript", "python", "csharp", "go"}
+		langs := []string{
+			convert.LanguageTypescript,
+			convert.LanguagePython,
+			convert.LanguageCSharp,
+			convert.LanguageGo,
+		}
+		hclConversions := map[string]string{}
+
 		failedLangs := map[string]error{}
 		var passedLangs []string
 
 		for _, lang := range langs {
-			if langErr := convertHCL(lang); langErr != nil {
-				failedLangs[lang] = langErr
-				err = multierror.Append(err, langErr)
+			var convertErr error
+			hclConversions[lang], convertErr = g.convertHCLToString(hcl, path, lang)
+			if convertErr != nil {
+				failedLangs[lang] = convertErr
+				err = multierror.Append(err, convertErr)
 			} else {
 				passedLangs = append(passedLangs, lang)
 			}
 		}
+
+		result.WriteString(hclConversionsToString(hclConversions))
 
 		if len(failedLangs) == len(langs) {
 			hclAllLangsConversionFailures++
