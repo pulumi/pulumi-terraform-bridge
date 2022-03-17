@@ -1071,7 +1071,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
 						}
 
-						codeBlock, err := g.convertHCL(hcl, name, exampleTitle)
+						langs := genLanguageToSlice(g.language)
+						codeBlock, err := g.convertHCL(hcl, name, exampleTitle, langs)
 
 						if err != nil {
 							skippedExamples = true
@@ -1294,9 +1295,13 @@ func hclConversionsToString(hclConversions map[string]string) string {
 	return result.String()
 }
 
-// convertHCL converts an in-memory, simple HCL program to Pulumi, and returns it as a string. In the event
-// of failure, the error returned will be non-nil.
-func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
+// convertHCL takes a string of example HCL, its path in the Pulumi schema, the title of the example in the upstream
+// docs, and a slice of the languages to convert the sample to, and returns a string containing a series of Markdown
+// code blocks with the example converted in each supplied language.
+// If all languages fail to convert, the returned string will be "" and an error will be returned.
+// If some languages fail to convert, the returned string contain any successful conversions and no error will be
+// returned, but conversion failures will be logged via the Generator.
+func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1304,117 +1309,94 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string) (string, error) {
 		hcl = fixed
 	}
 
+	hclConversions := map[string]string{}
 	var result strings.Builder
-	convertHCL := func(languageName string) (err error) {
-		convertedHcl, err := g.convertHCLToString(hcl, path, languageName)
-		if err != nil {
-			return err
+	var err error
+
+	failedLangs := map[string]error{}
+	var passedLangs []string
+
+	for _, lang := range languages {
+		var convertErr error
+		hclConversions[lang], convertErr = g.convertHCLToString(hcl, path, lang)
+		if convertErr != nil {
+			failedLangs[lang] = convertErr
+			err = multierror.Append(err, convertErr)
+		} else {
+			passedLangs = append(passedLangs, lang)
 		}
-
-		if result.Len() > 0 {
-			result.WriteByte('\n')
-		}
-		out := strings.TrimSpace(convertedHcl)
-
-		if g.convertedCode == nil {
-			g.convertedCode = map[string][]byte{}
-		}
-		g.convertedCode[path] = []byte(out)
-
-		_, err = fmt.Fprintf(&result, "```%s\n%s\n```", languageName, out)
-		contract.IgnoreError(err)
-
-		g.coverageTracker.languageConversionSuccess(languageName)
-		return nil
 	}
 
-	var err error
-	switch g.language {
-	case NodeJS:
-		err = convertHCL(convert.LanguageTypescript)
-	case Python:
-		err = convertHCL(convert.LanguagePython)
-	case CSharp:
-		err = convertHCL(convert.LanguageCSharp)
-	case Golang:
-		err = convertHCL(convert.LanguageGo)
-	case PCL:
-		err = convertHCL(convert.LanguagePulumi)
+	result.WriteString(hclConversionsToString(hclConversions))
 
+	if len(failedLangs) == len(languages) {
+		hclAllLangsConversionFailures++
+
+		if exampleTitle == "" {
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped from any generated docs or SDKs.", path))
+		} else {
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s'. The example will be dropped from any generated docs or SDKs.", exampleTitle, path))
+		}
+
+		return "", err
+	}
+
+	// Log the results when an example fails to convert to some languages, but not all
+	if len(failedLangs) > 0 && len(failedLangs) < len(languages) {
+		var failedLangsStrings []string
+
+		for lang, _ := range failedLangs {
+			failedLangsStrings = append(failedLangsStrings, lang)
+
+			switch lang {
+			case convert.LanguageTypescript:
+				hclTypeScriptPartialConversionFailures++
+			case convert.LanguagePython:
+				hclPythonPartialConversionFailures++
+			case convert.LanguageCSharp:
+				hclCSharpPartialConversionFailures++
+			case convert.LanguageGo:
+				hclGoPartialConversionFailures++
+			}
+		}
+
+		if exampleTitle == "" {
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", path, strings.Join(failedLangsStrings, ", ")))
+		} else {
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
+		}
+
+		// At least one language out of the given set has been generated, which is considered a success
+		err = nil
+	}
+
+	return result.String(), nil
+}
+
+// genLanguageToSlice maps a Language on a Generator to a slice of strings suitable to pass to HCL conversion.
+func genLanguageToSlice(input Language) []string {
+	switch input {
+	case NodeJS:
+		return []string{convert.LanguageTypescript}
+	case Python:
+		return []string{convert.LanguagePython}
+	case CSharp:
+		return []string{convert.LanguageCSharp}
+	case Golang:
+		return []string{convert.LanguageGo}
+	case PCL:
+		return []string{convert.LanguagePulumi}
 	case Schema:
-		langs := []string{
+		return []string{
 			convert.LanguageTypescript,
 			convert.LanguagePython,
 			convert.LanguageCSharp,
 			convert.LanguageGo,
 		}
-		hclConversions := map[string]string{}
-
-		failedLangs := map[string]error{}
-		var passedLangs []string
-
-		for _, lang := range langs {
-			var convertErr error
-			hclConversions[lang], convertErr = g.convertHCLToString(hcl, path, lang)
-			if convertErr != nil {
-				failedLangs[lang] = convertErr
-				err = multierror.Append(err, convertErr)
-			} else {
-				passedLangs = append(passedLangs, lang)
-			}
-		}
-
-		result.WriteString(hclConversionsToString(hclConversions))
-
-		if len(failedLangs) == len(langs) {
-			hclAllLangsConversionFailures++
-
-			if exampleTitle == "" {
-				g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' for all languages. The example will be dropped from any generated docs or SDKs.", path))
-			} else {
-				g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' for all languages. The example will be dropped from any generated docs or SDKs.", exampleTitle, path))
-			}
-		}
-
-		// Log the results when an example fails to convert to some languages, but not all
-		if len(failedLangs) > 0 && len(failedLangs) < len(langs) {
-			var failedLangsStrings []string
-
-			for lang, _ := range failedLangs {
-				failedLangsStrings = append(failedLangsStrings, lang)
-
-				switch lang {
-				case "typescript":
-					hclTypeScriptPartialConversionFailures++
-				case "python":
-					hclPythonPartialConversionFailures++
-				case "csharp":
-					hclCSharpPartialConversionFailures++
-				case "go":
-					hclGoPartialConversionFailures++
-				}
-			}
-
-			if exampleTitle == "" {
-				g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", path, strings.Join(failedLangsStrings, ", ")))
-			} else {
-				g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
-			}
-		}
-
-		if len(passedLangs) > 0 {
-			// At least one language out of the given set has been generated, which is considered a success
-			err = nil
-		}
+	default:
+		msg := fmt.Sprintf("Unable to convert generator language '%v' to a list of languages the Bridge understands.", input)
+		panic(msg)
 	}
-
-	if err != nil {
-		return "", err
-	}
-	if result.Len() == 0 {
-		return "", fmt.Errorf("failed to convert HCL for %s to %v: empty output produced", path, g.language)
-	}
-	return result.String(), nil
 }
 
 func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
