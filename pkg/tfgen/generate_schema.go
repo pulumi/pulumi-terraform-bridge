@@ -425,6 +425,7 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		DeprecationMessage: prop.deprecationMessage(),
 		Language:           language,
 		Secret:             secret,
+		ReplaceOnChanges:   prop.forceNew(),
 	}
 }
 
