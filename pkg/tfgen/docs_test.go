@@ -18,6 +18,7 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -503,4 +504,37 @@ FooFactory fooFactory = new FooFactory();
 	_ = outputTemplate.Execute(&buf, data)
 
 	assert.Equal(t, buf.String(), hclConversionsToString(input))
+}
+
+func TestGroupLines(t *testing.T) {
+	input := `description
+
+## subtitle 1
+
+subtitle 1 content
+
+## subtitle 2
+
+subtitle 2 content
+`
+	expected := [][]string{
+		{
+			"description",
+			"",
+		},
+		{
+			"## subtitle 1",
+			"",
+			"subtitle 1 content",
+			"",
+		},
+		{
+			"## subtitle 2",
+			"",
+			"subtitle 2 content",
+			"",
+		},
+	}
+
+	assert.Equal(t, expected, groupLines(strings.Split(input, "\n"), "## "))
 }

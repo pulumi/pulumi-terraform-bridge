@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"sort"
 	"strings"
 
@@ -757,4 +758,93 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		spec.Functions[token] = g.convertExamplesInFunctionSpec("#/functions/"+token, function)
 	}
 	return spec
+}
+
+func addExtraHclExamplesToResources(extraExamples []tfbridge.HclExampler, spec *pschema.PackageSpec) error {
+	var err error
+	for _, ex := range extraExamples {
+		token := ex.GetPulumiIdentifier()
+		res, ok := spec.Resources[token]
+		if !ok {
+			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the resource with token '%s', but no "+
+				"matching resource was found in the schema", token))
+			continue
+		}
+
+		markdown, markdownErr := ex.GetMarkdown()
+		if markdownErr != nil {
+			err = multierror.Append(err, fmt.Errorf("unable to retrieve markdown for example for '%s': %w", token, markdownErr))
+			continue
+		}
+
+		res.Description = appendExample(res.Description, markdown)
+		spec.Resources[token] = res
+	}
+
+	return err
+}
+
+func addExtraHclExamplesToFunctions(extraExamples []tfbridge.HclExampler, spec *pschema.PackageSpec) error {
+	var err error
+	for _, ex := range extraExamples {
+		token := ex.GetPulumiIdentifier()
+		fun, ok := spec.Functions[token]
+		if !ok {
+			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the function with token '%s', but no "+
+				"matching resource was found in the schema", token))
+			continue
+		}
+
+		markdown, markdownErr := ex.GetMarkdown()
+		if markdownErr != nil {
+			err = multierror.Append(err, fmt.Errorf("unable to retrieve markdown for example for '%s': %w", token, markdownErr))
+			continue
+		}
+
+		fun.Description = appendExample(fun.Description, markdown)
+		spec.Functions[token] = fun
+	}
+
+	return err
+}
+
+func appendExample(description, markdownToAppend string) string {
+	if markdownToAppend == "" {
+		return description
+	}
+
+	const exampleUsageHeader = "## Example Usage"
+
+	descLines := strings.Split(description, "\n")
+	sections := groupLines(descLines, "## ")
+
+	// If there's already an ## Example Usage section, we need to find this section and append
+	if strings.Index(description, exampleUsageHeader) >= 0 {
+		for i, section := range sections {
+			if len(section) == 0 {
+				continue
+			}
+
+			if strings.Index(section[0], exampleUsageHeader) == 0 {
+				sections[i] = append(section, strings.Split(markdownToAppend, "\n")...)
+				break
+			}
+		}
+	} else {
+		// If not, we need to add the header and append before the first ## in the doc, or EOF, whichever comes first
+		markdownToAppend = fmt.Sprintf("%s\n\n%s", exampleUsageHeader, markdownToAppend)
+
+		// If there's no blank line after the content, we need to add it to ensure we have semantically valid Markdown:
+		if sections[0][len(sections[0])-1] != "" {
+			sections[0] = append(sections[0], "")
+		}
+
+		sections[0] = append(sections[0], strings.Split(markdownToAppend, "\n")...)
+	}
+
+	reassembledLines := []string{}
+	for _, section := range sections {
+		reassembledLines = append(reassembledLines, section...)
+	}
+	return strings.Join(reassembledLines, "\n")
 }

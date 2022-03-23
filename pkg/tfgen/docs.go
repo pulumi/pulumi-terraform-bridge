@@ -400,7 +400,8 @@ var (
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
 )
 
-// groupLines groups a collection of strings, lines, by a given separator, sep.
+// groupLines take a slice of strings, lines, and returns a nested slice of strings. When groupLines encounters a line
+// that in the input that starts with the supplied string sep, it will begin a new entry in the outer slice.
 func groupLines(lines []string, sep string) [][]string {
 	var buffer []string
 	var sections [][]string
