@@ -763,7 +763,7 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 func addExtraHclExamplesToResources(extraExamples []tfbridge.HclExampler, spec *pschema.PackageSpec) error {
 	var err error
 	for _, ex := range extraExamples {
-		token := ex.GetPulumiIdentifier()
+		token := ex.GetToken()
 		res, ok := spec.Resources[token]
 		if !ok {
 			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the resource with token '%s', but no "+
@@ -787,7 +787,7 @@ func addExtraHclExamplesToResources(extraExamples []tfbridge.HclExampler, spec *
 func addExtraHclExamplesToFunctions(extraExamples []tfbridge.HclExampler, spec *pschema.PackageSpec) error {
 	var err error
 	for _, ex := range extraExamples {
-		token := ex.GetPulumiIdentifier()
+		token := ex.GetToken()
 		fun, ok := spec.Functions[token]
 		if !ok {
 			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the function with token '%s', but no "+
