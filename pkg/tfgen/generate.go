@@ -780,9 +780,12 @@ func (g *Generator) Generate() error {
 			files[path] = code
 		}
 	default:
-		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
+		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil)
 		if err != nil {
 			return errors.Wrapf(err, "failed to import Pulumi schema")
+		}
+		if diags.HasErrors() {
+			return err
 		}
 		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
 			return errors.Wrapf(err, "failed to generate package")
