@@ -769,7 +769,7 @@ func (g *Generator) Generate() error {
 			files[path] = code
 		}
 	default:
-		pulumiPackage, err := pschema.ImportSpec(pulumiPackageSpec, nil)
+		pulumiPackage, err := pschema.BindSpec(pulumiPackageSpec, nil)
 		if err != nil {
 			return errors.Wrapf(err, "failed to import Pulumi schema")
 		}
