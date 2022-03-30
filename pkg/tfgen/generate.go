@@ -741,6 +741,17 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to marshal intermediate schema")
 	}
 
+	// Add any supplemental examples:
+	err = addExtraHclExamplesToResources(g.info.ExtraResourceHclExamples, &pulumiPackageSpec)
+	if err != nil {
+		return err
+	}
+
+	err = addExtraHclExamplesToFunctions(g.info.ExtraFunctionHclExamples, &pulumiPackageSpec)
+	if err != nil {
+		return err
+	}
+
 	// Convert examples.
 	if !g.skipExamples {
 		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
