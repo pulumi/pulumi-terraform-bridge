@@ -261,6 +261,15 @@ type DocInfo struct {
 	IncludeAttributesFromArguments string // optionally include attributes from another raw resource's arguments.
 }
 
+// NoUpstreamDocs is used to indicate that a resource has no upstream docs. It returns a pointer to DocInfo which
+// contains a simple whitespace string for the literal contents of the documentation. This value will allow tfgen
+// to pass when PULUMI_MISSING_DOCS_ERROR=true while clearly indicating the reason for the docs override.
+func NoUpstreamDocs() *DocInfo {
+	return &DocInfo{
+		Markdown: []byte(" "),
+	}
+}
+
 // HasDefault returns true if there is a default value for this property.
 func (info SchemaInfo) HasDefault() bool {
 	return info.Default != nil
