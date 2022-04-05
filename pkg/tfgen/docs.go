@@ -796,6 +796,14 @@ func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) 
 }
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
+	// check for import overwrites
+	importDetails := p.info.GetImportDetails()
+	if importDetails != "" {
+		var details []string
+		details = append(details, importDetails)
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(details, " "))
+		return
+	}
 	var importDocString []string
 	for _, section := range subsection {
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||

@@ -141,6 +141,7 @@ type ResourceOrDataSourceInfo interface {
 	GetTok() tokens.Token              // a type token to override the default; "" uses the default.
 	GetFields() map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
 	GetDocs() *DocInfo                 // overrides for finding and mapping TF docs.
+	GetImportDetails() string          // Get overwritten instruction for importing a resource
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
@@ -155,11 +156,13 @@ type ResourceInfo struct {
 	Aliases             []AliasInfo            // aliases for this resources, if any.
 	DeprecationMessage  string                 // message to use in deprecation warning
 	CSharpName          string                 // .NET-specific name
+	ImportDetails       string                 // Docs overwrite for import instructions
 }
 
 func (info *ResourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
 func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
 func (info *ResourceInfo) GetDocs() *DocInfo                 { return info.Docs }
+func (info *ResourceInfo) GetImportDetails() string          { return info.ImportDetails }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
@@ -172,6 +175,7 @@ type DataSourceInfo struct {
 func (info *DataSourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
 func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
 func (info *DataSourceInfo) GetDocs() *DocInfo                 { return info.Docs }
+func (info *DataSourceInfo) GetImportDetails() string          { return "" }
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
