@@ -799,9 +799,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	// check for import overwrites
 	importDetails := p.info.GetImportDetails()
 	if importDetails != "" {
-		var details []string
-		details = append(details, importDetails)
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(details, " "))
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDetails)
 		return
 	}
 	var importDocString []string

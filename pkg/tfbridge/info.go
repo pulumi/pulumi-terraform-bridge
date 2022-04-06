@@ -29,10 +29,11 @@ import (
 )
 
 const (
-	MPL20LicenseType      TFProviderLicense = "MPL 2.0"
-	MITLicenseType        TFProviderLicense = "MIT"
-	Apache20LicenseType   TFProviderLicense = "Apache 2.0"
-	UnlicensedLicenseType TFProviderLicense = "UNLICENSED"
+	MPL20LicenseType          TFProviderLicense = "MPL 2.0"
+	MITLicenseType            TFProviderLicense = "MIT"
+	Apache20LicenseType       TFProviderLicense = "Apache 2.0"
+	UnlicensedLicenseType     TFProviderLicense = "UNLICENSED"
+	DataSourceNoImportDefault string            = ""
 )
 
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
@@ -159,10 +160,17 @@ type ResourceInfo struct {
 	ImportDetails       string                 // Docs overwrite for import instructions
 }
 
-func (info *ResourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+// GetTok returns a resource type token
+func (info *ResourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the resource's custom fields
 func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
-func (info *ResourceInfo) GetDocs() *DocInfo                 { return info.Docs }
-func (info *ResourceInfo) GetImportDetails() string          { return info.ImportDetails }
+
+// GetDocs returns a resource docs override from the Pulumi provider
+func (info *ResourceInfo) GetDocs() *DocInfo { return info.Docs }
+
+// GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
+func (info *ResourceInfo) GetImportDetails() string { return info.ImportDetails }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
@@ -172,10 +180,17 @@ type DataSourceInfo struct {
 	DeprecationMessage string   // message to use in deprecation warning
 }
 
-func (info *DataSourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+// GetTok returns a datasource type token
+func (info *DataSourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the datasource's custom fields
 func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
-func (info *DataSourceInfo) GetDocs() *DocInfo                 { return info.Docs }
-func (info *DataSourceInfo) GetImportDetails() string          { return "" }
+
+// GetDocs returns a datasource docs override from the Pulumi provider
+func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }
+
+// GetImportDetails always returns empty, as datasources never get imported. Satisfies the ResourceOrDataSourceInfo interface.
+func (info *DataSourceInfo) GetImportDetails() string { return DataSourceNoImportDefault } // DataSources cannot be imported so this field defaults to empty
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
