@@ -951,7 +951,10 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label + ".state"})
+		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label:       label + ".state",
+			KeepSecrets: p.supportsSecrets,
+		})
 		if err != nil {
 			return nil, err
 		}
