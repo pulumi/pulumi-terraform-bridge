@@ -29,11 +29,10 @@ import (
 )
 
 const (
-	MPL20LicenseType          TFProviderLicense = "MPL 2.0"
-	MITLicenseType            TFProviderLicense = "MIT"
-	Apache20LicenseType       TFProviderLicense = "Apache 2.0"
-	UnlicensedLicenseType     TFProviderLicense = "UNLICENSED"
-	DataSourceNoImportDefault string            = ""
+	MPL20LicenseType      TFProviderLicense = "MPL 2.0"
+	MITLicenseType        TFProviderLicense = "MIT"
+	Apache20LicenseType   TFProviderLicense = "Apache 2.0"
+	UnlicensedLicenseType TFProviderLicense = "UNLICENSED"
 )
 
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
@@ -142,7 +141,6 @@ type ResourceOrDataSourceInfo interface {
 	GetTok() tokens.Token              // a type token to override the default; "" uses the default.
 	GetFields() map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
 	GetDocs() *DocInfo                 // overrides for finding and mapping TF docs.
-	GetImportDetails() string          // Get overwritten instruction for importing a resource
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
@@ -157,7 +155,6 @@ type ResourceInfo struct {
 	Aliases             []AliasInfo            // aliases for this resources, if any.
 	DeprecationMessage  string                 // message to use in deprecation warning
 	CSharpName          string                 // .NET-specific name
-	ImportDetails       string                 // Docs overwrite for import instructions
 }
 
 // GetTok returns a resource type token
@@ -168,9 +165,6 @@ func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Field
 
 // GetDocs returns a resource docs override from the Pulumi provider
 func (info *ResourceInfo) GetDocs() *DocInfo { return info.Docs }
-
-// GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
-func (info *ResourceInfo) GetImportDetails() string { return info.ImportDetails }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
@@ -188,9 +182,6 @@ func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fie
 
 // GetDocs returns a datasource docs override from the Pulumi provider
 func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }
-
-// GetImportDetails always returns empty, as datasources never get imported. Satisfies the ResourceOrDataSourceInfo interface.
-func (info *DataSourceInfo) GetImportDetails() string { return DataSourceNoImportDefault } // DataSources cannot be imported so this field defaults to empty
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
@@ -278,7 +269,11 @@ type DocInfo struct {
 	IncludeAttributesFrom          string // optionally include attributes from another raw resource for docs.
 	IncludeArgumentsFrom           string // optionally include arguments from another raw resource for docs.
 	IncludeAttributesFromArguments string // optionally include attributes from another raw resource's arguments.
+	ImportDetails                  string // Overwrite for import instructions
 }
+
+// GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
+func (info *DocInfo) GetImportDetails() string { return info.ImportDetails }
 
 // HasDefault returns true if there is a default value for this property.
 func (info SchemaInfo) HasDefault() bool {
