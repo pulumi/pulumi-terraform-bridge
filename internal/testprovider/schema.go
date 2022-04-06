@@ -43,6 +43,65 @@ func ProviderV1() *schemav1.Provider {
 			"config_value": {Type: schemav1.TypeString, Optional: true},
 		},
 		ResourcesMap: map[string]*schemav1.Resource{
+			"nested_secret_resource": {
+				Schema: map[string]*schemav1.Schema{
+					"nested": {
+						Type:     schemav1.TypeList,
+						MaxItems: 1,
+						Computed: true,
+						Optional: true,
+						Elem: &schemav1.Resource{
+							Schema: map[string]*schemav1.Schema{
+								"a_secret": {
+									Type:      schemav1.TypeString,
+									Computed:  true,
+									Sensitive: true,
+								},
+							},
+						},
+					},
+				},
+				SchemaVersion: 1,
+				MigrateState: func(v int, is *terraformv1.InstanceState, p interface{}) (*terraformv1.InstanceState, error) {
+					return is, nil
+				},
+				Create: func(data *schemav1.ResourceData, p interface{}) error {
+					data.SetId("0")
+					MustSetIfUnset(data, "nested", []interface{}{
+						map[string]interface{}{
+							"a_secret": "password",
+						},
+					})
+					return nil
+				},
+				Read: func(data *schemav1.ResourceData, p interface{}) error {
+					MustSetIfUnset(data, "nested", []interface{}{
+						map[string]interface{}{
+							"a_secret": "password",
+						},
+					})
+					return nil
+				},
+				Update: func(data *schemav1.ResourceData, p interface{}) error {
+					MustSetIfUnset(data, "nested", []interface{}{
+						map[string]interface{}{
+							"a_secret": "password",
+						},
+					})
+					return nil
+				},
+				Delete: func(data *schemav1.ResourceData, p interface{}) error {
+					return nil
+				},
+				Timeouts: &schemav1.ResourceTimeout{
+					Create: Timeout(time.Second * 120),
+				},
+				Importer: &schemav1.ResourceImporter{
+					State: func(state *schemav1.ResourceData, _ interface{}) ([]*schemav1.ResourceData, error) {
+						return []*schemav1.ResourceData{state}, nil
+					},
+				},
+			},
 			"example_resource": {
 				Schema: map[string]*schemav1.Schema{
 					"nil_property_value":    {Type: schemav1.TypeMap, Optional: true},
