@@ -656,3 +656,77 @@ func TestProviderReadV2(t *testing.T) {
 
 	testProviderRead(t, provider, "ExampleResource")
 }
+
+func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {
+	urn := resource.NewURN("stack", "project", "", typeName, "name")
+
+	// Configure that we support secrets
+	provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		AcceptSecrets:   true,
+		AcceptResources: true,
+	})
+
+	// Check that if we create the resource the secret property comes back as a secret
+	createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: nil,
+	})
+	assert.NoError(t, err)
+
+	assert.NotNil(t, createResp.GetProperties())
+	props, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	assert.NoError(t, err)
+
+	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
+		"aSecret": resource.MakeSecret(resource.NewStringProperty("password")),
+	}), props["nested"])
+
+	// Check that read is also a secret
+	readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:         string("0"),
+		Urn:        string(urn),
+		Properties: nil,
+	})
+	assert.NoError(t, err)
+
+	assert.NotNil(t, readResp.GetProperties())
+	props, err = plugin.UnmarshalProperties(readResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	assert.NoError(t, err)
+
+	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
+		"aSecret": resource.MakeSecret(resource.NewStringProperty("password")),
+	}), props["nested"])
+}
+
+func TestProviderReadNestedSecretV1(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+
+	provider.resources = map[tokens.Type]Resource{
+		"NestedSecretResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["nested_secret_resource"]),
+			TFName: "nested_secret_resource",
+			Schema: &ResourceInfo{Tok: "NestedSecretResource"},
+		},
+	}
+
+	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
+}
+
+func TestProviderReadNestedSecretV2(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"NestedSecretResource": {
+			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["nested_secret_resource"]),
+			TFName: "nested_secret_resource",
+			Schema: &ResourceInfo{Tok: "NestedSecretResource"},
+		},
+	}
+
+	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
+}

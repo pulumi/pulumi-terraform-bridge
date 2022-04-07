@@ -215,6 +215,66 @@ func TestProviderResourcesMap(t *testing.T) {
 	}
 
 	expected := map[string]*resource{
+		"nested_secret_resource": {
+			resourceType:  "nested_secret_resource",
+			schemaVersion: 1,
+			ctyType: cty.Object(map[string]cty.Type{
+				"id": cty.String,
+				"timeouts": cty.Object(map[string]cty.Type{
+					"create": cty.String,
+				}),
+				"nested": cty.List(cty.Object(map[string]cty.Type{
+					"a_secret": cty.String,
+				})),
+			}),
+			schema: schema.SchemaMap{
+				"id": &attributeSchema{
+					ctyType:   cty.String,
+					valueType: shim.TypeString,
+					computed:  true,
+				},
+				"timeouts": &attributeSchema{
+					ctyType: cty.Object(map[string]cty.Type{
+						"create": cty.String,
+					}),
+					valueType: shim.TypeMap,
+					elem: &resource{
+						ctyType: cty.Object(map[string]cty.Type{
+							"create": cty.String,
+						}),
+						schema: schema.SchemaMap{
+							"create": &attributeSchema{
+								ctyType:   cty.String,
+								valueType: shim.TypeString,
+								optional:  true,
+							},
+						},
+					},
+					required: true,
+				},
+				"nested": &attributeSchema{
+					ctyType: cty.List(cty.Object(map[string]cty.Type{
+						"a_secret": cty.String,
+					})),
+					valueType: shim.TypeList,
+					elem: &resource{
+						ctyType: cty.Object(map[string]cty.Type{
+							"a_secret": cty.String,
+						}),
+						schema: schema.SchemaMap{
+							"a_secret": &attributeSchema{
+								ctyType:   cty.String,
+								valueType: shim.TypeString,
+								sensitive: true,
+								computed:  true,
+							},
+						},
+					},
+					maxItems: 1,
+					computed: true,
+				},
+			},
+		},
 		"example_resource": {
 			resourceType:  "example_resource",
 			schemaVersion: 1,
