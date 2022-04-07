@@ -157,9 +157,14 @@ type ResourceInfo struct {
 	CSharpName          string                 // .NET-specific name
 }
 
-func (info *ResourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+// GetTok returns a resource type token
+func (info *ResourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the resource's custom fields
 func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
-func (info *ResourceInfo) GetDocs() *DocInfo                 { return info.Docs }
+
+// GetDocs returns a resource docs override from the Pulumi provider
+func (info *ResourceInfo) GetDocs() *DocInfo { return info.Docs }
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
@@ -169,9 +174,14 @@ type DataSourceInfo struct {
 	DeprecationMessage string   // message to use in deprecation warning
 }
 
-func (info *DataSourceInfo) GetTok() tokens.Token              { return tokens.Token(info.Tok) }
+// GetTok returns a datasource type token
+func (info *DataSourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the datasource's custom fields
 func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
-func (info *DataSourceInfo) GetDocs() *DocInfo                 { return info.Docs }
+
+// GetDocs returns a datasource docs override from the Pulumi provider
+func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
@@ -259,7 +269,11 @@ type DocInfo struct {
 	IncludeAttributesFrom          string // optionally include attributes from another raw resource for docs.
 	IncludeArgumentsFrom           string // optionally include arguments from another raw resource for docs.
 	IncludeAttributesFromArguments string // optionally include attributes from another raw resource's arguments.
+	ImportDetails                  string // Overwrite for import instructions
 }
+
+// GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
+func (info *DocInfo) GetImportDetails() string { return info.ImportDetails }
 
 // HasDefault returns true if there is a default value for this property.
 func (info SchemaInfo) HasDefault() bool {
