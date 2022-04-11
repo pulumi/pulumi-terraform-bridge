@@ -15,7 +15,6 @@
 package tfbridge
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
@@ -158,7 +157,7 @@ func TestFromNameRandchars(t *testing.T) {
 		Separator: "%",
 		Maxlen:    80,
 		Randlen:   7,
-		Randchars: []rune("abcdefghijklmnopqrstuvwxyz"),
+		Randchars: []rune("a"),
 		PostTransform: func(res *PulumiResource, name string) (string, error) {
 			if fifo, hasfifo := res.Properties["fifo"]; hasfifo {
 				if fifo.IsBool() && fifo.BoolValue() {
@@ -171,5 +170,5 @@ func TestFromNameRandchars(t *testing.T) {
 	out1, err := f1(res1)
 	outStr := out1.(string)
 	assert.NoError(t, err)
-	assert.Regexp(t, regexp.MustCompile(`^n1%[a-z]{7}\.fifo$`), outStr)
+	assert.Equal(t, "n1%aaaaaaa.fifo", outStr)
 }

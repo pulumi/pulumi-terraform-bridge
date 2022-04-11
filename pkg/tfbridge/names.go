@@ -199,7 +199,12 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			vs = options.Transform(vs)
 		}
 		if options.Randlen > 0 {
-			// If Randchars is nil use hex chars
+			// Randchars is a new option to allow providers to opt into tfbridges random name generated in
+			// cases where the old default behavior would of hit restrictions imposed by the resource type
+			// (e.g. some resources only allow a-z). Before Randchars this method used to just call
+			// NewUniqueHex which would suffix a random hexadecimal string on the end. To maintain
+			// compatability with the all the current uses of this function that don't set Randchars (i.e.
+			// leave it nil) we default the character set to that of hexadecimal.
 			randchars := options.Randchars
 			if randchars == nil {
 				randchars = []rune("0123456789abcdef")
@@ -208,6 +213,8 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			prefix := vs + options.Separator
 			// Generate a unique name using the restricted set
 			if options.Maxlen > 0 && len(prefix)+options.Randlen > options.Maxlen {
+				// This Errorf followed by Wrapf is to match the behavior we had when the random generation
+				// was performed by NewUniqueHex.
 				err := errors.Errorf("name '%s' plus %d random chars is longer than maximum length %d", prefix, options.Randlen, options.Maxlen)
 				return "", errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}
