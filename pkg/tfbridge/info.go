@@ -287,7 +287,7 @@ type DefaultInfo struct {
 	// Config uses a configuration variable from this package as the default value.
 	Config string
 	// From applies a transformation from other resource properties.
-	From func(res *PulumiResource, sequencenumber int) (interface{}, error)
+	From func(res *PulumiResource, sequenceNumber int) (interface{}, error)
 	// Value injects a raw literal value as the default.
 	Value interface{}
 	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)

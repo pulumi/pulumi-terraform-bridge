@@ -126,7 +126,7 @@ type conversionContext struct {
 }
 
 func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, olds, news resource.PropertyMap,
-	sequencenumber int, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+	sequenceNumber int, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{
 		Instance:       instance,
@@ -134,7 +134,7 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 		ApplyDefaults:  true,
 		Assets:         AssetTable{},
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, sequencenumber, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, sequenceNumber, tfs, ps, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,7 +144,7 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 // MakeTerraformInput takes a single property plus custom schema info and does whatever is necessary to prepare it for
 // use by Terraform.  Note that this function may have side effects, for instance if it is necessary to spill an asset
 // to disk in order to create a name out of it.  Please take care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.PropertyValue, sequencenumber int,
+func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.PropertyValue, sequenceNumber int,
 	tfs shim.Schema, ps *SchemaInfo, rawNames bool) (interface{}, error) {
 
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, and need to wrap it
@@ -198,7 +198,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 				oldElem = oldArr[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := ctx.MakeTerraformInput(elemName, oldElem, elem, sequencenumber, etfs, eps, rawNames)
+			e, err := ctx.MakeTerraformInput(elemName, oldElem, elem, sequenceNumber, etfs, eps, rawNames)
 			if err != nil {
 				return nil, err
 			}
@@ -252,7 +252,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 			oldObject = old.ObjectValue()
 		}
 
-		input, err := ctx.MakeTerraformInputs(oldObject, v.ObjectValue(), sequencenumber,
+		input, err := ctx.MakeTerraformInputs(oldObject, v.ObjectValue(), sequenceNumber,
 			tfflds, psflds, rawNames || useRawNames(tfs))
 		if err != nil {
 			return nil, err
@@ -282,7 +282,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 // to prepare it for use by Terraform.  Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take
 // care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMap, sequencenumber int,
+func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMap, sequenceNumber int,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) (map[string]interface{}, error) {
 
 	result := make(map[string]interface{})
@@ -305,7 +305,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 		}
 
 		// And then translate the property value.
-		v, err := ctx.MakeTerraformInput(name, old, value, sequencenumber, tfi, psi, rawNames)
+		v, err := ctx.MakeTerraformInput(name, old, value, sequenceNumber, tfi, psi, rawNames)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +314,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 	}
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
-	if err := ctx.applyDefaults(result, olds, news, sequencenumber, tfs, ps, rawNames); err != nil {
+	if err := ctx.applyDefaults(result, olds, news, sequenceNumber, tfs, ps, rawNames); err != nil {
 		return nil, err
 	}
 
@@ -329,7 +329,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 }
 
 func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds, news resource.PropertyMap,
-	sequencenumber int, tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
+	sequenceNumber int, tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
 
 	if !ctx.ApplyDefaults {
 		return nil
@@ -393,7 +393,7 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			// If we already have a default value from a previous version of this resource, use that instead.
 			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
-				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, sequencenumber, tfi, psi, rawNames)
+				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, sequenceNumber, tfi, psi, rawNames)
 				if err != nil {
 					return err
 				}
@@ -435,7 +435,7 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 				defaultValue, source = v, "env vars"
 			} else if configKey := info.Default.Config; configKey != "" {
 				if v := ctx.ProviderConfig[resource.PropertyKey(configKey)]; !v.IsNull() {
-					tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, sequencenumber, tfi, psi, rawNames)
+					tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, sequenceNumber, tfi, psi, rawNames)
 					if err != nil {
 						return err
 					}
@@ -444,7 +444,7 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if from := info.Default.From; from != nil {
-				v, err := from(ctx.Instance, sequencenumber)
+				v, err := from(ctx.Instance, sequenceNumber)
 				if err != nil {
 					return err
 				}
@@ -505,7 +505,7 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, sequencenumber, tfi, psi, rawNames)
+					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, sequenceNumber, tfi, psi, rawNames)
 					if err != nil {
 						valueErr = err
 						return false
