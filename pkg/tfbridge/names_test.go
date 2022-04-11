@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -144,4 +145,31 @@ func TestFromName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, out1, len("n1")+1+7+len(".fifo"))
 	assert.True(t, strings.HasSuffix(out1.(string), ".fifo"))
+}
+
+func TestFromNameRandchars(t *testing.T) {
+	res1 := &PulumiResource{
+		URN: "urn:pulumi:test::test::pkgA:index:t1::n1",
+		Properties: resource.PropertyMap{
+			"fifo": resource.NewBoolProperty(true),
+		},
+	}
+	f1 := FromName(AutoNameOptions{
+		Separator: "%",
+		Maxlen:    80,
+		Randlen:   7,
+		Randchars: []rune("abcdefghijklmnopqrstuvwxyz"),
+		PostTransform: func(res *PulumiResource, name string) (string, error) {
+			if fifo, hasfifo := res.Properties["fifo"]; hasfifo {
+				if fifo.IsBool() && fifo.BoolValue() {
+					return name + ".fifo", nil
+				}
+			}
+			return name, nil
+		},
+	})
+	out1, err := f1(res1)
+	outStr := out1.(string)
+	assert.NoError(t, err)
+	assert.Regexp(t, regexp.MustCompile(`^n1%[a-z]{7}\.fifo$`), outStr)
 }
