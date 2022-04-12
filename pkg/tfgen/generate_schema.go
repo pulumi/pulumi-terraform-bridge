@@ -225,7 +225,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
-			tok, ts := g.genObjectType(mod.name, t)
+			tok, ts := g.genObjectType(mod.name, t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -251,7 +251,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	if pack.provider != nil {
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok, ts := g.genObjectType("index", t)
+			tok, ts := g.genObjectType("index", t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -467,6 +467,11 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 				continue
 			}
 		}
+		// let's check that we are not trying to add a duplicate computed id property
+		if prop.name == "id" {
+			continue
+		}
+
 		spec.Properties[prop.name] = g.genProperty(mod, prop, true)
 
 		if !prop.optional() {
@@ -483,15 +488,20 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 				continue
 			}
 		}
+		// let's check that we are not trying to add a duplicate computed id property
+		if prop.name == "id" {
+			continue
+		}
 		spec.InputProperties[prop.name] = g.genProperty(mod, prop, true)
 
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
 		}
+
 	}
 
 	if !res.IsProvider() {
-		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet, pyMapCase: true})
+		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet, pyMapCase: true}, true)
 		spec.StateInputs = &stateInputs
 	}
 
@@ -520,11 +530,11 @@ func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) psche
 
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst, pyMapCase: true})
+		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst, pyMapCase: true}, false)
 		spec.Inputs = &t
 	}
 	if fun.retst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst, pyMapCase: true})
+		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst, pyMapCase: true}, false)
 		spec.Outputs = &t
 	}
 
@@ -543,7 +553,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (string, pschema.ObjectTypeSpec) {
+func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType, isTopLevel bool) (string, pschema.ObjectTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -574,6 +584,10 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType) (
 			} else {
 				continue
 			}
+		}
+		// let's not build any additional ID properties - we don't want to exclude any required id properties
+		if isTopLevel && prop.name == "id" {
+			continue
 		}
 		spec.Properties[prop.name] = g.genProperty(mod, prop, typInfo.pyMapCase)
 
