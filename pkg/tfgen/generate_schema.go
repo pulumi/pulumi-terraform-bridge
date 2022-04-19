@@ -312,6 +312,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 	if pi := g.info.Python; pi != nil {
 		pythonData["requires"] = pi.Requires
+		if pyPackageName := pi.PackageName; pyPackageName != "" {
+			pythonData["packageName"] = pyPackageName
+		}
 	}
 	spec.Language["python"] = rawMessage(pythonData)
 

@@ -325,6 +325,7 @@ type PythonInfo struct {
 	Requires      map[string]string // Pip install_requires information.
 	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
 	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
+	PackageName   string            // Name of the Python package to generate
 }
 
 // GolangInfo contains optional overlay information for Golang code-generation.
