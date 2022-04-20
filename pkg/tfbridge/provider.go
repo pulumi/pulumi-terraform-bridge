@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -168,6 +169,15 @@ func (p *Provider) pkg() tokens.Package          { return tokens.Package(p.modul
 func (p *Provider) baseConfigMod() tokens.Module { return tokens.Module(p.pkg() + ":config") }
 func (p *Provider) baseDataMod() tokens.Module   { return tokens.Module(p.pkg() + ":data") }
 func (p *Provider) configMod() tokens.Module     { return p.baseConfigMod() + "/vars" }
+
+func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	host, err := provider.NewHostClient(req.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	p.host = host
+	return &pbempty.Empty{}, nil
+}
 
 func (p *Provider) setLoggingContext(ctx context.Context) {
 	if p.host != nil {
