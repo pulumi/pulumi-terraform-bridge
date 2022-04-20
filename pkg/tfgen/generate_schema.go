@@ -316,11 +316,15 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	spec.Language["python"] = rawMessage(pythonData)
 
 	if csi := g.info.CSharp; csi != nil {
-		spec.Language["csharp"] = rawMessage(map[string]interface{}{
+		dotnetData := map[string]interface{}{
 			"compatibility":     tfbridge20,
 			"packageReferences": csi.PackageReferences,
 			"namespaces":        csi.Namespaces,
-		})
+		}
+		if rootNamespace := csi.RootNamespace; rootNamespace != "" {
+			dotnetData["rootNamespace"] = rootNamespace
+		}
+		spec.Language["csharp"] = rawMessage(dotnetData)
 	}
 
 	if goi := g.info.Golang; goi != nil {
