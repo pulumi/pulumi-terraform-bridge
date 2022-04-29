@@ -783,7 +783,7 @@ func MakeDataSource(pkg string, mod string, res string) tokens.ModuleMember {
 	return MakeMember(pkg, mod+"/"+fn, res)
 }
 
-// MakeResource manufactures a standard resource token given a module and resource name.  It
+// MakeResource manufactures a standard resource token given a package, module and resource name.  It
 // automatically uses the main package and names the file by simply lower casing the resource's
 // first character.
 func MakeResource(pkg string, mod string, res string) tokens.Type {
