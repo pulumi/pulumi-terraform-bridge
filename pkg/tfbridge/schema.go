@@ -1051,8 +1051,9 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 
 		// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add
 		// the result to the new inputs.
-		defaultNames := map[string]bool{}
+		defaultNames, hasOldDefaults := map[string]bool{}, false
 		if oldDefaultNames, ok := oldMap[defaultsKey]; ok && oldDefaultNames.IsArray() {
+			hasOldDefaults = true
 			for _, k := range oldDefaultNames.ArrayValue() {
 				if k.IsString() {
 					defaultNames[k.StringValue()] = true
@@ -1074,9 +1075,7 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 			}
 		}
 
-		if len(defaultNames) == 0 {
-			delete(oldMap, defaultsKey)
-		} else {
+		if hasOldDefaults {
 			defaults := make([]resource.PropertyValue, 0, len(defaultNames))
 			for name := range defaultNames {
 				defaults = append(defaults, resource.NewStringProperty(name))
@@ -1086,7 +1085,7 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 			oldMap[defaultsKey] = resource.NewArrayProperty(defaults)
 		}
 
-		return resource.NewObjectProperty(oldMap), possibleDefault
+		return resource.NewObjectProperty(oldMap), possibleDefault || !hasOldDefaults
 	case oldInput.IsString() && newState.IsString():
 		// If this value has a StateFunc, its state value may not be compatible with its
 		// input value. Ignore the difference.
