@@ -15,12 +15,15 @@
 package tfbridge
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"math/rand"
 	"unicode"
 
 	"github.com/pkg/errors"
 
 	"github.com/gedex/inflector"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -132,8 +135,11 @@ type AutoNameOptions struct {
 	Separator string
 	// Maximum length of the generated name
 	Maxlen int
-	// Number of characters of random hex digits to add to the name
+	// Number of random characters to add to the name
 	Randlen int
+	// A string of characters that are valid for the generated part of the name, defaults to the set of
+	// hexadecimal characters.
+	Randchars []rune
 	// A transform to apply to the name prior to adding random characters
 	Transform func(string) string
 	// A transform to apply after the auto naming has been computed
@@ -187,6 +193,25 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 	}
 }
 
+// Plan is to move this logic up to pulumi/pulumi at some point as a helper, especially for deterministic names
+type cryptoSource struct{}
+
+func (cryptoSource) Seed(seed int64) {
+	panic("you cannot seed the cryptographic source")
+}
+
+func (cryptoSource) Int63() int64 {
+	var random int64
+	err := binary.Read(cryptorand.Reader, binary.BigEndian, &random)
+	if err != nil {
+		panic(fmt.Sprintf("converting random bytes to an int64: %s", err.Error()))
+	}
+	if random < 0 {
+		random = -random
+	}
+	return random
+}
+
 // FromName automatically propagates a resource's URN onto the resulting default info.
 func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
 	return func(res *PulumiResource) (interface{}, error) {
@@ -196,11 +221,35 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			vs = options.Transform(vs)
 		}
 		if options.Randlen > 0 {
-			uniqueHex, err := resource.NewUniqueHex(vs+options.Separator, options.Randlen, options.Maxlen)
-			if err != nil {
-				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
+			// Randchars is a new option to allow providers to opt into tfbridges random name generated in
+			// cases where the old default behavior would of hit restrictions imposed by the resource type
+			// (e.g. some resources only allow a-z). Before Randchars this method used to just call
+			// NewUniqueHex which would suffix a random hexadecimal string on the end. To maintain
+			// compatability with the all the current uses of this function that don't set Randchars (i.e.
+			// leave it nil) we default the character set to that of hexadecimal.
+			randchars := options.Randchars
+			if randchars == nil {
+				randchars = []rune("0123456789abcdef")
 			}
-			vs = uniqueHex
+
+			prefix := vs + options.Separator
+			// Generate a unique name using the restricted set
+			if options.Maxlen > 0 && len(prefix)+options.Randlen > options.Maxlen {
+				// This Errorf followed by Wrapf is to match the behavior we had when the random generation
+				// was performed by NewUniqueHex.
+				err := errors.Errorf("name '%s' plus %d random chars is longer than maximum length %d", prefix, options.Randlen, options.Maxlen)
+				return "", errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
+			}
+
+			source := &cryptoSource{}
+			rand := rand.New(source)
+
+			b := make([]rune, options.Randlen)
+			for i := range b {
+				b[i] = randchars[rand.Intn(len(randchars))]
+			}
+
+			vs = prefix + string(b)
 		}
 		if options.PostTransform != nil {
 			return options.PostTransform(res, vs)
