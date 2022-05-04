@@ -1406,6 +1406,8 @@ func genLanguageToSlice(input Language) []string {
 			convert.LanguagePython,
 			convert.LanguageCSharp,
 			convert.LanguageGo,
+			convert.LanguageYaml,
+			convert.LanguageJava,
 		}
 	default:
 		msg := fmt.Sprintf("Unable to convert generator language '%v' to a list of languages the Bridge understands.", input)

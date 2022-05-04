@@ -23,7 +23,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 
+	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	hcl2yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	hcl2dotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -41,6 +43,8 @@ const (
 	LanguagePython     string = "python"
 	LanguageCSharp     string = "csharp"
 	LanguageGo         string = "go"
+	LanguageJava       string = "java"
+	LanguageYaml       string = "yaml"
 )
 
 var (
@@ -133,6 +137,12 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	case LanguageGo:
 		goFiles, genDiags, _ := hcl2go.GenerateProgram(program)
 		generatedFiles, diagnostics = goFiles, append(diagnostics, genDiags...)
+	case LanguageYaml:
+		yamlFiles, genDiags, _ := hcl2yaml.GenerateProgram(program)
+		generatedFiles, diagnostics = yamlFiles, append(diagnostics, genDiags...)
+	case LanguageJava:
+		javaFiles, genDiags, _ := hcl2java.GenerateProgram(program)
+		generatedFiles, diagnostics = javaFiles, append(diagnostics, genDiags...)
 	}
 
 	if diagnostics.HasErrors() {
