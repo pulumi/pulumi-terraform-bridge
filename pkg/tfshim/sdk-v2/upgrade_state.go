@@ -49,7 +49,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	configBlock := res.CoreConfigSchema()
 
 	// Strip out removed fields.
-	schema.RemoveAttributes(context.TODO(), json, configBlock.ImpliedType())
+	schema.RemoveAttributes(context.TODO(), configBlock.ImpliedType())
 
 	// now we need to turn the state into the default json representation, so
 	// that it can be re-decoded using the actual schema.

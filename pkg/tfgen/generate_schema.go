@@ -775,7 +775,8 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 	for token, resource := range spec.Resources {
 		spec.Resources[token] = g.convertExamplesInResourceSpec("#/resources/"+token, resource)
 	}
-	for token, function := range spec.Functions {
+	for _, token := range codegen.SortedKeys(spec.Functions) {
+		function := spec.Functions[token]
 		spec.Functions[token] = g.convertExamplesInFunctionSpec("#/functions/"+token, function)
 	}
 	return spec
