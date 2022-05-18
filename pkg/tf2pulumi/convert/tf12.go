@@ -1754,7 +1754,9 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 	if schemas.TFRes == nil {
 		schemas.TFRes = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
 	}
-	schemas.TFRes.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
+	if _, ok := schemas.TFRes.Schema().GetOk("id"); !ok {
+		schemas.TFRes.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
+	}
 
 	return token, schemas, schemas.ModelType(), nil
 }
