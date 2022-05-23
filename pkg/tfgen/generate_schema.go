@@ -426,13 +426,14 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 	}
 
 	return pschema.PropertySpec{
-		TypeSpec:           g.schemaType(mod, prop.typ, prop.out),
-		Description:        description,
-		Default:            defaultValue,
-		DefaultInfo:        defaultInfo,
-		DeprecationMessage: prop.deprecationMessage(),
-		Language:           language,
-		Secret:             secret,
+		TypeSpec:             g.schemaType(mod, prop.typ, prop.out),
+		Description:          description,
+		Default:              defaultValue,
+		DefaultInfo:          defaultInfo,
+		DeprecationMessage:   prop.deprecationMessage(),
+		Language:             language,
+		Secret:               secret,
+		WillReplaceOnChanges: prop.forceNew(),
 	}
 }
 
