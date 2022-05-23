@@ -56,6 +56,16 @@ func Test_ForceNew(t *testing.T) {
 			},
 			ShouldForceNew: false,
 		},
+		{
+			Name: "Input Non ForceNew Parameter ShouldForceNew false",
+			Var: variable{
+				name: "v",
+				schema: shimv1.NewSchema(&schema.Schema{
+					Type: schema.TypeString,
+				}),
+			},
+			ShouldForceNew: false,
+		},
 	}
 
 	for _, test := range cases {
