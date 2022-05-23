@@ -71,6 +71,7 @@ type ProviderInfo struct {
 	Python                   *PythonInfo        // optional overlay information for augmented Python code-generation.
 	Golang                   *GolangInfo        // optional overlay information for augmented Golang code-generation.
 	CSharp                   *CSharpInfo        // optional overlay information for augmented C# code-generation.
+	Java                     *JavaInfo          // optional overlay information for augmented C# code-generation.
 	TFProviderVersion        string             // the version of the TF provider on which this was based
 	TFProviderLicense        *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
 	TFProviderModuleVersion  string             // the Go module version of the provider. Default is unversioned e.g. v1
@@ -341,6 +342,10 @@ type CSharpInfo struct {
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
 	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
+}
+
+type JavaInfo struct {
+	BasePackage string // the Base package for the Java SDK
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
