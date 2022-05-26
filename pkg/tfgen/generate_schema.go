@@ -338,7 +338,13 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		})
 	}
 
-	// Validate the schema.
+	if javai := g.info.Java; javai != nil {
+		spec.Language["java"] = rawMessage(map[string]interface{}{
+			"basePackage": javai.BasePackage,
+		})
+	}
+
+  // Validate the schema.
 	_, diags, err := pschema.BindSpec(spec, nil)
 	if err != nil {
 		return pschema.PackageSpec{}, err
@@ -346,7 +352,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if diags.HasErrors() {
 		return pschema.PackageSpec{}, diags
 	}
-	return spec, nil
+
+  return spec, nil
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
@@ -434,13 +441,14 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 	}
 
 	return pschema.PropertySpec{
-		TypeSpec:           g.schemaType(mod, prop.typ, prop.out),
-		Description:        description,
-		Default:            defaultValue,
-		DefaultInfo:        defaultInfo,
-		DeprecationMessage: prop.deprecationMessage(),
-		Language:           language,
-		Secret:             secret,
+		TypeSpec:             g.schemaType(mod, prop.typ, prop.out),
+		Description:          description,
+		Default:              defaultValue,
+		DefaultInfo:          defaultInfo,
+		DeprecationMessage:   prop.deprecationMessage(),
+		Language:             language,
+		Secret:               secret,
+		WillReplaceOnChanges: prop.forceNew(),
 	}
 }
 

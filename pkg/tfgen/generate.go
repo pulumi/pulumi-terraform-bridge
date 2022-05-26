@@ -494,6 +494,21 @@ func (v *variable) deprecationMessage() string {
 	return ""
 }
 
+func (v *variable) forceNew() bool {
+	// Output properties don't forceNew so we can return false by default
+	if v.out {
+		return false
+	}
+
+	// if we have an explicit marked as ForceNew then let's return that as that overrides
+	// the TF schema
+	if v.info != nil && v.info.ForceNew != nil {
+		return *v.info.ForceNew
+	}
+
+	return v.schema != nil && v.schema.ForceNew()
+}
+
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool {
 	if v.opt {

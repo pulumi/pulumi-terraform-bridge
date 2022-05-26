@@ -183,7 +183,7 @@ func (g *generator) genNYI(w io.Writer, reason string) {
 // genNYIHelper emits the NYI helper, if required.
 func (g *generator) genNYIHelper(w io.Writer) {
 	if g.needNYIHelper {
-		_, err := fmt.Fprintln(w, nyiHelper)
+		_, err := fmt.Fprint(w, nyiHelper)
 		contract.IgnoreError(err)
 	}
 }
