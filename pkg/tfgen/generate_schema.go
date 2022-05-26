@@ -22,11 +22,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"sort"
 	"strings"
 
 	"github.com/gedex/inflector"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -344,7 +344,16 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		})
 	}
 
-	return spec, nil
+  // Validate the schema.
+	_, diags, err := pschema.BindSpec(spec, nil)
+	if err != nil {
+		return pschema.PackageSpec{}, err
+	}
+	if diags.HasErrors() {
+		return pschema.PackageSpec{}, diags
+	}
+
+  return spec, nil
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
