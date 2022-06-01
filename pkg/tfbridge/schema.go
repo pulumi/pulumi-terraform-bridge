@@ -53,10 +53,11 @@ type AssetTable map[*SchemaInfo]resource.PropertyValue
 
 // nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
 // property with a value that was not populated by the autonamer.
-func nameRequiresDeleteBeforeReplace(inputs resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) bool {
+func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.PropertyMap,
+	tfs shim.SchemaMap, resourceInfo *ResourceInfo) bool {
+	fields := resourceInfo.Fields
 
-	defaults, hasDefaults := inputs[defaultsKey]
+	defaults, hasDefaults := news[defaultsKey]
 	if !hasDefaults || !defaults.IsArray() {
 		// If there is no list of properties that were populated using defaults, consider the resource autonamed.
 		// This avoids setting delete-before-replace for resources that were created before the defaults list existed.
@@ -71,8 +72,31 @@ func nameRequiresDeleteBeforeReplace(inputs resource.PropertyMap,
 		hasDefault[resource.PropertyKey(key.StringValue())] = true
 	}
 
-	for key := range inputs {
-		_, _, psi := getInfoFromPulumiName(key, tfs, ps, false)
+	// These are a list of Pulumi named fields that we care about comparing to try
+	// and override the deleteBeforeReplace e.g. name or namePrefix
+	// if any of these values change then we can assume we can
+	if len(resourceInfo.UniqueNameFields) > 0 {
+		// we are explicitly trying to force functionality here
+		for _, idField := range resourceInfo.UniqueNameFields {
+			_, _, psi := getInfoFromPulumiName(resource.PropertyKey(idField), tfs, fields, false)
+
+			oldVal := olds[resource.PropertyKey(idField)]
+			newVal := news[resource.PropertyKey(idField)]
+
+			if !oldVal.DeepEquals(newVal) {
+				return false
+			}
+
+			if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && hasDefault[resource.PropertyKey(idField)] {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	for key := range news {
+		_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
 		if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && !hasDefault[key] {
 			return true
 		}

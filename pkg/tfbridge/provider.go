@@ -805,7 +805,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	})
 
 	deleteBeforeReplace := len(replaces) > 0 &&
-		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, res.TF.Schema(), res.Schema.Fields))
+		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, res.TF.Schema(), res.Schema))
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
