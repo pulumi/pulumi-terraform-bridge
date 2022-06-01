@@ -69,7 +69,7 @@ func TestURLRewrite(t *testing.T) {
 	}
 }
 
-func TestArgumentRegex(t *testing.T) {
+func TestParseArgReferenceSection(t *testing.T) {
 	tests := []struct {
 		input    []string
 		expected map[string]*argumentDocs
@@ -273,6 +273,60 @@ func TestArgumentRegex(t *testing.T) {
 		//	assert.Equal(t, v.arguments, actualArg.arguments)
 		//}
 	}
+}
+
+func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
+	input := []string{
+		"## Arguments Reference",
+		"",
+		"The following arguments are supported:",
+		"* `param_1` - (Optional) param_1_desc",
+		"",
+		"* `nested_block_1` - (Optional) nested_block_1_desc",
+		"",
+		"* `nested_block_2` - (Optional) nested_block_2_desc",
+		"",
+		"The optional `nested_block_1` subblock supports:",
+		"",
+		"* `nested_param` - (Required) nested_block_1.nested_param_desc",
+		"",
+		"The optional `nested_block_2` subblock supports:",
+		"",
+		"* `nested_param` - (Required) nested_block_2.nested_param_desc",
+		"",
+	}
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: make(map[string]*argumentDocs),
+		},
+	}
+
+	expected := map[string]*argumentDocs{
+		"param_1": {
+			description: "param_1_desc",
+			isNested:    false,
+			arguments:   map[string]string{},
+		},
+		"nested_block_1": {
+			description: "nested_block_1_desc",
+			isNested:    false,
+			arguments: map[string]string{
+				"nested_param": "nested_block_1.nested_param_desc",
+			},
+		},
+		"nested_block_2": {
+			description: "nested_block_2_desc",
+			isNested:    false,
+			arguments: map[string]string{
+				"nested_param": "nested_block_2.nested_param_desc",
+			},
+		},
+	}
+
+	parser.parseArgReferenceSection(input)
+
+	assert.Equal(t, expected, parser.ret.Arguments)
 }
 
 func TestGetFooterLinks(t *testing.T) {
