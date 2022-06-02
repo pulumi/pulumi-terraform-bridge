@@ -794,6 +794,18 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
+					// This is not an exact check for overwriting argument descriptions. Because we iterate the document
+					// line-by-line, we assign the descriptions in the same way. It's difficult to get an exact count
+					// without making significant changes to the parsing code itself, which would defeat the purpose of
+					// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
+					// argument descriptions.
+					if arg, found := p.ret.Arguments[name]; found {
+						if arg.description != "" && arg.description != desc {
+							p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
+							//overwrittenArgDecriptions++
+						}
+					}
+
 					p.ret.Arguments[name] = &argumentDocs{description: desc}
 					totalArgumentsFromDocs++
 				}
