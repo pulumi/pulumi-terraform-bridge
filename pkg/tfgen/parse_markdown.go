@@ -160,14 +160,14 @@ func parseNestedSchemaIntoDocs(
 
 	for _, param := range nestedSchema.allParameters() {
 		oldDesc, hasAlready := args.arguments[param.name]
-		if hasAlready && oldDesc != param.desc {
+		if hasAlready && oldDesc.description != param.desc {
 			warn("Description conflict for param %s from %s; candidates are `%s` and `%s`",
 				param.name,
 				nestedSchema.longName,
 				oldDesc,
 				param.desc)
 		}
-		args.arguments[param.name] = param.desc
+		args.arguments[param.name].description = param.desc
 		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
 		paramArgs, created := accumulatedDocs.getOrCreateArgumentDocs(fullParamName)
 		if !created && paramArgs.description != param.desc {
