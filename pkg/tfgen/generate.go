@@ -1534,8 +1534,8 @@ func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) string {
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
 func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) string {
-	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
-		return res.arguments[arg]
+	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != nil && res.arguments[arg].description != "" {
+		return res.arguments[arg].description
 	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
 		return res.description
 	}
