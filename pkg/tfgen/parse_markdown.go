@@ -167,7 +167,9 @@ func parseNestedSchemaIntoDocs(
 				oldDesc,
 				param.desc)
 		}
-		args.arguments[param.name].description = param.desc
+		args.arguments[param.name] = &argumentDocs{
+			description: param.desc,
+		}
 		fullParamName := fmt.Sprintf("%s.%s", nestedSchema.longName, param.name)
 		paramArgs, created := accumulatedDocs.getOrCreateArgumentDocs(fullParamName)
 		if !created && paramArgs.description != param.desc {
