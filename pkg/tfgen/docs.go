@@ -45,7 +45,7 @@ type argumentDocs struct {
 	description string
 
 	// (Optional) The names and descriptions for each argument of this argument.
-	arguments map[string]string
+	arguments map[string]*argumentDocs
 
 	// Whether this argument was derived from a nested object. Used to determine
 	// whether to append descriptions that have continued to the following line
@@ -56,7 +56,7 @@ type argumentDocs struct {
 func (ad argumentDocs) MarshalJSON() ([]byte, error) {
 	j, err := json.Marshal(struct {
 		Description string
-		Arguments   map[string]string
+		Arguments   map[string]*argumentDocs
 		IsNested    bool
 	}{
 		Description: ad.description,
@@ -112,7 +112,7 @@ func (ed *entityDocs) getOrCreateArgumentDocs(argumentName string) (*argumentDoc
 	var created bool
 	args, has := ed.Arguments[argumentName]
 	if !has {
-		args = &argumentDocs{arguments: make(map[string]string)}
+		args = &argumentDocs{arguments: make(map[string]*argumentDocs)}
 		ed.Arguments[argumentName] = args
 		created = true
 	}
@@ -775,13 +775,15 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				// We found this line within a nested field. We should record it as such.
 				if p.ret.Arguments[nested] == nil {
 					p.ret.Arguments[nested] = &argumentDocs{
-						arguments: make(map[string]string),
+						arguments: make(map[string]*argumentDocs),
 					}
 					totalArgumentsFromDocs++
 				} else if p.ret.Arguments[nested].arguments == nil {
-					p.ret.Arguments[nested].arguments = make(map[string]string)
+					p.ret.Arguments[nested].arguments = make(map[string]*argumentDocs)
 				}
-				p.ret.Arguments[nested].arguments[name] = desc
+				p.ret.Arguments[nested].arguments[name] = &argumentDocs{
+					description: desc,
+				}
 
 				// Also record this as a top-level argument just in case, since sometimes the recorded nested
 				// argument doesn't match the resource's argument.
@@ -814,7 +816,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			if nested != "" {
-				p.ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+				p.ret.Arguments[nested].arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 
 				// Also update the top-level argument if we took it from a nested field.
 				if p.ret.Arguments[lastMatch].isNested {
@@ -1424,21 +1426,25 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 
 		newargs[k] = &argumentDocs{
 			description: cleanedText,
-			arguments:   make(map[string]string, len(v.arguments)),
+			arguments:   make(map[string]*argumentDocs, len(v.arguments)),
 			isNested:    v.isNested,
 		}
 
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
 			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := reformatText(g, vv, footerLinks)
+			cleanedText, elided := reformatText(g, vv.description, footerLinks)
 			if elided {
 				elidedNestedArguments++
 				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
 					"dropped in the Pulumi provider.", kk, name)
 				elidedDoc = true
 			}
-			newargs[k].arguments[kk] = cleanedText
+			newargs[k].arguments[kk] = &argumentDocs{
+				arguments:   vv.arguments,
+				isNested:    vv.isNested,
+				description: cleanedText,
+			}
 		}
 	}
 
