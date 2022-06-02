@@ -782,6 +782,18 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
+					// This is not an exact check for overwriting argument descriptions. Because we iterate the document
+					// line-by-line, we assign the descriptions in the same way. It's difficult to get an exact count
+					// without making significant changes to the parsing code itself, which would defeat the purpose of
+					// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
+					// argument descriptions.
+					if arg, found := p.ret.Arguments[argName]; found {
+						if arg.description != "" && arg.description != argDesc {
+							p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
+							overwrittenArgDecriptions++
+						}
+					}
+
 					p.ret.Arguments[name] = &argumentDocs{description: desc}
 				}
 			}
@@ -964,6 +976,8 @@ var (
 
 	entitiesMissingDocs int
 	unexpectedSnippets  int
+
+	overwrittenArgDecriptions int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -1020,6 +1034,10 @@ func (g *Generator) printDocStats() {
 
 	if hclCSharpPartialConversionFailures > 0 {
 		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#", hclCSharpPartialConversionFailures)
+	}
+
+	if overwrittenArgDecriptions > 0 {
+		g.error("%d arguments had their descriptions overwritten", overwrittenArgDecriptions)
 	}
 }
 
