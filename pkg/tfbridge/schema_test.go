@@ -723,6 +723,7 @@ func sortDefaultsList(m resource.PropertyMap) {
 	m[defaultsKey] = resource.NewArrayProperty(defs)
 }
 
+//
 func TestDefaults(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -755,6 +756,8 @@ func TestDefaults(t *testing.T) {
 			asset, err := resource.NewTextAsset("hello")
 			assert.Nil(t, err)
 			tfs := f.NewSchemaMap(map[string]*schema.Schema{
+				"xyz": {Type: shim.TypeString, ExactlyOneOf: []string{"xyz", "abc"}},
+				"abc": {Type: shim.TypeString, Default: "ABC", ExactlyOneOf: []string{"xyz", "abc"}},
 				"ccc": {Type: shim.TypeString, Default: "CCC"},
 				"cc2": {Type: shim.TypeString, DefaultFunc: func() (interface{}, error) { return "CC2", nil }},
 				"ddd": {Type: shim.TypeString, Default: "TFD"},
@@ -826,10 +829,12 @@ func TestDefaults(t *testing.T) {
 
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
+
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
 				},
+				"abc": "ABC",
 				"bbb": "BBB",
 				"ccc": "CCC",
 				"cc2": "CC2",
@@ -850,6 +855,7 @@ func TestDefaults(t *testing.T) {
 				"uuu": "PSU",
 				"vvv": 1337,
 				"www": "OLW",
+				// xzy is NOT set as it's either that or abc
 				"zzz": asset,
 			}), outputs)
 
@@ -860,12 +866,13 @@ func TestDefaults(t *testing.T) {
 			assert.NoError(t, err)
 			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
-			// sort the defaults list before the equality test below.
+			//sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
 				},
+				"abc": "ABC",
 				"bbb": "BBB",
 				"ccc": "CCC",
 				"cc2": "CC2",
@@ -888,6 +895,7 @@ func TestDefaults(t *testing.T) {
 				"uuu": "PSU",
 				"vvv": 1337,
 				"www": "OLW",
+				// xyz is NOT set as it has ExactlyOneOf with abc
 				"zzz": asset,
 			}), outputs)
 		})
