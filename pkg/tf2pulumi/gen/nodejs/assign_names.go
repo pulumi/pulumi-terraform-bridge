@@ -16,6 +16,8 @@ package nodejs
 
 import (
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -107,7 +109,7 @@ func (nt *nameTable) assignLocal(n *il.LocalNode) {
 
 	// If the raw name is reserved or ambiguous, first attempt to disambiguate by prepending "my".
 	if isReserved || nt.assigned[name] {
-		name = nt.disambiguate("my" + strings.Title(name))
+		name = nt.disambiguate("my" + cases.Title(language.Und, cases.NoLower).String(name))
 	}
 
 	nt.names[n], nt.assigned[name] = name, true

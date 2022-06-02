@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"sort"
 	"strings"
 
@@ -97,7 +99,7 @@ func (nt *schemaNestedTypes) declareType(
 	declarer declarer, namePrefix, name string, typ *propertyType, isInput, pyMapCase bool) string {
 
 	// Generate a name for this nested type.
-	typeName := namePrefix + strings.Title(name)
+	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
 
 	// Override the nested type name, if necessary.
 	if typ.nestedType.Name().String() != "" {

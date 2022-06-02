@@ -17,6 +17,8 @@ package nodejs
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"io"
 	"sort"
 	"strings"
@@ -813,7 +815,7 @@ func (g *generator) generateResource(r *il.ResourceNode) error {
 			if g.promptDataSources[r] {
 				fmtStr = "%s%s.%sResult"
 			}
-			arrElementType = fmt.Sprintf(fmtStr, provider, module, strings.Title(memberName))
+			arrElementType = fmt.Sprintf(fmtStr, provider, module, cases.Title(language.Und, cases.NoLower).String(memberName))
 		}
 
 		g.Printf("%sconst %s: %s[] = [];\n", g.Indent, name, arrElementType)

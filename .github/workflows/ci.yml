@@ -23,6 +23,8 @@ jobs:
         run: go mod download
       - name: Build
         run: make build
+      - name: Lint
+        run: make lint
       - name: Test
         run: make test
 
