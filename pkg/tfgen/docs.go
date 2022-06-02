@@ -324,7 +324,7 @@ func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
 	for k, v := range sourceDocs.Arguments {
 		targetDocs.Attributes[k] = v.description
 		for kk, vv := range v.arguments {
-			targetDocs.Attributes[kk] = vv
+			targetDocs.Attributes[kk] = vv.description
 		}
 	}
 }
@@ -332,9 +332,11 @@ func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
 func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
 	for k, v := range sourceDocs.Arguments { // string -> argument
 		arguments := sourceDocs.Arguments[k].arguments
-		docArguments := make(map[string]string)
+		docArguments := make(map[string]*argumentDocs)
 		for kk, vv := range arguments {
-			docArguments[kk] = vv
+			docArguments[kk] = &argumentDocs{
+				description: vv.description,
+			}
 		}
 		docs.Arguments[k] = &argumentDocs{
 			description: v.description,
@@ -800,8 +802,8 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 					// without making significant changes to the parsing code itself, which would defeat the purpose of
 					// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
 					// argument descriptions.
-					if arg, found := p.ret.Arguments[argName]; found {
-						if arg.description != "" && arg.description != argDesc {
+					if arg, found := p.ret.Arguments[name]; found {
+						if arg.description != "" && arg.description != desc {
 							p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
 							overwrittenArgDecriptions++
 						}
