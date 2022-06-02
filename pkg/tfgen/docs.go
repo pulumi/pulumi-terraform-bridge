@@ -1471,16 +1471,16 @@ func genLanguageToSlice(input Language) []string {
 	}
 }
 
-func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
+func cleanupArgs(args map[string]*argumentDocs, g *Generator, entityName string, footerLinks map[string]string) (map[string]*argumentDocs, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
+	newargs := make(map[string]*argumentDocs, len(args))
 
-	for k, v := range doc.Arguments {
-		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
+	for k, v := range args {
+		g.debug("Cleaning up text for argument [%v] in [%v]", k, entityName)
 		cleanedText, elided := reformatText(g, v.description, footerLinks)
 		if elided {
 			elidedArguments++
-			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, name)
+			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, entityName)
 			elidedDoc = true
 		}
 
@@ -1492,11 +1492,11 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
-			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
+			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, entityName)
 			cleanedText, elided := reformatText(g, vv.description, footerLinks)
 			if elided {
 				elidedNestedArguments++
-				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, name)
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, entityName)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = &argumentDocs{
@@ -1506,6 +1506,13 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 			}
 		}
 	}
+
+	return newargs, elidedDoc
+}
+
+func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
+	elidedDoc := false
+	newArgs, elidedArgs := cleanupArgs(doc.Arguments, g, name, footerLinks)
 
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
@@ -1551,10 +1558,10 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 
 	return entityDocs{
 		Description: cleanupText,
-		Arguments:   newargs,
+		Arguments:   newArgs,
 		Attributes:  newattrs,
 		Import:      doc.Import,
-	}, elidedDoc
+	}, elidedDoc || elidedArgs
 }
 
 //nolint:lll
