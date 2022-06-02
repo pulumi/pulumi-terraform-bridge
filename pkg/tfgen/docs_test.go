@@ -112,9 +112,13 @@ func TestParseArgReferenceSection(t *testing.T) {
 				"jwt_configuration": {
 					description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
 						"Supported only for HTTP APIs.",
-					arguments: map[string]string{
-						"audience": "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-						"issuer":   "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+					arguments: map[string]*argumentDocs{
+						"audience": {
+							description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
+						},
+						"issuer": {
+							description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+						},
 					},
 				},
 				"audience": {
@@ -142,10 +146,10 @@ func TestParseArgReferenceSection(t *testing.T) {
 				"website": {
 					description: "A website object (documented below)." + "\n" +
 						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
-					arguments: map[string]string{
-						"index_document": "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-						"routing_rules": "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-							"describing redirect behavior and when redirects are applied.",
+					arguments: map[string]*argumentDocs{
+						"index_document": {description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders."},
+						"routing_rules": {description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+							"describing redirect behavior and when redirects are applied."},
 					},
 				},
 				"index_document": {
@@ -306,20 +310,20 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 		"param_1": {
 			description: "param_1_desc",
 			isNested:    false,
-			arguments:   map[string]string{},
+			arguments:   map[string]*argumentDocs{},
 		},
 		"nested_block_1": {
 			description: "nested_block_1_desc",
 			isNested:    false,
-			arguments: map[string]string{
-				"nested_param": "nested_block_1.nested_param_desc",
+			arguments: map[string]*argumentDocs{
+				"nested_param": {description: "nested_block_1.nested_param_desc"},
 			},
 		},
 		"nested_block_2": {
 			description: "nested_block_2_desc",
 			isNested:    false,
-			arguments: map[string]string{
-				"nested_param": "nested_block_2.nested_param_desc",
+			arguments: map[string]*argumentDocs{
+				"nested_param": {description: "nested_block_2.nested_param_desc"},
 			},
 		},
 	}
