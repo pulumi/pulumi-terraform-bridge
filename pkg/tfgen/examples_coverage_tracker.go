@@ -110,7 +110,7 @@ func (ct *CoverageTracker) foundExample(pageName string, hcl string) {
 		// Initializing a page for this example.
 		ct.EncounteredPages[pageName] = &DocumentationPage{
 			pageName,
-			[]Example{Example{hcl, make(map[string]*LanguageConversionResult)}},
+			[]Example{{hcl, make(map[string]*LanguageConversionResult)}},
 		}
 	}
 }
@@ -177,7 +177,7 @@ func (ct *CoverageTracker) insertLanguageConversionResult(languageName string,
 			if newConversionResult.FailureSeverity < existingConversionResult.FailureSeverity {
 				lastExample.ConversionResults[languageName] = &newConversionResult
 			}
-			existingConversionResult.TranslationCount += 1
+			existingConversionResult.TranslationCount++
 		} else {
 			// The new language conversion result is added for this example
 			lastExample.ConversionResults[languageName] = &newConversionResult
@@ -231,5 +231,5 @@ func (Page *DocumentationPage) lastExample() *Example {
 // Exporting the coverage results
 func (ct *CoverageTracker) exportResults(outputDirectory string) error {
 	coverageExportUtil := newCoverageExportUtil(ct)
-	return (coverageExportUtil.tryExport(outputDirectory))
+	return coverageExportUtil.tryExport(outputDirectory)
 }

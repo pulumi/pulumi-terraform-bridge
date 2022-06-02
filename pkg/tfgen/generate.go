@@ -1364,9 +1364,7 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 	}
 
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
-	if strings.HasSuffix(key, ":") {
-		key = key[:len(key)-1]
-	}
+	key = strings.TrimSuffix(key, ":")
 
 	return tfbridge.TerraformToPulumiName(key, sch, custom, false /*no to PascalCase; we want camelCase*/)
 }

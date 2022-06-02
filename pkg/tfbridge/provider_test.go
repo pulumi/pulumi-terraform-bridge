@@ -662,7 +662,7 @@ func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tok
 	urn := resource.NewURN("stack", "project", "", typeName, "name")
 
 	// Configure that we support secrets
-	provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+	_, _ = provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
 		AcceptSecrets:   true,
 		AcceptResources: true,
 	})

@@ -1339,7 +1339,7 @@ func hclConversionsToString(hclConversions map[string]string) string {
 	// order to ensure that we have no changes to the schema when deploying this change, as well as to establish
 	// reliable tests for this function because Go iterates map keys in a non-deterministic fashion:
 	var keys languages = []string{}
-	for k, _ := range hclConversions {
+	for k := range hclConversions {
 		keys = append(keys, k)
 	}
 	sort.Sort(keys)
@@ -1381,7 +1381,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	var err error
 
 	failedLangs := map[string]error{}
-	var passedLangs []string
 
 	for _, lang := range languages {
 		var convertErr error
@@ -1389,8 +1388,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		if convertErr != nil {
 			failedLangs[lang] = convertErr
 			err = multierror.Append(err, convertErr)
-		} else {
-			passedLangs = append(passedLangs, lang)
 		}
 	}
 
@@ -1414,7 +1411,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	if len(failedLangs) > 0 && len(failedLangs) < len(languages) {
 		var failedLangsStrings []string
 
-		for lang, _ := range failedLangs {
+		for lang := range failedLangs {
 			failedLangsStrings = append(failedLangsStrings, lang)
 
 			switch lang {
@@ -1440,6 +1437,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		}
 
 		// At least one language out of the given set has been generated, which is considered a success
+		// nolint:ineffassign
 		err = nil
 	}
 

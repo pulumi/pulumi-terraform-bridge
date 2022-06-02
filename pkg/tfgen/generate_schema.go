@@ -859,7 +859,7 @@ func appendExample(description, markdownToAppend string) string {
 	sections := groupLines(descLines, "## ")
 
 	// If there's already an ## Example Usage section, we need to find this section and append
-	if strings.Index(description, exampleUsageHeader) >= 0 {
+	if strings.Contains(description, exampleUsageHeader) {
 		for i, section := range sections {
 			if len(section) == 0 {
 				continue
