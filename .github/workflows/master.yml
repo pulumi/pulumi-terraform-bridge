@@ -31,4 +31,4 @@ jobs:
       - name: Build
         run: make build
       - name: Test
-        run: make test_all
+        run: make test
