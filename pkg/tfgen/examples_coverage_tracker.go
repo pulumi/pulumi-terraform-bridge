@@ -167,7 +167,8 @@ func (ct *CoverageTracker) languageConversionPanic(languageName string, panicInf
 
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly duplicated
-func (ct *CoverageTracker) insertLanguageConversionResult(languageName string, newConversionResult LanguageConversionResult) {
+func (ct *CoverageTracker) insertLanguageConversionResult(languageName string,
+	newConversionResult LanguageConversionResult) {
 	if currentPage, ok := ct.EncounteredPages[ct.currentPageName]; ok {
 		lastExample := currentPage.lastExample()
 

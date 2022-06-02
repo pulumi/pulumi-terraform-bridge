@@ -1108,7 +1108,8 @@ func (g *Generator) gatherResource(rawname string,
 	// Ensure there weren't any custom fields that were unrecognized.
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
-			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
+			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
+				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
 
 			if isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
 				return "", nil, fmt.Errorf(msg)

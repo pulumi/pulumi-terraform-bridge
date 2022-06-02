@@ -344,7 +344,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		})
 	}
 
-  // Validate the schema.
+	// Validate the schema.
 	_, diags, err := pschema.BindSpec(spec, nil)
 	if err != nil {
 		return pschema.PackageSpec{}, err
@@ -353,7 +353,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		return pschema.PackageSpec{}, diags
 	}
 
-  return spec, nil
+	return spec, nil
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
@@ -576,7 +576,8 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType, isTopLevel bool) (string, pschema.ObjectTypeSpec) {
+func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType, isTopLevel bool) (string,
+	pschema.ObjectTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -803,14 +804,15 @@ func addExtraHclExamplesToResources(extraExamples []tfbridge.HclExampler, spec *
 		token := ex.GetToken()
 		res, ok := spec.Resources[token]
 		if !ok {
-			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the resource with token '%s', but no "+
-				"matching resource was found in the schema", token))
+			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the resource with "+
+				"token '%s', but no matching resource was found in the schema", token))
 			continue
 		}
 
 		markdown, markdownErr := ex.GetMarkdown()
 		if markdownErr != nil {
-			err = multierror.Append(err, fmt.Errorf("unable to retrieve markdown for example for '%s': %w", token, markdownErr))
+			err = multierror.Append(err,
+				fmt.Errorf("unable to retrieve markdown for example for '%s': %w", token, markdownErr))
 			continue
 		}
 
@@ -827,14 +829,15 @@ func addExtraHclExamplesToFunctions(extraExamples []tfbridge.HclExampler, spec *
 		token := ex.GetToken()
 		fun, ok := spec.Functions[token]
 		if !ok {
-			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the function with token '%s', but no "+
-				"matching resource was found in the schema", token))
+			err = multierror.Append(err, fmt.Errorf("there is a supplemental HCL example for the function with "+
+				"token '%s', but no matching resource was found in the schema", token))
 			continue
 		}
 
 		markdown, markdownErr := ex.GetMarkdown()
 		if markdownErr != nil {
-			err = multierror.Append(err, fmt.Errorf("unable to retrieve markdown for example for '%s': %w", token, markdownErr))
+			err = multierror.Append(err, fmt.Errorf("unable to retrieve markdown for example for '%s': %w",
+				token, markdownErr))
 			continue
 		}
 

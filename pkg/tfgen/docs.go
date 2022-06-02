@@ -246,10 +246,12 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
+	markdownBytes, markdownFileName, found := getMarkdownDetails(org, provider, resourcePrefix, kind, rawname, info,
+		providerModuleVersion, githost)
 	if !found {
 		entitiesMissingDocs++
-		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
+		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
+			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
 		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			g.error(msg)
@@ -275,17 +277,20 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	}
 	if docinfo != nil {
 		// Merge Attributes from source into target
-		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFrom, true, true, providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFrom,
+			true, true, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFromArguments, true, false, providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFromArguments,
+			true, false, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 
 		// Merge Arguments from source into target
-		if err := mergeDocs(g, org, provider, provider, kind, doc, docinfo.IncludeArgumentsFrom, false, false, providerModuleVersion, githost); err != nil {
+		if err := mergeDocs(g, org, provider, provider, kind, doc, docinfo.IncludeArgumentsFrom,
+			false, false, providerModuleVersion, githost); err != nil {
 			return doc, err
 		}
 	}
@@ -642,7 +647,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			continue
 		}
 		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports {
-			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, but may not display correctly in the generated docs.", header, p.kind, p.rawname)
+			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
+				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 			unexpectedSnippets++
 		}
 
@@ -979,27 +985,33 @@ func (g *Generator) printDocStats() {
 	}
 
 	if unexpectedSnippets > 0 {
-		g.warn("%d entity document sections contained unexpected HCL code snippets. Examples will be converted, but may not display correctly in the registry, e.g. lacking tabs.", unexpectedSnippets)
+		g.warn("%d entity document sections contained unexpected HCL code snippets. Examples will be converted, "+
+			"but may not display correctly in the registry, e.g. lacking tabs.", unexpectedSnippets)
 	}
 
 	if elidedDescriptions > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.", elidedDescriptions)
+		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.",
+			elidedDescriptions)
 	}
 
 	if elidedDescriptionsOnly > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.", elidedDescriptionsOnly)
+		g.warn("%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.",
+			elidedDescriptionsOnly)
 	}
 
 	if elidedArguments > 0 {
-		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.", elidedArguments)
+		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.",
+			elidedArguments)
 	}
 
 	if elidedNestedArguments > 0 {
-		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.", elidedNestedArguments)
+		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.",
+			elidedNestedArguments)
 	}
 
 	if elidedAttributes > 0 {
-		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.", elidedAttributes)
+		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.",
+			elidedAttributes)
 	}
 
 	if hclAllLangsConversionFailures > 0 {
@@ -1007,19 +1019,23 @@ func (g *Generator) printDocStats() {
 	}
 
 	if hclTypeScriptPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to TypeScript", hclTypeScriptPartialConversionFailures)
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to TypeScript",
+			hclTypeScriptPartialConversionFailures)
 	}
 
 	if hclPythonPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Python", hclPythonPartialConversionFailures)
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to Python",
+			hclPythonPartialConversionFailures)
 	}
 
 	if hclGoPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Go", hclGoPartialConversionFailures)
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to Go",
+			hclGoPartialConversionFailures)
 	}
 
 	if hclCSharpPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#", hclCSharpPartialConversionFailures)
+		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#",
+			hclCSharpPartialConversionFailures)
 	}
 }
 
@@ -1197,7 +1213,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 //
 // Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/477
-func (g *Generator) convert(input afero.Fs, languageName string) (files map[string][]byte, diags convert.Diagnostics, err error) {
+func (g *Generator) convert(input afero.Fs, languageName string) (files map[string][]byte, diags convert.Diagnostics,
+	err error) {
 	defer func() {
 		v := recover()
 		if v != nil {
@@ -1383,9 +1400,11 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		hclAllLangsConversionFailures++
 
 		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped from any generated docs or SDKs.", path))
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped "+
+				"from any generated docs or SDKs.", path))
 		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s'. The example will be dropped from any generated docs or SDKs.", exampleTitle, path))
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s'. The example will be "+
+				"dropped from any generated docs or SDKs.", exampleTitle, path))
 		}
 
 		return "", err
@@ -1411,9 +1430,13 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		}
 
 		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", path, strings.Join(failedLangsStrings, ", ")))
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
+				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+				path, strings.Join(failedLangsStrings, ", ")))
 		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): %s. Examples for these languages will be dropped from any generated docs or SDKs.", exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
+				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+				exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
 		}
 
 		// At least one language out of the given set has been generated, which is considered a success
@@ -1460,7 +1483,8 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		cleanedText, elided := reformatText(g, v.description, footerLinks)
 		if elided {
 			elidedArguments++
-			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, name)
+			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
+				"the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
 
@@ -1476,7 +1500,8 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 			cleanedText, elided := reformatText(g, vv, footerLinks)
 			if elided {
 				elidedNestedArguments++
-				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, name)
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
+					"dropped in the Pulumi provider.", kk, name)
 				elidedDoc = true
 			}
 			newargs[k].arguments[kk] = cleanedText
@@ -1489,7 +1514,8 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		cleanedText, elided := reformatText(g, v, footerLinks)
 		if elided {
 			elidedAttributes++
-			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped in the Pulumi provider.", k, name)
+			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
+				"in the Pulumi provider.", k, name)
 			elidedDoc = true
 		}
 		newattrs[k] = cleanedText
@@ -1498,7 +1524,8 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	g.debug("Cleaning up description text for [%v]", name)
 	cleanupText, elided := reformatText(g, doc.Description, footerLinks)
 	if elided {
-		g.debug("Found <elided> in the description. Attempting to extract examples from the description and reformat examples only.")
+		g.debug("Found <elided> in the description. Attempting to extract examples from the description and " +
+			"reformat examples only.")
 
 		// Attempt to keep the Example Usage if the elided text was only in the description:
 		// TODO: *Also* attempt to keep the description if the elided text is only in the Example Usage
@@ -1507,7 +1534,8 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
 
 			elidedDescriptions++
-			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the Pulumi provider.", name)
+			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the "+
+				"Pulumi provider.", name)
 			elidedDoc = true
 		} else {
 			g.debug("Found examples in the description text. Attempting to reformat the examples.")
@@ -1515,11 +1543,13 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 			cleanedupExamples, examplesElided := reformatText(g, examples, footerLinks)
 			if examplesElided {
 				elidedDescriptions++
-				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the Pulumi provider.", name)
+				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
+					"the Pulumi provider.", name)
 				elidedDoc = true
 			} else {
 				elidedDescriptionsOnly++
-				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description proper will be dropped in the Pulumi provider.", name)
+				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description "+
+					"proper will be dropped in the Pulumi provider.", name)
 				cleanupText = cleanedupExamples
 			}
 		}

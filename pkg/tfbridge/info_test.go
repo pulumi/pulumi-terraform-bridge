@@ -47,8 +47,10 @@ func TestMakeType(t *testing.T) {
 }
 
 func TestMakeDataSource(t *testing.T) {
-	assert.Equal(t, "package:module/getSomething:getSomething", MakeDataSource("package", "module", "getSomething").String())
-	assert.Equal(t, "package:module/getSomething:GetSomething", MakeDataSource("package", "module", "GetSomething").String())
+	assert.Equal(t, "package:module/getSomething:getSomething",
+		MakeDataSource("package", "module", "getSomething").String())
+	assert.Equal(t, "package:module/getSomething:GetSomething",
+		MakeDataSource("package", "module", "GetSomething").String())
 }
 
 func TestMakeResource(t *testing.T) {

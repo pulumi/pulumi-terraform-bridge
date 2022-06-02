@@ -596,7 +596,8 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 			resource.NewStringProperty("set member 2"),
 			resource.NewStringProperty("set member 1"),
 		}), ins["setPropertyValues"])
-	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"), ins["stringWithBadInterpolation"])
+	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"),
+		ins["stringWithBadInterpolation"])
 
 	// Read again with the ID that results in all the optinal fields not being set
 	readResp, err = provider.Read(context.Background(), &pulumirpc.ReadRequest{
@@ -674,7 +675,8 @@ func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tok
 	assert.NoError(t, err)
 
 	assert.NotNil(t, createResp.GetProperties())
-	props, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	props, err := plugin.UnmarshalProperties(createResp.GetProperties(),
+		plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
 	assert.NoError(t, err)
 
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
@@ -690,7 +692,8 @@ func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tok
 	assert.NoError(t, err)
 
 	assert.NotNil(t, readResp.GetProperties())
-	props, err = plugin.UnmarshalProperties(readResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	props, err = plugin.UnmarshalProperties(readResp.GetProperties(),
+		plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
 	assert.NoError(t, err)
 
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
