@@ -599,15 +599,15 @@ func reformatExamples(sections [][]string) [][]string {
 	return result
 }
 
-func (p *tfMarkdownParser) parseSection(section []string) error {
+func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	// Extract the header name, since this will drive how we process the content.
-	if len(section) == 0 {
+	if len(h2Section) == 0 {
 		p.g.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
 		return nil
 	}
 
 	// Skip certain headers that we don't support.
-	header := section[0]
+	header := h2Section[0]
 	if strings.Index(header, "## ") == 0 {
 		header = header[3:]
 	}
@@ -630,15 +630,15 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 	case "---":
 		sectionKind = sectionFrontMatter
 	case "Schema":
-		p.parseSchemaWithNestedSections(section)
+		p.parseSchemaWithNestedSections(h2Section)
 		return nil
 	}
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
-	for _, subsection := range groupLines(section[1:], "### ") {
-		if len(subsection) == 0 {
+	for _, h3Section := range groupLines(h2Section[1:], "### ") {
+		if len(h3Section) == 0 {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
@@ -647,7 +647,7 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		}
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
-		subsection, hasExamples, isEmpty := p.reformatSubsection(subsection)
+		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
 		if isEmpty {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
@@ -660,18 +660,18 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(subsection)
+			p.parseArgReferenceSection(reformattedH3Section)
 		case sectionAttributesReference:
-			p.parseAttributesReferenceSection(subsection)
+			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
-			p.parseFrontMatter(subsection)
+			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
-			p.parseImports(subsection)
+			p.parseImports(reformattedH3Section)
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
-				p.parseArgReferenceSection(subsection)
+				p.parseArgReferenceSection(reformattedH3Section)
 				continue
 			}
 
@@ -679,11 +679,11 @@ func (p *tfMarkdownParser) parseSection(section []string) error {
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
 				wroteHeader = true
-				if !isBlank(subsection[0]) {
+				if !isBlank(reformattedH3Section[0]) {
 					p.ret.Description += "\n"
 				}
 			}
-			p.ret.Description += strings.Join(subsection, "\n") + "\n"
+			p.ret.Description += strings.Join(reformattedH3Section, "\n") + "\n"
 		}
 	}
 
