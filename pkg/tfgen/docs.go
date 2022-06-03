@@ -716,11 +716,28 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
 }
 
+// parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
+// description
+func parseArgFromMarkdownLine(line string) (string, string) {
+	argumentBulletRegexp = regexp.MustCompile(
+		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+
+	matches := argumentBulletRegexp.FindStringSubmatch(line)
+
+	if len(matches) >= 4 {
+		return matches[1], matches[4]
+	} else if len(matches) > 0 {
+		return matches[1], ""
+	}
+
+	return "", ""
+}
+
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	var lastMatch, nested string
 	for _, line := range subsection {
-		matches := argumentBulletRegexp.FindStringSubmatch(line)
-		if len(matches) >= 4 {
+		name, desc := parseArgFromMarkdownLine(line)
+		if name != "" && desc != "" {
 			// found a property bullet, extract the name and description
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
@@ -731,23 +748,23 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				} else if p.ret.Arguments[nested].arguments == nil {
 					p.ret.Arguments[nested].arguments = make(map[string]string)
 				}
-				p.ret.Arguments[nested].arguments[matches[1]] = matches[4]
+				p.ret.Arguments[nested].arguments[name] = desc
 
 				// Also record this as a top-level argument just in case, since sometimes the recorded nested
 				// argument doesn't match the resource's argument.
 				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[matches[1]] == nil {
-					p.ret.Arguments[matches[1]] = &argumentDocs{
-						description: matches[4],
+				if p.ret.Arguments[name] == nil {
+					p.ret.Arguments[name] = &argumentDocs{
+						description: desc,
 						isNested:    true, // Mark that this argument comes from a nested field.
 					}
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[matches[1]] = &argumentDocs{description: matches[4]}
+					p.ret.Arguments[name] = &argumentDocs{description: desc}
 				}
 			}
-			lastMatch = matches[1]
+			lastMatch = name
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			if nested != "" {
