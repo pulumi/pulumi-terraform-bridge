@@ -76,18 +76,18 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 	// and override the deleteBeforeReplace e.g. name or namePrefix
 	// if any of these values change then we can assume we can
 	if len(resourceInfo.UniqueNameFields) > 0 {
-		// we are explicitly trying to force functionality here
-		for _, idField := range resourceInfo.UniqueNameFields {
-			_, _, psi := getInfoFromPulumiName(resource.PropertyKey(idField), tfs, fields, false)
+		for _, name := range resourceInfo.UniqueNameFields {
+			key := resource.PropertyKey(name)
+			_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
 
-			oldVal := olds[resource.PropertyKey(idField)]
-			newVal := news[resource.PropertyKey(idField)]
+			oldVal := olds[key]
+			newVal := news[key]
 
 			if !oldVal.DeepEquals(newVal) {
 				return false
 			}
 
-			if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && hasDefault[resource.PropertyKey(idField)] {
+			if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && hasDefault[key] {
 				return false
 			}
 		}
