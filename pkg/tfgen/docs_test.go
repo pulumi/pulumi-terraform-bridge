@@ -556,3 +556,19 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		assert.Equal(t, test.expectedDesc, desc)
 	}
 }
+
+func TestGetNestedBlockName(t *testing.T) {
+	var tests = []struct {
+		input, expected string
+	}{
+		{"", ""},
+		{"The `website` object supports the following:", "website"},
+		{"#### result_configuration Argument Reference", "result_configuration"},
+		// This is a common starting line of base arguments, so should result in zero value:
+		{"The following arguments are supported:", ""},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
+	}
+}

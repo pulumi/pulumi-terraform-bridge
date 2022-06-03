@@ -380,17 +380,6 @@ var (
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
-	nestedObjectRegexps = []*regexp.Regexp{
-		// For example:
-		// s3_bucket.html.markdown: "The `website` object supports the following:"
-		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-		regexp.MustCompile("`([a-z_]+)`.*following"),
-
-		// For example:
-		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-	}
-
 	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
 	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
@@ -733,6 +722,38 @@ func parseArgFromMarkdownLine(line string) (string, string) {
 	return "", ""
 }
 
+// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
+// describes. If the line does not describe a nested block, an empty string is returned.
+//
+// Examples of nested blocks include (but are not limited to):
+//
+// - "The `private_cluster_config` block supports:" -> "private_cluster_config"
+// - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
+func getNestedBlockName(line string) string {
+	nested := ""
+
+	nestedObjectRegexps := []*regexp.Regexp{
+		// For example:
+		// s3_bucket.html.markdown: "The `website` object supports the following:"
+		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+		regexp.MustCompile("`([a-z_]+)`.*following"),
+
+		// For example:
+		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+	}
+
+	for _, match := range nestedObjectRegexps {
+		matches := match.FindStringSubmatch(line)
+		if len(matches) >= 2 {
+			nested = strings.ToLower(matches[1])
+			break
+		}
+	}
+
+	return nested
+}
+
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	var lastMatch, nested string
 	for _, line := range subsection {
@@ -780,12 +801,10 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 		} else {
 			// This line might declare the beginning of a nested object.
 			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
-			for _, match := range nestedObjectRegexps {
-				matches := match.FindStringSubmatch(line)
-				if len(matches) >= 2 {
-					nested = strings.ToLower(matches[1])
-					break
-				}
+			nestedBlockCurrentLine := getNestedBlockName(line)
+
+			if nestedBlockCurrentLine != "" {
+				nested = nestedBlockCurrentLine
 			}
 
 			// Clear the lastMatch.
