@@ -1,14 +1,17 @@
 package tfbridge
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	v2Schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 type DiffKind = pulumirpc.PropertyDiff_Kind
@@ -23,6 +26,122 @@ const (
 )
 
 var computedValue = resource.Computed{Element: resource.NewStringProperty("")}
+
+func TestCustomizeDiff(t *testing.T) {
+	inputsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"prop": "foo",
+	})
+	stateMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"prop": "foo",
+		"outp": false,
+	})
+
+	// Pulumi Schema
+	info := map[string]*SchemaInfo{}
+	tfs := map[string]*v2Schema.Schema{
+		"prop": {Type: v2Schema.TypeString},
+		"outp": {Type: v2Schema.TypeBool, Computed: true},
+	}
+	// Terraform schema
+	sch := shimv2.NewSchemaMap(tfs)
+
+	// ignores
+	var ignores []string
+
+	t.Run("CustomDiffCausesAddReplace", func(t *testing.T) {
+		// expected diff
+		expected := map[string]DiffKind{
+			"outp": AR,
+		}
+
+		// Fake up a TF resource and a TF provider.
+		customDiffRes := &v2Schema.Resource{
+			Schema: tfs,
+			CustomizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+				var err error
+				err = d.SetNew("outp", true)
+				if err != nil {
+					return err
+				}
+				err = d.ForceNew("outp")
+				if err != nil {
+					return err
+				}
+				return err
+			},
+		}
+		provider := shimv2.NewProvider(&v2Schema.Provider{
+			ResourcesMap: map[string]*v2Schema.Resource{
+				"resource": customDiffRes,
+			},
+		})
+
+		// Convert the inputs and state to TF config and resource attributes.
+		r := Resource{
+			TF:     shimv2.NewResource(customDiffRes),
+			Schema: &ResourceInfo{Fields: info},
+		}
+		tfState, err := MakeTerraformState(r, "id", stateMap)
+		assert.NoError(t, err)
+
+		config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+		assert.NoError(t, err)
+
+		tfDiff, err := provider.Diff("resource", tfState, config)
+		assert.NoError(t, err)
+
+		// ProcessIgnoreChanges
+		doIgnoreChanges(sch, info, stateMap, inputsMap, ignores, tfDiff)
+
+		// Convert the diff to a detailed diff and check the result.
+		diff := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+		for k, v := range expected {
+			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+		}
+		assert.Equal(t, expectedDiff, diff)
+	})
+
+	t.Run("NoCustomDiffCausesNoDiff", func(t *testing.T) {
+		// expected diff
+		expected := map[string]DiffKind{}
+
+		// Fake up a TF resource and a TF provider.
+		noCustomDiffRes := &v2Schema.Resource{
+			Schema: tfs,
+		}
+		provider := shimv2.NewProvider(&v2Schema.Provider{
+			ResourcesMap: map[string]*v2Schema.Resource{
+				"resource": noCustomDiffRes,
+			},
+		})
+
+		// Convert the inputs and state to TF config and resource attributes.
+		r := Resource{
+			TF:     shimv2.NewResource(noCustomDiffRes),
+			Schema: &ResourceInfo{Fields: info},
+		}
+		tfState, err := MakeTerraformState(r, "id", stateMap)
+		assert.NoError(t, err)
+
+		config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+		assert.NoError(t, err)
+
+		tfDiff, err := provider.Diff("resource", tfState, config)
+		assert.NoError(t, err)
+
+		// ProcessIgnoreChanges
+		doIgnoreChanges(sch, info, stateMap, inputsMap, ignores, tfDiff)
+
+		// Convert the diff to a detailed diff and check the result.
+		diff := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+		for k, v := range expected {
+			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+		}
+		assert.Equal(t, expectedDiff, diff)
+	})
+}
 
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind, ignoreChanges ...string) {
@@ -78,6 +197,23 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 
 	diff = makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
 	assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+}
+
+func TestCustomDiffProducesReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeString},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": "foo",
+		},
+		map[string]interface{}{
+			"prop": "foo",
+			"outp": "bar",
+		},
+		map[string]DiffKind{})
 }
 
 func TestEmptyDiff(t *testing.T) {
