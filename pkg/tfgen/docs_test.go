@@ -257,6 +257,43 @@ func TestParseArgReferenceSection(t *testing.T) {
 	}
 }
 
+func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
+	input := []string{
+		"### dead_letter_config",
+		"",
+		"blah blah",
+		"",
+		"* `target_arn` - (Required) target_arn_desc",
+	}
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: map[string]*argumentDocs{
+				"dead_letter_config": {
+					description: "This was previously parsed.",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	expected := map[string]*argumentDocs{
+		"dead_letter_config": {
+			description: "This was previously parsed.",
+			arguments: map[string]*argumentDocs{
+				"target_arn": {
+					description: "target_arn_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	parser.parseArgReferenceSection(input, "dead_letter_config")
+
+	assert.Equal(t, expected, parser.ret.Arguments)
+}
+
 func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 	input := []string{
 		"## Arguments Reference",
