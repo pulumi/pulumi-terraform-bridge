@@ -240,7 +240,7 @@ func parseNestedSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*nestedS
 	return ns, nil
 }
 
-var preamblePattern *regexp.Regexp = regexp.MustCompile("^[<]a id=[\"]([^\"]+)[\"][>]$")
+var preamblePattern = regexp.MustCompile("^[<]a id=[\"]([^\"]+)[\"][>]$")
 
 func parsePreamble(node *bf.Node, consumeNode func(node *bf.Node)) *string {
 	if node == nil || node.Type != bf.Paragraph {
@@ -294,9 +294,9 @@ func parseParameterSection(node *bf.Node, consumeNode func(node *bf.Node)) (para
 	return -1, nil, nil, nil
 }
 
-var optionalPattern *regexp.Regexp = regexp.MustCompile("(?i)^optional[:]?$")
-var requiredPattern *regexp.Regexp = regexp.MustCompile("(?i)^required[:]?$")
-var readonlyPattern *regexp.Regexp = regexp.MustCompile("(?i)^read-only[:]?$")
+var optionalPattern = regexp.MustCompile("(?i)^optional[:]?$")
+var requiredPattern = regexp.MustCompile("(?i)^required[:]?$")
+var readonlyPattern = regexp.MustCompile("(?i)^read-only[:]?$")
 
 func parseParamFlagLiteral(text string) *paramFlags {
 	if optionalPattern.MatchString(text) {
@@ -368,14 +368,14 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	return parseParameterFromDescription(paramName, cleanDesc(paramDesc)), nil
 }
 
-var seeBelowPattern *regexp.Regexp = regexp.MustCompile(`[(]see \[below for nested schema\][(][^)]*[)][)]`)
+var seeBelowPattern = regexp.MustCompile(`[(]see \[below for nested schema\][(][^)]*[)][)]`)
 
 func cleanDesc(desc string) string {
 	desc = seeBelowPattern.ReplaceAllString(desc, "")
 	return strings.TrimSpace(desc)
 }
 
-var descriptionTypeSectionPattern *regexp.Regexp = regexp.MustCompile(`^\s*[(]([^[)]+)[)]\s*`)
+var descriptionTypeSectionPattern = regexp.MustCompile(`^\s*[(]([^[)]+)[)]\s*`)
 
 func parseParameterFromDescription(name string, description string) *parameter {
 	if descriptionTypeSectionPattern.MatchString(description) {

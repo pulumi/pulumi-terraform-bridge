@@ -7,6 +7,9 @@ build::
 	go build ${PROJECT}/v3/internal/...
 	go install ${PROJECT}/v3/cmd/...
 
+fmt::
+	@gofmt -w -s .
+
 lint::
 	golangci-lint run
 
