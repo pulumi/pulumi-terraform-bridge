@@ -1578,45 +1578,39 @@ func genLanguageToSlice(input Language) []string {
 	}
 }
 
-func cleanupArgs(args map[string]*argumentDocs, entityName string, reformatFunc func(string) (string, bool), warnFunc func(string, ...interface{})) (map[string]*argumentDocs, bool) {
-	elidedDoc := false
+// cleanupArgs takes a map of argumentDocs, recursively applies reformatFunc across all descriptions in the tree, and
+// returns a new map of argumentDocs with the transformed descriptions. If any call to reformatFunc returne true, the
+// second return value will be true, false otherwise.
+func cleanupArgs(args map[string]*argumentDocs, entityName string, reformatFunc func(string) (string, bool), warnFunc func(string, ...interface{}), basePath string) (map[string]*argumentDocs, bool) {
+	foundElided := false
 	newargs := make(map[string]*argumentDocs, len(args))
 
 	for k, v := range args {
+		fullPath := k
+		if basePath != "" {
+			fullPath = basePath + "." + fullPath
+		}
+
 		cleanedText, elided := reformatFunc(v.description)
-		//cleanedText, elided := reformatFunc(g, v.description, footerLinks)
 		if elided {
 			elidedArguments++
-			msg := fmt.Sprintf("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", k, entityName)
+
+			msg := fmt.Sprintf("Found <elided> in docs for entity '%s' argument '%s'. The argument's description will be dropped in the Pulumi provider.", entityName, fullPath)
 			warnFunc(msg)
-			elidedDoc = true
+			foundElided = true
 		}
+
+		newSubArgs, foundElidedInSubArgs := cleanupArgs(v.arguments, entityName, reformatFunc, warnFunc, fullPath)
+		foundElided = foundElided || foundElidedInSubArgs
 
 		newargs[k] = &argumentDocs{
 			description: cleanedText,
-			arguments:   make(map[string]*argumentDocs, len(v.arguments)),
+			arguments:   newSubArgs,
 			isNested:    v.isNested,
-		}
-
-		// Clean nested arguments (if any)
-		for kk, vv := range v.arguments {
-			cleanedText, elided := reformatFunc(vv.description)
-			//cleanedText, elided := reformatText(g, vv.description, footerLinks)
-			if elided {
-				elidedNestedArguments++
-				msg := fmt.Sprintf("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be dropped in the Pulumi provider.", kk, entityName)
-				warnFunc(msg)
-				elidedDoc = true
-			}
-			newargs[k].arguments[kk] = &argumentDocs{
-				arguments:   vv.arguments,
-				isNested:    vv.isNested,
-				description: cleanedText,
-			}
 		}
 	}
 
-	return newargs, elidedDoc
+	return newargs, foundElided
 }
 
 func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
@@ -1625,7 +1619,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	reformatFunc := func(text string) (string, bool) {
 		return reformatText(g, text, footerLinks)
 	}
-	newArgs, elidedArgs := cleanupArgs(doc.Arguments, name, reformatFunc, g.warn)
+	newArgs, elidedArgs := cleanupArgs(doc.Arguments, name, reformatFunc, g.warn, "")
 
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {

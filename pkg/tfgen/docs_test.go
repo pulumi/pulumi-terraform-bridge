@@ -842,13 +842,12 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 			arguments: map[string]*argumentDocs{
 				"bad_nested_1": {
 					description: "this has some badtext",
-					arguments:   map[string]*argumentDocs{},
-					//arguments: map[string]*argumentDocs{
-					//	"bad_double_nested": {
-					//		description: "more badtext - YIPES",
-					//		arguments:   map[string]*argumentDocs{},
-					//	},
-					//},
+					arguments: map[string]*argumentDocs{
+						"bad_double_nested": {
+							description: "more badtext - YIPES",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
 				},
 			},
 		},
@@ -873,7 +872,12 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 			arguments: map[string]*argumentDocs{
 				"bad_nested_1": {
 					description: "",
-					arguments:   map[string]*argumentDocs{},
+					arguments: map[string]*argumentDocs{
+						"bad_double_nested": {
+							description: "",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
 				},
 			},
 		},
@@ -892,7 +896,7 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 		},
 	}
 
-	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc)
+	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc, "")
 	assert.Equal(t, true, elided)
 	assert.Equal(t, expected, actual)
 }
