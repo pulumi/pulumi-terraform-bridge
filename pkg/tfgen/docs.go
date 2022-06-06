@@ -741,6 +741,12 @@ func getNestedBlockName(line string) string {
 		// For example:
 		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+		// See: https://github.com/hashicorp/terraform-provider-google-beta/blob/main/website/docs/r/sql_database_instance.html.markdown#argument-reference
+		regexp.MustCompile("`([a-z_]+)`.*block supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*sublist supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*subblock supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*block.*supports:"),
 	}
 
 	for _, match := range nestedObjectRegexps {
@@ -752,6 +758,26 @@ func getNestedBlockName(line string) string {
 	}
 
 	return nested
+}
+
+// argFromNestedPath take a period-separated path and a map[string]*argumentDocs, ensures the path to the argument
+// by new-ing up any missing nodes in the path along the way, and returns the node indicated by the path
+func argFromNestedPath(path string, args map[string]*argumentDocs) *argumentDocs {
+	pathSegments := strings.Split(path, ".")
+	thisNodeKey := pathSegments[0]
+
+	_, found := args[thisNodeKey]
+	if !found {
+		args[thisNodeKey] = &argumentDocs{
+			arguments: make(map[string]*argumentDocs),
+		}
+	}
+
+	if len(pathSegments) == 1 {
+		return args[thisNodeKey]
+	}
+
+	return argFromNestedPath(strings.Join(pathSegments[1:], "."), args[thisNodeKey].arguments)
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
@@ -789,9 +815,10 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 					// without making significant changes to the parsing code itself, which would defeat the purpose of
 					// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
 					// argument descriptions.
-					if arg, found := p.ret.Arguments[argName]; found {
-						if arg.description != "" && arg.description != argDesc {
-							p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
+					if arg, found := p.ret.Arguments[name]; found {
+						if arg.description != "" && arg.description != desc {
+							// TODO: Uncomment once we can mock this in the tests. (Currently causing a panic.)
+							//p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
 							overwrittenArgDecriptions++
 						}
 					}
