@@ -86,15 +86,19 @@ func TestParseArgReferenceSection(t *testing.T) {
 				"iam_instance_profile": {
 					description: "The IAM Instance Profile to" + "\n" +
 						"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
+					arguments: map[string]*argumentDocs{},
 				},
 				"ipv6_address_count": {
 					description: "A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
+					arguments:   map[string]*argumentDocs{},
 				},
 				"ipv6_addresses": {
 					description: "Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
+					arguments:   map[string]*argumentDocs{},
 				},
 				"tags": {
 					description: "A mapping of tags to assign to the resource.",
+					arguments:   map[string]*argumentDocs{},
 				},
 			},
 		},
@@ -115,20 +119,24 @@ func TestParseArgReferenceSection(t *testing.T) {
 					arguments: map[string]*argumentDocs{
 						"audience": {
 							description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
+							arguments:   map[string]*argumentDocs{},
 						},
 						"issuer": {
 							description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+							arguments:   map[string]*argumentDocs{},
 						},
 					},
 				},
-				"audience": {
-					description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-					isNested:    true,
-				},
-				"issuer": {
-					description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-					isNested:    true,
-				},
+				//"audience": {
+				//	description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
+				//	arguments:   map[string]*argumentDocs{},
+				//	isNested:    true,
+				//},
+				//"issuer": {
+				//	description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+				//	arguments:   map[string]*argumentDocs{},
+				//	isNested:    true,
+				//},
 			},
 		},
 		{
@@ -147,20 +155,28 @@ func TestParseArgReferenceSection(t *testing.T) {
 					description: "A website object (documented below)." + "\n" +
 						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
 					arguments: map[string]*argumentDocs{
-						"index_document": {description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders."},
-						"routing_rules": {description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-							"describing redirect behavior and when redirects are applied."},
+						"index_document": {
+							description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+							arguments:   map[string]*argumentDocs{},
+						},
+						"routing_rules": {
+							description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+								"describing redirect behavior and when redirects are applied.",
+							arguments: map[string]*argumentDocs{},
+						},
 					},
 				},
-				"index_document": {
-					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-					isNested:    true,
-				},
-				"routing_rules": {
-					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-						"describing redirect behavior and when redirects are applied.",
-					isNested: true,
-				},
+				//"index_document": {
+				//	description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+				//	arguments:   map[string]*argumentDocs{},
+				//	isNested:    true,
+				//},
+				//"routing_rules": {
+				//	description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+				//		"describing redirect behavior and when redirects are applied.",
+				//	arguments: map[string]*argumentDocs{},
+				//	isNested:  true,
+				//},
 			},
 		},
 		{
@@ -174,12 +190,15 @@ func TestParseArgReferenceSection(t *testing.T) {
 			expected: map[string]*argumentDocs{
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
+					arguments:   map[string]*argumentDocs{},
 				},
 				"override_action": {
 					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
+					arguments:   map[string]*argumentDocs{},
 				},
 				"type": {
 					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+					arguments:   map[string]*argumentDocs{},
 				},
 			},
 		},
@@ -192,6 +211,7 @@ func TestParseArgReferenceSection(t *testing.T) {
 			expected: map[string]*argumentDocs{
 				"priority": {
 					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
+					arguments:   map[string]*argumentDocs{},
 				},
 			},
 		},
@@ -206,9 +226,11 @@ func TestParseArgReferenceSection(t *testing.T) {
 			expected: map[string]*argumentDocs{
 				"retention_policy": {
 					description: "A `retention_policy` block as documented below.",
+					arguments:   map[string]*argumentDocs{},
 				},
 				"allowed_audiences": {
 					description: "Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
+					arguments:   map[string]*argumentDocs{},
 				},
 			},
 		},
@@ -264,7 +286,7 @@ func TestParseArgReferenceSection(t *testing.T) {
 				Arguments: make(map[string]*argumentDocs),
 			},
 		}
-		parser.parseArgReferenceSection(tt.input)
+		parser.parseArgReferenceSection(tt.input, "")
 
 		assert.Equal(t, tt.expected, parser.ret.Arguments)
 
@@ -279,6 +301,43 @@ func TestParseArgReferenceSection(t *testing.T) {
 	}
 }
 
+func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
+	input := []string{
+		"### dead_letter_config",
+		"",
+		"blah blah",
+		"",
+		"* `target_arn` - (Required) target_arn_desc",
+	}
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: map[string]*argumentDocs{
+				"dead_letter_config": {
+					description: "This was previously parsed.",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	expected := map[string]*argumentDocs{
+		"dead_letter_config": {
+			description: "This was previously parsed.",
+			arguments: map[string]*argumentDocs{
+				"target_arn": {
+					description: "target_arn_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	parser.parseArgReferenceSection(input, "dead_letter_config")
+
+	assert.Equal(t, expected, parser.ret.Arguments)
+}
+
 func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 	input := []string{
 		"## Arguments Reference",
@@ -286,15 +345,16 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 		"The following arguments are supported:",
 		"* `param_1` - (Optional) param_1_desc",
 		"",
-		"* `nested_block_1` - (Optional) nested_block_1_desc",
+		// "nested_block_1" will not match the regex because of the digit:
+		"* `nested_block_one` - (Optional) nested_block_1_desc",
 		"",
-		"* `nested_block_2` - (Optional) nested_block_2_desc",
+		"* `nested_block_two` - (Optional) nested_block_2_desc",
 		"",
-		"The optional `nested_block_1` subblock supports:",
+		"The optional `nested_block_one` subblock supports:",
 		"",
 		"* `nested_param` - (Required) nested_block_1.nested_param_desc",
 		"",
-		"The optional `nested_block_2` subblock supports:",
+		"The optional `nested_block_two` subblock supports:",
 		"",
 		"* `nested_param` - (Required) nested_block_2.nested_param_desc",
 		"",
@@ -309,28 +369,77 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 	expected := map[string]*argumentDocs{
 		"param_1": {
 			description: "param_1_desc",
-			isNested:    false,
 			arguments:   map[string]*argumentDocs{},
 		},
-		"nested_block_1": {
+		"nested_block_one": {
 			description: "nested_block_1_desc",
-			isNested:    false,
 			arguments: map[string]*argumentDocs{
-				"nested_param": {description: "nested_block_1.nested_param_desc"},
+				"nested_param": {
+					description: "nested_block_1.nested_param_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
 			},
 		},
-		"nested_block_2": {
+		"nested_block_two": {
 			description: "nested_block_2_desc",
-			isNested:    false,
 			arguments: map[string]*argumentDocs{
-				"nested_param": {description: "nested_block_2.nested_param_desc"},
+				"nested_param": {
+					description: "nested_block_2.nested_param_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
 			},
 		},
 	}
 
-	parser.parseArgReferenceSection(input)
+	parser.parseArgReferenceSection(input, "")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
+}
+
+func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T) {
+	t.Skip("TODO")
+	// Tests parsing of sections like https://github.com/hashicorp/terraform-provider-aws/blob/471ca4e25a732b0c0d566dbc645ea712b48e1a56/website/docs/r/lambda_function.html.markdown#dead_letter_config
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: map[string]*argumentDocs{
+				"dead_letter_config": {
+					description: "dead_letter_config_desc",
+					arguments:   make(map[string]*argumentDocs),
+				},
+			},
+		},
+	}
+
+	input := []string{
+		"### dead_letter_config",
+		"",
+		"Dead letter queue configuration that specifies the queue or topic where Lambda sends asynchronous events when they fail processing. For more information, see [Dead Letter Queues](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#dlq).",
+		"",
+		"",
+		"* `target_arn` - (Required) target_arn_desc",
+	}
+
+	expected := map[string]*argumentDocs{
+		"dead_letter_config": {
+			description: "dead_letter_config_desc",
+			arguments: map[string]*argumentDocs{
+				"target_arn": {
+					description: "target_arn_desc",
+				},
+			},
+		},
+	}
+
+	parser.parseArgReferenceSection(input, "")
+
+	assert.Equal(t, expected, parser.ret.Arguments)
+}
+
+func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurationBlock(t *testing.T) {
+	t.Skip("TODO")
+	// Tests parsing of docs like https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/mskconnect_connector.html.markdown
+
 }
 
 func TestGetFooterLinks(t *testing.T) {
@@ -671,8 +780,12 @@ func TestGetNestedBlockName(t *testing.T) {
 		input, expected string
 	}{
 		{"", ""},
+
+		// AWS examples:
 		{"The `website` object supports the following:", "website"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
+		{"The `encryption_configuration` block supports the following argument:", "encryption_configuration"},
+
 		// This is a common starting line of base arguments, so should result in zero value:
 		{"The following arguments are supported:", ""},
 
@@ -753,14 +866,14 @@ func TestOverlayArgsToArgs(t *testing.T) {
 		Arguments: map[string]*argumentDocs{
 			"overwrite_me": {
 				description: "overwritten_desc",
-				arguments: map[string]string{
-					"nested_source_only":  "nested_source_only_desc",
-					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
+				arguments: map[string]*argumentDocs{
+					"nested_source_only":  {description: "nested_source_only_desc"},
+					"nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
 				},
 			},
 			"source_only": {
 				description: "source_only_desc",
-				arguments:   map[string]string{},
+				arguments:   map[string]*argumentDocs{},
 			},
 		},
 	}
@@ -769,14 +882,14 @@ func TestOverlayArgsToArgs(t *testing.T) {
 		Arguments: map[string]*argumentDocs{
 			"overwrite_me": {
 				description: "original_desc",
-				arguments: map[string]string{
-					"nested_dest_only":    "should not appear",
-					"nested_overwrite_me": "nested_overwrite_me original desc",
+				arguments: map[string]*argumentDocs{
+					"nested_dest_only":    {description: "should not appear"},
+					"nested_overwrite_me": {description: "nested_overwrite_me original desc"},
 				},
 			},
 			"dest_only": {
 				description: "dest_only_desc",
-				arguments:   map[string]string{},
+				arguments:   map[string]*argumentDocs{},
 			},
 		},
 	}
@@ -785,18 +898,18 @@ func TestOverlayArgsToArgs(t *testing.T) {
 		Arguments: map[string]*argumentDocs{
 			"overwrite_me": {
 				description: "overwritten_desc",
-				arguments: map[string]string{
-					"nested_source_only":  "nested_source_only_desc",
-					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
+				arguments: map[string]*argumentDocs{
+					"nested_source_only":  {description: "nested_source_only_desc"},
+					"nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
 				},
 			},
 			"source_only": {
 				description: "source_only_desc",
-				arguments:   map[string]string{},
+				arguments:   map[string]*argumentDocs{},
 			},
 			"dest_only": {
 				description: "dest_only_desc",
-				arguments:   map[string]string{},
+				arguments:   map[string]*argumentDocs{},
 			},
 		},
 	}
@@ -827,9 +940,142 @@ func TestArgFromNestedPath(t *testing.T) {
 		arguments: make(map[string]*argumentDocs),
 	}
 
-	assert.Equal(t, args["a"], argFromNestedPath("a", args))
-	assert.Equal(t, args["a"].arguments["aa"], argFromNestedPath("a.aa", args))
-	assert.Equal(t, args["a"].arguments["aa"].arguments["aaa"], argFromNestedPath("a.aa.aaa", args))
-	assert.Equal(t, &newNode, argFromNestedPath("b", args))
-	assert.Equal(t, &newNode, argFromNestedPath("a.ab", args))
+	assert.Equal(t, args["a"], ensureArgFromNestedPath("a", args))
+	assert.Equal(t, args["a"].arguments["aa"], ensureArgFromNestedPath("a.aa", args))
+	assert.Equal(t, args["a"].arguments["aa"].arguments["aaa"], ensureArgFromNestedPath("a.aa.aaa", args))
+	assert.Equal(t, &newNode, ensureArgFromNestedPath("b", args))
+	assert.Equal(t, &newNode, ensureArgFromNestedPath("a.ab", args))
+}
+
+func TestParseArgNameFromHeader(t *testing.T) {
+	assert.Equal(t, "dead_letter_config", parseArgNameFromHeader("### dead_letter_config"))
+	assert.Equal(t, "capacity", parseArgNameFromHeader("### capacity Configuration Block"))
+}
+
+func TestMatchingArgNamesFromSectionHeader(t *testing.T) {
+	args := map[string]*argumentDocs{
+		"dead_letter_config": {
+			arguments: map[string]*argumentDocs{},
+		},
+		"subblock": {
+			arguments: map[string]*argumentDocs{
+				"subblock_arg": {
+					arguments: map[string]*argumentDocs{},
+				},
+			},
+		},
+		"multiple_matches": {
+			arguments: map[string]*argumentDocs{},
+		},
+		"subblock_two": {
+			arguments: map[string]*argumentDocs{
+				"multiple_matches": {
+					arguments: map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{"notfound", []string{}},
+		{"dead_letter_config", []string{"dead_letter_config"}},
+		{"subblock_arg", []string{"subblock.subblock_arg"}},
+		{"multiple_matches", []string{"multiple_matches", "subblock_two.multiple_matches"}},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expected, getMatchingArgNames(test.input, args, ""))
+	}
+
+	assert.Equal(t, []string{}, getMatchingArgNames("dummy", nil, ""))
+}
+
+func TestCleanupArgs_WithElided(t *testing.T) {
+	reformatFunc := func(text string) (string, bool) {
+		if strings.Contains(text, "badtext") {
+			return "", true
+		}
+
+		return text, false
+	}
+
+	actualWarnings := []string{}
+	warnFunc := func(msg string, args ...interface{}) {
+		actualWarnings = append(actualWarnings, msg)
+	}
+
+	input := map[string]*argumentDocs{
+		"ok_arg": {
+			description: "ok_arg_desc",
+			arguments: map[string]*argumentDocs{
+				"bad_nested_1": {
+					description: "this has some badtext",
+					arguments: map[string]*argumentDocs{
+						"bad_double_nested": {
+							description: "more badtext - YIPES",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
+				},
+			},
+		},
+		"bad_arg": {
+			description: "this has some badtext",
+			arguments: map[string]*argumentDocs{
+				"ok_nested": {
+					description: "ok_nested_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+				"bad_nested_2": {
+					description: "badtext also found here",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	expected := map[string]*argumentDocs{
+		"ok_arg": {
+			description: "ok_arg_desc",
+			arguments: map[string]*argumentDocs{
+				"bad_nested_1": {
+					description: "",
+					arguments: map[string]*argumentDocs{
+						"bad_double_nested": {
+							description: "",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
+				},
+			},
+		},
+		"bad_arg": {
+			description: "",
+			arguments: map[string]*argumentDocs{
+				"ok_nested": {
+					description: "ok_nested_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+				"bad_nested_2": {
+					description: "",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	expectedWarnings := []string{
+		"Found <elided> in docs for entity 'dummy' argument 'ok_arg.bad_nested_1'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'ok_arg.bad_nested_1.bad_double_nested'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'bad_arg'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'bad_arg.bad_nested_2'. The argument's description will be dropped in the Pulumi provider.",
+	}
+
+	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc, "")
+	assert.Equal(t, true, elided)
+	assert.Equal(t, expected, actual)
+	assert.Equal(t, expectedWarnings, actualWarnings)
 }
