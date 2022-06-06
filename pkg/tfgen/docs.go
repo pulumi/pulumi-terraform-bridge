@@ -1579,7 +1579,7 @@ func genLanguageToSlice(input Language) []string {
 }
 
 // cleanupArgs takes a map of argumentDocs, recursively applies reformatFunc across all descriptions in the tree, and
-// returns a new map of argumentDocs with the transformed descriptions. If any call to reformatFunc returne true, the
+// returns a new map of argumentDocs with the transformed descriptions. If any call to reformatFunc returns true, the
 // second return value will be true, false otherwise.
 func cleanupArgs(args map[string]*argumentDocs, entityName string, reformatFunc func(string) (string, bool), warnFunc func(string, ...interface{}), basePath string) (map[string]*argumentDocs, bool) {
 	foundElided := false

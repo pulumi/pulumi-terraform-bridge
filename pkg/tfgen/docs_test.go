@@ -834,7 +834,10 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 		return text, false
 	}
 
-	warnFunc := func(msg string, args ...interface{}) {}
+	actualWarnings := []string{}
+	warnFunc := func(msg string, args ...interface{}) {
+		actualWarnings = append(actualWarnings, msg)
+	}
 
 	input := map[string]*argumentDocs{
 		"ok_arg": {
@@ -896,7 +899,15 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 		},
 	}
 
+	expectedWarnings := []string{
+		"Found <elided> in docs for entity 'dummy' argument 'ok_arg.bad_nested_1'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'ok_arg.bad_nested_1.bad_double_nested'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'bad_arg'. The argument's description will be dropped in the Pulumi provider.",
+		"Found <elided> in docs for entity 'dummy' argument 'bad_arg.bad_nested_2'. The argument's description will be dropped in the Pulumi provider.",
+	}
+
 	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc, "")
 	assert.Equal(t, true, elided)
 	assert.Equal(t, expected, actual)
+	assert.Equal(t, expectedWarnings, actualWarnings)
 }
