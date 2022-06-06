@@ -196,7 +196,8 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 			// These diffs are typically changes to output properties that we don't care about.
 			if finalize {
 				if hasOtherDiff &&
-					(other.Kind == pulumirpc.PropertyDiff_ADD || other.Kind == pulumirpc.PropertyDiff_ADD_REPLACE) {
+					(other.Kind == pulumirpc.PropertyDiff_ADD || other.Kind == pulumirpc.PropertyDiff_ADD_REPLACE) &&
+					!d.RequiresNew {
 					delete(diff, path)
 				}
 				return false
