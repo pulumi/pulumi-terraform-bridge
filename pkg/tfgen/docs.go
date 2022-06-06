@@ -649,7 +649,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section)
+			p.parseArgReferenceSection(reformattedH3Section, "")
 		case sectionAttributesReference:
 			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
@@ -657,12 +657,26 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionImports:
 			p.parseImports(reformattedH3Section)
 		default:
-			// Determine if this is a nested argument section.
-			_, isArgument := p.ret.Arguments[header]
-			if isArgument || strings.HasSuffix(header, "Configuration Block") {
-				p.parseArgReferenceSection(reformattedH3Section)
-				continue
+			// Some nested argument sections have content that is simply the name of the top-level argument.
+			// Example: https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/lambda_function.html.markdown#dead_letter_config
+			argName := parseArgNameFromHeader(header)
+			matchingArgs := getMatchingArgNames(argName, p.ret.Arguments, "")
+
+			if len(matchingArgs) > 1 {
+				nestedArgSectionsMultipleMatches++
+
+				msg := fmt.Sprintf("Found more than one match for resource '%s', header with header content '%s'. "+
+					"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, header, matchingArgs)
+				p.g.warn(msg)
+			} else if len(matchingArgs) == 1 {
+				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0])
 			}
+
+			//_, isArgument := p.ret.Arguments[header]
+			//if isArgument || strings.HasSuffix(header, "Configuration Block") {
+			//	p.parseArgReferenceSection(reformattedH3Section)
+			//	continue
+			//}
 
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
@@ -760,9 +774,9 @@ func getNestedBlockName(line string) string {
 	return nested
 }
 
-// argFromNestedPath take a period-separated path and a map[string]*argumentDocs, ensures the path to the argument
+// ensureArgFromNestedPath take a period-separated path and a map[string]*argumentDocs, ensures the path to the argument
 // by new-ing up any missing nodes in the path along the way, and returns the node indicated by the path
-func argFromNestedPath(path string, args map[string]*argumentDocs) *argumentDocs {
+func ensureArgFromNestedPath(path string, args map[string]*argumentDocs) *argumentDocs {
 	pathSegments := strings.Split(path, ".")
 	thisNodeKey := pathSegments[0]
 
@@ -777,67 +791,127 @@ func argFromNestedPath(path string, args map[string]*argumentDocs) *argumentDocs
 		return args[thisNodeKey]
 	}
 
-	return argFromNestedPath(strings.Join(pathSegments[1:], "."), args[thisNodeKey].arguments)
+	return ensureArgFromNestedPath(strings.Join(pathSegments[1:], "."), args[thisNodeKey].arguments)
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
-	var lastMatch, nested string
+// parseArgNameFromHeader takes a line of Markdown (presumed to be the start of an H3) and attempts to parse an argument
+// name from the content. This is used to parse certain subsections of TF provider docs which use this pattern, e.g.
+//
+// This is used for parsing provider docs (e.g. AWS) that label sub-blocks with the following patterns:
+// - "### capacity Configuration Block" (MSK Connect Connector)
+// - "### dead_letter_config" (Lambda Function)
+func parseArgNameFromHeader(header string) string {
+	argName := strings.Replace(header, "### ", "", -1)
+	argName = strings.Replace(argName, " Configuration Block", "", -1)
+	return argName
+}
+
+// getMatchingArgNames takes the first line of a section of Markdown along with a map of previously parsed
+// arguments and returns the fully-qualified, period-separated path of any arguments that match the line of Markdown.
+//
+// This is used for parsing provider docs (e.g. AWS) that label sub-blocks with the following patterns:
+// - "### capacity Configuration Block" (MSK Connect Connector)
+// - "### dead_letter_config" (Lambda Function)
+func getMatchingArgNames(argName string, args map[string]*argumentDocs, currentPath string) []string {
+	ret := []string{}
+
+	_, found := args[argName]
+	if found {
+		if currentPath == "" {
+			ret = append(ret, argName)
+		} else {
+			ret = append(ret, currentPath+"."+argName)
+		}
+	}
+
+	for k, v := range args {
+		nextPath := currentPath
+		if nextPath != "" {
+			nextPath = nextPath + "."
+		}
+		nextPath = nextPath + k
+
+		ret = append(ret, getMatchingArgNames(argName, v.arguments, nextPath)...)
+	}
+
+	return ret
+}
+
+func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string) {
+	lastMatch := ""
+	nested := parentArg
+
 	for _, line := range subsection {
 		name, desc := parseArgFromMarkdownLine(line)
 		if name != "" && desc != "" {
-			// found a property bullet, extract the name and description
+			// This is the first line of an argument's docs.
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
-				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argumentDocs{
-						arguments: make(map[string]*argumentDocs),
-					}
-				} else if p.ret.Arguments[nested].arguments == nil {
-					p.ret.Arguments[nested].arguments = make(map[string]*argumentDocs)
-				}
-				p.ret.Arguments[nested].arguments[name] = &argumentDocs{
-					description: desc,
-				}
+				fullPath := fmt.Sprintf("%s.%s", nested, name)
 
-				// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				// argument doesn't match the resource's argument.
-				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[name] == nil {
-					p.ret.Arguments[name] = &argumentDocs{
-						description: desc,
-						isNested:    true, // Mark that this argument comes from a nested field.
-					}
-				}
+				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
+				arg.description = desc
+
+				//if p.ret.Arguments[nested] == nil {
+				//	p.ret.Arguments[nested] = &argumentDocs{
+				//		arguments: make(map[string]*argumentDocs),
+				//	}
+				//} else if p.ret.Arguments[nested].arguments == nil {
+				//	p.ret.Arguments[nested].arguments = make(map[string]*argumentDocs)
+				//}
+				//p.ret.Arguments[nested].arguments[name] = &argumentDocs{
+				//	description: desc,
+				//}
+				//
+				//// Also record this as a top-level argument just in case, since sometimes the recorded nested
+				//// argument doesn't match the resource's argument.
+				//// For example, see `cors_rule` in s3_bucket.html.markdown.
+				//if p.ret.Arguments[name] == nil {
+				//	p.ret.Arguments[name] = &argumentDocs{
+				//		description: desc,
+				//		isNested:    true, // Mark that this argument comes from a nested field.
+				//	}
+				//}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					// This is not an exact check for overwriting argument descriptions. Because we iterate the document
-					// line-by-line, we assign the descriptions in the same way. It's difficult to get an exact count
-					// without making significant changes to the parsing code itself, which would defeat the purpose of
-					// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
-					// argument descriptions.
-					if arg, found := p.ret.Arguments[name]; found {
-						if arg.description != "" && arg.description != desc {
-							// TODO: Uncomment once we can mock this in the tests. (Currently causing a panic.)
-							//p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
-							overwrittenArgDecriptions++
-						}
-					}
+					arg := ensureArgFromNestedPath(name, p.ret.Arguments)
+					arg.description = desc
 
-					p.ret.Arguments[name] = &argumentDocs{description: desc}
+					//// This is not an exact check for overwriting argument descriptions. Because we iterate the document
+					//// line-by-line, we assign the descriptions in the same way. It's difficult to get an exact count
+					//// without making significant changes to the parsing code itself, which would defeat the purpose of
+					//// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
+					//// argument descriptions.
+					//if arg, found := p.ret.Arguments[name]; found {
+					//	if arg.description != "" && arg.description != desc {
+					//		// TODO: Uncomment once we can mock this in the tests. (Currently causing a panic.)
+					//		//p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
+					//		overwrittenArgDecriptions++
+					//	}
+					//}
+					//
+					//p.ret.Arguments[name] = &argumentDocs{description: desc}
 				}
 			}
 			lastMatch = name
 		} else if !isBlank(line) && lastMatch != "" {
-			// this is a continuation of the previous bullet
+			// This is a continuation of the previous bullet
 			if nested != "" {
-				p.ret.Arguments[nested].arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				fullPath := fmt.Sprintf("%s.%s", nested, lastMatch)
+				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
+				arg.description += "\n" + strings.TrimSpace(line)
 
-				// Also update the top-level argument if we took it from a nested field.
-				if p.ret.Arguments[lastMatch].isNested {
-					p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				}
+				//p.ret.Arguments[nested].arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				//
+				//// Also update the top-level argument if we took it from a nested field.
+				//if p.ret.Arguments[lastMatch].isNested {
+				//	p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				//}
 			} else {
-				p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+				arg := ensureArgFromNestedPath(lastMatch, p.ret.Arguments)
+				arg.description += "\n" + strings.TrimSpace(line)
+
+				//p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
 			// This line might declare the beginning of a nested object.
@@ -1007,6 +1081,8 @@ var (
 	unexpectedSnippets  int
 
 	overwrittenArgDecriptions int
+
+	nestedArgSectionsMultipleMatches int
 )
 
 // isBlank returns true if the line is all whitespace.
@@ -1067,6 +1143,10 @@ func (g *Generator) printDocStats() {
 
 	if overwrittenArgDecriptions > 0 {
 		g.error("%d arguments had their descriptions overwritten", overwrittenArgDecriptions)
+	}
+
+	if nestedArgSectionsMultipleMatches > 0 {
+		g.warn("%d resource nested argument blocks were skipped because they matched multiple higher level arguments", hclCSharpPartialConversionFailures)
 	}
 }
 
