@@ -675,6 +675,12 @@ func TestGetNestedBlockName(t *testing.T) {
 		{"#### result_configuration Argument Reference", "result_configuration"},
 		// This is a common starting line of base arguments, so should result in zero value:
 		{"The following arguments are supported:", ""},
+
+		// GCP examples, from https://raw.githubusercontent.com/hashicorp/terraform-provider-google-beta/main/website/docs/r/sql_database_instance.html.markdown
+		{"The `settings` block supports:", "settings"},
+		{"The optional `settings.database_flags` sublist supports:", "settings.database_flags"},
+		{"The optional `settings.backup_configuration` subblock supports:", "settings.backup_configuration"},
+		{"The optional `replica_configuration` block must have `master_instance_name` set to work, cannot be updated, and supports:", "replica_configuration"},
 	}
 
 	for _, tt := range tests {
@@ -798,4 +804,32 @@ func TestOverlayArgsToArgs(t *testing.T) {
 	overlayArgsToArgs(source, dest)
 
 	assert.Equal(t, expected, dest)
+}
+
+func TestArgFromNestedPath(t *testing.T) {
+	args := map[string]*argumentDocs{
+		"a": {
+			description: "a desc",
+			arguments: map[string]*argumentDocs{
+				"aa": {
+					description: "aa desc",
+					arguments: map[string]*argumentDocs{
+						"aaa": {
+							description: "aaa desc",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	newNode := argumentDocs{
+		arguments: make(map[string]*argumentDocs),
+	}
+
+	assert.Equal(t, args["a"], argFromNestedPath("a", args))
+	assert.Equal(t, args["a"].arguments["aa"], argFromNestedPath("a.aa", args))
+	assert.Equal(t, args["a"].arguments["aa"].arguments["aaa"], argFromNestedPath("a.aa.aaa", args))
+	assert.Equal(t, &newNode, argFromNestedPath("b", args))
+	assert.Equal(t, &newNode, argFromNestedPath("a.ab", args))
 }
