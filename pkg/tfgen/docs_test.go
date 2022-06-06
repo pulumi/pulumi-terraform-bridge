@@ -824,3 +824,75 @@ func TestMatchingArgNamesFromSectionHeader(t *testing.T) {
 
 	assert.Equal(t, []string{}, getMatchingArgNames("dummy", nil, ""))
 }
+
+func TestCleanupArgs_WithElided(t *testing.T) {
+	reformatFunc := func(text string) (string, bool) {
+		if strings.Contains(text, "badtext") {
+			return "", true
+		}
+
+		return text, false
+	}
+
+	warnFunc := func(msg string, args ...interface{}) {}
+
+	input := map[string]*argumentDocs{
+		"ok_arg": {
+			description: "ok_arg_desc",
+			arguments: map[string]*argumentDocs{
+				"bad_nested_1": {
+					description: "this has some badtext",
+					arguments:   map[string]*argumentDocs{},
+					//arguments: map[string]*argumentDocs{
+					//	"bad_double_nested": {
+					//		description: "more badtext - YIPES",
+					//		arguments:   map[string]*argumentDocs{},
+					//	},
+					//},
+				},
+			},
+		},
+		"bad_arg": {
+			description: "this has some badtext",
+			arguments: map[string]*argumentDocs{
+				"ok_nested": {
+					description: "ok_nested_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+				"bad_nested_2": {
+					description: "badtext also found here",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	expected := map[string]*argumentDocs{
+		"ok_arg": {
+			description: "ok_arg_desc",
+			arguments: map[string]*argumentDocs{
+				"bad_nested_1": {
+					description: "",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+		"bad_arg": {
+			description: "",
+			arguments: map[string]*argumentDocs{
+				"ok_nested": {
+					description: "ok_nested_desc",
+					arguments:   map[string]*argumentDocs{},
+				},
+				"bad_nested_2": {
+					description: "",
+					arguments:   map[string]*argumentDocs{},
+				},
+			},
+		},
+	}
+
+	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc)
+	assert.Equal(t, true, elided)
+	assert.Equal(t, expected, actual)
+}
