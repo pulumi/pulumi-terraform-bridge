@@ -278,26 +278,69 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		docinfo = info.GetDocs()
 	}
 	if docinfo != nil {
-		// Merge Attributes from source into target
-		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFrom,
-			true, true, providerModuleVersion, githost); err != nil {
-			return doc, err
+		// Helper func for readability due to large number of params
+		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
+			return getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
 		}
 
-		// Merge Arguments from source into Attributes of target
-		if err := mergeDocs(g, org, provider, resourcePrefix, kind, doc, docinfo.IncludeAttributesFromArguments,
-			true, false, providerModuleVersion, githost); err != nil {
-			return doc, err
+		if docinfo.IncludeAttributesFrom != "" {
+			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFrom)
+			if err != nil {
+				return doc, err
+			}
+
+			overlayAttributesToAttributes(sourceDocs, doc)
 		}
 
-		// Merge Arguments from source into target
-		if err := mergeDocs(g, org, provider, provider, kind, doc, docinfo.IncludeArgumentsFrom,
-			false, false, providerModuleVersion, githost); err != nil {
-			return doc, err
+		if docinfo.IncludeAttributesFromArguments != "" {
+			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFromArguments)
+			if err != nil {
+				return doc, err
+			}
+
+			overlayArgsToAttributes(sourceDocs, doc)
+		}
+
+		if docinfo.IncludeArgumentsFrom != "" {
+			sourceDocs, err := getSourceDocs(docinfo.IncludeArgumentsFrom)
+			if err != nil {
+				return doc, err
+			}
+
+			overlayArgsToArgs(sourceDocs, doc)
 		}
 	}
 
 	return doc, nil
+}
+
+func overlayAttributesToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
+	for k, v := range sourceDocs.Attributes {
+		targetDocs.Attributes[k] = v
+	}
+}
+
+func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
+	for k, v := range sourceDocs.Arguments {
+		targetDocs.Attributes[k] = v.description
+		for kk, vv := range v.arguments {
+			targetDocs.Attributes[kk] = vv
+		}
+	}
+}
+
+func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
+	for k, v := range sourceDocs.Arguments { // string -> argument
+		arguments := sourceDocs.Arguments[k].arguments
+		docArguments := make(map[string]string)
+		for kk, vv := range arguments {
+			docArguments[kk] = vv
+		}
+		docs.Arguments[k] = &argumentDocs{
+			description: v.description,
+			arguments:   docArguments,
+		}
+	}
 }
 
 // checkIfNewDocsExist checks if the new docs root exists
@@ -336,46 +379,6 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 		}
 	}
 	return nil, "", false
-}
-
-// mergeDocs adds the docs specified by extractDoc from sourceFrom into the targetDocs
-func mergeDocs(g *Generator, org string, provider string, resourcePrefix string, kind DocKind, docs entityDocs,
-	sourceFrom string, useTargetAttributes bool, useSourceAttributes bool, providerModuleVersion string,
-	githost string) error {
-
-	if sourceFrom != "" {
-		sourceDocs, err := getDocsForProvider(g, org, provider, resourcePrefix, kind,
-			sourceFrom, nil, providerModuleVersion, githost)
-		if err != nil {
-			return err
-		}
-
-		if useTargetAttributes && useSourceAttributes {
-			for k, v := range sourceDocs.Attributes {
-				docs.Attributes[k] = v
-			}
-		} else if useTargetAttributes && !useSourceAttributes {
-			for k, v := range sourceDocs.Arguments {
-				docs.Attributes[k] = v.description
-				for kk, vv := range v.arguments {
-					docs.Attributes[kk] = vv
-				}
-			}
-		} else if !useTargetAttributes && !useSourceAttributes {
-			for k, v := range sourceDocs.Arguments { // string -> argument
-				arguments := sourceDocs.Arguments[k].arguments
-				docArguments := make(map[string]string)
-				for kk, vv := range arguments {
-					docArguments[kk] = vv
-				}
-				docs.Arguments[k] = &argumentDocs{
-					description: v.description,
-					arguments:   docArguments,
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // nolint:lll

@@ -623,3 +623,121 @@ func TestGetNestedBlockName(t *testing.T) {
 		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
 	}
 }
+
+func TestOverlayAttributesToAttributes(t *testing.T) {
+	source := entityDocs{
+		Attributes: map[string]string{
+			"overwrite_me": "overwritten_desc",
+			"source_only":  "source_only_desc",
+		},
+	}
+
+	dest := entityDocs{
+		Attributes: map[string]string{
+			"overwrite_me": "original_desc",
+			"dest_only":    "dest_only_desc",
+		},
+	}
+
+	expected := entityDocs{
+		Attributes: map[string]string{
+			"overwrite_me": "overwritten_desc",
+			"source_only":  "source_only_desc",
+			"dest_only":    "dest_only_desc",
+		},
+	}
+
+	overlayAttributesToAttributes(source, dest)
+
+	assert.Equal(t, expected, dest)
+}
+
+func TestOverlayArgsToAttributes(t *testing.T) {
+	source := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"overwrite_me": {
+				description: "overwritten_desc",
+			},
+			"source_only": {
+				description: "source_only_desc",
+			},
+		},
+	}
+
+	dest := entityDocs{
+		Attributes: map[string]string{
+			"overwrite_me": "original_desc",
+			"dest_only":    "dest_only_desc",
+		},
+	}
+
+	expected := entityDocs{
+		Attributes: map[string]string{
+			"overwrite_me": "overwritten_desc",
+			"source_only":  "source_only_desc",
+			"dest_only":    "dest_only_desc",
+		},
+	}
+
+	overlayArgsToAttributes(source, dest)
+
+	assert.Equal(t, expected, dest)
+}
+
+func TestOverlayArgsToArgs(t *testing.T) {
+	source := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"overwrite_me": {
+				description: "overwritten_desc",
+				arguments: map[string]string{
+					"nested_source_only":  "nested_source_only_desc",
+					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
+				},
+			},
+			"source_only": {
+				description: "source_only_desc",
+				arguments:   map[string]string{},
+			},
+		},
+	}
+
+	dest := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"overwrite_me": {
+				description: "original_desc",
+				arguments: map[string]string{
+					"nested_dest_only":    "should not appear",
+					"nested_overwrite_me": "nested_overwrite_me original desc",
+				},
+			},
+			"dest_only": {
+				description: "dest_only_desc",
+				arguments:   map[string]string{},
+			},
+		},
+	}
+
+	expected := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"overwrite_me": {
+				description: "overwritten_desc",
+				arguments: map[string]string{
+					"nested_source_only":  "nested_source_only_desc",
+					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
+				},
+			},
+			"source_only": {
+				description: "source_only_desc",
+				arguments:   map[string]string{},
+			},
+			"dest_only": {
+				description: "dest_only_desc",
+				arguments:   map[string]string{},
+			},
+		},
+	}
+
+	overlayArgsToArgs(source, dest)
+
+	assert.Equal(t, expected, dest)
+}
