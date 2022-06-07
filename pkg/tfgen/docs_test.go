@@ -865,7 +865,14 @@ func TestOverlayArgsToArgs(t *testing.T) {
 			"overwrite_me": {
 				description: "overwritten_desc",
 				arguments: map[string]*argumentDocs{
-					"nested_source_only":  {description: "nested_source_only_desc"},
+					"nested_source_only": {
+						description: "nested_source_only_desc",
+						arguments: map[string]*argumentDocs{
+							"double_nested_source_only": {
+								description: "double_nested_source_only_desc",
+							},
+						},
+					},
 					"nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
 				},
 			},
@@ -881,8 +888,14 @@ func TestOverlayArgsToArgs(t *testing.T) {
 			"overwrite_me": {
 				description: "original_desc",
 				arguments: map[string]*argumentDocs{
-					"nested_dest_only":    {description: "should not appear"},
-					"nested_overwrite_me": {description: "nested_overwrite_me original desc"},
+					"nested_dest_only": {
+						description: "nested_dest_only_desc",
+						arguments:   map[string]*argumentDocs{},
+					},
+					"nested_overwrite_me": {
+						description: "nested_overwrite_me original desc",
+						arguments:   map[string]*argumentDocs{},
+					},
 				},
 			},
 			"dest_only": {
@@ -897,8 +910,23 @@ func TestOverlayArgsToArgs(t *testing.T) {
 			"overwrite_me": {
 				description: "overwritten_desc",
 				arguments: map[string]*argumentDocs{
-					"nested_source_only":  {description: "nested_source_only_desc"},
-					"nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
+					"nested_dest_only": {
+						description: "nested_dest_only_desc",
+						arguments:   map[string]*argumentDocs{},
+					},
+					"nested_source_only": {
+						description: "nested_source_only_desc",
+						arguments: map[string]*argumentDocs{
+							"double_nested_source_only": {
+								description: "double_nested_source_only_desc",
+								arguments:   map[string]*argumentDocs{},
+							},
+						},
+					},
+					"nested_overwrite_me": {
+						description: "nested_overwrite_me_overwritten_desc",
+						arguments:   map[string]*argumentDocs{},
+					},
 				},
 			},
 			"source_only": {
