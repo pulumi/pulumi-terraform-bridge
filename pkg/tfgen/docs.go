@@ -330,18 +330,22 @@ func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
 }
 
 func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
-	for k, v := range sourceDocs.Arguments { // string -> argument
-		arguments := sourceDocs.Arguments[k].arguments
-		docArguments := make(map[string]*argumentDocs)
-		for kk, vv := range arguments {
-			docArguments[kk] = &argumentDocs{
-				description: vv.description,
+	copyArguments(sourceDocs.Arguments, docs.Arguments)
+}
+
+func copyArguments(source, dest map[string]*argumentDocs) {
+	for k, v := range source {
+		destArg, found := dest[k]
+		if !found {
+			destArg = &argumentDocs{
+				arguments: map[string]*argumentDocs{},
 			}
 		}
-		docs.Arguments[k] = &argumentDocs{
-			description: v.description,
-			arguments:   docArguments,
-		}
+
+		destArg.description = v.description
+		copyArguments(v.arguments, destArg.arguments)
+
+		dest[k] = destArg
 	}
 }
 
