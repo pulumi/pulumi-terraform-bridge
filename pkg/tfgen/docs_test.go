@@ -587,18 +587,24 @@ subtitle 2 content
 func TestParseArgFromMarkdownLine(t *testing.T) {
 	// nolint:lll
 	tests := []struct {
-		input        string
-		expectedName string
-		expectedDesc string
+		input         string
+		expectedName  string
+		expectedDesc  string
+		expectedFound bool
 	}{
-		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role."},
-		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created."},
+		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
+		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
+		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
+		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
+		{"", "", "", false},
+		{"Most of these arguments directly correspond to the", "", "", false},
 	}
 
 	for _, test := range tests {
-		name, desc := parseArgFromMarkdownLine(test.input)
+		name, desc, found := parseArgFromMarkdownLine(test.input)
 		assert.Equal(t, test.expectedName, name)
 		assert.Equal(t, test.expectedDesc, desc)
+		assert.Equal(t, test.expectedFound, found)
 	}
 }
 

@@ -707,19 +707,17 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
-func parseArgFromMarkdownLine(line string) (string, string) {
+func parseArgFromMarkdownLine(line string) (string, string, bool) {
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 
-	if len(matches) >= 4 {
-		return matches[1], matches[4]
-	} else if len(matches) > 0 {
-		return matches[1], ""
+	if len(matches) > 4 {
+		return matches[1], matches[4], true
 	}
 
-	return "", ""
+	return "", "", false
 }
 
 // getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
@@ -757,8 +755,9 @@ func getNestedBlockName(line string) string {
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	var lastMatch, nested string
 	for _, line := range subsection {
-		name, desc := parseArgFromMarkdownLine(line)
-		if name != "" && desc != "" {
+		name, desc, matchFound := parseArgFromMarkdownLine(line)
+
+		if matchFound {
 			// found a property bullet, extract the name and description
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
