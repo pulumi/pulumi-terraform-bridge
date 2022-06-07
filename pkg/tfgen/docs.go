@@ -767,6 +767,12 @@ func getNestedBlockName(line string) string {
 		// For example:
 		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+		// See: https://github.com/hashicorp/terraform-provider-google-beta/blob/main/website/docs/r/sql_database_instance.html.markdown#argument-reference
+		regexp.MustCompile("`([a-z_]+)`.*block supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*sublist supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*subblock supports:"),
+		regexp.MustCompile("`([a-z_\x2E]+)`.*block.*supports:"),
 	}
 
 	for _, match := range nestedObjectRegexps {
