@@ -16,6 +16,8 @@ package convert
 
 import (
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"sort"
 	"strings"
 	"unicode"
@@ -106,7 +108,7 @@ func (nt *nameTable) assignLocal(n *local) {
 
 	// If the raw name is reserved or ambiguous, first attempt to disambiguate by prepending "my".
 	if nt.assigned[name] {
-		name = nt.disambiguate("my" + strings.Title(name))
+		name = nt.disambiguate("my" + cases.Title(language.Und, cases.NoLower).String(name))
 	}
 
 	n.pulumiName, nt.assigned[name] = name, true

@@ -110,7 +110,7 @@ func (ct *CoverageTracker) foundExample(pageName string, hcl string) {
 		// Initializing a page for this example.
 		ct.EncounteredPages[pageName] = &DocumentationPage{
 			pageName,
-			[]Example{Example{hcl, make(map[string]*LanguageConversionResult)}},
+			[]Example{{hcl, make(map[string]*LanguageConversionResult)}},
 		}
 	}
 }
@@ -167,7 +167,8 @@ func (ct *CoverageTracker) languageConversionPanic(languageName string, panicInf
 
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly duplicated
-func (ct *CoverageTracker) insertLanguageConversionResult(languageName string, newConversionResult LanguageConversionResult) {
+func (ct *CoverageTracker) insertLanguageConversionResult(languageName string,
+	newConversionResult LanguageConversionResult) {
 	if currentPage, ok := ct.EncounteredPages[ct.currentPageName]; ok {
 		lastExample := currentPage.lastExample()
 
@@ -176,7 +177,7 @@ func (ct *CoverageTracker) insertLanguageConversionResult(languageName string, n
 			if newConversionResult.FailureSeverity < existingConversionResult.FailureSeverity {
 				lastExample.ConversionResults[languageName] = &newConversionResult
 			}
-			existingConversionResult.TranslationCount += 1
+			existingConversionResult.TranslationCount++
 		} else {
 			// The new language conversion result is added for this example
 			lastExample.ConversionResults[languageName] = &newConversionResult
@@ -230,5 +231,5 @@ func (Page *DocumentationPage) lastExample() *Example {
 // Exporting the coverage results
 func (ct *CoverageTracker) exportResults(outputDirectory string) error {
 	coverageExportUtil := newCoverageExportUtil(ct)
-	return (coverageExportUtil.tryExport(outputDirectory))
+	return coverageExportUtil.tryExport(outputDirectory)
 }

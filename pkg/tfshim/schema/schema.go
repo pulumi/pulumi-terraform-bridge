@@ -35,7 +35,7 @@ func (s *Schema) Shim() shim.Schema {
 	return SchemaShim{s}
 }
 
-//nolint: golint
+//nolint:revive
 type SchemaShim struct {
 	V *Schema
 }
@@ -132,7 +132,7 @@ func (s SchemaShim) SetHash(v interface{}) int {
 	return 0
 }
 
-//nolint: golint
+//nolint:revive
 type SchemaMap map[string]shim.Schema
 
 func (m SchemaMap) Len() int {

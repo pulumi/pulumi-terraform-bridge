@@ -1,5 +1,6 @@
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GOLANGCI_LINT_VERSION: v1.46.2
 name: Pull Request & Downstream Testing
 on: [pull_request]
 jobs:
@@ -23,6 +24,10 @@ jobs:
         run: go mod download
       - name: Build
         run: make build
+      - name: Install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
+      - name: Lint
+        run: make lint
       - name: Test
         run: make test
 

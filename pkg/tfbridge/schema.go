@@ -1135,7 +1135,8 @@ func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
 
 func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyValue) bool {
 	if dv := getDefaultValue(tfs, ps); dv != nil {
-		// For numbers PropertyValue.V will always be a float64, but Schema.DefaultValue() from terraform might be float64 or int.
+		// For numbers PropertyValue.V will always be a float64, but Schema.DefaultValue() from terraform might be
+		// float64 or int.
 
 		if i, ok := dv.(int); ok {
 			dv = float64(i)
@@ -1147,6 +1148,7 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 	case v.IsNull():
 		return true
 	case v.IsBool():
+		//nolint this expression is clearer than !v.BoolValue()
 		return v.BoolValue() == false
 	case v.IsNumber():
 		return v.NumberValue() == 0

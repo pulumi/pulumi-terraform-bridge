@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	ValidLanguages = [...]string{LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp, LanguageGo}
+	ValidLanguages = []string{LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp, LanguageGo}
 )
 
 type Diagnostics struct {
