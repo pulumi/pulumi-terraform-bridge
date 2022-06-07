@@ -17,7 +17,6 @@ package tfgen
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 	"text/template"
@@ -209,6 +208,50 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"* `launch_template_config` - (Optional) Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
+				"* `spot_maintenance_strategies` - (Optional) Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
+				"* `spot_price` - (Optional; Default: On-demand price) The maximum bid price per unit hour.",
+				"* `wait_for_fulfillment` - (Optional; Default: false) If set, Terraform will",
+				"  wait for the Spot Request to be fulfilled, and will throw an error if the",
+				"  timeout of 10m is reached.",
+				"* `target_capacity` - The number of units to request. You can choose to set the",
+				"  target capacity in terms of instances or a performance characteristic that is",
+				"  important to your application workload, such as vCPUs, memory, or I/O.",
+				"* `allocation_strategy` - Indicates how to allocate the target capacity across",
+				"  the Spot pools specified by the Spot fleet request. The default is",
+				"  `lowestPrice`.",
+				"* `instance_pools_to_use_count` - (Optional; Default: 1)",
+				"  The number of Spot pools across which to allocate your target Spot capacity.",
+				"  Valid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects",
+				"  the cheapest Spot pools and evenly allocates your target Spot capacity across",
+				"  the number of Spot pools that you specify.",
+			},
+			expected: map[string]*argumentDocs{
+				"launch_template_config": {
+					description: "Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
+				},
+				"spot_maintenance_strategies": {
+					description: "Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
+				},
+				"spot_price": {
+					description: "The maximum bid price per unit hour.",
+				},
+				"wait_for_fulfillment": {
+					description: "If set, Terraform will\nwait for the Spot Request to be fulfilled, and will throw an error if the\ntimeout of 10m is reached.",
+				},
+				"target_capacity": {
+					description: "The number of units to request. You can choose to set the\ntarget capacity in terms of instances or a performance characteristic that is\nimportant to your application workload, such as vCPUs, memory, or I/O.",
+				},
+				"allocation_strategy": {
+					description: "Indicates how to allocate the target capacity across\nthe Spot pools specified by the Spot fleet request. The default is\n`lowestPrice`.",
+				},
+				"instance_pools_to_use_count": {
+					description: "\nThe number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -219,14 +262,16 @@ func TestArgumentRegex(t *testing.T) {
 		}
 		parser.parseArgReferenceSection(tt.input)
 
-		assert.Len(t, parser.ret.Arguments, len(tt.expected))
-		for k, v := range tt.expected {
-			actualArg := parser.ret.Arguments[k]
-			assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
-			assert.Equal(t, v.description, actualArg.description)
-			assert.Equal(t, v.isNested, actualArg.isNested)
-			assert.Equal(t, v.arguments, actualArg.arguments)
-		}
+		assert.Equal(t, tt.expected, parser.ret.Arguments)
+
+		//assert.Len(t, parser.ret.Arguments, len(tt.expected))
+		//for k, v := range tt.expected {
+		//	actualArg := parser.ret.Arguments[k]
+		//	assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
+		//	assert.Equal(t, v.description, actualArg.description)
+		//	assert.Equal(t, v.isNested, actualArg.isNested)
+		//	assert.Equal(t, v.arguments, actualArg.arguments)
+		//}
 	}
 }
 
