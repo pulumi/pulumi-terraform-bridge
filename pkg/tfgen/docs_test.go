@@ -583,3 +583,37 @@ subtitle 2 content
 
 	assert.Equal(t, expected, groupLines(strings.Split(input, "\n"), "## "))
 }
+
+func TestParseArgFromMarkdownLine(t *testing.T) {
+	// nolint:lll
+	tests := []struct {
+		input        string
+		expectedName string
+		expectedDesc string
+	}{
+		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role."},
+		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created."},
+	}
+
+	for _, test := range tests {
+		name, desc := parseArgFromMarkdownLine(test.input)
+		assert.Equal(t, test.expectedName, name)
+		assert.Equal(t, test.expectedDesc, desc)
+	}
+}
+
+func TestGetNestedBlockName(t *testing.T) {
+	var tests = []struct {
+		input, expected string
+	}{
+		{"", ""},
+		{"The `website` object supports the following:", "website"},
+		{"#### result_configuration Argument Reference", "result_configuration"},
+		// This is a common starting line of base arguments, so should result in zero value:
+		{"The following arguments are supported:", ""},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
+	}
+}
