@@ -380,6 +380,17 @@ var (
 	argumentBulletRegexp = regexp.MustCompile(
 		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
 
+	nestedObjectRegexps = []*regexp.Regexp{
+		// For example:
+		// s3_bucket.html.markdown: "The `website` object supports the following:"
+		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+		regexp.MustCompile("`([a-z_]+)`.*following"),
+
+		// For example:
+		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+	}
+
 	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
 
 	standardDocReadme = `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
@@ -588,15 +599,15 @@ func reformatExamples(sections [][]string) [][]string {
 	return result
 }
 
-func (p *tfMarkdownParser) parseSection(h2Section []string) error {
+func (p *tfMarkdownParser) parseSection(section []string) error {
 	// Extract the header name, since this will drive how we process the content.
-	if len(h2Section) == 0 {
+	if len(section) == 0 {
 		p.g.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
 		return nil
 	}
 
 	// Skip certain headers that we don't support.
-	header := h2Section[0]
+	header := section[0]
 	if strings.Index(header, "## ") == 0 {
 		header = header[3:]
 	}
@@ -619,15 +630,15 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	case "---":
 		sectionKind = sectionFrontMatter
 	case "Schema":
-		p.parseSchemaWithNestedSections(h2Section)
+		p.parseSchemaWithNestedSections(section)
 		return nil
 	}
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
-	for _, h3Section := range groupLines(h2Section[1:], "### ") {
-		if len(h3Section) == 0 {
+	for _, subsection := range groupLines(section[1:], "### ") {
+		if len(subsection) == 0 {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
@@ -636,7 +647,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
-		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
+		subsection, hasExamples, isEmpty := p.reformatSubsection(subsection)
 		if isEmpty {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
@@ -649,18 +660,18 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section)
+			p.parseArgReferenceSection(subsection)
 		case sectionAttributesReference:
-			p.parseAttributesReferenceSection(reformattedH3Section)
+			p.parseAttributesReferenceSection(subsection)
 		case sectionFrontMatter:
-			p.parseFrontMatter(reformattedH3Section)
+			p.parseFrontMatter(subsection)
 		case sectionImports:
-			p.parseImports(reformattedH3Section)
+			p.parseImports(subsection)
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
-				p.parseArgReferenceSection(reformattedH3Section)
+				p.parseArgReferenceSection(subsection)
 				continue
 			}
 
@@ -668,11 +679,11 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
 				wroteHeader = true
-				if !isBlank(reformattedH3Section[0]) {
+				if !isBlank(subsection[0]) {
 					p.ret.Description += "\n"
 				}
 			}
-			p.ret.Description += strings.Join(reformattedH3Section, "\n") + "\n"
+			p.ret.Description += strings.Join(subsection, "\n") + "\n"
 		}
 	}
 
@@ -705,60 +716,11 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
 }
 
-// parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
-// description
-func parseArgFromMarkdownLine(line string) (string, string) {
-	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
-
-	matches := argumentBulletRegexp.FindStringSubmatch(line)
-
-	if len(matches) >= 4 {
-		return matches[1], matches[4]
-	} else if len(matches) > 0 {
-		return matches[1], ""
-	}
-
-	return "", ""
-}
-
-// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
-// describes. If the line does not describe a nested block, an empty string is returned.
-//
-// Examples of nested blocks include (but are not limited to):
-//
-// - "The `private_cluster_config` block supports:" -> "private_cluster_config"
-// - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) string {
-	nested := ""
-
-	nestedObjectRegexps := []*regexp.Regexp{
-		// For example:
-		// s3_bucket.html.markdown: "The `website` object supports the following:"
-		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-		regexp.MustCompile("`([a-z_]+)`.*following"),
-
-		// For example:
-		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-	}
-
-	for _, match := range nestedObjectRegexps {
-		matches := match.FindStringSubmatch(line)
-		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
-			break
-		}
-	}
-
-	return nested
-}
-
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	var lastMatch, nested string
 	for _, line := range subsection {
-		name, desc := parseArgFromMarkdownLine(line)
-		if name != "" && desc != "" {
+		matches := argumentBulletRegexp.FindStringSubmatch(line)
+		if len(matches) >= 4 {
 			// found a property bullet, extract the name and description
 			if nested != "" {
 				// We found this line within a nested field. We should record it as such.
@@ -769,23 +731,23 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 				} else if p.ret.Arguments[nested].arguments == nil {
 					p.ret.Arguments[nested].arguments = make(map[string]string)
 				}
-				p.ret.Arguments[nested].arguments[name] = desc
+				p.ret.Arguments[nested].arguments[matches[1]] = matches[4]
 
 				// Also record this as a top-level argument just in case, since sometimes the recorded nested
 				// argument doesn't match the resource's argument.
 				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[name] == nil {
-					p.ret.Arguments[name] = &argumentDocs{
-						description: desc,
+				if p.ret.Arguments[matches[1]] == nil {
+					p.ret.Arguments[matches[1]] = &argumentDocs{
+						description: matches[4],
 						isNested:    true, // Mark that this argument comes from a nested field.
 					}
 				}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[name] = &argumentDocs{description: desc}
+					p.ret.Arguments[matches[1]] = &argumentDocs{description: matches[4]}
 				}
 			}
-			lastMatch = name
+			lastMatch = matches[1]
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			if nested != "" {
@@ -801,10 +763,12 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 		} else {
 			// This line might declare the beginning of a nested object.
 			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
-			nestedBlockCurrentLine := getNestedBlockName(line)
-
-			if nestedBlockCurrentLine != "" {
-				nested = nestedBlockCurrentLine
+			for _, match := range nestedObjectRegexps {
+				matches := match.FindStringSubmatch(line)
+				if len(matches) >= 2 {
+					nested = strings.ToLower(matches[1])
+					break
+				}
 			}
 
 			// Clear the lastMatch.
