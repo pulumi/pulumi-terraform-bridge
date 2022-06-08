@@ -786,6 +786,11 @@ func getNestedBlockName(line string) string {
 
 // ensureArgFromNestedPath take a period-separated path and a map[string]*argumentDocs, ensures the path to the argument
 // by new-ing up any missing nodes in the path along the way, and returns the node indicated by the path
+//
+// We need to create new nodes along the way (rather than only create direct children) because some resources' docs will
+// introduce a nested block with no previous mention as an argument, e.g. "The optional settings.database_flags sublist
+// supports:" from
+// https://github.com/hashicorp/terraform-provider-google-beta/blob/main/website/docs/r/sql_database_instance.html.markdown#argument-reference
 func ensureArgFromNestedPath(path string, args map[string]*argumentDocs) *argumentDocs {
 	pathSegments := strings.Split(path, ".")
 	thisNodeKey := pathSegments[0]
