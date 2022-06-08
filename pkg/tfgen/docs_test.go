@@ -127,16 +127,6 @@ func TestParseArgReferenceSection(t *testing.T) {
 						},
 					},
 				},
-				//"audience": {
-				//	description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-				//	arguments:   map[string]*argumentDocs{},
-				//	isNested:    true,
-				//},
-				//"issuer": {
-				//	description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-				//	arguments:   map[string]*argumentDocs{},
-				//	isNested:    true,
-				//},
 			},
 		},
 		{
@@ -166,17 +156,6 @@ func TestParseArgReferenceSection(t *testing.T) {
 						},
 					},
 				},
-				//"index_document": {
-				//	description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-				//	arguments:   map[string]*argumentDocs{},
-				//	isNested:    true,
-				//},
-				//"routing_rules": {
-				//	description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-				//		"describing redirect behavior and when redirects are applied.",
-				//	arguments: map[string]*argumentDocs{},
-				//	isNested:  true,
-				//},
 			},
 		},
 		{
@@ -395,7 +374,6 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 }
 
 func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T) {
-	t.Skip("TODO")
 	// Tests parsing of sections like https://github.com/hashicorp/terraform-provider-aws/blob/471ca4e25a732b0c0d566dbc645ea712b48e1a56/website/docs/r/lambda_function.html.markdown#dead_letter_config
 
 	parser := &tfMarkdownParser{
@@ -424,20 +402,70 @@ func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T
 			arguments: map[string]*argumentDocs{
 				"target_arn": {
 					description: "target_arn_desc",
+					arguments:   map[string]*argumentDocs{},
 				},
 			},
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "")
+	parser.parseArgReferenceSection(input, "dead_letter_config")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
 
 func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurationBlock(t *testing.T) {
-	t.Skip("TODO")
-	// Tests parsing of docs like https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/mskconnect_connector.html.markdown
+	// Integration test for parsing of docs like https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/mskconnect_connector.html.markdown#basic-configuration
 
+	input1 := []string{
+		"## Argument Reference",
+		"",
+		"The following arguments are supported:",
+		"",
+		"* `capacity` - (Required) Information about the capacity allocated to the connector. See below.",
+	}
+
+	input2 := []string{
+		"### capacity Configuration Block",
+		"",
+		"* `autoscaling` - (Optional) Information about the auto scaling parameters for the connector. See below.",
+	}
+
+	input3 := []string{
+		"### autoscaling Configuration Block",
+		"",
+		"",
+		"* `max_worker_count` - (Required) The maximum number of workers allocated to the connector.",
+	}
+
+	expected := map[string]*argumentDocs{
+		"capacity": {
+			description: "Information about the capacity allocated to the connector. See below.",
+			arguments: map[string]*argumentDocs{
+				"autoscaling": {
+					description: "Information about the auto scaling parameters for the connector. See below.",
+					arguments: map[string]*argumentDocs{
+						"max_worker_count": {
+							description: "The maximum number of workers allocated to the connector.",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: map[string]*argumentDocs{},
+		},
+	}
+
+	// This emulates the behavior of parseSection(), assuming that parseArgNameFromHeader() and getMatchingArgNames() are doing their jobs correctly:
+	parser.parseArgReferenceSection(input1, "")
+	parser.parseArgReferenceSection(input2, "capacity")
+	parser.parseArgReferenceSection(input3, "capacity.autoscaling")
+
+	assert.Equal(t, expected, parser.ret.Arguments)
 }
 
 func TestGetFooterLinks(t *testing.T) {

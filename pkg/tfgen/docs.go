@@ -690,12 +690,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0])
 			}
 
-			//_, isArgument := p.ret.Arguments[header]
-			//if isArgument || strings.HasSuffix(header, "Configuration Block") {
-			//	p.parseArgReferenceSection(reformattedH3Section)
-			//	continue
-			//}
-
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
@@ -867,46 +861,10 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 
 				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
 				arg.description = desc
-
-				//if p.ret.Arguments[nested] == nil {
-				//	p.ret.Arguments[nested] = &argumentDocs{
-				//		arguments: make(map[string]*argumentDocs),
-				//	}
-				//} else if p.ret.Arguments[nested].arguments == nil {
-				//	p.ret.Arguments[nested].arguments = make(map[string]*argumentDocs)
-				//}
-				//p.ret.Arguments[nested].arguments[name] = &argumentDocs{
-				//	description: desc,
-				//}
-				//
-				//// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				//// argument doesn't match the resource's argument.
-				//// For example, see `cors_rule` in s3_bucket.html.markdown.
-				//if p.ret.Arguments[name] == nil {
-				//	p.ret.Arguments[name] = &argumentDocs{
-				//		description: desc,
-				//		isNested:    true, // Mark that this argument comes from a nested field.
-				//	}
-				//}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
 					arg := ensureArgFromNestedPath(name, p.ret.Arguments)
 					arg.description = desc
-
-					//// This is not an exact check for overwriting argument descriptions. Because we iterate the document
-					//// line-by-line, we assign the descriptions in the same way. It's difficult to get an exact count
-					//// without making significant changes to the parsing code itself, which would defeat the purpose of
-					//// this simple measurement: to get some idea of how commonly we are incorrectly overwriting
-					//// argument descriptions.
-					//if arg, found := p.ret.Arguments[name]; found {
-					//	if arg.description != "" && arg.description != desc {
-					//		// TODO: Uncomment once we can mock this in the tests. (Currently causing a panic.)
-					//		//p.g.warn(fmt.Sprintf("Overwrote argument description for %s.%s", p.rawname, name))
-					//		overwrittenArgDecriptions++
-					//	}
-					//}
-					//
-					//p.ret.Arguments[name] = &argumentDocs{description: desc}
 				}
 			}
 			lastMatch = name
@@ -916,18 +874,9 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 				fullPath := fmt.Sprintf("%s.%s", nested, lastMatch)
 				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
-
-				//p.ret.Arguments[nested].arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				//
-				//// Also update the top-level argument if we took it from a nested field.
-				//if p.ret.Arguments[lastMatch].isNested {
-				//	p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				//}
 			} else {
 				arg := ensureArgFromNestedPath(lastMatch, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
-
-				//p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
 			// This line might declare the beginning of a nested object.
@@ -1165,10 +1114,6 @@ func (g *Generator) printDocStats() {
 	if hclCSharpPartialConversionFailures > 0 {
 		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#",
 			hclCSharpPartialConversionFailures)
-	}
-
-	if overwrittenArgDecriptions > 0 {
-		g.error("%d arguments had their descriptions overwritten", overwrittenArgDecriptions)
 	}
 
 	if nestedArgSectionsMultipleMatches > 0 {
