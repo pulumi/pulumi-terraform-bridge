@@ -690,12 +690,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0])
 			}
 
-			//_, isArgument := p.ret.Arguments[header]
-			//if isArgument || strings.HasSuffix(header, "Configuration Block") {
-			//	p.parseArgReferenceSection(reformattedH3Section)
-			//	continue
-			//}
-
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
 				p.ret.Description += fmt.Sprintf("## %s\n", header)
@@ -867,27 +861,6 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 
 				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
 				arg.description = desc
-
-				//if p.ret.Arguments[nested] == nil {
-				//	p.ret.Arguments[nested] = &argumentDocs{
-				//		arguments: make(map[string]*argumentDocs),
-				//	}
-				//} else if p.ret.Arguments[nested].arguments == nil {
-				//	p.ret.Arguments[nested].arguments = make(map[string]*argumentDocs)
-				//}
-				//p.ret.Arguments[nested].arguments[name] = &argumentDocs{
-				//	description: desc,
-				//}
-				//
-				//// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				//// argument doesn't match the resource's argument.
-				//// For example, see `cors_rule` in s3_bucket.html.markdown.
-				//if p.ret.Arguments[name] == nil {
-				//	p.ret.Arguments[name] = &argumentDocs{
-				//		description: desc,
-				//		isNested:    true, // Mark that this argument comes from a nested field.
-				//	}
-				//}
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
 					arg := ensureArgFromNestedPath(name, p.ret.Arguments)
@@ -917,18 +890,9 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 				fullPath := fmt.Sprintf("%s.%s", nested, lastMatch)
 				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
-
-				//p.ret.Arguments[nested].arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				//
-				//// Also update the top-level argument if we took it from a nested field.
-				//if p.ret.Arguments[lastMatch].isNested {
-				//	p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				//}
 			} else {
 				arg := ensureArgFromNestedPath(lastMatch, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
-
-				//p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
 			// This line might declare the beginning of a nested object.
