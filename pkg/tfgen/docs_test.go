@@ -858,6 +858,7 @@ func TestGetNestedBlockName(t *testing.T) {
 		// AWS examples:
 		{"The `website` object supports the following:", "website"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
+		{"### ec2_tag_filter Argument Reference", "ec2_tag_filter"},
 		{"The `encryption_configuration` block supports the following argument:", "encryption_configuration"},
 
 		// This is a common starting line of base arguments, so should result in zero value:

@@ -764,7 +764,8 @@ func getNestedBlockName(line string) string {
 
 		// For example:
 		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+		// aws_codedeploy_deployment_group: "### ec2_tag_filter Argument Reference"
+		regexp.MustCompile("(?i)## ([a-z][a-z\\d_]+).* argument reference"),
 
 		// See: https://github.com/hashicorp/terraform-provider-google-beta/blob/main/website/docs/r/sql_database_instance.html.markdown#argument-reference
 		regexp.MustCompile("`([a-z_]+)`.*block supports:"),
