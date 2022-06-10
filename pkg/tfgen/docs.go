@@ -667,7 +667,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section, "")
+			p.parseArgReferenceSection(reformattedH3Section, "", p.rawname)
 		case sectionAttributesReference:
 			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
@@ -687,7 +687,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 					"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, header, matchingArgs)
 				p.g.warn(msg)
 			} else if len(matchingArgs) == 1 {
-				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0])
+				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname)
 			}
 
 			// For all other sections, append them to the description section.
@@ -809,6 +809,47 @@ func ensureArgFromNestedPath(path string, args map[string]*argumentDocs) *argume
 	return ensureArgFromNestedPath(strings.Join(pathSegments[1:], "."), args[thisNodeKey].arguments)
 }
 
+func flattenKeys(args map[string]*argumentDocs, path string) []string {
+	allKeys := []string{}
+
+	if args == nil {
+		return allKeys
+	}
+
+	for k, arg := range args {
+		fqKey := appendPath(path, k)
+		allKeys = append(allKeys, fqKey)
+		allKeys = append(allKeys, flattenKeys(arg.arguments, fqKey)...)
+	}
+
+	return allKeys
+}
+
+func appendPath(path string, newSegment string) string {
+	if path == "" {
+		return newSegment
+	}
+
+	return path + "." + newSegment
+}
+
+// findMatchingKeys takes a single-segment key and a list of period-separated, fully-qualified key names
+// and returns all fully-qualified keys where the last segment matches the supplied single-segment key
+func findMatchingKeys(key string, fqKeys []string) []string {
+	ret := []string{}
+
+	for _, k := range fqKeys {
+		segments := strings.Split(k, ".")
+		if segments[len(segments)-1] == key {
+			ret = append(ret, k)
+		}
+	}
+
+	sort.Strings(ret)
+
+	return ret
+}
+
 // parseArgNameFromHeader takes a line of Markdown (presumed to be the start of an H3) and attempts to parse an argument
 // name from the content. This is used to parse certain subsections of TF provider docs which use this pattern, e.g.
 //
@@ -852,7 +893,7 @@ func getMatchingArgNames(argName string, args map[string]*argumentDocs, currentP
 	return ret
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string) {
+func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string, rawname string) {
 	lastMatch := ""
 	nested := parentArg
 
@@ -905,10 +946,68 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 			nestedBlockCurrentLine := getNestedBlockName(line)
 
 			if nestedBlockCurrentLine != "" {
-				nested = nestedBlockCurrentLine
+				if strings.Contains(nestedBlockCurrentLine, ".") {
+					// If the nested block name contains a period, we assume this is a fully-qualified
+					// section name, we have not seen it before, and we just need to ensure it exists, e.g.:
+					// "The optional settings.database_flags sublist supports:"
+					ensureArgFromNestedPath(nestedBlockCurrentLine, p.ret.Arguments)
+					nested = nestedBlockCurrentLine
+				} else {
+					// If the nested block name does not contain a period, we assume this is a single-segment section and
+					// should match a single, previously seen argument, e.g.:
+					// "basic - (Optional) A set of predefined conditions for the access level and a combining function. Structure is documented below."
+					// ...
+					// "The basic block supports:"
+					//  ...
+					// "conditions - (Required) A set of requirements for the AccessLevel to be granted. Structure is documented below."
+					// ...
+					// "The conditions block supports:"
+					flattenedKeys := flattenKeys(p.ret.Arguments, "")
+					matchingKeys := findMatchingKeys(nestedBlockCurrentLine, flattenedKeys)
+
+					if len(matchingKeys) == 1 {
+						// If we have exactly 1 match, we know the fully-qualified path of the block we are describing,
+						// e.g. basic.conditions above:
+						nested = appendPath(parentArg, matchingKeys[0])
+					} else if len(matchingKeys) == 0 {
+						// If we do not have any matches, this is unexpected but not exceptional - it happens sometimes,
+						// but we'll assume it's a top-level arg that should be created and we'll warn the user.
+						//
+						// In some cases, this is not where the argument belongs. For example, in google_apikeys_key,
+						// allowed_applications is mentioned before the block it belongs under:
+						// android_key_restrictions. However, if we keep it as a top-level arg, we can still match
+						// some of the time later on in the tfgen process when we match parsed arg descriptions to
+						// the schema.
+						//
+						// We might improve the accuracy here by explicitly keeping a map of unknown arguments.
+						nested = nestedBlockCurrentLine
+						ensureArgFromNestedPath(nestedBlockCurrentLine, p.ret.Arguments)
+						msg := fmt.Sprintf("%s: Found a nested block '%s' with no previous mention of any argument with that name. "+
+							"Assuming that this is a top-level argument and creating, but check the generated docs for accuracy.",
+							rawname, nestedBlockCurrentLine)
+						nestedArgsWithNoPreviousMatch++
+						p.g.warn(msg)
+					} else {
+						// If we have multiple matches, we don't exactly know what we're looking at. It's better to have
+						// no docs for arguments than wrong docs, so we warn the user and quit processing this
+						// subsection.
+						//
+						// In order to improve this case's behavior, we might try a few more ways of finding a match:
+						//
+						// 1. Check for a single match using ${nested}.${nestedBlockCurrentLine}
+						// 2. Attempt to continue until we hit something we recognize, but, this code would be
+						//    very tricky to write give the current line-by-line parsing in this function.
+						// 3. Add a timestamp to each argument and take the most recent known match.
+						nestedArgSectionsMultipleMatches++
+						msg := fmt.Sprintf("%s: Found multiple matches for nested block '%s'. Candidates are: %v. No further arguments will be parsed in this section.", rawname, nestedBlockCurrentLine, matchingKeys)
+						p.g.warn(msg)
+						return
+					}
+					//nested = nestedBlockCurrentLine
+				}
 			}
 
-			// Clear the lastMatch.
+			// Clear the lastMatch because we are not processing an argument:
 			lastMatch = ""
 		}
 	}
