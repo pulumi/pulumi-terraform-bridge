@@ -17,6 +17,7 @@ package tfgen
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 	"testing"
 	"text/template"
@@ -272,7 +273,7 @@ func TestParseArgReferenceSection(t *testing.T) {
 				Arguments: make(map[string]*argumentDocs),
 			},
 		}
-		parser.parseArgReferenceSection(tt.input, "")
+		parser.parseArgReferenceSection(tt.input, "", "")
 
 		assert.Equal(t, tt.expected, parser.ret.Arguments)
 	}
@@ -310,7 +311,7 @@ func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "dead_letter_config")
+	parser.parseArgReferenceSection(input, "dead_letter_config", "")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -368,7 +369,7 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "")
+	parser.parseArgReferenceSection(input, "", "")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -408,7 +409,7 @@ func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "dead_letter_config")
+	parser.parseArgReferenceSection(input, "dead_letter_config", "")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -461,9 +462,56 @@ func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurat
 	}
 
 	// This emulates the behavior of parseSection(), assuming that parseArgNameFromHeader() and getMatchingArgNames() are doing their jobs correctly:
-	parser.parseArgReferenceSection(input1, "")
-	parser.parseArgReferenceSection(input2, "capacity")
-	parser.parseArgReferenceSection(input3, "capacity.autoscaling")
+	parser.parseArgReferenceSection(input1, "", "")
+	parser.parseArgReferenceSection(input2, "capacity", "")
+	parser.parseArgReferenceSection(input3, "capacity.autoscaling", "")
+
+	assert.Equal(t, expected, parser.ret.Arguments)
+}
+
+func TestParseArgReferenceSection_NonFullyQualifiedSubBlocks(t *testing.T) {
+	// Sometimes sub-blocks are not fully-qualified, e.g. "conditions" in https://registry.terraform.io/providers/hashicorp/google-beta/latest/docs/resources/access_context_manager_access_level#argument-reference
+
+	input := []string{
+		"## Argument Reference",
+		"",
+		"The following arguments are supported:",
+		"",
+		"* `basic` - (Optional) basic_desc",
+		"",
+		"<a name=\"nested_basic\"></a>The `basic` block supports:",
+		"",
+		"* `conditions` - (Required) conditions_desc",
+		"",
+		"<a name=\"nested_conditions\"></a>The `conditions` block supports:",
+		"",
+		"* `device_policy` - (Optional) device_policy_desc",
+	}
+
+	expected := map[string]*argumentDocs{
+		"basic": {
+			description: "basic_desc",
+			arguments: map[string]*argumentDocs{
+				"conditions": {
+					description: "conditions_desc",
+					arguments: map[string]*argumentDocs{
+						"device_policy": {
+							description: "device_policy_desc",
+							arguments:   map[string]*argumentDocs{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	parser := &tfMarkdownParser{
+		ret: entityDocs{
+			Arguments: map[string]*argumentDocs{},
+		},
+	}
+
+	parser.parseArgReferenceSection(input, "", "")
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -999,6 +1047,62 @@ func TestArgFromNestedPath(t *testing.T) {
 	assert.Equal(t, args["a"].arguments["aa"].arguments["aaa"], ensureArgFromNestedPath("a.aa.aaa", args))
 	assert.Equal(t, &newNode, ensureArgFromNestedPath("b", args))
 	assert.Equal(t, &newNode, ensureArgFromNestedPath("a.ab", args))
+}
+
+func TestFlattenKeys(t *testing.T) {
+	input := map[string]*argumentDocs{
+		"a": {
+			arguments: map[string]*argumentDocs{
+				"a": {
+					arguments: map[string]*argumentDocs{
+						"a": {},
+						"b": {},
+					},
+				},
+			},
+		},
+		"b": {
+			arguments: map[string]*argumentDocs{},
+		},
+	}
+
+	expected := []string{
+		"a",
+		"a.a",
+		"a.a.a",
+		"a.a.b",
+		"b",
+	}
+
+	actual := flattenKeys(input, "")
+
+	sort.Strings(expected)
+	sort.Strings(actual)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestFindMatchingKeys(t *testing.T) {
+	fqKeys := []string{
+		"not_a_match",
+		"nested_1.settings",
+		"settings",
+		"settings.not_a_match", // it should only report the key above
+		"nested_1.nested_2.settings",
+	}
+
+	expected := []string{
+		"nested_1.settings",
+		"settings",
+		"nested_1.nested_2.settings",
+	}
+
+	actual := findMatchingKeys("settings", fqKeys)
+
+	sort.Strings(expected)
+	sort.Strings(actual)
+
+	assert.Equal(t, expected, actual)
 }
 
 func TestParseArgNameFromHeader(t *testing.T) {
