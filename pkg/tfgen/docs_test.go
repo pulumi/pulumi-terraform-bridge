@@ -273,11 +273,13 @@ func TestParseArgReferenceSection(t *testing.T) {
 				Arguments: make(map[string]*argumentDocs),
 			},
 		}
-		parser.parseArgReferenceSection(tt.input, "", "")
+		parser.parseArgReferenceSection(tt.input, "", "", fakeWarnFunc)
 
 		assert.Equal(t, tt.expected, parser.ret.Arguments)
 	}
 }
+
+func fakeWarnFunc(_ string, _ ...interface{}) {}
 
 func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
 	input := []string{
@@ -311,7 +313,7 @@ func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "dead_letter_config", "")
+	parser.parseArgReferenceSection(input, "dead_letter_config", "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -369,7 +371,7 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "", "")
+	parser.parseArgReferenceSection(input, "", "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -409,7 +411,7 @@ func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "dead_letter_config", "")
+	parser.parseArgReferenceSection(input, "dead_letter_config", "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -462,9 +464,9 @@ func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurat
 	}
 
 	// This emulates the behavior of parseSection(), assuming that parseArgNameFromHeader() and getMatchingArgNames() are doing their jobs correctly:
-	parser.parseArgReferenceSection(input1, "", "")
-	parser.parseArgReferenceSection(input2, "capacity", "")
-	parser.parseArgReferenceSection(input3, "capacity.autoscaling", "")
+	parser.parseArgReferenceSection(input1, "", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input2, "capacity", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input3, "capacity.autoscaling", "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -511,7 +513,7 @@ func TestParseArgReferenceSection_NonFullyQualifiedSubBlocks(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "", "")
+	parser.parseArgReferenceSection(input, "", "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -1236,5 +1238,8 @@ func TestCleanupArgs_WithElided(t *testing.T) {
 	actual, elided := cleanupArgs(input, "dummy", reformatFunc, warnFunc, "")
 	assert.Equal(t, true, elided)
 	assert.Equal(t, expected, actual)
+
+	sort.Strings(expectedWarnings)
+	sort.Strings(actualWarnings)
 	assert.Equal(t, expectedWarnings, actualWarnings)
 }

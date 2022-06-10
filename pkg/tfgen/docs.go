@@ -647,8 +647,9 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		if len(h3Section) == 0 {
 			// An empty H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
-			// log it as debug output:
-			p.g.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location", p.rawname, p.kind)
+			// log it as debug output and continue to the next section:
+			msg := fmt.Sprintf("%s: Found an empty H3 doc session under H2 heading '%s'", p.rawname, header)
+			p.g.debug(msg)
 			continue
 		}
 
@@ -673,7 +674,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section, "", p.rawname)
+			p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
 		case sectionAttributesReference:
 			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
@@ -693,7 +694,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 					"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, header, matchingArgs)
 				p.g.warn(msg)
 			} else if len(matchingArgs) == 1 {
-				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname)
+				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname, p.g.warn)
 			}
 
 			// For all other sections, append them to the description section.
@@ -900,7 +901,7 @@ func getMatchingArgNames(argName string, args map[string]*argumentDocs, currentP
 	return ret
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string, rawname string) {
+func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string, rawname string, warn func(string, ...interface{})) {
 	lastMatch := ""
 	nested := parentArg
 
@@ -970,14 +971,16 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 						// some of the time later on in the tfgen process when we match parsed arg descriptions to
 						// the schema.
 						//
-						// We might improve the accuracy here by explicitly keeping a map of unknown arguments.
+						// We might improve the accuracy here by explicitly keeping track of arguments we could not
+						// precisely parse e.g. by keeping them under a special key, e.g. "%unknown_args%", or adding
+						// an indicator field to argumentDocs.
 						nested = nestedBlockCurrentLine
 						ensureArgFromNestedPath(nestedBlockCurrentLine, p.ret.Arguments)
 						msg := fmt.Sprintf("%s: Found a nested block '%s' with no previous mention of any argument with that name. "+
 							"Assuming that this is a top-level argument and creating, but check the generated docs for accuracy.\n\tFull line = '%s'",
 							rawname, nestedBlockCurrentLine, line)
 						nestedArgsWithNoPreviousMatch++
-						p.g.warn(msg)
+						warn(msg)
 					} else {
 						// If we have multiple matches, we don't exactly know what we're looking at. It's better to have
 						// no docs for arguments than wrong docs, so we warn the user and quit processing this
@@ -991,10 +994,9 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 						// 3. Add a timestamp to each argument and take the most recent known match.
 						nestedArgSectionsMultipleMatches++
 						msg := fmt.Sprintf("%s: Found multiple matches for nested block '%s'. Candidates are: %v. No further arguments will be parsed in this section.", rawname, nestedBlockCurrentLine, matchingKeys)
-						p.g.warn(msg)
+						warn(msg)
 						return
 					}
-					//nested = nestedBlockCurrentLine
 				}
 			}
 
