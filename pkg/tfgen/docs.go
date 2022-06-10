@@ -645,10 +645,16 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	var wroteHeader bool
 	for _, h3Section := range groupLines(h2Section[1:], "### ") {
 		if len(h3Section) == 0 {
-			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
+			// An empty H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
 			p.g.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location", p.rawname, p.kind)
+			continue
+		}
+
+		// Some AWS docs (at least) have a h3 Timeouts beneath an h2 Arguments Reference. We should ignore it like we
+		// ignore an h2 Timeouts section:
+		if h3Section[0] == "### Timeouts" {
 			continue
 		}
 
@@ -984,8 +990,8 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 						nested = nestedBlockCurrentLine
 						ensureArgFromNestedPath(nestedBlockCurrentLine, p.ret.Arguments)
 						msg := fmt.Sprintf("%s: Found a nested block '%s' with no previous mention of any argument with that name. "+
-							"Assuming that this is a top-level argument and creating, but check the generated docs for accuracy.",
-							rawname, nestedBlockCurrentLine)
+							"Assuming that this is a top-level argument and creating, but check the generated docs for accuracy.\n\tFull line = '%s'",
+							rawname, nestedBlockCurrentLine, line)
 						nestedArgsWithNoPreviousMatch++
 						p.g.warn(msg)
 					} else {
