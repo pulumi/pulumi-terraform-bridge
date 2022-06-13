@@ -411,6 +411,11 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		description = g.genRawDocComment(prop.rawdoc)
 	}
 
+	totalPropertyDescriptions++
+	if description == "" {
+		blankPropertyDescriptions++
+	}
+
 	language := map[string]pschema.RawMessage{}
 	if prop.info != nil && prop.info.CSharpName != "" {
 		language["csharp"] = rawMessage(map[string]string{"name": prop.info.CSharpName})
