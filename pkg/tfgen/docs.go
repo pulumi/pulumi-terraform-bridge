@@ -973,6 +973,9 @@ var (
 	hclTypeScriptPartialConversionFailures int
 	hclCSharpPartialConversionFailures     int
 
+	totalPropertyDescriptions int
+	blankPropertyDescriptions int
+
 	entitiesMissingDocs int
 	unexpectedSnippets  int
 )
@@ -1041,6 +1044,11 @@ func (g *Generator) printDocStats() {
 	if hclCSharpPartialConversionFailures > 0 {
 		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#",
 			hclCSharpPartialConversionFailures)
+	}
+
+	if blankPropertyDescriptions > 0 {
+		g.warn("%d of %d properties (%.2f) are missing descriptions", blankPropertyDescriptions, totalPropertyDescriptions,
+			float64(blankPropertyDescriptions)/float64(totalPropertyDescriptions)*100)
 	}
 }
 
