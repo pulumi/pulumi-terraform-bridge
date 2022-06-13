@@ -1155,6 +1155,9 @@ var (
 	hclTypeScriptPartialConversionFailures int
 	hclCSharpPartialConversionFailures     int
 
+	totalPropertyDescriptions int
+	blankPropertyDescriptions int
+
 	entitiesMissingDocs int
 	unexpectedSnippets  int
 
@@ -1235,6 +1238,11 @@ func (g *Generator) printDocStats() {
 
 	if nestedArgSectionsMultipleMatches > 0 {
 		g.warn("%d arg doc sections were partially processed because they contained a nested block that matched multiple previously mentioned arguments. The affected resources and functions will have missing argument descriptions.", nestedArgSectionsMultipleMatches)
+	}
+
+	if blankPropertyDescriptions > 0 {
+		g.warn("%d of %d properties (%.2f%%) are missing descriptions", blankPropertyDescriptions, totalPropertyDescriptions,
+			float64(blankPropertyDescriptions)/float64(totalPropertyDescriptions)*100)
 	}
 }
 
