@@ -3,6 +3,7 @@ run:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
+  timeout: 10m
 
 linters:
   enable-all: false
