@@ -310,7 +310,7 @@ type propertyType struct {
 }
 
 func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+	entityDocs entityDocs, rawname string) *propertyType {
 
 	t := &propertyType{}
 
@@ -352,9 +352,9 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
-		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
+		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs, rawname)
 	case shim.Resource:
-		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs, rawname)
 	}
 
 	switch t.kind {
@@ -374,7 +374,7 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 }
 
 func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+	entityDocs entityDocs, rawname string) *propertyType {
 
 	t := &propertyType{
 		kind: kindObject,
@@ -401,7 +401,15 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 		}
 
 		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
+		//path := appendPath(objectName, key)
+		//newDoc := entityDocs.getArgDescription(path)
+		//if doc != newDoc && newDoc == "" {
+		//	q.Q(rawname, doc, path, entityDocs.Arguments)
+		//	msg := fmt.Sprintf("Regression bug for '%s': '%s'", rawname, path)
+		//	panic(msg)
+		//}
+
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs, rawname); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -900,7 +908,7 @@ func (g *Generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{}, "")
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -916,7 +924,7 @@ func (g *Generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}, ""); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -1064,7 +1072,7 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs, rawname)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -1072,7 +1080,7 @@ func (g *Generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs, rawname)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -1082,7 +1090,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs, rawname)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -1235,7 +1243,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Remember detailed information for every input arg (we will use it below).
 		if input(sch, cust) {
 			doc := getDescriptionFromParsedDocs(entityDocs, arg)
-			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
+			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs, rawname)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1245,7 +1253,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
+			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs, rawname))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -1255,7 +1263,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
 		fun.rets = append(fun.rets,
-			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
+			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs, rawname))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1371,7 +1379,7 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
+	doc string, rawdoc string, out bool, entityDocs entityDocs, rawname string) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -1380,7 +1388,7 @@ func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 			rawdoc: rawdoc,
 			schema: sch,
 			info:   info,
-			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs, rawname),
 		}
 	}
 	return nil
@@ -1540,6 +1548,65 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string
 		return res.description
 	}
 	return entityDocs.Attributes[arg]
+}
+
+// getArgDescription takes a period-separated string argPath and returns the argument's description.
+// entityDocs.Arguments are searched first. If no result is found in the arguments, entityDocs.Attributes are
+// searched. If no result is found in attributes, an empty string is returned.
+func (e entityDocs) getArgDescription(argPath string) string {
+	// TODO: Figure out why we fall back to an attribute's description if no argument is found and provide a link to an
+	// upstream example where this is the desired behavior.
+
+	argDesc, foundInArgs := getDescriptionFromArgs(e.Arguments, argPath)
+
+	if foundInArgs {
+		return argDesc
+	}
+
+	segments := strings.Split(argPath, ".")
+	argName := segments[len(segments)-1]
+	return e.Attributes[argName]
+}
+
+func getDescriptionFromArgs(args map[string]*argumentDocs, path string) (string, bool) {
+	// We have 2 sets of argument parsing logic for historical reasons:
+	// 1. parseArgReferenceSection, which is the original argument docs parsing code, returns a tree of single-segment
+	//    argument names.
+	// 2. parseSchemaWithNestedSections, which was added to handle automatically generated docs from
+	//    terraform-plugin-docs, returns a flat list with period-separated, fully-qualified names.
+	//
+	// We need to handle both cases in this function until such time as we resolve the 2 different approaches.
+	//
+	// The check here for which format the arguments are in is added not for performance (although performance may be
+	// marginally improved by this check), but for safeness (i.e. backwards compatibility) and clarity.
+	segments := strings.Split(path, ".")
+
+	if len(segments) == 1 || wasParsedFromAutoGeneratedDocs(args) {
+		arg, found := args[path]
+
+		if found {
+			return arg.description, true
+		} else {
+			return "", false
+		}
+	}
+
+	arg, found := args[segments[0]]
+	if !found {
+		return "", false
+	}
+
+	return getDescriptionFromArgs(arg.arguments, strings.Join(segments[1:], "."))
+}
+
+func wasParsedFromAutoGeneratedDocs(args map[string]*argumentDocs) bool {
+	for k, _ := range args {
+		if strings.Contains(k, ".") {
+			return true
+		}
+	}
+
+	return false
 }
 
 // cleanDir removes all existing files from a directory except those in the exclusions list.

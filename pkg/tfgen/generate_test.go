@@ -76,3 +76,74 @@ func Test_ForceNew(t *testing.T) {
 		})
 	}
 }
+
+func TestGetArgDescription(t *testing.T) {
+	// The structure we get from parsing manually-generated docs:
+	entityDocsManual := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"not_nested": {
+				description: "not_nested_desc",
+			},
+			"nested": {
+				description: "nested_desc",
+				arguments: map[string]*argumentDocs{
+					"nested_l2": {
+						description: "nested_l2_desc",
+						arguments: map[string]*argumentDocs{
+							"nested_l3": {
+								description: "nested_l3_desc",
+							},
+						},
+					},
+				},
+			},
+		},
+		Attributes: map[string]string{
+			"attrib": "attrib_desc",
+		},
+	}
+
+	// The structure we get from parsing auto-generated docs. Note that argumentDocs.arguments are populated by the code
+	// that parses this type of documentation, but are not used by the function under test, so we do not add them to
+	// the test data:
+	entityDocsAuto := entityDocs{
+		Arguments: map[string]*argumentDocs{
+			"not_nested": {
+				description: "not_nested_desc",
+			},
+			"nested": {
+				description: "nested_desc",
+			},
+			"nested.nested_l2": {
+				description: "nested_l2_desc",
+			},
+			"nested.nested_l2.nested_l3": {
+				description: "nested_l3_desc",
+			},
+		},
+		Attributes: map[string]string{
+			"attrib": "attrib_desc",
+		},
+	}
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"not_found", ""},
+		{"not_found.not_found", ""},
+		{"not_found.not_found.not_found", ""},
+		{"not_nested", "not_nested_desc"},
+		{"nested", "nested_desc"},
+		{"nested.nested_l2", "nested_l2_desc"},
+		{"nested.nested_l2.not_found", ""},
+		{"nested.nested_l2.attrib", "attrib_desc"},
+		{"nested.nested_l2.nested_l3", "nested_l3_desc"},
+		{"attrib", "attrib_desc"},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expected, entityDocsManual.getArgDescription(test.input))
+		assert.Equal(t, test.expected, entityDocsAuto.getArgDescription(test.input))
+	}
+}

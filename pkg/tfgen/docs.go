@@ -613,28 +613,28 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	}
 
 	// Skip certain headers that we don't support.
-	header := h2Section[0]
-	if strings.Index(header, "## ") == 0 {
-		header = header[3:]
+	h2Header := h2Section[0]
+	if strings.Index(h2Header, "## ") == 0 {
+		h2Header = h2Header[3:]
 	}
 
-	sectionKind := sectionOther
+	h2SectionKind := sectionOther
 
-	switch header {
+	switch h2Header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
-		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
-		ignoredDocHeaders[header]++
+		p.g.debug("Ignoring doc section [%v] for [%v]", h2Header, p.rawname)
+		ignoredDocHeaders[h2Header]++
 		return nil
 	case "Example Usage":
-		sectionKind = sectionExampleUsage
+		h2SectionKind = sectionExampleUsage
 	case "Arguments Reference", "Argument Reference", "Argument reference", "Nested Blocks", "Nested blocks":
-		sectionKind = sectionArgsReference
+		h2SectionKind = sectionArgsReference
 	case "Attributes Reference", "Attribute Reference", "Attribute reference":
-		sectionKind = sectionAttributesReference
+		h2SectionKind = sectionAttributesReference
 	case "Import", "Imports":
-		sectionKind = sectionImports
+		h2SectionKind = sectionImports
 	case "---":
-		sectionKind = sectionFrontMatter
+		h2SectionKind = sectionFrontMatter
 	case "Schema":
 		p.parseSchemaWithNestedSections(h2Section)
 		return nil
@@ -648,16 +648,12 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// An empty H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output and continue to the next section:
-			msg := fmt.Sprintf("%s: Found an empty H3 doc session under H2 heading '%s'", p.rawname, header)
+			msg := fmt.Sprintf("%s: Found an empty H3 doc session under H2 heading '%s'", p.rawname, h2Header)
 			p.g.debug(msg)
 			continue
 		}
 
-		// Some AWS docs (at least) have a h3 Timeouts beneath an h2 Arguments Reference. We should ignore it like we
-		// ignore an h2 Timeouts section:
-		if h3Section[0] == "### Timeouts" {
-			continue
-		}
+		h3Header := h3Section[0]
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
 		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
@@ -665,16 +661,44 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
 		}
-		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports {
+		if hasExamples && h2SectionKind != sectionExampleUsage && h2SectionKind != sectionImports {
 			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
-				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
+				"but may not display correctly in the generated docs.", h2Header, p.kind, p.rawname)
 			unexpectedSnippets++
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
-		switch sectionKind {
+		switch h2SectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
+			// Some docs (e.g. aws_ebs_snapshot) have an h3 Timeouts beneath an h2 Arguments Reference. We should ignore
+			// it like we ignore an h2 Timeouts section:
+			if h3Header == "### Timeouts" {
+				continue
+			}
+
+			p.parseArgReferenceSection(reformattedH3Section, p.rawname, p.g.warn)
+
+			//// If this is the beginning of ## Arguments Reference, just process and don't bother trying to match a
+			//// previous argument:
+			//if h3Header == h2Header {
+			//	p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
+			//}
+			//
+			//argName := parseArgNameFromHeader(h3Header)
+			//matchingArgs := getMatchingArgNames(argName, p.ret.Arguments, "")
+			//
+			//if len(matchingArgs) > 1 {
+			//	nestedArgSectionsMultipleMatches++
+			//
+			//	msg := fmt.Sprintf("Found more than one match for resource '%s', header with header content '%s'. "+
+			//		"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, h2Header, matchingArgs)
+			//	p.g.warn(msg)
+			//	continue
+			//} else if len(matchingArgs) == 1 {
+			//	p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname, p.g.warn)
+			//} else {
+			//	p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
+			//}
 		case sectionAttributesReference:
 			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
@@ -682,24 +706,11 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionImports:
 			p.parseImports(reformattedH3Section)
 		default:
-			// Some nested argument sections have content that is simply the name of the top-level argument.
-			// Example: https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/lambda_function.html.markdown#dead_letter_config
-			argName := parseArgNameFromHeader(header)
-			matchingArgs := getMatchingArgNames(argName, p.ret.Arguments, "")
-
-			if len(matchingArgs) > 1 {
-				nestedArgSectionsMultipleMatches++
-
-				msg := fmt.Sprintf("Found more than one match for resource '%s', header with header content '%s'. "+
-					"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, header, matchingArgs)
-				p.g.warn(msg)
-			} else if len(matchingArgs) == 1 {
-				p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname, p.g.warn)
-			}
+			// TODO: Attempt to parse h2's that are actually nested blocks, e.g. aws_fms_policy.exclude_map
 
 			// For all other sections, append them to the description section.
 			if !wroteHeader {
-				p.ret.Description += fmt.Sprintf("## %s\n", header)
+				p.ret.Description += fmt.Sprintf("## %s\n", h2Header)
 				wroteHeader = true
 				if !isBlank(reformattedH3Section[0]) {
 					p.ret.Description += "\n"
@@ -753,43 +764,46 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 	return "", "", false
 }
 
-// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
-// describes. If the line does not describe a nested block, an empty string is returned.
-//
-// Examples of nested blocks include (but are not limited to):
-//
-// - "The `private_cluster_config` block supports:" -> "private_cluster_config"
-// - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
+// getNestedBlockName take a line of a Terraform docs Markdown and returns the name the non-fully-qualified nested block
+// it describes. If the line does not apparently describe a nested block, an empty string is returned.
 func getNestedBlockName(line string) string {
-	nested := ""
-
 	nestedObjectRegexps := []*regexp.Regexp{
-		// For example:
-		// s3_bucket.html.markdown: "The `website` object supports the following:"
-		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+		// e.g. aws_s3_bucket.cors_rule
 		regexp.MustCompile("`([a-z_]+)`.*following"),
 
-		// For example:
-		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		// aws_codedeploy_deployment_group: "### ec2_tag_filter Argument Reference"
+		// e.g. aws_msk_cluter.broker_node_group_info
 		regexp.MustCompile("(?i)## ([a-z][a-z\\d_]+).* argument reference"),
 
-		// See: https://github.com/hashicorp/terraform-provider-google-beta/blob/main/website/docs/r/sql_database_instance.html.markdown#argument-reference
+		// TODO: Figure out what resource this regex applies to. Unable to find anything in AWS TF provider.
+		regexp.MustCompile("### ([a-z_]+).* block"),
+
+		// e.g. aws_fms_policy.exclude_map:
+		regexp.MustCompile("(?i)## `([a-z][a-z\\d_]+)`.*configuration block"),
+
+		// e.g. aws_mskconnect_connector.capacity:
+		regexp.MustCompile("(?i)### ([a-z][a-z\\d_]+).*configuration block"),
+
+		// e.g. aws_lambda_function.dead_letter_config:
+		regexp.MustCompile("### ([a-z][a-z\\d_]+)"),
+
+		// e.g. aws_acmpca_certificate_authority.certificate_authority_configuration.subject
+		regexp.MustCompile("#### ([a-z_]+)"),
+
+		// e.g. google_sql_database_instance:
 		regexp.MustCompile("`([a-z_]+)`.*block supports:"),
 		regexp.MustCompile("`([a-z_\x2E]+)`.*sublist supports:"),
 		regexp.MustCompile("`([a-z_\x2E]+)`.*subblock supports:"),
 		regexp.MustCompile("`([a-z_\x2E]+)`.*block.*supports:"),
 	}
 
-	for _, match := range nestedObjectRegexps {
-		matches := match.FindStringSubmatch(line)
+	for _, regex := range nestedObjectRegexps {
+		matches := regex.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
-			break
+			return strings.ToLower(matches[1])
 		}
 	}
 
-	return nested
+	return ""
 }
 
 // ensureArgFromNestedPath take a period-separated path and a map[string]*argumentDocs, ensures the path to the argument
@@ -865,8 +879,18 @@ func findMatchingKeys(key string, fqKeys []string) []string {
 // - "### capacity Configuration Block" (MSK Connect Connector)
 // - "### dead_letter_config" (Lambda Function)
 func parseArgNameFromHeader(header string) string {
-	argName := strings.Replace(header, "### ", "", -1)
-	argName = strings.Replace(argName, " Configuration Block", "", -1)
+	stringsToReplace := []string{
+		"### ",
+		" Configuration Block",
+		" block",
+	}
+
+	argName := header
+
+	for _, stringToReplace := range stringsToReplace {
+		argName = strings.Replace(argName, stringToReplace, "", -1)
+	}
+
 	return argName
 }
 
@@ -901,9 +925,9 @@ func getMatchingArgNames(argName string, args map[string]*argumentDocs, currentP
 	return ret
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentArg string, rawname string, warn func(string, ...interface{})) {
-	lastMatch := ""
-	nested := parentArg
+func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, rawname string, warn func(string, ...interface{})) {
+	curArgShortName := ""
+	nested := ""
 
 	for _, line := range subsection {
 		name, desc, matchFound := parseArgFromMarkdownLine(line)
@@ -921,15 +945,15 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 					arg.description = desc
 				}
 			}
-			lastMatch = name
-		} else if !isBlank(line) && lastMatch != "" {
+			curArgShortName = name
+		} else if !isBlank(line) && curArgShortName != "" {
 			// This is a continuation of the previous bullet
 			if nested != "" {
-				fullPath := fmt.Sprintf("%s.%s", nested, lastMatch)
+				fullPath := fmt.Sprintf("%s.%s", nested, curArgShortName)
 				arg := ensureArgFromNestedPath(fullPath, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
 			} else {
-				arg := ensureArgFromNestedPath(lastMatch, p.ret.Arguments)
+				arg := ensureArgFromNestedPath(curArgShortName, p.ret.Arguments)
 				arg.description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
@@ -960,7 +984,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 					if len(matchingKeys) == 1 {
 						// If we have exactly 1 match, we know the fully-qualified path of the block we are describing,
 						// e.g. basic.conditions above:
-						nested = appendPath(parentArg, matchingKeys[0])
+						nested = matchingKeys[0]
 					} else if len(matchingKeys) == 0 {
 						// If we do not have any matches, this is unexpected but not exceptional - it happens sometimes,
 						// but we'll assume it's a top-level arg that should be created and we'll warn the user.
@@ -1000,8 +1024,8 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string, parentA
 				}
 			}
 
-			// Clear the lastMatch because we are not processing an argument:
-			lastMatch = ""
+			// Clear the curArgShortName because we are not processing an argument:
+			curArgShortName = ""
 		}
 	}
 }
