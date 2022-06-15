@@ -273,7 +273,7 @@ func TestParseArgReferenceSection(t *testing.T) {
 				Arguments: make(map[string]*argumentDocs),
 			},
 		}
-		parser.parseArgReferenceSection(tt.input, "", "", fakeWarnFunc)
+		parser.parseArgReferenceSection(tt.input, "", fakeWarnFunc)
 
 		assert.Equal(t, tt.expected, parser.ret.Arguments)
 	}
@@ -313,7 +313,7 @@ func TestParseArgReferenceSection_WithParentArg(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "dead_letter_config", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input, "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -371,47 +371,7 @@ func TestParseArgReferenceSection_NestedArgumentsSameName(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "", "", fakeWarnFunc)
-
-	assert.Equal(t, expected, parser.ret.Arguments)
-}
-
-func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T) {
-	// Tests parsing of sections like https://github.com/hashicorp/terraform-provider-aws/blob/471ca4e25a732b0c0d566dbc645ea712b48e1a56/website/docs/r/lambda_function.html.markdown#dead_letter_config
-
-	parser := &tfMarkdownParser{
-		ret: entityDocs{
-			Arguments: map[string]*argumentDocs{
-				"dead_letter_config": {
-					description: "dead_letter_config_desc",
-					arguments:   make(map[string]*argumentDocs),
-				},
-			},
-		},
-	}
-
-	input := []string{
-		"### dead_letter_config",
-		"",
-		"Dead letter queue configuration that specifies the queue or topic where Lambda sends asynchronous events when they fail processing. For more information, see [Dead Letter Queues](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#dlq).",
-		"",
-		"",
-		"* `target_arn` - (Required) target_arn_desc",
-	}
-
-	expected := map[string]*argumentDocs{
-		"dead_letter_config": {
-			description: "dead_letter_config_desc",
-			arguments: map[string]*argumentDocs{
-				"target_arn": {
-					description: "target_arn_desc",
-					arguments:   map[string]*argumentDocs{},
-				},
-			},
-		},
-	}
-
-	parser.parseArgReferenceSection(input, "dead_letter_config", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input, "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -419,21 +379,17 @@ func TestParseArgReferenceSection_NestedSubsectionWithSameNameAsArg(t *testing.T
 func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurationBlock(t *testing.T) {
 	// Integration test for parsing of docs like https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/mskconnect_connector.html.markdown#basic-configuration
 
-	input1 := []string{
+	input := []string{
 		"## Argument Reference",
 		"",
 		"The following arguments are supported:",
 		"",
 		"* `capacity` - (Required) Information about the capacity allocated to the connector. See below.",
-	}
-
-	input2 := []string{
+		"",
 		"### capacity Configuration Block",
 		"",
 		"* `autoscaling` - (Optional) Information about the auto scaling parameters for the connector. See below.",
-	}
-
-	input3 := []string{
+		"",
 		"### autoscaling Configuration Block",
 		"",
 		"",
@@ -463,10 +419,7 @@ func TestParseArgReferenceSection_DoubleNestedSubsectionWithArgNameAndConfigurat
 		},
 	}
 
-	// This emulates the behavior of parseSection(), assuming that parseArgNameFromHeader() and getMatchingArgNames() are doing their jobs correctly:
-	parser.parseArgReferenceSection(input1, "", "", fakeWarnFunc)
-	parser.parseArgReferenceSection(input2, "capacity", "", fakeWarnFunc)
-	parser.parseArgReferenceSection(input3, "capacity.autoscaling", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input, "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -513,7 +466,7 @@ func TestParseArgReferenceSection_NonFullyQualifiedSubBlocks(t *testing.T) {
 		},
 	}
 
-	parser.parseArgReferenceSection(input, "", "", fakeWarnFunc)
+	parser.parseArgReferenceSection(input, "", fakeWarnFunc)
 
 	assert.Equal(t, expected, parser.ret.Arguments)
 }
@@ -858,10 +811,19 @@ func TestGetNestedBlockName(t *testing.T) {
 		{"", ""},
 
 		// AWS examples:
-		{"The `website` object supports the following:", "website"},
+		{"The `cors_rule` configuration block supports the following arguments:", "cors_rule"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
 		{"### ec2_tag_filter Argument Reference", "ec2_tag_filter"},
 		{"The `encryption_configuration` block supports the following argument:", "encryption_configuration"},
+		{"### validity block", "validity"},
+		{"#### subject", "subject"},
+		{"### dead_letter_config", "dead_letter_config"},
+
+		{"### capacity Configuration Block", "capacity"},
+		{"### validity block", "validity"},
+
+		// Some resources have nested blocks at an h2, e.g. aws_fms_policy:
+		{"## `exclude_map` Configuration Block", "exclude_map"},
 
 		// This is a common starting line of base arguments, so should result in zero value:
 		{"The following arguments are supported:", ""},
@@ -1111,6 +1073,7 @@ func TestFindMatchingKeys(t *testing.T) {
 func TestParseArgNameFromHeader(t *testing.T) {
 	assert.Equal(t, "dead_letter_config", parseArgNameFromHeader("### dead_letter_config"))
 	assert.Equal(t, "capacity", parseArgNameFromHeader("### capacity Configuration Block"))
+	assert.Equal(t, "validity", parseArgNameFromHeader("### validity block"))
 }
 
 func TestMatchingArgNamesFromSectionHeader(t *testing.T) {
