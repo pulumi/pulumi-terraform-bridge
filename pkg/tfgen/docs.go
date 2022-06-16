@@ -677,28 +677,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			}
 
 			p.parseArgReferenceSection(reformattedH3Section, p.rawname, p.g.warn)
-
-			//// If this is the beginning of ## Arguments Reference, just process and don't bother trying to match a
-			//// previous argument:
-			//if h3Header == h2Header {
-			//	p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
-			//}
-			//
-			//argName := parseArgNameFromHeader(h3Header)
-			//matchingArgs := getMatchingArgNames(argName, p.ret.Arguments, "")
-			//
-			//if len(matchingArgs) > 1 {
-			//	nestedArgSectionsMultipleMatches++
-			//
-			//	msg := fmt.Sprintf("Found more than one match for resource '%s', header with header content '%s'. "+
-			//		"Candidates are: %v. The section will not be parsed as arguments.", p.rawname, h2Header, matchingArgs)
-			//	p.g.warn(msg)
-			//	continue
-			//} else if len(matchingArgs) == 1 {
-			//	p.parseArgReferenceSection(reformattedH3Section, matchingArgs[0], p.rawname, p.g.warn)
-			//} else {
-			//	p.parseArgReferenceSection(reformattedH3Section, "", p.rawname, p.g.warn)
-			//}
 		case sectionAttributesReference:
 			p.parseAttributesReferenceSection(reformattedH3Section)
 		case sectionFrontMatter:
