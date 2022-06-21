@@ -404,8 +404,36 @@ func (b *tf12binder) declareFile(input *syntax.File) (*file, hcl.Diagnostics) {
 					name:   item.Labels[0],
 				}
 				file.nodes = append(file.nodes, o)
-				//			case "module":
-				//				// TODO(pdg): module instances
+			case "module":
+				// We are processing a call to a Terraform "Child Module" (https://www.terraform.io/language/modules#child-modules)
+
+				// Treating it similarly to how we would a regular resource.
+				var terraformType model.Type = model.NewObjectType(make(map[string]model.Type))
+				var variableType model.Type = model.NewObjectType(make(map[string]model.Type))
+				_, hasCount := item.Body.Attributes["count"]
+				_, hasForEach := item.Body.Attributes["for_each"]
+				if hasCount || hasForEach {
+					variableType = model.NewListType(terraformType)
+				}
+
+				// The source attribute serves the same "package" role that ordinary resource tokens do.
+				// Obtaining and saving source path for easy access in the future.
+				firstSourceExpression := item.Body.Attributes["source"].Expr.(*hclsyntax.TemplateExpr)
+				secondSourceExpression := firstSourceExpression.Parts[0].(*hclsyntax.LiteralValueExpr)
+				sourcePath := secondSourceExpression.Val.AsString()
+
+				// Ignoring the source attribute so that it doesn't get processed during code generation
+				delete(item.Body.Attributes, "source")
+
+				r := &resource{
+					syntax:        item,
+					name:          item.Labels[0],
+					token:         sourcePath,
+					terraformType: terraformType,
+					variableType:  variableType,
+				}
+
+				file.nodes = append(file.nodes, r)
 			case "resource", "data":
 				isDataSource := item.Type == "data"
 
