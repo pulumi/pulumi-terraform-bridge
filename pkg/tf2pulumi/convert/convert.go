@@ -123,7 +123,7 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	var genDiags hcl.Diagnostics
 	switch opts.TargetLanguage {
 	case LanguageTypescript:
-		generatedFiles, genDiags, err = hcl2nodejs.GenerateProgram(program)
+        generatedFiles, genDiags, err = hcl2nodejs.GenerateCode(program, opts.ConvertToComponentResource)
 		diagnostics = append(diagnostics, genDiags...)
 	case LanguagePulumi:
 		generatedFiles = map[string][]byte{}
@@ -170,6 +170,8 @@ type Options struct {
 	// AnnotateNodesWithLocations is true if the generated source code should contain comments that annotate top-level
 	// nodes with their original source locations.
 	AnnotateNodesWithLocations bool
+	// Whether to convert the given terraform module to a runnable program, or a Pulumi ComponentResource file.
+	ConvertToComponentResource bool
 	// FilterResourceNames, if true, removes the property indicated by ResourceNameProperty from all resources in the
 	// graph.
 	FilterResourceNames bool
