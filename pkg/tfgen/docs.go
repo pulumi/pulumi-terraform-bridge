@@ -958,92 +958,9 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 	}
 }
 
-var (
-	ignoredDocHeaders      = make(map[string]int)
-	elidedDescriptions     int // i.e., we discard the entire description, including examples
-	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
-	elidedArguments        int
-	elidedNestedArguments  int
-	elidedAttributes       int
-
-	hclAllLangsConversionFailures int // examples that failed to convert in any language
-
-	// examples that failed to convert in one, but not all, languages. This is less severe impact because users will
-	// at least have code in another language to reference:
-	hclGoPartialConversionFailures         int
-	hclPythonPartialConversionFailures     int
-	hclTypeScriptPartialConversionFailures int
-	hclCSharpPartialConversionFailures     int
-
-	// Arguments metrics:
-	totalArgumentsFromDocs             int
-	argumentDescriptionsFromAttributes int // This is seemingly incorrect behavior, so we want to track how often this happens.
-	totalPropertiesInSchema            int
-	blankPropertyDescriptionsInSchema  int
-
-	entitiesMissingDocs int
-	unexpectedSnippets  int
-)
-
 // isBlank returns true if the line is all whitespace.
 func isBlank(line string) bool {
 	return strings.TrimSpace(line) == ""
-}
-
-// printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func (g *Generator) printDocStats() {
-	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
-	if entitiesMissingDocs > 0 {
-		g.warn("%d entities have missing docs.", entitiesMissingDocs)
-	}
-
-	if unexpectedSnippets > 0 {
-		g.warn("%d entity document sections contained unexpected HCL code snippets. Examples will be converted, "+
-			"but may not display correctly in the registry, e.g. lacking tabs.", unexpectedSnippets)
-	}
-
-	if elidedDescriptions > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.",
-			elidedDescriptions)
-	}
-
-	if elidedDescriptionsOnly > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.",
-			elidedDescriptionsOnly)
-	}
-
-	if elidedArguments > 0 {
-		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.",
-			elidedArguments)
-	}
-
-	if elidedNestedArguments > 0 {
-		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.",
-			elidedNestedArguments)
-	}
-
-	if elidedAttributes > 0 {
-		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.",
-			elidedAttributes)
-	}
-
-	g.warn("Example Conversion Metrics:")
-	g.warn("\t%d HCL examples failed to convert in all languages", hclAllLangsConversionFailures)
-	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to TypeScript",
-		hclTypeScriptPartialConversionFailures)
-	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to Python",
-		hclPythonPartialConversionFailures)
-	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to Go",
-		hclGoPartialConversionFailures)
-	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to C#",
-		hclCSharpPartialConversionFailures)
-
-	// TODO: These should probably be INFO or just print normally, but we don't yet have a smooth interface for logging
-	g.warn("Argument metrics:")
-	g.warn("\t%d argument descriptions were parsed from the upstream docs", totalArgumentsFromDocs)
-	g.warn("\t%d top-level input property descriptions came from an upstream attribute (as opposed to an argument). (Nested arguments are not included in this count.)", argumentDescriptionsFromAttributes)
-	g.warn("\t%d of %d properties (%.2f%%) are missing descriptions in the schema", blankPropertyDescriptionsInSchema, totalPropertiesInSchema,
-		float64(blankPropertyDescriptionsInSchema)/float64(totalPropertiesInSchema)*100)
 }
 
 // reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example

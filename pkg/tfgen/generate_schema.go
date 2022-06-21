@@ -411,11 +411,6 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		description = g.genRawDocComment(prop.rawdoc)
 	}
 
-	totalPropertiesInSchema++
-	if description == "" {
-		blankPropertyDescriptionsInSchema++
-	}
-
 	language := map[string]pschema.RawMessage{}
 	if prop.info != nil && prop.info.CSharpName != "" {
 		language["csharp"] = rawMessage(map[string]string{"name": prop.info.CSharpName})
@@ -527,7 +522,6 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
 		}
-
 	}
 
 	if !res.IsProvider() {

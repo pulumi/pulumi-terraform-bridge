@@ -400,7 +400,11 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 			propertyInfo = propertyInfos[key]
 		}
 
+		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
+		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
+		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
@@ -750,6 +754,8 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	schemaStats = countStats(pulumiPackageSpec)
+
 	// Serialize the schema and attach it to the provider shim.
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
@@ -825,7 +831,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Print out some documentation stats as a summary afterwards.
-	g.printDocStats()
+	printDocStats()
 
 	// Close the plugin host.
 	g.pluginHost.Close()
@@ -1075,8 +1081,7 @@ func (g *Generator) gatherResource(rawname string,
 			if foundInAttributes && !isProvider {
 				argumentDescriptionsFromAttributes++
 				msg := fmt.Sprintf("Argument desc from attributes: resource, rawname = '%s', property = '%s'", rawname, key)
-				fmt.Println(msg)
-				//panic(msg)
+				g.debug(msg)
 			}
 
 			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
@@ -1244,8 +1249,9 @@ func (g *Generator) gatherDataSource(rawname string,
 			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
 			if foundInAttributes {
 				argumentDescriptionsFromAttributes++
-				msg := fmt.Sprintf("Argument desc from attributes: data source, rawname = '%s', property = '%s'", rawname, arg)
-				fmt.Println(msg)
+				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
+					rawname, arg)
+				g.debug(msg)
 			}
 
 			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
@@ -1557,14 +1563,26 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string
 
 	attribute := entityDocs.Attributes[arg]
 
-	// It seems counter-intuitive that we would take docs for a Pulumi input (i.e. out == false) from a TF attribute
-	// (TF's equivalent of a Pulumi output), so we want to track how often this happens and under what circumstances
-	// this is the desired behavior:
 	if attribute != "" {
+		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
+		// may be met for one of the following reasons:
+		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
+		// 2. The upstream schema is correct, but the docs are incorrect in that they have the item in question documented
+		//    as an attribute, and this behavior is intentional (with the intent of being forgiving about mistakes in the
+		//    upstream docs).
+		//
+		// (There may be other, unknown, reasons why this behavior exists.)
+		//
+		// In case #1 above, we are generating an incorrect schema because the upstream schema is incorrect, and we would
+		// arguably be better off not having any description in our docs. In case #2 above, this is fairly risky fallback
+		// behavior with may result in incorrect docs, per pulumi-terraform-bridge#550.
+		//
+		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
+		// altogether) due to the difficulty in determining whether the correct description is actually found.
 		return attribute, true
 	}
 
-	return attribute, false
+	return "", false
 }
 
 // cleanDir removes all existing files from a directory except those in the exclusions list.
