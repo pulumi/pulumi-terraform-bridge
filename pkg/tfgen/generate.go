@@ -400,7 +400,7 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
@@ -1054,7 +1054,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := getDescriptionFromParsedDocs(entityDocs, key)
+		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description()
 
 		propinfo := info.Fields[key]
@@ -1072,6 +1072,13 @@ func (g *Generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
+			if foundInAttributes && !isProvider {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc from attributes: resource, rawname = '%s', property = '%s'", rawname, key)
+				fmt.Println(msg)
+				//panic(msg)
+			}
+
 			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
@@ -1234,7 +1241,13 @@ func (g *Generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(sch, cust) {
-			doc := getDescriptionFromParsedDocs(entityDocs, arg)
+			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
+			if foundInAttributes {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc from attributes: data source, rawname = '%s', property = '%s'", rawname, arg)
+				fmt.Println(msg)
+			}
+
 			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
@@ -1527,19 +1540,31 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
-func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) string {
+// If the description is taken from an attribute, the second return value is true.
+func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) (string, bool) {
 	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
-func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) string {
+// If the description is taken from an attribute, the second return value is true.
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) (string, bool) {
 	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
-		return res.arguments[arg]
+		return res.arguments[arg], false
 	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
-		return res.description
+		return res.description, false
 	}
-	return entityDocs.Attributes[arg]
+
+	attribute := entityDocs.Attributes[arg]
+
+	// It seems counter-intuitive that we would take docs for a Pulumi input (i.e. out == false) from a TF attribute
+	// (TF's equivalent of a Pulumi output), so we want to track how often this happens and under what circumstances
+	// this is the desired behavior:
+	if attribute != "" {
+		return attribute, true
+	}
+
+	return attribute, false
 }
 
 // cleanDir removes all existing files from a directory except those in the exclusions list.

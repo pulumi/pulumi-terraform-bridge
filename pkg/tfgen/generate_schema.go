@@ -411,9 +411,9 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 		description = g.genRawDocComment(prop.rawdoc)
 	}
 
-	totalPropertyDescriptions++
+	totalPropertiesInSchema++
 	if description == "" {
-		blankPropertyDescriptions++
+		blankPropertyDescriptionsInSchema++
 	}
 
 	language := map[string]pschema.RawMessage{}

@@ -777,6 +777,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 					p.ret.Arguments[nested] = &argumentDocs{
 						arguments: make(map[string]string),
 					}
+					totalArgumentsFromDocs++
 				} else if p.ret.Arguments[nested].arguments == nil {
 					p.ret.Arguments[nested].arguments = make(map[string]string)
 				}
@@ -794,6 +795,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
 					p.ret.Arguments[name] = &argumentDocs{description: desc}
+					totalArgumentsFromDocs++
 				}
 			}
 			lastMatch = name
@@ -973,8 +975,11 @@ var (
 	hclTypeScriptPartialConversionFailures int
 	hclCSharpPartialConversionFailures     int
 
-	totalPropertyDescriptions int
-	blankPropertyDescriptions int
+	// Arguments metrics:
+	totalArgumentsFromDocs             int
+	argumentDescriptionsFromAttributes int // This is seemingly incorrect behavior, so we want to track how often this happens.
+	totalPropertiesInSchema            int
+	blankPropertyDescriptionsInSchema  int
 
 	entitiesMissingDocs int
 	unexpectedSnippets  int
@@ -1022,34 +1027,23 @@ func (g *Generator) printDocStats() {
 			elidedAttributes)
 	}
 
-	if hclAllLangsConversionFailures > 0 {
-		g.warn("%d HCL examples failed to convert in all languages", hclAllLangsConversionFailures)
-	}
+	g.warn("Example Conversion Metrics:")
+	g.warn("\t%d HCL examples failed to convert in all languages", hclAllLangsConversionFailures)
+	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to TypeScript",
+		hclTypeScriptPartialConversionFailures)
+	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to Python",
+		hclPythonPartialConversionFailures)
+	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to Go",
+		hclGoPartialConversionFailures)
+	g.warn("\t%d HCL examples were converted in at least one language but failed to convert to C#",
+		hclCSharpPartialConversionFailures)
 
-	if hclTypeScriptPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to TypeScript",
-			hclTypeScriptPartialConversionFailures)
-	}
-
-	if hclPythonPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Python",
-			hclPythonPartialConversionFailures)
-	}
-
-	if hclGoPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Go",
-			hclGoPartialConversionFailures)
-	}
-
-	if hclCSharpPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#",
-			hclCSharpPartialConversionFailures)
-	}
-
-	if blankPropertyDescriptions > 0 {
-		g.warn("%d of %d properties (%.2f) are missing descriptions", blankPropertyDescriptions, totalPropertyDescriptions,
-			float64(blankPropertyDescriptions)/float64(totalPropertyDescriptions)*100)
-	}
+	// TODO: These should probably be INFO or just print normally, but we don't yet have a smooth interface for logging
+	g.warn("Argument metrics:")
+	g.warn("\t%d argument descriptions were parsed from the upstream docs", totalArgumentsFromDocs)
+	g.warn("\t%d top-level input property descriptions came from an upstream attribute (as opposed to an argument). (Nested arguments are not included in this count.)", argumentDescriptionsFromAttributes)
+	g.warn("\t%d of %d properties (%.2f%%) are missing descriptions in the schema", blankPropertyDescriptionsInSchema, totalPropertiesInSchema,
+		float64(blankPropertyDescriptionsInSchema)/float64(totalPropertiesInSchema)*100)
 }
 
 // reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example
