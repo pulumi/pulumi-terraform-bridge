@@ -43,6 +43,7 @@ var (
 	totalArgumentsFromDocs int
 	// See comment in getNestedDescriptionFromParsedDocs for why we track this behavior:
 	argumentDescriptionsFromAttributes int
+	nestedArgSectionsMultipleMatches   int
 
 	// General metrics:
 	entitiesMissingDocs int
@@ -176,6 +177,7 @@ func printDocStats() {
 	fmt.Printf("\t%d of %d resource inputs (%.2f%%) are missing descriptions in the schema\n",
 		schemaStats.resourceInputsMissingDesc, schemaStats.totalResourceInputs,
 		float64(schemaStats.resourceInputsMissingDesc)/float64(schemaStats.totalResourceInputs)*100)
+	fmt.Printf("\t%d arg doc sections were partially processed because they contained a nested block that matched multiple previously mentioned arguments. The affected resources and functions will have missing argument descriptions.", nestedArgSectionsMultipleMatches)
 	fmt.Println("")
 
 	fmt.Println("Attribute metrics:")
