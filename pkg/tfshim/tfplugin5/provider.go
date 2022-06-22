@@ -455,6 +455,10 @@ func (p *provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, 
 		return nil, err
 	}
 
+	if resp.NewState == nil {
+		return nil, unmarshalErrors(resp.Diagnostics)
+	}
+
 	newStateVal, err := msgpack.Unmarshal(resp.NewState.Msgpack, resource.ctyType)
 	if err != nil {
 		return nil, err
