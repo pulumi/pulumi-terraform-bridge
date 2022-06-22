@@ -522,7 +522,6 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
 		}
-
 	}
 
 	if !res.IsProvider() {

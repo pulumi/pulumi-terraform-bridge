@@ -400,7 +400,11 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 			propertyInfo = propertyInfos[key]
 		}
 
-		doc := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
+		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
+		// This seems wrong, so we ignore the second return value here for now.
+		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
@@ -750,6 +754,8 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	schemaStats = countStats(pulumiPackageSpec)
+
 	// Serialize the schema and attach it to the provider shim.
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
@@ -825,7 +831,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Print out some documentation stats as a summary afterwards.
-	g.printDocStats()
+	printDocStats()
 
 	// Close the plugin host.
 	g.pluginHost.Close()
@@ -1054,7 +1060,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
-		doc := getDescriptionFromParsedDocs(entityDocs, key)
+		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description()
 
 		propinfo := info.Fields[key]
@@ -1072,6 +1078,12 @@ func (g *Generator) gatherResource(rawname string,
 
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
+			if foundInAttributes && !isProvider {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc from attributes: resource, rawname = '%s', property = '%s'", rawname, key)
+				g.debug(msg)
+			}
+
 			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
@@ -1234,7 +1246,14 @@ func (g *Generator) gatherDataSource(rawname string,
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(sch, cust) {
-			doc := getDescriptionFromParsedDocs(entityDocs, arg)
+			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
+			if foundInAttributes {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
+					rawname, arg)
+				g.debug(msg)
+			}
+
 			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
@@ -1527,19 +1546,43 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
-func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) string {
+// If the description is taken from an attribute, the second return value is true.
+func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) (string, bool) {
 	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
-func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) string {
+// If the description is taken from an attribute, the second return value is true.
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) (string, bool) {
 	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
-		return res.arguments[arg]
+		return res.arguments[arg], false
 	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
-		return res.description
+		return res.description, false
 	}
-	return entityDocs.Attributes[arg]
+
+	attribute := entityDocs.Attributes[arg]
+
+	if attribute != "" {
+		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
+		// may be met for one of the following reasons:
+		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
+		// 2. The upstream schema is correct, but the docs are incorrect in that they have the item in question documented
+		//    as an attribute, and this behavior is intentional (with the intent of being forgiving about mistakes in the
+		//    upstream docs).
+		//
+		// (There may be other, unknown, reasons why this behavior exists.)
+		//
+		// In case #1 above, we are generating an incorrect schema because the upstream schema is incorrect, and we would
+		// arguably be better off not having any description in our docs. In case #2 above, this is fairly risky fallback
+		// behavior with may result in incorrect docs, per pulumi-terraform-bridge#550.
+		//
+		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
+		// altogether) due to the difficulty in determining whether the correct description is actually found.
+		return attribute, true
+	}
+
+	return "", false
 }
 
 // cleanDir removes all existing files from a directory except those in the exclusions list.

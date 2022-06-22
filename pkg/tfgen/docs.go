@@ -777,6 +777,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 					p.ret.Arguments[nested] = &argumentDocs{
 						arguments: make(map[string]string),
 					}
+					totalArgumentsFromDocs++
 				} else if p.ret.Arguments[nested].arguments == nil {
 					p.ret.Arguments[nested].arguments = make(map[string]string)
 				}
@@ -794,6 +795,7 @@ func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 			} else {
 				if !strings.HasSuffix(line, "supports the following:") {
 					p.ret.Arguments[name] = &argumentDocs{description: desc}
+					totalArgumentsFromDocs++
 				}
 			}
 			lastMatch = name
@@ -956,92 +958,9 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 	}
 }
 
-var (
-	ignoredDocHeaders      = make(map[string]int)
-	elidedDescriptions     int // i.e., we discard the entire description, including examples
-	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
-	elidedArguments        int
-	elidedNestedArguments  int
-	elidedAttributes       int
-
-	hclAllLangsConversionFailures int // examples that failed to convert in any language
-
-	// examples that failed to convert in one, but not all, languages. This is less severe impact because users will
-	// at least have code in another language to reference:
-	hclGoPartialConversionFailures         int
-	hclPythonPartialConversionFailures     int
-	hclTypeScriptPartialConversionFailures int
-	hclCSharpPartialConversionFailures     int
-
-	entitiesMissingDocs int
-	unexpectedSnippets  int
-)
-
 // isBlank returns true if the line is all whitespace.
 func isBlank(line string) bool {
 	return strings.TrimSpace(line) == ""
-}
-
-// printDocStats outputs warnings and, if flags are set, stdout diagnostics pertaining to documentation conversion.
-func (g *Generator) printDocStats() {
-	// These summaries are printed on each run, to help us keep an eye on success/failure rates.
-	if entitiesMissingDocs > 0 {
-		g.warn("%d entities have missing docs.", entitiesMissingDocs)
-	}
-
-	if unexpectedSnippets > 0 {
-		g.warn("%d entity document sections contained unexpected HCL code snippets. Examples will be converted, "+
-			"but may not display correctly in the registry, e.g. lacking tabs.", unexpectedSnippets)
-	}
-
-	if elidedDescriptions > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, including examples.",
-			elidedDescriptions)
-	}
-
-	if elidedDescriptionsOnly > 0 {
-		g.warn("%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.",
-			elidedDescriptionsOnly)
-	}
-
-	if elidedArguments > 0 {
-		g.warn("%d arguments contained an <elided> reference and had their descriptions dropped.",
-			elidedArguments)
-	}
-
-	if elidedNestedArguments > 0 {
-		g.warn("%d nested arguments contained an <elided> reference and had their descriptions dropped.",
-			elidedNestedArguments)
-	}
-
-	if elidedAttributes > 0 {
-		g.warn("%d attributes contained an <elided> reference and had their descriptions dropped.",
-			elidedAttributes)
-	}
-
-	if hclAllLangsConversionFailures > 0 {
-		g.warn("%d HCL examples failed to convert in all languages", hclAllLangsConversionFailures)
-	}
-
-	if hclTypeScriptPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to TypeScript",
-			hclTypeScriptPartialConversionFailures)
-	}
-
-	if hclPythonPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Python",
-			hclPythonPartialConversionFailures)
-	}
-
-	if hclGoPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to Go",
-			hclGoPartialConversionFailures)
-	}
-
-	if hclCSharpPartialConversionFailures > 0 {
-		g.warn("%d HCL examples were converted in at least one language but failed to convert to C#",
-			hclCSharpPartialConversionFailures)
-	}
 }
 
 // reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example
