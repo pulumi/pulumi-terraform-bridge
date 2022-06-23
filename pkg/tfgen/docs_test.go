@@ -69,7 +69,7 @@ func TestURLRewrite(t *testing.T) {
 	}
 }
 
-func TestArgumentRegex(t *testing.T) {
+func TestParseArgReferenceSection(t *testing.T) {
 	tests := []struct {
 		input    []string
 		expected map[string]*argumentDocs
@@ -197,7 +197,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
 				"",
 				"---",
-				"* `retention_policy` supports the following:",
+				"`retention_policy` supports the following:",
 			},
 			expected: map[string]*argumentDocs{
 				"retention_policy": {
@@ -252,6 +252,17 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"* `prefix` - (Required) Specifies the path with which to match requests.",
+				"This parameter must always start with /, which by itself matches all requests to the virtual router service name.",
+			},
+			expected: map[string]*argumentDocs{
+				"prefix": {
+					description: "Specifies the path with which to match requests.\nThis parameter must always start with /, which by itself matches all requests to the virtual router service name.",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -263,15 +274,6 @@ func TestArgumentRegex(t *testing.T) {
 		parser.parseArgReferenceSection(tt.input)
 
 		assert.Equal(t, tt.expected, parser.ret.Arguments)
-
-		//assert.Len(t, parser.ret.Arguments, len(tt.expected))
-		//for k, v := range tt.expected {
-		//	actualArg := parser.ret.Arguments[k]
-		//	assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
-		//	assert.Equal(t, v.description, actualArg.description)
-		//	assert.Equal(t, v.isNested, actualArg.isNested)
-		//	assert.Equal(t, v.arguments, actualArg.arguments)
-		//}
 	}
 }
 

@@ -765,65 +765,78 @@ func getNestedBlockName(line string) string {
 }
 
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
-	var lastMatch, nested string
+	saveArg := func(nested, name, desc string) {
+		if name == "" || desc == "" {
+			return
+		}
+
+		if nested != "" {
+			// Ensure the parent nested argument exists, since we sometimes will encounter a nested block with no previous
+			// mention of an argument.
+			if p.ret.Arguments[nested] == nil {
+				p.ret.Arguments[nested] = &argumentDocs{}
+				totalArgumentsFromDocs++
+			}
+
+			if p.ret.Arguments[nested].arguments == nil {
+				p.ret.Arguments[nested].arguments = make(map[string]string)
+			}
+
+			p.ret.Arguments[nested].arguments[name] = desc
+
+			// Also record this as a top-level argument just in case, since sometimes the recorded nested
+			// argument doesn't match the resource's argument.
+			// For example, see `cors_rule` in s3_bucket.html.markdown.
+			if p.ret.Arguments[name] == nil {
+				p.ret.Arguments[name] = &argumentDocs{
+					description: desc,
+					isNested:    true, // Mark that this argument comes from a nested field.
+				}
+				totalArgumentsFromDocs++
+			}
+		} else {
+			p.ret.Arguments[name] = &argumentDocs{description: desc}
+			totalArgumentsFromDocs++
+		}
+	}
+
+	curNested := ""
+	curArgName := ""
+	curDesc := ""
+
 	for _, line := range subsection {
 		name, desc, matchFound := parseArgFromMarkdownLine(line)
 
 		if matchFound {
-			// found a property bullet, extract the name and description
-			if nested != "" {
-				// We found this line within a nested field. We should record it as such.
-				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argumentDocs{
-						arguments: make(map[string]string),
-					}
-					totalArgumentsFromDocs++
-				} else if p.ret.Arguments[nested].arguments == nil {
-					p.ret.Arguments[nested].arguments = make(map[string]string)
-				}
-				p.ret.Arguments[nested].arguments[name] = desc
+			// This is the start of a new property. If we have anything previously parsed to save, save it.
+			saveArg(curNested, curArgName, curDesc)
 
-				// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				// argument doesn't match the resource's argument.
-				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[name] == nil {
-					p.ret.Arguments[name] = &argumentDocs{
-						description: desc,
-						isNested:    true, // Mark that this argument comes from a nested field.
-					}
-				}
-			} else {
-				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[name] = &argumentDocs{description: desc}
-					totalArgumentsFromDocs++
-				}
-			}
-			lastMatch = name
-		} else if !isBlank(line) && lastMatch != "" {
-			// this is a continuation of the previous bullet
-			if nested != "" {
-				p.ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
-
-				// Also update the top-level argument if we took it from a nested field.
-				if p.ret.Arguments[lastMatch].isNested {
-					p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-				}
-			} else {
-				p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
-			}
+			curDesc = desc
+			curArgName = name
+		} else if !isBlank(line) && curArgName != "" {
+			// This is a continuation of the previous bullet
+			curDesc += "\n" + strings.TrimSpace(line)
 		} else {
-			// This line might declare the beginning of a nested object.
-			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
+			// This line is either blank, the start of a nested block, or unknown content.
+
+			// In any case, the previous argument has ended, so save what we have and clear the state of the current
+			// argument and its description:
+			saveArg(curNested, curArgName, curDesc)
+			curArgName = ""
+			curDesc = ""
+
+			// This line might declare the beginning of a nested object. (If we do not detect the start of a nested
+			// block, then this is an empty line or there were no bullets yet.)
 			nestedBlockCurrentLine := getNestedBlockName(line)
 
 			if nestedBlockCurrentLine != "" {
-				nested = nestedBlockCurrentLine
+				curNested = nestedBlockCurrentLine
 			}
-
-			// Clear the lastMatch.
-			lastMatch = ""
 		}
 	}
+
+	// Ensure we write out any args we were parsing when we hit the end of the section:
+	saveArg(curNested, curArgName, curDesc)
 }
 
 func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) {
