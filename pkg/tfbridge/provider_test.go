@@ -456,7 +456,16 @@ func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) [
 
 	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
 		"stringPropertyValue": resource.NewStringProperty("foo"),
-		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+		"setPropertyValues": resource.NewArrayProperty(
+			[]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name": resource.NewStringProperty("somename"),
+					// On purpose not setting the value property here. `value` is optional,
+					// but `applyDefaults` sets the default value which will generate a conflict.
+					// Reproduces: https://github.com/pulumi/pulumi-azuredevops/issues/52
+				}),
+			},
+		),
 		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
 			"kind": unknown,
 			"configuration": resource.NewObjectProperty(resource.PropertyMap{

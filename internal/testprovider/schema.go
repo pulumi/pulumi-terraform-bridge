@@ -253,10 +253,23 @@ func ProviderV1() *schemav1.Provider {
 						Optional: true,
 					},
 					"set_property_value": {
-						Type:     schemav1.TypeSet,
-						Elem:     &schemav1.Schema{Type: schemav1.TypeString},
-						Optional: true,
-						ForceNew: true,
+						Type: schemav1.TypeSet,
+						Elem: &schemav1.Resource{
+							Schema: map[string]*schemav1.Schema{
+								"name": {
+									Type:     schemav1.TypeString,
+									Required: true,
+								},
+								"value": {
+									Type:          schemav1.TypeString,
+									Optional:      true,
+									Default:       "",
+									ConflictsWith: []string{"conflicting_property"},
+								},
+							},
+						},
+						Required: true,
+						MinItems: 1,
 					},
 					"string_with_bad_interpolation": {Type: schemav1.TypeString, Optional: true},
 					"conflicting_property": {
@@ -635,9 +648,23 @@ func ProviderV2() *schemav2.Provider {
 						Optional: true,
 					},
 					"set_property_value": {
-						Type:     schemav2.TypeSet,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-						Optional: true,
+						Type: schemav2.TypeSet,
+						Elem: &schemav2.Resource{
+							Schema: map[string]*schemav2.Schema{
+								"name": {
+									Type:     schemav2.TypeString,
+									Required: true,
+								},
+								"value": {
+									Type:          schemav2.TypeString,
+									Optional:      true,
+									Default:       "",
+									ConflictsWith: []string{"conflicting_property"},
+								},
+							},
+						},
+						Required: true,
+						MinItems: 1,
 						ForceNew: true,
 					},
 					"string_with_bad_interpolation": {Type: schemav2.TypeString, Optional: true},
