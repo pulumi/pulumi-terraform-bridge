@@ -77,6 +77,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID
 	newState.Meta = instanceState.Meta
+	newState.RawConfig = instanceState.RawConfig
 	if hasVersion || version > 0 {
 		if newState.Meta == nil {
 			newState.Meta = map[string]interface{}{}
