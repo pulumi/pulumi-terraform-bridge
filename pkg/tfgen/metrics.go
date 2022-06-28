@@ -43,6 +43,7 @@ var (
 	totalArgumentsFromDocs int
 	// See comment in getNestedDescriptionFromParsedDocs for why we track this behavior:
 	argumentDescriptionsFromAttributes int
+	argumentCollisions                 int
 
 	// General metrics:
 	entitiesMissingDocs int
@@ -167,12 +168,14 @@ func printDocStats() {
 
 	fmt.Println("Argument metrics:")
 	fmt.Printf("\t%d argument descriptions were parsed from the upstream docs\n", totalArgumentsFromDocs)
-	fmt.Printf("\t%d top-level input property descriptions came from an upstream attribute (as opposed to an argument). "+
-		"Nested arguments are not included in this count.\n", argumentDescriptionsFromAttributes)
+	fmt.Printf("\t%d of %d arguments (%.2f%%) were dropped because their descriptions conflicted with an identically named argument in the same page.\n",
+		argumentCollisions, totalArgumentsFromDocs, float64(schemaStats.resourceInputsMissingDesc)/float64(schemaStats.totalResourceInputs)*100)
 	fmt.Printf("\t%d arguments contained an <elided> reference and had their descriptions dropped.\n",
 		elidedArguments)
 	fmt.Printf("\t%d nested arguments contained an <elided> reference and had their descriptions dropped.\n",
 		elidedNestedArguments)
+	fmt.Printf("\t%d top-level input property descriptions came from an upstream attribute (as opposed to an argument). "+
+		"Nested arguments are not included in this count.\n", argumentDescriptionsFromAttributes)
 	fmt.Printf("\t%d of %d resource inputs (%.2f%%) are missing descriptions in the schema\n",
 		schemaStats.resourceInputsMissingDesc, schemaStats.totalResourceInputs,
 		float64(schemaStats.resourceInputsMissingDesc)/float64(schemaStats.totalResourceInputs)*100)

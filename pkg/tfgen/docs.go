@@ -98,6 +98,12 @@ type entityDocs struct {
 	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
 	Arguments map[string]*argumentDocs
 
+	// ArgumentCollisions contains arguments that were dropped during the parsing process because we do not
+	// uniquely identify argument names (i.e. with a full path) and therefore cannot ensure that the accompanying
+	// description is correct. A key's corresponding value is the number of times the argument was dropped. The value
+	// is never less than 2.
+	ArgumentCollisions map[string]int
+
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
 
@@ -238,6 +244,22 @@ func formatEntityName(rawname string) string {
 	return fmt.Sprintf("'%s'", rawname)
 }
 
+func printArgCollisions(kind DocKind, rawname string, doc entityDocs, warn func(string, ...interface{})) {
+	if len(doc.ArgumentCollisions) == 0 {
+		return
+	}
+
+	msg := fmt.Sprintf("%s %s: The following arguments were dropped because they occurred more than once in"+
+		" the source document:\n", kind, rawname)
+
+	for k, v := range doc.ArgumentCollisions {
+		msg += fmt.Sprintf("\t%s (%d occurrences)\n", k, v)
+		argumentCollisions += v
+	}
+
+	warn(strings.TrimSpace(msg))
+}
+
 // getDocsForProvider extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
@@ -272,6 +294,8 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	if err != nil {
 		return entityDocs{}, err
 	}
+
+	printArgCollisions(kind, rawname, doc, g.warn)
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
@@ -462,8 +486,9 @@ const (
 
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	p.ret = entityDocs{
-		Arguments:  make(map[string]*argumentDocs),
-		Attributes: make(map[string]string),
+		Arguments:          make(map[string]*argumentDocs),
+		Attributes:         make(map[string]string),
+		ArgumentCollisions: make(map[string]int),
 	}
 
 	// Replace any Windows-style newlines.
@@ -764,9 +789,36 @@ func getNestedBlockName(line string) string {
 	return nested
 }
 
+// parseArgReferenceSection takes a slice of strings representing some sub-section of a Markdown document and parses it
+// for Terraform arguments, placing any parsed args into the receiver's ret.Arguments. Any collisions are recorded in
+// the receiver's ret.ArgumentCollisions.
 func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
 	saveArg := func(nested, name, desc string) {
 		if name == "" || desc == "" {
+			return
+		}
+
+		// Some docs, e.g. azurerm_network_watcher_flow_log, have nested blocks written as, e.g.:
+		// "* `retention_policy` supports the following:"
+		// Therefore, we need to ignore this line because it's not an argument.
+		if strings.HasSuffix(desc, "supports the following:") {
+			return
+		}
+
+		// If this is already a known collision, increment the count and quit:
+		_, existingCollision := p.ret.ArgumentCollisions[name]
+		if existingCollision {
+			p.ret.ArgumentCollisions[name]++
+			return
+		}
+
+		// If this argument already exists and the description is different, delete it from the map and track it as
+		// a collision. (If the description is the same, then there's no harm in the duplicate argument because it is
+		// referring to the same concept, but likely in a different nested block.
+		existingArg, previouslyParsed := p.ret.Arguments[name]
+		if previouslyParsed && existingArg.description != desc {
+			p.ret.ArgumentCollisions[name] = 2 // 2 because we are dropping descriptions for 2 arguments
+			delete(p.ret.Arguments, name)
 			return
 		}
 
@@ -1491,10 +1543,11 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	}
 
 	return entityDocs{
-		Description: cleanupText,
-		Arguments:   newargs,
-		Attributes:  newattrs,
-		Import:      doc.Import,
+		Description:        cleanupText,
+		Arguments:          newargs,
+		Attributes:         newattrs,
+		Import:             doc.Import,
+		ArgumentCollisions: doc.ArgumentCollisions,
 	}, elidedDoc
 }
 
