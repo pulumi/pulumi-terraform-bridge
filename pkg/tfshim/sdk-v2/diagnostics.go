@@ -14,7 +14,12 @@ func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
 		case diag.Error:
 			errors = append(errors, fromV2Diag(d))
 		case diag.Warning:
-			warnings = append(warnings, d.Summary)
+			// the summary doesn't contain the parameter name for which the warning occurs to
+			details := d.Summary
+			if d.Detail != "" {
+				details = d.Detail
+			}
+			warnings = append(warnings, details)
 		}
 	}
 	return warnings, errors
