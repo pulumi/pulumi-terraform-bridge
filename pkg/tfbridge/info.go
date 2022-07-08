@@ -40,25 +40,34 @@ const (
 //
 //nolint: lll
 type ProviderInfo struct {
-	P              shim.Provider                      // the TF provider/schema.
-	Name           string                             // the TF provider name (e.g. terraform-provider-XXXX).
-	ResourcePrefix string                             // the prefix on resources the provider exposes, if different to `Name`.
-	GitHubOrg      string                             // the GitHub org of the provider. Defaults to `terraform-providers`.
-	GitHubHost     string                             // the GitHub host for the provider. Defaults to `github.com`.
-	Description    string                             // an optional descriptive overview of the package (a default supplied).
-	Keywords       []string                           // an optional list of keywords to help discovery of this package. e.g. "category/cloud, category/infrastructure"
-	License        string                             // the license, if any, the resulting package has (default is none).
-	LogoURL        string                             // an optional URL to the logo of the package
-	DisplayName    string                             // the human friendly name of the package used in the Pulumi registry
-	Publisher      string                             // the name of the person or organization that authored and published the package.
-	Homepage       string                             // the URL to the project homepage.
-	Repository     string                             // the URL to the project source code repository.
-	Version        string                             // the version of the provider package.
-	Config         map[string]*SchemaInfo             // a map of TF name to config schema overrides.
-	ExtraConfig    map[string]*ConfigInfo             // a list of Pulumi-only configuration variables.
-	Resources      map[string]*ResourceInfo           // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	DataSources    map[string]*DataSourceInfo         // a map of TF name to Pulumi resource info.
-	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for overlaid types.
+	P              shim.Provider // the TF provider/schema.
+	Name           string        // the TF provider name (e.g. terraform-provider-XXXX).
+	ResourcePrefix string        // the prefix on resources the provider exposes, if different to `Name`.
+	// GitHubOrg is the segment of the upstream provider's Go module path that comes after GitHubHost and before
+	// terraform-provider-${Name}. Defaults to `terraform-providers`.
+	//
+	// Note that this value should match the require directive for the upstream provider, not any replace directives.
+	//
+	// For example, GitHubOrg should be set to "my-company" given the following go.mod:
+	//
+	// require github.com/my-company/terraform-repo-example v1.0.0
+	// replace github.com/my-company/terraform-repo-example => github.com/some-fork/terraform-repo-example v1.0.0
+	GitHubOrg   string
+	GitHubHost  string                             // the GitHub host for the provider. Defaults to `github.com`.
+	Description string                             // an optional descriptive overview of the package (a default supplied).
+	Keywords    []string                           // an optional list of keywords to help discovery of this package. e.g. "category/cloud, category/infrastructure"
+	License     string                             // the license, if any, the resulting package has (default is none).
+	LogoURL     string                             // an optional URL to the logo of the package
+	DisplayName string                             // the human friendly name of the package used in the Pulumi registry
+	Publisher   string                             // the name of the person or organization that authored and published the package.
+	Homepage    string                             // the URL to the project homepage.
+	Repository  string                             // the URL to the project source code repository.
+	Version     string                             // the version of the provider package.
+	Config      map[string]*SchemaInfo             // a map of TF name to config schema overrides.
+	ExtraConfig map[string]*ConfigInfo             // a list of Pulumi-only configuration variables.
+	Resources   map[string]*ResourceInfo           // a map of TF name to Pulumi name; standard mangling occurs if no entry.
+	DataSources map[string]*DataSourceInfo         // a map of TF name to Pulumi resource info.
+	ExtraTypes  map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for overlaid types.
 	// ExtraResourceHclExamples is a slice of additional HCL examples attached to resources which are converted to the
 	// relevant target language(s)
 	ExtraResourceHclExamples []HclExampler

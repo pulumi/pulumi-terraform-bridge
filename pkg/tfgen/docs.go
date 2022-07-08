@@ -37,6 +37,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+
+	"github.com/ryboe/q"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
@@ -269,6 +271,10 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	}
 
 	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
+	if rawname == "aws_cloudfront_distribution" {
+		q.Q(doc.Arguments)
+	}
+
 	if err != nil {
 		return entityDocs{}, err
 	}
