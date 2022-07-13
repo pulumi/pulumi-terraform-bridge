@@ -1,11 +1,13 @@
 package tfgen
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -36,6 +38,23 @@ func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
 	return p.schema, nil
 }
 
+func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+	var version *semver.Version
+	if p.info.Version != "" {
+		v, err := semver.ParseTolerant(p.info.Version)
+		if err != nil {
+			return workspace.PluginInfo{}, fmt.Errorf("failed to parse pkg version: %w", err)
+		}
+		version = &v
+	}
+	return workspace.PluginInfo{
+		Name:              p.info.Name,
+		Kind:              workspace.ResourcePlugin,
+		Version:           version,
+		PluginDownloadURL: p.info.PluginDownloadURL,
+	}, nil
+}
+
 type inmemoryProviderHost struct {
 	plugin.Host
 	il.ProviderInfoSource
@@ -48,6 +67,17 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 		return host.provider, nil
 	}
 	return host.Host.Provider(pkg, version)
+}
+
+func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	if name == host.provider.name {
+		info, err := host.provider.GetPluginInfo()
+		if err != nil {
+			return nil, err
+		}
+		return &info, nil
+	}
+	return host.Host.ResolvePlugin(kind, name, version)
 }
 
 func (host *inmemoryProviderHost) GetProviderInfo(
