@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -13,9 +14,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-type inmemoryProvider struct {
-	plugin.Provider
+var _ = (plugin.Provider)((*inmemoryProvider)(nil))
 
+type inmemoryProvider struct {
 	name   string
 	schema []byte
 	info   tfbridge.ProviderInfo
@@ -55,6 +56,93 @@ func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
+func (p *inmemoryProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+	panic("unimplemented")
+}
+
+func (p *inmemoryProvider) CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	panic("unimplemented")
+}
+
+// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
+func (p *inmemoryProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+	ignoreChanges []string) (plugin.DiffResult, error) {
+	panic("unimplemented")
+}
+
+// Configure configures the resource provider with "globals" that control its behavior.
+func (p *inmemoryProvider) Configure(inputs resource.PropertyMap) error {
+	panic("unimplemented")
+}
+
+func (p *inmemoryProvider) Check(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	panic("unimplemented")
+}
+
+// Diff checks what impacts a hypothetical update will have on the resource's properties.
+func (p *inmemoryProvider) Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	panic("unimplemented")
+}
+
+// Create allocates a new instance of the provided resource and returns its unique resource.ID.
+func (p *inmemoryProvider) Create(urn resource.URN, news resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	panic("unimplemented")
+}
+
+// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
+// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
+func (p *inmemoryProvider) Read(urn resource.URN, id resource.ID,
+	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	panic("unimplemented")
+}
+
+// Update updates an existing resource with new values.
+func (p *inmemoryProvider) Update(urn resource.URN, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64, ignoreChanges []string,
+	preview bool) (resource.PropertyMap, resource.Status, error) {
+	panic("unimplemented")
+}
+
+// Delete tears down an existing resource.
+func (p *inmemoryProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+	timeout float64) (resource.Status, error) {
+	panic("unimplemented")
+}
+
+// Construct creates a new component resource.
+func (p *inmemoryProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName,
+	parent resource.URN, inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	panic("unimplemented")
+}
+
+// Invoke dynamically executes a built-in function in the provider.
+func (p *inmemoryProvider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
+	[]plugin.CheckFailure, error) {
+	panic("unimplemented")
+}
+
+// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
+// of responses.
+func (p *inmemoryProvider) StreamInvoke(
+	tok tokens.ModuleMember,
+	args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+	panic("unimplemented")
+}
+
+func (p *inmemoryProvider) Close() error {
+	return nil
+}
+func (p *inmemoryProvider) SignalCancellation() error {
+	return nil
+}
+
 type inmemoryProviderHost struct {
 	plugin.Host
 	il.ProviderInfoSource
@@ -69,7 +157,8 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 	return host.Host.Provider(pkg, version)
 }
 
-func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
+	version *semver.Version) (*workspace.PluginInfo, error) {
 	if name == host.provider.name {
 		info, err := host.provider.GetPluginInfo()
 		if err != nil {
