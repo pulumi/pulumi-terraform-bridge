@@ -44,7 +44,7 @@ func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	if p.info.Version != "" {
 		v, err := semver.ParseTolerant(p.info.Version)
 		if err != nil {
-			return workspace.PluginInfo{}, fmt.Errorf("failed to parse pkg version: %w", err)
+			return workspace.PluginInfo{}, fmt.Errorf("failed to parse pkg %q version: %w", p.name, err)
 		}
 		version = &v
 	}
@@ -157,6 +157,10 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 	return host.Host.Provider(pkg, version)
 }
 
+// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin
+// to load. inmemoryProviderHost does this by checking if the generating provider is being
+// loaded. If it is, it returns it's provider. Otherwise, we defer
+// inmemoryProviderHost.Host.
 func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
 	if name == host.provider.name {
