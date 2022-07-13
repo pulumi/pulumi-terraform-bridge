@@ -19,7 +19,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/hcl/v2 v2.11.1
+	github.com/hashicorp/hcl/v2 v2.12.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.13.0
@@ -33,10 +33,10 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi-java/pkg v0.2.0
-	github.com/pulumi/pulumi-yaml v0.5.1
-	github.com/pulumi/pulumi/pkg/v3 v3.34.1
-	github.com/pulumi/pulumi/sdk/v3 v3.34.1
+	github.com/pulumi/pulumi-java/pkg v0.4.0
+	github.com/pulumi/pulumi-yaml v0.5.2
+	github.com/pulumi/pulumi/pkg/v3 v3.35.3
+	github.com/pulumi/pulumi/sdk/v3 v3.35.3
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.6.0
@@ -49,7 +49,7 @@ require (
 	golang.org/x/mod v0.5.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/text v0.3.7
-	google.golang.org/grpc v1.45.0
+	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
 )
 
@@ -78,6 +78,7 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
@@ -99,6 +100,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
 	github.com/fatih/color v1.9.0 // indirect
@@ -148,6 +150,7 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
@@ -200,7 +203,8 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	lukechampine.com/frand v1.4.2 // indirect
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600 // indirect
 )
 
