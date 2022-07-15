@@ -119,32 +119,35 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		return nil, Diagnostics{All: diagnostics, files: tf12Files}, nil
 	}
 
+	var genDiags hcl.Diagnostics
 	switch opts.TargetLanguage {
 	case LanguageTypescript:
-		tsFiles, genDiags, _ := hcl2nodejs.GenerateProgram(program)
-		generatedFiles, diagnostics = tsFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2nodejs.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	case LanguagePulumi:
 		generatedFiles = map[string][]byte{}
 		for _, f := range tf12Files {
 			generatedFiles[f.Name] = f.Bytes
 		}
 	case LanguagePython:
-		pyFiles, genDiags, _ := hcl2python.GenerateProgram(program)
-		generatedFiles, diagnostics = pyFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2python.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	case LanguageCSharp:
-		csFiles, genDiags, _ := hcl2dotnet.GenerateProgram(program)
-		generatedFiles, diagnostics = csFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2dotnet.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	case LanguageGo:
-		goFiles, genDiags, _ := hcl2go.GenerateProgram(program)
-		generatedFiles, diagnostics = goFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2go.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	case LanguageYaml:
-		yamlFiles, genDiags, _ := hcl2yaml.GenerateProgram(program)
-		generatedFiles, diagnostics = yamlFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2yaml.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	case LanguageJava:
-		javaFiles, genDiags, _ := hcl2java.GenerateProgram(program)
-		generatedFiles, diagnostics = javaFiles, append(diagnostics, genDiags...)
+		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	}
-
+	if err != nil {
+		return nil, Diagnostics{All: diagnostics, files: tf12Files}, err
+	}
 	if diagnostics.HasErrors() {
 		return nil, Diagnostics{All: diagnostics, files: tf12Files}, nil
 	}
