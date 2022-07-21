@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -42,27 +43,29 @@ func (ProviderShim) ValidateDataSource(t string, c shim.ResourceConfig) ([]strin
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Configure(c shim.ResourceConfig) error {
+func (ProviderShim) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (ProviderShim) Diff(ctx context.Context, t string, s shim.InstanceState,
+	c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (ProviderShim) Apply(ctx context.Context, t string, s shim.InstanceState,
+	d shim.InstanceDiff) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (ProviderShim) Refresh(ctx context.Context, t string, s shim.InstanceState) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (ProviderShim) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (ProviderShim) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 

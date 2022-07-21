@@ -3,6 +3,7 @@ package sdkv2
 import (
 	"context"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -52,8 +53,112 @@ type v2Provider struct {
 	tf *schema.Provider
 }
 
+type withSpan struct {
+	wrapped shim.Provider
+}
+
+func (w withSpan) Schema() shim.SchemaMap {
+	return w.wrapped.Schema()
+}
+
+func (w withSpan) ResourcesMap() shim.ResourceMap {
+	return w.wrapped.ResourcesMap()
+}
+
+func (w withSpan) DataSourcesMap() shim.ResourceMap {
+	return w.wrapped.DataSourcesMap()
+}
+
+func (w withSpan) Validate(c shim.ResourceConfig) ([]string, []error) {
+	return w.wrapped.Validate(c)
+}
+
+func (w withSpan) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
+	return w.wrapped.ValidateResource(t, c)
+}
+
+func (w withSpan) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+	return w.wrapped.ValidateDataSource(t, c)
+}
+
+func (w withSpan) Configure(ctx context.Context, c shim.ResourceConfig) error {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeConfigure")
+	defer span.Finish()
+	return w.wrapped.Configure(spanCtx, c)
+
+}
+
+func (w withSpan) Diff(ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeDiff", opentracing.Tag{
+		Key:   "tfResource",
+		Value: t,
+	})
+	defer span.Finish()
+	return w.wrapped.Diff(spanCtx, t, s, c)
+}
+
+func (w withSpan) Apply(ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeApply", opentracing.Tag{
+		Key:   "tfResource",
+		Value: t,
+	})
+	defer span.Finish()
+	return w.wrapped.Apply(spanCtx, t, s, d)
+}
+
+func (w withSpan) Refresh(ctx context.Context, t string, s shim.InstanceState) (shim.InstanceState, error) {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeRefresh", opentracing.Tag{
+		Key:   "tfResource",
+		Value: t,
+	})
+	defer span.Finish()
+	return w.wrapped.Refresh(spanCtx, t, s)
+}
+
+func (w withSpan) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeReadDataDiff", opentracing.Tag{
+		Key:   "tfResource",
+		Value: t,
+	})
+	defer span.Finish()
+	return w.wrapped.ReadDataDiff(spanCtx, t, c)
+}
+
+func (w withSpan) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+	span, spanCtx := opentracing.StartSpanFromContext(ctx, "/pulumirpc.ResourceProvider/TFBridgeReadDataApply", opentracing.Tag{
+		Key:   "tfResource",
+		Value: t,
+	})
+	defer span.Finish()
+	return w.wrapped.ReadDataApply(spanCtx, t, d)
+}
+
+func (w withSpan) Meta() interface{} {
+	return w.wrapped.Meta()
+}
+
+func (w withSpan) Stop() error {
+	return w.wrapped.Stop()
+}
+
+func (w withSpan) InitLogging() {
+	w.wrapped.InitLogging()
+}
+
+func (w withSpan) NewDestroyDiff() shim.InstanceDiff {
+	return w.wrapped.NewDestroyDiff()
+}
+
+func (w withSpan) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+	return w.wrapped.NewResourceConfig(object)
+}
+
+func (w withSpan) IsSet(v interface{}) ([]interface{}, bool) {
+	return w.wrapped.IsSet(v)
+}
+
 func NewProvider(p *schema.Provider) shim.Provider {
-	return v2Provider{p}
+	return withSpan{wrapped: v2Provider{p}}
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {
@@ -80,11 +185,12 @@ func (p v2Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]strin
 	return warningsAndErrors(p.tf.ValidateDataSource(t, configFromShim(c)))
 }
 
-func (p v2Provider) Configure(c shim.ResourceConfig) error {
-	return errors(p.tf.Configure(context.TODO(), configFromShim(c)))
+func (p v2Provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
+	return errors(p.tf.Configure(ctx, configFromShim(c)))
 }
 
-func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v2Provider) Diff(ctx context.Context, t string, s shim.InstanceState,
+	c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
@@ -96,11 +202,13 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	diff, err := r.SimpleDiff(context.TODO(), state, configFromShim(c), p.tf.Meta())
+	diff, err := r.SimpleDiff(ctx, state, configFromShim(c), p.tf.Meta())
 	return diffToShim(diff), err
 }
 
-func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v2Provider) Apply(ctx context.Context, t string, s shim.InstanceState,
+	d shim.InstanceDiff) (shim.InstanceState,
+	error) {
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
@@ -109,11 +217,11 @@ func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	state, diags := r.Apply(context.TODO(), state, diffFromShim(d), p.tf.Meta())
+	state, diags := r.Apply(ctx, state, diffFromShim(d), p.tf.Meta())
 	return stateToShim(state), errors(diags)
 }
 
-func (p v2Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p v2Provider) Refresh(ctx context.Context, t string, s shim.InstanceState) (shim.InstanceState, error) {
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
@@ -122,25 +230,25 @@ func (p v2Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState,
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
+	state, diags := r.RefreshWithoutUpgrade(ctx, state, p.tf.Meta())
 	return stateToShim(state), errors(diags)
 }
 
-func (p v2Provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v2Provider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	r, ok := p.tf.DataSourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	diff, err := r.Diff(context.TODO(), nil, configFromShim(c), p.tf.Meta())
+	diff, err := r.Diff(ctx, nil, configFromShim(c), p.tf.Meta())
 	return diffToShim(diff), err
 }
 
-func (p v2Provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v2Provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	r, ok := p.tf.DataSourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, diags := r.ReadDataApply(context.TODO(), diffFromShim(d), p.tf.Meta())
+	state, diags := r.ReadDataApply(ctx, diffFromShim(d), p.tf.Meta())
 	return stateToShim(state), errors(diags)
 }
 

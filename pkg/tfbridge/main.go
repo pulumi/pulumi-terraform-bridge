@@ -39,7 +39,6 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
 	providerVersion := flags.Bool("version", false, "get built provider version")
-
 	err := flags.Parse(os.Args[1:])
 	contract.IgnoreError(err)
 
@@ -66,7 +65,6 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 
 	// Initialize Terraform logging.
 	prov.P.InitLogging()
-
 	if err := Serve(pkg, version, prov, pulumiSchema); err != nil {
 		cmdutil.ExitError(err.Error())
 	}

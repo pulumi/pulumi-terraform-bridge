@@ -1,6 +1,7 @@
 package shim
 
 import (
+	"context"
 	"time"
 )
 
@@ -142,13 +143,13 @@ type Provider interface {
 	ValidateResource(t string, c ResourceConfig) ([]string, []error)
 	ValidateDataSource(t string, c ResourceConfig) ([]string, []error)
 
-	Configure(c ResourceConfig) error
-	Diff(t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
-	Apply(t string, s InstanceState, d InstanceDiff) (InstanceState, error)
-	Refresh(t string, s InstanceState) (InstanceState, error)
+	Configure(ctx context.Context, c ResourceConfig) error
+	Diff(ctx context.Context, t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
+	Apply(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
+	Refresh(ctx context.Context, t string, s InstanceState) (InstanceState, error)
 
-	ReadDataDiff(t string, c ResourceConfig) (InstanceDiff, error)
-	ReadDataApply(t string, d InstanceDiff) (InstanceState, error)
+	ReadDataDiff(ctx context.Context, t string, c ResourceConfig) (InstanceDiff, error)
+	ReadDataApply(ctx context.Context, t string, d InstanceDiff) (InstanceState, error)
 
 	Meta() interface{}
 	Stop() error

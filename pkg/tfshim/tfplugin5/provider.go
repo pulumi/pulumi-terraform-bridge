@@ -254,7 +254,7 @@ func (p *provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string
 	return unmarshalWarningsAndErrors(resp.Diagnostics)
 }
 
-func (p *provider) Configure(c shim.ResourceConfig) error {
+func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	config, ok := c.(resourceConfig)
 	if !ok {
 		return fmt.Errorf("internal error: foreign resource config")
@@ -265,7 +265,7 @@ func (p *provider) Configure(c shim.ResourceConfig) error {
 		return err
 	}
 
-	resp, err := p.client.Configure(context.TODO(), &proto.Configure_Request{
+	resp, err := p.client.Configure(ctx, &proto.Configure_Request{
 		TerraformVersion: p.terraformVersion,
 		Config:           &proto.DynamicValue{Msgpack: val},
 	})
@@ -276,7 +276,8 @@ func (p *provider) Configure(c shim.ResourceConfig) error {
 	return unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p *provider) Diff(ctx context.Context, t string, s shim.InstanceState,
+	c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -322,7 +323,7 @@ func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (
 		return nil, err
 	}
 
-	resp, err := p.client.PlanResourceChange(context.TODO(), &proto.PlanResourceChange_Request{
+	resp, err := p.client.PlanResourceChange(ctx, &proto.PlanResourceChange_Request{
 		TypeName:         resource.resourceType,
 		PriorState:       &proto.DynamicValue{Msgpack: stateBytes},
 		ProposedNewState: &proto.DynamicValue{Msgpack: configBytes},
@@ -346,7 +347,7 @@ func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (
 	return newInstanceDiff(configVal, stateVal, plannedVal, plannedMeta, resp.RequiresReplace), nil
 }
 
-func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p *provider) Apply(ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -390,7 +391,7 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 		return nil, err
 	}
 
-	resp, err := p.client.ApplyResourceChange(context.TODO(), &proto.ApplyResourceChange_Request{
+	resp, err := p.client.ApplyResourceChange(ctx, &proto.ApplyResourceChange_Request{
 		TypeName:       resource.resourceType,
 		PriorState:     &proto.DynamicValue{Msgpack: stateBytes},
 		PlannedState:   &proto.DynamicValue{Msgpack: plannedStateBytes},
@@ -421,7 +422,7 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p *provider) Refresh(ctx context.Context, t string, s shim.InstanceState) (shim.InstanceState, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -446,7 +447,7 @@ func (p *provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, 
 		return nil, err
 	}
 
-	resp, err := p.client.ReadResource(context.TODO(), &proto.ReadResource_Request{
+	resp, err := p.client.ReadResource(ctx, &proto.ReadResource_Request{
 		TypeName:     resource.resourceType,
 		CurrentState: &proto.DynamicValue{Msgpack: stateBytes},
 		Private:      metaBytes,
@@ -479,7 +480,7 @@ func (p *provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, 
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p *provider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	dataSource, ok := p.dataSources[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown data source %v", t)
@@ -493,7 +494,7 @@ func (p *provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceD
 	return &instanceDiff{planned: planned}, nil
 }
 
-func (p *provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p *provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	diff, ok := d.(*instanceDiff)
 	if d != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign instance diff")
@@ -509,7 +510,7 @@ func (p *provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceSt
 		return nil, err
 	}
 
-	resp, err := p.client.ReadDataSource(context.TODO(), &proto.ReadDataSource_Request{
+	resp, err := p.client.ReadDataSource(ctx, &proto.ReadDataSource_Request{
 		TypeName: t,
 		Config:   &proto.DynamicValue{Msgpack: configBytes},
 	})

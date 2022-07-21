@@ -1,6 +1,7 @@
 package sdkv1
 
 import (
+	"context"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
@@ -80,11 +81,13 @@ func (p v1Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]strin
 	return p.tf.ValidateDataSource(t, configFromShim(c))
 }
 
-func (p v1Provider) Configure(c shim.ResourceConfig) error {
+func (p v1Provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	return p.tf.Configure(configFromShim(c))
 }
 
-func (p v1Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v1Provider) Diff(ctx context.Context, t string, s shim.InstanceState,
+	c shim.ResourceConfig) (shim.InstanceDiff,
+	error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
@@ -93,22 +96,23 @@ func (p v1Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	return diffToShim(diff), err
 }
 
-func (p v1Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v1Provider) Apply(ctx context.Context, t string, s shim.InstanceState,
+	d shim.InstanceDiff) (shim.InstanceState, error) {
 	state, err := p.tf.Apply(instanceInfo(t), stateFromShim(s), diffFromShim(d))
 	return stateToShim(state), err
 }
 
-func (p v1Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p v1Provider) Refresh(ctx context.Context, t string, s shim.InstanceState) (shim.InstanceState, error) {
 	state, err := p.tf.Refresh(instanceInfo(t), stateFromShim(s))
 	return stateToShim(state), err
 }
 
-func (p v1Provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v1Provider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	diff, err := p.tf.ReadDataDiff(instanceInfo(t), configFromShim(c))
 	return diffToShim(diff), err
 }
 
-func (p v1Provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v1Provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	state, err := p.tf.ReadDataApply(instanceInfo(t), diffFromShim(d))
 	return stateToShim(state), err
 }

@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
 	"log"
 	"regexp"
 	"strings"
@@ -556,7 +557,7 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
-	if err = p.tf.Configure(config); err != nil {
+	if err = p.tf.Configure(ctx, config); err != nil {
 		return nil, err
 	}
 
@@ -729,6 +730,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Errorf("unrecognized resource type (Diff): %s", urn)
 	}
 
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("urn", urn)
+	span.SetTag("type", t)
+	span.SetTag("tfResource", res.TFName)
+
 	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -753,7 +759,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(res.TFName, state, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -829,6 +835,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Create): %s", t)
 	}
 
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("urn", urn)
+	span.SetTag("type", t)
+	span.SetTag("tfResource", res.TFName)
+
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -841,7 +852,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(res.TFName, nil, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, nil, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -863,7 +874,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tf.Apply(res.TFName, nil, diff)
+		newstate, err = p.tf.Apply(ctx, res.TFName, nil, diff)
 		if newstate == nil {
 			if err == nil {
 				return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
@@ -916,6 +927,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Errorf("unrecognized resource type (Read): %s", t)
 	}
 
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("urn", urn)
+	span.SetTag("type", t)
+	span.SetTag("tfResource", res.TFName)
+
 	id := req.GetId()
 	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -948,7 +964,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 	}
 
-	newstate, err := p.tf.Refresh(res.TFName, state)
+	newstate, err := p.tf.Refresh(ctx, res.TFName, state)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
 	}
@@ -999,6 +1015,11 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Update): %s", t)
 	}
 
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("urn", urn)
+	span.SetTag("type", t)
+	span.SetTag("tfResource", res.TFName)
+
 	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -1023,7 +1044,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(res.TFName, state, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1049,7 +1070,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tf.Apply(res.TFName, state, diff)
+		newstate, err = p.tf.Apply(ctx, res.TFName, state, diff)
 		if newstate == nil {
 			if err != nil {
 				return nil, err
@@ -1101,6 +1122,11 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Delete): %s", t)
 	}
 
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("urn", urn)
+	span.SetTag("type", t)
+	span.SetTag("tfResource", res.TFName)
+
 	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -1116,7 +1142,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		diff.SetTimeout(req.Timeout, shim.TimeoutDelete)
 	}
 
-	if _, err := p.tf.Apply(res.TFName, state, diff); err != nil {
+	if _, err := p.tf.Apply(ctx, res.TFName, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
@@ -1140,6 +1166,9 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	if !has {
 		return nil, errors.Errorf("unrecognized data function (Invoke): %s", tok)
 	}
+
+	span := opentracing.SpanFromContext(ctx)
+	span.SetTag("invoke", tok)
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	glog.V(9).Infof("%s executing", label)
@@ -1179,12 +1208,12 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// If there are no failures in verification, go ahead and perform the invocation.
 	var ret *pbstruct.Struct
 	if len(failures) == 0 {
-		diff, err := p.tf.ReadDataDiff(tfname, rescfg)
+		diff, err := p.tf.ReadDataDiff(ctx, tfname, rescfg)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading data source diff for %s", tok)
 		}
 
-		invoke, err := p.tf.ReadDataApply(tfname, diff)
+		invoke, err := p.tf.ReadDataApply(ctx, tfname, diff)
 		if err != nil {
 			return nil, errors.Wrapf(err, "invoking %s", tok)
 		}
