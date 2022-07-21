@@ -2,6 +2,7 @@ package tfgen
 
 import (
 	"bytes"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"text/template"
@@ -164,4 +165,17 @@ func renderTemplate(tmpl string) string {
 	_ = outputTemplate.Execute(&buf, data)
 
 	return buf.String()
+}
+
+func TestGetDefaultReadme(t *testing.T) {
+	//nolint:lll
+	expected := "> This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n" +
+		"> distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n" +
+		"> first check the [`pulumi-aws` repo](https://github.com/pulumi/pulumi-aws/issues); however, if that doesn't turn up anything,\n" +
+		"> please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues)."
+
+	actual := getDefaultReadme("aws", "aws", "hashicorp",
+		tfbridge.MPL20LicenseType, "https://www.mozilla.org/en-US/MPL/2.0/", "github.com",
+		"https://github.com/pulumi/pulumi-aws")
+	assert.Equal(t, expected, actual)
 }
