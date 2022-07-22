@@ -289,9 +289,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	readme := ""
 	if downstreamLicense != tfbridge.UnlicensedLicenseType {
-		readme = fmt.Sprintf(
-			standardDocReadme, g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
-			g.info.GetGitHubHost())
+		readme = getDefaultReadme(g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
+			g.info.GetGitHubHost(), g.info.Repository)
 	}
 
 	nodeData := map[string]interface{}{
@@ -356,6 +355,20 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	return spec, nil
+}
+
+func getDefaultReadme(pulumiPackageName string, tfProviderShortName string, tfGitHubOrg string,
+	pulumiProvLicense tfbridge.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
+	pulumiProvRepo string) string {
+
+	//nolint:lll
+	standardDocReadme := `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
+> distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
+> first check the [` + "`pulumi-%[1]s`" + ` repo](%[7]s/issues); however, if that doesn't turn up anything,
+> please consult the source [` + "`terraform-provider-%[2]s`" + ` repo](https://%[6]s/%[3]s/terraform-provider-%[2]s/issues).`
+
+	return fmt.Sprintf(standardDocReadme, pulumiPackageName, tfProviderShortName, tfGitHubOrg, pulumiProvLicense,
+		pulumiProvLicenseURI, githubHost, pulumiProvRepo)
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
