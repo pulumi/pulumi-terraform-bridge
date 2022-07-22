@@ -13,16 +13,16 @@ require (
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/go-getter v1.6.1
-	github.com/hashicorp/go-hclog v1.2.0
+	github.com/hashicorp/go-hclog v1.2.1
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-plugin v1.4.3
-	github.com/hashicorp/go-uuid v1.0.2
-	github.com/hashicorp/go-version v1.4.0
+	github.com/hashicorp/go-plugin v1.4.4
+	github.com/hashicorp/go-uuid v1.0.3
+	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/hcl/v2 v2.12.0
+	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.13.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734
 	github.com/json-iterator/go v1.1.12
 	github.com/mitchellh/cli v1.1.2
@@ -30,7 +30,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/mitchellh/hashstructure v1.0.0
-	github.com/mitchellh/mapstructure v1.4.3
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706212453-8046ed6407d4
@@ -41,15 +41,15 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.6.0
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.7.2
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
 	github.com/zclconf/go-cty v1.10.0
-	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
+	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167
 	golang.org/x/mod v0.5.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/text v0.3.7
-	google.golang.org/grpc v1.47.0
+	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.0
 )
 
@@ -103,13 +103,13 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
-	github.com/fatih/color v1.9.0 // indirect
+	github.com/fatih/color v1.13.0 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -124,9 +124,9 @@ require (
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
-	github.com/hashicorp/terraform-plugin-go v0.8.0 // indirect
-	github.com/hashicorp/terraform-plugin-log v0.3.0 // indirect
-	github.com/hashicorp/terraform-registry-address v0.0.0-20210412075316-9b2996cce896 // indirect
+	github.com/hashicorp/terraform-plugin-go v0.12.0 // indirect
+	github.com/hashicorp/terraform-plugin-log v0.6.0 // indirect
+	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
 	github.com/hashicorp/vault/api v1.1.1 // indirect
 	github.com/hashicorp/vault/sdk v0.2.1 // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
@@ -208,4 +208,4 @@ require (
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600 // indirect
 )
 
-replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20220722214815-c13e6bdd0f51
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20220725190814-23001ad6ec03
