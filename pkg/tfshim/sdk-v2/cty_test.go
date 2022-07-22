@@ -371,6 +371,13 @@ func TestMakeResourceRawConfig(t *testing.T) {
 		expected cty.Value
 	}{
 		{
+			// Equivalent TF config:
+			//
+			// resource "aws_ssm_parameter" "parameter" {
+			//     name = "/someParam"
+			//     type = "String"
+			//     value = "foo"
+			// }
 			name:   "AWS SSM Parameter",
 			schema: awsSSMParameterSchema,
 			config: map[string]interface{}{
@@ -396,6 +403,11 @@ func TestMakeResourceRawConfig(t *testing.T) {
 			}),
 		},
 		{
+			// Equivalent TF config:
+			//
+			// resource "auth0_tenant" "tenant" {
+			//     friendly_name = "Tenant Name"
+			// }
 			name:   "Auth0 Tenant",
 			schema: auth0TenantSchema,
 			config: map[string]interface{}{
@@ -461,6 +473,111 @@ func TestMakeResourceRawConfig(t *testing.T) {
 						"primary":         cty.String,
 					})),
 				})),
+			}),
+		},
+		{
+			// Equivalent TF config:
+			//
+			// resource "auth0_tenant" "tenant" {
+			//     friendly_name = "Tenant Name"
+			//
+			//     flags {
+			//         universal_login = true
+			//     }
+			//
+			//     universal_login {
+			//         colors {
+			//             primary = "#3385ff"
+			//             page_background = "#000000"
+			//         }
+			//     }
+			// }
+			name:   "Auth0 Tenant With Flags",
+			schema: auth0TenantSchema,
+			config: map[string]interface{}{
+				"friendly_name": "Tenant Name",
+				"flags": []interface{}{
+					map[string]interface{}{
+						"universal_login": true,
+					},
+				},
+				"universal_login": []interface{}{
+					map[string]interface{}{
+						"colors": []interface{}{
+							map[string]interface{}{
+								"primary":         "#3385ff",
+								"page_background": "#000000",
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(map[string]cty.Value{
+				"allowed_logout_urls": cty.NullVal(cty.List(cty.String)),
+				"change_password": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"enabled": cty.Bool,
+					"html":    cty.String,
+				})),
+				"default_audience":        cty.NullVal(cty.String),
+				"default_directory":       cty.NullVal(cty.String),
+				"default_redirection_uri": cty.NullVal(cty.String),
+				"enabled_locales":         cty.NullVal(cty.List(cty.String)),
+				"error_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"html":          cty.String,
+					"show_log_link": cty.Bool,
+					"url":           cty.String,
+				})),
+				"flags": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"allow_legacy_delegation_grant_types":    cty.NullVal(cty.Bool),
+						"allow_legacy_ro_grant_types":            cty.NullVal(cty.Bool),
+						"allow_legacy_tokeninfo_endpoint":        cty.NullVal(cty.Bool),
+						"dashboard_insights_view":                cty.NullVal(cty.Bool),
+						"dashboard_log_streams_next":             cty.NullVal(cty.Bool),
+						"disable_clickjack_protection_headers":   cty.NullVal(cty.Bool),
+						"disable_fields_map_fix":                 cty.NullVal(cty.Bool),
+						"disable_management_api_sms_obfuscation": cty.NullVal(cty.Bool),
+						"enable_adfs_waad_email_verification":    cty.NullVal(cty.Bool),
+						"enable_apis_section":                    cty.NullVal(cty.Bool),
+						"enable_client_connections":              cty.NullVal(cty.Bool),
+						"enable_custom_domain_in_emails":         cty.NullVal(cty.Bool),
+						"enable_dynamic_client_registration":     cty.NullVal(cty.Bool),
+						"enable_idtoken_api2":                    cty.NullVal(cty.Bool),
+						"enable_legacy_logs_search_v2":           cty.NullVal(cty.Bool),
+						"enable_legacy_profile":                  cty.NullVal(cty.Bool),
+						"enable_pipeline2":                       cty.NullVal(cty.Bool),
+						"enable_public_signup_user_exists_error": cty.NullVal(cty.Bool),
+						"no_disclose_enterprise_connections":     cty.NullVal(cty.Bool),
+						"revoke_refresh_token_grant":             cty.NullVal(cty.Bool),
+						"universal_login":                        cty.True,
+						"use_scope_descriptions_for_consent":     cty.NullVal(cty.Bool),
+					}),
+				}),
+				"friendly_name": cty.StringVal("Tenant Name"),
+				"guardian_mfa_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"enabled": cty.Bool,
+					"html":    cty.String,
+				})),
+				"id":                    cty.NullVal(cty.String),
+				"idle_session_lifetime": cty.NullVal(cty.Number),
+				"picture_url":           cty.NullVal(cty.String),
+				"sandbox_version":       cty.NullVal(cty.String),
+				"session_cookie": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"mode": cty.String,
+				})),
+				"session_lifetime": cty.NullVal(cty.Number),
+				"support_email":    cty.NullVal(cty.String),
+				"support_url":      cty.NullVal(cty.String),
+				"universal_login": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"colors": cty.ListVal([]cty.Value{
+							cty.ObjectVal(map[string]cty.Value{
+								"page_background": cty.StringVal("#000000"),
+								"primary":         cty.StringVal("#3385ff"),
+							}),
+						}),
+					}),
+				}),
 			}),
 		},
 	}

@@ -13,7 +13,7 @@ func makeResourceRawConfig(config *terraform.ResourceConfig, resource *schema.Re
 	original := schema.HCL2ValueFromConfigValue(config.Raw)
 	coerced, err := resource.CoreConfigSchema().CoerceValue(original)
 	if err != nil {
-		glog.V(9).Infof("failed to coerce config: %w", err)
+		glog.V(9).Infof("failed to coerce config: %v", err)
 		return original
 	}
 	return coerced
