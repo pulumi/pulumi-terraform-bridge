@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
+// makeResourceRawConfig converts the decoded Go values in a terraform.ResourceConfig into a cty.Value that is
+// appropriate for Instance{Diff,State}.RawConfig.
 func makeResourceRawConfig(config *terraform.ResourceConfig, resource *schema.Resource) cty.Value {
 	original := schema.HCL2ValueFromConfigValue(config.Raw)
 	coerced, err := resource.CoreConfigSchema().CoerceValue(original)
