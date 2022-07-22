@@ -61,12 +61,12 @@ var awsSSMParameterSchema = &schema.Resource{
 			Type:     schema.TypeInt,
 			Computed: true,
 		},
-		"tags": &schema.Schema{
+		"tags": {
 			Type:     schema.TypeMap,
 			Optional: true,
 			Elem:     &schema.Schema{Type: schema.TypeString},
 		},
-		"tags_all": &schema.Schema{
+		"tags_all": {
 			Type:     schema.TypeMap,
 			Computed: true,
 			Elem:     &schema.Schema{Type: schema.TypeString},
