@@ -92,11 +92,21 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, err := upgradeResourceState(p.tf, r, stateFromShim(s))
+
+	config, state := configFromShim(c), stateFromShim(s)
+	rawConfig := makeResourceRawConfig(config, r)
+	if state != nil {
+		state.RawConfig = rawConfig
+	}
+
+	state, err := upgradeResourceState(p.tf, r, state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	diff, err := r.SimpleDiff(context.TODO(), state, configFromShim(c), p.tf.Meta())
+	diff, err := r.SimpleDiff(context.TODO(), state, config, p.tf.Meta())
+	if diff != nil {
+		diff.RawConfig = rawConfig
+	}
 	return diffToShim(diff), err
 }
 

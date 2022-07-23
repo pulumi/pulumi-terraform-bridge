@@ -73,6 +73,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	if err != nil {
 		return nil, err
 	}
+	newState.RawConfig = instanceState.RawConfig
 
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID
