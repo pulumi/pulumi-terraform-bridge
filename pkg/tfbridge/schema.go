@@ -34,6 +34,144 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
+// This file deals with translating between the Pulumi representations of a resource's configuration and state and the
+// Terraform shim's representations of the same.
+//
+// # Terraform Representations
+//
+// The Terraform shim represents a resource's configuration and state as plain-old Go values. These values may be
+// any of the following types:
+//
+//     - nil
+//     - bool
+//     - int
+//     - float64
+//     - string
+//     - []interface{}
+//     - map[string]interface{}
+//     - Set (state only; exact type varies between shim implementations; see shim.Provider.IsSet)
+//
+// Unknown values are represented using a sentinel string value (see TerraformUnknownVariableValue).
+//
+// The Terraform shim also records a schema for each resource & data source that is used to guide the conversion
+// process. The schema indicates the type or sub-schema for each of the resource's properties. The schema types
+// and their corresponding value types are given below.
+//
+//     Schema Type | TF type                | Notes
+//     ------------+------------------------+------------
+//        TypeBool |                   bool |
+//         TypeInt |                    int |
+//       TypeFloat |                  float |
+//      TypeString |                 string |
+//        TypeList |          []interface{} |
+//         TypeMap | map[string]interface{} | See below for a special case involving object types
+//         TypeSet |     []interface{}, Set | Set values are only present in state
+//
+// Note that object types are not present in the set of schema types. Instead, they exist either at the resource level
+// or as the element type of a List, Map, or Set (concretely, the type of schema.Elem() will be shim.Resource). As a
+// special case, the value of a TypeMap property with an object element type is represented as a single-element
+// []interface{} where the single element is the object value.
+//
+// # Pulumi Representations
+//
+// Pulumi represents a resource's configuration and state as resource.PropertyValue values. These values are
+// JSON-like with a few extensions. The only extensions that are relevant to this code are unknowns, assets, and
+// archives. Unknowns represent unknown values, while assets and archives represent flat binary or archive data
+// (e.g. .tar or .zip files), respectively.
+//
+// To improve the user experience of the generated SDKs, the bridge also carries optional overlays for resources.
+// These overlays control various aspects of the conversion process, notably name translation, asset translation,
+// and single-element list projection.
+//
+// # Conversion Process
+//
+// The conversion process is informed by the kind of conversion to perform, the Terraform schema for the value,
+// and the tfbridge overlays for the value.
+//
+// In most cases, mapping between the value spaces is straightforward, and follows these rules:
+//
+//     Pulumi type | TF type(s)                 | Notes
+//     ------------+----------------------------+-----------------------
+//            null |                        nil |
+//            bool |                       bool |
+//          number |               float64, int | for config conversion, numbers are converted per the TF schema
+//          string | string, bool, float64, int | for state conversion, strings may be coerced per schema+overlays
+//           array |              []interface{} |
+//          object |     map[string]interface{} | keys may be mapped between snake and Pascal case per schema+overlays
+//           asset |             string, []byte | file path or literal contents per overlays
+//         archive |             string, []byte | file path or literal contents per overlays
+//         unknown |                     string | always the unknown sentinel string value
+//
+// Certain properties that are represented by the shim as single-element `[]interface{}` values may be represented by
+// Pulumi as their single element. This is controlled by the Terraform schema and the tfbridge overlays (see
+// IsMaxItemsOne for details).
+//
+// ## Pulumi Inputs -> TF Config Conversion
+//
+// In addition to the usual conversion operation, config conversion has the onerous task of applying default values
+// for missing properties if a default is present in the TF schema or tfbridge overlays. Default application is a
+// relatively complex process. To determine the default value for a missing property:
+//
+//     1. If setting a value for the property would cause a conflict with other properties per the TF schema,
+//        then the property has no default value.
+//     2. If the property is marked as removed, it has no default value.
+//     3. If the property's overlay contains default value information:
+//         a. If there is an old value for property and that value was a default value, use the old value.
+//            This ensures that non-deterministic defaults (e.g. autonames) are not recalculated.
+//         b. If the default value is sourced from an envvar, read the envvar.
+//         c. If the default value is source from provider config, grab it from the indicated config value.
+//         d. If the default value is literal, use the literal value.
+//         e. If the default value is computed by a function, call the function.
+//     4. If the property's TF schema has a default value:
+//         a. If there is an old value for property and that value was a default value, use the old value.
+//            This ensures that non-deterministic defaults (e.g. autonames) are not recalculated.
+//         b. Otherwise, the value is literal. Use the literal value.
+//
+// Each object-typed value contains metadata about the properties that were set using default values under a
+// special key ("__defaults"). This information is consulted in steps 3a and 4a to determine whether or not to
+// propagate the old value for a property as a default.
+//
+// Config conversion also records which properties were originally assets or archives so that the state converter
+// can round-trip the values of those properties as assets/archives.
+//
+// The entry point for input to config conversion is MakeTerraformConfig.
+//
+// ## TF State/Config -> Pulumi Outputs Conversion
+//
+// In order to provide full-fidelity round-tripping of properties that were presented in the config as assets or
+// archives, the state converter accepts a mapping from properties to asset/archive values. The converter consults
+// consults
+//
+// The entry point for state/config to output conversion is MakeTerraformResult.
+//
+// ## Pulumi Outputs -> TF State Conversion
+//
+// Output to state conversion follows the same rules as input to config conversion, but does not apply defaults or
+// record asset and archive values.
+//
+// # Additional Notes
+//
+// The process for converting between Pulumi and Terraform values is rather complicated, and occasionally has some
+// pretty frustrating impedance mismatches with Terraform itself. These mismatches have become more pronounced as
+// Terraform has evolved, and mostly seem to be due to the fact that tfbridge interfaces with Terraform providers
+// at a different layer than Terraform itself. Terraform speaks to resource providers over a well-defined gRPC
+// interface that as of TF 0.12 provides access to the provider's schema as well as config validation, plan, and
+// apply operations (plus a few other sundries). tfbridge, however, interacts with the Terraform plugin SDK, which
+// sits on top of the gRPC interface. As a result, the inputs tfbridge passes to the plugin SDK's APIs are not
+// subject to the preprocessing that is performed when Terraform interacts with the provider via the gRPC API.
+//
+// If tfbridge also used the gRPC interface (ideally in-memory or in-process), its implementation may be simpler.
+// With that approach, tfbridge would be responsible for producing config and state in the same shape as the Terraform
+// CLI and expected by the gRPC interface, and that config and state would be subject to the same pipeline as that
+// produced by the Terraform CLI. The major blocker to this design is our current approach to default values, which
+// relies on visibility into default values and `ConflictsWith` information that is not exposed by the gRPC-level
+// provider schema. It is unclear what the overall effect of dropping this approach to default values would be, but
+// one very likely change is that default values from providers would no longer be rendered as part of diffs in the
+// Pulumi CLI. It may be possible to remedy that experience through changes to the CLI.
+//
+// There is something approaching a prototype of the above approach in pkg/tfshim/tfplugin5. That code has bitrotted
+// somewhat since its creation, as it is not actively used in production.
+
 // TerraformUnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
 // representing a variable whose value is not known at some particular time. The value is duplicated here in
 // order to prevent an additional dependency - it is unlikely to ever change upstream since that would break
