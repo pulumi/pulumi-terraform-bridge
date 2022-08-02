@@ -20,6 +20,7 @@ Preamble
 - **template_variable** (Block List) The list of template variables for this dashboard. (see [below for nested schema](#nestedblock--template_variable))
 - **template_variable_preset** (Block List) The list of selectable template variable presets for this dashboard. (see [below for nested schema](#nestedblock--template_variable_preset))
 - **url** (String) The URL of the dashboard.
+- `theme` (String) The theme of the dashboard.
 
 ### Read-Only
 
@@ -31,6 +32,7 @@ Preamble
 Optional:
 
 - **group_definition** (Block List, Max: 1) The definition for a Group widget. (see [below for nested schema](#nestedblock--widget--group_definition))
+- `theme` (String) The theme of the widget.
 
 ### Nested Schema for `widget.group_definition`
 

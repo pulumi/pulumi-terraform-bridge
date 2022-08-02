@@ -99,6 +99,9 @@ func TestParseTopLevelSchema(t *testing.T) {
 
 	assert.Equal(t, "",
 		param(t, nested(t, schema, "widget.group_definition"), "title").desc)
+
+	assert.Equal(t, topParam(t, schema, "theme").desc,
+		"The theme of the dashboard.")
 }
 
 func TestParseNestedSchemaIntoDoc(t *testing.T) {

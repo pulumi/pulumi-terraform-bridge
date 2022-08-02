@@ -353,15 +353,26 @@ func parseParameter(node *bf.Node) (*parameter, error) {
 	if emptyText == nil || emptyText.Type != bf.Text || len(emptyText.Literal) > 0 {
 		return nil, nil
 	}
-	strong := emptyText.Next
-	if strong == nil || strong.Type != bf.Strong {
+	strongOrCode := emptyText.Next
+	isStrong := strongOrCode != nil && strongOrCode.Type == bf.Strong
+	isCode := strongOrCode != nil && strongOrCode.Type == bf.Code
+	if !isStrong && !isCode {
 		return nil, nil
 	}
-	paramName, err := parseTextSeq(strong.FirstChild, false)
-	if err != nil {
-		return nil, err
+	var paramName string
+	if isStrong {
+		parsed, err := parseTextSeq(strongOrCode.FirstChild, false)
+		if err != nil {
+			return nil, err
+		}
+		paramName = parsed
+	} else {
+		// because bf has a different structure for code blocks (no children), compared to strong (with children)
+		// we need to pull the value of the title out here using .Literal
+		paramName = string(strongOrCode.Literal)
 	}
-	paramDesc, err := parseTextSeq(strong.Next, true)
+
+	paramDesc, err := parseTextSeq(strongOrCode.Next, true)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +406,7 @@ func parseParameterFromDescription(name string, description string) *parameter {
 }
 
 // Unfortunately blackfriday does not include markdown renderer, or
-// allow accssing source locations of nodes. Here we accept a sequence of
+// allow accessing source locations of nodes. Here we accept a sequence of
 // inline nodes and render them as markdown text back.
 func parseTextSeq(firstNode *bf.Node, useStarsForStrongAndEmph bool) (string, error) {
 	var err error
