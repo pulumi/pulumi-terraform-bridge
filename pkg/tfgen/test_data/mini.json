@@ -1,9 +1,15 @@
 {
   "widget": {
     "Arguments": {
+      "theme": "The theme of the widget.",
       "group_definition": "The definition for a Group widget."
     },
     "Description": "",
+    "IsNested": true
+  },
+  "widget.theme": {
+    "Arguments": {},
+    "Description": "The theme of the widget.",
     "IsNested": true
   },
   "widget.group_definition": {
