@@ -32,7 +32,6 @@ func parseFile(parser *syntax.Parser, fs afero.Fs, path string) error {
 	}
 	defer contract.IgnoreClose(f)
 
-	contract.Assert(path[0] == '/')
 	return parser.ParseFile(f, path[1:])
 }
 
