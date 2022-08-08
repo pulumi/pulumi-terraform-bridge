@@ -52,11 +52,7 @@ To build, ensure `$GOPATH` is set, and clone into a standard Go workspace:
     $ git clone git@github.com:pulumi/pulumi-terraform-bridge $GOPATH/src/github.com/pulumi/pulumi-terraform-bridge
     $ cd $GOPATH/src/github.com/pulumi/pulumi-terraform-bridge
 
-Before building, you will need to ensure dependencies have been downloaded into the `vendor/` directory.
-
-    $ make ensure
-
-At this point you can run make to build and run tests:
+You can run make to build and run tests:
 
     $ make
 
