@@ -21,7 +21,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -373,7 +372,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 
 	for _, name := range possibleLocations {
 		location := filepath.Join(locationPrefix, name)
-		markdownBytes, err := ioutil.ReadFile(location)
+		markdownBytes, err := os.ReadFile(location)
 		if err == nil {
 			return markdownBytes, name, true
 		}

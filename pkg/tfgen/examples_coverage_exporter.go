@@ -20,7 +20,6 @@ package tfgen
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -100,7 +99,7 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 			result = append(append(result, marshalledExample...), uint8('\n'))
 		}
 	}
-	return ioutil.WriteFile(jsonOutputLocation, result, 0600)
+	return os.WriteFile(jsonOutputLocation, result, 0600)
 }
 
 // The second mode, which exports information about each language such as total number of
@@ -377,7 +376,7 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 		)
 	}
 
-	return ioutil.WriteFile(targetFile, []byte(fileString), 0600)
+	return os.WriteFile(targetFile, []byte(fileString), 0600)
 }
 
 // Minor helper functions to assist with exporting results
@@ -392,5 +391,5 @@ func marshalAndWriteJSON(unmarshalledData interface{}, finalDestination string) 
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(finalDestination, jsonBytes, 0600)
+	return os.WriteFile(finalDestination, jsonBytes, 0600)
 }

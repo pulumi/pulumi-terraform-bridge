@@ -149,9 +149,10 @@ func (g *generator) parseInterpolate(args []*il.BoundVariableAccess, then il.Bou
 
 // lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses and/or calls to the
 // pulumi.interpolate function. Concretely, this boils down to rewriting the following shapes
-// - (call __apply (resource variable access) (call __applyArg 0))
-// - (call __apply (resource variable access 0) ... (resource variable access n)
-//       (output /* some mix of expressions and calls to __applyArg))
+//   - (call __apply (resource variable access) (call __applyArg 0))
+//   - (call __apply (resource variable access 0) ... (resource variable access n)
+//     (output /* some mix of expressions and calls to __applyArg))
+//
 // into (respectively)
 // - (resource variable access)
 // - (call __interpolate /* mix of literals and variable accesses that correspond to the __applyArg calls)

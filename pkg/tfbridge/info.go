@@ -38,7 +38,7 @@ const (
 // ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
 // metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
 //
-//nolint: lll
+// nolint: lll
 type ProviderInfo struct {
 	P              shim.Provider // the TF provider/schema.
 	Name           string        // the TF provider name (e.g. terraform-provider-XXXX).

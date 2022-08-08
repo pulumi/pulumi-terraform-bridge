@@ -152,7 +152,7 @@ import content
 	assert.Equal(t, renderTemplate(expectedTmpl), appendExample(input, renderTemplate(markdownTmpl)))
 }
 
-/// renderTemplate allows us to easily use code fences with herestrings
+// / renderTemplate allows us to easily use code fences with herestrings
 func renderTemplate(tmpl string) string {
 	outputTemplate, _ := template.New("dummy").Parse(tmpl)
 	data := struct {

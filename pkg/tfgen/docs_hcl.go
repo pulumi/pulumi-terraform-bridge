@@ -25,23 +25,23 @@ import (
 //
 // For reference, here is the HCL grammar in ~EBNF:
 //
-//     file := objectList EOF
+//	file := objectList EOF
 //
-//     objectList := { objectItem }
+//	objectList := { objectItem }
 //
-//     objectItem := ( assignmentProperty | objectProperty )
+//	objectItem := ( assignmentProperty | objectProperty )
 //
-//     assignmentProperty := ( IDENT | STRING ) '=' value
+//	assignmentProperty := ( IDENT | STRING ) '=' value
 //
-//     objectProperty := ( IDENT | STRING ) { ( IDENT | STRING ) } objectValue
+//	objectProperty := ( IDENT | STRING ) { ( IDENT | STRING ) } objectValue
 //
-//     value := literalValue | objectValue | listValue
+//	value := literalValue | objectValue | listValue
 //
-//     literalValue := NUMBER | FLOAT | BOOL | STRING | HEREDOC
+//	literalValue := NUMBER | FLOAT | BOOL | STRING | HEREDOC
 //
-//     objectValue := '{' objectList '}'
+//	objectValue := '{' objectList '}'
 //
-//     listValue := '[' [ value { ',' value } ] ']'
+//	listValue := '[' [ value { ',' value } ] ']'
 //
 // We want to fix the following errors:
 // - missing value in an assignmentProperty

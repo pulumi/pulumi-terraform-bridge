@@ -28,7 +28,7 @@ func (r v2Resource) SchemaVersion() int {
 	return r.tf.SchemaVersion
 }
 
-//nolint: staticcheck
+// nolint: staticcheck
 func (r v2Resource) Importer() shim.ImportFunc {
 	if r.tf.Importer == nil {
 		return nil

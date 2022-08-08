@@ -1064,7 +1064,7 @@ func (rr *resourceRewriter) pop() {
 	rr.stack = rr.stack[:len(rr.stack)-1]
 }
 
-//nolint: unused
+// nolint: unused
 func (rr *resourceRewriter) dumpStack() {
 	fmt.Printf("[")
 	for i, info := range rr.stack {

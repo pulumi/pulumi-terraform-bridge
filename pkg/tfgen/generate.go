@@ -1372,8 +1372,9 @@ func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 
 // propertyName translates a Terraform underscore_cased_property_name into a JavaScript camelCasedPropertyName.
 // IDEA: ideally specific languages could override this, to ensure "idiomatic naming", however then the bridge
-//     would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
-//     name transformation process).  This isn't impossible, but certainly complicates matters.
+//
+//	would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
+//	name transformation process).  This isn't impossible, but certainly complicates matters.
 func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) string {
 	// Use the name override, if one exists, or use the standard name mangling otherwise.
 	if custom != nil {

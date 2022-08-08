@@ -104,60 +104,62 @@ func (r *applyRewriter) enterNode(n BoundNode) (BoundNode, error) {
 // follows:
 // - let the list of outputs be an empty list
 // - for each node in post-order:
-//     - if the node is the root of the expression tree:
-//         - if the node is a variable access:
-//             - if the access has an output-typed element on its path, replace the variable access with a call to the
-//               __applyArg intrinsic and append the access to the list of outputs.
-//             - otherwise, the access does not need to be transformed; return it as-is.
-//         - if the list of outputs is empty, the root does not need to be transformed; return it as-is.
-//         - otherwise, replace the root with a call to the __apply intrinstic. The first n arguments to this call are
-//           the elementss of the list of outputs. The final argument is the original root node.
-//     - otherwise, if the root is an output-typed variable access, replace the variable access with a call to the
-//       __applyArg instrinsic and append the access to the list of outputs.
+//   - if the node is the root of the expression tree:
+//     -- if the node is a variable access:
+//     --- if the access has an output-typed element on its path, replace the variable access with a call to the
+//     __applyArg intrinsic and append the access to the list of outputs.
+//     --- otherwise, the access does not need to be transformed; return it as-is.
+//     -- if the list of outputs is empty, the root does not need to be transformed; return it as-is.
+//     -- otherwise, replace the root with a call to the __apply intrinstic. The first n arguments to this call are
+//     the elementss of the list of outputs. The final argument is the original root node.
+//   - otherwise, if the root is an output-typed variable access, replace the variable access with a call to the
+//     __applyArg instrinsic and append the access to the list of outputs.
 //
 // As an example, this transforms the following expression:
-//     (output string
-//         "#!/bin/bash -xe\n\nCA_CERTIFICATE_DIRECTORY=/etc/kubernetes/pki\necho \""
-//         (aws_eks_cluster.demo.certificate_authority.0.data output<unknown> *config.ResourceVariable)
-//         "\" | base64 -d >  $CA_CERTIFICATE_FILE_PATH\nsed -i s,MASTER_ENDPOINT,"
-//         (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
-//         ",g /var/lib/kubelet/kubeconfig\nsed -i s,CLUSTER_NAME,"
-//         (var.cluster-name string *config.UserVariable)
-//         ",g /var/lib/kubelet/kubeconfig\nsed -i s,REGION,"
-//         (data.aws_region.current.name output<string> *config.ResourceVariable)
-//         ",g /etc/systemd/system/kubelet.servicesed -i s,MASTER_ENDPOINT,"
-//         (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
-//         ",g /etc/systemd/system/kubelet.service"
-//     )
+//
+//	(output string
+//	    "#!/bin/bash -xe\n\nCA_CERTIFICATE_DIRECTORY=/etc/kubernetes/pki\necho \""
+//	    (aws_eks_cluster.demo.certificate_authority.0.data output<unknown> *config.ResourceVariable)
+//	    "\" | base64 -d >  $CA_CERTIFICATE_FILE_PATH\nsed -i s,MASTER_ENDPOINT,"
+//	    (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
+//	    ",g /var/lib/kubelet/kubeconfig\nsed -i s,CLUSTER_NAME,"
+//	    (var.cluster-name string *config.UserVariable)
+//	    ",g /var/lib/kubelet/kubeconfig\nsed -i s,REGION,"
+//	    (data.aws_region.current.name output<string> *config.ResourceVariable)
+//	    ",g /etc/systemd/system/kubelet.servicesed -i s,MASTER_ENDPOINT,"
+//	    (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
+//	    ",g /etc/systemd/system/kubelet.service"
+//	)
 //
 // into this expression:
-//     (call output<unknown> __apply
-//         (aws_eks_cluster.demo.certificate_authority.0.data output<unknown> *config.ResourceVariable)
-//         (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
-//         (data.aws_region.current.name output<string> *config.ResourceVariable)
-//         (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
-//         (output string
-//             "#!/bin/bash -xe\n\nCA_CERTIFICATE_DIRECTORY=/etc/kubernetes/pki\necho \""
-//             (call unknown __applyArg
-//                 0
-//             )
-//             "\" | base64 -d >  $CA_CERTIFICATE_FILE_PATH\nsed -i s,MASTER_ENDPOINT,"
-//             (call string __applyArg
-//                 1
-//             )
-//             ",g /var/lib/kubelet/kubeconfig\nsed -i s,CLUSTER_NAME,"
-//             (var.cluster-name string *config.UserVariable)
-//             ",g /var/lib/kubelet/kubeconfig\nsed -i s,REGION,"
-//             (call string __applyArg
-//                 2
-//             )
-//             ",g /etc/systemd/system/kubelet.servicesed -i s,MASTER_ENDPOINT,"
-//             (call string __applyArg
-//                 3
-//             )
-//             ",g /etc/systemd/system/kubelet.service"
-//         )
-//     )
+//
+//	(call output<unknown> __apply
+//	    (aws_eks_cluster.demo.certificate_authority.0.data output<unknown> *config.ResourceVariable)
+//	    (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
+//	    (data.aws_region.current.name output<string> *config.ResourceVariable)
+//	    (aws_eks_cluster.demo.endpoint output<string> *config.ResourceVariable)
+//	    (output string
+//	        "#!/bin/bash -xe\n\nCA_CERTIFICATE_DIRECTORY=/etc/kubernetes/pki\necho \""
+//	        (call unknown __applyArg
+//	            0
+//	        )
+//	        "\" | base64 -d >  $CA_CERTIFICATE_FILE_PATH\nsed -i s,MASTER_ENDPOINT,"
+//	        (call string __applyArg
+//	            1
+//	        )
+//	        ",g /var/lib/kubelet/kubeconfig\nsed -i s,CLUSTER_NAME,"
+//	        (var.cluster-name string *config.UserVariable)
+//	        ",g /var/lib/kubelet/kubeconfig\nsed -i s,REGION,"
+//	        (call string __applyArg
+//	            2
+//	        )
+//	        ",g /etc/systemd/system/kubelet.servicesed -i s,MASTER_ENDPOINT,"
+//	        (call string __applyArg
+//	            3
+//	        )
+//	        ",g /etc/systemd/system/kubelet.service"
+//	    )
+//	)
 //
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).

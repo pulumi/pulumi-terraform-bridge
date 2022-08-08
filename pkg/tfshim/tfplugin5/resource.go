@@ -29,7 +29,7 @@ func (r *resource) SchemaVersion() int {
 	return r.schemaVersion
 }
 
-//nolint: staticcheck
+// nolint: staticcheck
 func (r *resource) Importer() shim.ImportFunc {
 	if r.provider == nil {
 		return nil

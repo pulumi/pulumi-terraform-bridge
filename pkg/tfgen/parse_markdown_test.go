@@ -3,7 +3,7 @@ package tfgen
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -127,7 +127,7 @@ func TestParseNestedSchemaIntoDoc(t *testing.T) {
 }
 
 func readTestFile(t *testing.T, name string) string {
-	bytes, err := ioutil.ReadFile(fmt.Sprintf("test_data/%s", name))
+	bytes, err := os.ReadFile(fmt.Sprintf("test_data/%s", name))
 	if err != nil {
 		t.Fatal(err)
 	}

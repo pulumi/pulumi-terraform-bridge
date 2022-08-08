@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -61,7 +60,7 @@ func (a *AssetTranslation) Type() string {
 // writeToTempFile creates a temporary file and passes it to the provided function, which will fill in the file's
 // contents. Upon success, this function returns the path of the temporary file and a nil error.
 func writeToTempFile(writeFunc func(w io.Writer) error) (string, error) {
-	f, err := ioutil.TempFile("", "pulumi-temp-asset")
+	f, err := os.CreateTemp("", "pulumi-temp-asset")
 	if err != nil {
 		return "", err
 	}

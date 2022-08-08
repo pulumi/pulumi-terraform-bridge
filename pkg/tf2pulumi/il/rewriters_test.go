@@ -1,7 +1,6 @@
 package il
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -15,7 +14,7 @@ import (
 
 func TestMarkPromptDataSources(t *testing.T) {
 	runTest := func(source string, expected map[string]bool) {
-		dir, err := ioutil.TempDir("", "")
+		dir, err := os.MkdirTemp("", "")
 		if err != nil {
 			t.Fatalf("could not create temporary directory: %v", err)
 		}
@@ -23,7 +22,7 @@ func TestMarkPromptDataSources(t *testing.T) {
 			contract.IgnoreError(os.RemoveAll(dir))
 		}()
 
-		err = ioutil.WriteFile(path.Join(dir, "main.tf"), []byte(source), 0600)
+		err = os.WriteFile(path.Join(dir, "main.tf"), []byte(source), 0600)
 		if err != nil {
 			t.Fatalf("could not create main.tf: %v", err)
 		}

@@ -36,7 +36,7 @@ func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package,
 }
 
 // Overrides `schema.NewPluginLoader` to load an empty
-// `*schema.Package{}` when `name=''` is requested. In the doc
+// `*schema.Package{}` when `name=”` is requested. In the doc
 // generation context a dummy package seems better than failing in the
 // case.
 func newLoader(host plugin.Host) *loader {
