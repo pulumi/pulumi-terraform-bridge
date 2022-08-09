@@ -15,7 +15,6 @@
 package tfgen
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -39,7 +38,7 @@ func LoadGoMod() (*modfile.File, error) {
 		}
 	}
 
-	gomodContent, err := ioutil.ReadFile(filepath.Join(moduleRoot, "go.mod"))
+	gomodContent, err := os.ReadFile(filepath.Join(moduleRoot, "go.mod"))
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading go.mod")
 	}

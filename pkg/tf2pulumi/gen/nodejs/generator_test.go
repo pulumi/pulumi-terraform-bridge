@@ -2,7 +2,7 @@ package nodejs
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -113,7 +113,7 @@ func loadConfig(t *testing.T, path string) *config.Config {
 }
 
 func readFile(t *testing.T, path string) string {
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("could not read file %s: %v", path, err)
 	}

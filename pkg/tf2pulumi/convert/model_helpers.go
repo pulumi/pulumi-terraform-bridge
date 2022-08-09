@@ -32,9 +32,9 @@ import (
 //
 // Example block in HCL syntax:
 //
-//     config foo "int" {
-//        default = 1
-//     }
+//	config foo "int" {
+//	   default = 1
+//	}
 //
 // The type is decoded downstream (as in
 // `github.com/pulumi/pulumi/pkg/codegen/pcl/binder.go`) in PCL

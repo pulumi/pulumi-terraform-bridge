@@ -15,7 +15,6 @@
 package il
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -119,7 +118,7 @@ output "security_group_name" {
 }
 `
 
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("could not create temporary directory: %v", err)
 	}
@@ -127,7 +126,7 @@ output "security_group_name" {
 		contract.IgnoreError(os.RemoveAll(dir))
 	}()
 
-	err = ioutil.WriteFile(path.Join(dir, "main.tf"), []byte(hclText), 0600)
+	err = os.WriteFile(path.Join(dir, "main.tf"), []byte(hclText), 0600)
 	if err != nil {
 		t.Fatalf("could not create main.tf: %v", err)
 	}

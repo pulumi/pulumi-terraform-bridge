@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -35,7 +35,7 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// parsed later by `Serve`. We do not want to print errors
 	// about them. Save `defaultOutput` for help below.
 	defaultOutput := flags.Output()
-	flags.SetOutput(ioutil.Discard)
+	flags.SetOutput(io.Discard)
 
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
 	providerVersion := flags.Bool("version", false, "get built provider version")

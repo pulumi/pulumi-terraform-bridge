@@ -2,7 +2,7 @@ package tfbridge
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"text/template"
 )
@@ -56,7 +56,7 @@ func (e LocalFileHclExample) GetMarkdown() (string, error) {
 		return "", err
 	}
 
-	fileBytes, err := ioutil.ReadFile(absPath)
+	fileBytes, err := os.ReadFile(absPath)
 	if err != nil {
 		return "", err
 	}

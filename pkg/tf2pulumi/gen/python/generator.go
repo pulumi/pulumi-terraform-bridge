@@ -214,9 +214,7 @@ func cleanName(name string) string {
 	return name
 }
 
-//
 // Copy-pasted but modified stuff from the node backend.
-//
 func (g *generator) transformProperty(prop il.BoundNode) (il.BoundNode, error) {
 	// First:
 	// - retype any possibly-unknown module inputs as the appropriate output types
@@ -484,9 +482,8 @@ func PyName(name string) string {
 // pythonKeywords is a map of reserved keywords used by Python 2 and 3.  We use this to avoid generating unspeakable
 // names in the resulting code.  This map was sourced by merging the following reference material:
 //
-//     * Python 2: https://docs.python.org/2.5/ref/keywords.html
-//     * Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
-//
+//   - Python 2: https://docs.python.org/2.5/ref/keywords.html
+//   - Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
 var pythonKeywords = map[string]bool{
 	"False":    true,
 	"None":     true,
