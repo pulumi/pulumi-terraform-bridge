@@ -78,7 +78,7 @@ func (p *inmemoryProvider) Configure(inputs resource.PropertyMap) error {
 }
 
 func (p *inmemoryProvider) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	panic("unimplemented")
 }
 

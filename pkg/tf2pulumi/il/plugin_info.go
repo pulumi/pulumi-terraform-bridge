@@ -145,7 +145,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	tfProviderName := name
 	pluginName := GetPulumiProviderName(tfProviderName)
 
-	_, path, err := workspace.GetPluginPath(workspace.ResourcePlugin, pluginName, nil)
+	path, err := workspace.GetPluginPath(workspace.ResourcePlugin, pluginName, nil, nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
