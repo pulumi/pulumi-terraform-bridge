@@ -198,7 +198,8 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			vs = options.Transform(vs)
 		}
 		if options.Randlen > 0 {
-			uniqueHex, err := resource.NewUniqueName(res.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
+			uniqueHex, err := resource.NewUniqueName(
+				res.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
 			if err != nil {
 				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}
