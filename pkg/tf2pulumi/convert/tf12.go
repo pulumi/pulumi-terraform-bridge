@@ -330,6 +330,7 @@ type resource struct {
 	rangeVariable *model.Variable
 	isCounted     bool
 	isConditional bool
+	isModule      bool
 
 	block *model.Block
 }
@@ -416,19 +417,11 @@ func (b *tf12binder) declareFile(input *syntax.File) (*file, hcl.Diagnostics) {
 					variableType = model.NewListType(terraformType)
 				}
 
-				// The source attribute serves the same "package" role that ordinary resource tokens do.
-				// Obtaining and saving source path for easy access in the future.
-				firstSourceExpression := item.Body.Attributes["source"].Expr.(*hclsyntax.TemplateExpr)
-				secondSourceExpression := firstSourceExpression.Parts[0].(*hclsyntax.LiteralValueExpr)
-				sourcePath := secondSourceExpression.Val.AsString()
-
-				// Ignoring the source attribute so that it doesn't get processed during code generation
-				delete(item.Body.Attributes, "source")
-
 				r := &resource{
+					isModule:      true,
 					syntax:        item,
 					name:          item.Labels[0],
-					token:         sourcePath,
+					token:         "Terraform Child Module",
 					terraformType: terraformType,
 					variableType:  variableType,
 				}
@@ -1611,7 +1604,10 @@ func (b *tf12binder) genResource(w io.Writer, r *resource) hcl.Diagnostics {
 
 	item := model.BodyItem(r.block)
 	if !r.isDataSource {
-		r.block.Labels = []string{r.pulumiName, r.token}
+		r.block.Labels = []string{r.pulumiName}
+		if !r.isModule {
+			r.block.Labels = append(r.block.Labels, r.token)
+		}
 
 		if r.isConditional {
 			options := r.block.Body.Blocks("options")[0]
