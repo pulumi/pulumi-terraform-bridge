@@ -132,8 +132,10 @@ type AutoNameOptions struct {
 	Separator string
 	// Maximum length of the generated name
 	Maxlen int
-	// Number of characters of random hex digits to add to the name
+	// Number of random characters to add to the name
 	Randlen int
+	// What characters to use for the random portion of the name, defaults to hex digits
+	Charset []rune
 	// A transform to apply to the name prior to adding random characters
 	Transform func(string) string
 	// A transform to apply after the auto naming has been computed
@@ -196,7 +198,8 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			vs = options.Transform(vs)
 		}
 		if options.Randlen > 0 {
-			uniqueHex, err := resource.NewUniqueHex(vs+options.Separator, options.Randlen, options.Maxlen)
+			uniqueHex, err := resource.NewUniqueName(
+				res.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
 			if err != nil {
 				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
 			}

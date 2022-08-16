@@ -308,10 +308,11 @@ type DefaultInfo struct {
 	EnvVars []string
 }
 
-// PulumiResource is just a little bundle that carries URN and properties around.
+// PulumiResource is just a little bundle that carries URN, seed and properties around.
 type PulumiResource struct {
 	URN        resource.URN
 	Properties resource.PropertyMap
+	Seed       []byte
 }
 
 // OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and
