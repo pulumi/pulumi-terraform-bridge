@@ -599,10 +599,6 @@ func (b *builder) buildDeps(deps nodeSet, dependsOn []string, providers []string
 // getProviderInfo fetches the tfbridge information for a particular provider. It does so by launching the provider
 // plugin with the "-get-provider-info" flag and deserializing the JSON representation dumped to stdout.
 func (b *builder) getProviderInfo(p *ProviderNode) (*tfbridge.ProviderInfo, string, error) {
-	if info, ok := builtinProviderInfo[p.Name]; ok {
-		return info, p.Name, nil
-	}
-
 	info, err := b.providerInfo.GetProviderInfo("", "", p.Name, "")
 	if err != nil {
 		return nil, "", err
