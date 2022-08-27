@@ -123,7 +123,7 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	var genDiags hcl.Diagnostics
 	switch opts.TargetLanguage {
 	case LanguageTypescript:
-        generatedFiles, genDiags, err = hcl2nodejs.GenerateCode(program, opts.ConvertToComponentResource)
+		generatedFiles, genDiags, err = hcl2nodejs.GenerateCode(program, opts.ConvertToComponentResource)
 		diagnostics = append(diagnostics, genDiags...)
 	case LanguagePulumi:
 		generatedFiles = map[string][]byte{}
@@ -134,7 +134,7 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		generatedFiles, genDiags, err = hcl2python.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	case LanguageCSharp:
-		generatedFiles, genDiags, err = hcl2dotnet.GenerateProgram(program)
+		generatedFiles, genDiags, err = hcl2dotnet.GenerateCode(program, opts.ConvertToComponentResource)
 		diagnostics = append(diagnostics, genDiags...)
 	case LanguageGo:
 		generatedFiles, genDiags, err = hcl2go.GenerateProgram(program)
