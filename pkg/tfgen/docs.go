@@ -486,13 +486,13 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	sections := splitGroupLines(markdown, "## ")
 
 	// we are using the Terraform docs as the source of the examples for this resource
-	if p.info.GetDocs() != nil && !p.info.GetDocs().ReplaceExamplesSection {
+	if p.info != nil && p.info.GetDocs() != nil && !p.info.GetDocs().ReplaceExamplesSection {
 		// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
 		sections = reformatExamples(sections)
 	}
 
 	// we are explicitly overwriting the Terraform examples here
-	if p.info.GetDocs() != nil && p.info.ReplaceExamplesSection() {
+	if p.info != nil && p.info.GetDocs() != nil && p.info.ReplaceExamplesSection() {
 		for i, section := range sections {
 			// Let's remove any existing examples usage we have in our parsed documentation
 			if len(section) > 0 && strings.Contains(section[0], "Example Usage") {
