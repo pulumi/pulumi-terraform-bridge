@@ -455,6 +455,21 @@ const (
 	sectionImports             = 5
 )
 
+func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
+	examplesFileName := fmt.Sprintf("docs/%s/%s.examples.md", p.kind, p.rawname)
+	absPath, err := filepath.Abs(examplesFileName)
+	if err != nil {
+		return "", err
+	}
+	fileBytes, err := os.ReadFile(absPath)
+	if err != nil {
+		p.g.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
+		return "", err
+	}
+
+	return string(fileBytes), nil
+}
+
 func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
@@ -470,8 +485,29 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Split the sections by H2 topics in the Markdown file.
 	sections := splitGroupLines(markdown, "## ")
 
-	// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
-	sections = reformatExamples(sections)
+	// we are using the Terraform docs as the source of the examples for this resource
+	if p.info != nil && p.info.GetDocs() != nil && !p.info.GetDocs().ReplaceExamplesSection {
+		// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+		sections = reformatExamples(sections)
+	}
+
+	// we are explicitly overwriting the Terraform examples here
+	if p.info != nil && p.info.GetDocs() != nil && p.info.ReplaceExamplesSection() {
+		for i, section := range sections {
+			// Let's remove any existing examples usage we have in our parsed documentation
+			if len(section) > 0 && strings.Contains(section[0], "Example Usage") {
+				sections = append(sections[:i], sections[i+1:]...)
+			}
+
+			// now we are going to inject the new source of examples
+			newExamples, err := p.parseSupplementaryExamples()
+			if err != nil {
+				return entityDocs{}, err
+			}
+			newSection := strings.Split(newExamples, "\n")
+			sections = append(sections, newSection)
+		}
+	}
 
 	for _, section := range sections {
 		if err := p.parseSection(section); err != nil {
@@ -647,7 +683,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
 		}
-		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports {
+		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
+			!p.info.ReplaceExamplesSection() {
 			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 			unexpectedSnippets++
@@ -993,6 +1030,14 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithErrors bool) string {
 	if docs == "" {
 		return ""
+	}
+
+	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
+		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
+		strings.Contains(docs, "```csharp") {
+		// we have explicitly rewritten these examples and need to just return them directly rather than trying
+		// to reconvert them
+		return docs
 	}
 
 	output := &bytes.Buffer{}

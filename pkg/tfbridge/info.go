@@ -151,6 +151,7 @@ type ResourceOrDataSourceInfo interface {
 	GetTok() tokens.Token              // a type token to override the default; "" uses the default.
 	GetFields() map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
 	GetDocs() *DocInfo                 // overrides for finding and mapping TF docs.
+	ReplaceExamplesSection() bool      // whether we are replacing the upstream TF examples generation
 }
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
@@ -179,6 +180,11 @@ func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Field
 // GetDocs returns a resource docs override from the Pulumi provider
 func (info *ResourceInfo) GetDocs() *DocInfo { return info.Docs }
 
+// ReplaceExamplesSection returns whether to replace the upstream examples with our own source
+func (info *ResourceInfo) ReplaceExamplesSection() bool {
+	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+}
+
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo struct {
 	Tok                tokens.ModuleMember
@@ -195,6 +201,11 @@ func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fie
 
 // GetDocs returns a datasource docs override from the Pulumi provider
 func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }
+
+// ReplaceExamplesSection returns whether to replace the upstream examples with our own source
+func (info *DataSourceInfo) ReplaceExamplesSection() bool {
+	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+}
 
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo struct {
@@ -283,6 +294,11 @@ type DocInfo struct {
 	IncludeArgumentsFrom           string // optionally include arguments from another raw resource for docs.
 	IncludeAttributesFromArguments string // optionally include attributes from another raw resource's arguments.
 	ImportDetails                  string // Overwrite for import instructions
+
+	// Replace examples with the contents of a specific document
+	// this document will satisfy the criteria `docs/pulumiToken.md`
+	// The examples need to wrapped in the correct shortcodes
+	ReplaceExamplesSection bool
 }
 
 // GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
