@@ -456,7 +456,7 @@ const (
 )
 
 func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
-	examplesFileName := fmt.Sprintf("docs/%s/%s.md", p.kind, p.rawname)
+	examplesFileName := fmt.Sprintf("docs/%s/%s.examples.md", p.kind, p.rawname)
 	absPath, err := filepath.Abs(examplesFileName)
 	if err != nil {
 		return "", err
@@ -492,7 +492,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	}
 
 	// we are explicitly overwriting the Terraform examples here
-	if p.info.ReplaceExamplesSection() {
+	if p.info.GetDocs() != nil && p.info.ReplaceExamplesSection() {
 		for i, section := range sections {
 			// Let's remove any existing examples usage we have in our parsed documentation
 			if len(section) > 0 && strings.Contains(section[0], "Example Usage") {
