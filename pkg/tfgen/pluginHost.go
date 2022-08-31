@@ -49,10 +49,9 @@ func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 		version = &v
 	}
 	return workspace.PluginInfo{
-		Name:              p.info.Name,
-		Kind:              workspace.ResourcePlugin,
-		Version:           version,
-		PluginDownloadURL: p.info.PluginDownloadURL,
+		Name:    p.info.Name,
+		Kind:    workspace.ResourcePlugin,
+		Version: version,
 	}, nil
 }
 
