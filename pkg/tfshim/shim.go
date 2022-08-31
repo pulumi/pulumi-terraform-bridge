@@ -79,6 +79,7 @@ type Schema interface {
 	MaxItems() int
 	MinItems() int
 	ConflictsWith() []string
+	ExactlyOneOf() []string
 	Deprecated() string
 	Removed() string
 	Sensitive() bool

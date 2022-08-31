@@ -84,6 +84,14 @@ func (s *attributeSchema) ConflictsWith() []string {
 	return nil
 }
 
+func (s *attributeSchema) ExactlyOneOf() []string {
+	return nil
+}
+
+func (s *attributeSchema) AtLeastOneOf() []string {
+	return nil
+}
+
 func (s *attributeSchema) Removed() string {
 	return ""
 }

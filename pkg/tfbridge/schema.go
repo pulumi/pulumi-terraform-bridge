@@ -490,28 +490,34 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 
 }
 
-func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
-
-	if !ctx.ApplyDefaults {
-		return nil
+func buildExactlyOneOfsWith(result map[string]interface{}, tfs shim.SchemaMap) map[string]struct{} {
+	exactlyOneOf := make(map[string]struct{})
+	if tfs != nil {
+		tfs.Range(func(name string, sch shim.Schema) bool {
+			if _, has := result[name]; has {
+				// `name` is present, so mark any names that are declared to
+				// exactlyOneOf with `name` for exclusion.
+				for _, exclusion := range sch.ExactlyOneOf() {
+					exactlyOneOf[exclusion] = struct{}{}
+				}
+			} else {
+				// `name` is not present, so mark it for exclusion if any fields
+				// that exactlyOneOf with `name` are present.
+				for _, exclusion := range sch.ExactlyOneOf() {
+					if _, has := result[exclusion]; has {
+						exactlyOneOf[name] = struct{}{}
+						break
+					}
+				}
+			}
+			return true
+		})
 	}
 
-	// Create an array to track which properties are defaults.
-	newDefaults := []interface{}{}
+	return exactlyOneOf
+}
 
-	// Pull the list of old defaults if any. If there is no list, then we will treat all old values as being usable
-	// for new defaults. If there is a list, we will only propagate defaults that were themselves defaults.
-	useOldDefault := func(key resource.PropertyKey) bool { return true }
-	if oldDefaults, ok := olds[defaultsKey]; ok {
-		oldDefaultSet := make(map[resource.PropertyKey]bool)
-		for _, k := range oldDefaults.ArrayValue() {
-			oldDefaultSet[resource.PropertyKey(k.StringValue())] = true
-		}
-		useOldDefault = func(key resource.PropertyKey) bool { return oldDefaultSet[key] }
-	}
-
-	// Compute any names for which setting a default would cause a conflict.
+func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[string]struct{} {
 	conflictsWith := make(map[string]struct{})
 	if tfs != nil {
 		tfs.Range(func(name string, sch shim.Schema) bool {
@@ -535,12 +541,43 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 		})
 	}
 
+	return conflictsWith
+}
+
+func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds, news resource.PropertyMap,
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
+
+	if !ctx.ApplyDefaults {
+		return nil
+	}
+
+	// Create an array to track which properties are defaults.
+	newDefaults := []interface{}{}
+
+	// Pull the list of old defaults if any. If there is no list, then we will treat all old values as being usable
+	// for new defaults. If there is a list, we will only propagate defaults that were themselves defaults.
+	useOldDefault := func(key resource.PropertyKey) bool { return true }
+	if oldDefaults, ok := olds[defaultsKey]; ok {
+		oldDefaultSet := make(map[resource.PropertyKey]bool)
+		for _, k := range oldDefaults.ArrayValue() {
+			oldDefaultSet[resource.PropertyKey(k.StringValue())] = true
+		}
+		useOldDefault = func(key resource.PropertyKey) bool { return oldDefaultSet[key] }
+	}
+
+	// Compute any names for which setting a default would cause a conflict.
+	conflictsWith := buildConflictsWith(result, tfs)
+	exactlyOneOf := buildExactlyOneOfsWith(result, tfs)
+
 	// First, attempt to use the overlays.
 	for name, info := range ps {
 		if info.Removed {
 			continue
 		}
 		if _, conflicts := conflictsWith[name]; conflicts {
+			continue
+		}
+		if _, exactlyOneOfConflicts := exactlyOneOf[name]; exactlyOneOfConflicts {
 			continue
 		}
 		sch := getSchema(tfs, name)
@@ -618,10 +655,14 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 				result[name] = defaultValue
 				newDefaults = append(newDefaults, key)
 
-				// Expand the conflicts map
+				// Expand the conflicts and exactlyOneOf map
 				if sch != nil {
 					for _, conflictingName := range sch.ConflictsWith() {
 						conflictsWith[conflictingName] = struct{}{}
+					}
+
+					for _, exactlyOneOfName := range sch.ExactlyOneOf() {
+						exactlyOneOf[exactlyOneOfName] = struct{}{}
 					}
 				}
 			}
@@ -642,10 +683,23 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 				return true
 			}
 
+			if _, exactlyOneOfConflict := exactlyOneOf[name]; exactlyOneOfConflict {
+				return true
+			}
+
 			// If a conflicting field has a default value, don't set the default for the current field
 			for _, conflictingName := range sch.ConflictsWith() {
 				if conflictingSchema, exists := tfs.GetOk(conflictingName); exists {
 					dv, _ := conflictingSchema.DefaultValue()
+					if dv != nil {
+						return true
+					}
+				}
+			}
+
+			for _, exactlyOneOfName := range sch.ExactlyOneOf() {
+				if exactlyOneSchema, exists := tfs.GetOk(exactlyOneOfName); exists {
+					dv, _ := exactlyOneSchema.DefaultValue()
 					if dv != nil {
 						return true
 					}

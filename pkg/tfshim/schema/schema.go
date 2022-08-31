@@ -26,6 +26,7 @@ type Schema struct {
 	MaxItems      int
 	MinItems      int
 	ConflictsWith []string
+	ExactlyOneOf  []string
 	Removed       string
 	Deprecated    string
 	Sensitive     bool
@@ -106,6 +107,10 @@ func (s SchemaShim) MinItems() int {
 
 func (s SchemaShim) ConflictsWith() []string {
 	return s.V.ConflictsWith
+}
+
+func (s SchemaShim) ExactlyOneOf() []string {
+	return s.V.ExactlyOneOf
 }
 
 func (s SchemaShim) Removed() string {

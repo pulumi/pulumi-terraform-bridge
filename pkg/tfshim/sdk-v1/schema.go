@@ -103,6 +103,10 @@ func (s v1Schema) ConflictsWith() []string {
 	return s.tf.ConflictsWith
 }
 
+func (s v1Schema) ExactlyOneOf() []string {
+	return s.tf.ExactlyOneOf
+}
+
 func (s v1Schema) Removed() string {
 	return s.tf.Removed
 }
