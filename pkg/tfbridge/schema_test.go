@@ -723,7 +723,6 @@ func sortDefaultsList(m resource.PropertyMap) {
 	m[defaultsKey] = resource.NewArrayProperty(defs)
 }
 
-//
 func TestDefaults(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
