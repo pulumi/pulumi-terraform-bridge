@@ -485,12 +485,6 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Split the sections by H2 topics in the Markdown file.
 	sections := splitGroupLines(markdown, "## ")
 
-	// we are using the Terraform docs as the source of the examples for this resource
-	if p.info != nil && p.info.GetDocs() != nil && !p.info.GetDocs().ReplaceExamplesSection {
-		// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
-		sections = reformatExamples(sections)
-	}
-
 	// we are explicitly overwriting the Terraform examples here
 	if p.info != nil && p.info.GetDocs() != nil && p.info.ReplaceExamplesSection() {
 		for i, section := range sections {
@@ -509,6 +503,9 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 		}
 		newSection := strings.Split(newExamples, "\n")
 		sections = append(sections, newSection)
+	} else {
+		// Reparent examples that are peers of the "Example Usage" section (if any) and fixup some example titles.
+		sections = reformatExamples(sections)
 	}
 
 	for _, section := range sections {
