@@ -497,16 +497,18 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 			// Let's remove any existing examples usage we have in our parsed documentation
 			if len(section) > 0 && strings.Contains(section[0], "Example Usage") {
 				sections = append(sections[:i], sections[i+1:]...)
-			}
 
-			// now we are going to inject the new source of examples
-			newExamples, err := p.parseSupplementaryExamples()
-			if err != nil {
-				return entityDocs{}, err
+				break
 			}
-			newSection := strings.Split(newExamples, "\n")
-			sections = append(sections, newSection)
 		}
+
+		// now we are going to inject the new source of examples
+		newExamples, err := p.parseSupplementaryExamples()
+		if err != nil {
+			return entityDocs{}, err
+		}
+		newSection := strings.Split(newExamples, "\n")
+		sections = append(sections, newSection)
 	}
 
 	for _, section := range sections {
@@ -1036,8 +1038,8 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") {
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
-		// to reconvert them
-		return docs
+		// to reconvert them. But we need to surround them in the examples shortcode for rendering on the registry
+		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% //examples %%}}", docs)
 	}
 
 	output := &bytes.Buffer{}
