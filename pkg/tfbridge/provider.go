@@ -544,6 +544,12 @@ func (p *Provider) Configure(ctx context.Context,
 		}
 	}
 
+	if p.info.PreConfigureCallbackWithLogger != nil {
+		if err = p.info.PreConfigureCallbackWithLogger(ctx, p.host, vars, config); err != nil {
+			return nil, err
+		}
+	}
+
 	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
 	if len(missingKeys) > 0 {
 		err = rpcerror.WithDetails(
