@@ -98,3 +98,27 @@ func TestConfigBoolValue(t *testing.T) {
 	assert.Equal(t, false, ConfigBoolValue(testConf, "APPLES", emptyEnvs))
 	assert.Equal(t, false, ConfigBoolValue(testConf, "thisfruitdoesnotexist", emptyEnvs))
 }
+
+func TestConfigArrayValue(t *testing.T) {
+	testConf := map[resource.PropertyKey]resource.PropertyValue{
+		"fruit_salad": {
+			[]resource.PropertyValue{
+				{"orange"},
+				{"pear"},
+				{"banana"},
+			},
+		},
+	}
+
+	t.Setenv("FRUIT_SALAD", "tangerine;quince;peach")
+	testEnvs := []string{
+		"FRUIT_SALAD",
+	}
+
+	var emptyEnvs []string
+	assert.Equal(t, []string{"orange", "pear", "banana"}, ConfigArrayValue(testConf, "fruit_salad", testEnvs))
+	assert.Equal(t, []string{"orange", "pear", "banana"}, ConfigArrayValue(testConf, "fruit_salad", emptyEnvs))
+	assert.Equal(t, []string{"tangerine", "quince", "peach"}, ConfigArrayValue(testConf, "FRUIT_SALAD", testEnvs))
+	assert.Equal(t, []string(nil), ConfigArrayValue(testConf, "FRUIT_SALAD", emptyEnvs))
+	assert.Equal(t, []string(nil), ConfigArrayValue(testConf, "idontlikefruitsalad", emptyEnvs))
+}

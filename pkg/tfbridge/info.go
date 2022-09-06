@@ -873,12 +873,7 @@ func ConfigStringValue(vars resource.PropertyMap, prop resource.PropertyKey, env
 func ConfigArrayValue(vars resource.PropertyMap, prop resource.PropertyKey, envs []string) []string {
 	val, ok := vars[prop]
 	var vals []string
-	fmt.Println("HERE HERE HERE")
-	fmt.Println("val is: ", val)
-	fmt.Println("prop key is: ", prop)
-	fmt.Println("is val an array? t/f -", val.IsArray())
 	if ok && val.IsArray() {
-		fmt.Println(val, "val is an array")
 		for _, v := range val.ArrayValue() {
 
 			vals = append(vals, v.StringValue())
