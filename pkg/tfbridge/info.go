@@ -16,6 +16,8 @@ package tfbridge
 
 import (
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"golang.org/x/net/context"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -85,7 +87,8 @@ type ProviderInfo struct {
 	TFProviderLicense        *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
 	TFProviderModuleVersion  string             // the Go module version of the provider. Default is unversioned e.g. v1
 
-	PreConfigureCallback PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
+	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
+	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
@@ -379,6 +382,13 @@ type JavaInfo struct {
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
 type PreConfigureCallback func(vars resource.PropertyMap, config shim.ResourceConfig) error
+
+// PreConfigureCallbackWithLogger is a function to invoke prior to calling the T
+type PreConfigureCallbackWithLogger func(
+	ctx context.Context,
+	host *provider.HostClient, vars resource.PropertyMap,
+	config shim.ResourceConfig,
+) error
 
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
 // marshalling a provider info as JSON; Note that these types only represent a subset of the informatino associated
