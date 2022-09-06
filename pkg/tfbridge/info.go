@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"golang.org/x/net/context"
+	"os"
+	"strings"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -851,3 +853,59 @@ func StringValue(vars resource.PropertyMap, prop resource.PropertyKey) string {
 
 // ManagedByPulumi is a default used for some managed resources, in the absence of something more meaningful.
 var ManagedByPulumi = &DefaultInfo{Value: "Managed by Pulumi"}
+
+// ConfigStringValue gets a string value from a property map, then from environment vars; if neither are present, returns empty string ""
+func ConfigStringValue(vars resource.PropertyMap, prop resource.PropertyKey, envs []string) string {
+	val, ok := vars[prop]
+	if ok && val.IsString() {
+		return val.StringValue()
+	}
+	for _, env := range envs {
+		val, ok := os.LookupEnv(env)
+		if ok {
+			return val
+		}
+	}
+	return ""
+}
+
+// ConfigArrayValue takes an array value from a property map, then from environment vars; defaults to an empty array
+func ConfigArrayValue(vars resource.PropertyMap, prop resource.PropertyKey, envs []string) []string {
+	val, ok := vars[prop]
+	var vals []string
+	fmt.Println("HERE HERE HERE")
+	fmt.Println("val is: ", val)
+	fmt.Println("prop key is: ", prop)
+	fmt.Println("is val an array? t/f -", val.IsArray())
+	if ok && val.IsArray() {
+		fmt.Println(val, "val is an array")
+		for _, v := range val.ArrayValue() {
+
+			vals = append(vals, v.StringValue())
+		}
+		return vals
+	}
+
+	for _, env := range envs {
+		val, ok := os.LookupEnv(env)
+		if ok {
+			return strings.Split(val, ";")
+		}
+	}
+	return vals
+}
+
+// ConfigBoolValue takes a bool value from a property map, then from environment vars; defaults to false
+func ConfigBoolValue(vars resource.PropertyMap, prop resource.PropertyKey, envs []string) bool {
+	val, ok := vars[prop]
+	if ok && val.IsBool() {
+		return val.BoolValue()
+	}
+	for _, env := range envs {
+		val, ok := os.LookupEnv(env)
+		if ok && val == "true" {
+			return true
+		}
+	}
+	return false
+}
