@@ -540,6 +540,21 @@ func testProviderPreConfigureCallback(t *testing.T, provider *Provider) {
 	assert.Equal(t, expectedErr, err)
 }
 
+func testProviderPreConfigureCallbackWithLogger(t *testing.T, provider *Provider) {
+	expectedErr := errors.New("failedToPreConfigureWithLogger")
+	provider.info = ProviderInfo{
+		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return expectedErr
+		},
+	}
+	_, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		Variables: map[string]string{
+			"foo:config:bar": "invalid",
+		},
+	})
+	assert.Equal(t, expectedErr, err)
+}
+
 func TestProviderPreConfigureCallbackV1(t *testing.T) {
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
@@ -555,6 +570,14 @@ func TestProviderPreConfigureCallbackV2(t *testing.T) {
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	testProviderPreConfigureCallback(t, provider)
+}
+
+func TestProviderPreconfigureCallbackWithLogger(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	testProviderPreConfigureCallbackWithLogger(t, provider)
 }
 
 func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
