@@ -854,7 +854,7 @@ func StringValue(vars resource.PropertyMap, prop resource.PropertyKey) string {
 // ManagedByPulumi is a default used for some managed resources, in the absence of something more meaningful.
 var ManagedByPulumi = &DefaultInfo{Value: "Managed by Pulumi"}
 
-// ConfigStringValue gets a string value from a property map, then from environment vars; if neither are present, returns empty string ""
+// ConfigStringValue gets a string value from a property map, then from environment vars; defaults to empty string ""
 func ConfigStringValue(vars resource.PropertyMap, prop resource.PropertyKey, envs []string) string {
 	val, ok := vars[prop]
 	if ok && val.IsString() {

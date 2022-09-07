@@ -102,10 +102,10 @@ func TestConfigBoolValue(t *testing.T) {
 func TestConfigArrayValue(t *testing.T) {
 	testConf := map[resource.PropertyKey]resource.PropertyValue{
 		"fruit_salad": {
-			[]resource.PropertyValue{
-				{"orange"},
-				{"pear"},
-				{"banana"},
+			V: []resource.PropertyValue{
+				{V: "orange"},
+				{V: "pear"},
+				{V: "banana"},
 			},
 		},
 	}
