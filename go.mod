@@ -19,7 +19,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/hcl/v2 v2.13.0
+	github.com/hashicorp/hcl/v2 v2.14.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
@@ -33,22 +33,22 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi-java/pkg v0.5.4
+	github.com/pulumi/pulumi-java/pkg v0.6.0
 	github.com/pulumi/pulumi-yaml v0.5.5
-	github.com/pulumi/pulumi/pkg/v3 v3.39.0
-	github.com/pulumi/pulumi/sdk/v3 v3.39.0
+	github.com/pulumi/pulumi/pkg/v3 v3.40.1
+	github.com/pulumi/pulumi/sdk/v3 v3.40.1
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.6.0
-	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.7.2
+	github.com/spf13/cobra v1.5.0
+	github.com/stretchr/testify v1.8.0
 	github.com/zclconf/go-cty v1.10.0
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503
 	golang.org/x/mod v0.5.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/text v0.3.7
-	google.golang.org/grpc v1.48.0
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/grpc v1.49.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
