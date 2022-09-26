@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
@@ -29,7 +30,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -517,10 +517,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, elided := cleanupDoc(p.rawname, p.g, p.ret, footerLinks)
-	if elided {
-		p.g.warn("Resource %v contains an <elided> doc reference that needs updated", p.rawname)
-	}
+	doc, _ := cleanupDoc(p.rawname, p.g, p.ret, footerLinks)
 
 	return doc, nil
 }
