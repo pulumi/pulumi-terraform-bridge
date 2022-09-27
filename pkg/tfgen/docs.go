@@ -899,10 +899,14 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			continue
 		}
 
+		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
+		section = strings.TrimPrefix(section, "# ")
+
 		// There are multiple variations of codeblocks for import syntax
 		section = strings.Replace(section, "```shell", "", -1)
 		section = strings.Replace(section, "```sh", "", -1)
 		section = strings.Replace(section, "```", "", -1)
+
 		if strings.Contains(section, "terraform import") {
 			// First, remove the `$`
 			section := strings.Replace(section, "$ ", "", -1)
