@@ -1130,12 +1130,19 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 }
 
 // Construct creates a new instance of the provided component resource and returns its state.
-func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+func (p *Provider) Construct(ctx context.Context,
+	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	if p.info.Construct != nil {
+		return p.info.Construct(ctx, req)
+	}
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	if p.info.Call != nil {
+		return p.info.Call(ctx, req)
+	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
