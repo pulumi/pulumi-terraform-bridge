@@ -954,9 +954,9 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	failBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_MISSING_MAPPING_ERROR")) ||
-		isTruthy(os.Getenv("PULUMI_PROVIDER_MAP_ERROR"))
-	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
+		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var resourceMappingErrors error
@@ -972,7 +972,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 				continue
 			}
 
-			if failBuildOnMissingMapError && !ignoreMappingError(g.info.IgnoreMappings, r) {
+			if !ignoreMappingError(g.info.IgnoreMappings, r) && !skipFailBuildOnMissingMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("TF resource %q not mapped to the Pulumi provider", r))
 			} else {
@@ -1003,7 +1003,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			if failBuildOnExtraMapError {
+			if !skipFailBuildOnExtraMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("Pulumi token %q is mapped to TF provider resource %q, but no such "+
 						"resource found. The mapping will be ignored in the generated provider",
