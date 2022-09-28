@@ -17,6 +17,7 @@ package tfgen
 
 import (
 	"bytes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 	"testing"
 	"text/template"
@@ -740,4 +741,88 @@ func TestOverlayArgsToArgs(t *testing.T) {
 	overlayArgsToArgs(source, dest)
 
 	assert.Equal(t, expected, dest)
+}
+
+func TestParseImports_NoOverrides(t *testing.T) {
+	var tests = []struct {
+		input    []string
+		token    tokens.Token
+		expected string
+	}{
+		{
+			input: []string{
+				"",
+				"Import is supported using the following syntax:", // This is intentionally discarded
+				"",
+				"```shell", // This has several variations upstream
+				"# format is account name | | | privilege | true/false for with_grant_option", // Ensure we remove the shell comment to avoid rendering as H1 in Markdown
+				"terraform import snowflake_account_grant.example 'accountName|||USAGE|true'",
+				"```",
+				"",
+			},
+			token:    "snowflake:index/accountGrant:AccountGrant",
+			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option <break><break>```sh<break> $ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true' <break>```<break><break>",
+		},
+		{
+			input: []string{
+				"",
+				"Import is supported using the following syntax:", // This is intentionally discarded
+				"",
+				"```sh", // This has several variations upstream
+				"terraform import snowflake_api_integration.example name",
+				"```",
+				"",
+			},
+			token:    "snowflake:index/apiIntegration:ApiIntegration",
+			expected: "## Import\n\n<break><break>```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
+		},
+	}
+
+	for _, tt := range tests {
+		parser := tfMarkdownParser{
+			info: &mockResource{
+				token: tt.token,
+			},
+		}
+		parser.parseImports(tt.input)
+
+		assert.Equal(t, tt.expected, parser.ret.Import)
+	}
+}
+
+func TestParseImports_WithOverride(t *testing.T) {
+	parser := tfMarkdownParser{
+		info: &mockResource{
+			docs: tfbridge.DocInfo{
+				ImportDetails: "overridden import details",
+			},
+		},
+	}
+
+	parser.parseImports([]string{"this doesn't matter because we are overriding it"})
+
+	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
+}
+
+type mockResource struct {
+	docs  tfbridge.DocInfo
+	token tokens.Token
+}
+
+func (r *mockResource) GetFields() map[string]*tfbridge.SchemaInfo {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *mockResource) ReplaceExamplesSection() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *mockResource) GetDocs() *tfbridge.DocInfo {
+	return &r.docs
+}
+
+func (r *mockResource) GetTok() tokens.Token {
+	return r.token
 }
