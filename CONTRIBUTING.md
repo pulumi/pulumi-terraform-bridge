@@ -1,7 +1,16 @@
-# Contributing to Pulumi
+# Contributing to the Pulumi ecosystem
 
-Do you want to hack on Pulumi?  Awesome!  We are so happy to have you.
+Do you want to contribute to Pulumi? Awesome! We are so happy to have you.
+We have a few tips and housekeeping items to help you get up and running.
 
-Please refer to the [main Pulumi repo](https://github.com/pulumi/home/)'s [CONTRIBUTING.md file](
-https://github.com/pulumi/home/blob/master/CONTRIBUTING.md) for details on how to do so.
+## Code of Conduct
 
+Please make sure to read and observe our [Code of Conduct](./CODE-OF-CONDUCT.md)
+
+## Community Expectations
+
+Please read about our [contribution guidelines here.](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#communications)
+
+## Developing for pulumi-terraform-bridge
+
+Please see the [README](./README.md#development) section for details.
