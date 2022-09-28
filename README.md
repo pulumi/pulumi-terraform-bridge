@@ -58,6 +58,11 @@ You can run make to build and run tests:
 
 This repo on its own isn't particularly interesting, until it is used to create a new Pulumi provider.
 
+### Releasing
+
+We use git tags and [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
+Maintainers will push a new semver tag when appropriate.
+
 ### Adapting a New Terraform Provider
 
 It is relatively easy to adapt a Terraform Provider, X, for use with Pulumi.  The
