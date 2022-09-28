@@ -99,6 +99,6 @@ an example of this in action.
 
 tfgen, the command that generates Pulumi schema/code for a bridged provider supports the following environment variables:
 
-* `PULUMI_MISSING_MAPPING_ERROR`: If truthy, fail if a data source or resource in the TF provider is not mapped to the Pulumi provider.
-* `PULUMI_MISSING_DOCS_ERROR`: If truthy, fail if docs cannot be found for a data source or resource.
-* `PULUMI_EXTRA_MAPPING_ERROR`: If truthy, fail if a mapped data source or resource does not exist in the TF provider.
+* `PULUMI_SKIP_MISSING_MAPPING_ERROR`: If truthy, tfgen will not fail if a data source or resource in the TF provider is not mapped to the Pulumi provider. Instead, a warning is printed. Default is `false`.
+* `PULUMI_SKIP_EXTRA_MAPPING_ERROR`: If truthy, tfgen will not fail if a mapped data source or resource does not exist in the TF provider. Instead, warning is printed. Default is `false`.
+* `PULUMI_MISSING_DOCS_ERROR`: If truthy, tfgen will fail if docs cannot be found for a data source or resource. Default is `false`.
