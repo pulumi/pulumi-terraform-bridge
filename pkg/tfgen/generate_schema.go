@@ -451,6 +451,12 @@ func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool
 	}
 
 	var secret bool
+	// First check if the property is marked sensitive in TF schema.
+	if prop.schema.Sensitive() {
+		secret = true
+	}
+
+	// Check custom info. This order allows custom info to override the above as well if necessary.
 	if prop.info != nil && prop.info.Secret != nil {
 		secret = *prop.info.Secret
 	}
