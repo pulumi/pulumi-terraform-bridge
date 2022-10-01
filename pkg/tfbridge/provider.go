@@ -20,6 +20,7 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
@@ -32,9 +33,12 @@ import (
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -1120,6 +1124,114 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
+}
+
+func (p *Provider) GetResourceLogs(ctx context.Context, req *pulumirpc.GetResourceLogsRequest) (*pulumirpc.GetResourceLogsResponse, error) {
+	urn := resource.URN(req.GetUrn())
+	t := urn.Type()
+	res, has := p.resources[t]
+	if !has {
+		return nil, errors.Errorf("unrecognized resource type (GetResourceLogs): %s", t)
+	}
+
+	label := fmt.Sprintf("%s.GetResourceLogs(%s/%s)", p.label(), urn, res.TFName)
+	glog.V(9).Infof("%s executing", label)
+
+	if res.Schema.GetResourceLogs == nil {
+		glog.V(9).Infof("%v: no logs for %v", label, t)
+		return &pulumirpc.GetResourceLogsResponse{}, nil
+	}
+
+	state, err := plugin.UnmarshalProperties(req.GetState(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.state", label), SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+
+	id := resource.ID(req.GetId())
+
+	var startTime time.Time
+	if t := req.GetStartTime(); t != 0 {
+		startTime = time.Unix(0, int64(t))
+	}
+	var endTime time.Time
+	if t := req.GetEndTime(); t != 0 {
+		endTime = time.Unix(0, int64(t))
+	}
+
+	l, token, err := res.Schema.GetResourceLogs(p.tf, id, state, plugin.GetResourceLogsOptions{
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             int(req.GetCount()),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.GetResourceLogsResponse{
+		ContinuationToken: token,
+		ResourceLogs: []*logs.ResourceLogs{{
+			Resource: operations.PackResource(urn, id),
+			ScopeLogs: []*logs.ScopeLogs{{
+				LogRecords: l,
+			}},
+		}},
+	}, nil
+}
+
+func (p *Provider) GetResourceMetrics(ctx context.Context, req *pulumirpc.GetResourceMetricsRequest) (*pulumirpc.GetResourceMetricsResponse, error) {
+	urn := resource.URN(req.GetUrn())
+	t := urn.Type()
+	res, has := p.resources[t]
+	if !has {
+		return nil, errors.Errorf("unrecognized resource type (GetResourceMetrics): %s", t)
+	}
+
+	label := fmt.Sprintf("%s.GetResourceMetrics(%s/%s)", p.label(), urn, res.TFName)
+	glog.V(9).Infof("%s executing", label)
+
+	if res.Schema.GetResourceMetrics == nil {
+		glog.V(9).Infof("%v: no metrics for %v", label, t)
+		return &pulumirpc.GetResourceMetricsResponse{}, nil
+	}
+
+	state, err := plugin.UnmarshalProperties(req.GetState(),
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.state", label), SkipNulls: true})
+	if err != nil {
+		return nil, err
+	}
+
+	id := resource.ID(req.GetId())
+
+	var startTime time.Time
+	if t := req.GetStartTime(); t != 0 {
+		startTime = time.Unix(0, int64(t))
+	}
+	var endTime time.Time
+	if t := req.GetEndTime(); t != 0 {
+		endTime = time.Unix(0, int64(t))
+	}
+
+	m, token, err := res.Schema.GetResourceMetrics(p.tf, id, state, plugin.GetResourceMetricsOptions{
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             int(req.GetCount()),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.GetResourceMetricsResponse{
+		ContinuationToken: token,
+		ResourceMetrics: []*metrics.ResourceMetrics{{
+			Resource: operations.PackResource(urn, id),
+			ScopeMetrics: []*metrics.ScopeMetrics{{
+				Metrics: m,
+			}},
+		}},
+	}, nil
 }
 
 // Construct creates a new instance of the provided component resource and returns its state.

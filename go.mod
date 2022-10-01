@@ -36,7 +36,7 @@ require (
 	github.com/pulumi/pulumi-java/pkg v0.2.0
 	github.com/pulumi/pulumi-yaml v0.5.1
 	github.com/pulumi/pulumi/pkg/v3 v3.34.1
-	github.com/pulumi/pulumi/sdk/v3 v3.34.1
+	github.com/pulumi/pulumi/sdk/v3 v3.35.1
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.6.0
@@ -45,6 +45,7 @@ require (
 	github.com/terraform-providers/terraform-provider-archive v1.3.0
 	github.com/terraform-providers/terraform-provider-http v1.2.0
 	github.com/zclconf/go-cty v1.10.0
+	go.opentelemetry.io/proto/otlp v0.18.0
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
 	golang.org/x/mod v0.5.0
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
@@ -78,6 +79,7 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
@@ -99,6 +101,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
 	github.com/fatih/color v1.9.0 // indirect
@@ -148,6 +151,7 @@ require (
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
@@ -201,7 +205,12 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0 // indirect
+	lukechampine.com/frand v1.4.2 // indirect
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600 // indirect
 )
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20220505215311-795430389fa7
+
+replace github.com/pulumi/pulumi/sdk/v3 => ../pulumi/sdk
+
+replace github.com/pulumi/pulumi/pkg/v3 => ../pulumi/pkg

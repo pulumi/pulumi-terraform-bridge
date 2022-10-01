@@ -21,8 +21,11 @@ import (
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -159,6 +162,8 @@ type ResourceInfo struct {
 	DeprecationMessage  string      // message to use in deprecation warning
 	CSharpName          string      // .NET-specific name
 
+	GetResourceLogs    func(tf shim.Provider, id resource.ID, state resource.PropertyMap, options plugin.GetResourceLogsOptions) ([]*logs.LogRecord, string, error)
+	GetResourceMetrics func(tf shim.Provider, id resource.ID, state resource.PropertyMap, options plugin.GetResourceMetricsOptions) ([]*metrics.Metric, string, error)
 }
 
 // GetTok returns a resource type token
