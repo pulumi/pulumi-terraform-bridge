@@ -18,9 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"io"
 	"os"
 	"os/exec"
@@ -29,6 +26,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/hashicorp/go-multierror"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1356,6 +1357,9 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	}
 
 	result.WriteString(hclConversionsToString(hclConversions))
+	if len(failedLangs) == 0 {
+		return result.String(), nil
+	}
 
 	if len(failedLangs) == len(languages) {
 		hclAllLangsConversionFailures++
@@ -1372,38 +1376,36 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	}
 
 	// Log the results when an example fails to convert to some languages, but not all
-	if len(failedLangs) > 0 && len(failedLangs) < len(languages) {
-		var failedLangsStrings []string
+	var failedLangsStrings []string
 
-		for lang := range failedLangs {
-			failedLangsStrings = append(failedLangsStrings, lang)
+	for lang := range failedLangs {
+		failedLangsStrings = append(failedLangsStrings, lang)
 
-			switch lang {
-			case convert.LanguageTypescript:
-				hclTypeScriptPartialConversionFailures++
-			case convert.LanguagePython:
-				hclPythonPartialConversionFailures++
-			case convert.LanguageCSharp:
-				hclCSharpPartialConversionFailures++
-			case convert.LanguageGo:
-				hclGoPartialConversionFailures++
-			}
+		switch lang {
+		case convert.LanguageTypescript:
+			hclTypeScriptPartialConversionFailures++
+		case convert.LanguagePython:
+			hclPythonPartialConversionFailures++
+		case convert.LanguageCSharp:
+			hclCSharpPartialConversionFailures++
+		case convert.LanguageGo:
+			hclGoPartialConversionFailures++
 		}
-
-		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				path, strings.Join(failedLangsStrings, ", ")))
-		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
-		}
-
-		// At least one language out of the given set has been generated, which is considered a success
-		// nolint:ineffassign
-		err = nil
 	}
+
+	if exampleTitle == "" {
+		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
+			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+			path, strings.Join(failedLangsStrings, ", ")))
+	} else {
+		g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
+			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+			exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
+	}
+
+	// At least one language out of the given set has been generated, which is considered a success
+	// nolint:ineffassign
+	err = nil
 
 	return result.String(), nil
 }
