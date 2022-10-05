@@ -379,7 +379,12 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 		for lang, err := range failures {
 			out += fmt.Sprintf("\n#### %s\n", lang)
 			out += fmt.Sprintf("\n```text\n")
-			out += err.FailureInfo
+
+			errMsg := err.FailureInfo
+			if len(err.FailureInfo) > 1000 {
+				errMsg = err.FailureInfo[:1000]
+			}
+			out += errMsg
 			out += fmt.Sprintf("\n```\n")
 		}
 		if isCompleteFailure {
