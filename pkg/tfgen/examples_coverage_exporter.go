@@ -365,6 +365,7 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 			summaryText = "**complete failure**"
 		}
 
+		out += fmt.Sprintf("\n---\n")
 		out += fmt.Sprintf("\n## [%s] %s\n", summaryText, example.ExampleName)
 
 		// print original HCL
