@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1248,7 +1247,7 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 		convertedHcl = strings.TrimSpace(string(output))
 	}
 
-	g.coverageTracker.languageConversionSuccess(languageName)
+	g.coverageTracker.languageConversionSuccess(languageName, convertedHcl)
 	return convertedHcl, nil
 }
 
@@ -1328,65 +1327,6 @@ func hclConversionsToString(hclConversions map[string]string) string {
 	return result.String()
 }
 
-type diagnostic struct {
-	exampleTitle      string
-	hclProgram        string
-	isCompleteFailure bool
-	langErrors        map[string]error
-	conversions       map[string]string
-	g                 *Generator
-}
-
-func (d *diagnostic) Display() error {
-	f, err := os.OpenFile(fmt.Sprintf("./errors.%d.md", os.Getpid()),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Println(err)
-	}
-	defer f.Close()
-	out := ""
-
-	header := fmt.Sprintf("\n## [*partial failure*] %s\n", d.exampleTitle)
-	if d.isCompleteFailure {
-		header = fmt.Sprintf("\n## [**complete failure**] %s\n", d.exampleTitle)
-	}
-	out += header
-	out += fmt.Sprintf("\n### HCL\n")
-	out += fmt.Sprintf("\n```terraform\n")
-	out += d.hclProgram + "\n"
-	out += fmt.Sprintf("\n```\n")
-	out += fmt.Sprintf("\n### Failed Languages\n")
-	for lang, err := range d.langErrors {
-		out += fmt.Sprintf("\n#### %s\n", lang)
-		out += fmt.Sprintf("\n```text\n")
-		out += err.Error()
-		out += fmt.Sprintf("\n```\n")
-	}
-	if d.isCompleteFailure {
-		if _, err := f.WriteString(out); err != nil {
-			log.Println(err)
-		}
-		return nil
-	}
-	out += fmt.Sprintf("\n### Successes\n")
-	for lang, convertedProgram := range d.conversions {
-		if convertedProgram == "" {
-			continue
-		}
-		out += fmt.Sprintf("\n<details>\n")
-		out += fmt.Sprintf("\n<summary>%s</summary>\n", lang)
-		out += fmt.Sprintf("\n```%s\n", lang)
-		out += convertedProgram
-		out += fmt.Sprintf("\n```\n")
-		out += fmt.Sprintf("\n</details>\n")
-
-	}
-	if _, err := f.WriteString(out); err != nil {
-		log.Println(err)
-	}
-	return nil
-}
-
 // convertHCL takes a string of example HCL, its path in the Pulumi schema, the title of the example in the upstream
 // docs, and a slice of the languages to convert the sample to, and returns a string containing a series of Markdown
 // code blocks with the example converted in each supplied language.
@@ -1422,20 +1362,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	}
 
 	isCompleteFailure := len(failedLangs) == len(languages)
-
-	if exampleTitle == "" {
-		exampleTitle = path
-	}
-	d := diagnostic{
-		exampleTitle:      exampleTitle,
-		hclProgram:        hcl,
-		isCompleteFailure: isCompleteFailure,
-		langErrors:        failedLangs,
-		conversions:       hclConversions,
-		g:                 g,
-	}
-
-	d.Display()
 
 	if isCompleteFailure {
 		hclAllLangsConversionFailures++

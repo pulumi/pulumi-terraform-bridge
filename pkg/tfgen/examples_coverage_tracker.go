@@ -76,6 +76,7 @@ type Example struct {
 type LanguageConversionResult struct {
 	FailureSeverity int    // This conversion's outcome: [Success, Warning, Failure, Fatal]
 	FailureInfo     string // Additional in-depth information
+	Program         string // Converted program
 
 	// How many times this example has been converted to this language.
 	// It is expected that this will be equal to 1.
@@ -116,7 +117,7 @@ func (ct *CoverageTracker) foundExample(pageName string, hcl string) {
 }
 
 // Used when: current example has been successfully converted to a certain language
-func (ct *CoverageTracker) languageConversionSuccess(languageName string) {
+func (ct *CoverageTracker) languageConversionSuccess(languageName string, program string) {
 	if ct == nil {
 		return
 	}
@@ -124,10 +125,11 @@ func (ct *CoverageTracker) languageConversionSuccess(languageName string) {
 		FailureSeverity:  Success,
 		FailureInfo:      "",
 		TranslationCount: 1,
+		Program:          program,
 	})
 }
 
-//nolint
+// nolint
 // Used when: generator has successfully converted current example, but threw out some warnings
 func (ct *CoverageTracker) languageConversionWarning(languageName string, warningDiagnostics hcl.Diagnostics) {
 	if ct == nil {
