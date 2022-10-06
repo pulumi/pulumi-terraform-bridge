@@ -55,7 +55,7 @@ const (
 )
 
 type Generator struct {
-	pkg              string                // the Pulum package name (e.g. `gcp`)
+	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
 	version          string                // the package version.
 	language         Language              // the language runtime to generate.
 	info             tfbridge.ProviderInfo // the provider info for customizing code generation
@@ -155,15 +155,15 @@ var AllLanguages = []Language{Golang, NodeJS, Python, CSharp}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
-	name     string        // the package name.
-	version  string        // the package version.
-	language Language      // the package's language.
-	root     afero.Fs      // the root of the package.
-	modules  moduleMap     // the modules inside of this package.
-	provider *resourceType // the provider type for this package.
+	name     tokens.Package // the package name.
+	version  string         // the package version.
+	language Language       // the package's language.
+	root     afero.Fs       // the root of the package.
+	modules  moduleMap      // the modules inside of this package.
+	provider *resourceType  // the provider type for this package.
 }
 
-func newPkg(name, version string, language Language, fs afero.Fs) *pkg {
+func newPkg(name tokens.Package, version string, language Language, fs afero.Fs) *pkg {
 	return &pkg{
 		name:     name,
 		version:  version,
@@ -642,7 +642,13 @@ type GeneratorOptions struct {
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
 func NewGenerator(opts GeneratorOptions) (*Generator, error) {
-	pkg, version, lang, info, root := opts.Package, opts.Version, opts.Language, opts.ProviderInfo, opts.Root
+	pkgName, version, lang, info, root := opts.Package, opts.Version, opts.Language, opts.ProviderInfo, opts.Root
+
+	if !tokens.IsQName(pkgName) {
+		return nil, fmt.Errorf("pkgName is not a valid QName: %s", pkgName)
+	}
+
+	pkg := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(pkgName)))
 
 	// Ensure the language is valid.
 	switch lang {

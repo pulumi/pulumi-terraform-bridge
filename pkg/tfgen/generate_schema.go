@@ -39,7 +39,7 @@ import (
 )
 
 type schemaGenerator struct {
-	pkg     string
+	pkg     tokens.Package
 	version string
 	info    tfbridge.ProviderInfo
 }
@@ -186,7 +186,7 @@ func rawMessage(v interface{}) pschema.RawMessage {
 	return pschema.RawMessage(bytes)
 }
 
-func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
+func genPulumiSchema(pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:     name,
 		version: version,
@@ -197,7 +197,7 @@ func genPulumiSchema(pack *pkg, name, version string, info tfbridge.ProviderInfo
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
 	spec := pschema.PackageSpec{
-		Name:              g.pkg,
+		Name:              g.pkg.String(),
 		Version:           g.version,
 		Keywords:          g.info.Keywords,
 		Homepage:          g.info.Homepage,
@@ -357,7 +357,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	return spec, nil
 }
 
-func getDefaultReadme(pulumiPackageName string, tfProviderShortName string, tfGitHubOrg string,
+func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,
 	pulumiProvLicense tfbridge.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
 	pulumiProvRepo string) string {
 
@@ -708,8 +708,9 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 			if tokens.Token(t).Simple() {
 				typs = append(typs, pschema.TypeSpec{Type: string(t)})
 			} else {
-				pkg := string(t.Module().Package().Name())
-				if pkg == g.pkg {
+				tPkg := t.Module().Package()
+				pkg := tPkg.Name().String()
+				if tPkg == g.pkg {
 					pkg = ""
 				}
 				spec := pschema.TypeSpec{

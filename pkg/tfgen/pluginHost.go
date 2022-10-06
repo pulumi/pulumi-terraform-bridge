@@ -17,12 +17,12 @@ import (
 var _ = (plugin.Provider)((*inmemoryProvider)(nil))
 
 type inmemoryProvider struct {
-	name   string
+	name   tokens.Package
 	schema []byte
 	info   tfbridge.ProviderInfo
 }
 
-func newInMemoryProvider(name string, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
+func newInMemoryProvider(name tokens.Package, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
 	// Round-trip the info through a marshaler to normalize the types to the schema shim.
 	return &inmemoryProvider{
 		name:   name,
@@ -32,7 +32,7 @@ func newInMemoryProvider(name string, schema []byte, info tfbridge.ProviderInfo)
 }
 
 func (p *inmemoryProvider) Pkg() tokens.Package {
-	return tokens.Package(p.name)
+	return p.name
 }
 
 func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
@@ -162,7 +162,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 // inmemoryProviderHost.Host.
 func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
-	if name == host.provider.name {
+	if tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(name))) == host.provider.name {
 		info, err := host.provider.GetPluginInfo()
 		if err != nil {
 			return nil, err
