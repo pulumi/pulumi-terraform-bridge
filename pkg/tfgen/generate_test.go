@@ -1,6 +1,10 @@
 package tfgen
 
 import (
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -75,4 +79,96 @@ func Test_ForceNew(t *testing.T) {
 			assert.Equal(t, test.ShouldForceNew, actuallyForcesNew)
 		})
 	}
+}
+
+func TestMakeObjectPropertyType_InputTypes(t *testing.T) {
+
+	vpcConfig := mockResource{
+		schema: shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"security_group_ids": {
+				Type:     7,
+				Required: true,
+				Optional: false,
+				Computed: false,
+				Elem: &schema.Schema{
+					Type:     4,
+					Required: false,
+					Optional: false,
+					Computed: false,
+				},
+			},
+			"subnet_ids": {
+				Type:     7,
+				Required: true,
+				Optional: false,
+				Computed: false,
+				Elem: &schema.Schema{
+					Type:       4,
+					ConfigMode: 0,
+					Required:   false,
+					Optional:   false,
+					Computed:   false,
+				},
+			},
+			// This should only appear in the output type, not the input type:
+			"vpc_id": {
+				Type:       4,
+				ConfigMode: 0,
+				Required:   false,
+				Optional:   false,
+				Computed:   true,
+			},
+		}),
+	}
+
+	inputResult := makeObjectPropertyType("vpc_config", vpcConfig, nil, false, entityDocs{}, "")
+	sort.Slice(inputResult.properties, func(i, j int) bool {
+		return inputResult.properties[i].name < inputResult.properties[j].name
+	})
+
+	assert.Equal(t, 3, len(inputResult.properties))
+	assert.Equal(t, "securityGroupIds", inputResult.properties[0].name)
+	assert.Equal(t, false, inputResult.properties[0].out)
+	assert.Equal(t, "subnetIds", inputResult.properties[1].name)
+	assert.Equal(t, false, inputResult.properties[1].out)
+	assert.Equal(t, "vpcId", inputResult.properties[2].name)
+	assert.Equal(t, true, inputResult.properties[2].out)
+}
+
+type mockResource struct {
+	schema shim.SchemaMap
+}
+
+func (m mockResource) Schema() shim.SchemaMap {
+	return m.schema
+}
+
+func (m mockResource) SchemaVersion() int {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockResource) Importer() shim.ImportFunc {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockResource) DeprecationMessage() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockResource) Timeouts() *shim.ResourceTimeout {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockResource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	//TODO implement me
+	panic("implement me")
 }

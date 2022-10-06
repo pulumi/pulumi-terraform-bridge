@@ -309,8 +309,15 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
+// makePropertyType creates a complex (struct, object, etc.) propertyType
+// objectName is name of the TF configuration block, e.g. vpc_config within aws_lambda_function
+// res is the TF schema "resource", i.e. a structured block like vpc_config within aws_lambda_function
+// info contains optional overrides for the field in question, e.g. adding MaxItemsOne or specifying a C# name.
+// out is whether the property is an output
+// entityDocs are the parsed docs for the parent resource/data source
+// rawname is the overall TF resource/data source name, e.g. aws_lambda_function, and is included for debugging
 func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+	entityDocs entityDocs, rawname string) *propertyType {
 
 	t := &propertyType{}
 
@@ -352,13 +359,22 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
-		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
+		// This is a TF aggregate type (map, list, or set) composed of simple elements (e.g. string)
+		// e.g. aws_lambda_function.layers
+		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs, rawname)
 	case shim.Resource:
-		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
+		// "Resource" in this context indicates a structured configuration block in a TF provider,
+		// e.g. aws_lambda_function.vpc_config. The upstream schema may or may not allow it to be specified more than
+		// once, depending on MaxItems:
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs, rawname)
 	}
 
 	switch t.kind {
 	case kindList, kindSet:
+		// In the TF schema, any structured configuration block (which maps to an object type in Pulumi) is specified as
+		// { Type: schema.TypeList, Elem: schema.Resource }. If the block has MaxItems: 1, we want to map this as a
+		// singleton, not a list or set. (In Terraform, the tool itself validates that a config block can only be
+		// specified once. In Pulumi, we enforce this by mapping to a singleton instead of an array.)
 		if tfbridge.IsMaxItemsOne(sch, info) {
 			t = t.element
 		}
@@ -373,8 +389,15 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	return t
 }
 
+// makeObjectPropertyType creates a complex (struct, object, etc.) propertyType
+// objectName is name of the TF configuration block, e.g. vpc_config within aws_lambda_function
+// res is the TF schema "resource", i.e. a structured block like vpc_config within aws_lambda_function
+// info contains any overrides specified in the Pulumi provider, i.e. the mapping in resources.go
+// out is whether the configuration block is an output
+// entityDocs are the parsed docs for the parent resource/data source
+// rawname is the overall TF resource/data source name, e.g. aws_lambda_function, and is included for debugging
 func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+	entityDocs entityDocs, rawname string) *propertyType {
 
 	t := &propertyType{
 		kind: kindObject,
@@ -400,12 +423,14 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 			propertyInfo = propertyInfos[key]
 		}
 
+		propertyOut := !input(propertySchema, propertyInfo)
+
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
 		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
 
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
+		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", propertyOut, entityDocs, rawname); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -906,7 +931,7 @@ func (g *Generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
+		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{}, "")
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -922,7 +947,7 @@ func (g *Generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
+		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}, ""); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -1026,6 +1051,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *Generator) gatherResource(rawname string,
 	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (string, *resourceType, error) {
+
 	// Get the resource's module and name.
 	name, module := resourceName(g.info.Name, rawname, info, isProvider)
 
@@ -1070,7 +1096,7 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs)
+			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs, rawname)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -1084,7 +1110,7 @@ func (g *Generator) gatherResource(rawname string,
 				g.debug(msg)
 			}
 
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs, rawname)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -1094,7 +1120,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs, rawname)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -1254,7 +1280,7 @@ func (g *Generator) gatherDataSource(rawname string,
 				g.debug(msg)
 			}
 
-			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
+			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs, rawname)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1264,7 +1290,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
+			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs, rawname))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -1274,7 +1300,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
 		fun.rets = append(fun.rets,
-			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
+			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs, rawname))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1391,7 +1417,8 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
-	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
+	doc string, rawdoc string, out bool, entityDocs entityDocs, rawname string) *variable {
+
 	if name := propertyName(key, sch, info); name != "" {
 		return &variable{
 			name:   name,
@@ -1400,7 +1427,7 @@ func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
 			rawdoc: rawdoc,
 			schema: sch,
 			info:   info,
-			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
+			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs, rawname),
 		}
 	}
 	return nil
