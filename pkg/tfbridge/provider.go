@@ -165,10 +165,19 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 
 var _ pulumirpc.ResourceProviderServer = (*Provider)(nil)
 
-func (p *Provider) pkg() tokens.Package          { return tokens.Package(p.module) }
-func (p *Provider) baseConfigMod() tokens.Module { return tokens.Module(p.pkg() + ":config") }
-func (p *Provider) baseDataMod() tokens.Module   { return tokens.Module(p.pkg() + ":data") }
-func (p *Provider) configMod() tokens.Module     { return p.baseConfigMod() + "/vars" }
+func (p *Provider) pkg() tokens.Package {
+	return tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(p.module)))
+}
+
+func (p *Provider) baseConfigMod() tokens.Module {
+	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config"))
+}
+func (p *Provider) baseDataMod() tokens.Module {
+	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("data"))
+}
+func (p *Provider) configMod() tokens.Module {
+	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config/vars"))
+}
 
 func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
 	host, err := provider.NewHostClient(req.GetAddress())
@@ -217,7 +226,8 @@ func (p *Provider) initResourceMaps() {
 		if tok == "" {
 			// Manufacture a token with the package, module, and resource type name.
 			camelName, pascalName := p.camelPascalPulumiName(name)
-			tok = tokens.Type(string(p.pkg()) + ":" + camelName + ":" + pascalName)
+			modTok := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(camelName))
+			tok = tokens.NewTypeToken(modTok, tokens.TypeName(pascalName))
 		}
 
 		p.resources[tok] = Resource{
@@ -247,7 +257,7 @@ func (p *Provider) initResourceMaps() {
 		if tok == "" {
 			// Manufacture a token with the data module and camel-cased name.
 			camelName, _ := p.camelPascalPulumiName(name)
-			tok = tokens.ModuleMember(string(p.baseDataMod()) + ":" + camelName)
+			tok = tokens.NewModuleMemberToken(p.baseDataMod(), tokens.ModuleMemberName(camelName))
 		}
 
 		p.dataSources[tok] = DataSource{

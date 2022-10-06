@@ -197,7 +197,7 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 }
 
 func (host *cachingProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	key := string(pkg) + "@"
+	key := pkg.String() + "@"
 	if version != nil {
 		key = version.String()
 	}

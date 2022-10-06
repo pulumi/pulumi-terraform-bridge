@@ -252,13 +252,14 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	if pack.provider != nil {
+		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok, ts := g.genObjectType("index", t, false)
+			tok, ts := g.genObjectType(indexModToken, t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
 		}
-		spec.Provider = g.genResourceType("index", pack.provider)
+		spec.Provider = g.genResourceType(indexModToken, pack.provider)
 
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
@@ -416,7 +417,7 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genProperty(mod string, prop *variable, pyMapCase bool) pschema.PropertySpec {
+func (g *schemaGenerator) genProperty(mod tokens.Module, prop *variable, pyMapCase bool) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
 		description = g.genDocComment(prop.doc)
@@ -478,7 +479,9 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 		Variables: make(map[string]pschema.PropertySpec),
 	}
 	for _, v := range variables {
-		spec.Variables[v.name] = g.genProperty("config", v, true)
+
+		spec.Variables[v.name] = g.genProperty(
+			tokens.NewModuleToken(g.pkg, configMod), v, true)
 
 		if !v.optional() {
 			spec.Required = append(spec.Required, v.name)
@@ -487,7 +490,7 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 	return spec
 }
 
-func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema.ResourceSpec {
+func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) pschema.ResourceSpec {
 	var spec pschema.ResourceSpec
 
 	description := ""
@@ -559,7 +562,7 @@ func (g *schemaGenerator) genResourceType(mod string, res *resourceType) pschema
 	return spec
 }
 
-func (g *schemaGenerator) genDatasourceFunc(mod string, fun *resourceFunc) pschema.FunctionSpec {
+func (g *schemaGenerator) genDatasourceFunc(mod tokens.Module, fun *resourceFunc) pschema.FunctionSpec {
 	var spec pschema.FunctionSpec
 
 	description := ""
@@ -596,7 +599,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType, isTopLevel bool) (string,
+func (g *schemaGenerator) genObjectType(mod tokens.Module, typInfo *schemaNestedType, isTopLevel bool) (string,
 	pschema.ObjectTypeSpec) {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
@@ -606,11 +609,7 @@ func (g *schemaGenerator) genObjectType(mod string, typInfo *schemaNestedType, i
 		name = string(typ.nestedType)
 	}
 
-	if mod == "" {
-		mod = "index"
-	}
-
-	token := fmt.Sprintf("%s:%s/%s:%s", g.pkg, mod, name, name)
+	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
 
 	spec := pschema.ObjectTypeSpec{
 		Type: "object",
@@ -681,11 +680,7 @@ func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
 	}
 }
 
-func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) pschema.TypeSpec {
-	if mod == "" {
-		mod = "index"
-	}
-
+func (g *schemaGenerator) schemaType(mod tokens.Module, typ *propertyType, out bool) pschema.TypeSpec {
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:
@@ -751,7 +746,7 @@ func (g *schemaGenerator) schemaType(mod string, typ *propertyType, out bool) ps
 		additionalProperties := g.schemaType(mod, typ.element, out)
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
-		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:%s/%s:%s", g.pkg, mod, typ.name, typ.name)}
+		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
 		return pschema.TypeSpec{}

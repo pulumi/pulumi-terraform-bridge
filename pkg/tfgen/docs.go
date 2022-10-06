@@ -1563,7 +1563,11 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
 			// This is a resource name
 			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
-			modname := extractModuleName(mod)
+
+			modname := mod.String()
+			if mod == indexMod {
+				modname = ""
+			}
 			if modname != "" {
 				modname += "."
 			}
@@ -1579,7 +1583,11 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
-			modname := extractModuleName(mod)
+
+			modname := mod.String()
+			if mod == indexMod {
+				modname = ""
+			}
 			if modname != "" {
 				modname += "."
 			}
