@@ -803,26 +803,3 @@ func TestParseImports_WithOverride(t *testing.T) {
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
-
-type mockResource struct {
-	docs  tfbridge.DocInfo
-	token tokens.Token
-}
-
-func (r *mockResource) GetFields() map[string]*tfbridge.SchemaInfo {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *mockResource) ReplaceExamplesSection() bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *mockResource) GetDocs() *tfbridge.DocInfo {
-	return &r.docs
-}
-
-func (r *mockResource) GetTok() tokens.Token {
-	return r.token
-}

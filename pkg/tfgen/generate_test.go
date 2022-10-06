@@ -2,7 +2,6 @@ package tfgen
 
 import (
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"sort"
 	"testing"
@@ -133,42 +132,4 @@ func TestMakeObjectPropertyType_InputTypes(t *testing.T) {
 	assert.Equal(t, false, inputResult.properties[1].out)
 	assert.Equal(t, "vpcId", inputResult.properties[2].name)
 	assert.Equal(t, true, inputResult.properties[2].out)
-}
-
-type mockResource struct {
-	schema shim.SchemaMap
-}
-
-func (m mockResource) Schema() shim.SchemaMap {
-	return m.schema
-}
-
-func (m mockResource) SchemaVersion() int {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockResource) Importer() shim.ImportFunc {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockResource) DeprecationMessage() string {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockResource) Timeouts() *shim.ResourceTimeout {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockResource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	//TODO implement me
-	panic("implement me")
 }
