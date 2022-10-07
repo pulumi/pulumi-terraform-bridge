@@ -1550,6 +1550,17 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 const elidedDocComment = "<elided>"
 
 func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridge.ProviderInfo, text string) string {
+	formatModulePrefix := func(mod tokens.ModuleName) string {
+		modname := mod.String()
+		if mod == indexMod {
+			modname = ""
+		}
+		if modname != "" {
+			modname += "."
+		}
+		return modname
+	}
+
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
@@ -1563,15 +1574,7 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
 			// This is a resource name
 			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
-
-			modname := mod.String()
-			if mod == indexMod {
-				modname = ""
-			}
-			if modname != "" {
-				modname += "."
-			}
-
+			modname := formatModulePrefix(parentModuleName(mod))
 			switch language {
 			case Golang, Python:
 				// Use `ec2.Instance` format
@@ -1583,15 +1586,7 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
-
-			modname := mod.String()
-			if mod == indexMod {
-				modname = ""
-			}
-			if modname != "" {
-				modname += "."
-			}
-
+			modname := formatModulePrefix(parentModuleName(mod))
 			switch language {
 			case Golang:
 				// Use `ec2.getAmi` format

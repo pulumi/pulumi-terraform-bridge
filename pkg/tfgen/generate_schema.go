@@ -977,9 +977,12 @@ func modulePlacementForType(pkg tokens.Package, path *paths.TypePath) tokens.Mod
 	}
 }
 
-func parentModule(m tokens.Module) (result tokens.Module) {
-	pkg := m.Package()
-	modName := tokens.QName(m.Name())
+func parentModule(m tokens.Module) tokens.Module {
+	return tokens.NewModuleToken(m.Package(), parentModuleName(m.Name()))
+}
+
+func parentModuleName(m tokens.ModuleName) tokens.ModuleName {
+	modName := tokens.QName(m)
 	parentModName := modName.Namespace()
-	return tokens.NewModuleToken(pkg, tokens.ModuleName(parentModName))
+	return tokens.ModuleName(parentModName)
 }
