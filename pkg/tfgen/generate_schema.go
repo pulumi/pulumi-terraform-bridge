@@ -205,7 +205,8 @@ func rawMessage(v interface{}) pschema.RawMessage {
 	return pschema.RawMessage(bytes)
 }
 
-func genPulumiSchema(pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
+func genPulumiSchema(pack *pkg, name tokens.Package,
+	version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:     name,
 		version: version,
@@ -642,7 +643,8 @@ func (g *schemaGenerator) genObjectTypeToken(path *paths.TypePath, typInfo *sche
 	return token
 }
 
-func (g *schemaGenerator) genObjectType(path paths.NamedTypePathContainer, typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
+func (g *schemaGenerator) genObjectType(path paths.NamedTypePathContainer,
+	typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 

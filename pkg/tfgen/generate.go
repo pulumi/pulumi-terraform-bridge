@@ -551,7 +551,8 @@ func (rt *resourceType) TypeToken() tokens.Type {
 	return tokens.NewTypeToken(rt.mod, tokens.TypeName(rt.name))
 }
 
-func newResourceType(mod tokens.Module, name string, entityDocs entityDocs, schema shim.Resource, info *tfbridge.ResourceInfo,
+func newResourceType(mod tokens.Module, name string, entityDocs entityDocs,
+	schema shim.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
 	// We want to add the import details to the description so we can display those for the user
@@ -1429,7 +1430,8 @@ func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceIn
 }
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
-func resourceName(provider string, rawname string, info *tfbridge.ResourceInfo, isProvider bool) (string, tokens.ModuleName) {
+func resourceName(provider string, rawname string,
+	info *tfbridge.ResourceInfo, isProvider bool) (string, tokens.ModuleName) {
 	if isProvider {
 		return "Provider", indexMod
 	}
