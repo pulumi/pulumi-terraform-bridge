@@ -528,6 +528,7 @@ func (v *variable) optional() bool {
 
 // resourceType is a generated resource type that represents a Pulumi CustomResource definition.
 type resourceType struct {
+	mod        tokens.Module
 	name       string
 	doc        string
 	isProvider bool
@@ -547,7 +548,11 @@ func (rt *resourceType) Doc() string  { return rt.doc }
 // IsProvider is true if this resource is a ProviderResource.
 func (rt *resourceType) IsProvider() bool { return rt.isProvider }
 
-func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, info *tfbridge.ResourceInfo,
+func (rt *resourceType) TypeToken() tokens.Type {
+	return tokens.NewTypeToken(rt.mod, tokens.TypeName(rt.name))
+}
+
+func newResourceType(mod tokens.Module, name string, entityDocs entityDocs, schema shim.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
 	// We want to add the import details to the description so we can display those for the user
@@ -557,6 +562,7 @@ func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, i
 	}
 
 	return &resourceType{
+		mod:        mod,
 		name:       name,
 		doc:        description,
 		isProvider: isProvider,
@@ -569,6 +575,7 @@ func newResourceType(name string, entityDocs entityDocs, schema shim.Resource, i
 
 // resourceFunc is a generated resource function that is exposed to interact with Pulumi objects.
 type resourceFunc struct {
+	mod        tokens.Module
 	name       string
 	doc        string
 	args       []*variable
@@ -583,6 +590,10 @@ type resourceFunc struct {
 
 func (rf *resourceFunc) Name() string { return rf.name }
 func (rf *resourceFunc) Doc() string  { return rf.doc }
+
+func (rf *resourceFunc) ModuleMemberToken() tokens.ModuleMember {
+	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
+}
 
 // overlayFile is a file that should be added to a module "as-is" and then exported from its index.
 type overlayFile struct {
@@ -935,7 +946,7 @@ func (g *Generator) gatherProvider() (*resourceType, error) {
 		Tok:    tokens.Type(g.pkg.String()),
 		Fields: g.info.Config,
 	}
-	_, res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
+	res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
 	return res, err
 }
 
@@ -976,13 +987,13 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 		}
 		seen[r] = true
 
-		module, res, err := g.gatherResource(r, resources.Get(r), info, false)
+		res, err := g.gatherResource(r, resources.Get(r), info, false)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
 			reserr = multierror.Append(reserr, err)
 		} else {
 			// Add any members returned to the specified module.
-			modules.ensureModule(module).addMember(res)
+			modules.ensureModule(res.mod).addMember(res)
 		}
 	}
 	if reserr != nil {
@@ -1019,10 +1030,11 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *Generator) gatherResource(rawname string,
-	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (tokens.Module, *resourceType, error) {
+	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (*resourceType, error) {
 
 	// Get the resource's module and name.
-	name, module := resourceName(g.info.Name, rawname, info, isProvider)
+	name, moduleName := resourceName(g.info.Name, rawname, info, isProvider)
+	mod := tokens.NewModuleToken(g.pkg, moduleName)
 
 	// Collect documentation information
 	var entityDocs entityDocs
@@ -1031,7 +1043,7 @@ func (g *Generator) gatherResource(rawname string,
 			g.info.GetResourcePrefix(), ResourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
 			g.info.GetGitHubHost())
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		entityDocs = pd
 	} else {
@@ -1044,7 +1056,7 @@ func (g *Generator) gatherResource(rawname string,
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(name, entityDocs, schema, info, isProvider)
+	res := newResourceType(mod, name, entityDocs, schema, info, isProvider)
 
 	// Next, gather up all properties.
 	var stateVars []*variable
@@ -1119,14 +1131,14 @@ func (g *Generator) gatherResource(rawname string,
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
 
 			if isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
-				return "", nil, fmt.Errorf(msg)
+				return nil, fmt.Errorf(msg)
 			}
 
 			g.warn(msg)
 		}
 	}
 
-	return tokens.NewModuleToken(g.pkg, module), res, nil
+	return res, nil
 }
 
 func (g *Generator) gatherDataSources() (moduleMap, error) {
@@ -1165,13 +1177,13 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 		}
 		seen[ds] = true
 
-		module, fun, err := g.gatherDataSource(ds, sources.Get(ds), dsinfo)
+		fun, err := g.gatherDataSource(ds, sources.Get(ds), dsinfo)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
 			dserr = multierror.Append(dserr, err)
 		} else {
 			// Add any members returned to the specified module.
-			modules.ensureModule(module).addMember(fun)
+			modules.ensureModule(fun.mod).addMember(fun)
 		}
 	}
 	if dserr != nil {
@@ -1209,21 +1221,23 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 // gatherDataSource returns the module name and members for the given data source function.
 func (g *Generator) gatherDataSource(rawname string,
-	ds shim.Resource, info *tfbridge.DataSourceInfo) (tokens.Module, *resourceFunc, error) {
+	ds shim.Resource, info *tfbridge.DataSourceInfo) (*resourceFunc, error) {
 
 	// Generate the name and module for this data source.
-	name, module := dataSourceName(g.info.Name, rawname, info)
+	name, moduleName := dataSourceName(g.info.Name, rawname, info)
+	mod := tokens.NewModuleToken(g.pkg, moduleName)
 
 	// Collect documentation information for this data source.
 	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
 		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
 		g.info.GetGitHubHost())
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	// Build up the function information.
 	fun := &resourceFunc{
+		mod:        mod,
 		name:       name,
 		doc:        entityDocs.Description,
 		reqargs:    make(map[string]bool),
@@ -1291,7 +1305,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		}
 	}
 
-	return tokens.NewModuleToken(g.pkg, module), fun, nil
+	return fun, nil
 }
 
 // gatherOverlays returns any overlay modules and their contents.

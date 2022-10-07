@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -51,6 +52,7 @@ type schemaNestedType struct {
 	requiredInputs  codegen.StringSet
 	requiredOutputs codegen.StringSet
 	pyMapCase       bool
+	typePath        *paths.TypePath
 }
 
 type schemaNestedTypes struct {
@@ -78,16 +80,26 @@ func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNes
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	switch member := member.(type) {
 	case *resourceType:
-		nt.gatherFromProperties(member, member.name, member.inprops, true, true)
-		nt.gatherFromProperties(member, member.name, member.outprops, false, true)
+		path := paths.NewResourcePath(member.TypeToken(), member.IsProvider())
+		nt.gatherFromProperties(path.Inputs(),
+			member, member.name, member.inprops, true, true)
+		nt.gatherFromProperties(path.Outputs(),
+			member, member.name, member.outprops, false, true)
 		if !member.IsProvider() {
-			nt.gatherFromProperties(member, member.name, member.statet.properties, true, true)
+			nt.gatherFromProperties(path.State(),
+				member, member.name, member.statet.properties, true, true)
 		}
 	case *resourceFunc:
-		nt.gatherFromProperties(member, member.name, member.args, true, true)
-		nt.gatherFromProperties(member, member.name, member.rets, false, true)
+		path := paths.NewDataSourcePath(member.ModuleMemberToken())
+		nt.gatherFromProperties(path.Args(),
+			member, member.name, member.args, true, true)
+		nt.gatherFromProperties(path.Results(),
+			member, member.name, member.rets, false, true)
 	case *variable:
-		nt.gatherFromPropertyType(member, member.name, "", member.typ, false, true)
+		contract.Assert(member.config)
+		path := paths.NewConfigPath()
+		nt.gatherFromPropertyType(path.Property(member.name),
+			member, member.name, "", member.typ, false, true)
 	}
 }
 
@@ -95,7 +107,7 @@ type declarer interface {
 	Name() string
 }
 
-func (nt *schemaNestedTypes) declareType(
+func (nt *schemaNestedTypes) declareType(path *paths.TypePath,
 	declarer declarer, namePrefix, name string, typ *propertyType, isInput, pyMapCase bool) string {
 
 	// Generate a name for this nested type.
@@ -145,11 +157,13 @@ func (nt *schemaNestedTypes) declareType(
 		requiredInputs:  requiredInputs,
 		requiredOutputs: requiredOutputs,
 		pyMapCase:       pyMapCase,
+		typePath:        path,
 	}
 	return typeName
 }
 
-func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix string, ps []*variable,
+func (nt *schemaNestedTypes) gatherFromProperties(path paths.NamedTypePathContainer,
+	declarer declarer, namePrefix string, ps []*variable,
 	isInput, pyMapCase bool) {
 
 	for _, p := range ps {
@@ -162,21 +176,26 @@ func (nt *schemaNestedTypes) gatherFromProperties(declarer declarer, namePrefix 
 		// properties an object-typed element that are not Map types. This is consistent with the earlier behavior. See
 		// https://github.com/pulumi/pulumi/issues/3151 for more details.
 		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type() == shim.TypeMap
-		nt.gatherFromPropertyType(declarer, namePrefix, name, p.typ, isInput, mapCase)
+
+		nt.gatherFromPropertyType(path.Property(p.Name()),
+			declarer, namePrefix, name, p.typ, isInput, mapCase)
 	}
 }
 
-func (nt *schemaNestedTypes) gatherFromPropertyType(declarer declarer, namePrefix, name string, typ *propertyType,
+func (nt *schemaNestedTypes) gatherFromPropertyType(path *paths.TypePath,
+	declarer declarer, namePrefix, name string, typ *propertyType,
 	isInput, pyMapCase bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(declarer, namePrefix, name, typ.element, isInput, pyMapCase)
+			nt.gatherFromPropertyType(path.Element(),
+				declarer, namePrefix, name, typ.element, isInput, pyMapCase)
 		}
 	case kindObject:
-		baseName := nt.declareType(declarer, namePrefix, name, typ, isInput, pyMapCase)
-		nt.gatherFromProperties(declarer, baseName, typ.properties, isInput, pyMapCase)
+		baseName := nt.declareType(path, declarer, namePrefix, name, typ, isInput, pyMapCase)
+		nt.gatherFromProperties(path,
+			declarer, baseName, typ.properties, isInput, pyMapCase)
 	}
 }
 
@@ -227,7 +246,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
-			tok, ts := g.genObjectType(mod.name, t, false)
+			tok := g.genObjectTypeToken(t.typePath, t)
+			ts := g.genObjectType(t.typePath, t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -254,7 +274,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if pack.provider != nil {
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok, ts := g.genObjectType(indexModToken, t, false)
+			tok := g.genObjectTypeToken(t.typePath, t)
+			ts := g.genObjectType(t.typePath, t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -417,7 +438,7 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genProperty(mod tokens.Module, prop *variable, pyMapCase bool) pschema.PropertySpec {
+func (g *schemaGenerator) genProperty(path *paths.TypePath, prop *variable, pyMapCase bool) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
 		description = g.genDocComment(prop.doc)
@@ -463,7 +484,7 @@ func (g *schemaGenerator) genProperty(mod tokens.Module, prop *variable, pyMapCa
 	}
 
 	return pschema.PropertySpec{
-		TypeSpec:             g.schemaType(mod, prop.typ, prop.out),
+		TypeSpec:             g.schemaType(path, prop.typ, prop.out),
 		Description:          description,
 		Default:              defaultValue,
 		DefaultInfo:          defaultInfo,
@@ -478,11 +499,9 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 	spec := pschema.ConfigSpec{
 		Variables: make(map[string]pschema.PropertySpec),
 	}
+	path := paths.NewConfigPath()
 	for _, v := range variables {
-
-		spec.Variables[v.name] = g.genProperty(
-			tokens.NewModuleToken(g.pkg, configMod), v, true)
-
+		spec.Variables[v.name] = g.genProperty(path.Property(v.name), v, true)
 		if !v.optional() {
 			spec.Required = append(spec.Required, v.name)
 		}
@@ -505,6 +524,11 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 	spec.Description = description
 
 	spec.Properties = map[string]pschema.PropertySpec{}
+
+	path := paths.NewResourcePath(res.TypeToken(), res.IsProvider())
+	outPath := path.Outputs()
+	inPath := path.Inputs()
+
 	for _, prop := range res.outprops {
 		// The property will be dropped from the schema
 		if prop.info != nil && prop.info.Omit {
@@ -519,7 +543,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 			continue
 		}
 
-		spec.Properties[prop.name] = g.genProperty(mod, prop, true)
+		spec.Properties[prop.name] = g.genProperty(outPath.Property(prop.name), prop, true)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -539,7 +563,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		if prop.name == "id" {
 			continue
 		}
-		spec.InputProperties[prop.name] = g.genProperty(mod, prop, true)
+		spec.InputProperties[prop.name] = g.genProperty(inPath.Property(prop.name), prop, true)
 
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
@@ -547,7 +571,8 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 	}
 
 	if !res.IsProvider() {
-		_, stateInputs := g.genObjectType(mod, &schemaNestedType{typ: res.statet, pyMapCase: true}, true)
+		stateInputs := g.genObjectType(path.State(),
+			&schemaNestedType{typ: res.statet, pyMapCase: true}, true)
 		spec.StateInputs = &stateInputs
 	}
 
@@ -574,13 +599,17 @@ func (g *schemaGenerator) genDatasourceFunc(mod tokens.Module, fun *resourceFunc
 	}
 	spec.Description = description
 
+	path := paths.NewDataSourcePath(fun.ModuleMemberToken())
+
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.argst, pyMapCase: true}, false)
+		t := g.genObjectType(path.Args(),
+			&schemaNestedType{typ: fun.argst, pyMapCase: true}, false)
 		spec.Inputs = &t
 	}
 	if fun.retst != nil {
-		_, t := g.genObjectType(mod, &schemaNestedType{typ: fun.retst, pyMapCase: true}, false)
+		t := g.genObjectType(path.Results(),
+			&schemaNestedType{typ: fun.retst, pyMapCase: true}, false)
 		spec.Outputs = &t
 	}
 
@@ -599,8 +628,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectType(mod tokens.Module, typInfo *schemaNestedType, isTopLevel bool) (string,
-	pschema.ObjectTypeSpec) {
+func (g *schemaGenerator) genObjectTypeToken(path *paths.TypePath, typInfo *schemaNestedType) string {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -609,7 +637,14 @@ func (g *schemaGenerator) genObjectType(mod tokens.Module, typInfo *schemaNested
 		name = string(typ.nestedType)
 	}
 
+	mod := modulePlacementForType(g.pkg, path)
 	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
+	return token
+}
+
+func (g *schemaGenerator) genObjectType(path paths.NamedTypePathContainer, typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
+	typ := typInfo.typ
+	contract.Assert(typ.kind == kindObject)
 
 	spec := pschema.ObjectTypeSpec{
 		Type: "object",
@@ -632,7 +667,8 @@ func (g *schemaGenerator) genObjectType(mod tokens.Module, typInfo *schemaNested
 		if isTopLevel && prop.name == "id" {
 			continue
 		}
-		spec.Properties[prop.name] = g.genProperty(mod, prop, typInfo.pyMapCase)
+		spec.Properties[prop.name] = g.genProperty(path.Property(prop.Name()),
+			prop, typInfo.pyMapCase)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -662,7 +698,7 @@ func (g *schemaGenerator) genObjectType(mod tokens.Module, typInfo *schemaNested
 		}
 	}
 
-	return token, spec
+	return spec
 }
 
 func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
@@ -680,7 +716,7 @@ func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
 	}
 }
 
-func (g *schemaGenerator) schemaType(mod tokens.Module, typ *propertyType, out bool) pschema.TypeSpec {
+func (g *schemaGenerator) schemaType(path *paths.TypePath, typ *propertyType, out bool) pschema.TypeSpec {
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:
@@ -740,13 +776,15 @@ func (g *schemaGenerator) schemaType(mod tokens.Module, typ *propertyType, out b
 		contract.Assert(t != "")
 		return pschema.TypeSpec{Type: t}
 	case kindSet, kindList:
-		items := g.schemaType(mod, typ.element, out)
+		items := g.schemaType(path.Element(), typ.element, out)
 		return pschema.TypeSpec{Type: "array", Items: &items}
 	case kindMap:
-		additionalProperties := g.schemaType(mod, typ.element, out)
+		additionalProperties := g.schemaType(path.Element(), typ.element, out)
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
-		return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)}
+		mod := modulePlacementForType(g.pkg, path)
+		ref := fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)
+		return pschema.TypeSpec{Ref: ref}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
 		return pschema.TypeSpec{}
@@ -903,4 +941,45 @@ func appendExample(description, markdownToAppend string) string {
 		reassembledLines = append(reassembledLines, section...)
 	}
 	return strings.Join(reassembledLines, "\n")
+}
+
+func modulePlacementForType(pkg tokens.Package, path *paths.TypePath) tokens.Module {
+	// Compute ancestor path. Every TypePath starts from a
+	// non-TypePath ancestor
+	p := path
+	for p.ParentKind() == paths.TypePathParent {
+		p = p.TypePathParent()
+	}
+
+	// Pattern match by ancestor.
+	switch p.ParentKind() {
+	case paths.ResourceMemberPathParent:
+		res := p.ResourceParent().ResourcePath
+		if res.IsProvider {
+			// Supplementary provider types are defined in
+			// the same module as the provider (typically
+			// root module).
+			return res.Token().Module()
+		}
+		// Supplementary types are defined one level up from
+		// the module defining the resource.
+		return parentModule(res.Token().Module())
+	case paths.DataSourceMemberPathParent:
+		dataSourceModule := p.DataSourceParent().DataSourcePath.Token().Module()
+		// Supplementary types are defined one level up from
+		// the module defining the data source.
+		return parentModule(dataSourceModule)
+	case paths.ConfigPathParent:
+		return tokens.NewModuleToken(pkg, configMod)
+	default:
+		contract.Assertf(false, "invalid ParentKind")
+		return ""
+	}
+}
+
+func parentModule(m tokens.Module) (result tokens.Module) {
+	pkg := m.Package()
+	modName := tokens.QName(m.Name())
+	parentModName := modName.Namespace()
+	return tokens.NewModuleToken(pkg, tokens.ModuleName(parentModName))
 }
