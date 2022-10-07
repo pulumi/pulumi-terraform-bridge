@@ -162,7 +162,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 // inmemoryProviderHost.Host.
 func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
-	if tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(name))) == host.provider.name {
+	if name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo()
 		if err != nil {
 			return nil, err
