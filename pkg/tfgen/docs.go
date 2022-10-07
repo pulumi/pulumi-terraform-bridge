@@ -18,6 +18,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"io"
 	"os"
 	"os/exec"
@@ -26,11 +29,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/hashicorp/go-multierror"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
