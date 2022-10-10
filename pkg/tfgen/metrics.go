@@ -16,9 +16,7 @@ package tfgen
 
 import (
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"strings"
+	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
 var (
@@ -47,90 +45,8 @@ var (
 	// General metrics:
 	entitiesMissingDocs int
 
-	schemaStats pulumiSchemaStats
+	schemaStats schemaTools.PulumiSchemaStats
 )
-
-type pulumiSchemaStats struct {
-	totalResources            int
-	totalResourceInputs       int
-	resourceInputsMissingDesc int
-	totalFunctions            int
-}
-
-func countStats(sch pschema.PackageSpec) pulumiSchemaStats {
-	// This code is adapted from https://github.com/mikhailshilkov/schema-tools. If we make schema-tools more robust and
-	// portable, we should consider unifying these codebases. (We elected not to do this upfront due to unknown downstream
-	// effects of changing schema-tools as it's used in all of our GH Actions and is not pinned to a version.)
-	stats := pulumiSchemaStats{}
-
-	uniques := codegen.NewStringSet()
-	visitedTypes := codegen.NewStringSet()
-
-	var propCount func(string) (int, int)
-	propCount = func(typeName string) (totalProperties int, propertiesMissingDesc int) {
-		if visitedTypes.Has(typeName) {
-			return 0, 0
-		}
-
-		visitedTypes.Add(typeName)
-
-		t := sch.Types[typeName]
-
-		totalProperties = len(t.Properties)
-		propertiesMissingDesc = 0
-
-		for _, p := range t.Properties {
-			if p.Description == "" {
-				propertiesMissingDesc++
-			}
-
-			if p.Ref != "" {
-				tn := strings.TrimPrefix(p.Ref, "#/types/")
-				nestedTotalProps, nestedPropsMissingDesc := propCount(tn)
-				totalProperties += nestedTotalProps
-				propertiesMissingDesc += nestedPropsMissingDesc
-			}
-		}
-		return totalProperties, propertiesMissingDesc
-	}
-
-	for n, r := range sch.Resources {
-		baseName := versionlessName(n)
-		if uniques.Has(baseName) {
-			continue
-		}
-		uniques.Add(baseName)
-		stats.totalResourceInputs += len(r.InputProperties)
-		for _, p := range r.InputProperties {
-			if p.Description == "" {
-				stats.resourceInputsMissingDesc++
-			}
-
-			if p.Ref != "" {
-				typeName := strings.TrimPrefix(p.Ref, "#/types/")
-				nestedTotalProps, nestedPropsMissingDesc := propCount(typeName)
-				stats.totalResourceInputs += nestedTotalProps
-				stats.resourceInputsMissingDesc += nestedPropsMissingDesc
-			}
-		}
-	}
-
-	stats.totalResources = len(uniques)
-	stats.totalFunctions = len(sch.Functions)
-
-	return stats
-}
-
-func versionlessName(name string) string {
-	// This code is adapted from https://github.com/mikhailshilkov/schema-tools. See comment in countStats().
-	parts := strings.Split(name, ":")
-	mod := parts[1]
-	modParts := strings.Split(mod, "/")
-	if len(modParts) == 2 {
-		mod = modParts[0]
-	}
-	return fmt.Sprintf("%s:%s", mod, parts[2])
-}
 
 // printDocStats outputs metrics relating to document parsing and conversion
 func printDocStats() {
@@ -138,8 +54,8 @@ func printDocStats() {
 
 	fmt.Println("General metrics:")
 	fmt.Printf("\t%d total resources containing %d total inputs.\n",
-		schemaStats.totalResources, schemaStats.totalResourceInputs)
-	fmt.Printf("\t%d total functions.\n", schemaStats.totalFunctions)
+		schemaStats.Resources.TotalResources, schemaStats.Resources.TotalInputProperties)
+	fmt.Printf("\t%d total functions.\n", schemaStats.Functions.TotalFunctions)
 	fmt.Printf("\t%d entities are missing docs entirely because they could not be found in the upstream provider.\n",
 		entitiesMissingDocs)
 	fmt.Println("")
@@ -173,9 +89,10 @@ func printDocStats() {
 		elidedArguments)
 	fmt.Printf("\t%d nested arguments contained an <elided> reference and had their descriptions dropped.\n",
 		elidedNestedArguments)
+	//nolint:lll
 	fmt.Printf("\t%d of %d resource inputs (%.2f%%) are missing descriptions in the schema\n",
-		schemaStats.resourceInputsMissingDesc, schemaStats.totalResourceInputs,
-		float64(schemaStats.resourceInputsMissingDesc)/float64(schemaStats.totalResourceInputs)*100)
+		schemaStats.Resources.InputPropertiesMissingDescriptions, schemaStats.Resources.TotalInputProperties,
+		float64(schemaStats.Resources.InputPropertiesMissingDescriptions)/float64(schemaStats.Resources.TotalInputProperties)*100)
 	fmt.Println("")
 
 	fmt.Println("Attribute metrics:")

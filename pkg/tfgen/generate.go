@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
 const (
@@ -754,7 +755,7 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
-	schemaStats = countStats(pulumiPackageSpec)
+	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
