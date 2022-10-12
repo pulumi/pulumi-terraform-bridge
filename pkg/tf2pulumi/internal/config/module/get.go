@@ -1,7 +1,6 @@
 package module
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -34,10 +33,11 @@ const (
 // can't be updated on its own.
 func GetCopy(dst, src string) error {
 	// Create the temporary directory to do the real Get to
-	tmpDir, err := ioutil.TempDir("", "tf")
+	tmpDirObj, err := os.CreateTemp("", "tf")
 	if err != nil {
 		return err
 	}
+	tmpDir := tmpDirObj.Name()
 	defer os.RemoveAll(tmpDir)
 
 	tmpDir = filepath.Join(tmpDir, "module")

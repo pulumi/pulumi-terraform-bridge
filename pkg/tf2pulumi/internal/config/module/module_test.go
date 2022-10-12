@@ -1,7 +1,7 @@
 package module
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,7 +12,7 @@ import (
 
 func init() {
 	if os.Getenv("TF_LOG") == "" {
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 }
 
@@ -20,7 +20,8 @@ const fixtureDir = "./testdata"
 
 func tempDir(t *testing.T) string {
 	t.Helper()
-	dir, err := ioutil.TempDir("", "tf")
+	dirObj, err := os.CreateTemp("", "tf")
+	dir := dirObj.Name()
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

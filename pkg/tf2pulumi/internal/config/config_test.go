@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	// silence all logs
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	os.Exit(m.Run())
 }

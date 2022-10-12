@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -26,7 +25,7 @@ func AssertPackageSpecEquals(
 	}
 
 	assertPackageSpecMatchesFile := func(spec pschema.PackageSpec, file string) {
-		expectedBytes, err := ioutil.ReadFile(file)
+		expectedBytes, err := os.ReadFile(file)
 		assert.NoError(t, err)
 		expected := string(expectedBytes)
 
@@ -42,7 +41,7 @@ func AssertPackageSpecEquals(
 		buf := bytes.Buffer{}
 		err := marshalSchema(spec, &buf)
 		assert.NoError(t, err)
-		err = ioutil.WriteFile(expectedSchemaJSONFile, buf.Bytes(), 0600)
+		err = os.WriteFile(expectedSchemaJSONFile, buf.Bytes(), 0600)
 		assert.NoError(t, err)
 	}
 

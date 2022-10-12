@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
@@ -1190,7 +1189,7 @@ func TestInterpolateFuncMatchKeys(t *testing.T) {
 }
 
 func TestInterpolateFuncFile(t *testing.T) {
-	tf, err := ioutil.TempFile("", "tf")
+	tf, err := os.CreateTemp("", "tf")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

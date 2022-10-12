@@ -1,7 +1,6 @@
 package module
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -10,7 +9,8 @@ import (
 // as a function that should be deferred to clean up resources.
 func TestTree(t *testing.T, path string) (*Tree, func()) {
 	// Create a temporary directory for module storage
-	dir, err := ioutil.TempDir("", "tf")
+	dirObj, err := os.CreateTemp("", "tf")
+	dir := dirObj.Name()
 	if err != nil {
 		t.Fatalf("err: %s", err)
 		return nil, nil
