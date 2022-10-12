@@ -2,6 +2,7 @@ package tfgen
 
 import (
 	"bytes"
+	"io"
 	"testing"
 	"text/template"
 
@@ -10,11 +11,15 @@ import (
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 func TestRegress611(t *testing.T) {
 	provider := testprovider.ProviderRegress611()
-	schema, err := GenerateSchema(provider, nil)
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
 	assert.NoError(t, err)
 	bridgetesting.AssertPackageSpecEquals(t, "test_data/regress-611-schema.json", schema)
 }
