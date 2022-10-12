@@ -9,8 +9,7 @@ import (
 // as a function that should be deferred to clean up resources.
 func TestTree(t *testing.T, path string) (*Tree, func()) {
 	// Create a temporary directory for module storage
-	dirObj, err := os.CreateTemp("", "tf")
-	dir := dirObj.Name()
+	dir, err := os.MkdirTemp("", "tf")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 		return nil, nil

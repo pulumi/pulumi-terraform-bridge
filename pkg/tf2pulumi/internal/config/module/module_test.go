@@ -20,8 +20,7 @@ const fixtureDir = "./testdata"
 
 func tempDir(t *testing.T) string {
 	t.Helper()
-	dirObj, err := os.CreateTemp("", "tf")
-	dir := dirObj.Name()
+	dir, err := os.MkdirTemp("", "tf")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

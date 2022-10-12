@@ -33,11 +33,10 @@ const (
 // can't be updated on its own.
 func GetCopy(dst, src string) error {
 	// Create the temporary directory to do the real Get to
-	tmpDirObj, err := os.CreateTemp("", "tf")
+	tmpDir, err := os.MkdirTemp("", "tf")
 	if err != nil {
 		return err
 	}
-	tmpDir := tmpDirObj.Name()
 	defer os.RemoveAll(tmpDir)
 
 	tmpDir = filepath.Join(tmpDir, "module")
