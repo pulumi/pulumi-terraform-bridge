@@ -15,7 +15,7 @@ import (
 
 func AssertPackageSpecEquals(
 	t *testing.T,
-	expectedSchemaJsonFile string,
+	expectedSchemaJSONFile string,
 	spec pschema.PackageSpec,
 ) {
 
@@ -33,7 +33,7 @@ func AssertPackageSpecEquals(
 		buf := bytes.Buffer{}
 		err = marshalSchema(spec, &buf)
 		assert.NoError(t, err)
-		actual := string(buf.Bytes())
+		actual := buf.String()
 
 		assert.Equal(t, expected, actual)
 	}
@@ -42,9 +42,9 @@ func AssertPackageSpecEquals(
 		buf := bytes.Buffer{}
 		err := marshalSchema(spec, &buf)
 		assert.NoError(t, err)
-		err = ioutil.WriteFile(expectedSchemaJsonFile, buf.Bytes(), 0600)
+		err = ioutil.WriteFile(expectedSchemaJSONFile, buf.Bytes(), 0600)
 		assert.NoError(t, err)
 	}
 
-	assertPackageSpecMatchesFile(spec, expectedSchemaJsonFile)
+	assertPackageSpecMatchesFile(spec, expectedSchemaJSONFile)
 }
