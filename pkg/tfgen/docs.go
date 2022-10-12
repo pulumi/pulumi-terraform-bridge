@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
@@ -1546,7 +1547,18 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 
 const elidedDocComment = "<elided>"
 
-func fixupPropertyReferences(language Language, pkg string, info tfbridge.ProviderInfo, text string) string {
+func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridge.ProviderInfo, text string) string {
+	formatModulePrefix := func(mod tokens.ModuleName) string {
+		modname := mod.String()
+		if mod == indexMod {
+			modname = ""
+		}
+		if modname != "" {
+			modname += "."
+		}
+		return modname
+	}
+
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
@@ -1560,27 +1572,19 @@ func fixupPropertyReferences(language Language, pkg string, info tfbridge.Provid
 		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
 			// This is a resource name
 			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
-			modname := extractModuleName(mod)
-			if modname != "" {
-				modname += "."
-			}
-
+			modname := formatModulePrefix(parentModuleName(mod))
 			switch language {
 			case Golang, Python:
 				// Use `ec2.Instance` format
 				return open + modname + resname + close
 			default:
 				// Use `aws.ec2.Instance` format
-				return open + pkg + "." + modname + resname + close
+				return open + pkg.String() + "." + modname + resname + close
 			}
 		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
-			modname := extractModuleName(mod)
-			if modname != "" {
-				modname += "."
-			}
-
+			modname := formatModulePrefix(parentModuleName(mod))
 			switch language {
 			case Golang:
 				// Use `ec2.getAmi` format
@@ -1590,7 +1594,7 @@ func fixupPropertyReferences(language Language, pkg string, info tfbridge.Provid
 				return python.PyName(open + modname + getname + close)
 			default:
 				// Use `aws.ec2.getAmi` format
-				return open + pkg + "." + modname + getname + close
+				return open + pkg.String() + "." + modname + getname + close
 			}
 		}
 		// Else just treat as a property name

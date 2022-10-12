@@ -213,7 +213,7 @@
         "values"
       ]
     },
-    "aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement": {
+    "aws:x/iam/getPolicyDocumentStatement:getPolicyDocumentStatement": {
       "properties": {
         "actions": {
           "type": "array",
@@ -229,7 +229,7 @@
         "conditions": {
           "type": "array",
           "items": {
-            "$ref": "#/types/aws:x/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition"
+            "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition"
           },
           "language": {
             "python": {
@@ -259,7 +259,7 @@
         "notPrincipals": {
           "type": "array",
           "items": {
-            "$ref": "#/types/aws:x/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal"
+            "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal"
           },
           "language": {
             "python": {
@@ -281,7 +281,7 @@
         "principals": {
           "type": "array",
           "items": {
-            "$ref": "#/types/aws:x/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal"
+            "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal"
           },
           "language": {
             "python": {
@@ -311,7 +311,7 @@
       },
       "type": "object"
     },
-    "aws:x/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition": {
+    "aws:x/iam/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition": {
       "properties": {
         "test": {
           "type": "string",
@@ -348,7 +348,7 @@
         "variable"
       ]
     },
-    "aws:x/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal": {
+    "aws:x/iam/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal": {
       "properties": {
         "identifiers": {
           "type": "array",
@@ -376,7 +376,7 @@
         "type"
       ]
     },
-    "aws:x/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal": {
+    "aws:x/iam/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal": {
       "properties": {
         "identifiers": {
           "type": "array",
@@ -4263,7 +4263,7 @@
           "statements": {
             "type": "array",
             "items": {
-              "$ref": "#/types/aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement"
+              "$ref": "#/types/aws:x/iam/getPolicyDocumentStatement:getPolicyDocumentStatement"
             }
           },
           "version": {
@@ -4308,7 +4308,7 @@
           "statements": {
             "type": "array",
             "items": {
-              "$ref": "#/types/aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement"
+              "$ref": "#/types/aws:x/iam/getPolicyDocumentStatement:getPolicyDocumentStatement"
             }
           },
           "version": {
