@@ -2,11 +2,22 @@ package tfgen
 
 import (
 	"bytes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
+
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
+
+func TestRegress611(t *testing.T) {
+	provider := testprovider.ProviderRegress611()
+	schema, err := GenerateSchema(provider, nil)
+	assert.NoError(t, err)
+	bridgetesting.AssertPackageSpecEquals(t, "test_data/regress-611-schema.json", schema)
+}
 
 func TestAppendExample_InsertMiddle(t *testing.T) {
 	descTmpl := `Description text

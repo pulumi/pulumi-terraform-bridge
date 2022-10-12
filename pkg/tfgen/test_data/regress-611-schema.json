@@ -1,0 +1,4326 @@
+{
+  "name": "aws",
+  "version": "0.0.2",
+  "description": "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
+  "keywords": [
+    "pulumi",
+    "aws"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`aws` Terraform Provider](https://github.com/hashicorp/terraform-provider-aws).",
+  "repository": "https://github.com/phillipedwards/pulumi-aws",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues)."
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues)."
+    }
+  },
+  "config": {
+    "variables": {
+      "region": {
+        "type": "string",
+        "$ref": "#/types/aws:index/region:Region",
+        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n",
+        "defaultInfo": {
+          "environment": [
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION"
+          ]
+        }
+      },
+      "skipCredentialsValidation": {
+        "type": "boolean",
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n",
+        "default": false
+      },
+      "skipGetEc2Platforms": {
+        "type": "boolean",
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n",
+        "default": true
+      },
+      "skipMetadataApiCheck": {
+        "type": "boolean",
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n",
+        "default": true
+      },
+      "skipRegionValidation": {
+        "type": "boolean",
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n",
+        "default": true
+      }
+    }
+  },
+  "types": {
+    "aws:iam/RoleInlinePolicy:RoleInlinePolicy": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "policy": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:iam/getGroupUser:getGroupUser": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "path": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "userId": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "userName": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "arn",
+        "path",
+        "userId",
+        "userName"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    },
+    "aws:index/getAvailabilityZoneFilter:getAvailabilityZoneFilter": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "values"
+      ]
+    },
+    "aws:index/getAvailabilityZonesFilter:getAvailabilityZonesFilter": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "values"
+      ]
+    },
+    "aws:index/getRegionsFilter:getRegionsFilter": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "values"
+      ]
+    },
+    "aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement": {
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:x/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "effect": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "notActions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "notPrincipals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:x/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "notResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "principals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:x/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "sid": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:x/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition": {
+      "properties": {
+        "test": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "variable": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "test",
+        "values",
+        "variable"
+      ]
+    },
+    "aws:x/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal": {
+      "properties": {
+        "identifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "type": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "identifiers",
+        "type"
+      ]
+    },
+    "aws:x/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal": {
+      "properties": {
+        "identifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "type": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "identifiers",
+        "type"
+      ]
+    }
+  },
+  "provider": {
+    "description": "The provider type for the aws package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "properties": {
+      "region": {
+        "type": "string",
+        "$ref": "#/types/aws:index/region:Region",
+        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n"
+      },
+      "skipCredentialsValidation": {
+        "type": "boolean",
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n"
+      },
+      "skipGetEc2Platforms": {
+        "type": "boolean",
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n"
+      },
+      "skipMetadataApiCheck": {
+        "type": "boolean",
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n"
+      },
+      "skipRegionValidation": {
+        "type": "boolean",
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n"
+      }
+    },
+    "inputProperties": {
+      "region": {
+        "type": "string",
+        "$ref": "#/types/aws:index/region:Region",
+        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n",
+        "defaultInfo": {
+          "environment": [
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION"
+          ]
+        }
+      },
+      "skipCredentialsValidation": {
+        "type": "boolean",
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n",
+        "default": false
+      },
+      "skipGetEc2Platforms": {
+        "type": "boolean",
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n",
+        "default": true
+      },
+      "skipMetadataApiCheck": {
+        "type": "boolean",
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n",
+        "default": true
+      },
+      "skipRegionValidation": {
+        "type": "boolean",
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n",
+        "default": true
+      }
+    }
+  },
+  "resources": {
+    "aws:iam/accessKey:AccessKey": {
+      "properties": {
+        "createDate": {
+          "type": "string"
+        },
+        "encryptedSecret": {
+          "type": "string"
+        },
+        "encryptedSesSmtpPasswordV4": {
+          "type": "string"
+        },
+        "keyFingerprint": {
+          "type": "string"
+        },
+        "pgpKey": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string",
+          "secret": true
+        },
+        "sesSmtpPasswordV4": {
+          "type": "string",
+          "secret": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "createDate",
+        "encryptedSecret",
+        "encryptedSesSmtpPasswordV4",
+        "keyFingerprint",
+        "secret",
+        "sesSmtpPasswordV4",
+        "user"
+      ],
+      "inputProperties": {
+        "pgpKey": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "user"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering AccessKey resources.\n",
+        "properties": {
+          "createDate": {
+            "type": "string"
+          },
+          "encryptedSecret": {
+            "type": "string"
+          },
+          "encryptedSesSmtpPasswordV4": {
+            "type": "string"
+          },
+          "keyFingerprint": {
+            "type": "string"
+          },
+          "pgpKey": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "secret": {
+            "type": "string",
+            "secret": true
+          },
+          "sesSmtpPasswordV4": {
+            "type": "string",
+            "secret": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/accountAlias:AccountAlias": {
+      "properties": {
+        "accountAlias": {
+          "type": "string",
+          "language": {
+            "csharp": {
+              "name": "Alias"
+            }
+          }
+        }
+      },
+      "required": [
+        "accountAlias"
+      ],
+      "inputProperties": {
+        "accountAlias": {
+          "type": "string",
+          "language": {
+            "csharp": {
+              "name": "Alias"
+            }
+          },
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "accountAlias"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering AccountAlias resources.\n",
+        "properties": {
+          "accountAlias": {
+            "type": "string",
+            "language": {
+              "csharp": {
+                "name": "Alias"
+              }
+            },
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/accountPasswordPolicy:AccountPasswordPolicy": {
+      "properties": {
+        "allowUsersToChangePassword": {
+          "type": "boolean"
+        },
+        "expirePasswords": {
+          "type": "boolean"
+        },
+        "hardExpiry": {
+          "type": "boolean"
+        },
+        "maxPasswordAge": {
+          "type": "integer"
+        },
+        "minimumPasswordLength": {
+          "type": "integer"
+        },
+        "passwordReusePrevention": {
+          "type": "integer"
+        },
+        "requireLowercaseCharacters": {
+          "type": "boolean"
+        },
+        "requireNumbers": {
+          "type": "boolean"
+        },
+        "requireSymbols": {
+          "type": "boolean"
+        },
+        "requireUppercaseCharacters": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expirePasswords",
+        "hardExpiry",
+        "maxPasswordAge",
+        "passwordReusePrevention",
+        "requireLowercaseCharacters",
+        "requireNumbers",
+        "requireSymbols",
+        "requireUppercaseCharacters"
+      ],
+      "inputProperties": {
+        "allowUsersToChangePassword": {
+          "type": "boolean"
+        },
+        "hardExpiry": {
+          "type": "boolean"
+        },
+        "maxPasswordAge": {
+          "type": "integer"
+        },
+        "minimumPasswordLength": {
+          "type": "integer"
+        },
+        "passwordReusePrevention": {
+          "type": "integer"
+        },
+        "requireLowercaseCharacters": {
+          "type": "boolean"
+        },
+        "requireNumbers": {
+          "type": "boolean"
+        },
+        "requireSymbols": {
+          "type": "boolean"
+        },
+        "requireUppercaseCharacters": {
+          "type": "boolean"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering AccountPasswordPolicy resources.\n",
+        "properties": {
+          "allowUsersToChangePassword": {
+            "type": "boolean"
+          },
+          "expirePasswords": {
+            "type": "boolean"
+          },
+          "hardExpiry": {
+            "type": "boolean"
+          },
+          "maxPasswordAge": {
+            "type": "integer"
+          },
+          "minimumPasswordLength": {
+            "type": "integer"
+          },
+          "passwordReusePrevention": {
+            "type": "integer"
+          },
+          "requireLowercaseCharacters": {
+            "type": "boolean"
+          },
+          "requireNumbers": {
+            "type": "boolean"
+          },
+          "requireSymbols": {
+            "type": "boolean"
+          },
+          "requireUppercaseCharacters": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/group:Group": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "uniqueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "name",
+        "uniqueId"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Group resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/groupMembership:GroupMembership": {
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "group",
+        "name",
+        "users"
+      ],
+      "inputProperties": {
+        "group": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "group",
+        "users"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering GroupMembership resources.\n",
+        "properties": {
+          "group": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/groupPolicy:GroupPolicy": {
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "group",
+        "name",
+        "policy"
+      ],
+      "inputProperties": {
+        "group": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/documents:PolicyDocument"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "group",
+        "policy"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering GroupPolicy resources.\n",
+        "properties": {
+          "group": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "policy": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/documents:PolicyDocument"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/groupPolicyAttachment:GroupPolicyAttachment": {
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN"
+        }
+      },
+      "required": [
+        "group",
+        "policyArn"
+      ],
+      "inputProperties": {
+        "group": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/group:Group"
+            }
+          ],
+          "willReplaceOnChanges": true
+        },
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "group",
+        "policyArn"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering GroupPolicyAttachment resources.\n",
+        "properties": {
+          "group": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/group:Group"
+              }
+            ],
+            "willReplaceOnChanges": true
+          },
+          "policyArn": {
+            "type": "string",
+            "$ref": "#/types/aws:index/aRN:ARN",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/instanceProfile:InstanceProfile": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "createDate": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "uniqueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "createDate",
+        "name",
+        "tagsAll",
+        "uniqueId"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "path": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/role:Role"
+            }
+          ]
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering InstanceProfile resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "path": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "role": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/role:Role"
+              }
+            ]
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/openIdConnectProvider:OpenIdConnectProvider": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "clientIdLists": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "thumbprintLists": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "clientIdLists",
+        "tagsAll",
+        "thumbprintLists",
+        "url"
+      ],
+      "inputProperties": {
+        "clientIdLists": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "willReplaceOnChanges": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "thumbprintLists": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "url": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "clientIdLists",
+        "thumbprintLists",
+        "url"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering OpenIdConnectProvider resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "clientIdLists": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "willReplaceOnChanges": true
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "thumbprintLists": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/policy:Policy": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "language": {
+            "csharp": {
+              "name": "PolicyDocument"
+            }
+          }
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "arn",
+        "name",
+        "policy",
+        "policyId",
+        "tagsAll"
+      ],
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "path": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/documents:PolicyDocument"
+            }
+          ],
+          "language": {
+            "csharp": {
+              "name": "PolicyDocument"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "policy"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Policy resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "path": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "policy": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/documents:PolicyDocument"
+              }
+            ],
+            "language": {
+              "csharp": {
+                "name": "PolicyDocument"
+              }
+            }
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/policyAttachment:PolicyAttachment": {
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "policyArn"
+      ],
+      "inputProperties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/group:Group"
+              }
+            ]
+          }
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN",
+          "willReplaceOnChanges": true
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/role:Role"
+              }
+            ]
+          }
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/user:User"
+              }
+            ]
+          }
+        }
+      },
+      "requiredInputs": [
+        "policyArn"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering PolicyAttachment resources.\n",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "$ref": "#/types/aws:iam/group:Group"
+                }
+              ]
+            }
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "policyArn": {
+            "type": "string",
+            "$ref": "#/types/aws:index/aRN:ARN",
+            "willReplaceOnChanges": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "$ref": "#/types/aws:iam/role:Role"
+                }
+              ]
+            }
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "$ref": "#/types/aws:iam/user:User"
+                }
+              ]
+            }
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/role:Role": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "assumeRolePolicy": {
+          "type": "string"
+        },
+        "createDate": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "forceDetachPolicies": {
+          "type": "boolean"
+        },
+        "inlinePolicies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:iam/RoleInlinePolicy:RoleInlinePolicy"
+          }
+        },
+        "managedPolicyArns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSessionDuration": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "permissionsBoundary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "uniqueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "assumeRolePolicy",
+        "createDate",
+        "inlinePolicies",
+        "managedPolicyArns",
+        "name",
+        "namePrefix",
+        "tagsAll",
+        "uniqueId"
+      ],
+      "inputProperties": {
+        "assumeRolePolicy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "forceDetachPolicies": {
+          "type": "boolean"
+        },
+        "inlinePolicies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:iam/RoleInlinePolicy:RoleInlinePolicy"
+          }
+        },
+        "managedPolicyArns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSessionDuration": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "path": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "permissionsBoundary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "assumeRolePolicy"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Role resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "assumeRolePolicy": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/documents:PolicyDocument"
+              }
+            ]
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "forceDetachPolicies": {
+            "type": "boolean"
+          },
+          "inlinePolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:iam/RoleInlinePolicy:RoleInlinePolicy"
+            }
+          },
+          "managedPolicyArns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSessionDuration": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "path": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "permissionsBoundary": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/rolePolicy:RolePolicy": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "policy",
+        "role"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/role:Role"
+            }
+          ],
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "policy",
+        "role"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering RolePolicy resources.\n",
+        "properties": {
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "policy": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/documents:PolicyDocument"
+              }
+            ]
+          },
+          "role": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/role:Role"
+              }
+            ],
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/rolePolicyAttachment:RolePolicyAttachment": {
+      "properties": {
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "policyArn",
+        "role"
+      ],
+      "inputProperties": {
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN",
+          "willReplaceOnChanges": true
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/role:Role"
+            }
+          ],
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "policyArn",
+        "role"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering RolePolicyAttachment resources.\n",
+        "properties": {
+          "policyArn": {
+            "type": "string",
+            "$ref": "#/types/aws:index/aRN:ARN",
+            "willReplaceOnChanges": true
+          },
+          "role": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/role:Role"
+              }
+            ],
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/samlProvider:SamlProvider": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "samlMetadataDocument": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "validUntil": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "name",
+        "samlMetadataDocument",
+        "tagsAll",
+        "validUntil"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "samlMetadataDocument": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "samlMetadataDocument"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering SamlProvider resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "samlMetadataDocument": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "validUntil": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/serverCertificate:ServerCertificate": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "certificateBody": {
+          "type": "string"
+        },
+        "certificateChain": {
+          "type": "string"
+        },
+        "expiration": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "privateKey": {
+          "type": "string",
+          "secret": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "uploadDate": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "certificateBody",
+        "expiration",
+        "name",
+        "privateKey",
+        "tagsAll",
+        "uploadDate"
+      ],
+      "inputProperties": {
+        "certificateBody": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "certificateChain": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "path": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "privateKey": {
+          "type": "string",
+          "secret": true,
+          "willReplaceOnChanges": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "certificateBody",
+        "privateKey"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering ServerCertificate resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "certificateBody": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "certificateChain": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "expiration": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "path": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "privateKey": {
+            "type": "string",
+            "secret": true,
+            "willReplaceOnChanges": true
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uploadDate": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/serviceLinkedRole:ServiceLinkedRole": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "awsServiceName": {
+          "type": "string"
+        },
+        "createDate": {
+          "type": "string"
+        },
+        "customSuffix": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "uniqueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "awsServiceName",
+        "createDate",
+        "name",
+        "path",
+        "tagsAll",
+        "uniqueId"
+      ],
+      "inputProperties": {
+        "awsServiceName": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "customSuffix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "awsServiceName"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering ServiceLinkedRole resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "awsServiceName": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "customSuffix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/serviceSpecificCredential:ServiceSpecificCredential": {
+      "properties": {
+        "serviceName": {
+          "type": "string"
+        },
+        "servicePassword": {
+          "type": "string",
+          "secret": true
+        },
+        "serviceSpecificCredentialId": {
+          "type": "string"
+        },
+        "serviceUserName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "serviceName",
+        "servicePassword",
+        "serviceSpecificCredentialId",
+        "serviceUserName",
+        "userName"
+      ],
+      "inputProperties": {
+        "serviceName": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "serviceName",
+        "userName"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering ServiceSpecificCredential resources.\n",
+        "properties": {
+          "serviceName": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "servicePassword": {
+            "type": "string",
+            "secret": true
+          },
+          "serviceSpecificCredentialId": {
+            "type": "string"
+          },
+          "serviceUserName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/signingCertificate:SigningCertificate": {
+      "properties": {
+        "certificateBody": {
+          "type": "string"
+        },
+        "certificateId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "certificateBody",
+        "certificateId",
+        "userName"
+      ],
+      "inputProperties": {
+        "certificateBody": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "certificateBody",
+        "userName"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering SigningCertificate resources.\n",
+        "properties": {
+          "certificateBody": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "certificateId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/sshKey:SshKey": {
+      "properties": {
+        "encoding": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "publicKey": {
+          "type": "string"
+        },
+        "sshPublicKeyId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "encoding",
+        "fingerprint",
+        "publicKey",
+        "sshPublicKeyId",
+        "status",
+        "username"
+      ],
+      "inputProperties": {
+        "encoding": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "publicKey": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "status": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "encoding",
+        "publicKey",
+        "username"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering SshKey resources.\n",
+        "properties": {
+          "encoding": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "sshPublicKeyId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/user:User": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "forceDestroy": {
+          "type": "boolean",
+          "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices\n"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "permissionsBoundary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "uniqueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "name",
+        "tagsAll",
+        "uniqueId"
+      ],
+      "inputProperties": {
+        "forceDestroy": {
+          "type": "boolean",
+          "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices\n"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "permissionsBoundary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering User resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "forceDestroy": {
+            "type": "boolean",
+            "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices\n"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permissionsBoundary": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/userGroupMembership:UserGroupMembership": {
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "groups",
+        "user"
+      ],
+      "inputProperties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "groups",
+        "user"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering UserGroupMembership resources.\n",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/userLoginProfile:UserLoginProfile": {
+      "properties": {
+        "encryptedPassword": {
+          "type": "string"
+        },
+        "keyFingerprint": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "passwordLength": {
+          "type": "integer"
+        },
+        "passwordResetRequired": {
+          "type": "boolean"
+        },
+        "pgpKey": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "encryptedPassword",
+        "keyFingerprint",
+        "password",
+        "passwordResetRequired",
+        "user"
+      ],
+      "inputProperties": {
+        "passwordLength": {
+          "type": "integer",
+          "willReplaceOnChanges": true
+        },
+        "passwordResetRequired": {
+          "type": "boolean",
+          "willReplaceOnChanges": true
+        },
+        "pgpKey": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "user": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "user"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering UserLoginProfile resources.\n",
+        "properties": {
+          "encryptedPassword": {
+            "type": "string"
+          },
+          "keyFingerprint": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "passwordLength": {
+            "type": "integer",
+            "willReplaceOnChanges": true
+          },
+          "passwordResetRequired": {
+            "type": "boolean",
+            "willReplaceOnChanges": true
+          },
+          "pgpKey": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "user": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/userPolicy:UserPolicy": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "policy",
+        "user"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "namePrefix": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "user": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "policy",
+        "user"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering UserPolicy resources.\n",
+        "properties": {
+          "name": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "namePrefix": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "policy": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/documents:PolicyDocument"
+              }
+            ]
+          },
+          "user": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/userPolicyAttachment:UserPolicyAttachment": {
+      "properties": {
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "policyArn",
+        "user"
+      ],
+      "inputProperties": {
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/aws:index/aRN:ARN",
+          "willReplaceOnChanges": true
+        },
+        "user": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/aws:iam/user:User"
+            }
+          ],
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "policyArn",
+        "user"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering UserPolicyAttachment resources.\n",
+        "properties": {
+          "policyArn": {
+            "type": "string",
+            "$ref": "#/types/aws:index/aRN:ARN",
+            "willReplaceOnChanges": true
+          },
+          "user": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/aws:iam/user:User"
+              }
+            ],
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "aws:iam/virtualMfaDevice:VirtualMfaDevice": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "base32StringSeed": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "qrCodePng": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tagsAll": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "virtualMfaDeviceName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arn",
+        "base32StringSeed",
+        "qrCodePng",
+        "tagsAll",
+        "virtualMfaDeviceName"
+      ],
+      "inputProperties": {
+        "path": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "virtualMfaDeviceName": {
+          "type": "string",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "virtualMfaDeviceName"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering VirtualMfaDevice resources.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "base32StringSeed": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          },
+          "qrCodePng": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tagsAll": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "virtualMfaDeviceName": {
+            "type": "string",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "aws:iam/getAccountAlias:getAccountAlias": {
+      "outputs": {
+        "description": "A collection of values returned by getAccountAlias.\n",
+        "properties": {
+          "accountAlias": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accountAlias",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getGroup:getGroup": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getGroup.\n",
+        "properties": {
+          "groupName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groupName"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getGroup.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "groupName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "path": {
+            "type": "string"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:iam/getGroupUser:getGroupUser"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "groupId",
+          "groupName",
+          "path",
+          "users",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getInstanceProfile:getInstanceProfile": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getInstanceProfile.\n",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getInstanceProfile.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "roleArn": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "createDate",
+          "name",
+          "path",
+          "roleArn",
+          "roleId",
+          "roleName",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getInstanceProfiles:getInstanceProfiles": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getInstanceProfiles.\n",
+        "properties": {
+          "roleName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roleName"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getInstanceProfiles.\n",
+        "properties": {
+          "arns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roleName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arns",
+          "names",
+          "paths",
+          "roleName",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getOpenidConnectProvider:getOpenidConnectProvider": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getOpenidConnectProvider.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getOpenidConnectProvider.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "clientIdLists": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "thumbprintLists": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "clientIdLists",
+          "tags",
+          "thumbprintLists",
+          "url",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getPolicy:getPolicy": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getPolicy.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getPolicy.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "description",
+          "name",
+          "path",
+          "policy",
+          "policyId",
+          "tags",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getRole:getRole": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getRole.\n",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getRole.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "assumeRolePolicy": {
+            "type": "string"
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "maxSessionDuration": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permissionsBoundary": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "uniqueId": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "assumeRolePolicy",
+          "createDate",
+          "description",
+          "maxSessionDuration",
+          "name",
+          "path",
+          "permissionsBoundary",
+          "tags",
+          "uniqueId",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getRoles:getRoles": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getRoles.\n",
+        "properties": {
+          "nameRegex": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getRoles.\n",
+        "properties": {
+          "arns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "nameRegex": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pathPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arns",
+          "names",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getSamlProvider:getSamlProvider": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getSamlProvider.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getSamlProvider.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "name": {
+            "type": "string"
+          },
+          "samlMetadataDocument": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "validUntil": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "createDate",
+          "name",
+          "samlMetadataDocument",
+          "tags",
+          "validUntil",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getServerCertificate:getServerCertificate": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getServerCertificate.\n",
+        "properties": {
+          "latest": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "namePrefix": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getServerCertificate.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "certificateBody": {
+            "type": "string"
+          },
+          "certificateChain": {
+            "type": "string"
+          },
+          "expirationDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "latest": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "namePrefix": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          },
+          "uploadDate": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "certificateBody",
+          "certificateChain",
+          "expirationDate",
+          "name",
+          "path",
+          "uploadDate",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getSessionContext:getSessionContext": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getSessionContext.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getSessionContext.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "issuerArn": {
+            "type": "string"
+          },
+          "issuerId": {
+            "type": "string"
+          },
+          "issuerName": {
+            "type": "string"
+          },
+          "sessionName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "issuerArn",
+          "issuerId",
+          "issuerName",
+          "sessionName",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getUser:getUser": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getUser.\n",
+        "properties": {
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "userName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "userName"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getUser.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permissionsBoundary": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "userId": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "path",
+          "permissionsBoundary",
+          "tags",
+          "userId",
+          "userName",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getUserSshKey:getUserSshKey": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getUserSshKey.\n",
+        "properties": {
+          "encoding": {
+            "type": "string"
+          },
+          "sshPublicKeyId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "encoding",
+          "sshPublicKeyId",
+          "username"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getUserSshKey.\n",
+        "properties": {
+          "encoding": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "publicKey": {
+            "type": "string"
+          },
+          "sshPublicKeyId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "encoding",
+          "fingerprint",
+          "publicKey",
+          "sshPublicKeyId",
+          "status",
+          "username",
+          "id"
+        ]
+      }
+    },
+    "aws:iam/getUsers:getUsers": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getUsers.\n",
+        "properties": {
+          "nameRegex": {
+            "type": "string"
+          },
+          "pathPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getUsers.\n",
+        "properties": {
+          "arns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "nameRegex": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pathPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arns",
+          "names",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getArn:getArn": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getArn.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getArn.\n",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "arn": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "partition": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account",
+          "arn",
+          "partition",
+          "region",
+          "resource",
+          "service",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getAvailabilityZone:getAvailabilityZone": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getAvailabilityZone.\n",
+        "properties": {
+          "allAvailabilityZones": {
+            "type": "boolean"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getAvailabilityZoneFilter:getAvailabilityZoneFilter"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getAvailabilityZone.\n",
+        "properties": {
+          "allAvailabilityZones": {
+            "type": "boolean"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getAvailabilityZoneFilter:getAvailabilityZoneFilter"
+            }
+          },
+          "groupName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameSuffix": {
+            "type": "string"
+          },
+          "networkBorderGroup": {
+            "type": "string"
+          },
+          "optInStatus": {
+            "type": "string"
+          },
+          "parentZoneId": {
+            "type": "string"
+          },
+          "parentZoneName": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          },
+          "zoneType": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groupName",
+          "name",
+          "nameSuffix",
+          "networkBorderGroup",
+          "optInStatus",
+          "parentZoneId",
+          "parentZoneName",
+          "region",
+          "state",
+          "zoneId",
+          "zoneType",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getAvailabilityZones:getAvailabilityZones": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getAvailabilityZones.\n",
+        "properties": {
+          "allAvailabilityZones": {
+            "type": "boolean"
+          },
+          "excludeNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludeZoneIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getAvailabilityZonesFilter:getAvailabilityZonesFilter"
+            }
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getAvailabilityZones.\n",
+        "properties": {
+          "allAvailabilityZones": {
+            "type": "boolean"
+          },
+          "excludeNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludeZoneIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getAvailabilityZonesFilter:getAvailabilityZonesFilter"
+            }
+          },
+          "groupNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "zoneIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "groupNames",
+          "names",
+          "zoneIds",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getBillingServiceAccount:getBillingServiceAccount": {
+      "outputs": {
+        "description": "A collection of values returned by getBillingServiceAccount.\n",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arn",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getCallerIdentity:getCallerIdentity": {
+      "outputs": {
+        "description": "A collection of values returned by getCallerIdentity.\n",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "arn": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accountId",
+          "arn",
+          "userId",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getDefaultTags:getDefaultTags": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getDefaultTags.\n",
+        "properties": {
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getDefaultTags.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getIpRanges:getIpRanges": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getIpRanges.\n",
+        "properties": {
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "services"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getIpRanges.\n",
+        "properties": {
+          "cidrBlocks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createDate": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "ipv6CidrBlocks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "syncToken": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cidrBlocks",
+          "createDate",
+          "ipv6CidrBlocks",
+          "services",
+          "syncToken",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getPartition:getPartition": {
+      "outputs": {
+        "description": "A collection of values returned by getPartition.\n",
+        "properties": {
+          "dnsSuffix": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "partition": {
+            "type": "string"
+          },
+          "reverseDnsPrefix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dnsSuffix",
+          "partition",
+          "reverseDnsPrefix",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getRegion:getRegion": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getRegion.\n",
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getRegion.\n",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "endpoint",
+          "name",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getRegions:getRegions": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getRegions.\n",
+        "properties": {
+          "allRegions": {
+            "type": "boolean"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getRegionsFilter:getRegionsFilter"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getRegions.\n",
+        "properties": {
+          "allRegions": {
+            "type": "boolean"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:index/getRegionsFilter:getRegionsFilter"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "names",
+          "id"
+        ]
+      }
+    },
+    "aws:index/getService:getService": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getService.\n",
+        "properties": {
+          "dnsName": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "reverseDnsName": {
+            "type": "string"
+          },
+          "reverseDnsPrefix": {
+            "type": "string"
+          },
+          "serviceId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getService.\n",
+        "properties": {
+          "dnsName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "partition": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "reverseDnsName": {
+            "type": "string"
+          },
+          "reverseDnsPrefix": {
+            "type": "string"
+          },
+          "serviceId": {
+            "type": "string"
+          },
+          "supported": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dnsName",
+          "partition",
+          "region",
+          "reverseDnsName",
+          "reverseDnsPrefix",
+          "serviceId",
+          "supported",
+          "id"
+        ]
+      }
+    },
+    "aws:x/iam/getPolicyDocument:getPolicyDocument": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getPolicyDocument.\n",
+        "properties": {
+          "overrideJson": {
+            "type": "string",
+            "deprecationMessage": "Use the attribute \"override_policy_documents\" instead."
+          },
+          "overridePolicyDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "sourceJson": {
+            "type": "string",
+            "deprecationMessage": "Use the attribute \"source_policy_documents\" instead."
+          },
+          "sourcePolicyDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "statements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement"
+            }
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getPolicyDocument.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "json": {
+            "type": "string"
+          },
+          "overrideJson": {
+            "type": "string",
+            "deprecationMessage": "Use the attribute \"override_policy_documents\" instead."
+          },
+          "overridePolicyDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "sourceJson": {
+            "type": "string",
+            "deprecationMessage": "Use the attribute \"source_policy_documents\" instead."
+          },
+          "sourcePolicyDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "statements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/aws:x/getPolicyDocumentStatement:getPolicyDocumentStatement"
+            }
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "json",
+          "id"
+        ]
+      }
+    }
+  }
+}
