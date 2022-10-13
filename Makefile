@@ -1,6 +1,9 @@
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
 
+.PHONY: default
+default: build lint test
+
 build::
 	go mod tidy
 	go build ${PROJECT}/v3/pkg/...
