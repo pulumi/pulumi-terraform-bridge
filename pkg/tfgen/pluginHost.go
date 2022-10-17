@@ -1,3 +1,17 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfgen
 
 import (
@@ -17,12 +31,12 @@ import (
 var _ = (plugin.Provider)((*inmemoryProvider)(nil))
 
 type inmemoryProvider struct {
-	name   string
+	name   tokens.Package
 	schema []byte
 	info   tfbridge.ProviderInfo
 }
 
-func newInMemoryProvider(name string, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
+func newInMemoryProvider(name tokens.Package, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
 	// Round-trip the info through a marshaler to normalize the types to the schema shim.
 	return &inmemoryProvider{
 		name:   name,
@@ -32,7 +46,7 @@ func newInMemoryProvider(name string, schema []byte, info tfbridge.ProviderInfo)
 }
 
 func (p *inmemoryProvider) Pkg() tokens.Package {
-	return tokens.Package(p.name)
+	return p.name
 }
 
 func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
@@ -162,7 +176,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 // inmemoryProviderHost.Host.
 func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
-	if name == host.provider.name {
+	if name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo()
 		if err != nil {
 			return nil, err
@@ -197,7 +211,7 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 }
 
 func (host *cachingProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	key := string(pkg) + "@"
+	key := pkg.String() + "@"
 	if version != nil {
 		key = version.String()
 	}
