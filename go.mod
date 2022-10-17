@@ -21,6 +21,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/hcl/v2 v2.14.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
+	github.com/hashicorp/terraform-plugin-framework v0.14.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734
@@ -113,7 +114,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -128,8 +129,8 @@ require (
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
-	github.com/hashicorp/terraform-plugin-go v0.12.0 // indirect
-	github.com/hashicorp/terraform-plugin-log v0.6.0 // indirect
+	github.com/hashicorp/terraform-plugin-go v0.14.0 // indirect
+	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
 	github.com/hashicorp/vault/api v1.1.1 // indirect
 	github.com/hashicorp/vault/sdk v0.2.1 // indirect
