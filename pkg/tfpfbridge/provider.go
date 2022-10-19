@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -41,20 +42,23 @@ type Provider struct {
 	tfProvider      tfsdkprovider.Provider
 	tfServer        tfprotov6.ProviderServer
 	resourcesByType resourcesByType
+	info            ProviderInfo
 }
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(tfProvider tfsdkprovider.Provider) plugin.Provider {
-	server6 := providerserver.NewProtocol6(tfProvider)
+func NewProvider(info ProviderInfo) plugin.Provider {
+	p := info.P()
+	server6 := providerserver.NewProtocol6(p)
 	return &Provider{
-		tfProvider: tfProvider,
+		tfProvider: p,
 		tfServer:   server6(),
+		info:       info,
 	}
 }
 
-func NewProviderServer(tfProvider tfsdkprovider.Provider) pulumirpc.ResourceProviderServer {
-	return plugin.NewProviderServer(NewProvider(tfProvider))
+func NewProviderServer(info ProviderInfo) pulumirpc.ResourceProviderServer {
+	return plugin.NewProviderServer(NewProvider(info))
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -222,7 +226,16 @@ func (p *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 
 // GetPluginInfo returns this plugin's information.
 func (p *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
-	panic("TODO")
+	ver, err := semver.Parse(p.info.Version)
+	if err != nil {
+		return workspace.PluginInfo{}, err
+	}
+	info := workspace.PluginInfo{
+		Name:    p.info.Name,
+		Version: &ver,
+		Kind:    workspace.ResourcePlugin,
+	}
+	return info, nil
 }
 
 // SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing operations. Operation
