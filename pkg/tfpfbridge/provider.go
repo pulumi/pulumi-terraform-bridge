@@ -20,8 +20,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	tfsdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -37,14 +39,17 @@ import (
 // https://www.terraform.io/plugin/framework
 type Provider struct {
 	tfProvider      tfsdkprovider.Provider
+	tfServer        tfprotov6.ProviderServer
 	resourcesByType resourcesByType
 }
 
 var _ plugin.Provider = &Provider{}
 
 func NewProvider(tfProvider tfsdkprovider.Provider) plugin.Provider {
+	server6 := providerserver.NewProtocol6(tfProvider)
 	return &Provider{
 		tfProvider: tfProvider,
+		tfServer:   server6(),
 	}
 }
 
