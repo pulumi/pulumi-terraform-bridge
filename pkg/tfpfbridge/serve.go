@@ -23,6 +23,6 @@ import (
 func Serve(pkg, version string, prov ProviderInfo, pulumiSchema []byte) error {
 	return provider.Main(pkg, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 
-		return NewProviderServer(prov.P()), nil
+		return NewProviderServer(prov), nil
 	})
 }
