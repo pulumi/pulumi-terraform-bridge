@@ -16,11 +16,12 @@ package tfbridge
 
 import (
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"golang.org/x/net/context"
 	"os"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"golang.org/x/net/context"
 
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -56,22 +57,25 @@ type ProviderInfo struct {
 	//
 	// require github.com/my-company/terraform-repo-example v1.0.0
 	// replace github.com/my-company/terraform-repo-example => github.com/some-fork/terraform-repo-example v1.0.0
-	GitHubOrg   string                             // the GitHub org of the provider. Defaults to `terraform-providers`.
-	GitHubHost  string                             // the GitHub host for the provider. Defaults to `github.com`.
-	Description string                             // an optional descriptive overview of the package (a default supplied).
-	Keywords    []string                           // an optional list of keywords to help discovery of this package. e.g. "category/cloud, category/infrastructure"
-	License     string                             // the license, if any, the resulting package has (default is none).
-	LogoURL     string                             // an optional URL to the logo of the package
-	DisplayName string                             // the human friendly name of the package used in the Pulumi registry
-	Publisher   string                             // the name of the person or organization that authored and published the package.
-	Homepage    string                             // the URL to the project homepage.
-	Repository  string                             // the URL to the project source code repository.
-	Version     string                             // the version of the provider package.
-	Config      map[string]*SchemaInfo             // a map of TF name to config schema overrides.
-	ExtraConfig map[string]*ConfigInfo             // a list of Pulumi-only configuration variables.
-	Resources   map[string]*ResourceInfo           // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	DataSources map[string]*DataSourceInfo         // a map of TF name to Pulumi resource info.
-	ExtraTypes  map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for overlaid types.
+	GitHubOrg      string                             // the GitHub org of the provider. Defaults to `terraform-providers`.
+	GitHubHost     string                             // the GitHub host for the provider. Defaults to `github.com`.
+	Description    string                             // an optional descriptive overview of the package (a default supplied).
+	Keywords       []string                           // an optional list of keywords to help discovery of this package. e.g. "category/cloud, category/infrastructure"
+	License        string                             // the license, if any, the resulting package has (default is none).
+	LogoURL        string                             // an optional URL to the logo of the package
+	DisplayName    string                             // the human friendly name of the package used in the Pulumi registry
+	Publisher      string                             // the name of the person or organization that authored and published the package.
+	Homepage       string                             // the URL to the project homepage.
+	Repository     string                             // the URL to the project source code repository.
+	Version        string                             // the version of the provider package.
+	Config         map[string]*SchemaInfo             // a map of TF name to config schema overrides.
+	ExtraConfig    map[string]*ConfigInfo             // a list of Pulumi-only configuration variables.
+	Resources      map[string]*ResourceInfo           // a map of TF name to Pulumi name; standard mangling occurs if no entry.
+	DataSources    map[string]*DataSourceInfo         // a map of TF name to Pulumi resource info.
+	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for extra types.
+	ExtraResources map[string]pschema.ResourceSpec    // a map of Pulumi token to schema type for extra resources.
+	ExtraFunctions map[string]pschema.FunctionSpec    // a map of Pulumi token to schema type for extra functions.
+
 	// ExtraResourceHclExamples is a slice of additional HCL examples attached to resources which are converted to the
 	// relevant target language(s)
 	ExtraResourceHclExamples []HclExampler
