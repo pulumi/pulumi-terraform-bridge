@@ -17,15 +17,14 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-	"strings"
+	"sort"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -44,7 +43,7 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 		return plugin.DiffResult{}, err
 	}
 
-	var schema tfsdk.Schema = resources.schemaByTypeName[typeName]
+	schema := resources.schemaByTypeName[typeName]
 
 	tfType := schema.Type().TerraformType(ctx)
 
@@ -77,34 +76,115 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 		return plugin.DiffResult{}, err
 	}
 
-	// here's what bridge code did before:
+	// TODO handle planResp.PlannedPrivate
 
-	// state := MakeTerraformState(olds)
-	// config  := MakeTerraformConfig(news)
-	// diff := p.tf.Diff(.., state, config)
+	// TODO detect errors in planResp.Diagnostics
 
-	// doIgnoreChanges(ignoreChanges)
+	// TODO process ignoreChanges
 
-	// compute stables including treating specific properties as stable
-	// figure out deleteBeforeReplace
-
-	// makeDetailedDiff()
-
-	// p.tf.Diff bottoms out at r.SimpleDiff() from
-	// terraform-plugin-sdk/v2/helper/schema
-
-	diags := []string{}
-	for _, diag := range planResp.Diagnostics {
-		diags = append(diags, diag.Summary, diag.Detail)
-	}
-
-	plannedState, err := planResp.PlannedState.Unmarshal(tfType)
+	tfDiff, err := diffDynamicValues(tfType, &priorState, planResp.PlannedState)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	panic(fmt.Sprintf("TODO DIFF: diags=%s urn=%s plannedState=%v REQ=%v olds=%v schema=%v",
-		strings.Join(diags, ","),
-		urn,
-		plannedState.String(), planReq, olds, schema))
+	replaceKeys, err := diffPathsToPropertyKeySet(planResp.RequiresReplace)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	changedKeys, err := diffChangedKeys(tfDiff)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	// Compute deleteBeforeReplace. TODO there are some intricacies in the old bridge regarding
+	// nameRequiresDeleteBeforeReplace that are not handled yet.
+	deleteBeforeReplace := false
+	if len(replaceKeys) > 0 {
+		if info, ok := p.info.Resources[typeName]; ok {
+			if info.DeleteBeforeReplace {
+				deleteBeforeReplace = true
+			}
+		}
+	}
+
+	changes := plugin.DiffNone
+	if len(changedKeys) > 0 {
+		changes = plugin.DiffSome
+	}
+
+	diffResult := plugin.DiffResult{
+		Changes:             changes,
+		ReplaceKeys:         replaceKeys,
+		ChangedKeys:         changedKeys,
+		DeleteBeforeReplace: deleteBeforeReplace,
+	}
+
+	// TODO how to compute StableKeys
+
+	// TODO currently not yet computing DetailedDiff, which is intricate in the old bridge due to Set encoding as
+	// lists in Pulumi.
+	return diffResult, nil
+}
+
+// Every entry in tfDiff has an AttributePath; extract the set of paths and find their roots.
+func diffChangedKeys(tfDiff []tftypes.ValueDiff) ([]resource.PropertyKey, error) {
+	paths := []*tftypes.AttributePath{}
+	for _, diff := range tfDiff {
+		paths = append(paths, diff.Path)
+	}
+	return diffPathsToPropertyKeySet(paths)
+}
+
+// Convert AttributeName to PropertyKey. Currently assume property names are identical in Pulumi and TF worlds.
+func diffAttributeNameToPropertyKey(name tftypes.AttributeName) resource.PropertyKey {
+	return resource.PropertyKey(tokens.Name(string(name)))
+}
+
+// For AttributePath that drills down from a property key, return that top-level propery key.
+func diffPathToPropertyKey(path *tftypes.AttributePath) (resource.PropertyKey, error) {
+	steps := path.Steps()
+	if len(steps) == 0 {
+		return "", fmt.Errorf("Unexpected empty AttributePath")
+	}
+
+	firstStep := steps[0]
+	name, ok := firstStep.(tftypes.AttributeName)
+	if !ok {
+		return "", fmt.Errorf("AttributePath did not start with AttributeName: %v", path.String())
+	}
+
+	return diffAttributeNameToPropertyKey(name), nil
+}
+
+// Computes diffPathToPropertyKey for every path and gathers root property keys into a set.
+func diffPathsToPropertyKeySet(paths []*tftypes.AttributePath) ([]resource.PropertyKey, error) {
+	keySet := map[resource.PropertyKey]struct{}{}
+	for _, path := range paths {
+		key, err := diffPathToPropertyKey(path)
+		if err != nil {
+			return nil, err
+		}
+		keySet[key] = struct{}{}
+	}
+	keySlice := []resource.PropertyKey{}
+	for k := range keySet {
+		keySlice = append(keySlice, k)
+	}
+	sort.SliceStable(keySlice, func(i, j int) bool {
+		return keySlice[i] < keySlice[j]
+	})
+	return keySlice, nil
+}
+
+func diffDynamicValues(typ tftypes.Type, before, after *tfprotov6.DynamicValue) ([]tftypes.ValueDiff, error) {
+	b, err := before.Unmarshal(typ)
+	if err != nil {
+		return nil, err
+	}
+	a, err := after.Unmarshal(typ)
+	if err != nil {
+		return nil, err
+	}
+	return a.Diff(b)
 }
