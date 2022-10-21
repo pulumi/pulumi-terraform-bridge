@@ -33,6 +33,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -43,14 +45,14 @@ type Provider struct {
 	tfProvider      tfsdkprovider.Provider
 	tfServer        tfprotov6.ProviderServer
 	resourcesByType resourcesByType
-	info            ProviderInfo
+	info            info.ProviderInfo
 	resourcesCache  resources
 	resourcesOnce   sync.Once
 }
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info ProviderInfo) plugin.Provider {
+func NewProvider(info info.ProviderInfo) plugin.Provider {
 	p := info.P()
 	server6 := providerserver.NewProtocol6(p)
 	return &Provider{
@@ -60,7 +62,7 @@ func NewProvider(info ProviderInfo) plugin.Provider {
 	}
 }
 
-func NewProviderServer(info ProviderInfo) pulumirpc.ResourceProviderServer {
+func NewProviderServer(info info.ProviderInfo) pulumirpc.ResourceProviderServer {
 	return plugin.NewProviderServer(NewProvider(info))
 }
 
