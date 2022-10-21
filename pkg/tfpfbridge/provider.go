@@ -124,11 +124,6 @@ func (p *Provider) Update(urn resource.URN, id resource.ID, olds resource.Proper
 	panic("TODO Update")
 }
 
-func (p *Provider) Delete(urn resource.URN, id resource.ID,
-	props resource.PropertyMap, timeout float64) (resource.Status, error) {
-	panic("TODO Delete")
-}
-
 // Construct creates a new component resource.
 func (p *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
