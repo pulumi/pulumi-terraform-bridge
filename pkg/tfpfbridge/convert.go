@@ -38,6 +38,7 @@ So presumably every type may have null and unknown values.
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -72,38 +73,63 @@ func ConvertPropertyMapToTFValue(
 	}
 }
 
+func ConvertTFValueToPropertyMap(
+	objectType tftypes.Object,
+) func(v tftypes.Value) (resource.PropertyMap, error) {
+	props := map[string]func(tftypes.Value) (resource.PropertyValue, error){}
+
+	for attr, attrType := range objectType.AttributeTypes {
+		props[attr] = ConvertTFValueToProperty(attrType)
+	}
+
+	return func(obj tftypes.Value) (resource.PropertyMap, error) {
+		result := make(resource.PropertyMap)
+		var contents map[string]tftypes.Value
+		if err := obj.As(&contents); err != nil {
+			return result, err
+		}
+		for p, conv := range props {
+			v, gotV := contents[p]
+			if gotV && !v.IsNull() {
+				convertedV, err := conv(v)
+				if err != nil {
+					return result, err
+				}
+				result[resource.PropertyKey(p)] = convertedV
+			}
+		}
+		return result, nil
+	}
+}
+
+func ConvertTFValueToProperty(
+	ty tftypes.Type,
+) func(p tftypes.Value) (resource.PropertyValue, error) {
+	switch {
+	case ty.Is(tftypes.String):
+		return decString
+	case ty.Is(tftypes.Number):
+		return decNumber
+	default:
+		return func(v tftypes.Value) (resource.PropertyValue, error) {
+			return resource.PropertyValue{},
+				fmt.Errorf("ConvertTFValueToProperty does not support type %s: %s", ty.String(), v.String())
+		}
+	}
+}
+
 func ConvertPropertyToTFValue(
 	ty tftypes.Type,
 ) func(p resource.PropertyValue) (tftypes.Value, error) {
 	switch {
 	case ty.Is(tftypes.String):
-		return func(p resource.PropertyValue) (tftypes.Value, error) {
-			if p.IsNull() {
-				return tftypes.NewValue(tftypes.String, nil), nil
-			}
-			if !p.IsString() {
-				return tftypes.NewValue(ty, nil),
-					fmt.Errorf("Expected a string")
-			}
-			// handle unknowns?
-			return tftypes.NewValue(tftypes.String, p.String()), nil
-		}
+		return encString
 	case ty.Is(tftypes.Number):
-		return func(p resource.PropertyValue) (tftypes.Value, error) {
-			if p.IsNull() {
-				return tftypes.NewValue(tftypes.Number, nil), nil
-			}
-			if !p.IsNumber() {
-				return tftypes.NewValue(ty, nil),
-					fmt.Errorf("Expected a Number")
-			}
-			// handle unknowns?
-			return tftypes.NewValue(tftypes.Number, p.NumberValue()), nil
-		}
+		return encNumber
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
-				fmt.Errorf("Not supported: %s", ty.String())
+				fmt.Errorf("ConvertPropertyToTFValue does not supported: %s", ty.String())
 		}
 	}
 }
@@ -119,4 +145,65 @@ func ConvertPropertyMapToDynamicValue(
 		}
 		return tfprotov6.NewDynamicValue(objectType, v)
 	}
+}
+
+func ConvertDynamicValueToPropertyMap(
+	objectType tftypes.Object,
+) func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+	f := ConvertTFValueToPropertyMap(objectType)
+	return func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+		v, err := dv.Unmarshal(objectType)
+		if err != nil {
+			return resource.PropertyMap{}, err
+		}
+		return f(v)
+	}
+}
+
+func encString(p resource.PropertyValue) (tftypes.Value, error) {
+	if p.IsNull() {
+		return tftypes.NewValue(tftypes.String, nil), nil
+	}
+	if !p.IsString() {
+		return tftypes.NewValue(tftypes.String, nil), fmt.Errorf("Expected a string")
+	}
+	// TODO handle unknowns
+	return tftypes.NewValue(tftypes.String, p.StringValue()), nil
+}
+
+func decString(v tftypes.Value) (resource.PropertyValue, error) {
+	if v.IsNull() {
+		return resource.NewPropertyValue(nil), nil
+	}
+	// TODO handle unknowns
+	var s string
+	if err := v.As(&s); err != nil {
+		return resource.PropertyValue{}, err
+	}
+	return resource.NewStringProperty(s), nil
+}
+
+func encNumber(p resource.PropertyValue) (tftypes.Value, error) {
+	if p.IsNull() {
+		return tftypes.NewValue(tftypes.Number, nil), nil
+	}
+	if !p.IsNumber() {
+		return tftypes.NewValue(tftypes.Number, nil), fmt.Errorf("Expected a Number")
+	}
+	// TODO handle unknowns
+	return tftypes.NewValue(tftypes.Number, p.NumberValue()), nil
+}
+
+func decNumber(v tftypes.Value) (resource.PropertyValue, error) {
+	if v.IsNull() {
+		return resource.NewPropertyValue(nil), nil
+	}
+	// TODO handle unknowns
+
+	var n big.Float
+	if err := v.As(&n); err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("decNumber fails with %s: %w", v.String(), err)
+	}
+	f64, _ := n.Float64()
+	return resource.NewNumberProperty(f64), nil
 }

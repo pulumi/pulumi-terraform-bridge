@@ -110,88 +110,23 @@ func ValueToPropertyMap(schema tfsdk.Schema, value tftypes.Value) (resource.Prop
 	panic("TODO")
 }
 
-// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
-	timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
-	ctx := context.TODO()
-
-	// TODO handle preview=true that should not call Create
-
-	var diags diag.Diagnostics
-
-	res, err := p.resourcesByType.ByURN(urn)
-	if err != nil {
-		return "", nil, 0, err
-	}
-
-	schema, diag1 := res.GetSchema(ctx)
-	diags.Append(diag1...)
-
-	plannedValue, diag2 := PropertyMapToValue(schema, news)
-	diags.Append(diag2...)
-
-	req := tfsdkresource.CreateRequest{
-		Plan: tfsdk.Plan{
-			Raw:    plannedValue,
-			Schema: schema,
-		},
-	}
-
-	// TODO set req.ProviderMeta
-	//
-	// See https://www.terraform.io/internals/provider-meta
-
-	// TODO set req.Config: tfsdk.Config.
-	//
-	// See https://www.terraform.io/plugin/framework/accessing-values
-	//
-	// Provider may want to read resource configuration separately from the Plan. Need to clarify how these can be
-	// different (perhaps .Config is as-written and excludes any computations performed by executing the program).
-	// Currently it is not obvious where to find this data in Pulumi protocol.
-
-	resp := tfsdkresource.CreateResponse{
-		State: tfsdk.State{
-			Raw:    req.Plan.Raw,
-			Schema: req.Plan.Schema,
-		},
-	}
-
-	res.Create(ctx, req, &resp)
-
-	diags.Append(resp.Diagnostics...)
-
-	createdState, diag3 := ValueToPropertyMap(resp.State.Schema, resp.State.Raw)
-	diags.Append(diag3...)
-
-	if diags.HasError() {
-		// TODO error out
-	}
-
-	// TODO handle resp.Private field to save that state inside Pulumi state.
-
-	var createdID resource.ID // TODO allocate ID
-
-	return createdID, createdState, resource.StatusOK, nil
-}
-
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
 func (p *Provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-	panic("TODO")
+	panic("TODO Read")
 }
 
 // Update updates an existing resource with new values.
 func (p *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-	panic("TODO")
+	panic("TODO Update")
 }
 
 func (p *Provider) Delete(urn resource.URN, id resource.ID,
 	props resource.PropertyMap, timeout float64) (resource.Status, error) {
-	panic("TODO")
+	panic("TODO Delete")
 }
 
 // Construct creates a new component resource.
