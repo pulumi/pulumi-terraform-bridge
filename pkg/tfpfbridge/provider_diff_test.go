@@ -17,8 +17,8 @@ package tfbridge
 import (
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/internal/testing"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/internal/testprovider"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/testprovider"
 )
 
 // Tests expected empty update Diff interaction over the following program:
