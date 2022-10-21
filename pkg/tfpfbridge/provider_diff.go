@@ -33,19 +33,12 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 
 	ctx := context.TODO()
 
-	resources, err := p.resources(ctx)
+	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	typeName, err := p.terraformResourceName(urn.Type())
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	schema := resources.schemaByTypeName[typeName]
-
-	tfType := schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type().TerraformType(ctx)
 
 	priorState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(olds)
 	if err != nil {
@@ -58,7 +51,7 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 	}
 
 	planReq := tfprotov6.PlanResourceChangeRequest{
-		TypeName:         typeName,
+		TypeName:         rh.terraformResourceName,
 		PriorState:       &priorState,
 		ProposedNewState: &proposedNewState,
 
@@ -101,10 +94,9 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 	// nameRequiresDeleteBeforeReplace that are not handled yet.
 	deleteBeforeReplace := false
 	if len(replaceKeys) > 0 {
-		if info, ok := p.info.Resources[typeName]; ok {
-			if info.DeleteBeforeReplace {
-				deleteBeforeReplace = true
-			}
+		info := rh.pulumiResourceInfo
+		if info != nil && info.DeleteBeforeReplace {
+			deleteBeforeReplace = true
 		}
 	}
 
