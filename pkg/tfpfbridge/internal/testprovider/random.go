@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pftestproviders
+package testprovider
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ import (
 
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge"
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
 )
 
 // all of the random token components used below.
