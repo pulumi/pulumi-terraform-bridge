@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -43,6 +44,8 @@ type Provider struct {
 	tfServer        tfprotov6.ProviderServer
 	resourcesByType resourcesByType
 	info            ProviderInfo
+	resourcesCache  resources
+	resourcesOnce   sync.Once
 }
 
 var _ plugin.Provider = &Provider{}
@@ -79,31 +82,31 @@ func (p *Provider) GetSchema(version int) ([]byte, error) {
 // CheckConfig validates the configuration for this resource provider.
 func (p *Provider) CheckConfig(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	panic("TODO")
+	// TODO proper implementation here.
+	return news, []plugin.CheckFailure{}, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	panic("TODO")
+
+	// TODO proper implementation here.
+	return plugin.DiffResult{}, nil
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *Provider) Configure(inputs resource.PropertyMap) error {
-	panic("TODO")
+	// TODO actually configure
+	return nil
 }
 
 // Check validates that the given property bag is valid for a resource of the given type and returns the inputs that
 // should be passed to successive calls to Diff, Create, or Update for this resource.
 func (p *Provider) Check(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	panic("TODO")
-}
-
-// Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-	news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	panic("TODO")
+	// TODO Properly implement CHECK to allow provider to fill out
+	// default values.
+	return olds, []plugin.CheckFailure{}, nil
 }
 
 func PropertyMapToValue(schema tfsdk.Schema, props resource.PropertyMap) (tftypes.Value, diag.Diagnostics) {
@@ -244,6 +247,15 @@ func (p *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
 func (p *Provider) SignalCancellation() error {
 	return nil
+}
+
+func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, error) {
+	for tfname, v := range p.info.Resources {
+		if v.Tok == resourceToken {
+			return tfname, nil
+		}
+	}
+	return "", fmt.Errorf("Unkonwn resource: %v", resourceToken)
 }
 
 // func (p *Provider) findResource(ctx context.Context, token tokens.Type) {
