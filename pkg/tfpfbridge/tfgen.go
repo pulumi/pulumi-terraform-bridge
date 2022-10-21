@@ -1,7 +1,7 @@
 package tfbridge
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
 // Used to implement main() in programs such as pulumi-tfgen-random.

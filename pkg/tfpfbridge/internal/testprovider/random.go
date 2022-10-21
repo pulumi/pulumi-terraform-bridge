@@ -23,7 +23,7 @@ import (
 
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
 // all of the random token components used below.
