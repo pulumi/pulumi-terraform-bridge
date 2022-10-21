@@ -38,7 +38,22 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 	tfType := rh.schema.Type().TerraformType(ctx)
 
 	if preview {
-		panic("TODO preview")
+		// TODO clarify what to do here, how to handle preview
+		// Create properly. For now match empirically observed
+		// behavior.
+
+		// Transcoding through DynamicValue achieves filtering
+		// of properties to only retain what TF understands.
+		plannedState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
+		if err != nil {
+			return "", nil, 0, err
+		}
+		recovered, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(plannedState)
+		if err != nil {
+			return "", nil, 0, err
+		}
+
+		return "", recovered, resource.StatusOK, nil
 	}
 
 	// priorState is nil since we are in Create
