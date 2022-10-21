@@ -102,15 +102,6 @@ func (p *Provider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 
-// Check validates that the given property bag is valid for a resource of the given type and returns the inputs that
-// should be passed to successive calls to Diff, Create, or Update for this resource.
-func (p *Provider) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	// TODO Properly implement CHECK to allow provider to fill out
-	// default values.
-	return olds, []plugin.CheckFailure{}, nil
-}
-
 func PropertyMapToValue(schema tfsdk.Schema, props resource.PropertyMap) (tftypes.Value, diag.Diagnostics) {
 	panic("TODO")
 }
