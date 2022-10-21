@@ -18,9 +18,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
 )
 
-func Serve(pkg, version string, prov ProviderInfo, pulumiSchema []byte) error {
+func Serve(pkg, version string, prov info.ProviderInfo, pulumiSchema []byte) error {
 	return provider.Main(pkg, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 
 		return NewProviderServer(prov), nil
