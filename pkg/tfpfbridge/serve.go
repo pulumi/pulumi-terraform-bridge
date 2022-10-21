@@ -19,7 +19,7 @@ import (
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
 func Serve(pkg, version string, prov info.ProviderInfo, pulumiSchema []byte) error {
