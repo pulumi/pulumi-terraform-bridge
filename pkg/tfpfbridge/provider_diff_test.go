@@ -54,3 +54,38 @@ func TestDiffRandomEmptyUpdate(t *testing.T) {
         `
 	testutils.Replay(t, server, testCase)
 }
+
+// The same program but with min field changed, causing a replacement plan.
+func TestDiffRandomMinChanged(t *testing.T) {
+	server := NewProviderServer(testprovider.RandomProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "11187",
+            "urn": "urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority",
+            "olds": {
+              "id": "11187",
+              "max": 50000,
+              "min": 1,
+              "result": 11187
+            },
+            "news": {
+              "__defaults": [],
+              "max": 50000,
+              "min": 2
+            }
+          },
+          "response": {
+            "replaces": [
+              "min"
+            ],
+            "changes": "DIFF_SOME",
+            "diffs": [
+              "min"
+            ]
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
