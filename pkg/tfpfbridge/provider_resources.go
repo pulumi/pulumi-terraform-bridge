@@ -20,9 +20,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
+	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
 func (p *Provider) resources(ctx context.Context) (res resources, err error) {
@@ -43,9 +47,42 @@ func (p *Provider) resources(ctx context.Context) (res resources, err error) {
 	return p.resourcesCache, err
 }
 
+func (p Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
+	resources, err := p.resources(ctx)
+	if err != nil {
+		return resourceHandle{}, err
+	}
+
+	typeName, err := p.terraformResourceName(urn.Type())
+	if err != nil {
+		return resourceHandle{}, err
+	}
+
+	schema := resources.schemaByTypeName[typeName]
+
+	result := resourceHandle{
+		makeResource:          resources.resourceByTypeName[typeName],
+		terraformResourceName: typeName,
+		schema:                schema,
+	}
+
+	if info, ok := p.info.Resources[typeName]; ok {
+		result.pulumiResourceInfo = info
+	}
+
+	return result, nil
+}
+
+type resourceHandle struct {
+	makeResource          func() pfresource.Resource
+	terraformResourceName string
+	schema                tfsdk.Schema
+	pulumiResourceInfo    *info.ResourceInfo // optional
+}
+
 type resources struct {
 	schemaByTypeName   map[string]tfsdk.Schema
-	resourceByTypeName map[string]resource.Resource
+	resourceByTypeName map[string]func() pfresource.Resource
 	diagnostics        diag.Diagnostics
 }
 
@@ -58,16 +95,16 @@ func gatherResources(ctx context.Context, prov provider.Provider) (resources, er
 
 	rs := resources{
 		schemaByTypeName:   map[string]tfsdk.Schema{},
-		resourceByTypeName: map[string]resource.Resource{},
+		resourceByTypeName: map[string]func() pfresource.Resource{},
 		diagnostics:        diag.Diagnostics{},
 	}
 
 	for _, makeResource := range prov.Resources(ctx) {
 		res := makeResource()
 
-		resMeta := resource.MetadataResponse{}
+		resMeta := pfresource.MetadataResponse{}
 
-		res.Metadata(ctx, resource.MetadataRequest{
+		res.Metadata(ctx, pfresource.MetadataRequest{
 			ProviderTypeName: provMetadata.TypeName,
 		}, &resMeta)
 
@@ -87,7 +124,7 @@ func gatherResources(ctx context.Context, prov provider.Provider) (resources, er
 		rs.diagnostics.Append(diag...)
 
 		rs.schemaByTypeName[resMeta.TypeName] = resSchema
-		rs.resourceByTypeName[resMeta.TypeName] = res
+		rs.resourceByTypeName[resMeta.TypeName] = makeResource
 	}
 
 	return rs, nil

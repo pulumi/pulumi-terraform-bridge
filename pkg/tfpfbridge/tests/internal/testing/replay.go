@@ -21,7 +21,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/jsonpb"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -43,7 +45,24 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 		assert.NoError(t, err)
 
 		resp, err := server.Check(ctx, &req)
+		require.NoError(t, err)
+
+		m := jsonpb.Marshaler{}
+		buf := bytes.Buffer{}
+		err = m.Marshal(&buf, resp)
 		assert.NoError(t, err)
+
+		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
+		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+
+	case "/pulumirpc.ResourceProvider/Create":
+		var req pulumirpc.CreateRequest
+
+		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
+		assert.NoError(t, err)
+
+		resp, err := server.Create(ctx, &req)
+		require.NoError(t, err)
 
 		m := jsonpb.Marshaler{}
 		buf := bytes.Buffer{}
@@ -60,7 +79,7 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 		assert.NoError(t, err)
 
 		resp, err := server.Diff(ctx, &req)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		m := jsonpb.Marshaler{}
 		buf := bytes.Buffer{}
