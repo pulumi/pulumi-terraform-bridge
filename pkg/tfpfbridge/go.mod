@@ -4,6 +4,7 @@ go 1.18
 
 replace (
 	github.com/hashicorp/terraform-plugin-framework => ../../../terraform-plugin-framework
+	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/testprovider/randomshim
 )
 
 require (
@@ -13,6 +14,7 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.43.1
 	github.com/pulumi/pulumi/sdk/v3 v3.43.1
 	github.com/stretchr/testify v1.8.0
+	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -24,6 +26,7 @@ require (
 	github.com/cheggaaa/pb v1.0.29 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
+	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
@@ -40,11 +43,12 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
+	github.com/hashicorp/terraform-plugin-framework-validators v0.5.0 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
-	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
@@ -54,7 +58,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
-	github.com/oklog/run v1.0.0 // indirect
+	github.com/oklog/run v1.1.0 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -67,12 +71,13 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/spf13/cobra v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20221014062312-1936b5c40500 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
-	github.com/vmihailenco/tagparser v0.1.1 // indirect
+	github.com/vmihailenco/tagparser v0.1.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503 // indirect
