@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfbridgetests
 
 import (
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/testing"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
 // Tests expected empty update Diff interaction over the following program:
@@ -28,7 +29,7 @@ import (
 //          Min: pulumi.Int(1),
 //      })
 func TestDiffRandomEmptyUpdate(t *testing.T) {
-	server := NewProviderServer(testprovider.RandomProvider())
+	server := tfbridge.NewProviderServer(testprovider.RandomProvider())
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -57,7 +58,7 @@ func TestDiffRandomEmptyUpdate(t *testing.T) {
 
 // The same program but with min field changed, causing a replacement plan.
 func TestDiffRandomMinChanged(t *testing.T) {
-	server := NewProviderServer(testprovider.RandomProvider())
+	server := tfbridge.NewProviderServer(testprovider.RandomProvider())
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
