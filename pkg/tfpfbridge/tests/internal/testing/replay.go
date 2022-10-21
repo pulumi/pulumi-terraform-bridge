@@ -36,8 +36,24 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	assert.NoError(t, err)
 
 	switch entry.Method {
-	case "/pulumirpc.ResourceProvider/Diff":
+	case "/pulumirpc.ResourceProvider/Check":
+		var req pulumirpc.CheckRequest
 
+		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
+		assert.NoError(t, err)
+
+		resp, err := server.Check(ctx, &req)
+		assert.NoError(t, err)
+
+		m := jsonpb.Marshaler{}
+		buf := bytes.Buffer{}
+		err = m.Marshal(&buf, resp)
+		assert.NoError(t, err)
+
+		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
+		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+
+	case "/pulumirpc.ResourceProvider/Diff":
 		var req pulumirpc.DiffRequest
 
 		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
