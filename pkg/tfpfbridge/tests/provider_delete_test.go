@@ -33,7 +33,7 @@ import (
 // The plan indicates replacement which eventually calls Delete. Test
 // that Delete behaves as expected.
 func TestDeleteRandomMinChanged(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider())
+	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Delete",

@@ -29,7 +29,7 @@ import (
 //          Min: pulumi.Int(1),
 //      })
 func TestCheckRandomEmptyUpdate(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider())
+	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Check",
@@ -66,7 +66,7 @@ func TestCheckRandomEmptyUpdate(t *testing.T) {
 
 // The same program but with min field changed, causing a replacement plan.
 func TestCheckRandomMinChanged(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider())
+	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Check",

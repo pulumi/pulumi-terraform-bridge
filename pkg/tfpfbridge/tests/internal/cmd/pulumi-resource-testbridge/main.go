@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+// Implements a Pulumi provider for testing the functionality of bridging Terraform Plugin Framework based providers.
+package main
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
-func Serve(pkg, version string, prov info.ProviderInfo, pulumiSchema []byte) error {
-	return provider.Main(pkg, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-
-		return NewProviderServer(prov, pulumiSchema), nil
-	})
+func main() {
+	tfbridge.Main(
+		"testbridge",
+		"0.0.1",
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
 }
