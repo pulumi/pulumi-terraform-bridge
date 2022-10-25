@@ -1,0 +1,8 @@
+name: basicprogram
+runtime: yaml
+resources:
+  eval1:
+    type: testbridge:index/eval:Eval
+    properties:
+      code: |
+        x = y + 1

@@ -26,31 +26,29 @@ import (
 	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
-// all of the random token components used below.
-const (
-	randomPkg = "random"
-	randomMod = "index"
-)
-
-// randomMember manufactures a type token for the random package and the given module and type.
-func randomMember(mod string, mem string) tokens.ModuleMember {
-	return tokens.ModuleMember(randomPkg + ":" + mod + ":" + mem)
-}
-
-// randomType manufactures a type token for the random package and the given module and type.
-func randomType(mod string, typ string) tokens.Type {
-	return tokens.Type(randomMember(mod, typ))
-}
-
-// randomResource manufactures a standard resource token given a module and resource name.  It automatically uses the
-// random package and names the file by simply lower casing the resource's first character.
-func randomResource(mod string, res string) tokens.Type {
-	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
-	return randomType(mod+"/"+fn, res)
-}
-
-// Provider returns additional overlaid schema and metadata associated with the random package.
+// Adapts Random provider to tfbridge for testing tfbridge against a
+// realistic provider.
 func RandomProvider() tfbridge.ProviderInfo {
+	randomPkg := "random"
+	randomMod := "index"
+
+	// randomMember manufactures a type token for the random package and the given module and type.
+	randomMember := func(mod string, mem string) tokens.ModuleMember {
+		return tokens.ModuleMember(randomPkg + ":" + mod + ":" + mem)
+	}
+
+	// randomType manufactures a type token for the random package and the given module and type.
+	randomType := func(mod string, typ string) tokens.Type {
+		return tokens.Type(randomMember(mod, typ))
+	}
+
+	// randomResource manufactures a standard resource token given a module and resource name.  It automatically uses the
+	// random package and names the file by simply lower casing the resource's first character.
+	randomResource := func(mod string, res string) tokens.Type {
+		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+		return randomType(mod+"/"+fn, res)
+	}
+
 	return tfbridge.ProviderInfo{
 		P:           randomshim.NewProvider,
 		Name:        "random",

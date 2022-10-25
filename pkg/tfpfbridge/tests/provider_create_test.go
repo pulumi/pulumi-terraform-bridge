@@ -35,7 +35,7 @@ import (
 func TestCreateRandomMinChanged(t *testing.T) {
 
 	t.Run("preview", func(t *testing.T) {
-		server := tfbridge.NewProviderServer(testprovider.RandomProvider())
+		server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
 		testCase := `
                 {
                   "method": "/pulumirpc.ResourceProvider/Create",
@@ -62,7 +62,7 @@ func TestCreateRandomMinChanged(t *testing.T) {
 	})
 
 	t.Run("update", func(t *testing.T) {
-		server := tfbridge.NewProviderServer(testprovider.RandomProvider())
+		server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
 		testCase := `
                 {
                   "method": "/pulumirpc.ResourceProvider/Create",
