@@ -48,22 +48,24 @@ type Provider struct {
 	info            info.ProviderInfo
 	resourcesCache  resources
 	resourcesOnce   sync.Once
+	pulumiSchema    []byte
 }
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info info.ProviderInfo) plugin.Provider {
+func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
 	p := info.P()
 	server6 := providerserver.NewProtocol6(p)
 	return &Provider{
-		tfProvider: p,
-		tfServer:   server6(),
-		info:       info,
+		tfProvider:   p,
+		tfServer:     server6(),
+		info:         info,
+		pulumiSchema: pulumiSchema,
 	}
 }
 
-func NewProviderServer(info info.ProviderInfo) pulumirpc.ResourceProviderServer {
-	return plugin.NewProviderServer(NewProvider(info))
+func NewProviderServer(info info.ProviderInfo, pulumiSchema []byte) pulumirpc.ResourceProviderServer {
+	return plugin.NewProviderServer(NewProvider(info, pulumiSchema))
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -78,7 +80,7 @@ func (p *Provider) Pkg() tokens.Package {
 
 // GetSchema returns the schema for the provider.
 func (p *Provider) GetSchema(version int) ([]byte, error) {
-	panic("TODO")
+	return p.pulumiSchema, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
