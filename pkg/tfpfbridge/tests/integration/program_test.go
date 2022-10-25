@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package tfbridgeintegrationtests
 
 import (
 	"fmt"
@@ -32,11 +32,11 @@ func TestBasicProgram(t *testing.T) {
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 
-	bin := filepath.Join(wd, "bin")
+	bin := filepath.Join(wd, "..", "bin")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
-		Dir: filepath.Join("testdata", "basicprogram"),
+		Dir: filepath.Join("..", "testdata", "basicprogram"),
 
 		SkipRefresh: true, // TODO enable this and implement Read
 
@@ -49,6 +49,6 @@ func TestBasicProgram(t *testing.T) {
 func ensureTestBridgeProviderCompiled(wd string) error {
 	exe := "pulumi-resource-testbridge"
 	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe))
-	cmd.Dir = filepath.Join(wd, "internal", "cmd", exe)
+	cmd.Dir = filepath.Join(wd, "..", "internal", "cmd", exe)
 	return cmd.Run()
 }
