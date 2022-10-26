@@ -22,10 +22,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
@@ -303,6 +304,20 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 			return pschema.PackageSpec{}, fmt.Errorf("failed to define extra types: %v is already defined", token)
 		}
 		spec.Types[token] = typ
+	}
+
+	for token, res := range g.info.ExtraResources {
+		if _, defined := spec.Resources[token]; defined {
+			return pschema.PackageSpec{}, fmt.Errorf("failed to define extra resources: %v is already defined", token)
+		}
+		spec.Resources[token] = res
+	}
+
+	for token, fun := range g.info.ExtraFunctions {
+		if _, defined := spec.Functions[token]; defined {
+			return pschema.PackageSpec{}, fmt.Errorf("failed to define extra functions: %v is already defined", token)
+		}
+		spec.Functions[token] = fun
 	}
 
 	downstreamLicense := g.info.GetTFProviderLicense()
