@@ -1,8 +1,11 @@
 name: basicprogram
 runtime: yaml
 resources:
-  eval1:
-    type: testbridge:index/eval:Eval
+  testres1:
+    type: testbridge:index/testres:Testres
     properties:
-      code: |
-        x = y + 1
+      statedir: /Users/anton/pulumi-terraform-bridge/pkg/tfpfbridge/tests/integration/state
+
+      requiredInputString: "input1"
+outputs:
+  requiredInputStringCopy: ${testres1.requiredInputStringCopy}

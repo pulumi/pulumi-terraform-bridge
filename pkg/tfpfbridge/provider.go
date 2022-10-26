@@ -120,12 +120,6 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 	panic("TODO Read")
 }
 
-// Update updates an existing resource with new values.
-func (p *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-	panic("TODO Update")
-}
-
 // Construct creates a new component resource.
 func (p *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {

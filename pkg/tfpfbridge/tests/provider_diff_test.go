@@ -90,3 +90,34 @@ func TestDiffRandomMinChanged(t *testing.T) {
         `
 	testutils.Replay(t, server, testCase)
 }
+
+// Test that preview diff in presence of computed attributes results in an empty diff.
+func TestEmptyTestresDiff(t *testing.T) {
+	server := tfbridge.NewProviderServer(
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:Testres::testres1",
+            "olds": {
+              "id": "0",
+              "requiredInputString": "input1",
+              "requiredInputStringCopy": "input1",
+              "statedir": "/tmp"
+            },
+            "news": {
+              "requiredInputString": "input1",
+              "statedir": "/tmp"
+            }
+          },
+          "response": {
+            "changes": "DIFF_NONE"
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
