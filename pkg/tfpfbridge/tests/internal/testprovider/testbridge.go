@@ -20,11 +20,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
@@ -47,41 +45,58 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-terraform-brige",
 		Version:     "0.0.1",
 		Resources: map[string]*info.ResourceInfo{
-			"testbridge_eval": {Tok: "testbridge:index/eval:Eval"},
+			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 		},
 	}
 }
 
 // TODO schema should be computed from PF declaration.
 func SyntheticTestBridgeProviderPulumiSchema() schema.PackageSpec {
-
-	codeProperty := schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{
-			Type: "string",
+	inputProps := map[string]schema.PropertySpec{
+		"statedir": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+		"requiredInputString": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+		"optionalInputString": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
 		},
 	}
-
-	idProperty := schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{
-			Type: "string",
+	outputProps := map[string]schema.PropertySpec{
+		"id": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+		"requiredInputStringCopy": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+		"optionalInputStringCopy": schema.PropertySpec{
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
 		},
 	}
-
 	return schema.PackageSpec{
 		Name: "testbridge",
 		Resources: map[string]schema.ResourceSpec{
-			"testbridge:index/eval:Eval": {
+			"testbridge:index/testres:Testres": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"id":   idProperty,
-						"code": codeProperty,
-					},
+					Type:       "object",
+					Properties: outputProps,
+					Required:   []string{"id", "requiredInputStringCopy"},
 				},
-				InputProperties: map[string]schema.PropertySpec{
-					"id":   idProperty,
-					"code": codeProperty,
-				},
+				InputProperties: inputProps,
+				RequiredInputs:  []string{"statedir", "requiredInputString"},
 			},
 		},
 	}
@@ -117,57 +132,6 @@ func (p *syntheticProvider) DataSources(context.Context) []func() datasource.Dat
 
 func (p *syntheticProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		newSyntheticEvalResource,
+		newTestres,
 	}
-}
-
-type syntheticEvalResource struct {
-}
-
-var _ resource.Resource = &syntheticEvalResource{}
-
-func newSyntheticEvalResource() resource.Resource {
-	return &syntheticEvalResource{}
-}
-
-func (e *syntheticEvalResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "testbridge_eval"
-}
-
-func (e *syntheticEvalResource) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
-				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-				},
-			},
-			"code": {
-				Type:     types.StringType,
-				Required: true,
-			},
-		},
-	}, nil
-}
-
-func (e *syntheticEvalResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var code string
-	diags := req.Plan.GetAttribute(ctx, path.Root("code"), &code)
-	resp.Diagnostics.Append(diags...)
-
-	diags2 := resp.State.SetAttribute(ctx, path.Root("code"), code)
-	resp.Diagnostics.Append(diags2...)
-
-	diags3 := resp.State.SetAttribute(ctx, path.Root("id"), "id-1")
-	resp.Diagnostics.Append(diags3...)
-}
-
-func (e *syntheticEvalResource) Read(context.Context, resource.ReadRequest, *resource.ReadResponse) {}
-
-func (e *syntheticEvalResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
-}
-
-func (e *syntheticEvalResource) Delete(context.Context, resource.DeleteRequest, *resource.DeleteResponse) {
 }

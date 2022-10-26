@@ -28,20 +28,23 @@ import (
 )
 
 func TestBasicProgram(t *testing.T) {
-
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
-
 	bin := filepath.Join(wd, "..", "bin")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Env: []string{fmt.Sprintf("PATH=%s", bin)},
-		Dir: filepath.Join("..", "testdata", "basicprogram"),
-
-		SkipRefresh: true, // TODO enable this and implement Read
+		Env:         []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir:         filepath.Join("..", "testdata", "basicprogram"),
+		SkipRefresh: true,
 
 		PrepareProject: func(*engine.Projinfo) error {
 			return ensureTestBridgeProviderCompiled(wd)
+		},
+
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requiredInputStringCopy, ok := stack.Outputs["requiredInputStringCopy"]
+			assert.True(t, ok)
+			assert.Equal(t, "input1", requiredInputStringCopy)
 		},
 	})
 }

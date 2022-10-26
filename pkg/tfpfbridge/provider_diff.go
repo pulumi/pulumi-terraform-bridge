@@ -75,9 +75,28 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 
 	// TODO process ignoreChanges
 
-	tfDiff, err := diffDynamicValues(tfType, &priorState, planResp.PlannedState)
+	allTfDiffs, err := diffDynamicValues(tfType, &priorState, planResp.PlannedState)
 	if err != nil {
 		return plugin.DiffResult{}, err
+	}
+
+	// Filter out diffs that resolve an unknown value into a known value. This happens for example with previewing
+	// computed attributes.
+	var tfDiff []tftypes.ValueDiff
+	for _, diff := range allTfDiffs {
+		// Skip diffs that replace a fully unknown with a known.
+		//
+		// TODO consider diffs are resolving unknows deeper in the value tree, are those possible to observe or
+		// will they be reported as separate ValueDiff entries under a deeper path? If possible to observe,
+		// should they be excluded from Pulumi diff also? A condition would look like this:
+		//
+		//    v, ok := unify(diff.Value1, diff.Value2); ok && v.Equal(diff.Value2)
+		//
+		// where unify(x, y) is like recursive Equal but resolving unknowns in x from y.
+		notChanging := !diff.Value1.IsKnown() && diff.Value2.IsKnown()
+		if !notChanging {
+			tfDiff = append(tfDiff, diff)
+		}
 	}
 
 	replaceKeys, err := diffPathsToPropertyKeySet(planResp.RequiresReplace)
@@ -103,6 +122,8 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 	changes := plugin.DiffNone
 	if len(changedKeys) > 0 {
 		changes = plugin.DiffSome
+
+		panic(fmt.Sprintf("%v", tfDiff))
 	}
 
 	diffResult := plugin.DiffResult{

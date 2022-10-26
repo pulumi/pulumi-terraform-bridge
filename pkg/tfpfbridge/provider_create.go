@@ -77,7 +77,7 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 		PriorState:   &priorState,
 		PlannedState: &plannedState,
 
-		// TODO Config properly.
+		// TODO support config properly.
 		//
 		// See https://www.terraform.io/plugin/framework/accessing-values
 		//
