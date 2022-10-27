@@ -8,17 +8,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/hcl/hcl/token"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hil/ast"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/nodejs"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
 	tf11module "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config/module"
 )
 
@@ -27,113 +22,31 @@ import (
 // Note that the output of the conversion process may not be valid input for Terraform itself: in particular, the block
 // structure of the original source code may not be preserved, so entities that were blocks in the input may be
 // attributes in the output. The TF12 -> PCL converter must be able to handle this sort of input.
-func convertTF11(opts Options) (map[string][]byte, bool, error) {
+func convertTF11(opts EjectOptions) (map[string][]byte, error) {
 	moduleStorage := tf11module.NewStorage(filepath.Join(".terraform", "modules"))
 
 	mod, err := tf11module.NewTreeFs("", opts.Root)
 	if err != nil {
-		return nil, true, fmt.Errorf("failed to create tree: %w", err)
+		return nil, fmt.Errorf("failed to create tree: %w", err)
 	}
 
 	if err = mod.Load(moduleStorage); err != nil {
-		return nil, true, fmt.Errorf("failed to load module: %w", err)
+		return nil, fmt.Errorf("failed to load module: %w", err)
 	}
 
 	gs, err := buildGraphs(mod, opts)
 	if err != nil {
-		return nil, true, fmt.Errorf("failed to build graphs: %w", err)
+		return nil, fmt.Errorf("failed to build graphs: %w", err)
 	}
 
-	if opts.TerraformVersion == "12" || opts.TargetLanguage != "typescript" {
-		// Generate TF12 code from the TF11 graph, then pass the result off to the TF12 pipeline.
-		g := &tf11generator{}
-		g.Emitter = gen.NewEmitter(nil, g)
-		files, err := g.genModules(gs)
-		return files, true, err
-	}
-
-	// Filter resource name properties if requested.
-	if opts.FilterResourceNames {
-		filterAutoNames := opts.ResourceNameProperty == ""
-		for _, g := range gs {
-			for _, r := range g.Resources {
-				if r.Config.Mode == config.ManagedResourceMode {
-					il.FilterProperties(r, func(key string, _ il.BoundNode) bool {
-						if filterAutoNames {
-							sch := r.Schemas().PropertySchemas(key).Pulumi
-							return sch == nil || sch.Default == nil || !sch.Default.AutoNamed
-						}
-						return key != opts.ResourceNameProperty
-					})
-				}
-			}
-		}
-	}
-
-	// Annotate nodes with the location of their original definition if requested.
-	if opts.AnnotateNodesWithLocations {
-		for _, g := range gs {
-			addLocationAnnotations(g)
-		}
-	}
-
-	var buf bytes.Buffer
-
-	generator, filename, err := newGenerator(&buf, "auto", opts)
-	if err != nil {
-		return nil, false, errors.Wrapf(err, "creating generator")
-	}
-
-	if err = gen.Generate(gs, generator); err != nil {
-		return nil, false, err
-	}
-
-	files := map[string][]byte{
-		filename: buf.Bytes(),
-	}
-	return files, false, nil
+	// Generate TF12 code from the TF11 graph, then pass the result off to the TF12 pipeline.
+	g := &tf11generator{}
+	g.Emitter = gen.NewEmitter(nil, g)
+	files, err := g.genModules(gs)
+	return files, err
 }
 
-func addLocationAnnotation(location token.Pos, comments **il.Comments) {
-	if !location.IsValid() {
-		return
-	}
-
-	c := *comments
-	if c == nil {
-		c = &il.Comments{}
-		*comments = c
-	}
-
-	if len(c.Leading) != 0 {
-		c.Leading = append(c.Leading, "")
-	}
-	c.Leading = append(c.Leading, fmt.Sprintf(" Originally defined at %v:%v", location.Filename, location.Line))
-}
-
-// addLocationAnnotations adds comments that record the original source location of each top-level node in a module.
-func addLocationAnnotations(m *il.Graph) {
-	for _, n := range m.Modules {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-	for _, n := range m.Providers {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-	for _, n := range m.Resources {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-	for _, n := range m.Outputs {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-	for _, n := range m.Locals {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-	for _, n := range m.Variables {
-		addLocationAnnotation(n.Location, &n.Comments)
-	}
-}
-
-func buildGraphs(tree *tf11module.Tree, opts Options) ([]*il.Graph, error) {
+func buildGraphs(tree *tf11module.Tree, opts EjectOptions) ([]*il.Graph, error) {
 	// TODO: move this into the il package and unify modules based on path
 
 	children := []*il.Graph{}
@@ -160,29 +73,7 @@ func buildGraphs(tree *tf11module.Tree, opts Options) ([]*il.Graph, error) {
 	return append(children, g), nil
 }
 
-func newGenerator(w io.Writer, projectName string, opts Options) (gen.Generator, string, error) {
-	switch opts.TargetLanguage {
-	case LanguageTypescript:
-		nodeOpts, ok := opts.TargetOptions.(nodejs.Options)
-		if !ok && opts.TargetOptions != nil {
-			return nil, "", errors.Errorf("invalid target options of type %T", opts.TargetOptions)
-		}
-		g, err := nodejs.New(projectName, opts.TargetSDKVersion, nodeOpts.UsePromptDataSources, w)
-		if err != nil {
-			return nil, "", err
-		}
-		return g, "index.ts", nil
-	case LanguagePython:
-		return python.New(projectName, w), "__main__.py", nil
-	default:
-		validLanguages := make([]string, len(ValidLanguages))
-		copy(validLanguages, ValidLanguages)
-		return nil, "", errors.Errorf("invalid language '%s', expected one of %s",
-			opts.TargetLanguage, strings.Join(validLanguages, ", "))
-	}
-}
-
-// tf11generator generates Typescript code that targets the Pulumi libraries from a Terraform configuration.
+// tf11generator generates tf12 code from a tf11 configuration.
 type tf11generator struct {
 	// The emitter to use when generating code.
 	*gen.Emitter

@@ -15,7 +15,6 @@
 package convert
 
 import (
-	"bytes"
 	"io"
 	"log"
 	"os"
@@ -34,7 +33,6 @@ import (
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -75,59 +73,40 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		opts.ProviderInfoSource = il.PluginProviderInfoSource
 	}
 
-	// Attempt to load the config as TF11 first. If this succeeds, use TF11 semantics unless either the config
-	// or the options specify otherwise.
-	generatedFiles, useTF12, tf11Err := convertTF11(opts)
-	if !useTF12 {
-		if tf11Err != nil {
-			return nil, Diagnostics{}, tf11Err
-		}
-		return generatedFiles, Diagnostics{}, nil
+	ejectOpts := EjectOptions{
+		AllowMissingProperties:     opts.AllowMissingProperties,
+		AllowMissingProviders:      opts.AllowMissingProviders,
+		AllowMissingVariables:      opts.AllowMissingVariables,
+		AllowMissingComments:       opts.AllowMissingComments,
+		AnnotateNodesWithLocations: opts.AnnotateNodesWithLocations,
+		FilterResourceNames:        opts.FilterResourceNames,
+		ResourceNameProperty:       opts.ResourceNameProperty,
+		Root:                       opts.Root,
+		PackageCache:               opts.PackageCache,
+		PluginHost:                 opts.PluginHost,
+		Loader:                     opts.Loader,
+		ProviderInfoSource:         opts.ProviderInfoSource,
+		Logger:                     opts.Logger,
+		SkipResourceTypechecking:   opts.SkipResourceTypechecking,
+		TargetSDKVersion:           opts.TargetSDKVersion,
+		TerraformVersion:           opts.TerraformVersion,
 	}
 
-	var tf12Files []*syntax.File
-	var diagnostics hcl.Diagnostics
+	tfFiles, program, diagnostics, err := internalEject(ejectOpts)
 
-	if tf11Err == nil {
-		// Parse the config.
-		parser := syntax.NewParser()
-		for filename, contents := range generatedFiles {
-			err := parser.ParseFile(bytes.NewReader(contents), filename)
-			contract.Assert(err == nil)
-		}
-		if parser.Diagnostics.HasErrors() {
-			return nil, Diagnostics{All: parser.Diagnostics, files: parser.Files}, nil
-		}
-		tf12Files, diagnostics = parser.Files, append(diagnostics, parser.Diagnostics...)
-	} else {
-		files, diags := parseTF12(opts)
-		if !diags.HasErrors() {
-			tf12Files, diagnostics = files, append(diagnostics, diags...)
-		} else if opts.TerraformVersion != "11" {
-			return nil, Diagnostics{All: diags, files: files}, nil
-		} else {
-			return nil, Diagnostics{}, tf11Err
-		}
-	}
-
-	tf12Files, program, programDiags, err := convertTF12(tf12Files, opts)
-	if err != nil {
-		return nil, Diagnostics{}, err
-	}
-
-	diagnostics = append(diagnostics, programDiags...)
 	if diagnostics.HasErrors() {
-		return nil, Diagnostics{All: diagnostics, files: tf12Files}, nil
+		return nil, Diagnostics{All: diagnostics, files: tfFiles}, nil
 	}
 
 	var genDiags hcl.Diagnostics
+	var generatedFiles map[string][]byte
 	switch opts.TargetLanguage {
 	case LanguageTypescript:
 		generatedFiles, genDiags, err = hcl2nodejs.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	case LanguagePulumi:
 		generatedFiles = map[string][]byte{}
-		for _, f := range tf12Files {
+		for _, f := range tfFiles {
 			generatedFiles[f.Name] = f.Bytes
 		}
 	case LanguagePython:
@@ -147,13 +126,13 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		diagnostics = append(diagnostics, genDiags...)
 	}
 	if err != nil {
-		return nil, Diagnostics{All: diagnostics, files: tf12Files}, err
+		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err
 	}
 	if diagnostics.HasErrors() {
-		return nil, Diagnostics{All: diagnostics, files: tf12Files}, nil
+		return nil, Diagnostics{All: diagnostics, files: tfFiles}, nil
 	}
 
-	return generatedFiles, Diagnostics{All: diagnostics, files: tf12Files}, nil
+	return generatedFiles, Diagnostics{All: diagnostics, files: tfFiles}, nil
 }
 
 type Options struct {
@@ -199,11 +178,4 @@ type Options struct {
 
 	// TargetOptions captures any target-specific options.
 	TargetOptions interface{}
-}
-
-// logf writes a formatted message to the configured logger, if any.
-func (o Options) logf(format string, arguments ...interface{}) {
-	if o.Logger != nil {
-		o.Logger.Printf(format, arguments...)
-	}
 }
