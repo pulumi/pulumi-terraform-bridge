@@ -1,0 +1,66 @@
+name: weekly-pulumi-update
+on:
+  schedule:
+  - cron: 35 12 * * 4
+  workflow_dispatch: {}
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  GOLANGCI_LINT_VERSION: v1.46.2
+jobs:
+  weekly-pulumi-update:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        goversion:
+        - 1.19.x
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+      with:
+        lfs: true
+    - name: Unshallow clone for tags
+      run: git fetch --prune --unshallow --tags
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{matrix.goversion}}
+    - name: Download module dependencies
+      env:
+        GOPROXY: "https://proxy.golang.org"
+      run: go mod download
+    - name: Install golangci-lint
+      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
+    - name: Update Pulumi/Pulumi
+      id: gomod
+      run: >-
+        git config --local user.email 'bot@pulumi.com'
+        git config --local user.name 'pulumi-bot'
+        git checkout -b update-pulumi/${{ github.run_id }}-${{ github.run_number }}
+        go get github.com/pulumi/pulumi/pkg/v3
+        go get github.com/pulumi/pulumi/sdk/v3
+        go mod download
+        go mod tidy
+        git update-index -q --refresh
+        if ! git diff-files --quiet; then
+          echo ::set-output name=changes::1
+        fi
+    - name: Provider with Pulumi Upgrade
+      if: steps.gomod.outputs.changes != 0
+      run: >-
+        make build && make lint && make test
+        git add .
+        git commit -m "Updated modules"
+        git push origin update-pulumi/${{ github.run_id }}-${{ github.run_number }}
+    - name: Create PR
+      id: create-pr
+      if: steps.gomod.outputs.changes != 0
+      uses: repo-sync/pull-request@v2.6.2
+      with:
+        source_branch: update-pulumi/${{ github.run_id }}-${{ github.run_number }}
+        destination_branch: master
+        pr_title: Automated Pulumi/Pulumi upgrade
+        github_token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+    name: weekly-pulumi-update
