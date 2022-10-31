@@ -112,14 +112,6 @@ func ValueToPropertyMap(schema tfsdk.Schema, value tftypes.Value) (resource.Prop
 	panic("TODO")
 }
 
-// Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
-// identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
-// is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *Provider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-	panic("TODO Read")
-}
-
 // Construct creates a new component resource.
 func (p *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
