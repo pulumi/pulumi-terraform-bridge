@@ -55,14 +55,16 @@ func ConvertPropertyMapToTFValue(
 		props[attr] = ConvertPropertyToTFValue(attrType)
 	}
 
-	return func(m resource.PropertyMap) (tftypes.Value, error) {
+	convert := func(m resource.PropertyMap) (tftypes.Value, error) {
 		fields := map[string]tftypes.Value{}
 		for p, conv := range props {
 			v, gotV := m[resource.PropertyKey(p)]
 			if gotV {
 				convertedV, err := conv(v)
 				if err != nil {
-					return tftypes.NewValue(objectType, nil), err
+					return tftypes.NewValue(objectType, nil),
+						fmt.Errorf("Property %v failed to convert: %w",
+							p, err)
 				}
 				fields[p] = convertedV
 			} else if _, optional := objectType.OptionalAttributes[p]; !optional {
@@ -70,6 +72,13 @@ func ConvertPropertyMapToTFValue(
 			}
 		}
 		return tftypes.NewValue(objectType, fields), nil
+	}
+	return func(m resource.PropertyMap) (tftypes.Value, error) {
+		v, err := convert(m)
+		if err != nil {
+			return v, fmt.Errorf("ConvertPropertyMapToTFValue failed: %w", err)
+		}
+		return v, nil
 	}
 }
 
@@ -82,23 +91,33 @@ func ConvertTFValueToPropertyMap(
 		props[attr] = ConvertTFValueToProperty(attrType)
 	}
 
-	return func(obj tftypes.Value) (resource.PropertyMap, error) {
+	convert := func(obj tftypes.Value) (resource.PropertyMap, error) {
 		result := make(resource.PropertyMap)
 		var contents map[string]tftypes.Value
 		if err := obj.As(&contents); err != nil {
-			return result, err
+			return result, fmt.Errorf(
+				"tftypes.Value.As(map[string]tftypes.Value) failed: %w", err)
 		}
 		for p, conv := range props {
 			v, gotV := contents[p]
 			if gotV && !v.IsNull() {
 				convertedV, err := conv(v)
 				if err != nil {
-					return result, err
+					return result,
+						fmt.Errorf("Property %s failed to convert: %w",
+							p, err)
 				}
 				result[resource.PropertyKey(p)] = convertedV
 			}
 		}
 		return result, nil
+	}
+	return func(obj tftypes.Value) (resource.PropertyMap, error) {
+		pm, err := convert(obj)
+		if err != nil {
+			return pm, fmt.Errorf("ConvertTFValueToPropertyMap failed: %w", err)
+		}
+		return pm, nil
 	}
 }
 
@@ -113,7 +132,8 @@ func ConvertTFValueToProperty(
 	default:
 		return func(v tftypes.Value) (resource.PropertyValue, error) {
 			return resource.PropertyValue{},
-				fmt.Errorf("ConvertTFValueToProperty does not support type %s: %s", ty.String(), v.String())
+				fmt.Errorf("ConvertTFValueToProperty does not support type %s: %s",
+					ty.String(), v.String())
 		}
 	}
 }
@@ -129,7 +149,8 @@ func ConvertPropertyToTFValue(
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
-				fmt.Errorf("ConvertPropertyToTFValue does not supported: %s", ty.String())
+				fmt.Errorf("ConvertPropertyToTFValue does not support type %s: %s",
+					ty.String(), p.String())
 		}
 	}
 }
@@ -141,7 +162,8 @@ func ConvertPropertyMapToDynamicValue(
 	return func(m resource.PropertyMap) (tfprotov6.DynamicValue, error) {
 		v, err := f(m)
 		if err != nil {
-			return tfprotov6.DynamicValue{}, err
+			return tfprotov6.DynamicValue{},
+				fmt.Errorf("ConvertPropertyMapToDynamicValue failed: %w", err)
 		}
 		return tfprotov6.NewDynamicValue(objectType, v)
 	}
@@ -151,58 +173,88 @@ func ConvertDynamicValueToPropertyMap(
 	objectType tftypes.Object,
 ) func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
 	f := ConvertTFValueToPropertyMap(objectType)
-	return func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+	convert := func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
 		v, err := dv.Unmarshal(objectType)
 		if err != nil {
-			return resource.PropertyMap{}, err
+			return resource.PropertyMap{},
+				fmt.Errorf("DynamicValue.Unmarshal failed: %w", err)
 		}
 		return f(v)
+	}
+	return func(dv tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+		pm, err := convert(dv)
+		if err != nil {
+			return pm, fmt.Errorf("ConvertDynamicValueToPropertyMap failed: %w", err)
+		}
+		return pm, err
 	}
 }
 
 func encString(p resource.PropertyValue) (tftypes.Value, error) {
+	if propertyValueIsUnkonwn(p) {
+		return tftypes.NewValue(tftypes.String, tftypes.UnknownValue), nil
+	}
 	if p.IsNull() {
 		return tftypes.NewValue(tftypes.String, nil), nil
 	}
 	if !p.IsString() {
-		return tftypes.NewValue(tftypes.String, nil), fmt.Errorf("Expected a string")
+		return tftypes.NewValue(tftypes.String, nil),
+			fmt.Errorf("Expected a string, got: %v", p)
 	}
-	// TODO handle unknowns
 	return tftypes.NewValue(tftypes.String, p.StringValue()), nil
 }
 
+// This is how p.ContainsUnknowns checks if the value itself is unknown before recursing.
+func propertyValueIsUnkonwn(p resource.PropertyValue) bool {
+	return p.IsComputed() || (p.IsOutput() && !p.OutputValue().Known)
+}
+
+var unknownStringPropertyValue resource.PropertyValue = resource.NewComputedProperty(
+	resource.Computed{Element: resource.NewStringProperty("")})
+
 func decString(v tftypes.Value) (resource.PropertyValue, error) {
+	if !v.IsKnown() {
+		return unknownStringPropertyValue, nil
+	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
 	}
-	// TODO handle unknowns
 	var s string
 	if err := v.As(&s); err != nil {
-		return resource.PropertyValue{}, err
+		return resource.PropertyValue{},
+			fmt.Errorf("tftypes.Value.As(string) failed: %w", err)
 	}
 	return resource.NewStringProperty(s), nil
 }
 
 func encNumber(p resource.PropertyValue) (tftypes.Value, error) {
+	if propertyValueIsUnkonwn(p) {
+		return tftypes.NewValue(tftypes.Number, tftypes.UnknownValue), nil
+	}
 	if p.IsNull() {
 		return tftypes.NewValue(tftypes.Number, nil), nil
 	}
 	if !p.IsNumber() {
-		return tftypes.NewValue(tftypes.Number, nil), fmt.Errorf("Expected a Number")
+		return tftypes.NewValue(tftypes.Number, nil),
+			fmt.Errorf("Expected a Number")
 	}
-	// TODO handle unknowns
 	return tftypes.NewValue(tftypes.Number, p.NumberValue()), nil
 }
 
+var unknownNumberPropertyValue resource.PropertyValue = resource.NewComputedProperty(
+	resource.Computed{Element: resource.NewNumberProperty(0)})
+
 func decNumber(v tftypes.Value) (resource.PropertyValue, error) {
+	if !v.IsKnown() {
+		return unknownNumberPropertyValue, nil
+	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
 	}
-	// TODO handle unknowns
-
 	var n big.Float
 	if err := v.As(&n); err != nil {
-		return resource.PropertyValue{}, fmt.Errorf("decNumber fails with %s: %w", v.String(), err)
+		return resource.PropertyValue{},
+			fmt.Errorf("decNumber fails with %s: %w", v.String(), err)
 	}
 	f64, _ := n.Float64()
 	return resource.NewNumberProperty(f64), nil
