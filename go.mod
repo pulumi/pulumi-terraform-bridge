@@ -21,7 +21,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/hcl/v2 v2.14.0
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
-	github.com/hashicorp/terraform-plugin-framework v0.14.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734
