@@ -136,7 +136,32 @@ func (e *testres) Create(ctx context.Context, req resource.CreateRequest, resp *
 }
 
 func (e *testres) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	panic("TODO Read")
+	var statedir string
+	diags0 := req.State.GetAttribute(ctx, path.Root("statedir"), &statedir)
+	resp.Diagnostics.Append(diags0...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var id string
+	diags1 := req.State.GetAttribute(ctx, path.Root("id"), &id)
+	resp.Diagnostics.Append(diags1...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	cloudStateFile := e.cloudStateFile(statedir, id)
+
+	savedState, gotState, err := e.readCloudState(ctx, cloudStateFile)
+	if err != nil {
+		resp.Diagnostics.AddError("testbridge_testres.Update cannot read pseudo-cloud state",
+			err.Error())
+		return
+	}
+	if gotState {
+		resp.State = savedState
+	}
+	// TODO set resp.Private
 }
 
 func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

@@ -39,9 +39,8 @@ func TestBasicProgram(t *testing.T) {
 	})
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Env:         []string{fmt.Sprintf("PATH=%s", bin)},
-		Dir:         filepath.Join("..", "testdata", "basicprogram"),
-		SkipRefresh: true,
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "basicprogram"),
 
 		PrepareProject: func(info *engine.Projinfo) error {
 			return prepareStateFolder(info.Root)
