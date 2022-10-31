@@ -122,8 +122,6 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 	changes := plugin.DiffNone
 	if len(changedKeys) > 0 {
 		changes = plugin.DiffSome
-
-		panic(fmt.Sprintf("%v", tfDiff))
 	}
 
 	diffResult := plugin.DiffResult{
