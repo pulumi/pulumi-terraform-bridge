@@ -1,11 +1,24 @@
 name: basicprogram
 runtime: yaml
 resources:
+
+  # MVP resource, check string inputs and outputs.
   testres1:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
-
       requiredInputString: "input1"
+
+  # Chain to testres1 to test handling unknowns.
+  testres2:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: ${testres1.requiredInputStringCopy}
+
 outputs:
+  # Should be equal to "input1".
   requiredInputStringCopy: ${testres1.requiredInputStringCopy}
+
+  # Should also be equal to "input1".
+  requiredInputStringCopy2: ${testres2.requiredInputStringCopy}
