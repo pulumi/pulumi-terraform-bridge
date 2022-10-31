@@ -102,8 +102,11 @@ func (e *testres) Create(ctx context.Context, req resource.CreateRequest, resp *
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	resourceId := e.freshID(statedir)
+	resourceId, err := e.freshID(statedir)
+	if err != nil {
+		resp.Diagnostics.AddError("testres.freshID", err.Error())
+		return
+	}
 
 	cloudStateFile := e.cloudStateFile(statedir, resourceId)
 	if _, gotState, err := e.readCloudState(ctx, cloudStateFile); gotState && err == nil {
@@ -262,12 +265,17 @@ func (e *testres) Delete(ctx context.Context, req resource.DeleteRequest, resp *
 	}
 }
 
-func (e *testres) freshID(statedir string) string {
+func (e *testres) freshID(statedir string) (string, error) {
 	i := 0
 	for {
 		candidate := fmt.Sprintf("%d", i)
-		if _, err := os.Stat(e.cloudStateFile(statedir, candidate)); os.IsNotExist(err) {
-			return candidate
+		_, err := os.Stat(e.cloudStateFile(statedir, candidate))
+		if os.IsNotExist(err) {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("freshID(%q) failed: %w",
+				statedir, err)
 		}
 		i++
 	}
