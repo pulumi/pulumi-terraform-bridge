@@ -7,6 +7,7 @@ require github.com/terraform-providers/terraform-provider-random/randomshim v0.0
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/terraform-plugin-framework v0.14.0
+	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge v0.0.0
 	github.com/pulumi/pulumi/pkg/v3 v3.43.1
 	github.com/pulumi/pulumi/sdk/v3 v3.43.1
@@ -104,7 +105,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.14.1 // indirect
 	github.com/hashicorp/terraform-plugin-framework-validators v0.5.0 // indirect
-	github.com/hashicorp/terraform-plugin-go v0.14.0 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
