@@ -37,7 +37,10 @@ func TestBasicProgram(t *testing.T) {
 		Dir:         filepath.Join("..", "testdata", "basicprogram"),
 		SkipRefresh: true,
 
-		PrepareProject: func(*engine.Projinfo) error {
+		PrepareProject: func(info *engine.Projinfo) error {
+			if err := prepareStateFolder(info.Root); err != nil {
+				return err
+			}
 			return ensureTestBridgeProviderCompiled(wd)
 		},
 
@@ -47,6 +50,10 @@ func TestBasicProgram(t *testing.T) {
 			assert.Equal(t, "input1", requiredInputStringCopy)
 		},
 	})
+}
+
+func prepareStateFolder(root string) error {
+	return os.Mkdir(filepath.Join(root, "state"), 0777)
 }
 
 func ensureTestBridgeProviderCompiled(wd string) error {

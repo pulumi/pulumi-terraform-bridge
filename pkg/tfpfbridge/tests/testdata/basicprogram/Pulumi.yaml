@@ -4,7 +4,7 @@ resources:
   testres1:
     type: testbridge:index/testres:Testres
     properties:
-      statedir: /Users/anton/pulumi-terraform-bridge/pkg/tfpfbridge/tests/integration/state
+      statedir: state
 
       requiredInputString: "input1"
 outputs:
