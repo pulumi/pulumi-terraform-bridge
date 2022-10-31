@@ -51,6 +51,10 @@ func TestBasicProgram(t *testing.T) {
 			requiredInputStringCopy, ok := stack.Outputs["requiredInputStringCopy"]
 			assert.True(t, ok)
 			assert.Equal(t, "input1", requiredInputStringCopy)
+
+			requiredInputStringCopy2, ok := stack.Outputs["requiredInputStringCopy2"]
+			assert.True(t, ok)
+			assert.Equal(t, "input1", requiredInputStringCopy2)
 		},
 	})
 }
