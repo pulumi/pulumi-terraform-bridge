@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -32,16 +33,18 @@ func TestBasicProgram(t *testing.T) {
 	assert.NoError(t, err)
 	bin := filepath.Join(wd, "..", "bin")
 
+	t.Run("compile-test-provider", func(t *testing.T) {
+		err := ensureTestBridgeProviderCompiled(wd)
+		require.NoError(t, err)
+	})
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env:         []string{fmt.Sprintf("PATH=%s", bin)},
 		Dir:         filepath.Join("..", "testdata", "basicprogram"),
 		SkipRefresh: true,
 
 		PrepareProject: func(info *engine.Projinfo) error {
-			if err := prepareStateFolder(info.Root); err != nil {
-				return err
-			}
-			return ensureTestBridgeProviderCompiled(wd)
+			return prepareStateFolder(info.Root)
 		},
 
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
