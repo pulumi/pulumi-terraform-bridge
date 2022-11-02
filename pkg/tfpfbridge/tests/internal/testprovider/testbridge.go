@@ -53,36 +53,56 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 // TODO schema should be computed from PF declaration.
 func SyntheticTestBridgeProviderPulumiSchema() schema.PackageSpec {
 	inputProps := map[string]schema.PropertySpec{
-		"statedir": schema.PropertySpec{
+		"statedir": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
 			},
 		},
-		"requiredInputString": schema.PropertySpec{
+		"requiredInputString": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
 			},
 		},
-		"optionalInputString": schema.PropertySpec{
+		"optionalInputString": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
+			},
+		},
+		"optionalInputNumber": {
+			TypeSpec: schema.TypeSpec{
+				Type: "number",
+			},
+		},
+		"optionalInputBool": {
+			TypeSpec: schema.TypeSpec{
+				Type: "boolean",
 			},
 		},
 	}
 	outputProps := map[string]schema.PropertySpec{
-		"id": schema.PropertySpec{
+		"id": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
 			},
 		},
-		"requiredInputStringCopy": schema.PropertySpec{
+		"requiredInputStringCopy": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
 			},
 		},
-		"optionalInputStringCopy": schema.PropertySpec{
+		"optionalInputStringCopy": {
 			TypeSpec: schema.TypeSpec{
 				Type: "string",
+			},
+		},
+		"optionalInputNumberCopy": {
+			TypeSpec: schema.TypeSpec{
+				Type: "number",
+			},
+		},
+		"optionalInputBoolCopy": {
+			TypeSpec: schema.TypeSpec{
+				Type: "boolean",
 			},
 		},
 	}

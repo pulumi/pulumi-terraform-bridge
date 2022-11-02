@@ -24,6 +24,22 @@ resources:
       requiredInputString: "x"
       optionalInputString: "y"
 
+  # Test setting optional numbers.
+  testres4:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputNumber: 3
+
+  # Test setting optional booleans.
+  testres5:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputBool: true
+
 outputs:
   # Should be equal to "input1".
   requiredInputStringCopy: ${testres1.requiredInputStringCopy}
@@ -36,3 +52,9 @@ outputs:
 
   # Should be equal to "y".
   testoptstring: ${testres3.optionalInputStringCopy}
+
+  # Should be equal to 3.
+  testoptnumber: ${testres4.optionalInputNumberCopy}
+
+  # Should be equal to true.
+  testoptbool: ${testres5.optionalInputBoolCopy}

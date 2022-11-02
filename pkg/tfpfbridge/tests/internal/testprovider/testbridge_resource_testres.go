@@ -83,6 +83,24 @@ removes the cloud state, and Read copies it.
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputString",
 			},
+			"optionalInputNumber": {
+				Type:     types.NumberType,
+				Optional: true,
+			},
+			"optionalInputNumberCopy": {
+				Type:        types.NumberType,
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputNumber",
+			},
+			"optionalInputBool": {
+				Type:     types.BoolType,
+				Optional: true,
+			},
+			"optionalInputBoolCopy": {
+				Type:        types.BoolType,
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputBool",
+			},
 		},
 	}
 }
@@ -216,6 +234,25 @@ func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *
 	}
 }
 
+func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T) bool {
+	outputProp := inputProp + "Copy"
+
+	diag2 := state.GetAttribute(ctx, path.Root(inputProp), &slot)
+	diag.Append(diag2...)
+	if diag.HasError() {
+		return false
+	}
+
+	if slot != nil {
+		diag3 := state.SetAttribute(ctx, path.Root(outputProp), *slot)
+		diag.Append(diag3...)
+		if diag.HasError() {
+			return false
+		}
+	}
+	return true
+}
+
 func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State, diag *diag.Diagnostics) {
 	var requiredInputString string
 	diag0 := state.GetAttribute(ctx, path.Root("requiredInputString"), &requiredInputString)
@@ -229,19 +266,19 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 		return
 	}
 
-	var optionalInputString *string
-	diag2 := state.GetAttribute(ctx, path.Root("optionalInputString"), &optionalInputString)
-	diag.Append(diag2...)
-	if diag.HasError() {
+	var s *string
+	if ok := copyData(ctx, diag, state, "optionalInputString", &s); !ok {
 		return
 	}
 
-	if optionalInputString != nil {
-		diag3 := state.SetAttribute(ctx, path.Root("optionalInputStringCopy"), *optionalInputString)
-		diag.Append(diag3...)
-		if diag.HasError() {
-			return
-		}
+	var n *float64
+	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n); !ok {
+		return
+	}
+
+	var b *bool
+	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
+		return
 	}
 }
 
