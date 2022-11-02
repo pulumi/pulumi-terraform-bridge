@@ -129,6 +129,8 @@ func ConvertTFValueToProperty(
 		return decString
 	case ty.Is(tftypes.Number):
 		return decNumber
+	case ty.Is(tftypes.Bool):
+		return decBool
 	default:
 		return func(v tftypes.Value) (resource.PropertyValue, error) {
 			return resource.PropertyValue{},
@@ -146,6 +148,8 @@ func ConvertPropertyToTFValue(
 		return encString
 	case ty.Is(tftypes.Number):
 		return encNumber
+	case ty.Is(tftypes.Bool):
+		return encBool
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
@@ -258,4 +262,36 @@ func decNumber(v tftypes.Value) (resource.PropertyValue, error) {
 	}
 	f64, _ := n.Float64()
 	return resource.NewNumberProperty(f64), nil
+}
+
+func encBool(p resource.PropertyValue) (tftypes.Value, error) {
+	if propertyValueIsUnkonwn(p) {
+		return tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue), nil
+	}
+	if p.IsNull() {
+		return tftypes.NewValue(tftypes.Bool, nil), nil
+	}
+	if !p.IsBool() {
+		return tftypes.NewValue(tftypes.Bool, nil),
+			fmt.Errorf("Expected a Boolean")
+	}
+	return tftypes.NewValue(tftypes.Bool, p.BoolValue()), nil
+}
+
+var unknownBoolPropertyValue resource.PropertyValue = resource.NewComputedProperty(
+	resource.Computed{Element: resource.NewBoolProperty(false)})
+
+func decBool(v tftypes.Value) (resource.PropertyValue, error) {
+	if !v.IsKnown() {
+		return unknownBoolPropertyValue, nil
+	}
+	if v.IsNull() {
+		return resource.NewPropertyValue(nil), nil
+	}
+	var b bool
+	if err := v.As(&b); err != nil {
+		return resource.PropertyValue{},
+			fmt.Errorf("decBool fails with %s: %w", v.String(), err)
+	}
+	return resource.NewBoolProperty(b), nil
 }

@@ -63,6 +63,15 @@ func TestBasicProgram(t *testing.T) {
 			testoptstring, ok := stack.Outputs["testoptstring"]
 			assert.True(t, ok)
 			assert.Equal(t, "y", testoptstring)
+
+			testoptnumber, ok := stack.Outputs["testoptnumber"]
+			assert.True(t, ok)
+			// TODO should integers flow specially as opposed to floats?
+			assert.Equal(t, float64(3), testoptnumber)
+
+			testoptbool, ok := stack.Outputs["testoptbool"]
+			assert.True(t, ok)
+			assert.Equal(t, true, testoptbool)
 		},
 	})
 }
