@@ -20,13 +20,10 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	tfsdkresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -102,14 +99,6 @@ func (p *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 func (p *Provider) Configure(inputs resource.PropertyMap) error {
 	// TODO actually configure
 	return nil
-}
-
-func PropertyMapToValue(schema tfsdk.Schema, props resource.PropertyMap) (tftypes.Value, diag.Diagnostics) {
-	panic("TODO")
-}
-
-func ValueToPropertyMap(schema tfsdk.Schema, value tftypes.Value) (resource.PropertyMap, diag.Diagnostics) {
-	panic("TODO")
 }
 
 // Construct creates a new component resource.
