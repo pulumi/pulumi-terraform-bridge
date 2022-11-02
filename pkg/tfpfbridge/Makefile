@@ -6,7 +6,7 @@ build.tests::
 test::
 	cd tests && go test -test.v
 
-test.slow::
+test.integration::
 	cd tests/integration && go test -test.v
 
 build::
