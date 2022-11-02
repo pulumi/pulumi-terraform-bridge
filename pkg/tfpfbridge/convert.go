@@ -145,6 +145,10 @@ func ConvertTFValueToProperty(
 		return decNumber
 	case ty.Is(tftypes.Bool):
 		return decBool
+	case ty.Is(tftypes.List{}):
+		listTy := ty.(tftypes.List)
+		decElem := ConvertTFValueToProperty(listTy.ElementType)
+		return decList(decElem)
 	default:
 		return func(v tftypes.Value) (resource.PropertyValue, error) {
 			return resource.PropertyValue{},
@@ -164,6 +168,10 @@ func ConvertPropertyToTFValue(
 		return encNumber
 	case ty.Is(tftypes.Bool):
 		return encBool
+	case ty.Is(tftypes.List{}):
+		listTy := ty.(tftypes.List)
+		encElem := ConvertPropertyToTFValue(listTy.ElementType)
+		return encList(listTy.ElementType, encElem)
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
@@ -308,4 +316,61 @@ func decBool(v tftypes.Value) (resource.PropertyValue, error) {
 			fmt.Errorf("decBool fails with %s: %w", v.String(), err)
 	}
 	return resource.NewBoolProperty(b), nil
+}
+
+type decoder = func(tftypes.Value) (resource.PropertyValue, error)
+type encoder = func(p resource.PropertyValue) (tftypes.Value, error)
+
+func decList(decElem decoder) decoder {
+	zero := resource.NewArrayProperty([]resource.PropertyValue{})
+	return func(v tftypes.Value) (resource.PropertyValue, error) {
+		if !v.IsKnown() {
+			return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		}
+		if v.IsNull() {
+			return resource.NewPropertyValue(nil), nil
+		}
+		var elements []tftypes.Value
+		if err := v.As(&elements); err != nil {
+			return resource.PropertyValue{},
+				fmt.Errorf("decList fails with %s: %w", v.String(), err)
+		}
+
+		values := []resource.PropertyValue{}
+		for _, e := range elements {
+			ev, err := decElem(e)
+			if err != nil {
+				return resource.PropertyValue{},
+					fmt.Errorf("decList fails with %s: %w", e.String(), err)
+			}
+			values = append(values, ev)
+		}
+		return resource.NewArrayProperty(values), nil
+	}
+}
+
+func encList(elemTy tftypes.Type, encElem encoder) encoder {
+	listTy := tftypes.List{ElementType: elemTy}
+	return func(p resource.PropertyValue) (tftypes.Value, error) {
+		if propertyValueIsUnkonwn(p) {
+			return tftypes.NewValue(listTy, tftypes.UnknownValue), nil
+		}
+		if p.IsNull() {
+			return tftypes.NewValue(listTy, nil), nil
+		}
+		if !p.IsArray() {
+			return tftypes.NewValue(listTy, nil),
+				fmt.Errorf("Expected an Array PropertyValue")
+		}
+		var values []tftypes.Value
+		for _, pv := range p.ArrayValue() {
+			v, err := encElem(pv)
+			if err != nil {
+				return tftypes.NewValue(listTy, nil),
+					fmt.Errorf("encList failed on %v", pv)
+			}
+			values = append(values, v)
+		}
+		return tftypes.NewValue(listTy, values), nil
+	}
 }
