@@ -237,7 +237,7 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	}
 
 	if optionalInputString != nil {
-		diag3 := state.SetAttribute(ctx, path.Root("optionalInputString"), *optionalInputString)
+		diag3 := state.SetAttribute(ctx, path.Root("optionalInputStringCopy"), *optionalInputString)
 		diag.Append(diag3...)
 		if diag.HasError() {
 			return

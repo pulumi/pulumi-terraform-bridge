@@ -16,9 +16,23 @@ resources:
       statedir: state
       requiredInputString: ${testres1.requiredInputStringCopy}
 
+  # Test setting optional strings.
+  testres3:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputString: "y"
+
 outputs:
   # Should be equal to "input1".
   requiredInputStringCopy: ${testres1.requiredInputStringCopy}
 
+  # Should not be set.
+  optionalInputStringCopy: ${testres1.optionalInputStringCopy}
+
   # Should also be equal to "input1".
   requiredInputStringCopy2: ${testres2.requiredInputStringCopy}
+
+  # Should be equal to "y".
+  testoptstring: ${testres3.optionalInputStringCopy}
