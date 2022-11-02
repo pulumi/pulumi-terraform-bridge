@@ -51,9 +51,18 @@ func TestBasicProgram(t *testing.T) {
 			assert.True(t, ok)
 			assert.Equal(t, "input1", requiredInputStringCopy)
 
+			optionalInputStringCopy, ok := stack.Outputs["optionalInputStringCopy"]
+			assert.True(t, ok)
+			// TODO is this the behavior we want for optional values that are unset?
+			assert.Nil(t, optionalInputStringCopy)
+
 			requiredInputStringCopy2, ok := stack.Outputs["requiredInputStringCopy2"]
 			assert.True(t, ok)
 			assert.Equal(t, "input1", requiredInputStringCopy2)
+
+			testoptstring, ok := stack.Outputs["testoptstring"]
+			assert.True(t, ok)
+			assert.Equal(t, "y", testoptstring)
 		},
 	})
 }
