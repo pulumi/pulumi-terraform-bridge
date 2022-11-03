@@ -19,17 +19,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// Check validates that the given property bag is valid for a resource of the given type and returns the inputs that
-// should be passed to successive calls to Diff, Create, or Update for this resource.
-func (p *Provider) Check(urn resource.URN, olds, news resource.PropertyMap,
+// Check validates the given resource inputs from the user program and computes checked inputs that fill out default
+// values. The checked inputs are then passed to subsequent, Diff, Create, or Update.
+func (p *Provider) Check(urn resource.URN, oldState, inputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	// TODO Properly implement CHECK to allow provider to fill out
-	// default values.
-
-	result := olds.Copy()
-	for k, v := range news {
-		result[k] = v
+	// TODO Properly implement this to allow provider to fill out default values and run validators. For now an
+	// approximate implementation applies inputs to old state and returns that as-is.
+	checkedInputs := oldState.Copy()
+	for k, v := range inputs {
+		checkedInputs[k] = v
 	}
-	return result, []plugin.CheckFailure{}, nil
+	return checkedInputs, []plugin.CheckFailure{}, nil
 }
