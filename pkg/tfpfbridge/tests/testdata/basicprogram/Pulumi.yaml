@@ -40,6 +40,17 @@ resources:
       requiredInputString: "x"
       optionalInputBool: true
 
+  # Test List[String] type propagation.
+  testres6:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputStringList:
+        - a
+        - b
+        - c
+
 outputs:
   # Should be equal to "input1".
   requiredInputStringCopy: ${testres1.requiredInputStringCopy}
@@ -58,3 +69,6 @@ outputs:
 
   # Should be equal to true.
   testoptbool: ${testres5.optionalInputBoolCopy}
+
+  # Should be equal to [a,b,c].
+  teststringlist: ${testres6.optionalInputStringListCopy}

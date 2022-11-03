@@ -105,7 +105,17 @@ func (p *Provider) Diff(
 		//    v, ok := unify(diff.Value1, diff.Value2); ok && v.Equal(diff.Value2)
 		//
 		// where unify(x, y) is like recursive Equal but resolving unknowns in x from y.
-		notChanging := !diff.Value1.IsKnown() && diff.Value2.IsKnown()
+
+		// Looks like sometimes diff.Value1 is nil and
+		// diff.Value1.IsKnown panics, need to handle the nil.
+		isKnown := func(v *tftypes.Value) bool {
+			if v == nil {
+				return true
+			}
+			return v.IsKnown()
+		}
+
+		notChanging := !isKnown(diff.Value1) && isKnown(diff.Value2)
 		if !notChanging {
 			tfDiff = append(tfDiff, diff)
 		}
