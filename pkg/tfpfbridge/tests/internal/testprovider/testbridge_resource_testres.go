@@ -116,6 +116,15 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optionalInputBool"},
 				},
 			},
+			"optionalInputStringList": {
+				Type:     types.ListType{ElemType: types.StringType},
+				Optional: true,
+			},
+			"optionalInputStringListCopy": {
+				Type:        types.ListType{ElemType: types.StringType},
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputStringListCopy",
+			},
 		},
 	}
 }
@@ -311,6 +320,12 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
 		return
 	}
+
+	var sl *[]string
+	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl); !ok {
+		return
+	}
+
 	if !state.Raw.IsFullyKnown() {
 		panic(fmt.Sprintf(
 			"Error in testres: resource computation should resolve all unknowns, but got %v",
