@@ -50,6 +50,14 @@ func TestConvertTurnaround(t *testing.T) {
 		[]string{"a", "", "b"},
 	)...)
 
+	cases = append(cases, convertTurnaroundTestCases(
+		tftypes.List{ElementType: tftypes.List{ElementType: tftypes.Number}},
+		arrayPV(arrayPV(resource.NewNumberProperty)),
+		[][]float64{},
+		[][]float64{{0}},
+		[][]float64{{0}, {}, {1.5}, {42, -10}},
+	)...)
+
 	cases = append(cases, []convertTurnaroundTestCase{
 		{
 			name:    "tftypes.Number/int",
