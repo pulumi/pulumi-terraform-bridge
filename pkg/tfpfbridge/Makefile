@@ -4,6 +4,7 @@ build.tests::
 	cd tests/integration && go test -test.run NONE
 
 test::
+	go test -test.v
 	cd tests && go test -test.v
 
 test.integration::
