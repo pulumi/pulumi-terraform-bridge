@@ -27,9 +27,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-	news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+// Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
+// Check and the old state. The implementation here calls PlanResourceChange Terraform method. Essentially:
+//
+//     Diff(oldState, checkedInputs) = oldState.Diff(PlanResourceChange(oldState, checkedInputs))
+func (p *Provider) Diff(
+	urn resource.URN,
+	id resource.ID,
+	oldState resource.PropertyMap,
+	checkedInputs resource.PropertyMap,
+	allowUnknowns bool,
+	ignoreChanges []string,
+) (plugin.DiffResult, error) {
 
 	ctx := context.TODO()
 
@@ -40,12 +49,23 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 
 	tfType := rh.schema.Type().TerraformType(ctx)
 
-	priorState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(olds)
+	oldStateValue, err := ConvertPropertyMapToTFValue(tfType.(tftypes.Object))(oldState)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	proposedNewState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
+	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType.(tftypes.Object))(checkedInputs)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	proposedNewStateValue, err := applyChanges(oldStateValue, checkedInputsValue)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	priorState, config, proposedNewState, err := makeDynamicValues3(
+		oldStateValue, checkedInputsValue, proposedNewStateValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -54,11 +74,7 @@ func (p *Provider) Diff(urn resource.URN, id resource.ID, olds resource.Property
 		TypeName:         rh.terraformResourceName,
 		PriorState:       &priorState,
 		ProposedNewState: &proposedNewState,
-
-		// TODO this does not seem right. In what
-		// circumstances Config differes from ProposedNewState
-		// in Terraform and how should this work in Pulumi?
-		Config: &proposedNewState,
+		Config:           &config,
 
 		// TODO PriorPrivate
 		// TODO ProviderMeta
@@ -198,4 +214,21 @@ func diffDynamicValues(typ tftypes.Type, before, after *tfprotov6.DynamicValue) 
 		return nil, err
 	}
 	return a.Diff(b)
+}
+
+func makeDynamicValues3(a, b, c tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
+	var n tfprotov6.DynamicValue
+	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
+	if err != nil {
+		return n, n, n, err
+	}
+	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
+	if err != nil {
+		return n, n, n, err
+	}
+	cv, err := tfprotov6.NewDynamicValue(c.Type(), c)
+	if err != nil {
+		return n, n, n, err
+	}
+	return av, bv, cv, nil
 }
