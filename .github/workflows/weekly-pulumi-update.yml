@@ -35,13 +35,21 @@ jobs:
       id: gomod
       run: >-
         git config --local user.email 'bot@pulumi.com'
+
         git config --local user.name 'pulumi-bot'
+
         git checkout -b update-pulumi/${{ github.run_id }}-${{ github.run_number }}
+
         go get github.com/pulumi/pulumi/pkg/v3
+
         go get github.com/pulumi/pulumi/sdk/v3
+
         go mod download
+
         go mod tidy
+
         git update-index -q --refresh
+
         if ! git diff-files --quiet; then
           echo ::set-output name=changes::1
         fi
@@ -49,8 +57,11 @@ jobs:
       if: steps.gomod.outputs.changes != 0
       run: >-
         make build && make lint && make test
+
         git add .
+
         git commit -m "Updated modules"
+
         git push origin update-pulumi/${{ github.run_id }}-${{ github.run_number }}
     - name: Create PR
       id: create-pr
