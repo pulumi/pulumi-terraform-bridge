@@ -36,7 +36,7 @@ func parseFile(parser *syntax.Parser, fs afero.Fs, path string) error {
 }
 
 // parseTF12 parses a TF12 config.
-func parseTF12(opts Options) ([]*syntax.File, hcl.Diagnostics) {
+func parseTF12(opts EjectOptions) ([]*syntax.File, hcl.Diagnostics) {
 	// Find the config files in the requested directory.
 	configs, overrides, diags := configs.NewParser(opts.Root).ConfigDirFiles("/")
 	if diags.HasErrors() {
@@ -73,7 +73,7 @@ func parseTF12(opts Options) ([]*syntax.File, hcl.Diagnostics) {
 	return parser.Files, parser.Diagnostics
 }
 
-func convertTF12(files []*syntax.File, opts Options) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
+func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	var hcl2Options []model.BindOption
 	var pulumiOptions []pcl.BindOption
 	if opts.AllowMissingProperties {
