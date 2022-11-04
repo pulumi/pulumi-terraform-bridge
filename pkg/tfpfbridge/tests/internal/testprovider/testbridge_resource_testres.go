@@ -243,12 +243,28 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 		return false
 	}
 
+	var replacement interface{}
 	if slot != nil {
-		diag3 := state.SetAttribute(ctx, path.Root(outputProp), *slot)
+		replacement = *slot
+	} else {
+		// This seems needlessly complicated, but nil will not do, need a typed nil.
+		attrib, diag3 := state.Schema.AttributeAtPath(ctx, path.Root(outputProp))
 		diag.Append(diag3...)
-		if diag.HasError() {
+		if diag3.HasError() {
 			return false
 		}
+		typedNil := tftypes.NewValue(attrib.GetType().TerraformType(ctx), nil)
+		attrv, err := attrib.GetType().ValueFromTerraform(ctx, typedNil)
+		if err != nil {
+			panic(err)
+		}
+		replacement = attrv
+	}
+
+	diag3 := state.SetAttribute(ctx, path.Root(outputProp), replacement)
+	diag.Append(diag3...)
+	if diag.HasError() {
+		return false
 	}
 	return true
 }
@@ -279,6 +295,11 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	var b *bool
 	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
 		return
+	}
+	if !state.Raw.IsFullyKnown() {
+		panic(fmt.Sprintf(
+			"Error in testres: resource computation should resolve all unknowns, but got %v",
+			state.Raw))
 	}
 }
 
