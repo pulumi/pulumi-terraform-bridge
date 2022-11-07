@@ -23,7 +23,7 @@ import (
 func main() {
 	tfbridge.Main(
 		"random",
-		"0.0.1",
+		"4.8.2",
 		testprovider.RandomProvider(),
 		testprovider.RandomProviderPulumiSchemaBytes(),
 	)
