@@ -86,6 +86,7 @@ removes the cloud state, and Read copies it.
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputString",
 				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
 					PropagatesNullFrom{"optionalInputString"},
 				},
 			},
@@ -98,6 +99,7 @@ removes the cloud state, and Read copies it.
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputNumber",
 				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
 					PropagatesNullFrom{"optionalInputNumber"},
 				},
 			},
@@ -110,6 +112,7 @@ removes the cloud state, and Read copies it.
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputBool",
 				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
 					PropagatesNullFrom{"optionalInputBool"},
 				},
 			},

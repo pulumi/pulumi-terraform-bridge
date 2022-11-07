@@ -87,3 +87,36 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
         `
 	testutils.Replay(t, server, testCase)
 }
+
+// Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
+func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
+	server := tfbridge.NewProviderServer(
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:dev12::basicprogram::testbridge:index/testres:Testres::testres5",
+            "olds": {
+              "id": "0",
+              "optionalInputBool": true,
+              "optionalInputBoolCopy": true,
+              "requiredInputString": "x",
+              "requiredInputStringCopy": "x",
+              "statedir": "state"
+            },
+            "news": {
+              "optionalInputBool": true,
+              "requiredInputString": "x",
+              "statedir": "state"
+            }
+          },
+          "response": {
+            "changes": "DIFF_NONE"
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
