@@ -25,10 +25,15 @@ import (
 )
 
 // Update updates an existing resource with new values.
-func (p *Provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+func (p *Provider) Update(
+	urn resource.URN,
+	id resource.ID,
+	priorState resource.PropertyMap,
+	checkedInputs resource.PropertyMap,
+	timeout float64,
+	ignoreChanges []string,
+	preview bool,
+) (resource.PropertyMap, resource.Status, error) {
 	ctx := context.TODO()
 
 	rh, err := p.resourceHandle(ctx, urn)
@@ -36,46 +41,42 @@ func (p *Provider) Update(urn resource.URN, id resource.ID,
 		return nil, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+
+	priorStateValue, err := ConvertPropertyMapToTFValue(tfType)(priorState)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	planResp, err := p.plan(ctx, rh.terraformResourceName, priorStateValue, checkedInputsValue)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// TODO clarify what to do here, how to handle preview Update properly.
 	if preview {
-		// Transcoding through DynamicValue achieves filtering of properties to only retain what TF understands.
-		plannedState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
+		plannedStatePropertyMap, err := ConvertDynamicValueToPropertyMap(tfType)(*planResp.PlannedState)
 		if err != nil {
 			return nil, 0, err
 		}
-		recovered, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(plannedState)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		return recovered, resource.StatusOK, nil
+		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	// priorState is simply olds
-	priorState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(olds)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	// plannedState is simply news
-	//
-	// Note: that this conversion implicitly filters to only deal with the fields specified in the tfType schema.
-	plannedState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// ApplyResourceChange Otherwise assumes this is an Update request iff PlannedState and PriorState are not nil.
 
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:     rh.terraformResourceName,
-		PriorState:   &priorState,
-		PlannedState: &plannedState,
-
-		// TODO support Config properly, are there situations when it is different from PlannedState?
-		Config: &plannedState,
+		Config:       &checkedInputsDV,
+		PriorState:   &priorStateDV,
+		PlannedState: planResp.PlannedState,
 	}
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
@@ -96,7 +97,7 @@ func (p *Provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	// TODO handle resp.Private
-	updatedState, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(*resp.NewState)
+	updatedState, err := ConvertDynamicValueToPropertyMap(tfType)(*resp.NewState)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -28,13 +28,16 @@ import (
 )
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
-// Check and the old state. The implementation here calls PlanResourceChange Terraform method. Essentially:
+// Check and the prior state. The implementation here calls PlanResourceChange Terraform method. Essentially:
 //
-//     Diff(oldState, checkedInputs) = oldState.Diff(PlanResourceChange(oldState, checkedInputs))
+//     Diff(priorState, checkedInputs):
+//         proposedNewState = priorState.applyChanges(checkedInputs)
+//         plannedState = PlanResourceChange(priorState, proposedNewState)
+//         priorState.Diff(plannedState)
 func (p *Provider) Diff(
 	urn resource.URN,
 	id resource.ID,
-	oldState resource.PropertyMap,
+	priorState resource.PropertyMap,
 	checkedInputs resource.PropertyMap,
 	allowUnknowns bool,
 	ignoreChanges []string,
@@ -47,40 +50,19 @@ func (p *Provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	oldStateValue, err := ConvertPropertyMapToTFValue(tfType.(tftypes.Object))(oldState)
+	priorStateValue, err := ConvertPropertyMapToTFValue(tfType)(priorState)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType.(tftypes.Object))(checkedInputs)
+	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	proposedNewStateValue, err := applyChanges(oldStateValue, checkedInputsValue)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	priorState, config, proposedNewState, err := makeDynamicValues3(
-		oldStateValue, checkedInputsValue, proposedNewStateValue)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	planReq := tfprotov6.PlanResourceChangeRequest{
-		TypeName:         rh.terraformResourceName,
-		PriorState:       &priorState,
-		ProposedNewState: &proposedNewState,
-		Config:           &config,
-
-		// TODO PriorPrivate
-		// TODO ProviderMeta
-	}
-
-	planResp, err := p.tfServer.PlanResourceChange(ctx, &planReq)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, priorStateValue, checkedInputsValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -91,10 +73,24 @@ func (p *Provider) Diff(
 
 	// TODO process ignoreChanges
 
-	allTfDiffs, err := diffDynamicValues(tfType, &priorState, planResp.PlannedState)
+	plannedStateValue, err := planResp.PlannedState.Unmarshal(tfType)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
+	// fmt.Printf("checkedInputsValue = %s\n\n", checkedInputsValue)
+
+	// fmt.Printf("priorStateValue   = %s\n\n", priorStateValue)
+	// fmt.Printf("plannedStateValue = %s\n\n", plannedStateValue)
+
+	allTfDiffs, err := priorStateValue.Diff(plannedStateValue)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	// fmt.Printf("allTfDiffs =\n")
+	// for _, diff := range allTfDiffs {
+	// 	fmt.Printf("%v\n", diff)
+	// }
 
 	// Filter out diffs that resolve an unknown value into a known value. This happens for example with previewing
 	// computed attributes.
@@ -137,7 +133,7 @@ func (p *Provider) Diff(
 
 	changes := plugin.DiffNone
 	if len(changedKeys) > 0 {
-		changes = plugin.DiffSome
+		changes = plugin.DiffUnknown
 	}
 
 	diffResult := plugin.DiffResult{
@@ -204,16 +200,17 @@ func diffPathsToPropertyKeySet(paths []*tftypes.AttributePath) ([]resource.Prope
 	return keySlice, nil
 }
 
-func diffDynamicValues(typ tftypes.Type, before, after *tfprotov6.DynamicValue) ([]tftypes.ValueDiff, error) {
-	b, err := before.Unmarshal(typ)
+func makeDynamicValues2(a, b tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
+	var n tfprotov6.DynamicValue
+	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
 	if err != nil {
-		return nil, err
+		return n, n, err
 	}
-	a, err := after.Unmarshal(typ)
+	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
 	if err != nil {
-		return nil, err
+		return n, n, err
 	}
-	return a.Diff(b)
+	return av, bv, nil
 }
 
 func makeDynamicValues3(a, b, c tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {

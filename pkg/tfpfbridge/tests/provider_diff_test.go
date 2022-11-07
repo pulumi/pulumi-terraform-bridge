@@ -121,3 +121,38 @@ func TestEmptyTestresDiff(t *testing.T) {
         `
 	testutils.Replay(t, server, testCase)
 }
+
+// Test removing an optional input.
+func TestOptionRemovalTestresDiff(t *testing.T) {
+	server := tfbridge.NewProviderServer(
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:Testres::testres1",
+            "olds": {
+              "id": "0",
+              "requiredInputString": "input1",
+              "optionalInputString": "input2",
+              "requiredInputStringCopy": "input3",
+              "statedir": "/tmp"
+            },
+            "news": {
+              "requiredInputString": "input1",
+              "statedir": "/tmp"
+            }
+          },
+          "response": {
+            "changes": "DIFF_SOME",
+            "diffs": [
+               "optionalInputString"
+            ]
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
