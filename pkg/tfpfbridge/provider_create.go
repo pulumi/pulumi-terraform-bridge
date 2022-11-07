@@ -24,10 +24,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
-	timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+// Create allocates a new instance of the provided resource and returns its unique resource ID.
+func (p *Provider) Create(
+	urn resource.URN,
+	checkedInputs resource.PropertyMap,
+	timeout float64,
+	preview bool,
+) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	ctx := context.TODO()
 
 	rh, err := p.resourceHandle(ctx, urn)
@@ -35,39 +38,34 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 		return "", nil, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx)
-
-	if preview {
-		// TODO clarify what to do here, how to handle preview
-		// Create properly. For now match empirically observed
-		// behavior.
-
-		// Transcoding through DynamicValue achieves filtering
-		// of properties to only retain what TF understands.
-		plannedState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
-		if err != nil {
-			return "", nil, 0, err
-		}
-		recovered, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(plannedState)
-		if err != nil {
-			return "", nil, 0, err
-		}
-
-		return "", recovered, resource.StatusOK, nil
-	}
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	// priorState is nil since we are in Create
-	priorState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
+	priorStateValue := tftypes.NewValue(tfType, nil)
+
+	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
 	if err != nil {
 		return "", nil, 0, err
-
 	}
 
-	// plannedState is simply news
-	//
-	// Note: that this conversion implicitly filters to only deal
-	// with the fields specified in the tfType schema.
-	plannedState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(news)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, priorStateValue, checkedInputsValue)
+	if err != nil {
+		return "", nil, 0, err
+	}
+
+	// TODO handle planResp.Diagnostics
+	// TODO handle planResp.PlannedPrivate
+	// TODO handle planResp.RequiresReplace - probably can be ignored in Create
+
+	if preview {
+		plannedStatePropertyMap, err := ConvertDynamicValueToPropertyMap(tfType)(*planResp.PlannedState)
+		if err != nil {
+			return "", nil, 0, err
+		}
+		return "", plannedStatePropertyMap, resource.StatusOK, nil
+	}
+
+	priorState, config, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
@@ -75,21 +73,11 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:     rh.terraformResourceName,
 		PriorState:   &priorState,
-		PlannedState: &plannedState,
+		PlannedState: planResp.PlannedState,
+		Config:       &config,
 
-		// TODO support config properly.
-		//
-		// See https://www.terraform.io/plugin/framework/accessing-values
-		//
-		// Provider may want to read resource configuration separately from the Plan. Need to clarify how these can be
-		// different (perhaps .Config is as-written and excludes any computations performed by executing the program).
-		// Currently it is not obvious where to find this data in Pulumi protocol.
-		Config: &plannedState,
-
-		// TODO PlannedPrivate
-		// PlannedPrivate: []byte{},
-
-		// TODO set ProviderMeta
+		// TODO PlannedPrivate []byte{},
+		// TODO Set ProviderMeta
 		//
 		// See https://www.terraform.io/internals/provider-meta
 	}
@@ -99,8 +87,8 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 		return "", nil, 0, err
 	}
 
-	// TODO handle resp.Diagnostics more than just detecting the
-	// first error; handle warnings, process multiple errors.
+	// TODO handle resp.Diagnostics more than just detecting the first error; handle warnings, process multiple
+	// errors.
 	for _, d := range resp.Diagnostics {
 		if d.Severity == tfprotov6.DiagnosticSeverityError {
 			prefix := ""
@@ -113,11 +101,15 @@ func (p *Provider) Create(urn resource.URN, news resource.PropertyMap,
 
 	// TODO handle resp.Private field to save that state inside Pulumi state.
 
-	createdState, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(*resp.NewState)
+	createdState, err := ConvertDynamicValueToPropertyMap(tfType)(*resp.NewState)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
+	// plannedS, _ := resp.NewState.Unmarshal(tfType)
+	// panic(fmt.Sprintf("NewState = %v \n\n CreatedState = %v",
+	// 	plannedS,
+	// 	createdState))
 	// TODO allocate ID properly
 	createdID := resource.ID(createdState["id"].StringValue())
 
