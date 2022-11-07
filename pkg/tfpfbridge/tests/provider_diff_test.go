@@ -24,7 +24,6 @@ import (
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
-	t.Skip("TODO")
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
