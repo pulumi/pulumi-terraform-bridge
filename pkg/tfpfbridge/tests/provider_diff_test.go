@@ -55,7 +55,6 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
-	t.Skip("TODO")
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),

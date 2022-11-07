@@ -133,7 +133,7 @@ func (p *Provider) Diff(
 
 	changes := plugin.DiffNone
 	if len(changedKeys) > 0 {
-		changes = plugin.DiffUnknown
+		changes = plugin.DiffSome
 	}
 
 	diffResult := plugin.DiffResult{
