@@ -22,77 +22,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
-// Tests expected empty update Diff interaction over the following program:
-//
-//      r, err := random.NewRandomInteger(ctx, "priority", &random.RandomIntegerArgs{
-//          Max: pulumi.Int(50000),
-//          Min: pulumi.Int(1),
-//      })
-func TestDiffRandomEmptyUpdate(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
-	testCase := `
-        {
-          "method": "/pulumirpc.ResourceProvider/Diff",
-          "request": {
-            "id": "11187",
-            "urn": "urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority",
-            "olds": {
-              "id": "11187",
-              "max": 50000,
-              "min": 1,
-              "result": 11187
-            },
-            "news": {
-              "__defaults": [],
-              "max": 50000,
-              "min": 1
-            }
-          },
-          "response": {
-            "changes": "DIFF_NONE"
-          }
-        }
-        `
-	testutils.Replay(t, server, testCase)
-}
-
-// The same program but with min field changed, causing a replacement plan.
-func TestDiffRandomMinChanged(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
-	testCase := `
-        {
-          "method": "/pulumirpc.ResourceProvider/Diff",
-          "request": {
-            "id": "11187",
-            "urn": "urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority",
-            "olds": {
-              "id": "11187",
-              "max": 50000,
-              "min": 1,
-              "result": 11187
-            },
-            "news": {
-              "__defaults": [],
-              "max": 50000,
-              "min": 2
-            }
-          },
-          "response": {
-            "replaces": [
-              "min"
-            ],
-            "changes": "DIFF_SOME",
-            "diffs": [
-              "min"
-            ]
-          }
-        }
-        `
-	testutils.Replay(t, server, testCase)
-}
-
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
+	t.Skip("TODO")
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
@@ -124,6 +56,7 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
+	t.Skip("TODO")
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
