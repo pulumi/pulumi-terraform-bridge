@@ -1,12 +1,243 @@
-{"method":"/pulumirpc.ResourceProvider/Configure","request":{"args":{"version":"4.8.2"},"acceptSecrets":true,"acceptResources":true},"response":{"acceptSecrets":true,"supportsPreview":true,"acceptResources":true},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceMonitor/SupportsFeature","request":{"id":"resourceReferences"},"response":{"hasSupport":true},"metadata":{"mode":"server"}}
-{"method":"/pulumirpc.ResourceMonitor/SupportsFeature","request":{"id":"outputValues"},"response":{"hasSupport":true},"metadata":{"mode":"server"}}
-{"method":"/pulumirpc.ResourceMonitor/RegisterResource","request":{"type":"pulumi:pulumi:Stack","name":"genradom-generate","object":{},"acceptSecrets":true,"customTimeouts":{},"acceptResources":true},"response":{"urn":"urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate","object":{}},"metadata":{"mode":"server"}}
-{"method":"/pulumirpc.ResourceProvider/GetPluginInfo","request":{},"response":{"version":"4.8.2"},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceProvider/CheckConfig","request":{"urn":"urn:pulumi:generate::genradom::pulumi:providers:random::default","olds":{"version":"4.8.2"},"news":{"version":"4.8.2"}},"response":{"inputs":{"version":"4.8.2"}},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceProvider/DiffConfig","request":{"urn":"urn:pulumi:generate::genradom::pulumi:providers:random::default","olds":{"version":"4.8.2"},"news":{"version":"4.8.2"}},"response":{},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceProvider/Check","request":{"urn":"urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1","olds":{"max":100,"min":1,"seed":"pseudo-random-seed"},"news":{"max":100,"min":1,"seed":"pseudo-random-seed"},"randomSeed":"eBaOM9w55z7lrPQLwkGKzoGVcgqu89s7+0VbrM9Hkq0="},"response":{"inputs":{"max":100,"min":1,"seed":"pseudo-random-seed"}},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceProvider/Diff","request":{"id":"15","urn":"urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1","olds":{"id":"15","max":100,"min":1,"result":15,"seed":"pseudo-random-seed"},"news":{"max":100,"min":1,"seed":"pseudo-random-seed"}},"response":{"changes":"DIFF_NONE"},"metadata":{"kind":"resource","mode":"client","name":"random"}}
-{"method":"/pulumirpc.ResourceMonitor/RegisterResource","request":{"type":"random:index/randomInteger:RandomInteger","name":"r1","parent":"urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate","custom":true,"object":{"max":100,"min":1,"seed":"pseudo-random-seed"},"propertyDependencies":{"max":{},"min":{},"seed":{}},"acceptSecrets":true,"customTimeouts":{},"acceptResources":true},"response":{"urn":"urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1","id":"15","object":{"id":"15","max":100,"min":1,"result":15,"seed":"pseudo-random-seed"}},"metadata":{"mode":"server"}}
-{"method":"/pulumirpc.ResourceMonitor/RegisterResourceOutputs","request":{"urn":"urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate","outputs":{"r.result":15}},"response":{},"metadata":{"mode":"server"}}
-{"method":"/pulumirpc.LanguageRuntime/Run","request":{"project":"genradom","stack":"generate","pwd":"/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom","program":".","config":{"genradom:min":"1"},"dryRun":true,"parallel":2147483647,"monitorAddress":"127.0.0.1:53626","organization":"t0yv0"},"response":{},"metadata":{"kind":"language","mode":"client","runtime":"go"}}
+[
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {
+        "version": "4.8.2"
+      },
+      "acceptSecrets": true,
+      "acceptResources": true
+    },
+    "response": {
+      "acceptSecrets": true,
+      "supportsPreview": true,
+      "acceptResources": true
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "resourceReferences"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "outputValues"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/RegisterResource",
+    "request": {
+      "type": "pulumi:pulumi:Stack",
+      "name": "genradom-generate",
+      "object": {},
+      "acceptSecrets": true,
+      "customTimeouts": {},
+      "acceptResources": true
+    },
+    "response": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "object": {}
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/CheckConfig",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:providers:random::default",
+      "olds": {
+        "version": "4.8.2"
+      },
+      "news": {
+        "version": "4.8.2"
+      }
+    },
+    "response": {
+      "inputs": {
+        "version": "4.8.2"
+      }
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/DiffConfig",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:providers:random::default",
+      "olds": {
+        "version": "4.8.2"
+      },
+      "news": {
+        "version": "4.8.2"
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Check",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "olds": {
+        "max": 100,
+        "min": 1,
+        "seed": "pseudo-random-seed"
+      },
+      "news": {
+        "max": 100,
+        "min": 1,
+        "seed": "pseudo-random-seed"
+      },
+      "randomSeed": "WqA2RfFpHsId55Np72T+iSpdHY4g7WGX0MKXjGNHKms="
+    },
+    "response": {
+      "inputs": {
+        "max": 100,
+        "min": 1,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Diff",
+    "request": {
+      "id": "15",
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "olds": {
+        "id": "15",
+        "max": 100,
+        "min": 1,
+        "result": 15,
+        "seed": "pseudo-random-seed"
+      },
+      "news": {
+        "max": 100,
+        "min": 1,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "response": {
+      "changes": "DIFF_NONE"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/RegisterResource",
+    "request": {
+      "type": "random:index/randomInteger:RandomInteger",
+      "name": "r1",
+      "parent": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "custom": true,
+      "object": {
+        "max": 100,
+        "min": 1,
+        "seed": "pseudo-random-seed"
+      },
+      "propertyDependencies": {
+        "max": {},
+        "min": {},
+        "seed": {}
+      },
+      "acceptSecrets": true,
+      "customTimeouts": {},
+      "acceptResources": true
+    },
+    "response": {
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "id": "15",
+      "object": {
+        "id": "15",
+        "max": 100,
+        "min": 1,
+        "result": 15,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "outputs": {
+        "r.result": 15
+      }
+    },
+    "response": {},
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/Run",
+    "request": {
+      "project": "genradom",
+      "stack": "generate",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": ".",
+      "config": {
+        "genradom:min": "1"
+      },
+      "dryRun": true,
+      "parallel": 2147483647,
+      "monitorAddress": "127.0.0.1:54949",
+      "organization": "t0yv0"
+    },
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  }
+]
