@@ -29,3 +29,19 @@ PULUMI_DEBUG_GRPC=$OUT/random-delete-preview.json pulumi preview
 PULUMI_DEBUG_GRPC=$OUT/random-delete-update.json pulumi up --yes --skip-preview
 pulumi destroy --yes
 pulumi stack rm --yes
+
+reindent()
+{
+    jq -s . "$1" > "$1.tmp"
+    cp "$1.tmp" "$1"
+    rm "$1.tmp"
+}
+
+reindent $OUT/random-initial-preview.json
+reindent $OUT/random-initial-update.json
+reindent $OUT/random-empty-preview.json
+reindent $OUT/random-empty-update.json
+reindent $OUT/random-replace-preview.json
+reindent $OUT/random-replace-update.json
+reindent $OUT/random-delete-preview.json
+reindent $OUT/random-delete-update.json

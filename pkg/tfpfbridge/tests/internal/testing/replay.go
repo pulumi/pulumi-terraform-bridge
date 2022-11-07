@@ -119,34 +119,37 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 func ReplayTraceFile(t *testing.T, server pulumirpc.ResourceProviderServer, traceFile string) {
 	bytes, err := os.ReadFile(traceFile)
 	require.NoError(t, err)
+
+	var entries []jsonLogEntry
+	err = json.Unmarshal(bytes, &entries)
+	require.NoError(t, err)
+
 	count := 0
-	for _, line := range strings.Split(string(bytes), "\n") {
-		l := strings.Trim(line, "\r\n")
-		if l == "" {
+	for _, entry := range entries {
+		if entry.Method == "" {
 			continue
 		}
-		var entry jsonLogEntry
-		err := json.Unmarshal([]byte(l), &entry)
-		assert.NoError(t, err)
 
-		if strings.HasPrefix(entry.Method, "/pulumirpc.ResourceProvider") {
-			// TODO support replaying all these method calls.
-			switch entry.Method {
-			case "/pulumirpc.ResourceProvider/Configure":
-				continue
-			case "/pulumirpc.ResourceProvider/CheckConfigure":
-				continue
-			case "/pulumirpc.ResourceProvider/GetPluginInfo":
-				continue
-			case "/pulumirpc.ResourceProvider/DiffConfig":
-				continue
-			case "/pulumirpc.ResourceProvider/CheckConfig":
-				continue
-			default:
-				Replay(t, server, l)
-				count++
-			}
-
+		if !strings.HasPrefix(entry.Method, "/pulumirpc.ResourceProvider") {
+			continue
+		}
+		// TODO support replaying all these method calls.
+		switch entry.Method {
+		case "/pulumirpc.ResourceProvider/Configure":
+			continue
+		case "/pulumirpc.ResourceProvider/CheckConfigure":
+			continue
+		case "/pulumirpc.ResourceProvider/GetPluginInfo":
+			continue
+		case "/pulumirpc.ResourceProvider/DiffConfig":
+			continue
+		case "/pulumirpc.ResourceProvider/CheckConfig":
+			continue
+		default:
+			entryBytes, err := json.Marshal(entry)
+			require.NoError(t, err)
+			Replay(t, server, string(entryBytes))
+			count++
 		}
 	}
 	assert.Greater(t, count, 0)
