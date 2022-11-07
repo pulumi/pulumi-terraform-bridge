@@ -15,4 +15,14 @@ build::
 	cd tests && go build -v all
 	cd tests/integration && go build -v all
 
+build.testproviders:: tests/bin/pulumi-resource-testbridge tests/bin/pulumi-resource-random
+
+tests/bin/pulumi-resource-testbridge::
+	mkdir -p tests/bin
+	(cd tests/internal/cmd/pulumi-resource-testbridge && go build -o ../../../bin/)
+
+tests/bin/pulumi-resource-random::
+	mkdir -p tests/bin
+	(cd tests/internal/cmd/pulumi-resource-random && go build -o ../../../bin/)
+
 .PHONY: Test
