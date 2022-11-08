@@ -24,11 +24,8 @@ import (
 func (p *Provider) Check(urn resource.URN, oldState, inputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	// TODO Properly implement this to allow provider to fill out default values and run validators. For now an
-	// approximate implementation applies inputs to old state and returns that as-is.
-	checkedInputs := oldState.Copy()
-	for k, v := range inputs {
-		checkedInputs[k] = v
-	}
+	// TODO can any validation and default value substitution happen at this stage?
+	checkedInputs := inputs.Copy()
+
 	return checkedInputs, []plugin.CheckFailure{}, nil
 }
