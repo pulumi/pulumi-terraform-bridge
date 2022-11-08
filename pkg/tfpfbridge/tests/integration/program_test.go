@@ -49,8 +49,39 @@ func TestBasicProgram(t *testing.T) {
 	})
 }
 
+func TestUpdateProgram(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	bin := filepath.Join(wd, "..", "bin")
+
+	t.Run("compile-test-provider", func(t *testing.T) {
+		err := ensureTestBridgeProviderCompiled(wd)
+		require.NoError(t, err)
+	})
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "updateprogram"),
+		PrepareProject: func(info *engine.Projinfo) error {
+			return prepareStateFolder(info.Root)
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join("..", "testdata", "updateprogram-2"),
+				Additive:               true,
+				ExtraRuntimeValidation: validateExpectedVsActual,
+			},
+		},
+		ExtraRuntimeValidation: validateExpectedVsActual,
+	})
+}
+
 func prepareStateFolder(root string) error {
-	return os.Mkdir(filepath.Join(root, "state"), 0777)
+	err := os.Mkdir(filepath.Join(root, "state"), 0777)
+	if os.IsExist(err) {
+		return nil
+	}
+	return err
 }
 
 func ensureTestBridgeProviderCompiled(wd string) error {
