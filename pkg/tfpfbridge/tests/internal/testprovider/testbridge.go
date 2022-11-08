@@ -84,6 +84,12 @@ func SyntheticTestBridgeProviderPulumiSchema() schema.PackageSpec {
 				Items: &schema.TypeSpec{Type: "string"},
 			},
 		},
+		"optionalInputStringMap": {
+			TypeSpec: schema.TypeSpec{
+				Type:                 "object",
+				AdditionalProperties: &schema.TypeSpec{Type: "string"},
+			},
+		},
 	}
 	outputProps := map[string]schema.PropertySpec{
 		"id": {
@@ -115,6 +121,12 @@ func SyntheticTestBridgeProviderPulumiSchema() schema.PackageSpec {
 			TypeSpec: schema.TypeSpec{
 				Type:  "array",
 				Items: &schema.TypeSpec{Type: "string"},
+			},
+		},
+		"optionalInputStringMapCopy": {
+			TypeSpec: schema.TypeSpec{
+				Type:                 "object",
+				AdditionalProperties: &schema.TypeSpec{Type: "string"},
 			},
 		},
 	}

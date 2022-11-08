@@ -51,6 +51,16 @@ resources:
         - b
         - c
 
+  # Test Map[String]String type propagation.
+  testres7:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputStringMap:
+        a: a1
+        b: b1
+
 outputs:
   # Should be equal to "input1".
   requiredInputStringCopy: ${testres1.requiredInputStringCopy}
@@ -72,3 +82,6 @@ outputs:
 
   # Should be equal to [a,b,c].
   teststringlist: ${testres6.optionalInputStringListCopy}
+
+  # Should be equal to {a: a1, b: b1}.
+  teststringmap: ${testres7.optionalInputStringMapCopy}

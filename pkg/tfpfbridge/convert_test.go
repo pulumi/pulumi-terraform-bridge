@@ -58,6 +58,24 @@ func TestConvertTurnaround(t *testing.T) {
 		[][]float64{{0}, {}, {1.5}, {42, -10}},
 	)...)
 
+	cases = append(cases, convertTurnaroundTestCases(
+		tftypes.Map{ElementType: tftypes.String},
+		mapPV(resource.NewStringProperty),
+		map[string]string{},
+		map[string]string{"": ""},
+		map[string]string{"test": "test-string"},
+		map[string]string{"a": "a", "empty": "", "b": "b"},
+	)...)
+
+	cases = append(cases, convertTurnaroundTestCases(
+		tftypes.Map{ElementType: tftypes.Map{ElementType: tftypes.String}},
+		mapPV(mapPV(resource.NewStringProperty)),
+		map[string]map[string]string{},
+		map[string]map[string]string{"": {"": ""}},
+		map[string]map[string]string{"x": {"test": "test-string"}},
+		map[string]map[string]string{"x": {"a": "a"}, "y": {"empty": "", "b": "b"}},
+	)...)
+
 	cases = append(cases, []convertTurnaroundTestCase{
 		{
 			name:    "tftypes.Number/int",
@@ -149,8 +167,18 @@ func arrayPV[T any](topv func(T) resource.PropertyValue) func(data []T) resource
 	}
 }
 
-// Enhance tftypes.NewValue to recur into lists. That is, be able to
-// pass []string for example instead of []tftypes.Value.
+func mapPV[T any](topv func(T) resource.PropertyValue) func(data map[string]T) resource.PropertyValue {
+	return func(data map[string]T) resource.PropertyValue {
+		var entries resource.PropertyMap = make(resource.PropertyMap)
+		for k, v := range data {
+			entries[resource.PropertyKey(k)] = topv(v)
+		}
+		return resource.NewObjectProperty(entries)
+	}
+}
+
+// Enhance tftypes.NewValue to recur into lists and maps. That is, be
+// able to pass []string for example instead of []tftypes.Value.
 func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 	if val == nil || val == tftypes.UnknownValue {
 		return tftypes.NewValue(t, val)
@@ -166,6 +194,15 @@ func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 			elems = append(elems, elem)
 		}
 
+		return tftypes.NewValue(t, elems)
+	case tftypes.Map:
+		elems := map[string]tftypes.Value{}
+		r := reflect.ValueOf(val)
+		iter := r.MapRange()
+		for iter.Next() {
+			key := iter.Key().Interface().(string)
+			elems[key] = tftypesNewValue(tt.ElementType, iter.Value().Interface())
+		}
 		return tftypes.NewValue(t, elems)
 	default:
 		return tftypes.NewValue(t, val)
