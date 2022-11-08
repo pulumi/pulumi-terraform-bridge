@@ -82,43 +82,9 @@ func (p *Provider) Diff(
 	// fmt.Printf("priorStateValue   = %s\n\n", priorStateValue)
 	// fmt.Printf("plannedStateValue = %s\n\n", plannedStateValue)
 
-	allTfDiffs, err := priorStateValue.Diff(plannedStateValue)
+	tfDiff, err := priorStateValue.Diff(plannedStateValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
-	}
-
-	// fmt.Printf("allTfDiffs =\n")
-	// for _, diff := range allTfDiffs {
-	// 	fmt.Printf("%v\n", diff)
-	// }
-
-	// Filter out diffs that resolve an unknown value into a known value. This happens for example with previewing
-	// computed attributes.
-	var tfDiff []tftypes.ValueDiff
-	for _, diff := range allTfDiffs {
-		// Skip diffs that replace a fully unknown with a known.
-		//
-		// TODO consider diffs are resolving unknows deeper in the value tree, are those possible to observe or
-		// will they be reported as separate ValueDiff entries under a deeper path? If possible to observe,
-		// should they be excluded from Pulumi diff also? A condition would look like this:
-		//
-		//    v, ok := unify(diff.Value1, diff.Value2); ok && v.Equal(diff.Value2)
-		//
-		// where unify(x, y) is like recursive Equal but resolving unknowns in x from y.
-
-		// Looks like sometimes diff.Value1 is nil and
-		// diff.Value1.IsKnown panics, need to handle the nil.
-		isKnown := func(v *tftypes.Value) bool {
-			if v == nil {
-				return true
-			}
-			return v.IsKnown()
-		}
-
-		notChanging := !isKnown(diff.Value1) && isKnown(diff.Value2)
-		if !notChanging {
-			tfDiff = append(tfDiff, diff)
-		}
 	}
 
 	replaceKeys, err := diffPathsToPropertyKeySet(planResp.RequiresReplace)
