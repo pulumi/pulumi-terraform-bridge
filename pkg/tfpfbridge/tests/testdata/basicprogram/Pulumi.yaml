@@ -2,46 +2,41 @@ name: basicprogram
 runtime: yaml
 resources:
 
-  # MVP resource, check string inputs and outputs.
-  testres1:
+  minimalRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
-      requiredInputString: "input1"
+      requiredInputString: |-
+        input1
 
-  # Chain to testres1 to test handling unknowns.
-  testres2:
+  chainedRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
-      requiredInputString: ${testres1.requiredInputStringCopy}
+      requiredInputString: ${minimalRes.requiredInputStringCopy}
 
-  # Test setting optional strings.
-  testres3:
+  strRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
       requiredInputString: "x"
       optionalInputString: "y"
 
-  # Test setting optional numbers.
-  testres4:
+  numRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
       requiredInputString: "x"
       optionalInputNumber: 3
 
-  # Test setting optional booleans.
-  testres5:
+  boolRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
       requiredInputString: "x"
       optionalInputBool: true
 
-  # Test List[String] type propagation.
-  testres6:
+  stringListRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
@@ -51,8 +46,7 @@ resources:
         - b
         - c
 
-  # Test Map[String]String type propagation.
-  testres7:
+  stringMapRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
@@ -62,26 +56,36 @@ resources:
         b: b1
 
 outputs:
-  # Should be equal to "input1".
-  requiredInputStringCopy: ${testres1.requiredInputStringCopy}
 
-  # Should not be set.
-  optionalInputStringCopy: ${testres1.optionalInputStringCopy}
+  testMinimal__actual: ${minimalRes.requiredInputStringCopy}
+  testMinimal__expect: |-
+    input1
 
-  # Should also be equal to "input1".
-  requiredInputStringCopy2: ${testres2.requiredInputStringCopy}
+  testComputedNull__actual:
+    fn::toJSON: ${minimalRes.optionalInputStringCopy}
+  testComputedNull__expect: |-
+    null
 
-  # Should be equal to "y".
-  testoptstring: ${testres3.optionalInputStringCopy}
+  testChained__actual: ${chainedRes.requiredInputStringCopy}
+  testChained__expect: |-
+    input1
 
-  # Should be equal to 3.
-  testoptnumber: ${testres4.optionalInputNumberCopy}
+  testString__actual: ${strRes.optionalInputStringCopy}
+  testString__expect: |-
+    y
 
-  # Should be equal to true.
-  testoptbool: ${testres5.optionalInputBoolCopy}
+  testNumber__actual: ${numRes.optionalInputNumberCopy}
+  testNumber__expect: 3
 
-  # Should be equal to [a,b,c].
-  teststringlist: ${testres6.optionalInputStringListCopy}
+  testBool__actual: ${boolRes.optionalInputBoolCopy}
+  testBool__expect: true
 
-  # Should be equal to {a: a1, b: b1}.
-  teststringmap: ${testres7.optionalInputStringMapCopy}
+  testStringList__actual:
+    fn::toJSON: ${stringListRes.optionalInputStringListCopy}
+  testStringList__expect: |-
+    ["a","b","c"]
+
+  testStringMap__actual:
+    fn::toJSON: ${stringMapRes.optionalInputStringMapCopy}
+  testStringMap__expect: |-
+    {"a":"a1","b":"b1"}
