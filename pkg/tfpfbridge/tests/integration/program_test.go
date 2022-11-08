@@ -60,7 +60,7 @@ func ensureTestBridgeProviderCompiled(wd string) error {
 	return cmd.Run()
 }
 
-// Stacks may define tests inline by a simple convention of proving
+// Stacks may define tests inline by a simple convention of providing
 // ${test}__expect and ${test}__actual pairs. For example:
 //
 //    outputs:
