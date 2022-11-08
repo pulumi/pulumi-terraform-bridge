@@ -123,7 +123,11 @@ removes the cloud state, and Read copies it.
 			"optionalInputStringListCopy": {
 				Type:        types.ListType{ElemType: types.StringType},
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputStringListCopy",
+				Description: "Computed as a copy of optionalInputStringList",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputStringList"},
+				},
 			},
 		},
 	}
