@@ -1,5 +1,49 @@
 [
   {
+    "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
+    "request": {},
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
+    "request": {
+      "project": "genradom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": "."
+    },
+    "response": {
+      "plugins": [
+        {
+          "name": "random",
+          "kind": "resource",
+          "version": "v4.8.2"
+        }
+      ]
+    },
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceProvider/Configure",
     "request": {
       "args": {
@@ -83,7 +127,7 @@
         "genradom:min": "0"
       },
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:55062",
+      "monitorAddress": "127.0.0.1:57447",
       "organization": "t0yv0"
     },
     "response": {},

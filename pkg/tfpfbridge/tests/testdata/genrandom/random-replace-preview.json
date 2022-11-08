@@ -1,5 +1,49 @@
 [
   {
+    "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
+    "request": {},
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
+    "request": {
+      "project": "genradom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": "."
+    },
+    "response": {
+      "plugins": [
+        {
+          "name": "random",
+          "kind": "resource",
+          "version": "v4.8.2"
+        }
+      ]
+    },
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceProvider/Configure",
     "request": {
       "args": {
@@ -127,7 +171,7 @@
         "min": 2,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "/Xr2sXH6y4IJNGDblklORui4inrh4NmIqDesxxO+7Es="
+      "randomSeed": "9RYCnHySpyx8kf9OxnoBQHddW+bNx3NKLw3FWaBXfMM="
     },
     "response": {
       "inputs": {
@@ -185,7 +229,7 @@
         "min": 2,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "/Xr2sXH6y4IJNGDblklORui4inrh4NmIqDesxxO+7Es="
+      "randomSeed": "9RYCnHySpyx8kf9OxnoBQHddW+bNx3NKLw3FWaBXfMM="
     },
     "response": {
       "inputs": {
@@ -208,15 +252,15 @@
         "max": 100,
         "min": 2,
         "seed": "pseudo-random-seed"
-      }
+      },
+      "preview": true
     },
     "response": {
-      "id": "41",
       "properties": {
-        "id": "41",
+        "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
         "max": 100,
         "min": 2,
-        "result": 41,
+        "result": "3eeb2bf0-c639-47a8-9e75-3b44932eb421",
         "seed": "pseudo-random-seed"
       }
     },
@@ -249,12 +293,9 @@
     },
     "response": {
       "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
-      "id": "41",
       "object": {
-        "id": "41",
         "max": 100,
         "min": 2,
-        "result": 41,
         "seed": "pseudo-random-seed"
       }
     },
@@ -267,7 +308,7 @@
     "request": {
       "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
       "outputs": {
-        "r.result": 41
+        "r.result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
       }
     },
     "response": {},
@@ -285,8 +326,9 @@
       "config": {
         "genradom:min": "2"
       },
+      "dryRun": true,
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:55207",
+      "monitorAddress": "127.0.0.1:57385",
       "organization": "t0yv0"
     },
     "response": {},
@@ -294,26 +336,6 @@
       "kind": "language",
       "mode": "client",
       "runtime": "go"
-    }
-  },
-  {
-    "method": "/pulumirpc.ResourceProvider/Delete",
-    "request": {
-      "id": "15",
-      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
-      "properties": {
-        "id": "15",
-        "max": 100,
-        "min": 1,
-        "result": 15,
-        "seed": "pseudo-random-seed"
-      }
-    },
-    "response": {},
-    "metadata": {
-      "kind": "resource",
-      "mode": "client",
-      "name": "random"
     }
   }
 ]
