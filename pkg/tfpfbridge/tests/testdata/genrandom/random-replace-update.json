@@ -1,5 +1,49 @@
 [
   {
+    "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
+    "request": {},
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
+    "request": {
+      "project": "genradom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": "."
+    },
+    "response": {
+      "plugins": [
+        {
+          "name": "random",
+          "kind": "resource",
+          "version": "v4.8.2"
+        }
+      ]
+    },
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceProvider/Configure",
     "request": {
       "args": {
@@ -119,7 +163,7 @@
       "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
       "olds": {
         "max": 100,
-        "min": 2,
+        "min": 1,
         "seed": "pseudo-random-seed"
       },
       "news": {
@@ -127,7 +171,7 @@
         "min": 2,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "FSaPTOS35iEijXVLuP1ct0m0Eva1uD/5Ho6aCZhM2tk="
+      "randomSeed": "pzRK95WDJ037/tWLJ6zr6aTP6I/Q8UjAqPQS7D2KeOs="
     },
     "response": {
       "inputs": {
@@ -145,13 +189,13 @@
   {
     "method": "/pulumirpc.ResourceProvider/Diff",
     "request": {
-      "id": "41",
+      "id": "15",
       "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
       "olds": {
-        "id": "41",
+        "id": "15",
         "max": 100,
-        "min": 2,
-        "result": 41,
+        "min": 1,
+        "result": 15,
         "seed": "pseudo-random-seed"
       },
       "news": {
@@ -161,7 +205,64 @@
       }
     },
     "response": {
-      "changes": "DIFF_NONE"
+      "replaces": [
+        "min"
+      ],
+      "changes": "DIFF_SOME",
+      "diffs": [
+        "min"
+      ]
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Check",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "olds": {},
+      "news": {
+        "max": 100,
+        "min": 2,
+        "seed": "pseudo-random-seed"
+      },
+      "randomSeed": "pzRK95WDJ037/tWLJ6zr6aTP6I/Q8UjAqPQS7D2KeOs="
+    },
+    "response": {
+      "inputs": {
+        "max": 100,
+        "min": 2,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Create",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "properties": {
+        "max": 100,
+        "min": 2,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "response": {
+      "id": "41",
+      "properties": {
+        "id": "41",
+        "max": 100,
+        "min": 2,
+        "result": 41,
+        "seed": "pseudo-random-seed"
+      }
     },
     "metadata": {
       "kind": "resource",
@@ -229,7 +330,7 @@
         "genradom:min": "2"
       },
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:55026",
+      "monitorAddress": "127.0.0.1:57406",
       "organization": "t0yv0"
     },
     "response": {},
@@ -237,6 +338,26 @@
       "kind": "language",
       "mode": "client",
       "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Delete",
+    "request": {
+      "id": "15",
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "properties": {
+        "id": "15",
+        "max": 100,
+        "min": 1,
+        "result": 15,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
     }
   }
 ]
