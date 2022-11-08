@@ -72,6 +72,10 @@ func TestBasicProgram(t *testing.T) {
 			testoptbool, ok := stack.Outputs["testoptbool"]
 			assert.True(t, ok)
 			assert.Equal(t, true, testoptbool)
+
+			teststringlist, ok := stack.Outputs["teststringlist"]
+			assert.True(t, ok)
+			assert.Equal(t, []interface{}{"a", "b", "c"}, teststringlist)
 		},
 	})
 }
