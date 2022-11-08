@@ -129,6 +129,19 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optionalInputStringList"},
 				},
 			},
+			"optionalInputStringMap": {
+				Type:     types.MapType{ElemType: types.StringType},
+				Optional: true,
+			},
+			"optionalInputStringMapCopy": {
+				Type:        types.MapType{ElemType: types.StringType},
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputStringMap",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputStringMap"},
+				},
+			},
 		},
 	}
 }
@@ -327,6 +340,11 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 
 	var sl *[]string
 	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl); !ok {
+		return
+	}
+
+	var sm *map[string]string
+	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm); !ok {
 		return
 	}
 

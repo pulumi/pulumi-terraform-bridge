@@ -76,6 +76,10 @@ func TestBasicProgram(t *testing.T) {
 			teststringlist, ok := stack.Outputs["teststringlist"]
 			assert.True(t, ok)
 			assert.Equal(t, []interface{}{"a", "b", "c"}, teststringlist)
+
+			teststringmap, ok := stack.Outputs["teststringmap"]
+			assert.True(t, ok)
+			assert.Equal(t, map[string]interface{}{"a": "a1", "b": "b1"}, teststringmap)
 		},
 	})
 }
