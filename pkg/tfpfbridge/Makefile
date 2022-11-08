@@ -25,4 +25,7 @@ tests/bin/pulumi-resource-random::
 	mkdir -p tests/bin
 	(cd tests/internal/cmd/pulumi-resource-random && go build -o ../../../bin/)
 
+gen.testdata::
+	(cd tests/testdatagen/genrandom && ./generate.sh)
+
 .PHONY: Test
