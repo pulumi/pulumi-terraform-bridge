@@ -62,7 +62,7 @@ func (p *Provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}

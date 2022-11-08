@@ -53,7 +53,7 @@ func (p *Provider) Update(
 		return nil, 0, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
