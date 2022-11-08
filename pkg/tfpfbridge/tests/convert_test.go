@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfbridgetests
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +93,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/tf2pu", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := ConvertTFValueToProperty(testcase.ty)(testcase.val)
+			actual, err := bridge.ConvertTFValueToProperty(testcase.ty)(testcase.val)
 			require.NoError(t, err)
 
 			assert.Equal(t, testcase.prop, actual)
@@ -101,7 +102,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/pu2tf", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := ConvertPropertyToTFValue(testcase.ty)(testcase.prop)
+			actual, err := bridge.ConvertPropertyToTFValue(testcase.ty)(testcase.prop)
 			require.NoError(t, err)
 
 			if testcase.normVal != nil {
