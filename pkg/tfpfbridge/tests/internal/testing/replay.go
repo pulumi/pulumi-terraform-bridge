@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,8 +34,6 @@ import (
 // Replays a provider operation log captured by PULUMI_DEBUG_GPRC=log.json against a server and asserts that the
 // response matches the one from the log.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
-	ctx := context.Background()
-
 	var entry jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entry)
 	assert.NoError(t, err)
@@ -43,76 +42,49 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 
 	switch entry.Method {
 	case "/pulumirpc.ResourceProvider/Check":
-		var req pulumirpc.CheckRequest
-
-		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
-		assert.NoError(t, err)
-
-		resp, err := server.Check(ctx, &req)
-		require.NoError(t, err)
-
-		m := jsonpb.Marshaler{}
-		buf := bytes.Buffer{}
-		err = m.Marshal(&buf, resp)
-		assert.NoError(t, err)
-
-		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
-		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+		replay(t, entry, new(pulumirpc.CheckRequest), server.Check)
 
 	case "/pulumirpc.ResourceProvider/Create":
-		var req pulumirpc.CreateRequest
-
-		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
-		assert.NoError(t, err)
-
-		resp, err := server.Create(ctx, &req)
-		require.NoError(t, err)
-
-		m := jsonpb.Marshaler{}
-		buf := bytes.Buffer{}
-		err = m.Marshal(&buf, resp)
-		assert.NoError(t, err)
-
-		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
-		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+		replay(t, entry, new(pulumirpc.CreateRequest), server.Create)
 
 	case "/pulumirpc.ResourceProvider/Delete":
-		var req pulumirpc.DeleteRequest
-
-		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
-		assert.NoError(t, err)
-
-		resp, err := server.Delete(ctx, &req)
-		require.NoError(t, err)
-
-		m := jsonpb.Marshaler{}
-		buf := bytes.Buffer{}
-		err = m.Marshal(&buf, resp)
-		assert.NoError(t, err)
-
-		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
-		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+		replay(t, entry, new(pulumirpc.DeleteRequest), server.Delete)
 
 	case "/pulumirpc.ResourceProvider/Diff":
-		var req pulumirpc.DiffRequest
+		replay(t, entry, new(pulumirpc.DiffRequest), server.Diff)
 
-		err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), &req)
-		assert.NoError(t, err)
+	case "/pulumirpc.ResourceProvider/Read":
+		replay(t, entry, new(pulumirpc.ReadRequest), server.Read)
 
-		resp, err := server.Diff(ctx, &req)
-		require.NoError(t, err)
-
-		m := jsonpb.Marshaler{}
-		buf := bytes.Buffer{}
-		err = m.Marshal(&buf, resp)
-		assert.NoError(t, err)
-
-		var expected, actual json.RawMessage = entry.Response, buf.Bytes()
-		assert.Equal(t, pretty(t, expected), pretty(t, actual))
+	case "/pulumirpc.ResourceProvider/Update":
+		replay(t, entry, new(pulumirpc.UpdateRequest), server.Update)
 
 	default:
 		t.Errorf("Unknown method: %s", entry.Method)
 	}
+}
+
+func replay[Req proto.Message, Resp proto.Message](
+	t *testing.T,
+	entry jsonLogEntry,
+	req Req,
+	serve func(context.Context, Req) (Resp, error),
+) {
+	ctx := context.Background()
+
+	err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), req)
+	assert.NoError(t, err)
+
+	resp, err := serve(ctx, req)
+	require.NoError(t, err)
+
+	m := jsonpb.Marshaler{}
+	buf := bytes.Buffer{}
+	err = m.Marshal(&buf, resp)
+	assert.NoError(t, err)
+
+	var expected, actual json.RawMessage = entry.Response, buf.Bytes()
+	assert.Equal(t, pretty(t, expected), pretty(t, actual))
 }
 
 // Replays all the events from traceFile=log.json captured by PULUMI_DEBUG_GPRC=log.json against a given server.
