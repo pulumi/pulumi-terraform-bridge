@@ -247,14 +247,14 @@ func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *
 		return
 	}
 	if !gotState {
-		resp.Diagnostics.AddError("testbridge_testres.Update found no prior pseudo-cloud state",
-			err.Error())
+		resp.Diagnostics.AddError("testbridge_testres.Update error",
+			"found no prior pseudo-cloud state")
 		return
 	}
 	if !oldState.Raw.Equal(req.State.Raw) {
 		resp.Diagnostics.AddError(
-			"testbridge_testres.Update called with a different State than it remembers",
-			err.Error())
+			"testbridge_testres.Update error",
+			"called with a different State than it remembers")
 		return
 	}
 
