@@ -30,6 +30,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -40,7 +41,7 @@ type Provider struct {
 	tfProvider     tfsdkprovider.Provider
 	tfServer       tfprotov6.ProviderServer
 	info           info.ProviderInfo
-	resourcesCache resources
+	resourcesCache pfutils.Resources
 	resourcesOnce  sync.Once
 	pulumiSchema   []byte
 }

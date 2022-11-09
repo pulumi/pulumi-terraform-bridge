@@ -16,10 +16,7 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/provider"
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -27,9 +24,10 @@ import (
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
-func (p *Provider) resources(ctx context.Context) (res resources, err error) {
+func (p *Provider) resources(ctx context.Context) (res pfutils.Resources, err error) {
 
 	p.resourcesOnce.Do(func() {
 		// Somehow this GetProviderSchema call needs to happen
@@ -41,7 +39,7 @@ func (p *Provider) resources(ctx context.Context) (res resources, err error) {
 		if _, e := p.tfServer.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); e != nil {
 			err = e
 		}
-		p.resourcesCache, err = gatherResources(ctx, p.tfProvider)
+		p.resourcesCache, err = pfutils.GatherResources(ctx, p.tfProvider)
 	})
 
 	return p.resourcesCache, err
@@ -58,10 +56,13 @@ func (p Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (r
 		return resourceHandle{}, err
 	}
 
-	schema := resources.schemaByTypeName[typeName]
+	n := pfutils.TypeName(typeName)
+	schema := resources.Schema(n)
 
 	result := resourceHandle{
-		makeResource:          resources.resourceByTypeName[typeName],
+		makeResource: func() pfresource.Resource {
+			return resources.Resource(n)
+		},
 		terraformResourceName: typeName,
 		schema:                schema,
 	}
@@ -78,54 +79,4 @@ type resourceHandle struct {
 	terraformResourceName string
 	schema                tfsdk.Schema
 	pulumiResourceInfo    *info.ResourceInfo // optional
-}
-
-type resources struct {
-	schemaByTypeName   map[string]tfsdk.Schema
-	resourceByTypeName map[string]func() pfresource.Resource
-	diagnostics        diag.Diagnostics
-}
-
-func gatherResources(ctx context.Context, prov provider.Provider) (resources, error) {
-	provMetadata := provider.MetadataResponse{}
-
-	if provWithMeta, ok := prov.(provider.ProviderWithMetadata); ok {
-		provWithMeta.Metadata(ctx, provider.MetadataRequest{}, &provMetadata)
-	}
-
-	rs := resources{
-		schemaByTypeName:   map[string]tfsdk.Schema{},
-		resourceByTypeName: map[string]func() pfresource.Resource{},
-		diagnostics:        diag.Diagnostics{},
-	}
-
-	for _, makeResource := range prov.Resources(ctx) {
-		res := makeResource()
-
-		resMeta := pfresource.MetadataResponse{}
-
-		res.Metadata(ctx, pfresource.MetadataRequest{
-			ProviderTypeName: provMetadata.TypeName,
-		}, &resMeta)
-
-		resSchema, diag := res.GetSchema(ctx)
-
-		if diag.HasError() {
-			errs := diag.Errors()
-			err := fmt.Errorf(
-				"Resource %s GetSchema() found %d errors. First error: %s",
-				resMeta.TypeName,
-				diag.ErrorsCount(),
-				errs[0].Summary(),
-			)
-			return resources{}, err
-		}
-
-		rs.diagnostics.Append(diag...)
-
-		rs.schemaByTypeName[resMeta.TypeName] = resSchema
-		rs.resourceByTypeName[resMeta.TypeName] = makeResource
-	}
-
-	return rs, nil
 }
