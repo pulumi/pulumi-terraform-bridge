@@ -1191,7 +1191,7 @@ type ConversionError struct {
 // construct a new ConversionError. The argument is expected to be
 // the value that was recovered from the panic.
 func newConversionError(panicArg interface{}, trace string) *ConversionError {
-	var err = fmt.Errorf("panic converting HCL: %s.", panicArg)
+	var err = fmt.Errorf("panic converting HCL: %s", panicArg)
 	return &ConversionError{
 		panicArg:   panicArg,
 		trace:      trace,
