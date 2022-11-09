@@ -2,12 +2,15 @@ module github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge
 
 go 1.18
 
+replace github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge/v3 => ../..
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/hashicorp/terraform-plugin-framework v0.14.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
-	github.com/pulumi/pulumi/pkg/v3 v3.43.1
-	github.com/pulumi/pulumi/sdk/v3 v3.43.1
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221108225118-291ab6e89383
+	github.com/pulumi/pulumi/pkg/v3 v3.44.2
+	github.com/pulumi/pulumi/sdk/v3 v3.44.2
 	github.com/stretchr/testify v1.8.0
 )
 
