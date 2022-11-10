@@ -40,15 +40,14 @@ func TestGenRandom(t *testing.T) {
 		"testdata/genrandom/random-replace-preview.json",
 		"testdata/genrandom/random-replace-update.json",
 	}
+	schema := genRandomSchemaBytes(t)
 
 	for _, trace := range traces {
 		trace := trace
 
 		t.Run(trace, func(t *testing.T) {
-			server := tfbridge.NewProviderServer(
-				testprovider.RandomProvider(),
-				testprovider.RandomProviderPulumiSchemaBytes(),
-			)
+			p := testprovider.RandomProvider()
+			server := tfbridge.NewProviderServer(p, schema)
 			testutils.ReplayTraceFile(t, server, trace)
 		})
 	}

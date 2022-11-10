@@ -1,36 +1,28 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfbridgetests
 
 import (
-	"context"
-	"encoding/json"
-	"os"
 	"testing"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
 func TestSchemaGen(t *testing.T) {
-	ctx := context.Background()
-	sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-		Color: colors.Never,
+	t.Run("random", func(t *testing.T) {
+		genRandomSchemaBytes(t)
 	})
-	info := schemashim.ShimSchemaOnlyProviderInfo(ctx, testprovider.RandomProvider())
-	schema, err := tfgen.GenerateSchema(info, sink)
-	require.NoError(t, err)
-
-	bytes, err := json.MarshalIndent(schema, "", "  ")
-	require.NoError(t, err)
-	t.Logf("SCHEMA:\n%v", string(bytes))
-
-	if f := os.Getenv("PULUMI_SAVE_RANDOM_SCHEMA"); f != "" {
-		err := os.WriteFile(f, bytes, 0700)
-		require.NoError(t, err)
-	}
+	t.Run("testbridge", func(t *testing.T) {
+		genTestBridgeSchemaBytes(t)
+	})
 }
