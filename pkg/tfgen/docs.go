@@ -17,6 +17,7 @@ package tfgen
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/text/cases"
@@ -1209,6 +1210,11 @@ func (err *ConversionError) Error() string {
 	return err.wrappedErr.Error()
 }
 
+// Unwrap provides error as returned by the conversion panic.
+func (err *ConversionError) Unwrap() error {
+	return err.wrappedErr
+}
+
 // Statically enforce that ConversionError implements the Error interface.
 var _ error = &ConversionError{}
 
@@ -1264,7 +1270,8 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 	if err != nil {
 		// Because this condition is presumably the result of a panic that we wrap as an error, we do not need to add
 		// anything to g.coverageTracker - that's covered in the panic recovery above.
-		if convErr, ok := err.(*ConversionError); ok {
+		var convErr *ConversionError
+		if errors.As(err, &convErr) {
 			g.debug("Printing stack trace for panic: %v", convErr.StackTrace)
 		}
 		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
