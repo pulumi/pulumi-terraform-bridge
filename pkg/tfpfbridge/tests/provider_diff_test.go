@@ -26,7 +26,7 @@ import (
 func TestEmptyTestresDiff(t *testing.T) {
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+		genTestBridgeSchemaBytes(t),
 	)
 	testCase := `
         {
@@ -57,7 +57,7 @@ func TestEmptyTestresDiff(t *testing.T) {
 func TestOptionRemovalTestresDiff(t *testing.T) {
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+		genTestBridgeSchemaBytes(t),
 	)
 	testCase := `
         {
@@ -92,7 +92,7 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+		genTestBridgeSchemaBytes(t),
 	)
 	testCase := `
         {

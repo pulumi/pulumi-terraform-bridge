@@ -33,8 +33,8 @@ tests/bin/pulumi-tfgen-random::
 	(cd tests/internal/cmd/pulumi-tfgen-random && go build -o ../../../bin/)
 
 tests/bin/pulumi-resource-testbridge:: tests/bin/pulumi-tfgen-testbridge
-	tests/bin/pulumi-tfgen-testbridge schema --out tests/internal/cmd/pulumi-tfgen-testbridge/
-	rm tests/internal/cmd/pulumi-tfgen-testbridge/Pulumi.yaml
+	./tests/bin/pulumi-tfgen-testbridge schema --out tests/internal/cmd/pulumi-resource-testbridge/
+	rm tests/internal/cmd/pulumi-resource-testbridge/Pulumi.yaml
 	(cd tests/internal/cmd/pulumi-resource-testbridge && go build -o ../../../bin/)
 
 tests/bin/pulumi-tfgen-testbridge::

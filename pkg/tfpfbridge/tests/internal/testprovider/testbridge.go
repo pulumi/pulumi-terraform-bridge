@@ -16,15 +16,12 @@ package testprovider
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
@@ -48,108 +45,6 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 		},
 	}
-}
-
-// TODO schema should be computed from PF declaration.
-func SyntheticTestBridgeProviderPulumiSchema() schema.PackageSpec {
-	inputProps := map[string]schema.PropertySpec{
-		"statedir": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"requiredInputString": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"optionalInputString": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"optionalInputNumber": {
-			TypeSpec: schema.TypeSpec{
-				Type: "number",
-			},
-		},
-		"optionalInputBool": {
-			TypeSpec: schema.TypeSpec{
-				Type: "boolean",
-			},
-		},
-		"optionalInputStringList": {
-			TypeSpec: schema.TypeSpec{
-				Type:  "array",
-				Items: &schema.TypeSpec{Type: "string"},
-			},
-		},
-		"optionalInputStringMap": {
-			TypeSpec: schema.TypeSpec{
-				Type:                 "object",
-				AdditionalProperties: &schema.TypeSpec{Type: "string"},
-			},
-		},
-	}
-	outputProps := map[string]schema.PropertySpec{
-		"id": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"requiredInputStringCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"optionalInputStringCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"optionalInputNumberCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type: "number",
-			},
-		},
-		"optionalInputBoolCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type: "boolean",
-			},
-		},
-		"optionalInputStringListCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type:  "array",
-				Items: &schema.TypeSpec{Type: "string"},
-			},
-		},
-		"optionalInputStringMapCopy": {
-			TypeSpec: schema.TypeSpec{
-				Type:                 "object",
-				AdditionalProperties: &schema.TypeSpec{Type: "string"},
-			},
-		},
-	}
-	return schema.PackageSpec{
-		Name: "testbridge",
-		Resources: map[string]schema.ResourceSpec{
-			"testbridge:index/testres:Testres": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
-					Properties: outputProps,
-					Required:   []string{"id", "requiredInputStringCopy"},
-				},
-				InputProperties: inputProps,
-				RequiredInputs:  []string{"statedir", "requiredInputString"},
-			},
-		},
-	}
-}
-
-func SyntheticTestBridgeProviderPulumiSchemaBytes() []byte {
-	s := SyntheticTestBridgeProviderPulumiSchema()
-	bytes, _ := json.MarshalIndent(s, "", "  ")
-	return bytes
 }
 
 type syntheticProvider struct {

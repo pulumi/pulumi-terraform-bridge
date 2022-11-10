@@ -36,7 +36,7 @@ func TestGenUpdates(t *testing.T) {
 	trace := "testdata/updateprogram.json"
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+		genTestBridgeSchemaBytes(t),
 	)
 	testutils.ReplayTraceFile(t, server, trace)
 }
