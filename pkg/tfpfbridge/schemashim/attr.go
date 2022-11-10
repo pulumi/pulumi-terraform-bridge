@@ -25,4 +25,6 @@ type attr interface {
 	IsRequired() bool
 	IsSensitive() bool
 	GetDeprecationMessage() string
+	GetDescription() string
+	GetMarkdownDescription() string
 }

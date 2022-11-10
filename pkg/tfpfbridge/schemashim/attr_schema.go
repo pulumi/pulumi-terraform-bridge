@@ -50,7 +50,10 @@ func (s *attrSchema) Required() bool {
 func (*attrSchema) Default() interface{}                { panic("TODO") }
 func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc { panic("TODO") }
 func (*attrSchema) DefaultValue() (interface{}, error)  { panic("TODO") }
-func (*attrSchema) Description() string                 { panic("TODO") }
+
+func (s *attrSchema) Description() string {
+	return s.attr.GetMarkdownDescription()
+}
 
 func (s *attrSchema) Computed() bool {
 	return s.attr.IsComputed()
@@ -110,7 +113,9 @@ func (s *attrSchema) Deprecated() string {
 	return s.attr.GetDeprecationMessage()
 }
 
-func (*attrSchema) Removed() string { panic("TODO") }
+func (*attrSchema) Removed() string {
+	return "" // TODO
+}
 
 func (s *attrSchema) Sensitive() bool {
 	return s.attr.IsSensitive()
