@@ -15,7 +15,6 @@
 package testprovider
 
 import (
-	_ "embed"
 	"fmt"
 	"path/filepath"
 	"unicode"
@@ -99,11 +98,4 @@ func RandomProvider() tfbridge.ProviderInfo {
 			},
 		},
 	}
-}
-
-//go:embed pulumi-random-schema-embed.json
-var pulumiRandomSchema []byte
-
-func RandomProviderPulumiSchemaBytes() []byte {
-	return pulumiRandomSchema
 }
