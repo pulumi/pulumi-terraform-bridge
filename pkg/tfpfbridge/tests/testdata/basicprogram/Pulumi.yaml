@@ -41,7 +41,7 @@ resources:
     properties:
       statedir: state
       requiredInputString: "x"
-      optionalInputStringList:
+      optionalInputStringLists:
         - a
         - b
         - c
@@ -81,7 +81,7 @@ outputs:
   testBool__expect: true
 
   testStringList__actual:
-    fn::toJSON: ${stringListRes.optionalInputStringListCopy}
+    fn::toJSON: ${stringListRes.optionalInputStringListCopies}
   testStringList__expect: |-
     ["a","b","c"]
 

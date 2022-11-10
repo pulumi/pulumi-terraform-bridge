@@ -64,15 +64,17 @@ func ConvertPropertyMapToTFValue(
 	objectType tftypes.Object,
 ) func(m resource.PropertyMap) (tftypes.Value, error) {
 	props := map[string]func(p resource.PropertyValue) (tftypes.Value, error){}
+	keys := map[string]resource.PropertyKey{}
 
 	for attr, attrType := range objectType.AttributeTypes {
 		props[attr] = ConvertPropertyToTFValue(attrType)
+		keys[attr] = toPropertyKey(attr, attrType)
 	}
 
 	convert := func(m resource.PropertyMap) (tftypes.Value, error) {
 		fields := map[string]tftypes.Value{}
 		for p, conv := range props {
-			v, gotV := m[resource.PropertyKey(p)]
+			v, gotV := m[keys[p]]
 			if gotV {
 				convertedV, err := conv(v)
 				if err != nil {
@@ -100,9 +102,11 @@ func ConvertTFValueToPropertyMap(
 	objectType tftypes.Object,
 ) func(v tftypes.Value) (resource.PropertyMap, error) {
 	props := map[string]func(tftypes.Value) (resource.PropertyValue, error){}
+	keys := map[string]resource.PropertyKey{}
 
 	for attr, attrType := range objectType.AttributeTypes {
 		props[attr] = ConvertTFValueToProperty(attrType)
+		keys[attr] = toPropertyKey(attr, attrType)
 	}
 
 	convert := func(obj tftypes.Value) (resource.PropertyMap, error) {
@@ -121,7 +125,7 @@ func ConvertTFValueToPropertyMap(
 						fmt.Errorf("Property %s failed to convert: %w",
 							p, err)
 				}
-				result[resource.PropertyKey(p)] = convertedV
+				result[keys[p]] = convertedV
 			}
 		}
 		return result, nil
