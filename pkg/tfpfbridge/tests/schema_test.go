@@ -28,4 +28,9 @@ func TestSchemaGen(t *testing.T) {
 	bytes, err := json.MarshalIndent(schema, "", "  ")
 	require.NoError(t, err)
 	t.Logf("SCHEMA:\n%v", string(bytes))
+
+	if f := os.Getenv("PULUMI_SAVE_RANDOM_SCHEMA"); f != "" {
+		err := os.WriteFile(f, bytes, 0700)
+		require.NoError(t, err)
+	}
 }
