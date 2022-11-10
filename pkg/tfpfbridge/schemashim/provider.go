@@ -114,10 +114,3 @@ func (p *schemaOnlyProvider) NewResourceConfig(object map[string]interface{}) sh
 func (p *schemaOnlyProvider) IsSet(v interface{}) ([]interface{}, bool) {
 	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }
-
-func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
-	return &schemaOnlyProvider{
-		ctx: ctx,
-		tf:  provider,
-	}
-}

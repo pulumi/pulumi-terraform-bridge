@@ -224,7 +224,7 @@ require (
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600 // indirect
 )
 
-replace github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge/v3 => ../../..
+replace github.com/pulumi/pulumi-terraform-bridge/v3 => ../../..
 
 replace github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge => ../
 

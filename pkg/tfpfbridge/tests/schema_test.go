@@ -2,6 +2,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
@@ -21,13 +21,11 @@ func TestSchemaGen(t *testing.T) {
 	sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
-	provider := testprovider.RandomProvider()
-	shimProvider := schemashim.ShimSchemaOnlyProvider(ctx, provider.P())
-	info := tfbridge.ProviderInfo{
-		P: shimProvider,
-	}
-
-	_, err := tfgen.GenerateSchema(info, sink)
+	info := schemashim.ShimSchemaOnlyProviderInfo(ctx, testprovider.RandomProvider())
+	schema, err := tfgen.GenerateSchema(info, sink)
 	require.NoError(t, err)
 
+	bytes, err := json.MarshalIndent(schema, "", "  ")
+	require.NoError(t, err)
+	t.Logf("SCHEMA:\n%v", string(bytes))
 }
