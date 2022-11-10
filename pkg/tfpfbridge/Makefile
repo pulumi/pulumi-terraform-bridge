@@ -19,15 +19,27 @@ build::
 	cd tests && go build -v all
 	cd tests/integration && go build -v all
 
-build.testproviders:: tests/bin/pulumi-resource-testbridge tests/bin/pulumi-resource-random
+build.testproviders:: \
+	tests/bin/pulumi-resource-testbridge \
+	tests/bin/pulumi-resource-random
 
-tests/bin/pulumi-resource-testbridge::
+tests/bin/pulumi-resource-random:: tests/bin/pulumi-tfgen-random
+	./tests/bin/pulumi-tfgen-random schema --out tests/internal/cmd/pulumi-resource-random/
+	rm tests/internal/cmd/pulumi-resource-random/Pulumi.yaml
+	(cd tests/internal/cmd/pulumi-resource-random && go build -o ../../../bin/)
+
+tests/bin/pulumi-tfgen-random::
 	mkdir -p tests/bin
+	(cd tests/internal/cmd/pulumi-tfgen-random && go build -o ../../../bin/)
+
+tests/bin/pulumi-resource-testbridge:: tests/bin/pulumi-tfgen-testbridge
+	tests/bin/pulumi-tfgen-testbridge schema --out tests/internal/cmd/pulumi-tfgen-testbridge/
+	rm tests/internal/cmd/pulumi-tfgen-testbridge/Pulumi.yaml
 	(cd tests/internal/cmd/pulumi-resource-testbridge && go build -o ../../../bin/)
 
-tests/bin/pulumi-resource-random::
+tests/bin/pulumi-tfgen-testbridge::
 	mkdir -p tests/bin
-	(cd tests/internal/cmd/pulumi-resource-random && go build -o ../../../bin/)
+	(cd tests/internal/cmd/pulumi-tfgen-testbridge && go build -o ../../../bin/)
 
 gen.testdata::
 	(cd tests/testdatagen/genrandom && ./generate.sh)

@@ -1,0 +1,682 @@
+{
+    "name": "random",
+    "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/terraform-providers/terraform-provider-random).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "nodejs": {
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true,
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues)."
+        },
+        "python": {
+            "compatibility": "tfbridge20",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues)."
+        }
+    },
+    "config": {},
+    "provider": {
+        "description": "The provider type for the random package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    },
+    "resources": {
+        "random:index/randomId:RandomId": {
+            "properties": {
+                "b64Std": {
+                    "type": "string"
+                },
+                "b64Url": {
+                    "type": "string"
+                },
+                "byteLength": {
+                    "type": "number"
+                },
+                "dec": {
+                    "type": "string"
+                },
+                "hex": {
+                    "type": "string"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "prefix": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "b64Std",
+                "b64Url",
+                "byteLength",
+                "dec",
+                "hex"
+            ],
+            "inputProperties": {
+                "byteLength": {
+                    "type": "number"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "prefix": {
+                    "type": "string"
+                }
+            },
+            "requiredInputs": [
+                "byteLength"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomId resources.\n",
+                "properties": {
+                    "b64Std": {
+                        "type": "string"
+                    },
+                    "b64Url": {
+                        "type": "string"
+                    },
+                    "byteLength": {
+                        "type": "number"
+                    },
+                    "dec": {
+                        "type": "string"
+                    },
+                    "hex": {
+                        "type": "string"
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "prefix": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomInteger:RandomInteger": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "max": {
+                    "type": "number"
+                },
+                "min": {
+                    "type": "number"
+                },
+                "result": {
+                    "type": "number"
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "max",
+                "min",
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "max": {
+                    "type": "number"
+                },
+                "min": {
+                    "type": "number"
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "requiredInputs": [
+                "max",
+                "min"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomInteger resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "max": {
+                        "type": "number"
+                    },
+                    "min": {
+                        "type": "number"
+                    },
+                    "result": {
+                        "type": "number"
+                    },
+                    "seed": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomPassword:RandomPassword": {
+            "properties": {
+                "bcryptHash": {
+                    "type": "string",
+                    "secret": true
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "lower": {
+                    "type": "boolean"
+                },
+                "minLower": {
+                    "type": "number"
+                },
+                "minNumeric": {
+                    "type": "number"
+                },
+                "minSpecial": {
+                    "type": "number"
+                },
+                "minUpper": {
+                    "type": "number"
+                },
+                "number": {
+                    "type": "boolean",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                },
+                "numeric": {
+                    "type": "boolean"
+                },
+                "overrideSpecial": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "string",
+                    "secret": true
+                },
+                "special": {
+                    "type": "boolean"
+                },
+                "upper": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "bcryptHash",
+                "length",
+                "lower",
+                "minLower",
+                "minNumeric",
+                "minSpecial",
+                "minUpper",
+                "number",
+                "numeric",
+                "result",
+                "special",
+                "upper"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "lower": {
+                    "type": "boolean"
+                },
+                "minLower": {
+                    "type": "number"
+                },
+                "minNumeric": {
+                    "type": "number"
+                },
+                "minSpecial": {
+                    "type": "number"
+                },
+                "minUpper": {
+                    "type": "number"
+                },
+                "number": {
+                    "type": "boolean",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                },
+                "numeric": {
+                    "type": "boolean"
+                },
+                "overrideSpecial": {
+                    "type": "string"
+                },
+                "special": {
+                    "type": "boolean"
+                },
+                "upper": {
+                    "type": "boolean"
+                }
+            },
+            "requiredInputs": [
+                "length"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomPassword resources.\n",
+                "properties": {
+                    "bcryptHash": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "length": {
+                        "type": "number"
+                    },
+                    "lower": {
+                        "type": "boolean"
+                    },
+                    "minLower": {
+                        "type": "number"
+                    },
+                    "minNumeric": {
+                        "type": "number"
+                    },
+                    "minSpecial": {
+                        "type": "number"
+                    },
+                    "minUpper": {
+                        "type": "number"
+                    },
+                    "number": {
+                        "type": "boolean",
+                        "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    },
+                    "numeric": {
+                        "type": "boolean"
+                    },
+                    "overrideSpecial": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "special": {
+                        "type": "boolean"
+                    },
+                    "upper": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomPet:RandomPet": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "separator": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "length",
+                "separator"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "separator": {
+                    "type": "string"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomPet resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "length": {
+                        "type": "number"
+                    },
+                    "prefix": {
+                        "type": "string"
+                    },
+                    "separator": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomShuffle:RandomShuffle": {
+            "properties": {
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "resultCount": {
+                    "type": "number"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "inputs",
+                "results"
+            ],
+            "inputProperties": {
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "resultCount": {
+                    "type": "number"
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "requiredInputs": [
+                "inputs"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomShuffle resources.\n",
+                "properties": {
+                    "inputs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "resultCount": {
+                        "type": "number"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "seed": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomString:RandomString": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "lower": {
+                    "type": "boolean"
+                },
+                "minLower": {
+                    "type": "number"
+                },
+                "minNumeric": {
+                    "type": "number"
+                },
+                "minSpecial": {
+                    "type": "number"
+                },
+                "minUpper": {
+                    "type": "number"
+                },
+                "number": {
+                    "type": "boolean",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                },
+                "numeric": {
+                    "type": "boolean"
+                },
+                "overrideSpecial": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "string"
+                },
+                "special": {
+                    "type": "boolean"
+                },
+                "upper": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "length",
+                "lower",
+                "minLower",
+                "minNumeric",
+                "minSpecial",
+                "minUpper",
+                "number",
+                "numeric",
+                "result",
+                "special",
+                "upper"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "length": {
+                    "type": "number"
+                },
+                "lower": {
+                    "type": "boolean"
+                },
+                "minLower": {
+                    "type": "number"
+                },
+                "minNumeric": {
+                    "type": "number"
+                },
+                "minSpecial": {
+                    "type": "number"
+                },
+                "minUpper": {
+                    "type": "number"
+                },
+                "number": {
+                    "type": "boolean",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                },
+                "numeric": {
+                    "type": "boolean"
+                },
+                "overrideSpecial": {
+                    "type": "string"
+                },
+                "special": {
+                    "type": "boolean"
+                },
+                "upper": {
+                    "type": "boolean"
+                }
+            },
+            "requiredInputs": [
+                "length"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomString resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "length": {
+                        "type": "number"
+                    },
+                    "lower": {
+                        "type": "boolean"
+                    },
+                    "minLower": {
+                        "type": "number"
+                    },
+                    "minNumeric": {
+                        "type": "number"
+                    },
+                    "minSpecial": {
+                        "type": "number"
+                    },
+                    "minUpper": {
+                        "type": "number"
+                    },
+                    "number": {
+                        "type": "boolean",
+                        "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    },
+                    "numeric": {
+                        "type": "boolean"
+                    },
+                    "overrideSpecial": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "string"
+                    },
+                    "special": {
+                        "type": "boolean"
+                    },
+                    "upper": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/randomUuid:RandomUuid": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "result": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering RandomUuid resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "result": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}
