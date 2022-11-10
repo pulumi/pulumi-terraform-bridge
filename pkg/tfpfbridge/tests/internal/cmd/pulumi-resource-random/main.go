@@ -16,15 +16,19 @@
 package main
 
 import (
+	_ "embed"
 	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
+
+//go:embed schema.json
+var schema []byte
 
 func main() {
 	tfbridge.Main(
 		"random",
 		"4.8.2",
 		testprovider.RandomProvider(),
-		testprovider.RandomProviderPulumiSchemaBytes(),
+		schema,
 	)
 }
