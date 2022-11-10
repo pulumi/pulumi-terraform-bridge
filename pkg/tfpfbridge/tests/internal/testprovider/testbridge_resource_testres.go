@@ -77,11 +77,18 @@ removes the cloud state, and Read copies it.
 				Type:        types.StringType,
 				Computed:    true,
 				Description: "Computed as a copy of requiredInputString",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+				},
 			},
 			"optionalInputStringCopy": {
 				Type:        types.StringType,
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputString",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputString"},
+				},
 			},
 			"optionalInputNumber": {
 				Type:     types.NumberType,
@@ -91,6 +98,10 @@ removes the cloud state, and Read copies it.
 				Type:        types.NumberType,
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputNumber",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputNumber"},
+				},
 			},
 			"optionalInputBool": {
 				Type:     types.BoolType,
@@ -100,6 +111,36 @@ removes the cloud state, and Read copies it.
 				Type:        types.BoolType,
 				Computed:    true,
 				Description: "Computed as a copy of optionalInputBool",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputBool"},
+				},
+			},
+			"optionalInputStringList": {
+				Type:     types.ListType{ElemType: types.StringType},
+				Optional: true,
+			},
+			"optionalInputStringListCopy": {
+				Type:        types.ListType{ElemType: types.StringType},
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputStringList",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputStringList"},
+				},
+			},
+			"optionalInputStringMap": {
+				Type:     types.MapType{ElemType: types.StringType},
+				Optional: true,
+			},
+			"optionalInputStringMapCopy": {
+				Type:        types.MapType{ElemType: types.StringType},
+				Computed:    true,
+				Description: "Computed as a copy of optionalInputStringMap",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"optionalInputStringMap"},
+				},
 			},
 		},
 	}
@@ -206,14 +247,14 @@ func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *
 		return
 	}
 	if !gotState {
-		resp.Diagnostics.AddError("testbridge_testres.Update found no prior pseudo-cloud state",
-			err.Error())
+		resp.Diagnostics.AddError("testbridge_testres.Update error",
+			"found no prior pseudo-cloud state")
 		return
 	}
 	if !oldState.Raw.Equal(req.State.Raw) {
 		resp.Diagnostics.AddError(
-			"testbridge_testres.Update called with a different State than it remembers",
-			err.Error())
+			"testbridge_testres.Update error",
+			"called with a different State than it remembers")
 		return
 	}
 
@@ -296,6 +337,17 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
 		return
 	}
+
+	var sl *[]string
+	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl); !ok {
+		return
+	}
+
+	var sm *map[string]string
+	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm); !ok {
+		return
+	}
+
 	if !state.Raw.IsFullyKnown() {
 		panic(fmt.Sprintf(
 			"Error in testres: resource computation should resolve all unknowns, but got %v",

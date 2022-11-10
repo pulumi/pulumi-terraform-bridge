@@ -105,7 +105,7 @@ func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, err
 			return tfname, nil
 		}
 	}
-	return "", fmt.Errorf("Unkonwn resource: %v", resourceToken)
+	return "", fmt.Errorf("[tfpfbridge] unknown resource token: %v", resourceToken)
 }
 
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.

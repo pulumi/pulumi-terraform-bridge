@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfbridgetests
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,6 +59,24 @@ func TestConvertTurnaround(t *testing.T) {
 		[][]float64{{0}, {}, {1.5}, {42, -10}},
 	)...)
 
+	cases = append(cases, convertTurnaroundTestCases(
+		tftypes.Map{ElementType: tftypes.String},
+		mapPV(resource.NewStringProperty),
+		map[string]string{},
+		map[string]string{"": ""},
+		map[string]string{"test": "test-string"},
+		map[string]string{"a": "a", "empty": "", "b": "b"},
+	)...)
+
+	cases = append(cases, convertTurnaroundTestCases(
+		tftypes.Map{ElementType: tftypes.Map{ElementType: tftypes.String}},
+		mapPV(mapPV(resource.NewStringProperty)),
+		map[string]map[string]string{},
+		map[string]map[string]string{"": {"": ""}},
+		map[string]map[string]string{"x": {"test": "test-string"}},
+		map[string]map[string]string{"x": {"a": "a"}, "y": {"empty": "", "b": "b"}},
+	)...)
+
 	cases = append(cases, []convertTurnaroundTestCase{
 		{
 			name:    "tftypes.Number/int",
@@ -74,7 +93,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/tf2pu", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := ConvertTFValueToProperty(testcase.ty)(testcase.val)
+			actual, err := bridge.ConvertTFValueToProperty(testcase.ty)(testcase.val)
 			require.NoError(t, err)
 
 			assert.Equal(t, testcase.prop, actual)
@@ -83,7 +102,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/pu2tf", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := ConvertPropertyToTFValue(testcase.ty)(testcase.prop)
+			actual, err := bridge.ConvertPropertyToTFValue(testcase.ty)(testcase.prop)
 			require.NoError(t, err)
 
 			if testcase.normVal != nil {
@@ -149,8 +168,18 @@ func arrayPV[T any](topv func(T) resource.PropertyValue) func(data []T) resource
 	}
 }
 
-// Enhance tftypes.NewValue to recur into lists. That is, be able to
-// pass []string for example instead of []tftypes.Value.
+func mapPV[T any](topv func(T) resource.PropertyValue) func(data map[string]T) resource.PropertyValue {
+	return func(data map[string]T) resource.PropertyValue {
+		var entries resource.PropertyMap = make(resource.PropertyMap)
+		for k, v := range data {
+			entries[resource.PropertyKey(k)] = topv(v)
+		}
+		return resource.NewObjectProperty(entries)
+	}
+}
+
+// Enhance tftypes.NewValue to recur into lists and maps. That is, be
+// able to pass []string for example instead of []tftypes.Value.
 func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 	if val == nil || val == tftypes.UnknownValue {
 		return tftypes.NewValue(t, val)
@@ -166,6 +195,15 @@ func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 			elems = append(elems, elem)
 		}
 
+		return tftypes.NewValue(t, elems)
+	case tftypes.Map:
+		elems := map[string]tftypes.Value{}
+		r := reflect.ValueOf(val)
+		iter := r.MapRange()
+		for iter.Next() {
+			key := iter.Key().Interface().(string)
+			elems[key] = tftypesNewValue(tt.ElementType, iter.Value().Interface())
+		}
 		return tftypes.NewValue(t, elems)
 	default:
 		return tftypes.NewValue(t, val)

@@ -22,75 +22,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
-// Tests expected empty update Diff interaction over the following program:
-//
-//      r, err := random.NewRandomInteger(ctx, "priority", &random.RandomIntegerArgs{
-//          Max: pulumi.Int(50000),
-//          Min: pulumi.Int(1),
-//      })
-func TestDiffRandomEmptyUpdate(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
-	testCase := `
-        {
-          "method": "/pulumirpc.ResourceProvider/Diff",
-          "request": {
-            "id": "11187",
-            "urn": "urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority",
-            "olds": {
-              "id": "11187",
-              "max": 50000,
-              "min": 1,
-              "result": 11187
-            },
-            "news": {
-              "__defaults": [],
-              "max": 50000,
-              "min": 1
-            }
-          },
-          "response": {
-            "changes": "DIFF_NONE"
-          }
-        }
-        `
-	testutils.Replay(t, server, testCase)
-}
-
-// The same program but with min field changed, causing a replacement plan.
-func TestDiffRandomMinChanged(t *testing.T) {
-	server := tfbridge.NewProviderServer(testprovider.RandomProvider(), []byte{})
-	testCase := `
-        {
-          "method": "/pulumirpc.ResourceProvider/Diff",
-          "request": {
-            "id": "11187",
-            "urn": "urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority",
-            "olds": {
-              "id": "11187",
-              "max": 50000,
-              "min": 1,
-              "result": 11187
-            },
-            "news": {
-              "__defaults": [],
-              "max": 50000,
-              "min": 2
-            }
-          },
-          "response": {
-            "replaces": [
-              "min"
-            ],
-            "changes": "DIFF_SOME",
-            "diffs": [
-              "min"
-            ]
-          }
-        }
-        `
-	testutils.Replay(t, server, testCase)
-}
-
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
 	server := tfbridge.NewProviderServer(
@@ -119,5 +50,73 @@ func TestEmptyTestresDiff(t *testing.T) {
           }
         }
         `
+	testutils.Replay(t, server, testCase)
+}
+
+// Test removing an optional input.
+func TestOptionRemovalTestresDiff(t *testing.T) {
+	server := tfbridge.NewProviderServer(
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:Testres::testres1",
+            "olds": {
+              "id": "0",
+              "requiredInputString": "input1",
+              "optionalInputString": "input2",
+              "requiredInputStringCopy": "input3",
+              "statedir": "/tmp"
+            },
+            "news": {
+              "requiredInputString": "input1",
+              "statedir": "/tmp"
+            }
+          },
+          "response": {
+            "changes": "DIFF_SOME",
+            "diffs": [
+               "optionalInputString"
+            ]
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
+
+// Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
+func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
+	server := tfbridge.NewProviderServer(
+		testprovider.SyntheticTestBridgeProvider(),
+		testprovider.SyntheticTestBridgeProviderPulumiSchemaBytes(),
+	)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:dev12::basicprogram::testbridge:index/testres:Testres::testres5",
+            "olds": {
+              "id": "0",
+              "optionalInputBool": true,
+              "optionalInputBoolCopy": true,
+              "requiredInputString": "x",
+              "requiredInputStringCopy": "x",
+              "statedir": "state"
+            },
+            "news": {
+              "optionalInputBool": true,
+              "requiredInputString": "x",
+              "statedir": "state"
+            }
+          },
+          "response": {
+            "changes": "DIFF_NONE"
+          }
+        }`
 	testutils.Replay(t, server, testCase)
 }

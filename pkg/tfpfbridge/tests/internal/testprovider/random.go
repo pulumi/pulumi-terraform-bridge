@@ -15,6 +15,7 @@
 package testprovider
 
 import (
+	_ "embed"
 	"fmt"
 	"path/filepath"
 	"unicode"
@@ -57,7 +58,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-random",
-		Version:     "0.0.1",
+		Version:     "4.8.2",
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"random_id":       {Tok: randomResource(randomMod, "RandomId")},
 			"random_password": {Tok: randomResource(randomMod, "RandomPassword")},
@@ -98,4 +99,11 @@ func RandomProvider() tfbridge.ProviderInfo {
 			},
 		},
 	}
+}
+
+//go:embed pulumi-random-schema-embed.json
+var pulumiRandomSchema []byte
+
+func RandomProviderPulumiSchemaBytes() []byte {
+	return pulumiRandomSchema
 }

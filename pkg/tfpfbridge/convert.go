@@ -149,6 +149,10 @@ func ConvertTFValueToProperty(
 		listTy := ty.(tftypes.List)
 		decElem := ConvertTFValueToProperty(listTy.ElementType)
 		return decList(decElem)
+	case ty.Is(tftypes.Map{}):
+		mapTy := ty.(tftypes.Map)
+		decElem := ConvertTFValueToProperty(mapTy.ElementType)
+		return decMap(decElem)
 	default:
 		return func(v tftypes.Value) (resource.PropertyValue, error) {
 			return resource.PropertyValue{},
@@ -172,6 +176,10 @@ func ConvertPropertyToTFValue(
 		listTy := ty.(tftypes.List)
 		encElem := ConvertPropertyToTFValue(listTy.ElementType)
 		return encList(listTy.ElementType, encElem)
+	case ty.Is(tftypes.Map{}):
+		mapTy := ty.(tftypes.Map)
+		encElem := ConvertPropertyToTFValue(mapTy.ElementType)
+		return encMap(mapTy.ElementType, encElem)
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
@@ -372,5 +380,59 @@ func encList(elemTy tftypes.Type, encElem encoder) encoder {
 			values = append(values, v)
 		}
 		return tftypes.NewValue(listTy, values), nil
+	}
+}
+
+func decMap(decElem decoder) decoder {
+	zero := resource.NewObjectProperty(make(resource.PropertyMap))
+	return func(v tftypes.Value) (resource.PropertyValue, error) {
+		if !v.IsKnown() {
+			return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		}
+		if v.IsNull() {
+			return resource.NewPropertyValue(nil), nil
+		}
+		elements := map[string]tftypes.Value{}
+		if err := v.As(&elements); err != nil {
+			return resource.PropertyValue{},
+				fmt.Errorf("decMap fails with %s: %w", v.String(), err)
+		}
+
+		values := make(resource.PropertyMap)
+		for k, e := range elements {
+			ev, err := decElem(e)
+			if err != nil {
+				return resource.PropertyValue{},
+					fmt.Errorf("decMap fails with %s: %w", e.String(), err)
+			}
+			values[resource.PropertyKey(k)] = ev
+		}
+		return resource.NewObjectProperty(values), nil
+	}
+}
+
+func encMap(elemTy tftypes.Type, encElem encoder) encoder {
+	mapTy := tftypes.Map{ElementType: elemTy}
+	return func(p resource.PropertyValue) (tftypes.Value, error) {
+		if propertyValueIsUnkonwn(p) {
+			return tftypes.NewValue(mapTy, tftypes.UnknownValue), nil
+		}
+		if p.IsNull() {
+			return tftypes.NewValue(mapTy, nil), nil
+		}
+		if !p.IsObject() {
+			return tftypes.NewValue(mapTy, nil),
+				fmt.Errorf("Expected an Array PropertyValue")
+		}
+		values := map[string]tftypes.Value{}
+		for key, pv := range p.ObjectValue() {
+			v, err := encElem(pv)
+			if err != nil {
+				return tftypes.NewValue(mapTy, nil),
+					fmt.Errorf("encMap failed on %v", pv)
+			}
+			values[string(key)] = v
+		}
+		return tftypes.NewValue(mapTy, values), nil
 	}
 }

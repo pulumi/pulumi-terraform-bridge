@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,43 +42,46 @@ func TestBasicProgram(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
 		Dir: filepath.Join("..", "testdata", "basicprogram"),
-
 		PrepareProject: func(info *engine.Projinfo) error {
 			return prepareStateFolder(info.Root)
 		},
+		ExtraRuntimeValidation: validateExpectedVsActual,
+	})
+}
 
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			requiredInputStringCopy, ok := stack.Outputs["requiredInputStringCopy"]
-			assert.True(t, ok)
-			assert.Equal(t, "input1", requiredInputStringCopy)
+func TestUpdateProgram(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	bin := filepath.Join(wd, "..", "bin")
 
-			optionalInputStringCopy, ok := stack.Outputs["optionalInputStringCopy"]
-			assert.True(t, ok)
-			// TODO is this the behavior we want for optional values that are unset?
-			assert.Nil(t, optionalInputStringCopy)
+	t.Run("compile-test-provider", func(t *testing.T) {
+		err := ensureTestBridgeProviderCompiled(wd)
+		require.NoError(t, err)
+	})
 
-			requiredInputStringCopy2, ok := stack.Outputs["requiredInputStringCopy2"]
-			assert.True(t, ok)
-			assert.Equal(t, "input1", requiredInputStringCopy2)
-
-			testoptstring, ok := stack.Outputs["testoptstring"]
-			assert.True(t, ok)
-			assert.Equal(t, "y", testoptstring)
-
-			testoptnumber, ok := stack.Outputs["testoptnumber"]
-			assert.True(t, ok)
-			// TODO should integers flow specially as opposed to floats?
-			assert.Equal(t, float64(3), testoptnumber)
-
-			testoptbool, ok := stack.Outputs["testoptbool"]
-			assert.True(t, ok)
-			assert.Equal(t, true, testoptbool)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "updateprogram"),
+		PrepareProject: func(info *engine.Projinfo) error {
+			return prepareStateFolder(info.Root)
 		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join("..", "testdata", "updateprogram-2"),
+				Additive:               true,
+				ExtraRuntimeValidation: validateExpectedVsActual,
+			},
+		},
+		ExtraRuntimeValidation: validateExpectedVsActual,
 	})
 }
 
 func prepareStateFolder(root string) error {
-	return os.Mkdir(filepath.Join(root, "state"), 0777)
+	err := os.Mkdir(filepath.Join(root, "state"), 0777)
+	if os.IsExist(err) {
+		return nil
+	}
+	return err
 }
 
 func ensureTestBridgeProviderCompiled(wd string) error {
@@ -85,4 +89,31 @@ func ensureTestBridgeProviderCompiled(wd string) error {
 	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe))
 	cmd.Dir = filepath.Join(wd, "..", "internal", "cmd", exe)
 	return cmd.Run()
+}
+
+// Stacks may define tests inline by a simple convention of providing
+// ${test}__expect and ${test}__actual pairs. For example:
+//
+//    outputs:
+//      test1__expect: 1
+//      test1__actual: ${res1.out}
+//
+// This function interpretes these outputs to actual tests.
+func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	expects := map[string]interface{}{}
+	actuals := map[string]interface{}{}
+	for n, output := range stack.Outputs {
+		if strings.HasSuffix(n, "__actual") {
+			actuals[strings.TrimSuffix(n, "__actual")] = output
+		}
+		if strings.HasSuffix(n, "__expect") {
+			expects[strings.TrimSuffix(n, "__expect")] = output
+		}
+	}
+	for k := range expects {
+		k := k
+		t.Run(k, func(t *testing.T) {
+			assert.Equal(t, expects[k], actuals[k])
+		})
+	}
 }

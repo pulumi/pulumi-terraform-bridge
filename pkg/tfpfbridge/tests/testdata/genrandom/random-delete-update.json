@@ -1,0 +1,160 @@
+[
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
+    "request": {},
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
+    "request": {
+      "project": "genradom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": "."
+    },
+    "response": {
+      "plugins": [
+        {
+          "name": "random",
+          "kind": "resource",
+          "version": "v4.8.2"
+        }
+      ]
+    },
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {
+        "version": "4.8.2"
+      },
+      "acceptSecrets": true,
+      "acceptResources": true
+    },
+    "response": {
+      "acceptSecrets": true,
+      "supportsPreview": true,
+      "acceptResources": true
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "resourceReferences"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "outputValues"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/RegisterResource",
+    "request": {
+      "type": "pulumi:pulumi:Stack",
+      "name": "genradom-generate",
+      "object": {},
+      "acceptSecrets": true,
+      "customTimeouts": {},
+      "acceptResources": true
+    },
+    "response": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "object": {}
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
+    "request": {
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "outputs": {}
+    },
+    "response": {},
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/Run",
+    "request": {
+      "project": "genradom",
+      "stack": "generate",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "program": ".",
+      "config": {
+        "genradom:min": "0"
+      },
+      "parallel": 2147483647,
+      "monitorAddress": "127.0.0.1:57447",
+      "organization": "t0yv0"
+    },
+    "response": {},
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Delete",
+    "request": {
+      "id": "41",
+      "urn": "urn:pulumi:generate::genradom::random:index/randomInteger:RandomInteger::r1",
+      "properties": {
+        "id": "41",
+        "max": 100,
+        "min": 2,
+        "result": 41,
+        "seed": "pseudo-random-seed"
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  }
+]
