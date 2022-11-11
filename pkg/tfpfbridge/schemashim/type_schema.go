@@ -39,11 +39,20 @@ func (s *typeSchema) Type() shim.ValueType {
 
 // Return zero values the following methods. GenerateSchema calls them, although they make no sense
 // at the level of typeSchema. While attrSchema may be Optional or Required, typeSchema is cannot.
-func (*typeSchema) Optional() bool     { return false }
-func (*typeSchema) Required() bool     { return false }
-func (*typeSchema) Computed() bool     { return false }
-func (*typeSchema) ForceNew() bool     { return false }
-func (*typeSchema) Elem() interface{}  { return nil }
+func (*typeSchema) Optional() bool { return false }
+func (*typeSchema) Required() bool { return false }
+func (*typeSchema) Computed() bool { return false }
+func (*typeSchema) ForceNew() bool { return false }
+
+func (s *typeSchema) Elem() interface{} {
+	if s.t.Is(tftypes.Object{}) {
+		obj := s.t.(tftypes.Object)
+		var m shim.SchemaMap = &objectMap{obj}
+		return m
+	}
+	return nil
+}
+
 func (*typeSchema) MaxItems() int      { return 0 }
 func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }

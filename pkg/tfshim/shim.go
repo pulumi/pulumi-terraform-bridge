@@ -58,6 +58,7 @@ const (
 	TypeList
 	TypeMap
 	TypeSet
+	TypeObject
 )
 
 type SchemaDefaultFunc func() (interface{}, error)

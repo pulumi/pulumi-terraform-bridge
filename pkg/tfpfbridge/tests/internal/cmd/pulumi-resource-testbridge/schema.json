@@ -16,6 +16,11 @@
         }
     },
     "config": {},
+    "types": {
+        "testbridge:index/TestresService:TestresService": {
+            "type": "object"
+        }
+    },
     "provider": {
         "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
     },
@@ -70,6 +75,13 @@
                 "requiredInputStringCopy": {
                     "type": "string"
                 },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services\n"
+                },
                 "statedir": {
                     "type": "string"
                 }
@@ -108,6 +120,13 @@
                 },
                 "requiredInputString": {
                     "type": "string"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services\n"
                 },
                 "statedir": {
                     "type": "string"
@@ -167,6 +186,13 @@
                     },
                     "requiredInputStringCopy": {
                         "type": "string"
+                    },
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                        },
+                        "description": "services\n"
                     },
                     "statedir": {
                         "type": "string"
