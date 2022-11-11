@@ -17,6 +17,7 @@ package tfgen
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/text/cases"
@@ -26,6 +27,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -1174,6 +1176,48 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 	return output.String()
 }
 
+// A ConversionError occurs when convert.Convert yields a panic.
+// This can be removed when https://github.com/pulumi/pulumi-terraform-bridge/issues/477
+// is resolved. ConversionError exposes the stacktrace of the panic so callers
+// can choose to pass the trace along to the user or swallow it.
+type ConversionError struct {
+	// panicArg is the argument that was passed to panic() during conversion.
+	panicArg interface{}
+	// trace is the captured stacktrace.
+	trace string
+	// wrappedErr is the error message provided by this struct.
+	wrappedErr error
+}
+
+// construct a new ConversionError. The argument is expected to be
+// the value that was recovered from the panic.
+func newConversionError(panicArg interface{}, trace string) *ConversionError {
+	var err = fmt.Errorf("panic converting HCL: %s", panicArg)
+	return &ConversionError{
+		panicArg:   panicArg,
+		trace:      trace,
+		wrappedErr: err,
+	}
+}
+
+// StackTrace returns the stacktrace of the error.
+func (err *ConversionError) StackTrace() string {
+	return err.trace
+}
+
+// Return the err-representation of this struct.
+func (err *ConversionError) Error() string {
+	return err.wrappedErr.Error()
+}
+
+// Unwrap provides error as returned by the conversion panic.
+func (err *ConversionError) Unwrap() error {
+	return err.wrappedErr
+}
+
+// Statically enforce that ConversionError implements the Error interface.
+var _ error = &ConversionError{}
+
 // convert wraps convert.Convert so that it returns an error in the event of a panic in convert.Convert
 //
 // Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
@@ -1185,8 +1229,8 @@ func (g *Generator) convert(input afero.Fs, languageName string) (files map[stri
 		if v != nil {
 			files = map[string][]byte{}
 			diags = convert.Diagnostics{}
-			err = fmt.Errorf("panic converting HCL: %v", v)
-
+			var trace = string(debug.Stack())
+			err = newConversionError(v, trace)
 			g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
 		}
 	}()
@@ -1226,6 +1270,10 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 	if err != nil {
 		// Because this condition is presumably the result of a panic that we wrap as an error, we do not need to add
 		// anything to g.coverageTracker - that's covered in the panic recovery above.
+		var convErr *ConversionError
+		if errors.As(err, &convErr) {
+			g.debug("Printing stack trace for panic: %v", convErr.StackTrace)
+		}
 		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 	}
 	if diags.All.HasErrors() {
