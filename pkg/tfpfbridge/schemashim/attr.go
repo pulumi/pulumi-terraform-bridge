@@ -19,7 +19,7 @@ import (
 )
 
 type attr interface {
-	GetType() pfattr.Type
+	FrameworkType() pfattr.Type
 	IsComputed() bool
 	IsOptional() bool
 	IsRequired() bool

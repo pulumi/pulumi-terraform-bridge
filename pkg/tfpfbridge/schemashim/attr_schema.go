@@ -24,6 +24,7 @@ import (
 )
 
 type attrSchema struct {
+	key  string
 	attr attr
 }
 
@@ -31,7 +32,7 @@ var _ shim.Schema = (*typeSchema)(nil)
 
 func (s *attrSchema) Type() shim.ValueType {
 	ctx := context.TODO()
-	ty := s.attr.GetType().TerraformType(ctx)
+	ty := s.attr.FrameworkType().TerraformType(ctx)
 	vt, err := convertType(ctx, ty)
 	if err != nil {
 		panic(err)
@@ -75,7 +76,7 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
 // shim.Schema specifically a &typeSchema, or else nil if the type has no element.
 func (s *attrSchema) Elem() interface{} {
 	ctx := context.TODO()
-	t := s.attr.GetType().TerraformType(ctx)
+	t := s.attr.FrameworkType().TerraformType(ctx)
 	switch {
 	case t.Is(tftypes.Bool):
 		return nil
