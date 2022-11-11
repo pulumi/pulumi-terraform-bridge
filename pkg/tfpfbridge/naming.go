@@ -29,18 +29,20 @@ import (
 )
 
 func toPropertyKey(name string, typ tftypes.Type) resource.PropertyKey {
-	if willPluralize(name, typ) {
-		return resource.PropertyKey(inflector.Pluralize(name))
+	if pluralized, ok := pluralize(name, typ); ok {
+		return resource.PropertyKey(pluralized)
 	}
 	return resource.PropertyKey(name)
 }
 
-func willPluralize(name string, typ tftypes.Type) bool {
+func pluralize(name string, typ tftypes.Type) (string, bool) {
 	if typ.Is(tftypes.List{}) {
 		plu := inflector.Pluralize(name)
 		distinct := plu != name
 		valid := inflector.Singularize(plu) == name
-		return valid && distinct
+		if valid && distinct {
+			return plu, true
+		}
 	}
-	return false
+	return name, false
 }
