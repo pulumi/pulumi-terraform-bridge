@@ -142,6 +142,39 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optionalInputStringMap"},
 				},
 			},
+			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
+			"services": {
+				MarkdownDescription: "services",
+				Optional:            true,
+				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
+					"ports": {
+						MarkdownDescription: "External ports and handlers",
+						Required:            true,
+						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
+							"port": {
+								MarkdownDescription: "External port",
+								Required:            true,
+								Type:                types.Int64Type,
+							},
+							"handlers": {
+								MarkdownDescription: "How the edge should process requests",
+								Optional:            true,
+								Type:                types.ListType{ElemType: types.StringType},
+							},
+						}),
+					},
+					"protocol": {
+						MarkdownDescription: "network protocol",
+						Required:            true,
+						Type:                types.StringType,
+					},
+					"internal_port": {
+						MarkdownDescription: "Port application listens on internally",
+						Required:            true,
+						Type:                types.Int64Type,
+					},
+				}),
+			},
 		},
 	}
 }
