@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "name": "simpledata",
+  "functions":{
+    "simpledata::source": {
+       "inputs": {
+         "type": "object",
+         "properties": {
+           "input_one": {
+            "type": "string"
+           },
+           "input_two": {
+            "type": "integer"
+           }
+         }
+       },
+       "outputs": {
+         "properties": {
+           "result": {
+             "type": "string"
+           }
+         },
+        "type": "object"
+      }
+    }
+  }
+}

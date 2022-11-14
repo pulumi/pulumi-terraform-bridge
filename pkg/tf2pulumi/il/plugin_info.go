@@ -15,6 +15,7 @@
 package il
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -34,6 +36,37 @@ import (
 type ProviderInfoSource interface {
 	// GetProviderInfo returns the tfbridge information for the indicated Terraform provider.
 	GetProviderInfo(registry, namespace, name, version string) (*tfbridge.ProviderInfo, error)
+}
+
+// mapperProviderInfoSource wraps a convert.Mapper to return tfbridge.ProviderInfo
+type mapperProviderInfoSource struct {
+	mapper convert.Mapper
+}
+
+func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
+	return &mapperProviderInfoSource{mapper: mapper}
+}
+
+func (mapper *mapperProviderInfoSource) GetProviderInfo(
+	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
+
+	data, err := mapper.mapper.GetMapping(name)
+	if err != nil {
+		return nil, err
+	}
+	// Might be nil or []
+	if len(data) == 0 {
+		message := fmt.Sprintf("could not find mapping information for provider %s", name)
+		message += "; try installing a pulumi plugin that supports this terraform provider"
+		return nil, fmt.Errorf(message)
+	}
+
+	var info *tfbridge.MarshallableProviderInfo
+	err = json.Unmarshal(data, &info)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode schema information for provider %s: %w", name, err)
+	}
+	return info.Unmarshal(), nil
 }
 
 // CachingProviderInfoSource wraps a ProviderInfoSource in a cache for faster access.
