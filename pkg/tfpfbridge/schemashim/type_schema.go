@@ -39,33 +39,39 @@ func (s *typeSchema) Type() shim.ValueType {
 
 // Return zero values the following methods. GenerateSchema calls them, although they make no sense
 // at the level of typeSchema. While attrSchema may be Optional or Required, typeSchema is cannot.
-func (*typeSchema) Optional() bool { return false }
-func (*typeSchema) Required() bool { return false }
-func (*typeSchema) Computed() bool { return false }
-func (*typeSchema) ForceNew() bool { return false }
+func (*typeSchema) Computed() bool  { return false }
+func (*typeSchema) ForceNew() bool  { return false }
+func (*typeSchema) Optional() bool  { return false }
+func (*typeSchema) Required() bool  { return false }
+func (*typeSchema) Sensitive() bool { return false }
 
 func (s *typeSchema) Elem() interface{} {
-	if s.t.Is(tftypes.Object{}) {
-		obj := s.t.(tftypes.Object)
-		var pseudoResource shim.Resource = &objectPseudoResource{obj}
+	switch tt := s.t.(type) {
+	case tftypes.Object:
+		var pseudoResource shim.Resource = &objectPseudoResource{tt}
 		return pseudoResource
+	case tftypes.List:
+		return &typeSchema{tt.ElementType}
+	case tftypes.Map:
+		return &typeSchema{tt.ElementType}
+	default:
+		return nil
 	}
-	return nil
 }
 
 func (*typeSchema) MaxItems() int      { return 0 }
 func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }
 
-func (*typeSchema) Default() interface{}                               { panic("TODO") }
-func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc                { panic("TODO") }
-func (*typeSchema) DefaultValue() (interface{}, error)                 { panic("TODO") }
-func (*typeSchema) Description() string                                { panic("TODO") }
-func (*typeSchema) StateFunc() shim.SchemaStateFunc                    { panic("TODO") }
-func (*typeSchema) ConflictsWith() []string                            { panic("TODO") }
-func (*typeSchema) ExactlyOneOf() []string                             { panic("TODO") }
-func (*typeSchema) Removed() string                                    { panic("TODO") }
-func (*typeSchema) Sensitive() bool                                    { panic("TODO") }
+func (*typeSchema) Default() interface{}                { panic("TODO") }
+func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc { panic("TODO") }
+func (*typeSchema) DefaultValue() (interface{}, error)  { panic("TODO") }
+func (*typeSchema) Description() string                 { panic("TODO") }
+func (*typeSchema) StateFunc() shim.SchemaStateFunc     { panic("TODO") }
+func (*typeSchema) ConflictsWith() []string             { panic("TODO") }
+func (*typeSchema) ExactlyOneOf() []string              { panic("TODO") }
+func (*typeSchema) Removed() string                     { panic("TODO") }
+
 func (*typeSchema) UnknownValue() interface{}                          { panic("TODO") }
 func (*typeSchema) SetElement(config interface{}) (interface{}, error) { panic("TODO") }
 func (*typeSchema) SetHash(v interface{}) int                          { panic("TODO") }

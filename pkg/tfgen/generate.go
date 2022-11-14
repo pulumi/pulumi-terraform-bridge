@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"unicode"
@@ -347,11 +348,12 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	case shim.Schema:
 		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		t.element = makeObjectPropertyType(objectName, elem.Schema(), elemInfo, out, entityDocs)
-	case shim.SchemaMap:
-		t.properties = makeObjectProperties(objectName, elem, elemInfo, out, entityDocs)
+		if t.kind == kindObject {
+			t.properties = makeObjectProperties(objectName, elem.Schema(), elemInfo, out, entityDocs)
+		} else {
+			t.element = makeObjectPropertyType(objectName, elem.Schema(), elemInfo, out, entityDocs)
+		}
 	}
-
 	switch t.kind {
 	case kindList, kindSet:
 		if tfbridge.IsMaxItemsOne(sch, info) {
