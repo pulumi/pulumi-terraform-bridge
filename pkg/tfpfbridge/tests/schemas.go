@@ -36,7 +36,6 @@ func genSchemaBytes(t *testing.T, info info.ProviderInfo) []byte {
 	require.NoError(t, err)
 	bytes, err := tfgen.MarshalSchema(packageSpec)
 	require.NoError(t, err)
-	t.Logf("SCHEMA:\n%v", string(bytes))
 	return bytes
 }
 

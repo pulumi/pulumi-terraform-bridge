@@ -16,10 +16,12 @@ package testprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	//"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -32,6 +34,17 @@ import (
 type testres struct{}
 
 var _ resource.Resource = &testres{}
+
+type PortModel struct {
+	Handlers []string `tfsdk:"handlers" json:"handlers"`
+	Port     *int64   `tfsdk:"port" json:"port"`
+}
+
+type ServiceModel struct {
+	InternalPort *int64      `tfsdk:"intport" json:"intport"`
+	Ports        []PortModel `tfsdk:"ports" json:"ports"`
+	Protocol     *string     `tfsdk:"protocol" json:"protocol"`
+}
 
 func newTestres() resource.Resource {
 	return &testres{}
@@ -168,12 +181,23 @@ removes the cloud state, and Read copies it.
 						Required:            true,
 						Type:                types.StringType,
 					},
-					"internal_port": {
+					// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
+					// not work end-to-end yet.
+					"intport": {
 						MarkdownDescription: "Port application listens on internally",
 						Required:            true,
 						Type:                types.Int64Type,
 					},
 				}),
+			},
+			"servicesJSONCopy": {
+				Type:        types.StringType,
+				Computed:    true,
+				Description: "Computed as a JSON-ified copy of services input",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"services"},
+				},
 			},
 		},
 	}
@@ -308,8 +332,16 @@ func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *
 	}
 }
 
-func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T) bool {
+type copyDataOptions struct {
+	outputProp string
+	transform  func(interface{}) interface{}
+}
+
+func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T, opts copyDataOptions) bool {
 	outputProp := inputProp + "Copy"
+	if opts.outputProp != "" {
+		outputProp = opts.outputProp
+	}
 
 	diag2 := state.GetAttribute(ctx, path.Root(inputProp), &slot)
 	diag.Append(diag2...)
@@ -320,6 +352,9 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 	var replacement interface{}
 	if slot != nil {
 		replacement = *slot
+		if opts.transform != nil {
+			replacement = opts.transform(replacement)
+		}
 	} else {
 		// This seems needlessly complicated, but nil will not do, need a typed nil.
 		attrib, diag3 := state.Schema.AttributeAtPath(ctx, path.Root(outputProp))
@@ -357,27 +392,41 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	}
 
 	var s *string
-	if ok := copyData(ctx, diag, state, "optionalInputString", &s); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputString", &s, copyDataOptions{}); !ok {
 		return
 	}
 
 	var n *float64
-	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n, copyDataOptions{}); !ok {
 		return
 	}
 
 	var b *bool
-	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputBool", &b, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sl *[]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sm *map[string]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm, copyDataOptions{}); !ok {
+		return
+	}
+
+	var services *[]ServiceModel
+	if ok := copyData(ctx, diag, state, "services", &services, copyDataOptions{
+		outputProp: "servicesJSONCopy",
+		transform: func(x interface{}) interface{} {
+			b, err := json.Marshal(x)
+			if err != nil {
+				panic(err)
+			}
+			return string(b)
+		},
+	}); !ok {
 		return
 	}
 

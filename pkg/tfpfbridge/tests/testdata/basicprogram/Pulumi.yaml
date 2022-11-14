@@ -55,6 +55,29 @@ resources:
         a: a1
         b: b1
 
+  nestedAttrRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      services:
+        - protocol: http
+          intport: 8080
+          ports:
+            - port: 80
+              handlers:
+                - httpHandler
+                - jsonPHandler
+            - port: 443
+              handlers:
+                - httpsHandler
+        - protocol: ssh
+          intport: 22
+          ports:
+            - port: 22
+              handlers:
+                - sshd
+
 outputs:
 
   testMinimal__actual: ${minimalRes.requiredInputStringCopy}
@@ -89,3 +112,23 @@ outputs:
     fn::toJSON: ${stringMapRes.optionalInputStringMapCopy}
   testStringMap__expect: |-
     {"a":"a1","b":"b1"}
+
+  testNestedAttrs__actual: ${nestedAttrRes.servicesJSONCopy}
+  testNestedAttrs__expect:
+    fn::toJSON:
+      - intport: 8080
+        ports:
+          - handlers:
+              - httpHandler
+              - jsonPHandler
+            port: 80
+          - handlers:
+              - httpsHandler
+            port: 443
+        protocol: http
+      - intport: 22
+        ports:
+          - handlers:
+              - sshd
+            port: 22
+        protocol: ssh
