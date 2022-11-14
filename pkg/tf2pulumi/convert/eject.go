@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -105,7 +107,7 @@ func Eject(dir string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.
 	}
 
 	project := &workspace.Project{
-		Name: "tf2pulumi",
+		Name: tokens.PackageName(filepath.Base(dir)),
 	}
 
 	return project, program, nil
