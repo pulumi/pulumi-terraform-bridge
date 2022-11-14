@@ -136,6 +136,7 @@ func TestEject(t *testing.T) {
 				if assert.NoError(t, err) {
 					// normalize windows newlines
 					expectedPcl := strings.Replace(string(pclBytes), "\r\n", "\n", -1)
+					source = strings.Replace(source, "\r\n", "\n", -1)
 					assert.Equal(t, expectedPcl, source)
 					delete(pclFiles, filename)
 				}
