@@ -47,8 +47,8 @@ func (*typeSchema) ForceNew() bool { return false }
 func (s *typeSchema) Elem() interface{} {
 	if s.t.Is(tftypes.Object{}) {
 		obj := s.t.(tftypes.Object)
-		var m shim.SchemaMap = &objectMap{obj}
-		return m
+		var pseudoResource shim.Resource = &objectPseudoResource{obj}
+		return pseudoResource
 	}
 	return nil
 }
