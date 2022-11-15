@@ -23,10 +23,9 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// An Object type that masquerades as a Resource. This is a workaround to reusing tfgen code for generating schemas. The
-// code was written before first-class ObjectType support in Terraform, and assumes schema.Elem() would return either a
-// Resource or a Schema. This struct packages the ObjectType field names an types schema through a pseudo-Resource so
-// that tfgen modifications accommodating this more cleanly can be deferred.
+// An Object type that masquerades as a Resource. This is a workaround to reusing tfgen code for generating schemas,
+// which assumes schema.Elem() would return either a Resource or a Schema. This struct packages the object field names
+// an types schema through a pseudo-Resource.
 type objectPseudoResource struct {
 	obj tftypes.Object
 }
@@ -76,7 +75,20 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 	if !ok {
 		return nil, false
 	}
-	return &typeSchema{t}, true
+
+	var s shim.Schema = &typeSchema{t}
+
+	if _, isOptional := r.obj.OptionalAttributes[key]; isOptional {
+		s = &schemaDecorator{innerSchema: s, optional: func(shim.Schema) bool {
+			return true
+		}}
+	} else {
+		s = &schemaDecorator{innerSchema: s, required: func(shim.Schema) bool {
+			return true
+		}}
+	}
+
+	return s, true
 }
 
 func (r *objectPseudoResource) Range(each func(key string, value shim.Schema) bool) {

@@ -92,8 +92,10 @@ func (s *attrSchema) Elem() interface{} {
 		lT := t.(tftypes.List)
 		var schema shim.Schema = &typeSchema{lT.ElementType}
 		return schema
+	case t.Is(tftypes.Object{}):
+		return &objectPseudoResource{t.(tftypes.Object)}
 	default:
-		panic(fmt.Errorf("TODO: unhanded elem case: %v", t))
+		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
 	}
 }
 
