@@ -77,16 +77,17 @@ type Schema interface {
 	ForceNew() bool
 	StateFunc() SchemaStateFunc
 
-	// Elem may return a nil, a *Schema value, or a *Resource value.
+	// s.Elem() may return a nil, a Schema value, or a Resource value.
 	//
-	// If this Schema value represents a compound type such (List[T] or Map[String,T]), Elem() returns a *Schema
-	// representing the element type T.
+	// If s represents an element or block of a compound type such TypeList, TypeSet or TypeMap, s.Elem() returns a
+	// Schema value representing its element type. That is, if s ~ List[String] then s.Elem() ~ String.
 	//
-	// TODO explain the *Resource case.
+	// If s.Elem() returns a Resource, s represens a configuration block, and s.Elem() Resource only implements the
+	// Schema field, denoting the schema of the block.
 	//
-	// If Type() == ObjectType, this Schema value represents an Object type and type Elem().(*Resource).Schema()
-	// returns the SchemaMap with the types of the Object fields. Although Elem() returns a *Resource in this case
-	// it is not a real Resource but simply an encoding for the SchemaMap.
+	// The design of Elem() follows Terraform Plugin SDK directly.
+	//
+	// See also: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/schema.go#L231
 	Elem() interface{}
 
 	MaxItems() int
@@ -101,6 +102,14 @@ type Schema interface {
 
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int
+}
+
+// Represents Object types. A value of type Schema that represents an Object type (s.Type() == TypeObject) can be cast
+// down to ObjectTypeSchema. This interface can be used to retrieve the types of the fields.
+type ObjectTypeSchema interface {
+	Schema
+
+	Fields() SchemaMap
 }
 
 type SchemaMap interface {

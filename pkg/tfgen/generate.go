@@ -336,6 +336,8 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 		t.kind = kindSet
 	case shim.TypeObject:
 		t.kind = kindObject
+		objSchema := sch.(shim.ObjectTypeSchema)
+		t.properties = makeObjectProperties(objectName, objSchema.Fields(), elemInfo, out, entityDocs)
 	}
 
 	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
@@ -347,12 +349,9 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	case shim.Schema:
 		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		if t.kind == kindObject {
-			t.properties = makeObjectProperties(objectName, elem.Schema(), elemInfo, out, entityDocs)
-		} else {
-			t.element = makeObjectPropertyType(objectName, elem.Schema(), elemInfo, out, entityDocs)
-		}
+		t.element = makeObjectPropertyType(objectName, elem.Schema(), elemInfo, out, entityDocs)
 	}
+
 	switch t.kind {
 	case kindList, kindSet:
 		if tfbridge.IsMaxItemsOne(sch, info) {

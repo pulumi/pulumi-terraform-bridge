@@ -43,28 +43,20 @@ func TestRegress611(t *testing.T) {
 }
 
 func TestObjectType(t *testing.T) {
-	makeResource := func(fields map[string]schemaonly.Schema) shim.Resource {
-		s := make(schemaonly.SchemaMap)
-		for k, v := range fields {
-			v := v
-			s[k] = v.Shim()
-		}
+	newResource := func(fields map[string]shim.Schema) shim.Resource {
 		r := &schemaonly.Resource{
-			Schema: s,
+			Schema: schemaonly.SchemaMap(fields),
 		}
 		return r.Shim()
 	}
 
 	p := &schemaonly.Provider{
 		ResourcesMap: schemaonly.ResourceMap(map[string]shim.Resource{
-			"r": makeResource(map[string]schemaonly.Schema{
-				"objField": {
-					Type: shim.TypeObject,
-					Elem: makeResource(map[string]schemaonly.Schema{
-						"x": {Type: shim.TypeString},
-						"y": {Type: shim.TypeInt},
-					}),
-				},
+			"r": newResource(map[string]shim.Schema{
+				"objField": newObjectTypeSchema(map[string]shim.Schema{
+					"x": (&schemaonly.Schema{Type: shim.TypeString}).Shim(),
+					"y": (&schemaonly.Schema{Type: shim.TypeInt}).Shim(),
+				}),
 			}),
 		}),
 		Schema:         schemaonly.SchemaMap{},
@@ -257,4 +249,24 @@ func TestGetDefaultReadme(t *testing.T) {
 		tfbridge.MPL20LicenseType, "https://www.mozilla.org/en-US/MPL/2.0/", "github.com",
 		"https://github.com/pulumi/pulumi-aws")
 	assert.Equal(t, expected, actual)
+}
+
+// Supports implementing shim.ObjectTypeSchema for testing.
+type objSchema struct {
+	schemaonly.SchemaShim
+
+	fields shim.SchemaMap
+}
+
+var _ shim.ObjectTypeSchema = (*objSchema)(nil)
+
+func (s *objSchema) Fields() shim.SchemaMap {
+	return s.fields
+}
+
+func newObjectTypeSchema(fields map[string]shim.Schema) shim.ObjectTypeSchema {
+	return &objSchema{
+		SchemaShim: schemaonly.SchemaShim{V: &schemaonly.Schema{Type: shim.TypeObject}},
+		fields:     schemaonly.SchemaMap(fields),
+	}
 }
