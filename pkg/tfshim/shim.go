@@ -58,7 +58,6 @@ const (
 	TypeList
 	TypeMap
 	TypeSet
-	TypeObject
 )
 
 type SchemaDefaultFunc func() (interface{}, error)
@@ -76,14 +75,7 @@ type Schema interface {
 	Computed() bool
 	ForceNew() bool
 	StateFunc() SchemaStateFunc
-
-	// Elem may return one of the following:
-	//
-	//      - nil
-	//      - *Schema
-	//      - *Resource
 	Elem() interface{}
-
 	MaxItems() int
 	MinItems() int
 	ConflictsWith() []string

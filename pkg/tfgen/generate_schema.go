@@ -734,15 +734,6 @@ func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
 }
 
 func (g *schemaGenerator) schemaType(path *paths.TypePath, typ *propertyType, out bool) pschema.TypeSpec {
-
-	// fmt.Printf("schemaType(path=%s, out=%v) \n", path.String(), out)
-	// if typ != nil {
-	// 	fmt.Printf("  typ.kind=%v\n", typ.kind)
-	// 	fmt.Printf("  typ.element=%v\n", typ.element)
-	// 	fmt.Printf("  typ.nestedType=%v\n", typ.nestedType)
-	// 	fmt.Printf("  typ.properties=%v\n", typ.properties)
-	// }
-
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:

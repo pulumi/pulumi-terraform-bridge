@@ -53,7 +53,6 @@ So presumably every type may have null and unknown values.
 import (
 	"fmt"
 	"math/big"
-	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"

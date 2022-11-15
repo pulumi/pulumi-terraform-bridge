@@ -334,8 +334,6 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 		t.kind = kindMap
 	case shim.TypeSet:
 		t.kind = kindSet
-	case shim.TypeObject:
-		t.kind = kindObject
 	}
 
 	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
@@ -347,12 +345,9 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	case shim.Schema:
 		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		if t.kind == kindObject {
-			t.properties = makeObjectProperties(objectName, elem.Schema(), elemInfo, out, entityDocs)
-		} else {
-			t.element = makeObjectPropertyType(objectName, elem.Schema(), elemInfo, out, entityDocs)
-		}
+		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
 	}
+
 	switch t.kind {
 	case kindList, kindSet:
 		if tfbridge.IsMaxItemsOne(sch, info) {
@@ -369,7 +364,7 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	return t
 }
 
-func makeObjectPropertyType(objectName string, objectSchema shim.SchemaMap, info *tfbridge.SchemaInfo, out bool,
+func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge.SchemaInfo, out bool,
 	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
@@ -382,19 +377,14 @@ func makeObjectPropertyType(objectName string, objectSchema shim.SchemaMap, info
 		t.altTypes = info.AltTypes
 		t.asset = info.Asset
 	}
-	t.properties = makeObjectProperties(objectName, objectSchema, info, out, entityDocs)
-	return t
-}
 
-func makeObjectProperties(objectName string, objectSchema shim.SchemaMap, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) []*variable {
-	var properties []*variable
 	var propertyInfos map[string]*tfbridge.SchemaInfo
 	if info != nil {
 		propertyInfos = info.Fields
 	}
-	for _, key := range stableSchemas(objectSchema) {
-		propertySchema := objectSchema.Get(key)
+
+	for _, key := range stableSchemas(res.Schema()) {
+		propertySchema := res.Schema().Get(key)
 
 		var propertyInfo *tfbridge.SchemaInfo
 		if propertyInfos != nil {
@@ -407,10 +397,11 @@ func makeObjectProperties(objectName string, objectSchema shim.SchemaMap, info *
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
 
 		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
-			properties = append(properties, v)
+			t.properties = append(t.properties, v)
 		}
 	}
-	return properties
+
+	return t
 }
 
 func (t *propertyType) equals(other *propertyType) bool {
