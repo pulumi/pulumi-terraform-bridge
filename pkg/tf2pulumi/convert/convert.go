@@ -128,9 +128,6 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	if err != nil {
 		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err
 	}
-	if diagnostics.HasErrors() {
-		return nil, Diagnostics{All: diagnostics, files: tfFiles}, nil
-	}
 
 	return generatedFiles, Diagnostics{All: diagnostics, files: tfFiles}, nil
 }
