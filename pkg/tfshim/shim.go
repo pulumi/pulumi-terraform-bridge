@@ -58,6 +58,7 @@ const (
 	TypeList
 	TypeMap
 	TypeSet
+	TypeObject // TypeObject is only used for Terraform Plugin Framework support.
 )
 
 type SchemaDefaultFunc func() (interface{}, error)
@@ -75,7 +76,19 @@ type Schema interface {
 	Computed() bool
 	ForceNew() bool
 	StateFunc() SchemaStateFunc
+
+	// Elem may return a nil, a *Schema value, or a *Resource value.
+	//
+	// If this Schema value represents a compound type such (List[T] or Map[String,T]), Elem() returns a *Schema
+	// representing the element type T.
+	//
+	// TODO explain the *Resource case.
+	//
+	// If Type() == ObjectType, this Schema value represents an Object type and type Elem().(*Resource).Schema()
+	// returns the SchemaMap with the types of the Object fields. Although Elem() returns a *Resource in this case
+	// it is not a real Resource but simply an encoding for the SchemaMap.
 	Elem() interface{}
+
 	MaxItems() int
 	MinItems() int
 	ConflictsWith() []string

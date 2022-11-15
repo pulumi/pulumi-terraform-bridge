@@ -25,6 +25,8 @@ import (
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	schemaonly "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -38,6 +40,51 @@ func TestRegress611(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 	bridgetesting.AssertPackageSpecEquals(t, "test_data/regress-611-schema.json", schema)
+}
+
+func TestObjectType(t *testing.T) {
+	makeResource := func(fields map[string]schemaonly.Schema) shim.Resource {
+		s := make(schemaonly.SchemaMap)
+		for k, v := range fields {
+			v := v
+			s[k] = v.Shim()
+		}
+		r := &schemaonly.Resource{
+			Schema: s,
+		}
+		return r.Shim()
+	}
+
+	p := &schemaonly.Provider{
+		ResourcesMap: schemaonly.ResourceMap(map[string]shim.Resource{
+			"r": makeResource(map[string]schemaonly.Schema{
+				"objField": {
+					Type: shim.TypeObject,
+					Elem: makeResource(map[string]schemaonly.Schema{
+						"x": {Type: shim.TypeString},
+						"y": {Type: shim.TypeInt},
+					}),
+				},
+			}),
+		}),
+		Schema:         schemaonly.SchemaMap{},
+		DataSourcesMap: schemaonly.ResourceMap{},
+	}
+
+	provider := tfbridge.ProviderInfo{
+		Name: "myprov",
+		P:    p.Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"r": {Tok: "myprov:index/res:Res"},
+		},
+	}
+
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+
+	bridgetesting.AssertPackageSpecEquals(t, "test_data/test-object-type-schema.json", schema)
 }
 
 func TestAppendExample_InsertMiddle(t *testing.T) {
