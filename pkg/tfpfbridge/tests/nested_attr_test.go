@@ -42,7 +42,7 @@ func TestNestedType(t *testing.T) {
 }
 
 func TestNestedOptionals(t *testing.T) {
-	t.Skip("Skipped as possible issue with terraform-plugin-framework")
+	t.Skip("TODO[pulumi/home#2432] skipped as possible issue with terraform-plugin-framework")
 	ctx := context.TODO()
 	nestedOptional := tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 		"nestedOptional": {
