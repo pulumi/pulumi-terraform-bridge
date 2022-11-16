@@ -40,11 +40,11 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	// Note: that this conversion implicitly filters to only deal
 	// with the fields specified in the tfType schema.
-	currentState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(state)
+	currentState, err := ConvertPropertyMapToDynamicValue(tfType)(state)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
@@ -81,17 +81,25 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, resource.StatusUnknown, nil
 	}
 
-	readState, err := ConvertDynamicValueToPropertyMap(tfType.(tftypes.Object))(*resp.NewState)
+	readResourceStateValue, err := resp.NewState.Unmarshal(tfType)
+	if err != nil {
+		return plugin.ReadResult{}, resource.StatusUnknown, nil
+	}
+
+	readState, err := ConvertTFValueToPropertyMap(tfType)(readResourceStateValue)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
-	// TODO find how to handle ID properly for reads
-	readID := resource.ID(readState["id"].StringValue())
+	readID, err := rh.idExtractor(readResourceStateValue)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
 
 	return plugin.ReadResult{
-		ID:      readID,
-		Inputs:  nil, // TODO should bridged providers support?
+		ID: resource.ID(readID),
+		// TODO support populating inputs, see extractInputsFromOutputs in the prod bridge.
+		Inputs:  nil,
 		Outputs: readState,
 	}, resource.StatusOK, nil
 }

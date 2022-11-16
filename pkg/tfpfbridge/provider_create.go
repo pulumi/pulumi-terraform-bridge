@@ -101,17 +101,20 @@ func (p *Provider) Create(
 
 	// TODO handle resp.Private field to save that state inside Pulumi state.
 
-	createdState, err := ConvertDynamicValueToPropertyMap(tfType)(*resp.NewState)
+	stateValue, err := resp.NewState.Unmarshal(tfType)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	// plannedS, _ := resp.NewState.Unmarshal(tfType)
-	// panic(fmt.Sprintf("NewState = %v \n\n CreatedState = %v",
-	// 	plannedS,
-	// 	createdState))
-	// TODO allocate ID properly
-	createdID := resource.ID(createdState["id"].StringValue())
+	idString, err := rh.idExtractor(stateValue)
+	if err != nil {
+		return "", nil, 0, err
+	}
 
-	return createdID, createdState, resource.StatusOK, nil
+	createdState, err := ConvertTFValueToPropertyMap(tfType)(stateValue)
+	if err != nil {
+		return "", nil, 0, err
+	}
+
+	return resource.ID(idString), createdState, resource.StatusOK, nil
 }
