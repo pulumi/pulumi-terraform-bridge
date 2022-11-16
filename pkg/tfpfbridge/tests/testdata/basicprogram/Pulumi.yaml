@@ -55,7 +55,16 @@ resources:
         a: a1
         b: b1
 
-  nestedAttrRes:
+  singleNestedAttrRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      singleNestedAttr:
+        description: pi
+        quantity: 3.14159
+
+  listNestedAttrRes:
     type: testbridge:index/testres:Testres
     properties:
       statedir: state
@@ -113,8 +122,14 @@ outputs:
   testStringMap__expect: |-
     {"a":"a1","b":"b1"}
 
-  testNestedAttrs__actual: ${nestedAttrRes.servicesJSONCopy}
-  testNestedAttrs__expect:
+  testSingleNestedAttr__actual: ${singleNestedAttrRes.singleNestedAttrJSONCopy}
+  testSingleNestedAttr__expect:
+    fn::toJSON:
+      description: pi
+      quantity: 3.14159
+
+  testListNestedAttributes__actual: ${listNestedAttrRes.servicesJSONCopy}
+  testListNestedAttributes__expect:
     fn::toJSON:
       - intport: 8080
         ports:

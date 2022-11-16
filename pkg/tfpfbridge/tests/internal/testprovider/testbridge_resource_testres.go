@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 
-	//"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -34,17 +33,6 @@ import (
 type testres struct{}
 
 var _ resource.Resource = &testres{}
-
-type PortModel struct {
-	Handlers []string `tfsdk:"handlers" json:"handlers"`
-	Port     *int64   `tfsdk:"port" json:"port"`
-}
-
-type ServiceModel struct {
-	InternalPort *int64      `tfsdk:"intport" json:"intport"`
-	Ports        []PortModel `tfsdk:"ports" json:"ports"`
-	Protocol     *string     `tfsdk:"protocol" json:"protocol"`
-}
 
 func newTestres() resource.Resource {
 	return &testres{}
@@ -155,9 +143,32 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optionalInputStringMap"},
 				},
 			},
+			"singleNestedAttr": {
+				MarkdownDescription: "singleNestedAttr: tests SingleNestedAttribute support",
+				Optional:            true,
+				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
+					"description": {
+						Optional: true,
+						Type:     types.StringType,
+					},
+					"quantity": {
+						Optional: true,
+						Type:     types.Float64Type,
+					},
+				}),
+			},
+			"singleNestedAttrJSONCopy": {
+				Type:        types.StringType,
+				Computed:    true,
+				Description: "Computed as a JSON-ified copy of singleNestedAttr input",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"singleNestedAttr"},
+				},
+			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
 			"services": {
-				MarkdownDescription: "services",
+				MarkdownDescription: "services: tests ListNestedAttributes support",
 				Optional:            true,
 				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"ports": {
@@ -416,16 +427,26 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 		return
 	}
 
+	jsonify := func(x interface{}) interface{} {
+		b, err := json.Marshal(x)
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}
+
 	var services *[]ServiceModel
 	if ok := copyData(ctx, diag, state, "services", &services, copyDataOptions{
 		outputProp: "servicesJSONCopy",
-		transform: func(x interface{}) interface{} {
-			b, err := json.Marshal(x)
-			if err != nil {
-				panic(err)
-			}
-			return string(b)
-		},
+		transform:  jsonify,
+	}); !ok {
+		return
+	}
+
+	var snaModel *SingleNestedAttrModel
+	if ok := copyData(ctx, diag, state, "singleNestedAttr", &snaModel, copyDataOptions{
+		outputProp: "singleNestedAttrJSONCopy",
+		transform:  jsonify,
 	}); !ok {
 		return
 	}
@@ -461,14 +482,13 @@ func (e *testres) Delete(ctx context.Context, req resource.DeleteRequest, resp *
 		return
 	}
 	if !gotState {
-		resp.Diagnostics.AddError("testbridge_testres.Delete found no prior pseudo-cloud state",
-			err.Error())
+		resp.Diagnostics.AddError(
+			"testbridge_testres.Delete found no prior pseudo-cloud state", "")
 		return
 	}
 	if !oldState.Raw.Equal(req.State.Raw) {
 		resp.Diagnostics.AddError(
-			"testbridge_testres.Delete called with a different State than it remembers",
-			err.Error())
+			"testbridge_testres.Delete called with a different State than it remembers", "")
 		return
 	}
 

@@ -81,6 +81,21 @@
                 "handlers",
                 "port"
             ]
+        },
+        "testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr": {
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "number"
+                }
+            },
+            "type": "object",
+            "required": [
+                "description",
+                "quantity"
+            ]
         }
     },
     "provider": {
@@ -142,9 +157,16 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresService:TestresService"
                     },
-                    "description": "services\n"
+                    "description": "services: tests ListNestedAttributes support\n"
                 },
                 "servicesJSONCopy": {
+                    "type": "string"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
+                },
+                "singleNestedAttrJSONCopy": {
                     "type": "string"
                 },
                 "statedir": {
@@ -160,6 +182,7 @@
                 "requiredInputString",
                 "requiredInputStringCopy",
                 "servicesJSONCopy",
+                "singleNestedAttrJSONCopy",
                 "statedir"
             ],
             "inputProperties": {
@@ -192,7 +215,11 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresService:TestresService"
                     },
-                    "description": "services\n"
+                    "description": "services: tests ListNestedAttributes support\n"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
                 },
                 "statedir": {
                     "type": "string"
@@ -258,9 +285,16 @@
                         "items": {
                             "$ref": "#/types/testbridge:index/TestresService:TestresService"
                         },
-                        "description": "services\n"
+                        "description": "services: tests ListNestedAttributes support\n"
                     },
                     "servicesJSONCopy": {
+                        "type": "string"
+                    },
+                    "singleNestedAttr": {
+                        "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                        "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
+                    },
+                    "singleNestedAttrJSONCopy": {
                         "type": "string"
                     },
                     "statedir": {

@@ -72,8 +72,7 @@ func (s *attrSchema) ForceNew() bool {
 
 func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
 
-// Needs to return a shim.Schema, a shim.Resource, or nil. IN the case of attrSchema it is always a
-// shim.Schema specifically a &typeSchema, or else nil if the type has no element.
+// Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
 	ctx := context.TODO()
 	t := s.attr.FrameworkType().TerraformType(ctx)
@@ -92,8 +91,15 @@ func (s *attrSchema) Elem() interface{} {
 		lT := t.(tftypes.List)
 		var schema shim.Schema = &typeSchema{lT.ElementType}
 		return schema
+	case t.Is(tftypes.Object{}):
+		// This case can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute
+		// with a type that is an Object type. To encode the schema of the Object type in a way the shim layer
+		// understands, Elem() needes to return a Resource value.
+		//
+		// See also: documentation on shim.Schema.Elem().
+		return &objectPseudoResource{t.(tftypes.Object)}
 	default:
-		panic(fmt.Errorf("TODO: unhanded elem case: %v", t))
+		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
 	}
 }
 
