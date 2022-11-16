@@ -79,11 +79,11 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 	var s shim.Schema = &typeSchema{t}
 
 	if _, isOptional := r.obj.OptionalAttributes[key]; isOptional {
-		s = &schemaDecorator{innerSchema: s, optional: func(shim.Schema) bool {
+		s = &schemaDecorator{Schema: s, optional: func(shim.Schema) bool {
 			return true
 		}}
 	} else {
-		s = &schemaDecorator{innerSchema: s, required: func(shim.Schema) bool {
+		s = &schemaDecorator{Schema: s, required: func(shim.Schema) bool {
 			return true
 		}}
 	}
