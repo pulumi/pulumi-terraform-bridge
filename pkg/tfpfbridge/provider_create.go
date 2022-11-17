@@ -106,7 +106,7 @@ func (p *Provider) Create(
 		return "", nil, 0, err
 	}
 
-	idString, err := rh.idExtractor(stateValue)
+	idString, err := rh.idExtractor.extractID(stateValue)
 	if err != nil {
 		return "", nil, 0, err
 	}

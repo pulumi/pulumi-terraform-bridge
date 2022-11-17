@@ -91,7 +91,7 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, 0, err
 	}
 
-	readID, err := rh.idExtractor(readResourceStateValue)
+	readID, err := rh.idExtractor.extractID(readResourceStateValue)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
