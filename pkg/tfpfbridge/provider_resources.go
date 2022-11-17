@@ -19,7 +19,6 @@ import (
 
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -35,25 +34,8 @@ type resourceHandle struct {
 	idExtractor           idExtractor
 }
 
-func (p *Provider) resources(ctx context.Context) (res pfutils.Resources, err error) {
-	p.resourcesOnce.Do(func() {
-		// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in
-		// the tfServer, to init it properly to remember provider name and compute correct resource names like
-		// random_integer instead of _integer (unknown provider name).
-		if _, e := p.tfServer.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); e != nil {
-			err = e
-		}
-		p.resourcesCache, err = pfutils.GatherResources(ctx, p.tfProvider)
-	})
-
-	return p.resourcesCache, err
-}
-
 func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
-	resources, err := p.resources(ctx)
-	if err != nil {
-		return resourceHandle{}, err
-	}
+	resources := p.resources
 
 	typeName, err := p.terraformResourceName(urn.Type())
 	if err != nil {
