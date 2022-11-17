@@ -15,8 +15,8 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
-	"sync"
 
 	"github.com/blang/semver"
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -38,23 +38,31 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type Provider struct {
-	tfProvider     tfsdkprovider.Provider
-	tfServer       tfprotov6.ProviderServer
-	info           info.ProviderInfo
-	resourcesCache pfutils.Resources
-	resourcesOnce  sync.Once
-	pulumiSchema   []byte
+	tfProvider   tfsdkprovider.Provider
+	tfServer     tfprotov6.ProviderServer
+	info         info.ProviderInfo
+	resources    pfutils.Resources
+	pulumiSchema []byte
 }
 
 var _ plugin.Provider = &Provider{}
 
 func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
+	ctx := context.TODO()
 	p := info.P()
-	server6 := providerserver.NewProtocol6(p)
+	server6, err := newProviderServer6(ctx, p)
+	if err != nil {
+		panic(fmt.Errorf("Fatal failure starting a provider server: %w", err))
+	}
+	resources, err := pfutils.GatherResources(ctx, p)
+	if err != nil {
+		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
+	}
 	return &Provider{
 		tfProvider:   p,
-		tfServer:     server6(),
+		tfServer:     server6,
 		info:         info,
+		resources:    resources,
 		pulumiSchema: pulumiSchema,
 	}
 }
@@ -121,4 +129,18 @@ func (p *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name to
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
+}
+
+func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov6.ProviderServer, error) {
+	newServer6 := providerserver.NewProtocol6(p)
+	server6 := newServer6()
+
+	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
+	// tfServer, to init it properly to remember provider name and compute correct resource names like
+	// random_integer instead of _integer (unknown provider name).
+	if _, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); err != nil {
+		return nil, err
+	}
+
+	return server6, nil
 }

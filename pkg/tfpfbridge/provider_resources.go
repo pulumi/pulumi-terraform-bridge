@@ -19,7 +19,6 @@ import (
 
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -27,29 +26,16 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
-func (p *Provider) resources(ctx context.Context) (res pfutils.Resources, err error) {
-
-	p.resourcesOnce.Do(func() {
-		// Somehow this GetProviderSchema call needs to happen
-		// at least once to avoid Resource Type Not Found in
-		// the tfServer, to init it properly to remember
-		// provider name and compute correct resource names
-		// like random_integer instead of _integer (unknown
-		// provider name).
-		if _, e := p.tfServer.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); e != nil {
-			err = e
-		}
-		p.resourcesCache, err = pfutils.GatherResources(ctx, p.tfProvider)
-	})
-
-	return p.resourcesCache, err
+type resourceHandle struct {
+	makeResource          func() pfresource.Resource
+	terraformResourceName string
+	schema                tfsdk.Schema
+	pulumiResourceInfo    *info.ResourceInfo // optional
+	idExtractor           idExtractor
 }
 
-func (p Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
-	resources, err := p.resources(ctx)
-	if err != nil {
-		return resourceHandle{}, err
-	}
+func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
+	resources := p.resources
 
 	typeName, err := p.terraformResourceName(urn.Type())
 	if err != nil {
@@ -59,12 +45,18 @@ func (p Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (r
 	n := pfutils.TypeName(typeName)
 	schema := resources.Schema(n)
 
+	idExtractor, err := newIdExtractor(ctx, typeName, schema)
+	if err != nil {
+		return resourceHandle{}, err
+	}
+
 	result := resourceHandle{
 		makeResource: func() pfresource.Resource {
 			return resources.Resource(n)
 		},
 		terraformResourceName: typeName,
 		schema:                schema,
+		idExtractor:           idExtractor,
 	}
 
 	if info, ok := p.info.Resources[typeName]; ok {
@@ -72,11 +64,4 @@ func (p Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (r
 	}
 
 	return result, nil
-}
-
-type resourceHandle struct {
-	makeResource          func() pfresource.Resource
-	terraformResourceName string
-	schema                tfsdk.Schema
-	pulumiResourceInfo    *info.ResourceInfo // optional
 }
