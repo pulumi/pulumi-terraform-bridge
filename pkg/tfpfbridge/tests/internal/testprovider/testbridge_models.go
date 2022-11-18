@@ -12,19 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schemashim
+package testprovider
 
-import (
-	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
-)
+type PortModel struct {
+	Handlers []string `tfsdk:"handlers" json:"handlers"`
+	Port     *int64   `tfsdk:"port" json:"port"`
+}
 
-type attr interface {
-	FrameworkType() pfattr.Type
-	IsComputed() bool
-	IsOptional() bool
-	IsRequired() bool
-	IsSensitive() bool
-	GetDeprecationMessage() string
-	GetDescription() string
-	GetMarkdownDescription() string
+type ServiceModel struct {
+	InternalPort *int64      `tfsdk:"intport" json:"intport"`
+	Ports        []PortModel `tfsdk:"ports" json:"ports"`
+	Protocol     *string     `tfsdk:"protocol" json:"protocol"`
+}
+
+type SingleNestedAttrModel struct {
+	Description *string  `tfsdk:"description" json:"description"`
+	Quantity    *float64 `tfsdk:"quantity" json:"quantity"`
 }

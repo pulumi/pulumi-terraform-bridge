@@ -157,6 +157,9 @@ func ConvertTFValueToProperty(
 		mapTy := ty.(tftypes.Map)
 		decElem := ConvertTFValueToProperty(mapTy.ElementType)
 		return decMap(decElem)
+	case ty.Is(tftypes.Object{}):
+		objTy := ty.(tftypes.Object)
+		return decObj(objTy)
 	default:
 		return func(v tftypes.Value) (resource.PropertyValue, error) {
 			return resource.PropertyValue{},
@@ -184,6 +187,9 @@ func ConvertPropertyToTFValue(
 		mapTy := ty.(tftypes.Map)
 		encElem := ConvertPropertyToTFValue(mapTy.ElementType)
 		return encMap(mapTy.ElementType, encElem)
+	case ty.Is(tftypes.Object{}):
+		objTy := ty.(tftypes.Object)
+		return encObj(objTy)
 	default:
 		return func(p resource.PropertyValue) (tftypes.Value, error) {
 			return tftypes.NewValue(ty, nil),
@@ -375,11 +381,12 @@ func encList(elemTy tftypes.Type, encElem encoder) encoder {
 				fmt.Errorf("Expected an Array PropertyValue")
 		}
 		var values []tftypes.Value
-		for _, pv := range p.ArrayValue() {
+		for i, pv := range p.ArrayValue() {
 			v, err := encElem(pv)
 			if err != nil {
 				return tftypes.NewValue(listTy, nil),
-					fmt.Errorf("encList failed on %v", pv)
+					fmt.Errorf("encList failed while encoding element %d (%v): %w",
+						i, pv, err)
 			}
 			values = append(values, v)
 		}
@@ -426,7 +433,7 @@ func encMap(elemTy tftypes.Type, encElem encoder) encoder {
 		}
 		if !p.IsObject() {
 			return tftypes.NewValue(mapTy, nil),
-				fmt.Errorf("Expected an Array PropertyValue")
+				fmt.Errorf("Expected an Object PropertyValue")
 		}
 		values := map[string]tftypes.Value{}
 		for key, pv := range p.ObjectValue() {
@@ -438,5 +445,77 @@ func encMap(elemTy tftypes.Type, encElem encoder) encoder {
 			values[string(key)] = v
 		}
 		return tftypes.NewValue(mapTy, values), nil
+	}
+}
+
+func decObj(objType tftypes.Object) decoder {
+	propDecoders := map[string]decoder{}
+	for k, t := range objType.AttributeTypes {
+		propDecoders[k] = ConvertTFValueToProperty(t)
+	}
+	zero := resource.NewObjectProperty(make(resource.PropertyMap))
+	return func(v tftypes.Value) (resource.PropertyValue, error) {
+		if !v.IsKnown() {
+			return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		}
+		if v.IsNull() {
+			return resource.NewPropertyValue(nil), nil
+		}
+		elements := map[string]tftypes.Value{}
+		if err := v.As(&elements); err != nil {
+			return resource.PropertyValue{},
+				fmt.Errorf("decObj fails with %s: %w", v.String(), err)
+		}
+
+		values := make(resource.PropertyMap)
+		for attr, decoder := range propDecoders {
+			attrValue, gotAttrValue := elements[attr]
+			if gotAttrValue {
+				pv, err := decoder(attrValue)
+				if err != nil {
+					return resource.PropertyValue{},
+						fmt.Errorf("decObj fails on property %q (value %s): %w",
+							attr, attrValue, err)
+				}
+				values[resource.PropertyKey(attr)] = pv
+			}
+		}
+		return resource.NewObjectProperty(values), nil
+	}
+}
+
+func encObj(objType tftypes.Object) encoder {
+	propEncoders := map[string]encoder{}
+	for k, t := range objType.AttributeTypes {
+		propEncoders[k] = ConvertPropertyToTFValue(t)
+	}
+	return func(p resource.PropertyValue) (tftypes.Value, error) {
+		if propertyValueIsUnkonwn(p) {
+			return tftypes.NewValue(objType, tftypes.UnknownValue), nil
+		}
+		if p.IsNull() {
+			return tftypes.NewValue(objType, nil), nil
+		}
+		if !p.IsObject() {
+			return tftypes.NewValue(objType, nil),
+				fmt.Errorf("Expected an Object PropertyValue")
+		}
+		pulumiMap := p.ObjectValue()
+		values := map[string]tftypes.Value{}
+		for attr, attrEncoder := range propEncoders {
+			pv, gotPV := pulumiMap[resource.PropertyKey(attr)]
+			if gotPV {
+				v, err := attrEncoder(pv)
+				if err != nil {
+					return tftypes.NewValue(objType, nil),
+						fmt.Errorf("encObj failed on property %s (%v): %w",
+							attr, pv, err)
+				}
+				values[attr] = v
+			} else {
+				values[attr] = tftypes.NewValue(objType.AttributeTypes[attr], nil)
+			}
+		}
+		return tftypes.NewValue(objType, values), nil
 	}
 }

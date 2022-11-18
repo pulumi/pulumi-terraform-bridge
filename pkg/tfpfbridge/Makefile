@@ -5,6 +5,7 @@ build.tests::
 
 test::
 	go test
+	cd tests && rm -rf state && mkdir state
 	cd tests && go test
 
 test.integration::

@@ -46,13 +46,13 @@ func (m *schemaMap) GetOk(key string) (shim.Schema, bool) {
 	if !ok {
 		return nil, false
 	}
-	return &attrSchema{attr}, true
+	return &attrSchema{key: key, attr: attr}, true
 }
 
 func (m *schemaMap) Range(each func(key string, value shim.Schema) bool) {
 	for key, rawAttr := range m.tf.GetAttributes() {
 		var attr attr = rawAttr
-		var value shim.Schema = &attrSchema{attr}
+		var value shim.Schema = &attrSchema{key: key, attr: attr}
 		if !each(key, value) {
 			return
 		}

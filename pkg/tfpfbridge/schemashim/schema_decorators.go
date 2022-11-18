@@ -15,16 +15,27 @@
 package schemashim
 
 import (
-	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-type attr interface {
-	FrameworkType() pfattr.Type
-	IsComputed() bool
-	IsOptional() bool
-	IsRequired() bool
-	IsSensitive() bool
-	GetDeprecationMessage() string
-	GetDescription() string
-	GetMarkdownDescription() string
+type schemaDecorator struct {
+	shim.Schema
+	optional func(shim.Schema) bool
+	required func(shim.Schema) bool
+}
+
+var _ shim.Schema = (*schemaDecorator)(nil)
+
+func (d *schemaDecorator) Optional() bool {
+	if d.optional != nil {
+		return d.optional(d.Schema)
+	}
+	return d.Schema.Optional()
+}
+
+func (d *schemaDecorator) Required() bool {
+	if d.required != nil {
+		return d.required(d.Schema)
+	}
+	return d.Schema.Required()
 }

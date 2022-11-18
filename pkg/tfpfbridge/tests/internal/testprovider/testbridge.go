@@ -50,7 +50,7 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 type syntheticProvider struct {
 }
 
-var _ provider.ProviderWithMetadata = &syntheticProvider{}
+var _ provider.ProviderWithMetadata = (*syntheticProvider)(nil)
 
 func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "testbridge"

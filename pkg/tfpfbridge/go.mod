@@ -2,10 +2,11 @@ module github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge
 
 go 1.18
 
-replace github.com/pulumi/pulumi-terraform-bridge/pkg/tfbridge/v3 => ../..
+replace github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/hashicorp/terraform-plugin-framework v0.14.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221108225118-291ab6e89383
@@ -81,7 +82,6 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect

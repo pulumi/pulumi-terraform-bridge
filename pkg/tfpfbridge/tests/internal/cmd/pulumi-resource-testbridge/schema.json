@@ -16,6 +16,88 @@
         }
     },
     "config": {},
+    "types": {
+        "testbridge:index/TestresService:TestresService": {
+            "properties": {
+                "intport": {
+                    "type": "number",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresServicePort:TestresServicePort"
+                    },
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "protocol": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestresServicePort:TestresServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "port": {
+                    "type": "number",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "handlers",
+                "port"
+            ]
+        },
+        "testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr": {
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "number"
+                }
+            },
+            "type": "object",
+            "required": [
+                "description",
+                "quantity"
+            ]
+        }
+    },
     "provider": {
         "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
     },
@@ -70,6 +152,23 @@
                 "requiredInputStringCopy": {
                     "type": "string"
                 },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                },
+                "servicesJSONCopy": {
+                    "type": "string"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
+                },
+                "singleNestedAttrJSONCopy": {
+                    "type": "string"
+                },
                 "statedir": {
                     "type": "string"
                 }
@@ -82,6 +181,8 @@
                 "optionalInputStringMapCopy",
                 "requiredInputString",
                 "requiredInputStringCopy",
+                "servicesJSONCopy",
+                "singleNestedAttrJSONCopy",
                 "statedir"
             ],
             "inputProperties": {
@@ -108,6 +209,17 @@
                 },
                 "requiredInputString": {
                     "type": "string"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
                 },
                 "statedir": {
                     "type": "string"
@@ -166,6 +278,23 @@
                         "type": "string"
                     },
                     "requiredInputStringCopy": {
+                        "type": "string"
+                    },
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
+                    },
+                    "servicesJSONCopy": {
+                        "type": "string"
+                    },
+                    "singleNestedAttr": {
+                        "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                        "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
+                    },
+                    "singleNestedAttrJSONCopy": {
                         "type": "string"
                     },
                     "statedir": {

@@ -16,6 +16,7 @@ package testprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -140,6 +141,73 @@ removes the cloud state, and Read copies it.
 				PlanModifiers: []tfsdk.AttributePlanModifier{
 					resource.UseStateForUnknown(),
 					PropagatesNullFrom{"optionalInputStringMap"},
+				},
+			},
+			"singleNestedAttr": {
+				MarkdownDescription: "singleNestedAttr: tests SingleNestedAttribute support",
+				Optional:            true,
+				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
+					"description": {
+						Optional: true,
+						Type:     types.StringType,
+					},
+					"quantity": {
+						Optional: true,
+						Type:     types.Float64Type,
+					},
+				}),
+			},
+			"singleNestedAttrJSONCopy": {
+				Type:        types.StringType,
+				Computed:    true,
+				Description: "Computed as a JSON-ified copy of singleNestedAttr input",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"singleNestedAttr"},
+				},
+			},
+			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
+			"services": {
+				MarkdownDescription: "services: tests ListNestedAttributes support",
+				Optional:            true,
+				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
+					"ports": {
+						MarkdownDescription: "External ports and handlers",
+						Required:            true,
+						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
+							"port": {
+								MarkdownDescription: "External port",
+								Required:            true,
+								Type:                types.Int64Type,
+							},
+							"handlers": {
+								MarkdownDescription: "How the edge should process requests",
+								Optional:            true,
+								Type:                types.ListType{ElemType: types.StringType},
+							},
+						}),
+					},
+					"protocol": {
+						MarkdownDescription: "network protocol",
+						Required:            true,
+						Type:                types.StringType,
+					},
+					// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
+					// not work end-to-end yet.
+					"intport": {
+						MarkdownDescription: "Port application listens on internally",
+						Required:            true,
+						Type:                types.Int64Type,
+					},
+				}),
+			},
+			"servicesJSONCopy": {
+				Type:        types.StringType,
+				Computed:    true,
+				Description: "Computed as a JSON-ified copy of services input",
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					resource.UseStateForUnknown(),
+					PropagatesNullFrom{"services"},
 				},
 			},
 		},
@@ -275,8 +343,16 @@ func (e *testres) Update(ctx context.Context, req resource.UpdateRequest, resp *
 	}
 }
 
-func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T) bool {
+type copyDataOptions struct {
+	outputProp string
+	transform  func(interface{}) interface{}
+}
+
+func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T, opts copyDataOptions) bool {
 	outputProp := inputProp + "Copy"
+	if opts.outputProp != "" {
+		outputProp = opts.outputProp
+	}
 
 	diag2 := state.GetAttribute(ctx, path.Root(inputProp), &slot)
 	diag.Append(diag2...)
@@ -287,6 +363,9 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 	var replacement interface{}
 	if slot != nil {
 		replacement = *slot
+		if opts.transform != nil {
+			replacement = opts.transform(replacement)
+		}
 	} else {
 		// This seems needlessly complicated, but nil will not do, need a typed nil.
 		attrib, diag3 := state.Schema.AttributeAtPath(ctx, path.Root(outputProp))
@@ -324,27 +403,51 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 	}
 
 	var s *string
-	if ok := copyData(ctx, diag, state, "optionalInputString", &s); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputString", &s, copyDataOptions{}); !ok {
 		return
 	}
 
 	var n *float64
-	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n, copyDataOptions{}); !ok {
 		return
 	}
 
 	var b *bool
-	if ok := copyData(ctx, diag, state, "optionalInputBool", &b); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputBool", &b, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sl *[]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sm *map[string]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm); !ok {
+	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm, copyDataOptions{}); !ok {
+		return
+	}
+
+	jsonify := func(x interface{}) interface{} {
+		b, err := json.Marshal(x)
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}
+
+	var services *[]ServiceModel
+	if ok := copyData(ctx, diag, state, "services", &services, copyDataOptions{
+		outputProp: "servicesJSONCopy",
+		transform:  jsonify,
+	}); !ok {
+		return
+	}
+
+	var snaModel *SingleNestedAttrModel
+	if ok := copyData(ctx, diag, state, "singleNestedAttr", &snaModel, copyDataOptions{
+		outputProp: "singleNestedAttrJSONCopy",
+		transform:  jsonify,
+	}); !ok {
 		return
 	}
 
@@ -379,14 +482,13 @@ func (e *testres) Delete(ctx context.Context, req resource.DeleteRequest, resp *
 		return
 	}
 	if !gotState {
-		resp.Diagnostics.AddError("testbridge_testres.Delete found no prior pseudo-cloud state",
-			err.Error())
+		resp.Diagnostics.AddError(
+			"testbridge_testres.Delete found no prior pseudo-cloud state", "")
 		return
 	}
 	if !oldState.Raw.Equal(req.State.Raw) {
 		resp.Diagnostics.AddError(
-			"testbridge_testres.Delete called with a different State than it remembers",
-			err.Error())
+			"testbridge_testres.Delete called with a different State than it remembers", "")
 		return
 	}
 

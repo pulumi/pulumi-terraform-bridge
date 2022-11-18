@@ -35,7 +35,9 @@ func convertType(ctx context.Context, typ tftypes.Type) (shim.ValueType, error) 
 		return shim.TypeList, nil
 	case typ.Is(tftypes.Map{}):
 		return shim.TypeMap, nil
+	case typ.Is(tftypes.Object{}):
+		return shim.TypeMap, nil
 	default:
-		return shim.TypeInvalid, fmt.Errorf("Failed to translate type %v to Pulumi", typ)
+		return shim.TypeInvalid, fmt.Errorf("[tfpfbridge] Failed to translate type %v to Pulumi", typ)
 	}
 }
