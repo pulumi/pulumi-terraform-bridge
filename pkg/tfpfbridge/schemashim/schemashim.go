@@ -34,9 +34,46 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 func ShimSchemaOnlyProviderInfo(ctx context.Context, provider info.ProviderInfo) tfbridge.ProviderInfo {
 	shimProvider := ShimSchemaOnlyProvider(ctx, provider.P())
 	return tfbridge.ProviderInfo{
-		P:         shimProvider,
-		Name:      provider.Name,
+		P:              shimProvider,
+		Name:           provider.Name,
+		ResourcePrefix: provider.ResourcePrefix,
+
+		GitHubOrg:   provider.GitHubOrg,
+		GitHubHost:  provider.GitHubHost,
+		Description: provider.Description,
+		Keywords:    provider.Keywords,
+		License:     provider.License,
+		LogoURL:     provider.LogoURL,
+		DisplayName: provider.DisplayName,
+		Publisher:   provider.Publisher,
+		Homepage:    provider.Homepage,
+		Repository:  provider.Repository,
+		Version:     provider.Version,
+
+		// TODO Config:      provider.Config,
+		// TODO ExtraConfig: provider.ExtraConfig,
 		Resources: convertResourceMetadata(provider.Resources),
+
+		// TODO DataSources:    provider.DataSources,
+		// TODO ExtraTypes:     provider.ExtraTypes,
+		// TODO ExtraResources: provider.ExtraResources,
+		// TODO ExtraFunctions: provider.ExtraFunctions,
+
+		// TODO ExtraResourceHclExamples: provider.ExtraResourceHclExamples,
+		// TODO ExtraFunctionHclExamples: provider.ExtraFunctionHclExamples,
+		IgnoreMappings:    provider.IgnoreMappings,
+		PluginDownloadURL: provider.PluginDownloadURL,
+		// TODO JavaScript:              provider.JavaScript,
+		// TODO Python:                  provider.Python,
+		// TOOD Golang:                  provider.Golang,
+		// TODO CSharp:                  provider.CSharp,
+		// TODO Java:                    provider.Java,
+		TFProviderVersion: provider.TFProviderVersion,
+		// TODO TFProviderLicense:       provider.TFProviderLicense,
+		TFProviderModuleVersion: provider.TFProviderModuleVersion,
+
+		// TODO PreConfigureCallback:           provider.PreConfigureCallback,
+		// TODO PreConfigureCallbackWithLogger: provider.PreConfigureCallbackWithLogger,
 	}
 }
 
