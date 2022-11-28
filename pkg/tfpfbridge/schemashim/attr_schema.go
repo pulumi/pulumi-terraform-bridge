@@ -28,7 +28,7 @@ type attrSchema struct {
 	attr attr
 }
 
-var _ shim.Schema = (*typeSchema)(nil)
+var _ shim.Schema = (*attrSchema)(nil)
 
 func (s *attrSchema) Type() shim.ValueType {
 	ctx := context.TODO()
