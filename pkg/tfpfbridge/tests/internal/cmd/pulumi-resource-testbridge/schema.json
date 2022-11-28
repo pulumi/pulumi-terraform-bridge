@@ -1,6 +1,10 @@
 {
     "name": "testbridge",
+    "description": "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
+    "homepage": "https://pulumi.io",
+    "license": "Apache-2.0",
     "attribution": "This Pulumi package is based on the [`testbridge` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge).",
+    "repository": "https://github.com/pulumi/pulumi-terraform-brige",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
     },
@@ -8,11 +12,11 @@
         "nodejs": {
             "compatibility": "tfbridge20",
             "disableUnionOutputTypes": true,
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues)."
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](https://github.com/pulumi/pulumi-terraform-brige/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues)."
         },
         "python": {
             "compatibility": "tfbridge20",
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues)."
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](https://github.com/pulumi/pulumi-terraform-brige/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues)."
         }
     },
     "config": {},
@@ -78,7 +82,6 @@
             },
             "type": "object",
             "required": [
-                "handlers",
                 "port"
             ]
         },
@@ -91,11 +94,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "description",
-                "quantity"
-            ]
+            "type": "object"
         }
     },
     "provider": {
