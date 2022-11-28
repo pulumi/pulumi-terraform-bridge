@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -27,12 +27,12 @@ import (
 // which assumes schema.Elem() would return either a Resource or a Schema. This struct packages the object field names
 // an types schema through a pseudo-Resource.
 type objectPseudoResource struct {
-	obj tftypes.Object
+	obj types.ObjectType
 
 	attrs map[string]attr
 }
 
-func newObjectPseudoResource(t tftypes.Object, attrs map[string]attr) *objectPseudoResource {
+func newObjectPseudoResource(t types.ObjectType, attrs map[string]attr) *objectPseudoResource {
 	return &objectPseudoResource{obj: t, attrs: attrs}
 }
 
@@ -65,7 +65,7 @@ func (*objectPseudoResource) DecodeTimeouts(
 }
 
 func (r *objectPseudoResource) Len() int {
-	return len(r.obj.AttributeTypes)
+	return len(r.obj.AttrTypes)
 }
 
 func (r *objectPseudoResource) Get(key string) shim.Schema {
@@ -81,7 +81,7 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 		return &attrSchema{key, attr}, true
 	}
 
-	if t, ok := r.obj.AttributeTypes[key]; ok {
+	if t, ok := r.obj.AttrTypes[key]; ok {
 		return newTypeSchema(t, nil), true
 	}
 
@@ -90,7 +90,7 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 
 func (r *objectPseudoResource) Range(each func(key string, value shim.Schema) bool) {
 	var attrs []string
-	for attr := range r.obj.AttributeTypes {
+	for attr := range r.obj.AttrTypes {
 		attrs = append(attrs, attr)
 	}
 	sort.Strings(attrs)
