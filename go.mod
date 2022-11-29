@@ -34,9 +34,9 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-java/pkg v0.6.0
-	github.com/pulumi/pulumi-yaml v1.0.2
-	github.com/pulumi/pulumi/pkg/v3 v3.46.1
-	github.com/pulumi/pulumi/sdk/v3 v3.46.1
+	github.com/pulumi/pulumi-yaml v1.0.3
+	github.com/pulumi/pulumi/pkg/v3 v3.48.1-0.20221129095827-e43e98e5a7ab
+	github.com/pulumi/pulumi/sdk/v3 v3.48.1-0.20221129095827-e43e98e5a7ab
 	github.com/pulumi/schema-tools v0.1.0
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
 	github.com/russross/blackfriday/v2 v2.1.0

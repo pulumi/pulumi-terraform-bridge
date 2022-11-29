@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -51,6 +52,15 @@ func (p *inmemoryProvider) Pkg() tokens.Package {
 
 func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
 	return p.schema, nil
+}
+
+func (p *inmemoryProvider) GetMapping(key string) ([]byte, string, error) {
+	info := tfbridge.MarshalProviderInfo(&p.info)
+	mapping, err := json.Marshal(info)
+	if err != nil {
+		return nil, "", err
+	}
+	return mapping, p.info.Name, nil
 }
 
 func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
