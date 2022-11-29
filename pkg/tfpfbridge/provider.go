@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,6 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
@@ -43,6 +46,8 @@ type Provider struct {
 	info         info.ProviderInfo
 	resources    pfutils.Resources
 	pulumiSchema []byte
+	packageSpec  pschema.PackageSpec
+	encoding     convert.Encoding
 }
 
 var _ plugin.Provider = &Provider{}
@@ -58,12 +63,20 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
 	if err != nil {
 		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
 	}
+
+	var packageSpec pschema.PackageSpec
+	if err := json.Unmarshal(pulumiSchema, &packageSpec); err != nil {
+		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
+	}
+
 	return &Provider{
 		tfProvider:   p,
 		tfServer:     server6,
 		info:         info,
 		resources:    resources,
 		pulumiSchema: pulumiSchema,
+		packageSpec:  packageSpec,
+		encoding:     setupEncoding(packageSpec),
 	}
 }
 
@@ -143,4 +156,30 @@ func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov
 	}
 
 	return server6, nil
+}
+
+func setupEncoding(p pschema.PackageSpec) convert.Encoding {
+	return convert.NewEncoding(packageSpec{&p}, &simplePropertyNames{})
+}
+
+type packageSpec struct {
+	spec *pschema.PackageSpec
+}
+
+var _ convert.PackageSpec = (*packageSpec)(nil)
+
+func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
+	res, ok := p.spec.Resources[string(tok)]
+	if ok {
+		return &res
+	}
+	return nil
+}
+
+func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
+	typ, ok := p.spec.Types[string(tok)]
+	if ok {
+		return &typ
+	}
+	return nil
 }

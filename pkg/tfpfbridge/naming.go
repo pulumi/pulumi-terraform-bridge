@@ -12,13 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO completely account for custom renaming, with phase separation.
-//
-// Currently schems reuse tfgen which calls PulumiToTerraformName, and
-// among other things plurlizes names of list properties. This code
-// accounts for this for now to pass unit tests. But all the cases
-// need to be covered.
-
 package tfbridge
 
 import (
@@ -26,7 +19,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
+
+// Approximate implemenation of property renaming. Currently schemas reuse tfgen which calls PulumiToTerraformName, and
+// among other things plurlizes names of list properties. This code accounts only for the pluralization for now. Ideally
+// it should account for all forms of renaming.
+type simplePropertyNames struct{}
+
+var _ convert.PropertyNames = (*simplePropertyNames)(nil)
+
+func (s *simplePropertyNames) PropertyKey(typeToken tokens.Token,
+	property convert.TerraformPropertyName, typ tftypes.Type) resource.PropertyKey {
+	return toPropertyKey(property, typ)
+}
 
 func toPropertyKey(name string, typ tftypes.Type) resource.PropertyKey {
 	if pluralized, ok := pluralize(name, typ); ok {

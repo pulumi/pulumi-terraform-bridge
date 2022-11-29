@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package convert
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	bridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	//bridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,10 +90,13 @@ func TestConvertTurnaround(t *testing.T) {
 	for _, testcase := range cases {
 		testcase := testcase
 
+		encoder, decoder, err := byType(testcase.ty)
+		require.NoError(t, err)
+
 		t.Run(testcase.name+"/tf2pu", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := bridge.ConvertTFValueToProperty(testcase.ty)(testcase.val)
+			actual, err := decoder.ToPropertyValue(testcase.val)
 			require.NoError(t, err)
 
 			assert.Equal(t, testcase.prop, actual)
@@ -102,7 +105,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/pu2tf", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := bridge.ConvertPropertyToTFValue(testcase.ty)(testcase.prop)
+			actual, err := encoder.FromPropertyValue(testcase.prop)
 			require.NoError(t, err)
 
 			if testcase.normVal != nil {
@@ -207,5 +210,49 @@ func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 		return tftypes.NewValue(t, elems)
 	default:
 		return tftypes.NewValue(t, val)
+	}
+}
+
+func byType(typ tftypes.Type) (Encoder, Decoder, error) {
+	switch {
+	case typ.Equal(tftypes.Bool):
+		return newBoolEncoder(), newBoolDecoder(), nil
+	case typ.Equal(tftypes.Number):
+		return newNumberEncoder(), newNumberDecoder(), nil
+	case typ.Equal(tftypes.String):
+		return newStringEncoder(), newStringDecoder(), nil
+	case typ.Is(tftypes.List{}):
+		lT := typ.(tftypes.List)
+		elementEncoder, elementDecoder, err := byType(lT.ElementType)
+		if err != nil {
+			return nil, nil, err
+		}
+		enc, err := newListEncoder(lT.ElementType, elementEncoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		dec, err := newListDecoder(elementDecoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		return enc, dec, err
+	case typ.Is(tftypes.Map{}):
+		eT := typ.(tftypes.Map)
+		elementEncoder, elementDecoder, err := byType(eT.ElementType)
+		if err != nil {
+			return nil, nil, err
+		}
+		enc, err := newMapEncoder(eT.ElementType, elementEncoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		dec, err := newMapDecoder(elementDecoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		return enc, dec, err
+	default:
+
+		return nil, nil, fmt.Errorf("Yet to support type: %v", typ.String())
 	}
 }

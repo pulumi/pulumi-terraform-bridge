@@ -22,6 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
@@ -43,7 +45,7 @@ func (p *Provider) Create(
 	// priorState is nil since we are in Create
 	priorStateValue := tftypes.NewValue(tfType, nil)
 
-	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return "", nil, 0, err
 	}
@@ -58,7 +60,8 @@ func (p *Provider) Create(
 	// TODO handle planResp.RequiresReplace - probably can be ignored in Create
 
 	if preview {
-		plannedStatePropertyMap, err := ConvertDynamicValueToPropertyMap(tfType)(*planResp.PlannedState)
+		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(
+			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
 			return "", nil, 0, err
 		}
@@ -111,7 +114,7 @@ func (p *Provider) Create(
 		return "", nil, 0, err
 	}
 
-	createdState, err := ConvertTFValueToPropertyMap(tfType)(stateValue)
+	createdState, err := convert.DecodePropertyMap(rh.decoder, stateValue)
 	if err != nil {
 		return "", nil, 0, err
 	}

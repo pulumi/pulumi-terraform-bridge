@@ -22,6 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 func (p *Provider) Delete(urn resource.URN, id resource.ID,
@@ -34,9 +36,9 @@ func (p *Provider) Delete(urn resource.URN, id resource.ID,
 		return resource.StatusOK, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorState, err := ConvertPropertyMapToDynamicValue(tfType.(tftypes.Object))(props)
+	priorState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, props)
 	if err != nil {
 		return resource.StatusOK, err
 	}
@@ -46,7 +48,7 @@ func (p *Provider) Delete(urn resource.URN, id resource.ID,
 	// See https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:   rh.terraformResourceName,
-		PriorState: &priorState,
+		PriorState: priorState,
 	}
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
