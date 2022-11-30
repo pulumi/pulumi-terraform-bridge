@@ -63,11 +63,13 @@ func ShimSchemaOnlyProviderInfo(ctx context.Context, provider info.ProviderInfo)
 		// TODO ExtraFunctionHclExamples: provider.ExtraFunctionHclExamples,
 		IgnoreMappings:    provider.IgnoreMappings,
 		PluginDownloadURL: provider.PluginDownloadURL,
-		// TODO JavaScript:              provider.JavaScript,
-		// TODO Python:                  provider.Python,
-		// TOOD Golang:                  provider.Golang,
-		// TODO CSharp:                  provider.CSharp,
-		// TODO Java:                    provider.Java,
+
+		JavaScript: provider.JavaScript,
+		Python:     provider.Python,
+		Golang:     provider.Golang,
+		CSharp:     provider.CSharp,
+		Java:       provider.Java,
+
 		TFProviderVersion: provider.TFProviderVersion,
 		// TODO TFProviderLicense:       provider.TFProviderLicense,
 		TFProviderModuleVersion: provider.TFProviderModuleVersion,

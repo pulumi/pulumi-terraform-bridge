@@ -21,6 +21,8 @@ import (
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 type ProviderInfo struct {
@@ -86,42 +88,19 @@ type OverlayInfo struct {
 }
 
 // JavaScriptInfo contains optional overlay information for Python code-generation.
-type JavaScriptInfo struct {
-	PackageName       string            // Custom name for the NPM package.
-	Dependencies      map[string]string // NPM dependencies to add to package.json.
-	DevDependencies   map[string]string // NPM dev-dependencies to add to package.json.
-	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.
-	Resolutions       map[string]string // NPM resolutions to add to package.json.
-	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
-	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
-}
+type JavaScriptInfo = tfbridge.JavaScriptInfo
 
 // PythonInfo contains optional overlay information for Python code-generation.
-type PythonInfo struct {
-	Requires      map[string]string // Pip install_requires information.
-	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
-	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
-	PackageName   string            // Name of the Python package to generate
-}
+type PythonInfo = tfbridge.PythonInfo
 
 // GolangInfo contains optional overlay information for Golang code-generation.
-type GolangInfo struct {
-	GenerateResourceContainerTypes bool         // Generate container types for resources e.g. arrays, maps, pointers etc.
-	ImportBasePath                 string       // Base import path for package.
-	Overlay                        *OverlayInfo // optional overlay information for augmented code-generation.
-}
+type GolangInfo = tfbridge.GolangInfo
 
 // CSharpInfo contains optional overlay information for C# code-generation.
-type CSharpInfo struct {
-	PackageReferences map[string]string // NuGet package reference information.
-	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
-	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
-	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
-}
+type CSharpInfo = tfbridge.CSharpInfo
 
-type JavaInfo struct {
-	BasePackage string // the Base package for the Java SDK
-}
+// CSharpInfo contains optional overlay information for Java code-generation.
+type JavaInfo = tfbridge.JavaInfo
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
