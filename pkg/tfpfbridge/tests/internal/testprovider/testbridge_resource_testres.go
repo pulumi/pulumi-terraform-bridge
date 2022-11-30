@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -28,6 +29,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 type testres struct{}
@@ -503,19 +506,36 @@ func (e *testres) Delete(ctx context.Context, req resource.DeleteRequest, resp *
 }
 
 func (e *testres) freshID(statedir string) (string, error) {
-	i := 0
-	for {
-		candidate := fmt.Sprintf("%d", i)
-		_, err := os.Stat(e.cloudStateFile(statedir, candidate))
-		if os.IsNotExist(err) {
-			return candidate, nil
-		}
-		if err != nil {
-			return "", fmt.Errorf("freshID(%q) failed: %w",
-				statedir, err)
-		}
-		i++
+	mu := fsutil.NewFileMutex(filepath.Join(statedir, "testres.lock"))
+	if err := mu.Lock(); err != nil {
+		return "", err
 	}
+	defer func() {
+		if err := mu.Unlock(); err != nil {
+			panic(err)
+		}
+	}()
+
+	cF := filepath.Join(statedir, "testres.counter")
+
+	i := 0
+	f, err := os.ReadFile(cF)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	if err == nil {
+		var x []byte = f
+		i, err = strconv.Atoi(string(x))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if err := os.WriteFile(cF, []byte(fmt.Sprintf("%d", i+1)), 0700); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%d", i), nil
 }
 
 func (e *testres) cloudStateFile(statedir, resourceId string) string {
