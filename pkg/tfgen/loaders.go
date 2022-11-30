@@ -30,7 +30,10 @@ var _ schema.Loader = &loader{}
 
 func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package, error) {
 	if l.emptyPackages[name] {
-		return &schema.Package{}, nil
+		return &schema.Package{
+			Name:    name,
+			Version: ver,
+		}, nil
 	}
 	return l.innerLoader.LoadPackage(name, ver)
 }
