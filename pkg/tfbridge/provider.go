@@ -1250,6 +1250,20 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 	return &pbempty.Empty{}, nil
 }
 
+func (p *Provider) GetMapping(
+	ctx context.Context, req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+
+	info := MarshalProviderInfo(&p.info)
+	mapping, err := json.Marshal(info)
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetMappingResponse{
+		Provider: p.info.Name,
+		Data:     mapping,
+	}, nil
+}
+
 func initializationError(id string, props *pbstruct.Struct, reasons []string) error {
 	contract.Assertf(len(reasons) > 0, "initializationError must be passed at least one reason")
 	detail := pulumirpc.ErrorResourceInitFailed{
