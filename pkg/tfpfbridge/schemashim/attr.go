@@ -51,69 +51,64 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 		return map[string]attr{}
 	}
 
-	// fresh generates unique job IDs
-	counter := 0
-	fresh := func() string {
-		counter++
-		return fmt.Sprintf("%d", counter)
-	}
-
 	// unable to reference fwschema.Attribute type directly, use GetAttriutes to hijack this type and get a
 	// collection variable (happens to be a map) that lets us track multiple instances of this type
 	queue := schema.GetAttributes()
 
-	// returns a random first key from queue
-	next := func() string {
-		for k := range queue {
-			return k
-		}
-		return ""
-	}
-
-	// clear queue
-	for len(queue) > 0 {
-		delete(queue, next())
+	// only the datastructure is needed, not the content, so clear all content here
+	for k := range queue {
+		delete(queue, k)
 	}
 
 	// pair queue with dests to record pending work; if queue[k] is a fwschema.Attribute to convert, then dests[k]
 	// records where the result of conversion should be stored:
 	//
-	//     dests[k].toMap[dests[k].key] = conv(queue[k])
+	//     dests[k].toMap[dests[k].key] = convert(queue[k])
 	type dest = struct {
 		toMap map[string]attr
 		key   string
 	}
 	dests := map[string]dest{}
 
+	jobCounter := 0
+
 	// queue up converting schema.GetAttributes() into finalMap
 	finalMap := map[string]attr{}
 	for k, v := range schema.GetAttributes() {
-		job := fresh()
+		job := fmt.Sprintf("%d", jobCounter)
+		jobCounter++
 		queue[job] = v
 		dests[job] = dest{toMap: finalMap, key: k}
 	}
 
 	// keep converting until work queue is empty
 	for len(queue) > 0 {
-		// pop into a, d
-		k := next()
-		a := queue[k]
-		delete(queue, k)
-		d := dests[k]
-		delete(dests, k)
 
-		// r := convert(a)
-		r := attr{attrLike: a}
-		if n := a.GetAttributes(); n != nil && n.GetAttributes() != nil {
-			r.nested = map[string]attr{}
-			for k, v := range n.GetAttributes() {
-				// schedule r.nested[k] = convert(v)
-				job := fresh()
+		// pick and pop a random job from the queue
+		var job string
+		for j := range queue {
+			job = j
+			break
+		}
+
+		inAttr, attrDest := queue[job], dests[job]
+
+		delete(queue, job)
+		delete(dests, job)
+
+		// outAttr := convert(inAttr)
+		outAttr := attr{attrLike: inAttr}
+		if nested := inAttr.GetAttributes(); nested != nil && nested.GetAttributes() != nil {
+			outAttr.nested = map[string]attr{}
+			for k, v := range nested.GetAttributes() {
+				// schedule outAttr.nested[k] = convert(v)
+				job := fmt.Sprintf("%d", jobCounter)
+				jobCounter++
 				queue[job] = v
-				dests[job] = dest{toMap: r.nested, key: k}
+				dests[job] = dest{toMap: outAttr.nested, key: k}
 			}
 		}
-		d.toMap[d.key] = r
+		attrDest.toMap[attrDest.key] = outAttr
 	}
 
 	return finalMap
