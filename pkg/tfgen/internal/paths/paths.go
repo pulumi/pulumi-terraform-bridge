@@ -16,24 +16,58 @@ package paths
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-type ResourcePath struct {
-	token      tokens.Type
-	IsProvider bool
+type TypePath interface {
+	// Parent path, can be nil for root paths.
+	Parent() TypePath
+
+	// Useful for comparing paths.
+	UniqueKey() string
+
+	// Human friendly representation.
+	String() string
 }
 
-func NewResourcePath(resourceToken tokens.Type, isProvider bool) *ResourcePath {
+// Identifies a resource uniquely.
+type ResourcePath struct {
+	key        string
+	token      tokens.Type
+	isProvider bool
+}
+
+func NewResourcePath(key string, resourceToken tokens.Type, isProvider bool) *ResourcePath {
+	if isProvider && key != "" {
+		panic("key should be empty when isProvider=true")
+	}
+	if !isProvider && key == "" {
+		panic("key should not be empty when isProvider=false")
+	}
 	return &ResourcePath{
+		key:        key,
 		token:      resourceToken,
-		IsProvider: isProvider,
+		isProvider: isProvider,
 	}
 }
 
+// Raw name from shim.ResourceMap, typically the Terraform name uniquely identifying the Resource. Will be empty if
+// IsProvider() is true and the resource is a Provider resource, a Pulumi-only concept.
+func (p *ResourcePath) Key() string {
+	return p.key
+}
+
+// Unquely identifies the Resource in Pulumi Schema.
+//
+// See also: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func (p *ResourcePath) Token() tokens.Type {
 	return p.token
+}
+
+func (p *ResourcePath) IsProvider() bool {
+	return p.isProvider
 }
 
 func (p *ResourcePath) Inputs() *ResourceMemberPath {
@@ -58,7 +92,12 @@ func (p *ResourcePath) State() *ResourceMemberPath {
 }
 
 func (p *ResourcePath) String() string {
-	return fmt.Sprintf("resource[%s]", p.token.String())
+	if p.isProvider {
+		return fmt.Sprintf("resource[provider=%q]", p.token.String())
+	}
+	return fmt.Sprintf("resource[key=%q,token=%q]",
+		p.key,
+		p.token.String())
 }
 
 type ResourceMemberKind int
@@ -86,12 +125,14 @@ type ResourceMemberPath struct {
 	ResourceMemberKind ResourceMemberKind
 }
 
-func (p *ResourceMemberPath) Property(name string) *TypePath {
-	return &TypePath{
-		parent:     p,
-		path:       name,
-		parentKind: ResourceMemberPathParent,
-	}
+var _ TypePath = (*ResourceMemberPath)(nil)
+
+func (p *ResourceMemberPath) Parent() TypePath {
+	return nil
+}
+
+func (p *ResourceMemberPath) UniqueKey() string {
+	return p.String()
 }
 
 func (p *ResourceMemberPath) String() string {
@@ -100,16 +141,27 @@ func (p *ResourceMemberPath) String() string {
 		p.ResourceMemberKind.String())
 }
 
+// Identifies a data source uniquely.
 type DataSourcePath struct {
+	key   string
 	token tokens.ModuleMember
 }
 
-func NewDataSourcePath(token tokens.ModuleMember) *DataSourcePath {
-	return &DataSourcePath{token: token}
+func NewDataSourcePath(key string, token tokens.ModuleMember) *DataSourcePath {
+	return &DataSourcePath{
+		key:   key,
+		token: token,
+	}
 }
 
+// Pulumi token uniquely identifiying the DataSource.
 func (p *DataSourcePath) Token() tokens.ModuleMember {
 	return p.token
+}
+
+// Unique identifier for the DataSource preserved from the shim layer, typically the Terraform name.
+func (p *DataSourcePath) Key() string {
+	return p.key
 }
 
 func (p *DataSourcePath) Args() *DataSourceMemberPath {
@@ -127,7 +179,9 @@ func (p *DataSourcePath) Results() *DataSourceMemberPath {
 }
 
 func (p *DataSourcePath) String() string {
-	return fmt.Sprintf("datasource[%s]", p.token.String())
+	return fmt.Sprintf("datasource[key=%q,token=%q]",
+		p.key,
+		p.token.String())
 }
 
 type DataSourceMemberKind int
@@ -152,12 +206,10 @@ type DataSourceMemberPath struct {
 	DataSourceMemberKind DataSourceMemberKind
 }
 
-func (p *DataSourceMemberPath) Property(name string) *TypePath {
-	return &TypePath{
-		parent:     p,
-		path:       name,
-		parentKind: DataSourceMemberPathParent,
-	}
+var _ TypePath = (*DataSourceMemberPath)(nil)
+
+func (p *DataSourceMemberPath) Parent() TypePath {
+	return nil
 }
 
 func (p *DataSourceMemberPath) String() string {
@@ -166,111 +218,117 @@ func (p *DataSourceMemberPath) String() string {
 		p.DataSourceMemberKind.String())
 }
 
+func (p *DataSourceMemberPath) UniqueKey() string {
+	return p.String()
+}
+
 type ConfigPath struct{}
+
+var _ TypePath = (*ConfigPath)(nil)
 
 func NewConfigPath() *ConfigPath {
 	return &ConfigPath{}
 }
 
-func (p *ConfigPath) Property(name string) *TypePath {
-	return &TypePath{
-		parent:     p,
-		path:       name,
-		parentKind: ConfigPathParent,
-	}
+func (p *ConfigPath) UniqueKey() string {
+	return p.String()
 }
 
 func (p *ConfigPath) String() string {
 	return "config"
 }
 
-const ElementPathFragment = "$"
-
-type TypePath struct {
-	parent     interface{}
-	path       string
-	parentKind ResourceTypeParentKind
-}
-
-func (p *TypePath) Property(name string) *TypePath {
-	return &TypePath{
-		parent:     p,
-		path:       name,
-		parentKind: TypePathParent,
-	}
-}
-
-func (p *TypePath) Element() *TypePath {
-	return &TypePath{
-		parent:     p,
-		path:       ElementPathFragment,
-		parentKind: TypePathParent,
-	}
-}
-
-func (p *TypePath) ParentKind() ResourceTypeParentKind {
-	return p.parentKind
-}
-
-func (p *TypePath) TypePathParent() *TypePath {
-	if p.parentKind == TypePathParent {
-		return p.parent.(*TypePath)
-	}
+func (p *ConfigPath) Parent() TypePath {
 	return nil
 }
 
-func (p *TypePath) DataSourceParent() *DataSourceMemberPath {
-	if p.parentKind == DataSourceMemberPathParent {
-		return p.parent.(*DataSourceMemberPath)
-	}
-	return nil
+type PropertyPath struct {
+	parent       TypePath
+	PropertyName PropertyName
 }
 
-func (p *TypePath) ResourceParent() *ResourceMemberPath {
-	if p.parentKind == ResourceMemberPathParent {
-		return p.parent.(*ResourceMemberPath)
-	}
-	return nil
+var _ TypePath = (*PropertyPath)(nil)
+
+func NewProperyPath(parent TypePath, name PropertyName) *PropertyPath {
+	return &PropertyPath{parent: parent, PropertyName: name}
 }
 
-func (p *TypePath) ConfigParent() *ConfigPath {
-	if p.parentKind == ConfigPathParent {
-		return p.parent.(*ConfigPath)
-	}
-	return nil
+func (p *PropertyPath) Parent() TypePath {
+	return p.parent
 }
 
-func (p *TypePath) String() string {
-	path := p.path
+func (p *PropertyPath) UniqueKey() string {
+	return p.String()
+}
+
+func (p *PropertyPath) String() string {
+	path := p.PropertyName.String()
 	if path != "" {
 		path = "." + path
 	}
-	return fmt.Sprintf("%v%s", p.parent, path)
+	return fmt.Sprintf("%s%s", p.Parent().String(), path)
 }
 
-type ResourceTypeParentKind int
+// Represents an element of List or Map or Set type represented by Parent.
+type ElementPath struct {
+	parent TypePath
+}
 
-const (
-	DataSourceMemberPathParent ResourceTypeParentKind = iota
-	ResourceMemberPathParent
-	ConfigPathParent
-	TypePathParent
-)
+var _ TypePath = (*ElementPath)(nil)
 
-func (s ResourceTypeParentKind) String() string {
-	switch s {
-	case DataSourceMemberPathParent:
-		return "datasource"
-	case ResourceMemberPathParent:
-		return "resource"
-	case ConfigPathParent:
-		return "config"
-	case TypePathParent:
-		return "type"
+func NewElementPath(parent TypePath) *ElementPath {
+	return &ElementPath{parent}
+}
+
+func (p *ElementPath) UniqueKey() string {
+	return p.String()
+}
+
+func (p *ElementPath) String() string {
+	return fmt.Sprintf("%s.$", p.parent.String())
+}
+
+func (p *ElementPath) Parent() TypePath {
+	return p.parent
+}
+
+// Type paths include property names as path fragments.
+type PropertyName struct {
+	// The original name from the shim (typically the Terraform name). Example: "bcrypt_hash".
+	Key string
+
+	// Possibly inflected Pulumi name, typically but not always equal to Key. Example inflection: "bcryptHash".
+	Name tokens.Name
+}
+
+func (pn PropertyName) String() string {
+	if string(pn.Name) == pn.Key {
+		return pn.Key
 	}
-	return "unknown"
+	return fmt.Sprintf("%s[pulumi:%q]", pn.Key, pn.Name.String())
 }
 
-type NamedTypePathContainer interface {
-	Property(name string) *TypePath
+type TypePathSet map[string]TypePath
+
+func NewTypePathSet() TypePathSet { return TypePathSet(map[string]TypePath{}) }
+
+func SingletonTypePathSet(typePath TypePath) TypePathSet {
+	s := NewTypePathSet()
+	s.Add(typePath)
+	return s
+}
+
+func (s TypePathSet) Add(p TypePath) {
+	s[p.UniqueKey()] = p
+}
+
+func (s TypePathSet) Paths() []TypePath {
+	res := []TypePath{}
+	for _, v := range s {
+		res = append(res, v)
+	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].UniqueKey() < res[j].UniqueKey()
+	})
+	return res
 }
