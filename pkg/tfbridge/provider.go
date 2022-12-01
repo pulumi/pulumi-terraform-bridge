@@ -1253,15 +1253,20 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 func (p *Provider) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
 
-	info := MarshalProviderInfo(&p.info)
-	mapping, err := json.Marshal(info)
-	if err != nil {
-		return nil, err
+	if req.Key == "tf" {
+		info := MarshalProviderInfo(&p.info)
+		mapping, err := json.Marshal(info)
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.GetMappingResponse{
+			Provider: p.info.Name,
+			Data:     mapping,
+		}, nil
 	}
-	return &pulumirpc.GetMappingResponse{
-		Provider: p.info.Name,
-		Data:     mapping,
-	}, nil
+
+	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
+	return &pulumirpc.GetMappingResponse{}, nil
 }
 
 func initializationError(id string, props *pbstruct.Struct, reasons []string) error {
