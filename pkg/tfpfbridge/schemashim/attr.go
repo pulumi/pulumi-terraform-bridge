@@ -83,18 +83,8 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 
 	// keep converting until work queue is empty
 	for len(queue) > 0 {
-
-		// pick and pop a random job from the queue
-		var job string
-		for j := range queue {
-			job = j
-			break
-		}
-
-		inAttr, attrDest := queue[job], dests[job]
-
-		delete(queue, job)
-		delete(dests, job)
+		job, inAttr := pop(queue)
+		attrDest := popAt(dests, job)
 
 		// outAttr := convert(inAttr)
 		outAttr := attr{attrLike: inAttr}
@@ -112,4 +102,21 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 	}
 
 	return finalMap
+}
+
+// Remove and return the value at a random key.
+func pop[T any](q map[string]T) (string, T) {
+	for k := range q {
+		return k, popAt(q, k)
+	}
+	panic("empty queue")
+}
+
+// Remove and return the value at key.
+func popAt[T any](q map[string]T, key string) T {
+	if v, ok := q[key]; ok {
+		delete(q, key)
+		return v
+	}
+	panic("key no found: " + key)
 }
