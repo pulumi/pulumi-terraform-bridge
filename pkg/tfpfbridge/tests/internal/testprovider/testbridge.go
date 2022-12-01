@@ -39,7 +39,7 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 		Keywords:    []string{},
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-terraform-brige",
+		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
 		Resources: map[string]*info.ResourceInfo{
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
