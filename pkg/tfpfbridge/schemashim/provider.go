@@ -35,7 +35,7 @@ func (p *schemaOnlyProvider) Schema() shim.SchemaMap {
 	if diags.HasError() {
 		panic("GetSchema returned error diags")
 	}
-	return &schemaMap{tf: &schema}
+	return newSchemaMap(&schema)
 }
 
 func (p *schemaOnlyProvider) ResourcesMap() shim.ResourceMap {

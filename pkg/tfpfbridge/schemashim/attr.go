@@ -16,25 +16,23 @@ package schemashim
 
 import (
 	"fmt"
-	"reflect"
+
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 )
 
-type attr interface {
+// attr type works around not being able to link to fwschema.Attribute from
+// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
+//
+// Most methods from fwschema.Attribute have simple signatures and are copied into attrLike interface. Casting to
+// attrLike exposes these methods.
+//
+// GetAttributes method is special since it returns a NestedAttributes interface that is also internal and cannot be
+// linked to. Instead, NestedAttriutes information is recorded in a dedicated new field.
+type attr struct {
 	attrLike
-	NestedAttributes() map[string]attr
-}
-
-func newAttr(inner attrLike) attr {
-	nested := map[string]attr{}
-	for k, v := range getAttributes(inner) {
-		nested[k] = newAttr(v)
-	}
-	return &attrImpl{
-		attrLike: inner,
-		nested:   nested,
-	}
+	nested map[string]attr
 }
 
 type attrLike interface {
@@ -48,58 +46,75 @@ type attrLike interface {
 	GetMarkdownDescription() string
 }
 
-// Dropping to reflection here since GetAttributes() refers to internal types from terraform-plugin-framework and cannot
-// be easily called safely.
-func getAttributes(a interface{}) map[string]attrLike {
-	attrs := map[string]attrLike{}
-	attrMap := callGetAttributes(reflect.ValueOf(a))
-
-	if attrMap.IsNil() {
-		return attrs
+func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
+	if schema.GetAttributes() == nil || len(schema.GetAttributes()) == 0 {
+		return map[string]attr{}
 	}
 
-	// Sometimes need to call a.GetAttributes().GetAttributes() to get to a map.
-	if attrMap.Type().Kind() != reflect.Map {
-		attrMap = callGetAttributes(attrMap)
+	// fresh generates unique job IDs
+	counter := 0
+	fresh := func() string {
+		counter++
+		return fmt.Sprintf("%d", counter)
 	}
 
-	if attrMap.Type().Kind() != reflect.Map {
-		panic(fmt.Sprintf("Expecting a map, got %v", attrMap.Type().String()))
+	// unable to reference fwschema.Attribute type directly, use GetAttriutes to hijack this type and get a
+	// collection variable (happens to be a map) that lets us track multiple instances of this type
+	queue := schema.GetAttributes()
+
+	// returns a random first key from queue
+	next := func() string {
+		for k := range queue {
+			return k
+		}
+		return ""
 	}
 
-	if attrMap.IsNil() {
-		return attrs
+	// clear queue
+	for len(queue) > 0 {
+		delete(queue, next())
 	}
 
-	attrMapIterator := attrMap.MapRange()
-	for attrMapIterator.Next() {
-		key := attrMapIterator.Key().Interface().(string)
-		value := attrMapIterator.Value().Interface().(attrLike)
-		attrs[key] = value
+	// pair queue with dests to record pending work; if queue[k] is a fwschema.Attribute to convert, then dests[k]
+	// records where the result of conversion should be stored:
+	//
+	//     dests[k].toMap[dests[k].key] = conv(queue[k])
+	type dest = struct {
+		toMap map[string]attr
+		key   string
 	}
-	return attrs
+	dests := map[string]dest{}
+
+	// queue up converting schema.GetAttributes() into finalMap
+	finalMap := map[string]attr{}
+	for k, v := range schema.GetAttributes() {
+		job := fresh()
+		queue[job] = v
+		dests[job] = dest{toMap: finalMap, key: k}
+	}
+
+	// keep converting until work queue is empty
+	for len(queue) > 0 {
+		// pop into a, d
+		k := next()
+		a := queue[k]
+		delete(queue, k)
+		d := dests[k]
+		delete(dests, k)
+
+		// r := convert(a)
+		r := attr{attrLike: a}
+		if n := a.GetAttributes(); n != nil && n.GetAttributes() != nil {
+			r.nested = map[string]attr{}
+			for k, v := range n.GetAttributes() {
+				// schedule r.nested[k] = convert(v)
+				job := fresh()
+				queue[job] = v
+				dests[job] = dest{toMap: r.nested, key: k}
+			}
+		}
+		d.toMap[d.key] = r
+	}
+
+	return finalMap
 }
-
-func callGetAttributes(v reflect.Value) reflect.Value {
-	m := v.MethodByName("GetAttributes")
-	t := v.Type().String()
-	if !m.IsValid() {
-		panic(fmt.Sprintf("Expected a value of type %s to implement GetAttributes method", t))
-	}
-	attrCallResult := m.Call(nil)
-	if len(attrCallResult) != 1 {
-		panic(fmt.Sprintf("Expected GetAttributes from type %s to return 1 value", t))
-	}
-	return attrCallResult[0]
-}
-
-type attrImpl struct {
-	attrLike
-	nested map[string]attr
-}
-
-func (i *attrImpl) NestedAttributes() map[string]attr {
-	return i.nested
-}
-
-var _ attr = (*attrImpl)(nil)

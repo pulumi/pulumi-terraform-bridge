@@ -85,11 +85,11 @@ func (s *attrSchema) Elem() interface{} {
 		return nil
 	case t.Is(tftypes.Map{}):
 		mT := t.(tftypes.Map)
-		var schema shim.Schema = newTypeSchema(mT.ElementType, s.attr.NestedAttributes())
+		var schema shim.Schema = newTypeSchema(mT.ElementType, s.attr.nested)
 		return schema
 	case t.Is(tftypes.List{}):
 		lT := t.(tftypes.List)
-		var schema shim.Schema = newTypeSchema(lT.ElementType, s.attr.NestedAttributes())
+		var schema shim.Schema = newTypeSchema(lT.ElementType, s.attr.nested)
 		return schema
 	case t.Is(tftypes.Object{}):
 		// This case can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute
@@ -97,7 +97,7 @@ func (s *attrSchema) Elem() interface{} {
 		// understands, Elem() needes to return a Resource value.
 		//
 		// See also: documentation on shim.Schema.Elem().
-		return newObjectPseudoResource(t.(tftypes.Object), s.attr.NestedAttributes())
+		return newObjectPseudoResource(t.(tftypes.Object), s.attr.nested)
 	default:
 		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
 	}
