@@ -55,12 +55,15 @@ func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
 }
 
 func (p *inmemoryProvider) GetMapping(key string) ([]byte, string, error) {
-	info := tfbridge.MarshalProviderInfo(&p.info)
-	mapping, err := json.Marshal(info)
-	if err != nil {
-		return nil, "", err
+	if key == "tf" {
+		info := tfbridge.MarshalProviderInfo(&p.info)
+		mapping, err := json.Marshal(info)
+		if err != nil {
+			return nil, "", err
+		}
+		return mapping, p.info.Name, nil
 	}
-	return mapping, p.info.Name, nil
+	return nil, "", nil
 }
 
 func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
