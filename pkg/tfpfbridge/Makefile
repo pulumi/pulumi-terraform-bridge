@@ -7,6 +7,7 @@ test::
 	go test
 	cd tests && rm -rf state && mkdir state
 	cd tests && go test
+	cd tests && rm -rf state && mkdir state
 
 test.integration::
 	cd tests/integration && go test -test.v
