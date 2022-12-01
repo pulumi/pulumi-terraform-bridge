@@ -15,10 +15,10 @@
 package schemashim
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -31,9 +31,8 @@ type attrSchema struct {
 var _ shim.Schema = (*attrSchema)(nil)
 
 func (s *attrSchema) Type() shim.ValueType {
-	ctx := context.TODO()
-	ty := s.attr.FrameworkType().TerraformType(ctx)
-	vt, err := convertType(ctx, ty)
+	ty := s.attr.FrameworkType()
+	vt, err := convertType(ty)
 	if err != nil {
 		panic(err)
 	}
@@ -74,33 +73,34 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
-	ctx := context.TODO()
-	t := s.attr.FrameworkType().TerraformType(ctx)
-	switch {
-	case t.Is(tftypes.Bool):
+	t := s.attr.FrameworkType()
+
+	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
+	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,
+	// Elem() needes to return a Resource value.
+	//
+	// See also: documentation on shim.Schema.Elem().
+	if tt, ok := t.(types.ObjectType); ok {
+		var res shim.Resource = newObjectPseudoResource(tt, s.attr.nested)
+		return res
+	}
+
+	// Anything else that does not have an ElementType can be skipped.
+	if _, ok := t.(pfattr.TypeWithElementType); !ok {
 		return nil
-	case t.Is(tftypes.String):
-		return nil
-	case t.Is(tftypes.Number):
-		return nil
-	case t.Is(tftypes.Map{}):
-		mT := t.(tftypes.Map)
-		var schema shim.Schema = newTypeSchema(mT.ElementType, s.attr.nested)
-		return schema
-	case t.Is(tftypes.List{}):
-		lT := t.(tftypes.List)
-		var schema shim.Schema = newTypeSchema(lT.ElementType, s.attr.nested)
-		return schema
-	case t.Is(tftypes.Object{}):
-		// This case can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute
-		// with a type that is an Object type. To encode the schema of the Object type in a way the shim layer
-		// understands, Elem() needes to return a Resource value.
-		//
-		// See also: documentation on shim.Schema.Elem().
-		return newObjectPseudoResource(t.(tftypes.Object), s.attr.nested)
+	}
+
+	var schema shim.Schema
+	switch tt := t.(type) {
+	case types.MapType:
+		schema = newTypeSchema(tt.ElemType, s.attr.nested)
+	case types.ListType:
+		schema = newTypeSchema(tt.ElemType, s.attr.nested)
 	default:
+		// TODO SetType
 		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
 	}
+	return schema
 }
 
 func (*attrSchema) MaxItems() int {

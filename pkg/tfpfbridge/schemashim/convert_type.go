@@ -15,29 +15,36 @@
 package schemashim
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func convertType(ctx context.Context, typ tftypes.Type) (shim.ValueType, error) {
+func convertType(typ pfattr.Type) (shim.ValueType, error) {
 	switch {
-	case typ.Is(tftypes.Bool):
+	case typ.Equal(types.BoolType):
 		return shim.TypeBool, nil
-	case typ.Is(tftypes.Number):
-		return shim.TypeFloat, nil // TODO should this ever be TypeInt?
-	case typ.Is(tftypes.String):
+	case typ.Equal(types.Int64Type):
+		return shim.TypeInt, nil
+	case typ.Equal(types.Float64Type):
+		return shim.TypeFloat, nil
+	case typ.Equal(types.NumberType):
+		return shim.TypeFloat, nil
+	case typ.Equal(types.StringType):
 		return shim.TypeString, nil
-	case typ.Is(tftypes.List{}):
-		return shim.TypeList, nil
-	case typ.Is(tftypes.Map{}):
-		return shim.TypeMap, nil
-	case typ.Is(tftypes.Object{}):
-		return shim.TypeMap, nil
 	default:
-		return shim.TypeInvalid, fmt.Errorf("[tfpfbridge] Failed to translate type %v to Pulumi", typ)
+		switch typ.(type) {
+		case types.ListType:
+			return shim.TypeList, nil
+		case types.MapType:
+			return shim.TypeMap, nil
+		case types.ObjectType:
+			return shim.TypeMap, nil
+		default:
+			return shim.TypeInvalid, fmt.Errorf("[tfpfbridge] Failed to translate type %v to Pulumi", typ)
+		}
 	}
 }

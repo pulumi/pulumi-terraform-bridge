@@ -15,16 +15,15 @@
 package schemashim
 
 import (
-	"context"
-
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type typeSchema struct {
-	t tftypes.Type
+	t pfattr.Type
 
 	// Object types record attr metadata for each field here, if available.
 	nested map[string]attr
@@ -32,7 +31,7 @@ type typeSchema struct {
 
 var _ shim.Schema = (*typeSchema)(nil)
 
-func newTypeSchema(t tftypes.Type, nested map[string]attr) *typeSchema {
+func newTypeSchema(t pfattr.Type, nested map[string]attr) *typeSchema {
 	return &typeSchema{
 		t:      t,
 		nested: nested,
@@ -40,8 +39,7 @@ func newTypeSchema(t tftypes.Type, nested map[string]attr) *typeSchema {
 }
 
 func (s *typeSchema) Type() shim.ValueType {
-	ctx := context.TODO()
-	vt, err := convertType(ctx, s.t)
+	vt, err := convertType(s.t)
 	if err != nil {
 		panic(err)
 	}
@@ -58,15 +56,15 @@ func (*typeSchema) Sensitive() bool { return false }
 
 func (s *typeSchema) Elem() interface{} {
 	switch tt := s.t.(type) {
-	case tftypes.Object:
+	case types.ObjectType:
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested)
 		return pseudoResource
-	case tftypes.List:
+	case types.ListType:
 		contract.Assert(s.nested == nil || len(s.nested) == 0)
-		return newTypeSchema(tt.ElementType, nil)
-	case tftypes.Map:
+		return newTypeSchema(tt.ElemType, nil)
+	case types.MapType:
 		contract.Assert(s.nested == nil || len(s.nested) == 0)
-		return newTypeSchema(tt.ElementType, nil)
+		return newTypeSchema(tt.ElemType, nil)
 	default:
 		// TODO Set case
 		return nil

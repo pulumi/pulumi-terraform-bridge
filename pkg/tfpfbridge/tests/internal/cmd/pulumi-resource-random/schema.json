@@ -37,7 +37,7 @@
                     "type": "string"
                 },
                 "byteLength": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "dec": {
                     "type": "string"
@@ -64,7 +64,7 @@
             ],
             "inputProperties": {
                 "byteLength": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "keepers": {
                     "type": "object",
@@ -89,7 +89,7 @@
                         "type": "string"
                     },
                     "byteLength": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "dec": {
                         "type": "string"
@@ -119,13 +119,13 @@
                     }
                 },
                 "max": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "min": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "result": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "seed": {
                     "type": "string"
@@ -144,10 +144,10 @@
                     }
                 },
                 "max": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "min": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "seed": {
                     "type": "string"
@@ -167,13 +167,13 @@
                         }
                     },
                     "max": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "min": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "result": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "seed": {
                         "type": "string"
@@ -195,22 +195,22 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "lower": {
                     "type": "boolean"
                 },
                 "minLower": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minNumeric": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minSpecial": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minUpper": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "number": {
                     "type": "boolean",
@@ -255,22 +255,22 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "lower": {
                     "type": "boolean"
                 },
                 "minLower": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minNumeric": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minSpecial": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minUpper": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "number": {
                     "type": "boolean",
@@ -306,22 +306,22 @@
                         }
                     },
                     "length": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "lower": {
                         "type": "boolean"
                     },
                     "minLower": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minNumeric": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minSpecial": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minUpper": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "number": {
                         "type": "boolean",
@@ -356,7 +356,7 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "prefix": {
                     "type": "string"
@@ -377,7 +377,7 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "prefix": {
                     "type": "string"
@@ -396,7 +396,7 @@
                         }
                     },
                     "length": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "prefix": {
                         "type": "string"
@@ -423,7 +423,7 @@
                     }
                 },
                 "resultCount": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "results": {
                     "type": "array",
@@ -453,7 +453,7 @@
                     }
                 },
                 "resultCount": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "seed": {
                     "type": "string"
@@ -478,7 +478,7 @@
                         }
                     },
                     "resultCount": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "results": {
                         "type": "array",
@@ -502,22 +502,22 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "lower": {
                     "type": "boolean"
                 },
                 "minLower": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minNumeric": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minSpecial": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minUpper": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "number": {
                     "type": "boolean",
@@ -560,22 +560,22 @@
                     }
                 },
                 "length": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "lower": {
                     "type": "boolean"
                 },
                 "minLower": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minNumeric": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minSpecial": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minUpper": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "number": {
                     "type": "boolean",
@@ -607,22 +607,22 @@
                         }
                     },
                     "length": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "lower": {
                         "type": "boolean"
                     },
                     "minLower": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minNumeric": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minSpecial": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "minUpper": {
-                        "type": "number"
+                        "type": "integer"
                     },
                     "number": {
                         "type": "boolean",
