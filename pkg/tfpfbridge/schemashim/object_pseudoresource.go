@@ -28,6 +28,12 @@ import (
 // an types schema through a pseudo-Resource.
 type objectPseudoResource struct {
 	obj tftypes.Object
+
+	attrs map[string]attr
+}
+
+func newObjectPseudoResource(t tftypes.Object, attrs map[string]attr) *objectPseudoResource {
+	return &objectPseudoResource{obj: t, attrs: attrs}
 }
 
 var _ shim.Resource = (*objectPseudoResource)(nil)
@@ -71,24 +77,15 @@ func (r *objectPseudoResource) Get(key string) shim.Schema {
 }
 
 func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
-	t, ok := r.obj.AttributeTypes[key]
-	if !ok {
-		return nil, false
+	if attr, ok := r.attrs[key]; ok {
+		return &attrSchema{key, attr}, true
 	}
 
-	var s shim.Schema = &typeSchema{t}
-
-	if _, isOptional := r.obj.OptionalAttributes[key]; isOptional {
-		s = &schemaDecorator{Schema: s, optional: func(shim.Schema) bool {
-			return true
-		}}
-	} else {
-		s = &schemaDecorator{Schema: s, required: func(shim.Schema) bool {
-			return true
-		}}
+	if t, ok := r.obj.AttributeTypes[key]; ok {
+		return newTypeSchema(t, nil), true
 	}
 
-	return s, true
+	return nil, false
 }
 
 func (r *objectPseudoResource) Range(each func(key string, value shim.Schema) bool) {

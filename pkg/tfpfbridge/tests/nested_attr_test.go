@@ -18,8 +18,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,18 +37,4 @@ func TestNestedType(t *testing.T) {
 
 	obj := testresType.(tftypes.Object).AttributeTypes["services"].(tftypes.List).ElementType.(tftypes.Object)
 	assert.True(t, obj.AttributeTypes["protocol"].Is(tftypes.String))
-}
-
-func TestNestedOptionals(t *testing.T) {
-	t.Skip("TODO[pulumi/home#2432] skipped as possible issue with terraform-plugin-framework")
-	ctx := context.TODO()
-	nestedOptional := tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-		"nestedOptional": {
-			Optional: true,
-			Type:     types.StringType,
-		},
-	})
-	assert.True(t, nestedOptional.GetAttributes()["nestedOptional"].IsOptional())
-	// Projecting to tftypes.Object seems to forget the optional-ity of nestedOptional.
-	assert.Contains(t, nestedOptional.Type().TerraformType(ctx).(tftypes.Object).OptionalAttributes, "nestedOptional")
 }

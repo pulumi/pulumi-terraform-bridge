@@ -16,6 +16,7 @@ package schemashim
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
@@ -23,13 +24,24 @@ import (
 )
 
 type schemaMap struct {
-	tf *tfsdk.Schema
+	sortedKeys []string
+	attrs      map[string]attr
+}
+
+func newSchemaMap(tf *tfsdk.Schema) *schemaMap {
+	m := schemaToAttrMap(tf)
+	s := []string{}
+	for k := range m {
+		s = append(s, k)
+	}
+	sort.Strings(s)
+	return &schemaMap{attrs: m, sortedKeys: s}
 }
 
 var _ shim.SchemaMap = (*schemaMap)(nil)
 
 func (m *schemaMap) Len() int {
-	return len(m.tf.GetAttributes())
+	return len(m.attrs)
 }
 
 func (m *schemaMap) Get(key string) shim.Schema {
@@ -41,8 +53,7 @@ func (m *schemaMap) Get(key string) shim.Schema {
 }
 
 func (m *schemaMap) GetOk(key string) (shim.Schema, bool) {
-	attrs := m.tf.GetAttributes()
-	attr, ok := attrs[key]
+	attr, ok := m.attrs[key]
 	if !ok {
 		return nil, false
 	}
@@ -50,10 +61,8 @@ func (m *schemaMap) GetOk(key string) (shim.Schema, bool) {
 }
 
 func (m *schemaMap) Range(each func(key string, value shim.Schema) bool) {
-	for key, rawAttr := range m.tf.GetAttributes() {
-		var attr attr = rawAttr
-		var value shim.Schema = &attrSchema{key: key, attr: attr}
-		if !each(key, value) {
+	for _, key := range m.sortedKeys {
+		if !each(key, m.Get(key)) {
 			return
 		}
 	}

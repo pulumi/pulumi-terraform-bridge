@@ -27,7 +27,7 @@ type schemaOnlyResource struct {
 var _ shim.Resource = (*schemaOnlyResource)(nil)
 
 func (r *schemaOnlyResource) Schema() shim.SchemaMap {
-	return &schemaMap{r.tf}
+	return newSchemaMap(r.tf)
 }
 
 func (*schemaOnlyResource) SchemaVersion() int         { panic("TODO") }
