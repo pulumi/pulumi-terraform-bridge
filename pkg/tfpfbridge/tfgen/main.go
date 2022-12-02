@@ -42,7 +42,13 @@ func Main(provider, version string, info info.ProviderInfo) {
 			return err
 		}
 
-		return writeRenames(g, opts)
+		if opts.Language == tfgen.Schema {
+			if err := writeRenames(g, opts); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 }
 
