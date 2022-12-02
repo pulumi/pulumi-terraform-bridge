@@ -83,8 +83,7 @@ func (enc *objectEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.V
 			v, err := attrEncoder.FromPropertyValue(pv)
 			if err != nil {
 				return tftypes.NewValue(enc.objectType, nil),
-					fmt.Errorf("encObj failed on property %s (%v): %w",
-						attr, pv, err)
+					fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)
 			}
 			values[attr] = v
 		} else {

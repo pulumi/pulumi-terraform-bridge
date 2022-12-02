@@ -118,15 +118,23 @@ func (e *encoding) newPropertyEncoder(name string, propSpec pschema.PropertySpec
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive an encoder for property %q: %w", name, err)
 	}
-	return enc, err
+
+	if propSpec.Secret {
+		return newSecretEncoder(enc, t)
+	}
+
+	return enc, nil
 }
 
 func (e *encoding) newPropertyDecoder(name string, propSpec pschema.PropertySpec, t tftypes.Type) (Decoder, error) {
-	enc, err := e.deriveDecoder(&propSpec.TypeSpec, t)
+	dec, err := e.deriveDecoder(&propSpec.TypeSpec, t)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive a decoder for property %q: %w", name, err)
 	}
-	return enc, err
+	if propSpec.Secret {
+		return newSecretDecoder(dec)
+	}
+	return dec, nil
 }
 
 func (e *encoding) resolveRef(ref string) (tokens.Token, *pschema.ComplexTypeSpec, error) {
