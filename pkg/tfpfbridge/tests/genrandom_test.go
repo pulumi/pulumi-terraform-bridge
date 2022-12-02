@@ -47,7 +47,7 @@ func TestGenRandom(t *testing.T) {
 
 		t.Run(trace, func(t *testing.T) {
 			p := testprovider.RandomProvider()
-			server := tfbridge.NewProviderServer(p, schema)
+			server := tfbridge.NewProviderServer(p, schema.pulumiSchema, schema.renames)
 			testutils.ReplayTraceFile(t, server, trace)
 		})
 	}

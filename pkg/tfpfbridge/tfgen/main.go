@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
@@ -30,5 +31,44 @@ import (
 func Main(provider, version string, info info.ProviderInfo) {
 	ctx := context.Background()
 	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, info)
-	tfgen.Main(provider, version, shimInfo)
+
+	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
+		g, err := tfgen.NewGenerator(opts)
+		if err != nil {
+			return err
+		}
+
+		if err := g.Generate(); err != nil {
+			return err
+		}
+
+		return writeRenames(g, opts)
+	})
+}
+
+func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
+	renames, err := g.Renames()
+	if err != nil {
+		return err
+	}
+
+	renamesFile, err := opts.Root.Create("renames.json")
+	if err != nil {
+		return err
+	}
+
+	renamesBytes, err := json.MarshalIndent(renames, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if _, err := renamesFile.Write(renamesBytes); err != nil {
+		return err
+	}
+
+	if err := renamesFile.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
