@@ -75,6 +75,24 @@ func (l *testLoader) LoadPackageReference(pkg string, version *semver.Version) (
 	return schemaPackage.Reference(), nil
 }
 
+type testMapper struct {
+	path string
+}
+
+func (l *testMapper) GetMapping(provider string) ([]byte, error) {
+	mappingPath := filepath.Join(l.path, provider) + ".json"
+
+	mappingBytes, err := os.ReadFile(mappingPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return mappingBytes, nil
+}
+
 func TestEject(t *testing.T) {
 	// Test framework for eject
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
@@ -89,7 +107,7 @@ func TestEject(t *testing.T) {
 	}, 0)
 	for _, info := range infos {
 		// Skip the "schemas" directory, that's for test schemas not for tests themselves
-		if info.IsDir() && info.Name() != "schemas" {
+		if info.IsDir() && info.Name() != "schemas" && info.Name() != "mappings" {
 			tests = append(tests, struct {
 				name string
 				path string
@@ -101,6 +119,7 @@ func TestEject(t *testing.T) {
 	}
 
 	loader := &testLoader{path: filepath.Join(testDir, "schemas")}
+	mapper := &testMapper{path: filepath.Join(testDir, "mappings")}
 
 	for _, tt := range tests {
 		tt := tt // avoid capturing loop variable in the closure
@@ -111,7 +130,7 @@ func TestEject(t *testing.T) {
 			hclPath := tt.path
 			pclPath := filepath.Join(tt.path, "pcl")
 
-			project, program, err := Eject(hclPath, loader)
+			project, program, err := Eject(hclPath, loader, mapper)
 			if !assert.NoError(t, err) {
 				return
 			}

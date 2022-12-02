@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -82,14 +83,15 @@ func (o EjectOptions) logf(format string, arguments ...interface{}) {
 }
 
 // Eject converts a Terraform module at the provided location into a Pulumi module.
-func Eject(dir string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.Program, error) {
+func Eject(dir string, loader schema.ReferenceLoader, mapper convert.Mapper) (*workspace.Project, *pcl.Program, error) {
 	if loader == nil {
 		panic("must provide a non-nil loader")
 	}
 
 	opts := EjectOptions{
-		Root:   afero.NewBasePathFs(afero.NewOsFs(), dir),
-		Loader: loader,
+		Root:               afero.NewBasePathFs(afero.NewOsFs(), dir),
+		Loader:             loader,
+		ProviderInfoSource: il.NewMapperProviderInfoSource(mapper),
 	}
 
 	tfFiles, program, diags, err := internalEject(opts)
@@ -102,7 +104,7 @@ func Eject(dir string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.
 			return nil, nil, err
 		}
 	}
-	if err != nil {
+	if err != nil || diags.HasErrors() {
 		return nil, nil, fmt.Errorf("failed to load Terraform configuration, %v", err)
 	}
 
