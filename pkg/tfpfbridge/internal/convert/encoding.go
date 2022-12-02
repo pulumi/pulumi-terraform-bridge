@@ -66,7 +66,7 @@ func (e *encoding) NewResourceDecoder(resourceToken tokens.Type, objectType tfty
 	propertyDecoders["id"] = newStringDecoder()
 	dec, err := newObjectDecoder(tokens.Token(resourceToken), objectType, propertyDecoders, e.propertyNames)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", string(resourceToken), err)
+		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", string(resourceToken), err)
 	}
 	return dec, nil
 }

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -52,7 +53,7 @@ type Provider struct {
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
+func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames []byte) plugin.Provider {
 	ctx := context.TODO()
 	p := info.P()
 	server6, err := newProviderServer6(ctx, p)
@@ -69,6 +70,11 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
 		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
 	}
 
+	var renames tfgen.Renames
+	if err := json.Unmarshal(serializedRenames, &renames); err != nil {
+		panic(fmt.Errorf("Failed to unmarshal Renames: %w", err))
+	}
+
 	return &Provider{
 		tfProvider:   p,
 		tfServer:     server6,
@@ -76,12 +82,16 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
 		resources:    resources,
 		pulumiSchema: pulumiSchema,
 		packageSpec:  packageSpec,
-		encoding:     setupEncoding(packageSpec),
+		encoding:     setupEncoding(packageSpec, renames),
 	}
 }
 
-func NewProviderServer(info info.ProviderInfo, pulumiSchema []byte) pulumirpc.ResourceProviderServer {
-	return plugin.NewProviderServer(NewProvider(info, pulumiSchema))
+func NewProviderServer(
+	info info.ProviderInfo,
+	pulumiSchema []byte,
+	serializedRenames []byte,
+) pulumirpc.ResourceProviderServer {
+	return plugin.NewProviderServer(NewProvider(info, pulumiSchema, serializedRenames))
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -162,8 +172,8 @@ func (p *Provider) GetMapping(key string) ([]byte, string, error) {
 	return []byte{}, "", nil
 }
 
-func setupEncoding(p pschema.PackageSpec) convert.Encoding {
-	return convert.NewEncoding(packageSpec{&p}, &simplePropertyNames{})
+func setupEncoding(p pschema.PackageSpec, renames tfgen.Renames) convert.Encoding {
+	return convert.NewEncoding(packageSpec{&p}, &PrecisePropertyNames{renames})
 }
 
 type packageSpec struct {
