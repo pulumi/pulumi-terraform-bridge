@@ -368,20 +368,20 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 			summaryText = "**complete failure**"
 		}
 
-		out += fmt.Sprintf("\n---\n")
+		out += "\n---\n"
 		out += fmt.Sprintf("\n## [%s] %s\n", summaryText, example.ExampleName)
 
 		// print original HCL
-		out += fmt.Sprintf("\n### HCL\n")
-		out += fmt.Sprintf("\n```terraform\n")
+		out += "\n### HCL\n"
+		out += "\n```terraform\n"
 		out += example.OriginalHCL + "\n"
-		out += fmt.Sprintf("\n```\n")
+		out += "\n```\n"
 
 		// print failures
-		out += fmt.Sprintf("\n### Failed Languages\n")
+		out += "\n### Failed Languages\n"
 		for lang, err := range failures {
 			out += fmt.Sprintf("\n#### %s\n", lang)
-			out += fmt.Sprintf("\n```text\n")
+			out += "\n```text\n"
 
 			errMsg := err.FailureInfo
 			if len(err.FailureInfo) > 1000 {
@@ -389,7 +389,7 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 				errMsg = err.FailureInfo[:1000]
 			}
 			out += errMsg
-			out += fmt.Sprintf("\n```\n")
+			out += "\n```\n"
 		}
 
 		if isCompleteFailure {
@@ -398,14 +398,14 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 		}
 
 		// print successes
-		out += fmt.Sprintf("\n### Successes\n")
+		out += "\n### Successes\n"
 		for lang, success := range successes {
-			out += fmt.Sprintf("\n<details>\n")
+			out += "\n<details>\n"
 			out += fmt.Sprintf("\n<summary>%s</summary>\n", lang)
 			out += fmt.Sprintf("\n```%s\n", lang)
 			out += success.Program
-			out += fmt.Sprintf("\n```\n")
-			out += fmt.Sprintf("\n</details>\n")
+			out += "\n```\n"
+			out += "\n</details>\n"
 		}
 	}
 
