@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -71,6 +72,17 @@ func parseTF12(opts EjectOptions) ([]*syntax.File, hcl.Diagnostics) {
 		}
 	}
 	return parser.Files, parser.Diagnostics
+}
+
+func changeExtension(path, ext string) string {
+	dir, file := filepath.Split(path)
+	dotIndex := strings.LastIndex(file, ".")
+	if dotIndex == -1 {
+		return dir + file
+	}
+
+	base := file[:dotIndex]
+	return dir + base + ext
 }
 
 func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
@@ -153,7 +165,7 @@ func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.
 	for _, file := range declaredFiles {
 		contents := file.output.String()
 
-		err := pulumiParser.ParseFile(file.output, file.syntax.Name+".pp")
+		err := pulumiParser.ParseFile(file.output, changeExtension(file.syntax.Name, ".pp"))
 		contract.AssertNoError(err)
 		file.output.Reset()
 

@@ -75,7 +75,20 @@ type Schema interface {
 	Computed() bool
 	ForceNew() bool
 	StateFunc() SchemaStateFunc
+
+	// s.Elem() may return a nil, a Schema value, or a Resource value.
+	//
+	// If s represents an element or block of a compound type such TypeList, TypeSet or TypeMap, s.Elem() returns a
+	// Schema value representing its element type. That is, if s ~ List[String] then s.Elem() ~ String.
+	//
+	// If s.Elem() returns a Resource, s represens a configuration block, and s.Elem() Resource only implements the
+	// Schema field, denoting the schema of the block.
+	//
+	// The design of Elem() follows Terraform Plugin SDK directly.
+	//
+	// See also: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/schema.go#L231
 	Elem() interface{}
+
 	MaxItems() int
 	MinItems() int
 	ConflictsWith() []string

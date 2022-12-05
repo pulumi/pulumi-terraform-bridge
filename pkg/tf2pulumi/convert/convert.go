@@ -94,6 +94,9 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 
 	tfFiles, program, diagnostics, err := internalEject(ejectOpts)
 
+	if err != nil {
+		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err
+	}
 	if diagnostics.HasErrors() {
 		return nil, Diagnostics{All: diagnostics, files: tfFiles}, nil
 	}

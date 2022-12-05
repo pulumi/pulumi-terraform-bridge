@@ -397,7 +397,7 @@ type PreConfigureCallbackWithLogger func(
 ) error
 
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
-// marshalling a provider info as JSON; Note that these types only represent a subset of the informatino associated
+// marshalling a provider info as JSON; Note that these types only represent a subset of the information associated
 // with a ProviderInfo; thus, a ProviderInfo cannot be round-tripped through JSON.
 
 // MarshallableSchema is the JSON-marshallable form of a Terraform schema.
