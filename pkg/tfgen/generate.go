@@ -43,6 +43,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
@@ -69,6 +70,7 @@ type Generator struct {
 	skipDocs         bool
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
+	renamesBuilder   *renamesBuilder
 
 	convertedCode map[string][]byte
 }
@@ -300,7 +302,8 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
-func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
+func (g *Generator) makePropertyType(typePath paths.TypePath,
+	objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
 	entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{}
@@ -343,9 +346,11 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
-		t.element = makePropertyType(objectName, elem, elemInfo, out, entityDocs)
+		t.element = g.makePropertyType(paths.NewElementPath(typePath),
+			objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		t.element = makeObjectPropertyType(objectName, elem, elemInfo, out, entityDocs)
+		t.element = g.makeObjectPropertyType(paths.NewElementPath(typePath),
+			objectName, elem, elemInfo, out, entityDocs)
 	}
 
 	switch t.kind {
@@ -364,8 +369,9 @@ func makePropertyType(objectName string, sch shim.Schema, info *tfbridge.SchemaI
 	return t
 }
 
-func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
+	objectName string, res shim.Resource, info *tfbridge.SchemaInfo,
+	out bool, entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
 		kind: kindObject,
@@ -396,7 +402,8 @@ func makeObjectPropertyType(objectName string, res shim.Resource, info *tfbridge
 		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
 
-		if v := propertyVariable(key, propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
+		if v := g.propertyVariable(typePath, key,
+			propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -472,6 +479,9 @@ type variable struct {
 	info   *tfbridge.SchemaInfo
 
 	typ *propertyType
+
+	parentPath   paths.TypePath
+	propertyName paths.PropertyName
 }
 
 func (v *variable) Name() string { return v.name }
@@ -539,6 +549,8 @@ type resourceType struct {
 	schema     shim.Resource
 	info       *tfbridge.ResourceInfo
 	entityDocs entityDocs // parsed docs.
+
+	resourcePath *paths.ResourcePath
 }
 
 func (rt *resourceType) Name() string { return rt.name }
@@ -551,7 +563,8 @@ func (rt *resourceType) TypeToken() tokens.Type {
 	return tokens.NewTypeToken(rt.mod, tokens.TypeName(rt.name))
 }
 
-func newResourceType(mod tokens.Module, name string, entityDocs entityDocs,
+func newResourceType(resourcePath *paths.ResourcePath,
+	mod tokens.Module, name tokens.TypeName, entityDocs entityDocs,
 	schema shim.Resource, info *tfbridge.ResourceInfo,
 	isProvider bool) *resourceType {
 
@@ -562,30 +575,32 @@ func newResourceType(mod tokens.Module, name string, entityDocs entityDocs,
 	}
 
 	return &resourceType{
-		mod:        mod,
-		name:       name,
-		doc:        description,
-		isProvider: isProvider,
-		schema:     schema,
-		info:       info,
-		reqprops:   make(map[string]bool),
-		entityDocs: entityDocs,
+		mod:          mod,
+		name:         name.String(),
+		doc:          description,
+		isProvider:   isProvider,
+		schema:       schema,
+		info:         info,
+		reqprops:     make(map[string]bool),
+		entityDocs:   entityDocs,
+		resourcePath: resourcePath,
 	}
 }
 
 // resourceFunc is a generated resource function that is exposed to interact with Pulumi objects.
 type resourceFunc struct {
-	mod        tokens.Module
-	name       string
-	doc        string
-	args       []*variable
-	rets       []*variable
-	reqargs    map[string]bool
-	argst      *propertyType
-	retst      *propertyType
-	schema     shim.Resource
-	info       *tfbridge.DataSourceInfo
-	entityDocs entityDocs
+	mod            tokens.Module
+	name           string
+	doc            string
+	args           []*variable
+	rets           []*variable
+	reqargs        map[string]bool
+	argst          *propertyType
+	retst          *propertyType
+	schema         shim.Resource
+	info           *tfbridge.DataSourceInfo
+	entityDocs     entityDocs
+	dataSourcePath *paths.DataSourcePath
 }
 
 func (rf *resourceFunc) Name() string { return rf.name }
@@ -606,6 +621,29 @@ func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
 func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
+	res, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		ProviderInfo:    info,
+		DiagnosticsSink: sink,
+	})
+	if err != nil {
+		return pschema.PackageSpec{}, err
+	}
+	return res.PackageSpec, nil
+}
+
+type GenerateSchemaOptions struct {
+	ProviderInfo    tfbridge.ProviderInfo
+	DiagnosticsSink diag.Sink
+}
+
+type GenerateSchemaResult struct {
+	PackageSpec pschema.PackageSpec
+	Renames     Renames
+}
+
+func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	info := opts.ProviderInfo
+	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
 		Package:      info.Name,
 		Version:      info.Version,
@@ -615,15 +653,28 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 		Sink:         sink,
 	})
 	if err != nil {
-		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create generator")
+		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
 	pack, err := g.gatherPackage()
 	if err != nil {
-		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to gather package metadata")
+		return nil, errors.Wrapf(err, "failed to gather package metadata")
 	}
 
-	return genPulumiSchema(pack, g.pkg, g.version, g.info)
+	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate schema")
+	}
+
+	r, err := g.Renames()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate renames")
+	}
+
+	return &GenerateSchemaResult{
+		PackageSpec: s,
+		Renames:     r,
+	}, nil
 }
 
 type GeneratorOptions struct {
@@ -721,6 +772,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipDocs:         opts.SkipDocs,
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
+		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
 	}, nil
 }
 
@@ -754,7 +806,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Convert the package to a Pulumi schema.
-	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
@@ -844,6 +896,11 @@ func (g *Generator) Generate() error {
 	return nil
 }
 
+// Remanes can be called after a successful call to Generate to extract name mappings.
+func (g *Generator) Renames() (Renames, error) {
+	return g.renamesBuilder.build(), nil
+}
+
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
 func (g *Generator) gatherPackage() (*pkg, error) {
 	// First, gather up the entire package/module structure.  This includes gathering config entries, resources,
@@ -907,11 +964,14 @@ func (g *Generator) gatherConfig() *module {
 	})
 	sort.Strings(cfgkeys)
 
+	cfgPath := paths.NewConfigPath()
+
 	// Add an entry for each config variable.
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
-		prop := propertyVariable(key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
+		prop := g.propertyVariable(cfgPath,
+			key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -927,7 +987,8 @@ func (g *Generator) gatherConfig() *module {
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
 	for key, val := range g.info.ExtraConfig {
-		if prop := propertyVariable(key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
+		if prop := g.propertyVariable(cfgPath,
+			key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -1036,6 +1097,11 @@ func (g *Generator) gatherResource(rawname string,
 	name, moduleName := resourceName(g.info.Name, rawname, info, isProvider)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 
+	resourceToken := tokens.NewTypeToken(mod, name)
+	resourcePath := paths.NewResourcePath(rawname, resourceToken, isProvider)
+
+	g.renamesBuilder.registerResource(resourcePath)
+
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
@@ -1056,7 +1122,7 @@ func (g *Generator) gatherResource(rawname string,
 	}
 
 	// Create an empty module and associated resource type.
-	res := newResourceType(mod, name, entityDocs, schema, info, isProvider)
+	res := newResourceType(resourcePath, mod, name, entityDocs, schema, info, isProvider)
 
 	// Next, gather up all properties.
 	var stateVars []*variable
@@ -1077,7 +1143,8 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, true /*out*/, entityDocs)
+			outprop := g.propertyVariable(resourcePath.Outputs(), key, propschema,
+				propinfo, doc, rawdoc, true /*out*/, entityDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -1091,17 +1158,19 @@ func (g *Generator) gatherResource(rawname string,
 				g.debug(msg)
 			}
 
-			inprop := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+			inprop := g.propertyVariable(resourcePath.Inputs(),
+				key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
-					res.reqprops[name] = true
+					res.reqprops[name.String()] = true
 				}
 			}
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := propertyVariable(key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+		stateVar := g.propertyVariable(resourcePath.State(), key, propschema, propinfo,
+			doc, rawdoc, false /*out*/, entityDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
 	}
@@ -1226,6 +1295,8 @@ func (g *Generator) gatherDataSource(rawname string,
 	// Generate the name and module for this data source.
 	name, moduleName := dataSourceName(g.info.Name, rawname, info)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
+	dataSourcePath := paths.NewDataSourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
+	g.renamesBuilder.registerDataSource(dataSourcePath)
 
 	// Collect documentation information for this data source.
 	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
@@ -1237,13 +1308,14 @@ func (g *Generator) gatherDataSource(rawname string,
 
 	// Build up the function information.
 	fun := &resourceFunc{
-		mod:        mod,
-		name:       name,
-		doc:        entityDocs.Description,
-		reqargs:    make(map[string]bool),
-		schema:     ds,
-		info:       info,
-		entityDocs: entityDocs,
+		mod:            mod,
+		name:           name.String(),
+		doc:            entityDocs.Description,
+		reqargs:        make(map[string]bool),
+		schema:         ds,
+		info:           info,
+		entityDocs:     entityDocs,
+		dataSourcePath: dataSourcePath,
 	}
 
 	// See if arguments for this function are optional, and generate detailed metadata.
@@ -1264,7 +1336,8 @@ func (g *Generator) gatherDataSource(rawname string,
 				g.debug(msg)
 			}
 
-			argvar := propertyVariable(arg, sch, cust, doc, "", false /*out*/, entityDocs)
+			argvar := g.propertyVariable(dataSourcePath.Args(),
+				arg, sch, cust, doc, "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1274,7 +1347,8 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
-			propertyVariable(arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
+			g.propertyVariable(dataSourcePath.Results(),
+				arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
@@ -1284,14 +1358,15 @@ func (g *Generator) gatherDataSource(rawname string,
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
 		fun.rets = append(fun.rets,
-			propertyVariable("id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
+			g.propertyVariable(dataSourcePath.Results(),
+				"id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
 	if len(fun.args) > 0 {
 		fun.argst = &propertyType{
 			kind:       kindObject,
-			name:       fmt.Sprintf("%sArgs", upperFirst(name)),
+			name:       fmt.Sprintf("%sArgs", upperFirst(name.String())),
 			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
 			properties: fun.args,
 		}
@@ -1299,7 +1374,7 @@ func (g *Generator) gatherDataSource(rawname string,
 	if len(fun.rets) > 0 {
 		fun.retst = &propertyType{
 			kind:       kindObject,
-			name:       fmt.Sprintf("%sResult", upperFirst(name)),
+			name:       fmt.Sprintf("%sResult", upperFirst(name.String())),
 			doc:        fmt.Sprintf("A collection of values returned by %s.", name),
 			properties: fun.rets,
 		}
@@ -1401,37 +1476,49 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 }
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
-func propertyVariable(key string, sch shim.Schema, info *tfbridge.SchemaInfo,
+//
+// key is the Terraform property name
+//
+// parentPath together with key uniquely locates the property in the Terraform schema.
+func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
+	sch shim.Schema, info *tfbridge.SchemaInfo,
 	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
+
 	if name := propertyName(key, sch, info); name != "" {
+		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
+		typePath := paths.NewProperyPath(parentPath, propName)
+		g.renamesBuilder.registerProperty(parentPath, propName)
 		return &variable{
-			name:   name,
-			out:    out,
-			doc:    doc,
-			rawdoc: rawdoc,
-			schema: sch,
-			info:   info,
-			typ:    makePropertyType(strings.ToLower(key), sch, info, out, entityDocs),
+			name:         name,
+			out:          out,
+			doc:          doc,
+			rawdoc:       rawdoc,
+			schema:       sch,
+			info:         info,
+			typ:          g.makePropertyType(typePath, strings.ToLower(key), sch, info, out, entityDocs),
+			parentPath:   parentPath,
+			propertyName: propName,
 		}
 	}
 	return nil
 }
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
-func dataSourceName(provider string, rawname string, info *tfbridge.DataSourceInfo) (string, tokens.ModuleName) {
+func dataSourceName(provider string, rawname string,
+	info *tfbridge.DataSourceInfo) (tokens.ModuleMemberName, tokens.ModuleName) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
 		name := withoutPackageName(provider, rawname)                // strip off the pkg prefix.
 		name = tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase
-		return name, tokens.ModuleName(name)
+		return tokens.ModuleMemberName(name), tokens.ModuleName(name)
 	}
 	// otherwise, a custom transformation exists; use it.
-	return string(info.Tok.Name()), info.Tok.Module().Name()
+	return info.Tok.Name(), info.Tok.Module().Name()
 }
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
 func resourceName(provider string, rawname string,
-	info *tfbridge.ResourceInfo, isProvider bool) (string, tokens.ModuleName) {
+	info *tfbridge.ResourceInfo, isProvider bool) (tokens.TypeName, tokens.ModuleName) {
 	if isProvider {
 		return "Provider", indexMod
 	}
@@ -1442,10 +1529,10 @@ func resourceName(provider string, rawname string,
 		pascal := tfbridge.TerraformToPulumiName(name, nil, nil, true) // PascalCase the resource name.
 
 		modName := tokens.ModuleName(camel)
-		return pascal, modName
+		return tokens.TypeName(pascal), modName
 	}
 	// otherwise, a custom transformation exists; use it.
-	return info.Tok.Name().String(), info.Tok.Module().Name()
+	return info.Tok.Name(), info.Tok.Module().Name()
 }
 
 // withoutPackageName strips off the package prefix from a raw name.
