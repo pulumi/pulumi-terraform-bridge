@@ -56,11 +56,11 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 	if err != nil {
 		return err
 	}
-	err = ce.exportHumanReadable(outputDirectory, "shortSummary.txt")
+	err = ce.exportMarkdown(outputDirectory, "summary.md")
 	if err != nil {
 		return err
 	}
-	return ce.exportMarkdown(outputDirectory, "summary.md")
+	return ce.exportHumanReadable(outputDirectory, "shortSummary.txt")
 }
 
 // Four different ways to export coverage data:
@@ -298,7 +298,10 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 	return marshalAndWriteJSON(providerStatistic, jsonOutputLocation)
 }
 
-// The fourth mode, which simply gives the provider name, and success percentage.
+// The fifth mode, which provides outputs a markdown file with:
+// - the example's name
+// - the original HCL
+// - the conversion results for all languages
 func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName string) error {
 
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
@@ -382,12 +385,15 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 
 			errMsg := err.FailureInfo
 			if len(err.FailureInfo) > 1000 {
+				// truncate extremely long error messages
 				errMsg = err.FailureInfo[:1000]
 			}
 			out += errMsg
 			out += fmt.Sprintf("\n```\n")
 		}
+
 		if isCompleteFailure {
+			// it's a complete failure, no successes to print
 			continue
 		}
 

@@ -1365,6 +1365,14 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	if isCompleteFailure {
 		hclAllLangsConversionFailures++
+		if exampleTitle == "" {
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
+				"from any generated docs or SDKs.", path, err))
+		} else {
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s': %v. The example will be "+
+				"dropped from any generated docs or SDKs.", exampleTitle, path, err))
+		}
+
 		return "", err
 	}
 
@@ -1384,9 +1392,23 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		case convert.LanguageGo:
 			hclGoPartialConversionFailures++
 		}
+
+		if exampleTitle == "" {
+			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
+				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+				path, strings.Join(failedLangsStrings, ", ")))
+		} else {
+			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
+				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+				exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
+		}
+
+		// At least one language out of the given set has been generated, which is considered a success
+		// nolint:ineffassign
+		err = nil
+
 	}
 
-	// At least one language out of the given set has been generated, which is considered a success
 	return result.String(), nil
 }
 
