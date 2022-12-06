@@ -1,0 +1,331 @@
+{
+  "resources": {
+    "aws:iam/accessKey:AccessKey": "aws_iam_access_key",
+    "aws:iam/accountAlias:AccountAlias": "aws_iam_account_alias",
+    "aws:iam/accountPasswordPolicy:AccountPasswordPolicy": "aws_iam_account_password_policy",
+    "aws:iam/group:Group": "aws_iam_group",
+    "aws:iam/groupMembership:GroupMembership": "aws_iam_group_membership",
+    "aws:iam/groupPolicy:GroupPolicy": "aws_iam_group_policy",
+    "aws:iam/groupPolicyAttachment:GroupPolicyAttachment": "aws_iam_group_policy_attachment",
+    "aws:iam/instanceProfile:InstanceProfile": "aws_iam_instance_profile",
+    "aws:iam/openIdConnectProvider:OpenIdConnectProvider": "aws_iam_openid_connect_provider",
+    "aws:iam/policy:Policy": "aws_iam_policy",
+    "aws:iam/policyAttachment:PolicyAttachment": "aws_iam_policy_attachment",
+    "aws:iam/role:Role": "aws_iam_role",
+    "aws:iam/rolePolicy:RolePolicy": "aws_iam_role_policy",
+    "aws:iam/rolePolicyAttachment:RolePolicyAttachment": "aws_iam_role_policy_attachment",
+    "aws:iam/samlProvider:SamlProvider": "aws_iam_saml_provider",
+    "aws:iam/serverCertificate:ServerCertificate": "aws_iam_server_certificate",
+    "aws:iam/serviceLinkedRole:ServiceLinkedRole": "aws_iam_service_linked_role",
+    "aws:iam/serviceSpecificCredential:ServiceSpecificCredential": "aws_iam_service_specific_credential",
+    "aws:iam/signingCertificate:SigningCertificate": "aws_iam_signing_certificate",
+    "aws:iam/sshKey:SshKey": "aws_iam_user_ssh_key",
+    "aws:iam/user:User": "aws_iam_user",
+    "aws:iam/userGroupMembership:UserGroupMembership": "aws_iam_user_group_membership",
+    "aws:iam/userLoginProfile:UserLoginProfile": "aws_iam_user_login_profile",
+    "aws:iam/userPolicy:UserPolicy": "aws_iam_user_policy",
+    "aws:iam/userPolicyAttachment:UserPolicyAttachment": "aws_iam_user_policy_attachment",
+    "aws:iam/virtualMfaDevice:VirtualMfaDevice": "aws_iam_virtual_mfa_device"
+  },
+  "functions": {
+    "aws:iam/getAccountAlias:getAccountAlias": "aws_iam_account_alias",
+    "aws:iam/getGroup:getGroup": "aws_iam_group",
+    "aws:iam/getInstanceProfile:getInstanceProfile": "aws_iam_instance_profile",
+    "aws:iam/getInstanceProfiles:getInstanceProfiles": "aws_iam_instance_profiles",
+    "aws:iam/getOpenidConnectProvider:getOpenidConnectProvider": "aws_iam_openid_connect_provider",
+    "aws:iam/getPolicy:getPolicy": "aws_iam_policy",
+    "aws:iam/getRole:getRole": "aws_iam_role",
+    "aws:iam/getRoles:getRoles": "aws_iam_roles",
+    "aws:iam/getSamlProvider:getSamlProvider": "aws_iam_saml_provider",
+    "aws:iam/getServerCertificate:getServerCertificate": "aws_iam_server_certificate",
+    "aws:iam/getSessionContext:getSessionContext": "aws_iam_session_context",
+    "aws:iam/getUser:getUser": "aws_iam_user",
+    "aws:iam/getUserSshKey:getUserSshKey": "aws_iam_user_ssh_key",
+    "aws:iam/getUsers:getUsers": "aws_iam_users",
+    "aws:index/getArn:getArn": "aws_arn",
+    "aws:index/getAvailabilityZone:getAvailabilityZone": "aws_availability_zone",
+    "aws:index/getAvailabilityZones:getAvailabilityZones": "aws_availability_zones",
+    "aws:index/getBillingServiceAccount:getBillingServiceAccount": "aws_billing_service_account",
+    "aws:index/getCallerIdentity:getCallerIdentity": "aws_caller_identity",
+    "aws:index/getDefaultTags:getDefaultTags": "aws_default_tags",
+    "aws:index/getIpRanges:getIpRanges": "aws_ip_ranges",
+    "aws:index/getPartition:getPartition": "aws_partition",
+    "aws:index/getRegion:getRegion": "aws_region",
+    "aws:index/getRegions:getRegions": "aws_regions",
+    "aws:index/getService:getService": "aws_service",
+    "aws:x/iam/getPolicyDocument:getPolicyDocument": "aws_iam_policy_document"
+  },
+  "renamedProperties": {
+    "aws:iam/accessKey:AccessKey": {
+      "createDate": "create_date",
+      "encryptedSecret": "encrypted_secret",
+      "encryptedSesSmtpPasswordV4": "encrypted_ses_smtp_password_v4",
+      "keyFingerprint": "key_fingerprint",
+      "pgpKey": "pgp_key",
+      "sesSmtpPasswordV4": "ses_smtp_password_v4"
+    },
+    "aws:iam/accountAlias:AccountAlias": {
+      "accountAlias": "account_alias"
+    },
+    "aws:iam/accountPasswordPolicy:AccountPasswordPolicy": {
+      "allowUsersToChangePassword": "allow_users_to_change_password",
+      "expirePasswords": "expire_passwords",
+      "hardExpiry": "hard_expiry",
+      "maxPasswordAge": "max_password_age",
+      "minimumPasswordLength": "minimum_password_length",
+      "passwordReusePrevention": "password_reuse_prevention",
+      "requireLowercaseCharacters": "require_lowercase_characters",
+      "requireNumbers": "require_numbers",
+      "requireSymbols": "require_symbols",
+      "requireUppercaseCharacters": "require_uppercase_characters"
+    },
+    "aws:iam/getAccountAlias:getAccountAlias": {
+      "accountAlias": "account_alias"
+    },
+    "aws:iam/getGroup:getGroup": {
+      "groupId": "group_id",
+      "groupName": "group_name"
+    },
+    "aws:iam/getGroupUser:getGroupUser": {
+      "userId": "user_id",
+      "userName": "user_name"
+    },
+    "aws:iam/getInstanceProfile:getInstanceProfile": {
+      "createDate": "create_date",
+      "roleArn": "role_arn",
+      "roleId": "role_id",
+      "roleName": "role_name"
+    },
+    "aws:iam/getInstanceProfiles:getInstanceProfiles": {
+      "roleName": "role_name"
+    },
+    "aws:iam/getOpenidConnectProvider:getOpenidConnectProvider": {
+      "clientIdLists": "client_id_list",
+      "thumbprintLists": "thumbprint_list"
+    },
+    "aws:iam/getPolicy:getPolicy": {
+      "pathPrefix": "path_prefix",
+      "policyId": "policy_id"
+    },
+    "aws:iam/getRole:getRole": {
+      "assumeRolePolicy": "assume_role_policy",
+      "createDate": "create_date",
+      "maxSessionDuration": "max_session_duration",
+      "permissionsBoundary": "permissions_boundary",
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/getRoles:getRoles": {
+      "nameRegex": "name_regex",
+      "pathPrefix": "path_prefix"
+    },
+    "aws:iam/getSamlProvider:getSamlProvider": {
+      "createDate": "create_date",
+      "samlMetadataDocument": "saml_metadata_document",
+      "validUntil": "valid_until"
+    },
+    "aws:iam/getServerCertificate:getServerCertificate": {
+      "certificateBody": "certificate_body",
+      "certificateChain": "certificate_chain",
+      "expirationDate": "expiration_date",
+      "namePrefix": "name_prefix",
+      "pathPrefix": "path_prefix",
+      "uploadDate": "upload_date"
+    },
+    "aws:iam/getSessionContext:getSessionContext": {
+      "issuerArn": "issuer_arn",
+      "issuerId": "issuer_id",
+      "issuerName": "issuer_name",
+      "sessionName": "session_name"
+    },
+    "aws:iam/getUser:getUser": {
+      "permissionsBoundary": "permissions_boundary",
+      "userId": "user_id",
+      "userName": "user_name"
+    },
+    "aws:iam/getUserSshKey:getUserSshKey": {
+      "publicKey": "public_key",
+      "sshPublicKeyId": "ssh_public_key_id"
+    },
+    "aws:iam/getUsers:getUsers": {
+      "nameRegex": "name_regex",
+      "pathPrefix": "path_prefix"
+    },
+    "aws:iam/group:Group": {
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/groupPolicy:GroupPolicy": {
+      "namePrefix": "name_prefix"
+    },
+    "aws:iam/groupPolicyAttachment:GroupPolicyAttachment": {
+      "policyArn": "policy_arn"
+    },
+    "aws:iam/instanceProfile:InstanceProfile": {
+      "createDate": "create_date",
+      "namePrefix": "name_prefix",
+      "tagsAll": "tags_all",
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/openIdConnectProvider:OpenIdConnectProvider": {
+      "clientIdLists": "client_id_list",
+      "tagsAll": "tags_all",
+      "thumbprintLists": "thumbprint_list"
+    },
+    "aws:iam/policy:Policy": {
+      "namePrefix": "name_prefix",
+      "policyId": "policy_id",
+      "tagsAll": "tags_all"
+    },
+    "aws:iam/policyAttachment:PolicyAttachment": {
+      "policyArn": "policy_arn"
+    },
+    "aws:iam/role:Role": {
+      "assumeRolePolicy": "assume_role_policy",
+      "createDate": "create_date",
+      "forceDetachPolicies": "force_detach_policies",
+      "inlinePolicies": "inline_policy",
+      "managedPolicyArns": "managed_policy_arns",
+      "maxSessionDuration": "max_session_duration",
+      "namePrefix": "name_prefix",
+      "permissionsBoundary": "permissions_boundary",
+      "tagsAll": "tags_all",
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/rolePolicy:RolePolicy": {
+      "namePrefix": "name_prefix"
+    },
+    "aws:iam/rolePolicyAttachment:RolePolicyAttachment": {
+      "policyArn": "policy_arn"
+    },
+    "aws:iam/samlProvider:SamlProvider": {
+      "samlMetadataDocument": "saml_metadata_document",
+      "tagsAll": "tags_all",
+      "validUntil": "valid_until"
+    },
+    "aws:iam/serverCertificate:ServerCertificate": {
+      "certificateBody": "certificate_body",
+      "certificateChain": "certificate_chain",
+      "namePrefix": "name_prefix",
+      "privateKey": "private_key",
+      "tagsAll": "tags_all",
+      "uploadDate": "upload_date"
+    },
+    "aws:iam/serviceLinkedRole:ServiceLinkedRole": {
+      "awsServiceName": "aws_service_name",
+      "createDate": "create_date",
+      "customSuffix": "custom_suffix",
+      "tagsAll": "tags_all",
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/serviceSpecificCredential:ServiceSpecificCredential": {
+      "serviceName": "service_name",
+      "servicePassword": "service_password",
+      "serviceSpecificCredentialId": "service_specific_credential_id",
+      "serviceUserName": "service_user_name",
+      "userName": "user_name"
+    },
+    "aws:iam/signingCertificate:SigningCertificate": {
+      "certificateBody": "certificate_body",
+      "certificateId": "certificate_id",
+      "userName": "user_name"
+    },
+    "aws:iam/sshKey:SshKey": {
+      "publicKey": "public_key",
+      "sshPublicKeyId": "ssh_public_key_id"
+    },
+    "aws:iam/user:User": {
+      "forceDestroy": "force_destroy",
+      "permissionsBoundary": "permissions_boundary",
+      "tagsAll": "tags_all",
+      "uniqueId": "unique_id"
+    },
+    "aws:iam/userLoginProfile:UserLoginProfile": {
+      "encryptedPassword": "encrypted_password",
+      "keyFingerprint": "key_fingerprint",
+      "passwordLength": "password_length",
+      "passwordResetRequired": "password_reset_required",
+      "pgpKey": "pgp_key"
+    },
+    "aws:iam/userPolicy:UserPolicy": {
+      "namePrefix": "name_prefix"
+    },
+    "aws:iam/userPolicyAttachment:UserPolicyAttachment": {
+      "policyArn": "policy_arn"
+    },
+    "aws:iam/virtualMfaDevice:VirtualMfaDevice": {
+      "base32StringSeed": "base_32_string_seed",
+      "qrCodePng": "qr_code_png",
+      "tagsAll": "tags_all",
+      "virtualMfaDeviceName": "virtual_mfa_device_name"
+    },
+    "aws:index/getAvailabilityZone:getAvailabilityZone": {
+      "allAvailabilityZones": "all_availability_zones",
+      "filters": "filter",
+      "groupName": "group_name",
+      "nameSuffix": "name_suffix",
+      "networkBorderGroup": "network_border_group",
+      "optInStatus": "opt_in_status",
+      "parentZoneId": "parent_zone_id",
+      "parentZoneName": "parent_zone_name",
+      "zoneId": "zone_id",
+      "zoneType": "zone_type"
+    },
+    "aws:index/getAvailabilityZones:getAvailabilityZones": {
+      "allAvailabilityZones": "all_availability_zones",
+      "excludeNames": "exclude_names",
+      "excludeZoneIds": "exclude_zone_ids",
+      "filters": "filter",
+      "groupNames": "group_names",
+      "zoneIds": "zone_ids"
+    },
+    "aws:index/getCallerIdentity:getCallerIdentity": {
+      "accountId": "account_id",
+      "userId": "user_id"
+    },
+    "aws:index/getIpRanges:getIpRanges": {
+      "cidrBlocks": "cidr_blocks",
+      "createDate": "create_date",
+      "ipv6CidrBlocks": "ipv6_cidr_blocks",
+      "syncToken": "sync_token"
+    },
+    "aws:index/getPartition:getPartition": {
+      "dnsSuffix": "dns_suffix",
+      "reverseDnsPrefix": "reverse_dns_prefix"
+    },
+    "aws:index/getRegions:getRegions": {
+      "allRegions": "all_regions",
+      "filters": "filter"
+    },
+    "aws:index/getService:getService": {
+      "dnsName": "dns_name",
+      "reverseDnsName": "reverse_dns_name",
+      "reverseDnsPrefix": "reverse_dns_prefix",
+      "serviceId": "service_id"
+    },
+    "aws:index:Provider": {
+      "skipCredentialsValidation": "skip_credentials_validation",
+      "skipGetEc2Platforms": "skip_get_ec2_platforms",
+      "skipMetadataApiCheck": "skip_metadata_api_check",
+      "skipRegionValidation": "skip_region_validation"
+    },
+    "aws:x/iam/getPolicyDocument:getPolicyDocument": {
+      "overrideJson": "override_json",
+      "overridePolicyDocuments": "override_policy_documents",
+      "policyId": "policy_id",
+      "sourceJson": "source_json",
+      "sourcePolicyDocuments": "source_policy_documents",
+      "statements": "statement"
+    },
+    "aws:x/iam/getPolicyDocumentStatement:getPolicyDocumentStatement": {
+      "conditions": "condition",
+      "notActions": "not_actions",
+      "notPrincipals": "not_principals",
+      "notResources": "not_resources"
+    }
+  },
+  "renamedConfigProperties": {
+    "skipCredentialsValidation": "skip_credentials_validation",
+    "skipGetEc2Platforms": "skip_get_ec2_platforms",
+    "skipMetadataApiCheck": "skip_metadata_api_check",
+    "skipRegionValidation": "skip_region_validation"
+  }
+}

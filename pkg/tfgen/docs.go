@@ -1624,10 +1624,10 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 			switch language {
 			case Golang, Python:
 				// Use `ec2.Instance` format
-				return open + modname + resname + close
+				return open + modname + resname.String() + close
 			default:
 				// Use `aws.ec2.Instance` format
-				return open + pkg.String() + "." + modname + resname + close
+				return open + pkg.String() + "." + modname + resname.String() + close
 			}
 		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
@@ -1636,13 +1636,13 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 			switch language {
 			case Golang:
 				// Use `ec2.getAmi` format
-				return open + modname + getname + close
+				return open + modname + getname.String() + close
 			case Python:
 				// Use `ec2.get_ami` format
-				return python.PyName(open + modname + getname + close)
+				return python.PyName(open + modname + getname.String() + close)
 			default:
 				// Use `aws.ec2.getAmi` format
-				return open + pkg.String() + "." + modname + getname + close
+				return open + pkg.String() + "." + modname + getname.String() + close
 			}
 		}
 		// Else just treat as a property name
