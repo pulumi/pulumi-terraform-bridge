@@ -33,14 +33,38 @@ import (
 
 // Main executes the TFGen process for the given package pkg and provider prov.
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
-	if err := newTFGenCmd(pkg, version, prov).Execute(); err != nil {
+	MainWithCustomGenerate(pkg, version, prov, func(opts GeneratorOptions) error {
+
+		// Create a generator with the specified settings.
+		g, err := NewGenerator(opts)
+		if err != nil {
+			return err
+		}
+
+		// Let's generate some code!
+		err = g.Generate()
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+}
+
+// Like Main but allows to customize the generation logic past the parsing of cmd-line arguments.
+func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderInfo,
+	gen func(GeneratorOptions) error) {
+
+	if err := newTFGenCmd(pkg, version, prov, gen).Execute(); err != nil {
 		_, fmterr := fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		contract.IgnoreError(fmterr)
 		os.Exit(-1)
 	}
 }
 
-func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.Command {
+func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
+	gen func(GeneratorOptions) error) *cobra.Command {
+
 	var logToStderr bool
 	var outDir string
 	var overlaysDir string
@@ -124,8 +148,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				coverageTracker = newCoverageTracker(prov.Name, prov.Version)
 			}
 
-			// Create a generator with the specified settings.
-			g, err := NewGenerator(GeneratorOptions{
+			opts := GeneratorOptions{
 				Package:         pkg,
 				Version:         version,
 				Language:        Language(args[0]),
@@ -135,16 +158,9 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo) *cobra.
 				SkipDocs:        skipDocs,
 				SkipExamples:    skipExamples,
 				CoverageTracker: coverageTracker,
-			})
-			if err != nil {
-				return err
 			}
 
-			// Let's generate some code!
-			err = g.Generate()
-			if err != nil {
-				return err
-			}
+			err := gen(opts)
 
 			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
 			if coverageTrackingEnabled {

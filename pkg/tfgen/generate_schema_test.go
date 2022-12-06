@@ -20,7 +20,9 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -37,7 +39,30 @@ func TestRegress611(t *testing.T) {
 		Color: colors.Never,
 	}))
 	assert.NoError(t, err)
-	bridgetesting.AssertPackageSpecEquals(t, "test_data/regress-611-schema.json", schema)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-611-schema.json", schema)
+}
+
+func TestRenameGeneration(t *testing.T) {
+	info := testprovider.ProviderRegress611()
+
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         afero.NewMemMapFs(),
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	require.NoError(t, err)
+
+	err = g.Generate()
+	require.NoError(t, err)
+
+	renames, err := g.Renames()
+	require.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-611-renames.json", renames)
 }
 
 func TestAppendExample_InsertMiddle(t *testing.T) {

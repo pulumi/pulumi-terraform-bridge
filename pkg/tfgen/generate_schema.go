@@ -41,9 +41,10 @@ import (
 )
 
 type schemaGenerator struct {
-	pkg     tokens.Package
-	version string
-	info    tfbridge.ProviderInfo
+	pkg            tokens.Package
+	version        string
+	info           tfbridge.ProviderInfo
+	renamesBuilder *renamesBuilder
 }
 
 type schemaNestedType struct {
@@ -205,11 +206,13 @@ func rawMessage(v interface{}) pschema.RawMessage {
 }
 
 func genPulumiSchema(pack *pkg, name tokens.Package, version string,
-	info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
+	info tfbridge.ProviderInfo, renamesBuilder *renamesBuilder) (pschema.PackageSpec, error) {
+
 	g := &schemaGenerator{
-		pkg:     name,
-		version: version,
-		info:    info,
+		pkg:            name,
+		version:        version,
+		info:           info,
+		renamesBuilder: renamesBuilder,
 	}
 	return g.genPackageSpec(pack)
 }
@@ -657,6 +660,8 @@ func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 
 	mod := modulePlacementForTypeSet(g.pkg, typInfo.typePaths)
 	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
+
+	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, tokens.Type(token))
 
 	return token
 }

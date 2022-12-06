@@ -70,6 +70,7 @@ type Generator struct {
 	skipDocs         bool
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
+	renamesBuilder   *renamesBuilder
 
 	convertedCode map[string][]byte
 }
@@ -620,6 +621,29 @@ func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
 func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
+	res, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		ProviderInfo:    info,
+		DiagnosticsSink: sink,
+	})
+	if err != nil {
+		return pschema.PackageSpec{}, err
+	}
+	return res.PackageSpec, nil
+}
+
+type GenerateSchemaOptions struct {
+	ProviderInfo    tfbridge.ProviderInfo
+	DiagnosticsSink diag.Sink
+}
+
+type GenerateSchemaResult struct {
+	PackageSpec pschema.PackageSpec
+	Renames     Renames
+}
+
+func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	info := opts.ProviderInfo
+	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
 		Package:      info.Name,
 		Version:      info.Version,
@@ -629,15 +653,28 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 		Sink:         sink,
 	})
 	if err != nil {
-		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create generator")
+		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
 	pack, err := g.gatherPackage()
 	if err != nil {
-		return pschema.PackageSpec{}, errors.Wrapf(err, "failed to gather package metadata")
+		return nil, errors.Wrapf(err, "failed to gather package metadata")
 	}
 
-	return genPulumiSchema(pack, g.pkg, g.version, g.info)
+	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate schema")
+	}
+
+	r, err := g.Renames()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate renames")
+	}
+
+	return &GenerateSchemaResult{
+		PackageSpec: s,
+		Renames:     r,
+	}, nil
 }
 
 type GeneratorOptions struct {
@@ -735,6 +772,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipDocs:         opts.SkipDocs,
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
+		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
 	}, nil
 }
 
@@ -768,7 +806,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Convert the package to a Pulumi schema.
-	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
@@ -856,6 +894,11 @@ func (g *Generator) Generate() error {
 	g.pluginHost.Close()
 
 	return nil
+}
+
+// Remanes can be called after a successful call to Generate to extract name mappings.
+func (g *Generator) Renames() (Renames, error) {
+	return g.renamesBuilder.build(), nil
 }
 
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
@@ -1057,6 +1100,8 @@ func (g *Generator) gatherResource(rawname string,
 	resourceToken := tokens.NewTypeToken(mod, name)
 	resourcePath := paths.NewResourcePath(rawname, resourceToken, isProvider)
 
+	g.renamesBuilder.registerResource(resourcePath)
+
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
@@ -1251,6 +1296,7 @@ func (g *Generator) gatherDataSource(rawname string,
 	name, moduleName := dataSourceName(g.info.Name, rawname, info)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 	dataSourcePath := paths.NewDataSourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
+	g.renamesBuilder.registerDataSource(dataSourcePath)
 
 	// Collect documentation information for this data source.
 	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
@@ -1441,7 +1487,7 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
-
+		g.renamesBuilder.registerProperty(parentPath, propName)
 		return &variable{
 			name:         name,
 			out:          out,
