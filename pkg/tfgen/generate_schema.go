@@ -53,7 +53,9 @@ type schemaNestedType struct {
 	requiredInputs  codegen.StringSet
 	requiredOutputs codegen.StringSet
 	pyMapCase       bool
-	typePath        *paths.TypePath
+
+	// The same *propertyType may be found at multiple typePaths and reused. Non-empty.
+	typePaths paths.TypePathSet
 }
 
 type schemaNestedTypes struct {
@@ -81,26 +83,20 @@ func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNes
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 	switch member := member.(type) {
 	case *resourceType:
-		path := paths.NewResourcePath(member.TypeToken(), member.IsProvider())
-		nt.gatherFromProperties(path.Inputs(),
-			member, member.name, member.inprops, true, true)
-		nt.gatherFromProperties(path.Outputs(),
-			member, member.name, member.outprops, false, true)
+		p := member.resourcePath
+		nt.gatherFromProperties(p.Inputs(), member, member.name, member.inprops, true, true)
+		nt.gatherFromProperties(p.Outputs(), member, member.name, member.outprops, false, true)
 		if !member.IsProvider() {
-			nt.gatherFromProperties(path.State(),
-				member, member.name, member.statet.properties, true, true)
+			nt.gatherFromProperties(p.State(), member, member.name, member.statet.properties, true, true)
 		}
 	case *resourceFunc:
-		path := paths.NewDataSourcePath(member.ModuleMemberToken())
-		nt.gatherFromProperties(path.Args(),
-			member, member.name, member.args, true, true)
-		nt.gatherFromProperties(path.Results(),
-			member, member.name, member.rets, false, true)
+		p := member.dataSourcePath
+		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true, true)
+		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false, true)
 	case *variable:
 		contract.Assert(member.config)
-		path := paths.NewConfigPath()
-		nt.gatherFromPropertyType(path.Property(member.name),
-			member, member.name, "", member.typ, false, true)
+		p := paths.NewProperyPath(paths.NewConfigPath(), member.propertyName)
+		nt.gatherFromPropertyType(p, member, member.name, "", member.typ, false, true)
 	}
 }
 
@@ -108,8 +104,8 @@ type declarer interface {
 	Name() string
 }
 
-func (nt *schemaNestedTypes) declareType(path *paths.TypePath,
-	declarer declarer, namePrefix, name string, typ *propertyType, isInput, pyMapCase bool) string {
+func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
+	typ *propertyType, isInput, pyMapCase bool) string {
 
 	// Generate a name for this nested type.
 	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
@@ -135,12 +131,16 @@ func (nt *schemaNestedTypes) declareType(path *paths.TypePath,
 		requiredOutputs = required
 	}
 
+	// Merging makes sure that structurally identical types are shared and not generated more than once.
 	if existing, ok := nt.nameToType[typeName]; ok {
 		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
 
-		// For output type conflicts, record the output type's required properties. These will be attached to
-		// a nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that matches
-		// the code produced by the old tfgen code generator.
+		// Remember that existing type is now also seen at the current typePath.
+		existing.typePaths.Add(typePath)
+
+		// For output type conflicts, record the output type's required properties. These will be attached to a
+		// nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that
+		// matches the code produced by the old tfgen code generator.
 		if isInput {
 			existing.requiredInputs = requiredInputs
 		} else {
@@ -158,12 +158,12 @@ func (nt *schemaNestedTypes) declareType(path *paths.TypePath,
 		requiredInputs:  requiredInputs,
 		requiredOutputs: requiredOutputs,
 		pyMapCase:       pyMapCase,
-		typePath:        path,
+		typePaths:       paths.SingletonTypePathSet(typePath),
 	}
 	return typeName
 }
 
-func (nt *schemaNestedTypes) gatherFromProperties(path paths.NamedTypePathContainer,
+func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 	declarer declarer, namePrefix string, ps []*variable,
 	isInput, pyMapCase bool) {
 
@@ -178,25 +178,23 @@ func (nt *schemaNestedTypes) gatherFromProperties(path paths.NamedTypePathContai
 		// https://github.com/pulumi/pulumi/issues/3151 for more details.
 		mapCase := pyMapCase && p.typ.kind == kindObject && p.schema.Type() == shim.TypeMap
 
-		nt.gatherFromPropertyType(path.Property(p.Name()),
+		nt.gatherFromPropertyType(paths.NewProperyPath(pathContext, p.propertyName),
 			declarer, namePrefix, name, p.typ, isInput, mapCase)
 	}
 }
 
-func (nt *schemaNestedTypes) gatherFromPropertyType(path *paths.TypePath,
-	declarer declarer, namePrefix, name string, typ *propertyType,
-	isInput, pyMapCase bool) {
+func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, declarer declarer, namePrefix,
+	name string, typ *propertyType, isInput, pyMapCase bool) {
 
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
-			nt.gatherFromPropertyType(path.Element(),
+			nt.gatherFromPropertyType(paths.NewElementPath(typePath),
 				declarer, namePrefix, name, typ.element, isInput, pyMapCase)
 		}
 	case kindObject:
-		baseName := nt.declareType(path, declarer, namePrefix, name, typ, isInput, pyMapCase)
-		nt.gatherFromProperties(path,
-			declarer, baseName, typ.properties, isInput, pyMapCase)
+		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput, pyMapCase)
+		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput, pyMapCase)
 	}
 }
 
@@ -206,8 +204,8 @@ func rawMessage(v interface{}) pschema.RawMessage {
 	return pschema.RawMessage(bytes)
 }
 
-func genPulumiSchema(pack *pkg, name tokens.Package,
-	version string, info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
+func genPulumiSchema(pack *pkg, name tokens.Package, version string,
+	info tfbridge.ProviderInfo) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:     name,
 		version: version,
@@ -248,8 +246,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
-			tok := g.genObjectTypeToken(t.typePath, t)
-			ts := g.genObjectType(t.typePath, t, false)
+			tok := g.genObjectTypeToken(t)
+			ts := g.genObjectType(t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -276,8 +274,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if pack.provider != nil {
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok := g.genObjectTypeToken(t.typePath, t)
-			ts := g.genObjectType(t.typePath, t, false)
+			tok := g.genObjectTypeToken(t)
+			ts := g.genObjectType(t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -454,7 +452,7 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genProperty(path *paths.TypePath, prop *variable, pyMapCase bool) pschema.PropertySpec {
+func (g *schemaGenerator) genProperty(prop *variable, pyMapCase bool) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
 		description = g.genDocComment(prop.doc)
@@ -499,8 +497,9 @@ func (g *schemaGenerator) genProperty(path *paths.TypePath, prop *variable, pyMa
 		secret = *prop.info.Secret
 	}
 
+	propPath := paths.NewProperyPath(prop.parentPath, prop.propertyName)
 	return pschema.PropertySpec{
-		TypeSpec:             g.schemaType(path, prop.typ, prop.out),
+		TypeSpec:             g.schemaType(propPath, prop.typ, prop.out),
 		Description:          description,
 		Default:              defaultValue,
 		DefaultInfo:          defaultInfo,
@@ -515,9 +514,8 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 	spec := pschema.ConfigSpec{
 		Variables: make(map[string]pschema.PropertySpec),
 	}
-	path := paths.NewConfigPath()
 	for _, v := range variables {
-		spec.Variables[v.name] = g.genProperty(path.Property(v.name), v, true)
+		spec.Variables[v.name] = g.genProperty(v, true)
 		if !v.optional() {
 			spec.Required = append(spec.Required, v.name)
 		}
@@ -541,10 +539,6 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 
-	path := paths.NewResourcePath(res.TypeToken(), res.IsProvider())
-	outPath := path.Outputs()
-	inPath := path.Inputs()
-
 	for _, prop := range res.outprops {
 		// The property will be dropped from the schema
 		if prop.info != nil && prop.info.Omit {
@@ -559,7 +553,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 			continue
 		}
 
-		spec.Properties[prop.name] = g.genProperty(outPath.Property(prop.name), prop, true)
+		spec.Properties[prop.name] = g.genProperty(prop, true)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -579,7 +573,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		if prop.name == "id" {
 			continue
 		}
-		spec.InputProperties[prop.name] = g.genProperty(inPath.Property(prop.name), prop, true)
+		spec.InputProperties[prop.name] = g.genProperty(prop, true)
 
 		if !prop.optional() {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
@@ -587,8 +581,12 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 	}
 
 	if !res.IsProvider() {
-		stateInputs := g.genObjectType(path.State(),
-			&schemaNestedType{typ: res.statet, pyMapCase: true}, true)
+		stateTypePath := res.resourcePath.State()
+		stateInputs := g.genObjectType(&schemaNestedType{
+			typ:       res.statet,
+			pyMapCase: true,
+			typePaths: paths.SingletonTypePathSet(stateTypePath),
+		}, true)
 		spec.StateInputs = &stateInputs
 	}
 
@@ -615,17 +613,21 @@ func (g *schemaGenerator) genDatasourceFunc(mod tokens.Module, fun *resourceFunc
 	}
 	spec.Description = description
 
-	path := paths.NewDataSourcePath(fun.ModuleMemberToken())
-
 	// If there are argument and/or return types, emit them.
 	if fun.argst != nil {
-		t := g.genObjectType(path.Args(),
-			&schemaNestedType{typ: fun.argst, pyMapCase: true}, false)
+		t := g.genObjectType(&schemaNestedType{
+			typ:       fun.argst,
+			pyMapCase: true,
+			typePaths: paths.SingletonTypePathSet(fun.dataSourcePath.Args()),
+		}, false)
 		spec.Inputs = &t
 	}
 	if fun.retst != nil {
-		t := g.genObjectType(path.Results(),
-			&schemaNestedType{typ: fun.retst, pyMapCase: true}, false)
+		t := g.genObjectType(&schemaNestedType{
+			typ:       fun.retst,
+			pyMapCase: true,
+			typePaths: paths.SingletonTypePathSet(fun.dataSourcePath.Results()),
+		}, false)
 		spec.Outputs = &t
 	}
 
@@ -644,7 +646,7 @@ func setEquals(a, b codegen.StringSet) bool {
 	return true
 }
 
-func (g *schemaGenerator) genObjectTypeToken(path *paths.TypePath, typInfo *schemaNestedType) string {
+func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -653,13 +655,13 @@ func (g *schemaGenerator) genObjectTypeToken(path *paths.TypePath, typInfo *sche
 		name = string(typ.nestedType)
 	}
 
-	mod := modulePlacementForType(g.pkg, path)
+	mod := modulePlacementForTypeSet(g.pkg, typInfo.typePaths)
 	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
+
 	return token
 }
 
-func (g *schemaGenerator) genObjectType(path paths.NamedTypePathContainer,
-	typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
+func (g *schemaGenerator) genObjectType(typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
 	typ := typInfo.typ
 	contract.Assert(typ.kind == kindObject)
 
@@ -684,8 +686,7 @@ func (g *schemaGenerator) genObjectType(path paths.NamedTypePathContainer,
 		if isTopLevel && prop.name == "id" {
 			continue
 		}
-		spec.Properties[prop.name] = g.genProperty(path.Property(prop.Name()),
-			prop, typInfo.pyMapCase)
+		spec.Properties[prop.name] = g.genProperty(prop, typInfo.pyMapCase)
 
 		if !prop.optional() {
 			spec.Required = append(spec.Required, prop.name)
@@ -733,7 +734,7 @@ func (g *schemaGenerator) schemaPrimitiveType(k typeKind) string {
 	}
 }
 
-func (g *schemaGenerator) schemaType(path *paths.TypePath, typ *propertyType, out bool) pschema.TypeSpec {
+func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out bool) pschema.TypeSpec {
 	// Prefer overrides over the underlying type.
 	switch {
 	case typ == nil:
@@ -793,10 +794,10 @@ func (g *schemaGenerator) schemaType(path *paths.TypePath, typ *propertyType, ou
 		contract.Assert(t != "")
 		return pschema.TypeSpec{Type: t}
 	case kindSet, kindList:
-		items := g.schemaType(path.Element(), typ.element, out)
+		items := g.schemaType(paths.NewElementPath(path), typ.element, out)
 		return pschema.TypeSpec{Type: "array", Items: &items}
 	case kindMap:
-		additionalProperties := g.schemaType(path.Element(), typ.element, out)
+		additionalProperties := g.schemaType(paths.NewElementPath(path), typ.element, out)
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
 		mod := modulePlacementForType(g.pkg, path)
@@ -960,19 +961,44 @@ func appendExample(description, markdownToAppend string) string {
 	return strings.Join(reassembledLines, "\n")
 }
 
-func modulePlacementForType(pkg tokens.Package, path *paths.TypePath) tokens.Module {
-	// Compute ancestor path. Every TypePath starts from a
-	// non-TypePath ancestor
+func modulePlacementForTypeSet(pkg tokens.Package, set paths.TypePathSet) tokens.Module {
+	var firstModule tokens.Module
+	seenModules := map[tokens.Module]bool{}
+	ambModulePlacements := []string{}
+	paths := set.Paths()
+	if len(paths) == 0 {
+		panic("paths should not be an empty set")
+	}
+	for i, p := range paths {
+		m := modulePlacementForType(pkg, p)
+		if i == 0 {
+			firstModule = m
+		}
+		if !seenModules[m] && len(seenModules) > 0 {
+			plc := fmt.Sprintf("  %s -> %s", p.String(), m.String())
+			ambModulePlacements = append(ambModulePlacements, plc)
+		}
+		seenModules[m] = true
+	}
+	if len(ambModulePlacements) > 0 {
+		fmt.Printf("WARN: ambiguous module placement (picked %s):\n%s\n",
+			firstModule.String(), strings.Join(ambModulePlacements, "\n"))
+	}
+	return firstModule
+}
+
+func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Module {
+	// Compute ancestor path. Every TypePath starts from a root.
 	p := path
-	for p.ParentKind() == paths.TypePathParent {
-		p = p.TypePathParent()
+	for p.Parent() != nil {
+		p = p.Parent()
 	}
 
 	// Pattern match by ancestor.
-	switch p.ParentKind() {
-	case paths.ResourceMemberPathParent:
-		res := p.ResourceParent().ResourcePath
-		if res.IsProvider {
+	switch pp := p.(type) {
+	case *paths.ResourceMemberPath:
+		res := pp.ResourcePath
+		if res.IsProvider() {
 			// Supplementary provider types are defined in
 			// the same module as the provider (typically
 			// root module).
@@ -981,12 +1007,12 @@ func modulePlacementForType(pkg tokens.Package, path *paths.TypePath) tokens.Mod
 		// Supplementary types are defined one level up from
 		// the module defining the resource.
 		return parentModule(res.Token().Module())
-	case paths.DataSourceMemberPathParent:
-		dataSourceModule := p.DataSourceParent().DataSourcePath.Token().Module()
+	case *paths.DataSourceMemberPath:
+		dataSourceModule := pp.DataSourcePath.Token().Module()
 		// Supplementary types are defined one level up from
 		// the module defining the data source.
 		return parentModule(dataSourceModule)
-	case paths.ConfigPathParent:
+	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
 	default:
 		contract.Assertf(false, "invalid ParentKind")
