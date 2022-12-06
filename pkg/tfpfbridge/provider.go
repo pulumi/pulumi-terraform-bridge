@@ -144,3 +144,7 @@ func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov
 
 	return server6, nil
 }
+
+func (p *Provider) GetMapping(key string) ([]byte, string, error) {
+	return []byte{}, "", nil
+}
