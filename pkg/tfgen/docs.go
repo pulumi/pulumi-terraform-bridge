@@ -1406,7 +1406,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		// At least one language out of the given set has been generated, which is considered a success
 		// nolint:ineffassign
 		err = nil
-
 	}
 
 	return result.String(), nil
