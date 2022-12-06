@@ -56,6 +56,10 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 	if err != nil {
 		return err
 	}
+	err = ce.exportMarkdown(outputDirectory, "summary.md")
+	if err != nil {
+		return err
+	}
 	return ce.exportHumanReadable(outputDirectory, "shortSummary.txt")
 }
 
@@ -292,6 +296,120 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 		return err
 	}
 	return marshalAndWriteJSON(providerStatistic, jsonOutputLocation)
+}
+
+// The fifth mode, which provides outputs a markdown file with:
+// - the example's name
+// - the original HCL
+// - the conversion results for all languages
+func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName string) error {
+
+	// The Coverage Tracker data structure is flattened down to the example level, and they all
+	// get individually written to the file in order to not have the "{ }" brackets at the start and end
+	type FlattenedExample struct {
+		ExampleName       string
+		OriginalHCL       string `json:"OriginalHCL,omitempty"`
+		ConversionResults map[string]*LanguageConversionResult
+	}
+
+	// All the examples in the tracker are iterated by page ID + index, and marshalled into one large byte
+	// array separated by \n, making the end result look like a bunch of Json files that got concatenated
+	var brokenExamples []FlattenedExample
+
+	for _, page := range ce.Tracker.EncounteredPages {
+		for index, example := range page.Examples {
+			flattenedName := page.Name
+			if len(page.Examples) > 1 {
+				flattenedName += fmt.Sprintf("#%d", index)
+			}
+
+			noErrors := true
+			for _, result := range example.ConversionResults {
+				if result.FailureSeverity == Success {
+					continue
+				}
+				noErrors = false
+			}
+			if noErrors {
+				break
+			}
+
+			brokenExamples = append(brokenExamples, FlattenedExample{
+				ExampleName:       flattenedName,
+				OriginalHCL:       example.OriginalHCL,
+				ConversionResults: example.ConversionResults,
+			})
+		}
+	}
+	targetFile, err := createEmptyFile(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+
+	out := ""
+	for _, example := range brokenExamples {
+
+		successes := make(map[string]LanguageConversionResult)
+		failures := make(map[string]LanguageConversionResult)
+
+		for lang, result := range example.ConversionResults {
+			if result.FailureSeverity == Success {
+				successes[lang] = *result
+				continue
+			}
+			failures[lang] = *result
+		}
+
+		isCompleteFailure := len(successes) == 0
+
+		// print example header
+		summaryText := "*partial failure*"
+		if isCompleteFailure {
+			summaryText = "**complete failure**"
+		}
+
+		out += "\n---\n"
+		out += fmt.Sprintf("\n## [%s] %s\n", summaryText, example.ExampleName)
+
+		// print original HCL
+		out += "\n### HCL\n"
+		out += "\n```terraform\n"
+		out += example.OriginalHCL + "\n"
+		out += "\n```\n"
+
+		// print failures
+		out += "\n### Failed Languages\n"
+		for lang, err := range failures {
+			out += fmt.Sprintf("\n#### %s\n", lang)
+			out += "\n```text\n"
+
+			errMsg := err.FailureInfo
+			if len(err.FailureInfo) > 1000 {
+				// truncate extremely long error messages
+				errMsg = err.FailureInfo[:1000]
+			}
+			out += errMsg
+			out += "\n```\n"
+		}
+
+		if isCompleteFailure {
+			// it's a complete failure, no successes to print
+			continue
+		}
+
+		// print successes
+		out += "\n### Successes\n"
+		for lang, success := range successes {
+			out += "\n<details>\n"
+			out += fmt.Sprintf("\n<summary>%s</summary>\n", lang)
+			out += fmt.Sprintf("\n```%s\n", lang)
+			out += success.Program
+			out += "\n```\n"
+			out += "\n</details>\n"
+		}
+	}
+
+	return os.WriteFile(targetFile, []byte(out), 0600)
 }
 
 // The fourth mode, which simply gives the provider name, and success percentage.
