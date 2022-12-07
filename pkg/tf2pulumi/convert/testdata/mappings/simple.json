@@ -1,0 +1,72 @@
+{
+    "name": "simple",
+    "provider": {
+        "dataSources": {
+            "simple_data_source": {
+                "input_one": {
+                    "type": 4
+                },
+                "input_two": {
+                    "type": 2
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        },
+        "resources": {
+            "simple_resource": {
+                "input_one": {
+                    "type": 4
+                },
+                "input_two": {
+                    "type": 2
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+
+        }
+    },
+    "dataSources": {
+        "simple_data_source": {
+            "tok": "simple:index:data_source",
+            "fields": {
+                "input_one": {
+                    "name": "input_one",
+                    "type": "string"
+                },
+                "input_two": {
+                    "name": "input_two",
+                    "type": "integer"
+                },
+                "result": {
+                    "name": "result",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "resources": {
+        "simple_resource": {
+            "tok":  "simple:index:resource",
+            "fields": {
+                "input_one": {
+                    "name": "input_one",
+                    "type": "string"
+                },
+                "input_two": {
+                    "name": "input_two",
+                    "type": "integer"
+                },
+                "result": {
+                    "name": "result",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
