@@ -1,8 +1,6 @@
 run:
   skip-dirs:
-    - pkg/tf2pulumi/internal/addrs
-    - pkg/tf2pulumi/internal/config
-    - pkg/tf2pulumi/internal/configs
+    - pkg/tf2pulumi/internal
   timeout: 10m
 
 linters:

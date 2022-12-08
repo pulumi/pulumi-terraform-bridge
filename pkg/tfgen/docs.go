@@ -1331,11 +1331,20 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 		// we write an example to a temp file internally in order to pass to convert.Convert().
 		//
 		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
-		errMsg := strings.ReplaceAll(diags.All.Error(), fileName[1:], "")
+		errMsg := ""
+		first := true
+		for _, diag := range diags.All {
+			if !first {
+				errMsg += ", and "
+			}
+			errMsg += diag.Error()
+		}
+
+		errMsg = strings.ReplaceAll(errMsg, fileName[1:], "")
 
 		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
 		g.coverageTracker.languageConversionFailure(languageName, diags.All)
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 
 	contract.Assert(len(files) == 1)
@@ -1465,10 +1474,10 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		hclAllLangsConversionFailures++
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-				"from any generated docs or SDKs.", path, err))
+				"from any generated docs or SDKs.\n%s", path, err, hcl))
 		} else {
 			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s': %v. The example will be "+
-				"dropped from any generated docs or SDKs.", exampleTitle, path, err))
+				"dropped from any generated docs or SDKs.\n%s", exampleTitle, path, err, hcl))
 		}
 
 		return "", err

@@ -14,7 +14,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
-	tf11module "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config/module"
+	tf11module "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/tf12/config/module"
 )
 
 // convertTF11 converts a TF11 graph to a set of TF12 files.

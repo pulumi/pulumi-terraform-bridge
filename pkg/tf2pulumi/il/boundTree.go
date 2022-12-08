@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/hil/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/config"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/tf12/config"
 )
 
 // Type represents the type of a single node in a bound property tree. Types are fairly simplistic: in addition to the

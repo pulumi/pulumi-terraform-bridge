@@ -19,8 +19,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/addrs"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/configs"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/tf12/addrs"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/tf12/configs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
