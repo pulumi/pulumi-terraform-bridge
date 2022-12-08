@@ -74,10 +74,6 @@ func (l *testLoader) LoadPackageReference(pkg string, version *semver.Version) (
 	return schemaPackage.Reference(), nil
 }
 
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
-}
-
 // applyPragmas parses the text from `src` and writes the resulting text to `dst`. It can exclude blocks of
 // text based on pragmas and the `isExperimental` flag.
 // Pragmas should take the form of:
