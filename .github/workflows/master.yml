@@ -38,3 +38,7 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: Test experimental
+        env:
+          PULUMI_EXPERIMENTAL: "1"
+        run: make test
