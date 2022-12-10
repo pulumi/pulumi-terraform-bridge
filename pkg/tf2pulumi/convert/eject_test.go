@@ -143,8 +143,8 @@ func TestEject(t *testing.T) {
 			assert.Equal(t, tokens.PackageName(tt.name), project.Name)
 
 			// Assert every pcl file is seen
-			infos, err := os.ReadDir(testDir)
-			if !assert.NoError(t, err) {
+			infos, err := os.ReadDir(pclPath)
+			if os.IsNotExist(err) || !assert.NoError(t, err) {
 				return
 			}
 			pclFiles := make(map[string]interface{})
