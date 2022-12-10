@@ -93,9 +93,14 @@ func (l *testMapper) GetMapping(provider string) ([]byte, error) {
 	return mappingBytes, nil
 }
 
+func isTruthy(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
+}
+
 func TestEject(t *testing.T) {
 	// Test framework for eject
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
+	// You can regenerate the test data by running "PULUMI_ACCEPT=1 go test" in this folder (pkg/tf2pulumi/convert).
 	testDir, err := filepath.Abs(filepath.Join("testdata"))
 	stopOnError(t, err)
 	infos, err := os.ReadDir(testDir)
@@ -146,6 +151,26 @@ func TestEject(t *testing.T) {
 			for _, info := range infos {
 				if !info.IsDir() {
 					pclFiles[info.Name()] = nil
+				}
+			}
+
+			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
+			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
+				err := os.RemoveAll(pclPath)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+				err = os.Mkdir(pclPath, 0700)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+				for filename, source := range program.Source() {
+					// normalize windows newlines to unix ones
+					expectedPcl := []byte(strings.Replace(source, "\r\n", "\n", -1))
+					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0600)
+					if !assert.NoError(t, err) {
+						t.FailNow()
+					}
 				}
 			}
 
