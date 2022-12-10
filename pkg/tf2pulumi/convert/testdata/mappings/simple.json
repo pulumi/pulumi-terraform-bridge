@@ -36,11 +36,11 @@
             "tok": "simple:index:data_source",
             "fields": {
                 "input_one": {
-                    "name": "input_one",
+                    "name": "inputOne",
                     "type": "string"
                 },
                 "input_two": {
-                    "name": "input_two",
+                    "name": "inputTwo",
                     "type": "integer"
                 },
                 "result": {
@@ -55,11 +55,11 @@
             "tok":  "simple:index:resource",
             "fields": {
                 "input_one": {
-                    "name": "input_one",
+                    "name": "inputOne",
                     "type": "string"
                 },
                 "input_two": {
-                    "name": "input_two",
+                    "name": "inputTwo",
                     "type": "integer"
                 },
                 "result": {

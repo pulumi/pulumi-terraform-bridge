@@ -3,8 +3,8 @@ options {
     range = 4
 
 }
-    input_one =  "Hello ${range.value}"
-    input_two = true
+    inputOne =  "Hello ${range.value}"
+    inputTwo = true
 }
 output someOutputA {
     value = aResourceWithCount[0].result
