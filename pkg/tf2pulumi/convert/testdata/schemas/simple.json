@@ -6,10 +6,10 @@
        "inputs": {
          "type": "object",
          "properties": {
-           "input_one": {
+           "inputOne": {
              "type": "string"
            },
-           "input_two": {
+           "inputTwo": {
              "type": "integer"
            }
          }
@@ -27,10 +27,10 @@
   "resources": {
     "simple:index:resource": {
       "inputProperties": {
-        "input_one": {
+        "inputOne": {
           "type": "string"
         },
-        "input_two": {
+        "inputTwo": {
           "type": "integer"
         }
       },
