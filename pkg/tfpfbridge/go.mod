@@ -9,9 +9,9 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/hashicorp/terraform-plugin-framework v0.14.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221130185552-52ef9a815fb9
-	github.com/pulumi/pulumi/pkg/v3 v3.48.1-0.20221205185749-86e7d56df231
-	github.com/pulumi/pulumi/sdk/v3 v3.48.1-0.20221205185749-86e7d56df231
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
+	github.com/pulumi/pulumi/pkg/v3 v3.49.1-0.20221210190028-cbf32d1940fa
+	github.com/pulumi/pulumi/sdk/v3 v3.49.1-0.20221210190028-cbf32d1940fa
 	github.com/stretchr/testify v1.8.0
 )
 
@@ -164,7 +164,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.6.0 // indirect
-	github.com/pulumi/pulumi-yaml v1.0.3 // indirect
+	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
 	github.com/pulumi/schema-tools v0.1.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
