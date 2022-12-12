@@ -7,8 +7,8 @@ replace github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
-	github.com/hashicorp/terraform-plugin-framework v0.14.0
-	github.com/hashicorp/terraform-plugin-go v0.14.0
+	github.com/hashicorp/terraform-plugin-framework v0.16.0
+	github.com/hashicorp/terraform-plugin-go v0.14.2
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
 	github.com/pulumi/pulumi/pkg/v3 v3.49.1-0.20221210190028-cbf32d1940fa
 	github.com/pulumi/pulumi/sdk/v3 v3.49.1-0.20221210190028-cbf32d1940fa
@@ -108,7 +108,7 @@ require (
 	github.com/hashicorp/go-getter v1.6.1 // indirect
 	github.com/hashicorp/go-hclog v1.2.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.4.4 // indirect
+	github.com/hashicorp/go-plugin v1.4.6 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.14.0 // indirect
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
-	github.com/hashicorp/terraform-registry-address v0.0.0-20220623143253-7d51757b572c // indirect
+	github.com/hashicorp/terraform-registry-address v0.1.0 // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
 	github.com/hashicorp/vault/api v1.1.1 // indirect
 	github.com/hashicorp/vault/sdk v0.2.1 // indirect
@@ -202,13 +202,13 @@ require (
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/api v0.91.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220802133213-ce4fa296bf78 // indirect
-	google.golang.org/grpc v1.49.0 // indirect
+	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
