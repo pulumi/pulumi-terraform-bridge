@@ -1,0 +1,44 @@
+{
+  "version": "0.0.1",
+  "name": "simple",
+  "functions":{
+    "simple:index:data_source": {
+       "inputs": {
+         "type": "object",
+         "properties": {
+           "inputOne": {
+             "type": "string"
+           },
+           "inputTwo": {
+             "type": "integer"
+           }
+         }
+       },
+       "outputs": {
+         "properties": {
+           "result": {
+             "type": "string"
+           }
+         },
+        "type": "object"
+      }
+    }
+  },
+  "resources": {
+    "simple:index:resource": {
+      "inputProperties": {
+        "inputOne": {
+          "type": "string"
+        },
+        "inputTwo": {
+          "type": "integer"
+        }
+      },
+      "properties": {
+        "result": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
