@@ -47,7 +47,11 @@ func (p *schemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *schemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
-	return &schemaOnlyDataSourceMap{}
+	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf)
+	if err != nil {
+		panic(err)
+	}
+	return &schemaOnlyDataSourceMap{dataSources}
 }
 
 func (p *schemaOnlyProvider) Validate(c shim.ResourceConfig) ([]string, []error) {

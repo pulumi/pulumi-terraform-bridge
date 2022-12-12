@@ -38,10 +38,10 @@ func TlsProvider() tfbridge.ProviderInfo {
 		return tokens.Type(tlsMember(mod, typ))
 	}
 
-	// tlsDataSource := func(mod string, res string) tokens.ModuleMember {
-	// 	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
-	// 	return tlsMember(mod+"/"+fn, res)
-	// }
+	tlsDataSource := func(mod string, res string) tokens.ModuleMember {
+		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+		return tlsMember(mod+"/"+fn, res)
+	}
 
 	tlsResource := func(mod string, res string) tokens.Type {
 		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
@@ -62,10 +62,10 @@ func TlsProvider() tfbridge.ProviderInfo {
 			"tls_private_key":         {Tok: tlsResource(tlsMod, "PrivateKey")},
 			"tls_self_signed_cert":    {Tok: tlsResource(tlsMod, "SelfSignedCert")},
 		},
-		// DataSources: map[string]*tfbridge.DataSourceInfo{
-		// 	"tls_public_key":  {Tok: tlsDataSource(tlsMod, "getPublicKey")},
-		// 	"tls_certificate": {Tok: tlsDataSource(tlsMod, "getCertificate")},
-		// },
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"tls_public_key":  {Tok: tlsDataSource(tlsMod, "getPublicKey")},
+			"tls_certificate": {Tok: tlsDataSource(tlsMod, "getCertificate")},
+		},
 		JavaScript: &tfbridge.JavaScriptInfo{
 			Dependencies: map[string]string{
 				"@pulumi/pulumi": "^3.0.0",

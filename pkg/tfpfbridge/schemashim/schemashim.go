@@ -52,9 +52,8 @@ func ShimSchemaOnlyProviderInfo(ctx context.Context, provider info.ProviderInfo)
 
 		// TODO Config:      provider.Config,
 		// TODO ExtraConfig: provider.ExtraConfig,
-		Resources: convertResourceMetadata(provider.Resources),
-
-		// TODO DataSources:    provider.DataSources,
+		Resources:   convertResourceMetadata(provider.Resources),
+		DataSources: convertDataSourceMetadata(provider.DataSources),
 		// TODO ExtraTypes:     provider.ExtraTypes,
 		// TODO ExtraResources: provider.ExtraResources,
 		// TODO ExtraFunctions: provider.ExtraFunctions,
@@ -84,6 +83,19 @@ func convertResourceMetadata(inputs map[string]*info.ResourceInfo) map[string]*t
 	for k, v := range inputs {
 		result[k] = &tfbridge.ResourceInfo{
 			Tok: v.Tok,
+		}
+	}
+	return result
+}
+
+func convertDataSourceMetadata(inputs map[string]*info.DataSourceInfo) map[string]*tfbridge.DataSourceInfo {
+	result := map[string]*tfbridge.DataSourceInfo{}
+	for k, v := range inputs {
+		result[k] = &tfbridge.DataSourceInfo{
+			Tok: v.Tok,
+			// TODO Fields
+			// TODO Docs
+			DeprecationMessage: v.DeprecationMessage,
 		}
 	}
 	return result
