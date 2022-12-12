@@ -26,7 +26,20 @@ import (
 )
 
 type PrecisePropertyNames struct {
-	renames tfgen.Renames
+	renames map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
+}
+
+func newPrecisePropertyNames(renames tfgen.Renames) *PrecisePropertyNames {
+	result := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
+	// Invert renames.RenamedProperties maps for faster dynamic lookup.
+	for typ, typRenames := range renames.RenamedProperties {
+		m := map[convert.TerraformPropertyName]resource.PropertyKey{}
+		for k, v := range typRenames {
+			m[v] = resource.PropertyKey(string(k))
+		}
+		result[typ] = m
+	}
+	return &PrecisePropertyNames{result}
 }
 
 var _ convert.PropertyNames = (*PrecisePropertyNames)(nil)
@@ -36,12 +49,9 @@ func (s *PrecisePropertyNames) PropertyKey(
 	property convert.TerraformPropertyName,
 	_ tftypes.Type,
 ) resource.PropertyKey {
-	if renamedProps, ok := s.renames.RenamedProperties[typeToken]; ok {
-		// Perhaps this table should be inverted upfront.
-		for pulumiName, tfName := range renamedProps {
-			if tfName == property {
-				return resource.PropertyKey(pulumiName)
-			}
+	if renamedProps, ok := s.renames[typeToken]; ok {
+		if propertyKey, renamed := renamedProps[property]; renamed {
+			return propertyKey
 		}
 	}
 	return resource.PropertyKey(property)

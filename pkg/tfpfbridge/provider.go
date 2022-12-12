@@ -173,7 +173,7 @@ func (p *Provider) GetMapping(key string) ([]byte, string, error) {
 }
 
 func setupEncoding(p pschema.PackageSpec, renames tfgen.Renames) convert.Encoding {
-	return convert.NewEncoding(packageSpec{&p}, &PrecisePropertyNames{renames})
+	return convert.NewEncoding(packageSpec{&p}, newPrecisePropertyNames(renames))
 }
 
 type packageSpec struct {
