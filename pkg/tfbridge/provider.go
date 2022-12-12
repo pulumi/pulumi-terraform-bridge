@@ -49,6 +49,8 @@ import (
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
 type Provider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
 	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
 	module          string                             // the Terraform module name.
 	version         string                             // the plugin version number.

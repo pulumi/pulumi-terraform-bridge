@@ -21,3 +21,8 @@ test::
 # be useful to run to review the differences with git diff.
 test_accept::
 	PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
+
+generate_builtins_test::
+	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi
+	. ./scripts/venv/*/activate && python -m pip install -r ./scripts/requirements.txt
+	. ./scripts/venv/*/activate &&  python ./scripts/generate_builtins.py
