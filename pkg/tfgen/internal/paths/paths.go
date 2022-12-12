@@ -39,15 +39,15 @@ type ResourcePath struct {
 	isProvider bool
 }
 
-func NewResourcePath(key string, resourceToken tokens.Type, isProvider bool) *ResourcePath {
-	if isProvider && key != "" {
-		panic("key should be empty when isProvider=true")
+func NewResourcePath(terraformResourceKey string, resourceToken tokens.Type, isProvider bool) *ResourcePath {
+	if isProvider && terraformResourceKey != "" {
+		panic("terraformResourceKey should be empty when isProvider=true")
 	}
-	if !isProvider && key == "" {
-		panic("key should not be empty when isProvider=false")
+	if !isProvider && terraformResourceKey == "" {
+		panic("terraformResourceKey should not be empty when isProvider=false")
 	}
 	return &ResourcePath{
-		key:        key,
+		key:        terraformResourceKey,
 		token:      resourceToken,
 		isProvider: isProvider,
 	}
