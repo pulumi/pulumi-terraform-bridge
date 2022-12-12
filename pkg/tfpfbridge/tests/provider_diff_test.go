@@ -24,9 +24,11 @@ import (
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
@@ -55,9 +57,11 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
@@ -90,9 +94,11 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {

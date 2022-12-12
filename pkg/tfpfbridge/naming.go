@@ -22,7 +22,40 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
+
+type PrecisePropertyNames struct {
+	renames map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
+}
+
+func newPrecisePropertyNames(renames tfgen.Renames) *PrecisePropertyNames {
+	result := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
+	// Invert renames.RenamedProperties maps for faster dynamic lookup.
+	for typ, typRenames := range renames.RenamedProperties {
+		m := map[convert.TerraformPropertyName]resource.PropertyKey{}
+		for k, v := range typRenames {
+			m[v] = resource.PropertyKey(string(k))
+		}
+		result[typ] = m
+	}
+	return &PrecisePropertyNames{result}
+}
+
+var _ convert.PropertyNames = (*PrecisePropertyNames)(nil)
+
+func (s *PrecisePropertyNames) PropertyKey(
+	typeToken tokens.Token,
+	property convert.TerraformPropertyName,
+	_ tftypes.Type,
+) resource.PropertyKey {
+	if renamedProps, ok := s.renames[typeToken]; ok {
+		if propertyKey, renamed := renamedProps[property]; renamed {
+			return propertyKey
+		}
+	}
+	return resource.PropertyKey(property)
+}
 
 // Approximate implemenation of property renaming. Currently schemas reuse tfgen which calls PulumiToTerraformName, and
 // among other things plurlizes names of list properties. This code accounts only for the pluralization for now. Ideally
