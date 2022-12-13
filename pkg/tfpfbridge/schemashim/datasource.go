@@ -30,8 +30,11 @@ func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
 	return newSchemaMap(r.tf)
 }
 
-func (*schemaOnlyDataSource) SchemaVersion() int         { panic("TODO") }
-func (*schemaOnlyDataSource) DeprecationMessage() string { panic("TODO") }
+func (*schemaOnlyDataSource) SchemaVersion() int { panic("TODO") }
+
+func (r *schemaOnlyDataSource) DeprecationMessage() string {
+	return r.tf.DeprecationMessage
+}
 
 func (*schemaOnlyDataSource) Importer() shim.ImportFunc {
 	panic("schemaOnlyDataSource does not implement runtime operation ImporterFunc")
