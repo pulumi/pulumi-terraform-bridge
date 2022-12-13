@@ -24,24 +24,26 @@ import (
 )
 
 type schemaMap struct {
-	sortedKeys []string
-	attrs      map[string]attr
+	attrs  map[string]attr
+	blocks map[string]block
 }
 
 func newSchemaMap(tf *tfsdk.Schema) *schemaMap {
-	m := schemaToAttrMap(tf)
-	s := []string{}
-	for k := range m {
-		s = append(s, k)
+	return &schemaMap{
+		attrs:  schemaToAttrMap(tf),
+		blocks: schemaToBlockMap(tf),
 	}
-	sort.Strings(s)
-	return &schemaMap{attrs: m, sortedKeys: s}
 }
 
 var _ shim.SchemaMap = (*schemaMap)(nil)
 
 func (m *schemaMap) Len() int {
-	return len(m.attrs)
+	n := 0
+	m.Range(func(string, shim.Schema) bool {
+		n++
+		return true
+	})
+	return n
 }
 
 func (m *schemaMap) Get(key string) shim.Schema {
@@ -55,13 +57,34 @@ func (m *schemaMap) Get(key string) shim.Schema {
 func (m *schemaMap) GetOk(key string) (shim.Schema, bool) {
 	attr, ok := m.attrs[key]
 	if !ok {
-		return nil, false
+		block, ok := m.blocks[key]
+		if !ok {
+			return nil, false
+		}
+		return &blockSchema{key: key, block: block}, true
 	}
 	return &attrSchema{key: key, attr: attr}, true
 }
 
 func (m *schemaMap) Range(each func(key string, value shim.Schema) bool) {
-	for _, key := range m.sortedKeys {
+	sortedKeys := []string{}
+	seenKeys := map[string]struct{}{}
+
+	for k := range m.attrs {
+		sortedKeys = append(sortedKeys, k)
+		seenKeys[k] = struct{}{}
+	}
+
+	for k := range m.blocks {
+		if _, seen := seenKeys[k]; !seen {
+			sortedKeys = append(sortedKeys, k)
+			seenKeys[k] = struct{}{}
+		}
+	}
+
+	sort.Strings(sortedKeys)
+
+	for _, key := range sortedKeys {
 		if !each(key, m.Get(key)) {
 			return
 		}
