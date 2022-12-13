@@ -144,10 +144,13 @@ func TestEject(t *testing.T) {
 
 			// Assert every pcl file is seen
 			infos, err := os.ReadDir(pclPath)
-			if os.IsNotExist(err) || !assert.NoError(t, err) {
-				return
+			if !os.IsNotExist(err) && !assert.NoError(t, err) {
+				// If the directory was not found then the expected pcl results are the empty set, but if the
+				// directory could not be read because of filesystem issues than just error out.
+				assert.FailNow(t, "Could not read expected pcl results")
 			}
 			pclFiles := make(map[string]interface{})
+			// infos will just be nil if pclPath did not exist
 			for _, info := range infos {
 				if !info.IsDir() {
 					pclFiles[info.Name()] = nil
