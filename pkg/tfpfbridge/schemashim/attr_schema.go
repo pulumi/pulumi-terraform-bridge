@@ -52,7 +52,10 @@ func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc { panic("TODO") }
 func (*attrSchema) DefaultValue() (interface{}, error)  { panic("TODO") }
 
 func (s *attrSchema) Description() string {
-	return s.attr.GetMarkdownDescription()
+	if desc := s.attr.GetMarkdownDescription(); desc != "" {
+		return desc
+	}
+	return s.attr.GetDescription()
 }
 
 func (s *attrSchema) Computed() bool {

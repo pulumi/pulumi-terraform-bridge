@@ -107,25 +107,29 @@
                     "type": "boolean"
                 },
                 "optionalInputBoolCopy": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Computed as a copy of optionalInputBool\n"
                 },
                 "optionalInputNumber": {
                     "type": "number"
                 },
                 "optionalInputNumberCopy": {
-                    "type": "number"
+                    "type": "number",
+                    "description": "Computed as a copy of optionalInputNumber\n"
                 },
                 "optionalInputString": {
                     "type": "string"
                 },
                 "optionalInputStringCopy": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Computed as a copy of optionalInputString\n"
                 },
                 "optionalInputStringListCopies": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "Computed as a copy of optionalInputStringList\n"
                 },
                 "optionalInputStringLists": {
                     "type": "array",
@@ -143,13 +147,15 @@
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
-                    }
+                    },
+                    "description": "Computed as a copy of optionalInputStringMap\n"
                 },
                 "requiredInputString": {
                     "type": "string"
                 },
                 "requiredInputStringCopy": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Computed as a copy of requiredInputString\n"
                 },
                 "services": {
                     "type": "array",
@@ -159,17 +165,20 @@
                     "description": "services: tests ListNestedAttributes support\n"
                 },
                 "servicesJSONCopy": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Computed as a JSON-ified copy of services input\n"
                 },
                 "singleNestedAttr": {
                     "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
                     "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
                 },
                 "singleNestedAttrJSONCopy": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Computed as a JSON-ified copy of singleNestedAttr input\n"
                 },
                 "statedir": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Dir to store pseudo-cloud state in.\n"
                 }
             },
             "required": [
@@ -221,7 +230,8 @@
                     "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
                 },
                 "statedir": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Dir to store pseudo-cloud state in.\n"
                 }
             },
             "requiredInputs": [
@@ -235,25 +245,29 @@
                         "type": "boolean"
                     },
                     "optionalInputBoolCopy": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Computed as a copy of optionalInputBool\n"
                     },
                     "optionalInputNumber": {
                         "type": "number"
                     },
                     "optionalInputNumberCopy": {
-                        "type": "number"
+                        "type": "number",
+                        "description": "Computed as a copy of optionalInputNumber\n"
                     },
                     "optionalInputString": {
                         "type": "string"
                     },
                     "optionalInputStringCopy": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Computed as a copy of optionalInputString\n"
                     },
                     "optionalInputStringListCopies": {
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Computed as a copy of optionalInputStringList\n"
                     },
                     "optionalInputStringLists": {
                         "type": "array",
@@ -271,13 +285,15 @@
                         "type": "object",
                         "additionalProperties": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Computed as a copy of optionalInputStringMap\n"
                     },
                     "requiredInputString": {
                         "type": "string"
                     },
                     "requiredInputStringCopy": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Computed as a copy of requiredInputString\n"
                     },
                     "services": {
                         "type": "array",
@@ -287,17 +303,20 @@
                         "description": "services: tests ListNestedAttributes support\n"
                     },
                     "servicesJSONCopy": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Computed as a JSON-ified copy of services input\n"
                     },
                     "singleNestedAttr": {
                         "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
                         "description": "singleNestedAttr: tests SingleNestedAttribute support\n"
                     },
                     "singleNestedAttrJSONCopy": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Computed as a JSON-ified copy of singleNestedAttr input\n"
                     },
                     "statedir": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Dir to store pseudo-cloud state in.\n"
                     }
                 },
                 "type": "object"
