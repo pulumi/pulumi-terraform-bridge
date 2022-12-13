@@ -124,9 +124,9 @@ func (r *renamesBuilder) build() Renames {
 		case *paths.DataSourceMemberPath:
 			m = re.renamedProps(tokens.Token(parent.DataSourcePath.Token()))
 		default:
-			tok, ok := r.objectTypes[parent.String()]
-			if !ok {
-				panic(fmt.Sprintf("expected registerNamedObjectType to be called for %s", parent))
+			tok, err := r.findObjectTypeToken(parent)
+			if err != nil {
+				panic(err)
 			}
 			m = re.renamedProps(tokens.Token(tok))
 		}
@@ -136,4 +136,38 @@ func (r *renamesBuilder) build() Renames {
 	re.Functions = r.functions
 	re.Resources = r.resources
 	return re
+}
+
+func (r renamesBuilder) findObjectTypeToken(path paths.TypePath) (tokens.Type, error) {
+	if p, ok := r.objectTypes[path.String()]; ok {
+		return p, nil
+	}
+	// As an implementation quirk, sometimes for a provider registerNamedObjectType gets called on an input propety
+	// but not the state property, though they represent the same thing and have the same type. Rewrite the path
+	// to replace state with inputs in this case and try the lookup again.
+	path = r.normalizeProviderStateToProviderInputs(path)
+	if p, ok := r.objectTypes[path.String()]; ok {
+		return p, nil
+	}
+	return "", fmt.Errorf("expected registerNamedObjectType to be called for %s", path.String())
+}
+
+func (r renamesBuilder) normalizeProviderStateToProviderInputs(p paths.TypePath) paths.TypePath {
+	switch pp := p.(type) {
+	case *paths.ResourceMemberPath:
+		if pp.ResourcePath.IsProvider() && pp.ResourceMemberKind == paths.ResourceState {
+			return pp.ResourcePath.Inputs()
+		}
+		return p
+	case *paths.DataSourceMemberPath:
+		return p
+	case *paths.ConfigPath:
+		return p
+	case *paths.ElementPath:
+		return paths.NewElementPath(r.normalizeProviderStateToProviderInputs(pp.Parent()))
+	case *paths.PropertyPath:
+		return paths.NewProperyPath(r.normalizeProviderStateToProviderInputs(pp.Parent()), pp.PropertyName)
+	default:
+		panic("impossible")
+	}
 }
