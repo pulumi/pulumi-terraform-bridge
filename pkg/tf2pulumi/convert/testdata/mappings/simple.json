@@ -4,10 +4,12 @@
         "dataSources": {
             "simple_data_source": {
                 "input_one": {
-                    "type": 4
+                    "type": 4,
+                    "optional": true
                 },
                 "input_two": {
-                    "type": 2
+                    "type": 2,
+                    "optional": true
                 },
                 "result": {
                     "type": 4,
@@ -18,10 +20,12 @@
         "resources": {
             "simple_resource": {
                 "input_one": {
-                    "type": 4
+                    "type": 4,
+                    "optional": true
                 },
                 "input_two": {
-                    "type": 2
+                    "type": 2,
+                    "optional": true
                 },
                 "result": {
                     "type": 4,
@@ -33,40 +37,12 @@
     },
     "dataSources": {
         "simple_data_source": {
-            "tok": "simple:index:data_source",
-            "fields": {
-                "input_one": {
-                    "name": "inputOne",
-                    "type": "string"
-                },
-                "input_two": {
-                    "name": "inputTwo",
-                    "type": "integer"
-                },
-                "result": {
-                    "name": "result",
-                    "type": "string"
-                }
-            }
+            "tok": "simple:index:data_source"
         }
     },
     "resources": {
         "simple_resource": {
-            "tok":  "simple:index:resource",
-            "fields": {
-                "input_one": {
-                    "name": "inputOne",
-                    "type": "string"
-                },
-                "input_two": {
-                    "name": "inputTwo",
-                    "type": "integer"
-                },
-                "result": {
-                    "name": "result",
-                    "type": "string"
-                }
-            }
+            "tok":  "simple:index:resource"
         }
     }
 }
