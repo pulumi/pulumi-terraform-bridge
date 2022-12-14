@@ -1,0 +1,220 @@
+{
+  "name": "complex",
+  "attribution": "This Pulumi package is based on the [`complex` Terraform Provider](https://github.com/terraform-providers/terraform-provider-complex).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-complex)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-complex` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-complex` repo](https://github.com/terraform-providers/terraform-provider-complex/issues)."
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-complex)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-complex` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-complex` repo](https://github.com/terraform-providers/terraform-provider-complex/issues)."
+    }
+  },
+  "config": {},
+  "types": {
+    "complex:index/data_sourceInnerObject:data_sourceInnerObject": {
+      "properties": {
+        "innerString": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
+    "complex:index/resourceInnerObject:resourceInnerObject": {
+      "properties": {
+        "innerString": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "description": "The provider type for the complex package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "complex:index/index:resource": {
+      "properties": {
+        "aBool": {
+          "type": "boolean"
+        },
+        "aListOfInts": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "aMapOfBool": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "aNumber": {
+          "type": "number"
+        },
+        "aString": {
+          "type": "string"
+        },
+        "innerObject": {
+          "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "inputProperties": {
+        "aBool": {
+          "type": "boolean"
+        },
+        "aListOfInts": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "aMapOfBool": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "aNumber": {
+          "type": "number"
+        },
+        "aString": {
+          "type": "string"
+        },
+        "innerObject": {
+          "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering resource resources.\n",
+        "properties": {
+          "aBool": {
+            "type": "boolean"
+          },
+          "aListOfInts": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "aMapOfBool": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "aNumber": {
+            "type": "number"
+          },
+          "aString": {
+            "type": "string"
+          },
+          "innerObject": {
+            "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "complex:index/index:data_source": {
+      "inputs": {
+        "description": "A collection of arguments for invoking data_source.\n",
+        "properties": {
+          "aBool": {
+            "type": "boolean"
+          },
+          "aListOfInts": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "aMapOfBool": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "aNumber": {
+            "type": "number"
+          },
+          "aString": {
+            "type": "string"
+          },
+          "innerObject": {
+            "$ref": "#/types/complex:index/data_sourceInnerObject:data_sourceInnerObject"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by data_source.\n",
+        "properties": {
+          "aBool": {
+            "type": "boolean"
+          },
+          "aListOfInts": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "aMapOfBool": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "aNumber": {
+            "type": "number"
+          },
+          "aString": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "innerObject": {
+            "$ref": "#/types/complex:index/data_sourceInnerObject:data_sourceInnerObject"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "id"
+        ]
+      }
+    }
+  }
+}
