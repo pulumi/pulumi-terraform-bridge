@@ -92,7 +92,9 @@ type Schema interface {
 	// this case s.Type() is one of TypeList, TypeSet, and s.Elem() is a Resource that encodes the object type
 	// similarly to Case 2.
 	//
-	// Case 4: s.Elem() is nil and s.Type() is none of TypeList, TypeSet, TypeMap.
+	// Case 4: s.Elem() is nil and s.Type() is a scalar type (none of TypeList, TypeSet, TypeMap).
+	//
+	// Case 5: s.Elem() is nil but s.Type() is one of TypeList, TypeSet, TypeMap. The element type is unknown.
 	//
 	// This encoding cannot support map-nested blocks or object types as it would introduce confusion with Case 2,
 	// because Map[String, {"x": Int}] and {"x": Int} both have s.Type() = TypeMap and s.Elem() being a Resource.
