@@ -42,6 +42,15 @@ func TestRegress611(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-611-schema.json", schema)
 }
 
+func TestRegressMiniRandom(t *testing.T) {
+	provider := testprovider.ProviderMiniRandom()
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minirandom-schema.json", schema)
+}
+
 func TestRenameGeneration(t *testing.T) {
 	info := testprovider.ProviderRegress611()
 
