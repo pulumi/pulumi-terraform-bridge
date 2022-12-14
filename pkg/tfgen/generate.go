@@ -344,7 +344,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	}
 
 	// Handle single-nested blocks next.
-	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Elem() == shim.TypeMap {
+	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
 		return g.makeObjectPropertyType(typePath, objectName, blockType, elemInfo, out, entityDocs)
 	}
 
