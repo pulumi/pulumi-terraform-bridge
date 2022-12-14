@@ -328,19 +328,18 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	}
 
 	// Perform case analysis on Elem() and Type(). See shim.Schema.Elem() doc for reference. Start with scalars.
-	if sch.Elem() == nil {
-		switch sch.Type() {
-		case shim.TypeBool:
-			t.kind = kindBool
-		case shim.TypeInt:
-			t.kind = kindInt
-		case shim.TypeFloat:
-			t.kind = kindFloat
-		case shim.TypeString:
-			t.kind = kindString
-		default:
-			panic("impossible: sch.Elem() == nil should imply sch.Type() having a scalar type")
-		}
+	switch sch.Type() {
+	case shim.TypeBool:
+		t.kind = kindBool
+		return t
+	case shim.TypeInt:
+		t.kind = kindInt
+		return t
+	case shim.TypeFloat:
+		t.kind = kindFloat
+		return t
+	case shim.TypeString:
+		t.kind = kindString
 		return t
 	}
 
