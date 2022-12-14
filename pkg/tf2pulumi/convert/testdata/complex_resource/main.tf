@@ -13,5 +13,5 @@ resource "complex_resource" "a_resource" {
 }
 
 output "some_output" {
-    value = data.complex_resource.a_resource.result
+    value = complex_resource.a_resource.result
 }
