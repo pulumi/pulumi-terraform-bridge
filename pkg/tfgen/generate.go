@@ -357,7 +357,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		}
 	}
 
-	// The remaining cases are collections, List[T], Set[T] or Map[T], and recusion needs NewElementPath except for
+	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
 	// flattening that stays at the current path.
 	var elemPath paths.TypePath = paths.NewElementPath(typePath)
 	if flatten {
