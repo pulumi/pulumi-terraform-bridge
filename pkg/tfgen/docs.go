@@ -157,8 +157,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	command.Dir = curWd
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s\n",
-			curWd, err, output)
+		msg := "error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s"
+		return "", fmt.Errorf(msg, curWd, err, output)
 	}
 
 	target := struct {
@@ -180,7 +180,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	return target.Dir, nil
 }
 
-func getMarkdownDetails(sink diag.Sink, org string, provider string, resourcePrefix string, kind DocKind, rawname string,
+func getMarkdownDetails(sink diag.Sink, org string, provider string,
+	resourcePrefix string, kind DocKind, rawname string,
 	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
@@ -255,8 +256,8 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, org, provider, resourcePrefix, kind, rawname, info,
-		providerModuleVersion, githost)
+	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, org, provider,
+		resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
