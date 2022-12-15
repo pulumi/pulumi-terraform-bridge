@@ -1,0 +1,616 @@
+{
+    "name": "tls",
+    "description": "A Pulumi package to create TLS resources in Pulumi programs.",
+    "keywords": [
+        "pulumi",
+        "tls"
+    ],
+    "homepage": "https://pulumi.io",
+    "license": "Apache-2.0",
+    "attribution": "This Pulumi package is based on the [`tls` Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls).",
+    "repository": "https://github.com/pulumi/pulumi-tls",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "csharp": {
+            "compatibility": "tfbridge20",
+            "namespaces": {
+                "tls": "Tls"
+            },
+            "packageReferences": {
+                "Pulumi": "3.*"
+            }
+        },
+        "go": {
+            "generateExtraInputTypes": true,
+            "generateResourceContainerTypes": true,
+            "importBasePath": "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
+        },
+        "nodejs": {
+            "compatibility": "tfbridge20",
+            "dependencies": {
+                "@pulumi/pulumi": "^3.0.0"
+            },
+            "devDependencies": {
+                "@types/node": "^10.0.0"
+            },
+            "disableUnionOutputTypes": true,
+            "packageDescription": "A Pulumi package to create TLS resources in Pulumi programs.",
+            "packageName": "",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
+            "typescriptVersion": ""
+        },
+        "python": {
+            "compatibility": "tfbridge20",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
+            "requires": {
+                "pulumi": "\u003e=3.0.0,\u003c4.0.0"
+            }
+        }
+    },
+    "config": {},
+    "provider": {
+        "description": "The provider type for the tls package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    },
+    "resources": {
+        "tls:index/certRequest:CertRequest": {
+            "properties": {
+                "certRequestPem": {
+                    "type": "string"
+                },
+                "dnsNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ipAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "keyAlgorithm": {
+                    "type": "string"
+                },
+                "privateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "uris": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "certRequestPem",
+                "keyAlgorithm",
+                "privateKeyPem"
+            ],
+            "inputProperties": {
+                "dnsNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ipAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "privateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "uris": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "requiredInputs": [
+                "privateKeyPem"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering CertRequest resources.\n",
+                "properties": {
+                    "certRequestPem": {
+                        "type": "string"
+                    },
+                    "dnsNames": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "ipAddresses": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "keyAlgorithm": {
+                        "type": "string"
+                    },
+                    "privateKeyPem": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "uris": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "tls:index/locallySignedCert:LocallySignedCert": {
+            "properties": {
+                "allowedUses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "caCertPem": {
+                    "type": "string"
+                },
+                "caKeyAlgorithm": {
+                    "type": "string"
+                },
+                "caPrivateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "certPem": {
+                    "type": "string"
+                },
+                "certRequestPem": {
+                    "type": "string"
+                },
+                "earlyRenewalHours": {
+                    "type": "integer"
+                },
+                "isCaCertificate": {
+                    "type": "boolean"
+                },
+                "readyForRenewal": {
+                    "type": "boolean"
+                },
+                "setSubjectKeyId": {
+                    "type": "boolean"
+                },
+                "validityEndTime": {
+                    "type": "string"
+                },
+                "validityPeriodHours": {
+                    "type": "integer"
+                },
+                "validityStartTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "allowedUses",
+                "caCertPem",
+                "caKeyAlgorithm",
+                "caPrivateKeyPem",
+                "certPem",
+                "certRequestPem",
+                "earlyRenewalHours",
+                "isCaCertificate",
+                "readyForRenewal",
+                "setSubjectKeyId",
+                "validityEndTime",
+                "validityPeriodHours",
+                "validityStartTime"
+            ],
+            "inputProperties": {
+                "allowedUses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "caCertPem": {
+                    "type": "string"
+                },
+                "caPrivateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "certRequestPem": {
+                    "type": "string"
+                },
+                "earlyRenewalHours": {
+                    "type": "integer"
+                },
+                "isCaCertificate": {
+                    "type": "boolean"
+                },
+                "setSubjectKeyId": {
+                    "type": "boolean"
+                },
+                "validityPeriodHours": {
+                    "type": "integer"
+                }
+            },
+            "requiredInputs": [
+                "allowedUses",
+                "caCertPem",
+                "caPrivateKeyPem",
+                "certRequestPem",
+                "validityPeriodHours"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering LocallySignedCert resources.\n",
+                "properties": {
+                    "allowedUses": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "caCertPem": {
+                        "type": "string"
+                    },
+                    "caKeyAlgorithm": {
+                        "type": "string"
+                    },
+                    "caPrivateKeyPem": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "certPem": {
+                        "type": "string"
+                    },
+                    "certRequestPem": {
+                        "type": "string"
+                    },
+                    "earlyRenewalHours": {
+                        "type": "integer"
+                    },
+                    "isCaCertificate": {
+                        "type": "boolean"
+                    },
+                    "readyForRenewal": {
+                        "type": "boolean"
+                    },
+                    "setSubjectKeyId": {
+                        "type": "boolean"
+                    },
+                    "validityEndTime": {
+                        "type": "string"
+                    },
+                    "validityPeriodHours": {
+                        "type": "integer"
+                    },
+                    "validityStartTime": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "tls:index/privateKey:PrivateKey": {
+            "properties": {
+                "algorithm": {
+                    "type": "string"
+                },
+                "ecdsaCurve": {
+                    "type": "string",
+                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                },
+                "privateKeyOpenssh": {
+                    "type": "string",
+                    "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+                    "secret": true
+                },
+                "privateKeyPem": {
+                    "type": "string",
+                    "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                    "secret": true
+                },
+                "privateKeyPemPkcs8": {
+                    "type": "string",
+                    "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.\n",
+                    "secret": true
+                },
+                "publicKeyFingerprintMd5": {
+                    "type": "string",
+                    "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                },
+                "publicKeyFingerprintSha256": {
+                    "type": "string",
+                    "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                },
+                "publicKeyOpenssh": {
+                    "type": "string",
+                    "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not\npopulated for `ECDSA` with curve `P224`, as it is [not supported](../../docs#limitations). **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                },
+                "publicKeyPem": {
+                    "type": "string",
+                    "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                },
+                "rsaBits": {
+                    "type": "integer",
+                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                }
+            },
+            "required": [
+                "algorithm",
+                "ecdsaCurve",
+                "privateKeyOpenssh",
+                "privateKeyPem",
+                "privateKeyPemPkcs8",
+                "publicKeyFingerprintMd5",
+                "publicKeyFingerprintSha256",
+                "publicKeyOpenssh",
+                "publicKeyPem",
+                "rsaBits"
+            ],
+            "inputProperties": {
+                "algorithm": {
+                    "type": "string"
+                },
+                "ecdsaCurve": {
+                    "type": "string",
+                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                },
+                "rsaBits": {
+                    "type": "integer",
+                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                }
+            },
+            "requiredInputs": [
+                "algorithm"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering PrivateKey resources.\n",
+                "properties": {
+                    "algorithm": {
+                        "type": "string"
+                    },
+                    "ecdsaCurve": {
+                        "type": "string",
+                        "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                    },
+                    "privateKeyOpenssh": {
+                        "type": "string",
+                        "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+                        "secret": true
+                    },
+                    "privateKeyPem": {
+                        "type": "string",
+                        "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                        "secret": true
+                    },
+                    "privateKeyPemPkcs8": {
+                        "type": "string",
+                        "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.\n",
+                        "secret": true
+                    },
+                    "publicKeyFingerprintMd5": {
+                        "type": "string",
+                        "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                    },
+                    "publicKeyFingerprintSha256": {
+                        "type": "string",
+                        "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                    },
+                    "publicKeyOpenssh": {
+                        "type": "string",
+                        "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not\npopulated for `ECDSA` with curve `P224`, as it is [not supported](../../docs#limitations). **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    },
+                    "publicKeyPem": {
+                        "type": "string",
+                        "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    },
+                    "rsaBits": {
+                        "type": "integer",
+                        "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "tls:index/selfSignedCert:SelfSignedCert": {
+            "properties": {
+                "allowedUses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "certPem": {
+                    "type": "string"
+                },
+                "dnsNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "earlyRenewalHours": {
+                    "type": "integer"
+                },
+                "ipAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "isCaCertificate": {
+                    "type": "boolean"
+                },
+                "keyAlgorithm": {
+                    "type": "string"
+                },
+                "privateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "readyForRenewal": {
+                    "type": "boolean"
+                },
+                "setAuthorityKeyId": {
+                    "type": "boolean"
+                },
+                "setSubjectKeyId": {
+                    "type": "boolean"
+                },
+                "uris": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "validityEndTime": {
+                    "type": "string"
+                },
+                "validityPeriodHours": {
+                    "type": "integer"
+                },
+                "validityStartTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "allowedUses",
+                "certPem",
+                "earlyRenewalHours",
+                "isCaCertificate",
+                "keyAlgorithm",
+                "privateKeyPem",
+                "readyForRenewal",
+                "setAuthorityKeyId",
+                "setSubjectKeyId",
+                "validityEndTime",
+                "validityPeriodHours",
+                "validityStartTime"
+            ],
+            "inputProperties": {
+                "allowedUses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "dnsNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "earlyRenewalHours": {
+                    "type": "integer"
+                },
+                "ipAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "isCaCertificate": {
+                    "type": "boolean"
+                },
+                "privateKeyPem": {
+                    "type": "string",
+                    "secret": true
+                },
+                "setAuthorityKeyId": {
+                    "type": "boolean"
+                },
+                "setSubjectKeyId": {
+                    "type": "boolean"
+                },
+                "uris": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "validityPeriodHours": {
+                    "type": "integer"
+                }
+            },
+            "requiredInputs": [
+                "allowedUses",
+                "privateKeyPem",
+                "validityPeriodHours"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering SelfSignedCert resources.\n",
+                "properties": {
+                    "allowedUses": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "certPem": {
+                        "type": "string"
+                    },
+                    "dnsNames": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "earlyRenewalHours": {
+                        "type": "integer"
+                    },
+                    "ipAddresses": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "isCaCertificate": {
+                        "type": "boolean"
+                    },
+                    "keyAlgorithm": {
+                        "type": "string"
+                    },
+                    "privateKeyPem": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "readyForRenewal": {
+                        "type": "boolean"
+                    },
+                    "setAuthorityKeyId": {
+                        "type": "boolean"
+                    },
+                    "setSubjectKeyId": {
+                        "type": "boolean"
+                    },
+                    "uris": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "validityEndTime": {
+                        "type": "string"
+                    },
+                    "validityPeriodHours": {
+                        "type": "integer"
+                    },
+                    "validityStartTime": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}
