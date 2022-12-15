@@ -22,15 +22,18 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_DeprecationFromTFSchema(t *testing.T) {
@@ -131,4 +134,32 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 		schemaPath := filepath.Join(schemasPath, pkg+".json")
 		bridgetesting.AssertEqualsJSONFile(t, schemaPath, schema)
 	}
+}
+
+func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
+	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+	objType := (&shimschema.Schema{
+		Type:     shim.TypeMap,
+		Optional: true,
+		Elem: (&shimschema.Resource{
+			Schema: shimschema.SchemaMap{
+				"foo_bar": strType,
+			},
+		}).Shim(),
+	}).Shim()
+
+	r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "test",
+			P: (&shimschema.Provider{
+				ResourcesMap:   shimschema.ResourceMap{},
+				DataSourcesMap: shimschema.ResourceMap{},
+				Schema: &shimschema.SchemaMap{
+					"prop": objType,
+				},
+			}).Shim(),
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
 }
