@@ -21,6 +21,10 @@ output strObjectOut {
 }
     aKey = "hello"
     aValue = -1
+    aList = [1, 2, 3]
+output indexOut {
+    value = aList[1]
+}
 output complexObjectOut {
     value = {
         a_tuple: ["a", "b", "c"]

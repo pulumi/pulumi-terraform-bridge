@@ -28,6 +28,11 @@ output "str_object_out" {
 locals {
     a_key = "hello"
     a_value = -1
+    a_list = [1, 2, 3]
+}
+
+output "index_out" {
+    value = local.a_list[1]
 }
 
 output "complex_object_out" {
