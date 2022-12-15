@@ -148,7 +148,12 @@ func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
 		}).Shim(),
 	}).Shim()
 
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
+
 	r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		DiagnosticsSink: nilSink,
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name: "test",
 			P: (&shimschema.Provider{
