@@ -145,6 +145,8 @@ func (r renamesBuilder) findObjectTypeToken(path paths.TypePath) (tokens.Type, e
 	// As an implementation quirk, sometimes for a provider registerNamedObjectType gets called on an input propety
 	// but not the state property, though they represent the same thing and have the same type. Rewrite the path
 	// to replace state with inputs in this case and try the lookup again.
+	//
+	// See Test_ProviderWithObjectTypesInConfigCanGenerateRenames
 	path = r.normalizeProviderStateToProviderInputs(path)
 	if p, ok := r.objectTypes[path.String()]; ok {
 		return p, nil

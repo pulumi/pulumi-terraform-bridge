@@ -25,6 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -32,8 +35,6 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -244,4 +245,37 @@ func Test_makePropertyType(t *testing.T) {
 		assert.Equal(t, typeKind(kindObject), p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
+}
+
+func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
+	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+	objType := (&shimschema.Schema{
+		Type:     shim.TypeMap,
+		Optional: true,
+		Elem: (&shimschema.Resource{
+			Schema: shimschema.SchemaMap{
+				"foo_bar": strType,
+			},
+		}).Shim(),
+	}).Shim()
+
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
+
+	r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		DiagnosticsSink: nilSink,
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "test",
+			P: (&shimschema.Provider{
+				ResourcesMap:   shimschema.ResourceMap{},
+				DataSourcesMap: shimschema.ResourceMap{},
+				Schema: &shimschema.SchemaMap{
+					"prop": objType,
+				},
+			}).Shim(),
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
 }
