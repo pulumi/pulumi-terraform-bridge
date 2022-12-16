@@ -22,8 +22,11 @@ output strObjectOut {
     aKey = "hello"
     aValue = -1
     aList = [1, 2, 3]
-output indexOut {
+output staticIndexOut {
     value = aList[1]
+}
+output dynamicIndexOut {
+    value = aList[aValue]
 }
 output complexObjectOut {
     value = {

@@ -31,8 +31,12 @@ locals {
     a_list = [1, 2, 3]
 }
 
-output "index_out" {
+output "static_index_out" {
     value = local.a_list[1]
+}
+
+output "dynamic_index_out" {
+    value = local.a_list[local.a_value]
 }
 
 output "complex_object_out" {
