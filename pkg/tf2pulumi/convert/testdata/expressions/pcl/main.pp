@@ -22,6 +22,16 @@ output strObjectOut {
     aKey = "hello"
     aValue = -1
     aList = [1, 2, 3]
+    aListOfMaps = [
+        {
+            x: [1, 2]
+            y: [3, 4]
+        },
+        {
+            x: [5, 6]
+            y: [7, 8]
+        }
+    ]
 output staticIndexOut {
     value = aList[1]
 }
@@ -43,6 +53,9 @@ output complexObjectOut {
         }
     }
 }
+output simpleTemplate {
+    value = aValue
+}
 output quotedTemplate {
     value = "The key is ${aKey}"
 }
@@ -60,4 +73,10 @@ output forTupleValueOnly {
 }
 output forObject {
     value = {for key, value in ["a", "b"] : key => "${value}:${aValue}" if key != 0}
+}
+output relativeTraversalAttr {
+    value = aListOfMaps[0].x
+}
+output relativeTraversalIndex {
+    value = aListOfMaps[0]["x"]
 }
