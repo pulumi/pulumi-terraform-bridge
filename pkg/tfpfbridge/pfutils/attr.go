@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schemashim
+package pfutils
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"reflect"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// attr type works around not being able to link to fwschema.Attribute from
+// Attr type works around not being able to link to fwschema.Attribute from
 // "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
 //
 // Most methods from fwschema.Attribute have simple signatures and are copied into attrLike interface. Casting to
@@ -30,12 +31,12 @@ import (
 //
 // GetAttributes method is special since it returns a NestedAttributes interface that is also internal and cannot be
 // linked to. Instead, NestedAttriutes information is recorded in a dedicated new field.
-type attr struct {
-	attrLike
-	nested map[string]attr
+type Attr struct {
+	AttrLike
+	Nested map[string]Attr
 }
 
-type attrLike interface {
+type AttrLike interface {
 	FrameworkType() pfattr.Type
 	IsComputed() bool
 	IsOptional() bool
@@ -46,9 +47,28 @@ type attrLike interface {
 	GetMarkdownDescription() string
 }
 
-func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
+func AttributeAtTerraformPath(schema *tfsdk.Schema, path *tftypes.AttributePath) (Attr, error) {
+	res, remaining, err := tftypes.WalkAttributePath(*schema, path)
+	if err != nil {
+		return Attr{}, fmt.Errorf("%v still remains in the path: %w", remaining, err)
+	}
+	switch r := res.(type) {
+	case tfsdk.Attribute:
+		m := SchemaToAttrMap(&tfsdk.Schema{
+			Attributes: map[string]tfsdk.Attribute{
+				"x": r,
+			},
+		})
+		return m["x"], nil
+	default:
+		return Attr{}, fmt.Errorf("Expected a Block but found %s at path %s",
+			reflect.TypeOf(r), path)
+	}
+}
+
+func SchemaToAttrMap(schema *tfsdk.Schema) map[string]Attr {
 	if schema.GetAttributes() == nil || len(schema.GetAttributes()) == 0 {
-		return map[string]attr{}
+		return map[string]Attr{}
 	}
 
 	// unable to reference fwschema.Attribute type directly, use GetAttriutes to hijack this type and get a
@@ -65,7 +85,7 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 	//
 	//     dests[k].toMap[dests[k].key] = convert(queue[k])
 	type dest = struct {
-		toMap map[string]attr
+		toMap map[string]Attr
 		key   string
 	}
 	dests := map[string]dest{}
@@ -73,7 +93,7 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 	jobCounter := 0
 
 	// queue up converting schema.GetAttributes() into finalMap
-	finalMap := map[string]attr{}
+	finalMap := map[string]Attr{}
 	for k, v := range schema.GetAttributes() {
 		job := fmt.Sprintf("%d", jobCounter)
 		jobCounter++
@@ -87,36 +107,19 @@ func schemaToAttrMap(schema *tfsdk.Schema) map[string]attr {
 		attrDest := popAt(dests, job)
 
 		// outAttr := convert(inAttr)
-		outAttr := attr{attrLike: inAttr}
+		outAttr := Attr{AttrLike: inAttr}
 		if nested := inAttr.GetAttributes(); nested != nil && nested.GetAttributes() != nil {
-			outAttr.nested = map[string]attr{}
+			outAttr.Nested = map[string]Attr{}
 			for k, v := range nested.GetAttributes() {
 				// schedule outAttr.nested[k] = convert(v)
 				job := fmt.Sprintf("%d", jobCounter)
 				jobCounter++
 				queue[job] = v
-				dests[job] = dest{toMap: outAttr.nested, key: k}
+				dests[job] = dest{toMap: outAttr.Nested, key: k}
 			}
 		}
 		attrDest.toMap[attrDest.key] = outAttr
 	}
 
 	return finalMap
-}
-
-// Remove and return the value at a random key.
-func pop[T any](q map[string]T) (string, T) {
-	for k := range q {
-		return k, popAt(q, k)
-	}
-	panic("empty queue")
-}
-
-// Remove and return the value at key.
-func popAt[T any](q map[string]T, key string) T {
-	if v, ok := q[key]; ok {
-		delete(q, key)
-		return v
-	}
-	panic("key no found: " + key)
 }

@@ -18,6 +18,7 @@ import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -26,12 +27,12 @@ type typeSchema struct {
 	t pfattr.Type
 
 	// Object types record attr metadata for each field here, if available.
-	nested map[string]attr
+	nested map[string]pfutils.Attr
 }
 
 var _ shim.Schema = (*typeSchema)(nil)
 
-func newTypeSchema(t pfattr.Type, nested map[string]attr) *typeSchema {
+func newTypeSchema(t pfattr.Type, nested map[string]pfutils.Attr) *typeSchema {
 	return &typeSchema{
 		t:      t,
 		nested: nested,
