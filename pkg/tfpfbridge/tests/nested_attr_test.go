@@ -31,8 +31,7 @@ func TestNestedType(t *testing.T) {
 	info := testprovider.SyntheticTestBridgeProvider()
 	res, err := pfutils.GatherResources(ctx, info.P())
 	require.NoError(t, err)
-	testresTypeName := res.All()[0]
-
+	testresTypeName := pfutils.TypeName("testbridge_testres")
 	testresType := res.Schema(testresTypeName).Type().TerraformType(ctx)
 
 	obj := testresType.(tftypes.Object).AttributeTypes["services"].(tftypes.List).ElementType.(tftypes.Object)
