@@ -28,6 +28,25 @@ output "str_object_out" {
 locals {
     a_key = "hello"
     a_value = -1
+    a_list = [1, 2, 3]
+    a_list_of_maps = [
+        {
+            x: [1, 2]
+            y: [3, 4]
+        },
+        {
+            x: [5, 6]
+            y: [7, 8]
+        }
+    ]
+}
+
+output "static_index_out" {
+    value = local.a_list[1]
+}
+
+output "dynamic_index_out" {
+    value = local.a_list[local.a_value]
 }
 
 output "complex_object_out" {
@@ -44,6 +63,10 @@ output "complex_object_out" {
             "for" = 1
         }
     }
+}
+
+output "simple_template" {
+    value = "${local.a_value}"
 }
 
 output "quoted_template" {
@@ -67,4 +90,12 @@ output "for_tuple_value_only" {
 
 output "for_object" {
     value = {for key, value in ["a", "b"] : key => "${value}:${local.a_value}" if key != 0}
+}
+
+output "relative_traversal_attr" {
+    value = local.a_list_of_maps[0].x
+}
+
+output "relative_traversal_index" {
+    value = local.a_list_of_maps[0]["x"]
 }
