@@ -21,12 +21,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-type flattenedListEncoder struct {
-	listType       tftypes.Type
+type flattenedEncoder struct {
+	collectionType tftypes.Type
 	elementEncoder Encoder
 }
 
-func (enc *flattenedListEncoder) FromPropertyValue(v resource.PropertyValue) (tftypes.Value, error) {
+func (enc *flattenedEncoder) FromPropertyValue(v resource.PropertyValue) (tftypes.Value, error) {
 	encoded, err := enc.elementEncoder.FromPropertyValue(v)
 	if err != nil {
 		return tftypes.Value{}, nil
@@ -37,14 +37,14 @@ func (enc *flattenedListEncoder) FromPropertyValue(v resource.PropertyValue) (tf
 		list = append(list, encoded)
 	}
 
-	return tftypes.NewValue(enc.listType, list), nil
+	return tftypes.NewValue(enc.collectionType, list), nil
 }
 
-type flattenedListDecoder struct {
+type flattenedDecoder struct {
 	elementDecoder Decoder
 }
 
-func (dec *flattenedListDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *flattenedDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	var list []tftypes.Value
 	if err := v.As(&list); err != nil {
 		return resource.PropertyValue{}, nil
@@ -55,7 +55,7 @@ func (dec *flattenedListDecoder) ToPropertyValue(v tftypes.Value) (resource.Prop
 	case 1:
 		return dec.elementDecoder.ToPropertyValue(list[0])
 	default:
-		msg := "IsMaxItemsOne list has too many (%d) values"
+		msg := "IsMaxItemsOne list or set has too many (%d) values"
 		err := fmt.Errorf(msg, len(list))
 		return resource.PropertyValue{}, err
 	}

@@ -25,60 +25,92 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func TestFlattenedListEncoder(t *testing.T) {
+func TestFlattenedEncoder(t *testing.T) {
 	enc := &encoding{nil, nil}
-	encoder, err := enc.newPropertyEncoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{
-			Type: "string",
-		},
+
+	listEncoder, err := enc.newPropertyEncoder("p", schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{Type: "string"},
 	}, tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
+	setEncoder, err := enc.newPropertyEncoder("p", schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{Type: "string"},
+	}, tftypes.Set{ElementType: tftypes.String})
+	require.NoError(t, err)
+
 	t.Run("singleton-list", func(t *testing.T) {
-		actual, err := encoder.FromPropertyValue(resource.NewStringProperty("foo"))
+		actual, err := listEncoder.FromPropertyValue(resource.NewStringProperty("foo"))
 		require.NoError(t, err)
-		expected := tftypes.NewValue(
-			tftypes.List{ElementType: tftypes.String},
-			[]tftypes.Value{
-				tftypes.NewValue(tftypes.String, "foo"),
-			})
+		expected := tftypes.NewValue(tftypes.List{ElementType: tftypes.String},
+			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
 		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("empty-list", func(t *testing.T) {
-		actual, err := encoder.FromPropertyValue(resource.NewNullProperty())
+		actual, err := listEncoder.FromPropertyValue(resource.NewNullProperty())
 		require.NoError(t, err)
 		expected := tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{})
 		assert.Equal(t, expected, actual)
 	})
+
+	t.Run("singleton-set", func(t *testing.T) {
+		actual, err := setEncoder.FromPropertyValue(resource.NewStringProperty("foo"))
+		require.NoError(t, err)
+		expected := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String},
+			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("empty-set", func(t *testing.T) {
+		actual, err := setEncoder.FromPropertyValue(resource.NewNullProperty())
+		require.NoError(t, err)
+		expected := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{})
+		assert.Equal(t, expected, actual)
+	})
 }
 
-func TestFlattenedListDecoder(t *testing.T) {
+func TestFlattenedDecoder(t *testing.T) {
 	enc := &encoding{nil, nil}
-	encoder, err := enc.newPropertyDecoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{
-			Type: "string",
-		},
+
+	listDecoder, err := enc.newPropertyDecoder("p", schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{Type: "string"},
 	}, tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
+	setDecoder, err := enc.newPropertyDecoder("p", schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{Type: "string"},
+	}, tftypes.Set{ElementType: tftypes.String})
+	require.NoError(t, err)
+
 	t.Run("singleton-list", func(t *testing.T) {
-		tfValue := tftypes.NewValue(
-			tftypes.List{ElementType: tftypes.String},
-			[]tftypes.Value{
-				tftypes.NewValue(tftypes.String, "foo"),
-			})
-		actual, err := encoder.ToPropertyValue(tfValue)
+		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String},
+			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
+		actual, err := listDecoder.ToPropertyValue(tfValue)
 		require.NoError(t, err)
 		expected := resource.NewStringProperty("foo")
 		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("empty-list", func(t *testing.T) {
-		tfValue := tftypes.NewValue(
-			tftypes.List{ElementType: tftypes.String},
-			[]tftypes.Value{})
-		actual, err := encoder.ToPropertyValue(tfValue)
+		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{})
+		actual, err := listDecoder.ToPropertyValue(tfValue)
+		require.NoError(t, err)
+		expected := resource.NewNullProperty()
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("singleton-set", func(t *testing.T) {
+		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String},
+			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
+		actual, err := setDecoder.ToPropertyValue(tfValue)
+		require.NoError(t, err)
+		expected := resource.NewStringProperty("foo")
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("empty-set", func(t *testing.T) {
+		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{})
+		actual, err := setDecoder.ToPropertyValue(tfValue)
 		require.NoError(t, err)
 		expected := resource.NewNullProperty()
 		assert.Equal(t, expected, actual)
