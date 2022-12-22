@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,7 +112,19 @@ func TestEject(t *testing.T) {
 			hclPath := tt.path
 			pclPath := filepath.Join(tt.path, "pcl")
 
-			project, program, err := Eject(hclPath, loader, mapper)
+			// If this is a partial test turn on the options to allow missing bits
+			partial := strings.HasPrefix(tt.name, "partial_")
+			var setOpts func(*EjectOptions)
+			if partial {
+				setOpts = func(opts *EjectOptions) {
+					opts.SkipResourceTypechecking = true
+					opts.AllowMissingProperties = true
+					opts.AllowMissingVariables = true
+					opts.FilterResourceNames = true
+				}
+			}
+
+			project, program, err := ejectWithOpts(hclPath, loader, mapper, setOpts)
 			require.NoError(t, err)
 			// Assert the project name is as expected (the directory name)
 			assert.Equal(t, tokens.PackageName(tt.name), project.Name)
