@@ -1,0 +1,97 @@
+{
+    "name": "renames",
+    "provider": {
+        "dataSources": {
+            "renames_data_source": {
+                "a_number": {
+                    "type": 3,
+                    "optional": true
+                },
+                "a_resource": {
+                    "type": 5,
+                    "maxItems": 1,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        },
+        "resources": {
+            "renames_resource": {
+                "a_number": {
+                    "type": 3,
+                    "optional": true
+                },
+                "a_resource": {
+                    "type": 5,
+                    "maxItems": 1,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "renames_data_source": {
+            "tok": "renames:index/index:data_source",
+            "fields": {
+                "a_number": {
+                    "name": "theNumber"
+                },
+                "a_resource": {
+                    "name": "theResource",
+                    "fields": {
+                        "inner_string": {
+                            "name": "theInnerString"
+                        }
+                    }
+                },
+                "result": {
+                    "name": "myResult"
+                }
+            }
+        }
+    },
+    "resources": {
+        "renames_resource": {
+            "tok": "renames:index/index:resource",
+            "fields": {
+                "a_number": {
+                    "name": "theNumber"
+                },
+                "a_resource": {
+                    "name": "theResource",
+                    "fields": {
+                        "inner_string": {
+                            "name": "theInnerString"
+                        }
+                    }
+                },
+                "result": {
+                    "name": "myResult"
+                }
+            }
+        }
+    }
+}
