@@ -1,0 +1,55 @@
+{
+    "name": "blocks",
+    "provider": {
+        "dataSources": {
+            "blocks_data_source": {
+                "a_list_of_resources": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        },
+        "resources": {
+            "blocks_resource": {
+                "a_list_of_resources": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "blocks_data_source": {
+            "tok": "blocks:index/index:data_source"
+        }
+    },
+    "resources": {
+        "blocks_resource": {
+            "tok": "blocks:index/index:resource"
+        }
+    }
+}

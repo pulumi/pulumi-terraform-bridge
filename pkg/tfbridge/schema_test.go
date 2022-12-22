@@ -723,6 +723,10 @@ func sortDefaultsList(m resource.PropertyMap) {
 	m[defaultsKey] = resource.NewArrayProperty(defs)
 }
 
+func fixedDefault(value interface{}) func() (interface{}, error) {
+	return func() (interface{}, error) { return value, nil }
+}
+
 func TestDefaults(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -754,6 +758,8 @@ func TestDefaults(t *testing.T) {
 			assert.Nil(t, err)
 			asset, err := resource.NewTextAsset("hello")
 			assert.Nil(t, err)
+
+			x1ofN := []string{"x1of1", "x1of2", "x1of3"}
 			tfs := f.NewSchemaMap(map[string]*schema.Schema{
 				"xyz": {Type: shim.TypeString, ExactlyOneOf: []string{"xyz", "abc"}},
 				"abc": {Type: shim.TypeString, Default: "ABC", ExactlyOneOf: []string{"xyz", "abc"}},
@@ -782,6 +788,11 @@ func TestDefaults(t *testing.T) {
 				"xxx": {Type: shim.TypeString, Deprecated: "deprecated", Optional: true},
 				"yyy": {Type: shim.TypeString, Default: "TLY", Deprecated: "deprecated", Optional: true},
 				"zzz": {Type: shim.TypeString},
+
+				// Test exactly one of behavior with default funcs:
+				"x1of1": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault("x1of1-value")},
+				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
+				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 			})
 			ps := map[string]*SchemaInfo{
 				"eee": {Default: &DefaultInfo{Value: "EEE"}},
@@ -832,6 +843,7 @@ func TestDefaults(t *testing.T) {
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
 					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"x1of1",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -856,6 +868,9 @@ func TestDefaults(t *testing.T) {
 				"www": "OLW",
 				// xzy is NOT set as it's either that or abc
 				"zzz": asset,
+
+				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
+				"x1of1": "x1of1-value",
 			}), outputs)
 
 			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
@@ -870,6 +885,7 @@ func TestDefaults(t *testing.T) {
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
 					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"x1of1",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -896,6 +912,9 @@ func TestDefaults(t *testing.T) {
 				"www": "OLW",
 				// xyz is NOT set as it has ExactlyOneOf with abc
 				"zzz": asset,
+
+				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
+				"x1of1": "x1of1-value",
 			}), outputs)
 		})
 	}
