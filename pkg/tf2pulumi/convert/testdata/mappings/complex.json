@@ -1,0 +1,117 @@
+{
+    "name": "complex",
+    "provider": {
+        "dataSources": {
+            "complex_data_source": {
+                "a_bool": {
+                    "type": 1,
+                    "optional": true
+                },
+                "a_number": {
+                    "type": 3,
+                    "optional": true
+                },
+                "a_string": {
+                    "type": 4,
+                    "optional": true
+                },
+                "a_list_of_int": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "schema": {
+                            "type": 2
+                        }
+                    }
+                },
+                "a_map_of_bool": {
+                    "type": 6,
+                    "optional": true,
+                    "element": {
+                        "schema": {
+                            "type": 1
+                        }
+                    }
+                },
+                "inner_object": {
+                    "type": 5,
+                    "optional": true,
+                    "maxItems": 1,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        },
+        "resources": {
+            "complex_resource": {
+                "a_bool": {
+                    "type": 1,
+                    "optional": true
+                },
+                "a_number": {
+                    "type": 3,
+                    "optional": true
+                },
+                "a_string": {
+                    "type": 4,
+                    "optional": true
+                },
+                "a_list_of_int": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "schema": {
+                            "type": 2
+                        }
+                    }
+                },
+                "a_map_of_bool": {
+                    "type": 6,
+                    "optional": true,
+                    "element": {
+                        "schema": {
+                            "type": 1
+                        }
+                    }
+                },
+                "inner_object": {
+                    "type": 5,
+                    "optional": true,
+                    "maxItems": 1,
+                    "element": {
+                        "resource": {
+                            "inner_string": {
+                                "type": 4,
+                                "optional": true
+                            }
+                        }
+                    }
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "complex_data_source": {
+            "tok": "complex:index/index:data_source"
+        }
+    },
+    "resources": {
+        "complex_resource": {
+            "tok": "complex:index/index:resource"
+        }
+    }
+}

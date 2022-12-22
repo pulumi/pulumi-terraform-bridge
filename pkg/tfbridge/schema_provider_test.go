@@ -83,6 +83,7 @@ func (f shimv1Factory) newSchema(m shim.Schema) *schemav1.Schema {
 		Deprecated:    m.Deprecated(),
 		Removed:       m.Removed(),
 		Sensitive:     m.Sensitive(),
+		ExactlyOneOf:  m.ExactlyOneOf(),
 	}
 }
 
@@ -189,6 +190,7 @@ func (f shimv2Factory) newSchema(m shim.Schema) *schemav2.Schema {
 		ConflictsWith: m.ConflictsWith(),
 		Deprecated:    m.Deprecated(),
 		Sensitive:     m.Sensitive(),
+		ExactlyOneOf:  m.ExactlyOneOf(),
 	}
 }
 

@@ -1,31 +1,40 @@
 {
-  "version": "0.0.1",
   "name": "simple",
-  "functions":{
-    "simple:index:data_source": {
-       "inputs": {
-         "type": "object",
-         "properties": {
-           "inputOne": {
-             "type": "string"
-           },
-           "inputTwo": {
-             "type": "integer"
-           }
-         }
-       },
-       "outputs": {
-         "properties": {
-           "result": {
-             "type": "string"
-           }
-         },
-        "type": "object"
-      }
+  "attribution": "This Pulumi package is based on the [`simple` Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues)."
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues)."
     }
+  },
+  "config": {},
+  "provider": {
+    "description": "The provider type for the simple package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
   },
   "resources": {
     "simple:index:resource": {
+      "properties": {
+        "inputOne": {
+          "type": "string"
+        },
+        "inputTwo": {
+          "type": "integer"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
       "inputProperties": {
         "inputOne": {
           "type": "string"
@@ -34,10 +43,59 @@
           "type": "integer"
         }
       },
-      "properties": {
-        "result": {
-          "type": "string"
-        }
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering resource resources.\n",
+        "properties": {
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "simple:index:data_source": {
+      "inputs": {
+        "description": "A collection of arguments for invoking data_source.\n",
+        "properties": {
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by data_source.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "id"
+        ]
       }
     }
   }

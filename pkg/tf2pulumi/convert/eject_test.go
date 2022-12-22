@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,17 +22,12 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-// Asserts that err is nil and if not stops the test
-func stopOnError(t *testing.T, err error) {
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-}
 
 type testLoader struct {
 	path string
@@ -75,24 +70,6 @@ func (l *testLoader) LoadPackageReference(pkg string, version *semver.Version) (
 	return schemaPackage.Reference(), nil
 }
 
-type testMapper struct {
-	path string
-}
-
-func (l *testMapper) GetMapping(provider string) ([]byte, error) {
-	mappingPath := filepath.Join(l.path, provider) + ".json"
-
-	mappingBytes, err := os.ReadFile(mappingPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return mappingBytes, nil
-}
-
 func isTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
@@ -102,9 +79,9 @@ func TestEject(t *testing.T) {
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
 	// You can regenerate the test data by running "PULUMI_ACCEPT=1 go test" in this folder (pkg/tf2pulumi/convert).
 	testDir, err := filepath.Abs(filepath.Join("testdata"))
-	stopOnError(t, err)
+	require.NoError(t, err)
 	infos, err := os.ReadDir(testDir)
-	stopOnError(t, err)
+	require.NoError(t, err)
 
 	tests := make([]struct {
 		name string
@@ -124,7 +101,7 @@ func TestEject(t *testing.T) {
 	}
 
 	loader := &testLoader{path: filepath.Join(testDir, "schemas")}
-	mapper := &testMapper{path: filepath.Join(testDir, "mappings")}
+	mapper := &bridgetesting.TestFileMapper{Path: filepath.Join(testDir, "mappings")}
 
 	for _, tt := range tests {
 		tt := tt // avoid capturing loop variable in the closure
@@ -135,19 +112,32 @@ func TestEject(t *testing.T) {
 			hclPath := tt.path
 			pclPath := filepath.Join(tt.path, "pcl")
 
-			project, program, err := Eject(hclPath, loader, mapper)
-			if !assert.NoError(t, err) {
-				return
+			// If this is a partial test turn on the options to allow missing bits
+			partial := strings.HasPrefix(tt.name, "partial_")
+			var setOpts func(*EjectOptions)
+			if partial {
+				setOpts = func(opts *EjectOptions) {
+					opts.SkipResourceTypechecking = true
+					opts.AllowMissingProperties = true
+					opts.AllowMissingVariables = true
+					opts.FilterResourceNames = true
+				}
 			}
+
+			project, program, err := ejectWithOpts(hclPath, loader, mapper, setOpts)
+			require.NoError(t, err)
 			// Assert the project name is as expected (the directory name)
 			assert.Equal(t, tokens.PackageName(tt.name), project.Name)
 
 			// Assert every pcl file is seen
 			infos, err := os.ReadDir(pclPath)
-			if os.IsNotExist(err) || !assert.NoError(t, err) {
-				return
+			if !os.IsNotExist(err) && !assert.NoError(t, err) {
+				// If the directory was not found then the expected pcl results are the empty set, but if the
+				// directory could not be read because of filesystem issues than just error out.
+				assert.FailNow(t, "Could not read expected pcl results")
 			}
 			pclFiles := make(map[string]interface{})
+			// infos will just be nil if pclPath did not exist
 			for _, info := range infos {
 				if !info.IsDir() {
 					pclFiles[info.Name()] = nil
@@ -157,20 +147,14 @@ func TestEject(t *testing.T) {
 			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				err := os.RemoveAll(pclPath)
-				if !assert.NoError(t, err) {
-					t.FailNow()
-				}
+				require.NoError(t, err)
 				err = os.Mkdir(pclPath, 0700)
-				if !assert.NoError(t, err) {
-					t.FailNow()
-				}
+				require.NoError(t, err)
 				for filename, source := range program.Source() {
 					// normalize windows newlines to unix ones
 					expectedPcl := []byte(strings.Replace(source, "\r\n", "\n", -1))
 					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0600)
-					if !assert.NoError(t, err) {
-						t.FailNow()
-					}
+					require.NoError(t, err)
 				}
 			}
 

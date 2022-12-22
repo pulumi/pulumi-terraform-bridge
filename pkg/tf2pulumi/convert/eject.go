@@ -84,6 +84,13 @@ func (o EjectOptions) logf(format string, arguments ...interface{}) {
 
 // Eject converts a Terraform module at the provided location into a Pulumi module.
 func Eject(dir string, loader schema.ReferenceLoader, mapper convert.Mapper) (*workspace.Project, *pcl.Program, error) {
+	return ejectWithOpts(dir, loader, mapper, nil)
+}
+
+// Used for testing so we can check eject with partial options set works.
+func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Mapper,
+	setOpts func(*EjectOptions)) (*workspace.Project, *pcl.Program, error) {
+
 	if loader == nil {
 		panic("must provide a non-nil loader")
 	}
@@ -92,6 +99,9 @@ func Eject(dir string, loader schema.ReferenceLoader, mapper convert.Mapper) (*w
 		Root:               afero.NewBasePathFs(afero.NewOsFs(), dir),
 		Loader:             loader,
 		ProviderInfoSource: il.NewMapperProviderInfoSource(mapper),
+	}
+	if setOpts != nil {
+		setOpts(&opts)
 	}
 
 	tfFiles, program, diags, err := internalEject(opts)
@@ -104,8 +114,11 @@ func Eject(dir string, loader schema.ReferenceLoader, mapper convert.Mapper) (*w
 			return nil, nil, err
 		}
 	}
-	if err != nil || diags.HasErrors() {
+	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load Terraform configuration, %v", err)
+	}
+	if diags.HasErrors() {
+		return nil, nil, fmt.Errorf("failed to load Terraform configuration, %v", diags)
 	}
 
 	project := &workspace.Project{
