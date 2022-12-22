@@ -698,6 +698,10 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			}
 
 			for _, exactlyOneOfName := range sch.ExactlyOneOf() {
+				// If any *other* ExactlyOneOf keys have a default value, don't set the default for the current field
+				if exactlyOneOfName == name {
+					continue
+				}
 				if exactlyOneSchema, exists := tfs.GetOk(exactlyOneOfName); exists {
 					dv, _ := exactlyOneSchema.DefaultValue()
 					if dv != nil {
