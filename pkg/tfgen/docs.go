@@ -788,12 +788,24 @@ func getNestedBlockName(line string) string {
 		// For example:
 		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+		// For example:
+		// elasticsearch_domain.html.markdown: "### advanced_security_options"
+		regexp.MustCompile("#+ ([a-z_]+).*"),
+
+		// For example:
+		// dynamodb_table.html.markdown: "### `server_side_encryption`"
+		regexp.MustCompile("#+ `([a-z_]+).*`"),
+
+		// For example:
+		// route53_record.html.markdown: "### Failover Routing Policy"
+		regexp.MustCompile("#+ ([a-zA-Z_ ]+).*"),
 	}
 
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
+			nested = strings.Replace(strings.ToLower(matches[1]), " ", "_", -1)
 			break
 		}
 	}
