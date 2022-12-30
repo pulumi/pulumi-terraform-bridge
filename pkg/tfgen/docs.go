@@ -791,15 +791,15 @@ func getNestedBlockName(line string) string {
 
 		// For example:
 		// elasticsearch_domain.html.markdown: "### advanced_security_options"
-		regexp.MustCompile("#+ ([a-z_]+).*"),
+		regexp.MustCompile("###+ ([a-z_]+).*"),
 
 		// For example:
 		// dynamodb_table.html.markdown: "### `server_side_encryption`"
-		regexp.MustCompile("#+ `([a-z_]+).*`"),
+		regexp.MustCompile("###+ `([a-z_]+).*`"),
 
 		// For example:
 		// route53_record.html.markdown: "### Failover Routing Policy"
-		regexp.MustCompile("#+ ([a-zA-Z_ ]+).*"),
+		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
 	}
 
 	for _, match := range nestedObjectRegexps {

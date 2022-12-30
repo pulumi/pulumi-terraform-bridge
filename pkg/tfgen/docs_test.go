@@ -17,12 +17,12 @@ package tfgen
 
 import (
 	"bytes"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 	"testing"
 	"text/template"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -616,8 +616,15 @@ func TestGetNestedBlockName(t *testing.T) {
 		{"", ""},
 		{"The `website` object supports the following:", "website"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
+		{"### advanced_security_options", "advanced_security_options"},
+		{"### `server_side_encryption`", "server_side_encryption"},
+		{"### Failover Routing Policy", "failover_routing_policy"},
+		{"##### `log_configuration`", "log_configuration"},
+		{"### data_format_conversion_configuration", "data_format_conversion_configuration"},
 		// This is a common starting line of base arguments, so should result in zero value:
 		{"The following arguments are supported:", ""},
+		{"* `kms_key_id` - ...", ""},
+		{"## Import", ""},
 	}
 
 	for _, tt := range tests {
