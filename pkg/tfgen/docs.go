@@ -396,9 +396,12 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
+	)
 
-	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
+	attributeBulletRegexp = regexp.MustCompile(
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*[–-]?\\s+(.*)",
+	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
 )
@@ -757,9 +760,6 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool) {
-	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
-
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 
 	if len(matches) > 4 {

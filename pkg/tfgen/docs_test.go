@@ -595,6 +595,8 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 	}{
 		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
 		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
+		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
+		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
 		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
 		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
 		{"", "", "", false},
@@ -607,6 +609,23 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		assert.Equal(t, test.expectedDesc, desc)
 		assert.Equal(t, test.expectedFound, found)
 	}
+}
+
+func TestParseAttributesReferenceSection(t *testing.T) {
+	p := tfMarkdownParser{}
+	p.ret = entityDocs{
+		Arguments:  make(map[string]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	p.parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region` - The region of the Droplet",
+	})
+	assert.Len(t, p.ret.Attributes, 4)
 }
 
 func TestGetNestedBlockName(t *testing.T) {
