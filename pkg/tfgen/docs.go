@@ -396,11 +396,11 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)",
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
 	attributeBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*[–-]?\\s+(.*)",
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*[:–-]?\\s*(.*)",
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."

@@ -597,6 +597,9 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
 		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
 		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
+		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true},
+		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true},
+		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
 		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
 		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
 		{"", "", "", false},
