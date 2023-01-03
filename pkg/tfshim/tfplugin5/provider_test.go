@@ -143,15 +143,8 @@ func (l *testLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer
 }
 
 func startTestProvider(t *testing.T) (*provider, bool) {
-	const testProviderEnv = "PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER"
-
-	testProviderPath := os.Getenv(testProviderEnv)
-	if len(testProviderPath) == 0 {
-		var err error
-		testProviderPath, err = exec.LookPath("pulumi-terraform-bridge-test-provider")
-		require.NoError(t, err,
-			"Could not find pulumi-terraform-bridge-test-provider on PATH or %v", testProviderEnv)
-	}
+	testProviderPath, err := exec.LookPath("pulumi-terraform-bridge-test-provider")
+	require.NoError(t, err)
 
 	var logger hclog.Logger
 	switch os.Getenv("TF_LOG") {
