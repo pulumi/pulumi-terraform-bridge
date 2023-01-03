@@ -11,10 +11,6 @@ on:
       - '.github/workflows/update-providers.yml'
       - 'README.md'
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   build:
     name: Build and Test Bridge
