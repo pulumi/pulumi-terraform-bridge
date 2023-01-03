@@ -1,3 +1,6 @@
+export GOBIN ?= $(shell pwd)/bin
+export PATH := $(GOBIN):$(PATH)
+
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
 
