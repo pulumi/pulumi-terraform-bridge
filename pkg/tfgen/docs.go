@@ -396,7 +396,7 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
 	attributeBulletRegexp = regexp.MustCompile(
@@ -800,12 +800,20 @@ func getNestedBlockName(line string) string {
 		// For example:
 		// route53_record.html.markdown: "### Failover Routing Policy"
 		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+
+		// For example:
+		// sql_database_instance.html.markdown: "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+		regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 	}
 
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			nested = strings.Replace(strings.ToLower(matches[1]), " ", "_", -1)
+			nested = strings.ToLower(matches[1])
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, "[]")
+			parts := strings.Split(nested, ".")
+			nested = parts[len(parts)-1]
 			break
 		}
 	}

@@ -637,6 +637,8 @@ func TestGetNestedBlockName(t *testing.T) {
 	}{
 		{"", ""},
 		{"The `website` object supports the following:", "website"},
+		{"The optional `settings.location_preference` subblock supports:", "location_preference"},
+		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", "authorized_networks"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
 		{"### advanced_security_options", "advanced_security_options"},
 		{"### `server_side_encryption`", "server_side_encryption"},
