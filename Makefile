@@ -18,7 +18,8 @@ lint::
 test::
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
-	PATH="$(PROJECT_DIR)/bin:${PATH}" go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
+	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
+		go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
