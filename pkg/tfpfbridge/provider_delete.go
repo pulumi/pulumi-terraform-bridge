@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -57,16 +56,8 @@ func (p *Provider) Delete(urn resource.URN, id resource.ID,
 	}
 	// TODO handle resp.Private
 
-	// TODO handle resp.Diagnostics more than just detecting the
-	// first error; handle warnings, process multiple errors.
-	for _, d := range resp.Diagnostics {
-		if d.Severity == tfprotov6.DiagnosticSeverityError {
-			prefix := ""
-			if d.Attribute != nil {
-				prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
-			}
-			return resource.StatusOK, fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
-		}
+	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+		return resource.StatusPartialFailure, err
 	}
 
 	// In one example that was tested, resp.NewState after a

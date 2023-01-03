@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -64,17 +63,8 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, 0, err
 	}
 
-	// TODO handle resp.Diagnostics more than just detecting the
-	// first error; handle warnings, process multiple errors.
-	for _, d := range resp.Diagnostics {
-		if d.Severity == tfprotov6.DiagnosticSeverityError {
-			prefix := ""
-			if d.Attribute != nil {
-				prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
-			}
-			return plugin.ReadResult{}, 0,
-				fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
-		}
+	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+		return plugin.ReadResult{}, 0, err
 	}
 
 	// TODO handle resp.Private
