@@ -140,6 +140,15 @@ func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, err
 	return "", fmt.Errorf("[tfpfbridge] unknown resource token: %v", resourceToken)
 }
 
+func (p *Provider) terraformDatasourceName(functionToken tokens.ModuleMember) (string, error) {
+	for tfname, v := range p.info.DataSources {
+		if v.Tok == functionToken {
+			return tfname, nil
+		}
+	}
+	return "", fmt.Errorf("[tfpfbridge] unknown datasource token: %v", functionToken)
+}
+
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions) (plugin.CallResult, error) {
