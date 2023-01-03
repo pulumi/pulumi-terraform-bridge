@@ -802,7 +802,8 @@ func getNestedBlockName(line string) string {
 		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
 
 		// For example:
-		// sql_database_instance.html.markdown: "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+		// sql_database_instance.html.markdown:
+		// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
 		regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 	}
 
