@@ -1,4 +1,5 @@
-export GOBIN ?= $(shell pwd)/bin
+PROJECT_DIR = $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+export GOBIN ?= $(PROJECT_DIR)/bin
 export PATH := $(GOBIN):$(PATH)
 
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
