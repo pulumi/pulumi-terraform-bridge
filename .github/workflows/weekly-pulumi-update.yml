@@ -55,6 +55,7 @@ jobs:
         fi
     - name: Bridge Pulumi Upgrade
       if: steps.gomod.outputs.changes != 0
+      shell: bash
       run: >-
         make build && make lint && make test
 
