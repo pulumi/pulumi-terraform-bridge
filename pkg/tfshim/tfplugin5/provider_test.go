@@ -22,61 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// testProviderExecutablePath is the path to the
-// pulumi-terraform-bridge-test-provider executable.
-//
-// This is built once and shared across all tests.
-var testProviderExecutablePath string
-
-// nolint:lll
-// Import path to for the pulumi-terraform-bridge-test-provider command.
-const testProviderImportPath = "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing/pulumi-terraform-bridge-test-provider"
-
-func TestMain(m *testing.M) {
-	path, clean, err := buildTestProvider()
-	if err != nil {
-		log.Fatalf("could not build test provider: %v", err)
-	}
-	defer clean()
-
-	testProviderExecutablePath = path
-	os.Exit(m.Run())
-}
-
-// buildTestProvider builds the pulumi-terraform-bridge-test-provider
-// and returns the path to the executable, and a cleanup function to delete it.
-//
-// If err is nil, the caller must call clean to delete the temporary executble.
-func buildTestProvider() (_ string, clean func(), _ error) {
-	f, err := os.CreateTemp("", "pulumi-terraform-bridge-test-provider")
-	if err != nil {
-		return "", nil, err
-	}
-	clean = func() { _ = os.Remove(f.Name()) }
-
-	// If any operation fails after this,
-	// delete the temporary file.
-	defer func() {
-		if err != nil {
-			clean()
-		}
-	}()
-
-	if err := f.Close(); err != nil {
-		return "", nil, err
-	}
-
-	//nolint:gosec // This subprocess is safe. All parameters are controlled.
-	cmd := exec.Command("go", "build", "-o", f.Name(), testProviderImportPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", nil, err
-	}
-
-	return f.Name(), clean, err
-}
-
 type testLogger struct {
 	t     *testing.T
 	level hclog.Level
@@ -198,6 +143,9 @@ func (l *testLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer
 }
 
 func startTestProvider(t *testing.T) (*provider, bool) {
+	testProviderPath, err := exec.LookPath("pulumi-terraform-bridge-test-provider")
+	require.NoError(t, err)
+
 	var logger hclog.Logger
 	switch os.Getenv("TF_LOG") {
 	case "TRACE":
@@ -217,7 +165,7 @@ func startTestProvider(t *testing.T) (*provider, bool) {
 	pluginClient := goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig:  Handshake,
 		Plugins:          goplugin.PluginSet{"provider": &providerPlugin{}},
-		Cmd:              exec.Command(testProviderExecutablePath),
+		Cmd:              exec.Command(testProviderPath),
 		Managed:          true,
 		AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
 		AutoMTLS:         true,
