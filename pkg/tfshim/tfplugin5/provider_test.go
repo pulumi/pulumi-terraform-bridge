@@ -28,6 +28,7 @@ import (
 // This is built once and shared across all tests.
 var testProviderExecutablePath string
 
+// nolint:lll
 // Import path to for the pulumi-terraform-bridge-test-provider command.
 const testProviderImportPath = "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing/pulumi-terraform-bridge-test-provider"
 
@@ -65,6 +66,7 @@ func buildTestProvider() (_ string, clean func(), _ error) {
 		return "", nil, err
 	}
 
+	//nolint:gosec // This subprocess is safe. All parameters are controlled.
 	cmd := exec.Command("go", "build", "-o", f.Name(), testProviderImportPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
