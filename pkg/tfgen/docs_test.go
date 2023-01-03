@@ -49,6 +49,10 @@ func TestURLRewrite(t *testing.T) {
 			Input:    "See google_container_node_pool for schema.",
 			Expected: "See google.container.NodePool for schema.",
 		},
+		{
+			Input:    "\n(Required)\nThe app_ip of name of the Firebase webApp.",
+			Expected: "The appIp of name of the Firebase webApp.",
+		},
 	}
 
 	g, err := NewGenerator(GeneratorOptions{
