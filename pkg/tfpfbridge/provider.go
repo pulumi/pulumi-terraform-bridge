@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -46,9 +47,11 @@ type Provider struct {
 	tfServer     tfprotov6.ProviderServer
 	info         info.ProviderInfo
 	resources    pfutils.Resources
+	datasources  pfutils.DataSources
 	pulumiSchema []byte
 	packageSpec  pschema.PackageSpec
 	encoding     convert.Encoding
+	diagSink     diag.Sink
 }
 
 var _ plugin.Provider = &Provider{}
@@ -63,6 +66,11 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 	resources, err := pfutils.GatherResources(ctx, p)
 	if err != nil {
 		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
+	}
+
+	datasources, err := pfutils.GatherDatasources(ctx, p)
+	if err != nil {
+		panic(fmt.Errorf("Fatal failure gathering datasource metadata: %w", err))
 	}
 
 	var packageSpec pschema.PackageSpec
@@ -80,6 +88,7 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		tfServer:     server6,
 		info:         info,
 		resources:    resources,
+		datasources:  datasources,
 		pulumiSchema: pulumiSchema,
 		packageSpec:  packageSpec,
 		encoding:     setupEncoding(packageSpec, renames),
@@ -203,6 +212,14 @@ func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
 	typ, ok := p.spec.Types[string(tok)]
 	if ok {
 		return &typ
+	}
+	return nil
+}
+
+func (p packageSpec) Function(tok tokens.ModuleMember) *pschema.FunctionSpec {
+	res, ok := p.spec.Functions[string(tok)]
+	if ok {
+		return &res
 	}
 	return nil
 }

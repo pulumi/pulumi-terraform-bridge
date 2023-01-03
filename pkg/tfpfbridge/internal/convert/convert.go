@@ -36,10 +36,13 @@ type TerraformPropertyName = string
 type Encoding interface {
 	NewResourceDecoder(tokens.Type, tftypes.Object) (Decoder, error)
 	NewResourceEncoder(tokens.Type, tftypes.Object) (Encoder, error)
+	NewDataSourceDecoder(tokens.ModuleMember, tftypes.Object) (Decoder, error)
+	NewDataSourceEncoder(tokens.ModuleMember, tftypes.Object) (Encoder, error)
 }
 
 // Subset of pschema.PackageSpec required for conversion.
 type PackageSpec interface {
+	Function(tok tokens.ModuleMember) *pschema.FunctionSpec
 	Resource(tok tokens.Type) *pschema.ResourceSpec
 	Type(tok tokens.Type) *pschema.ComplexTypeSpec
 }
