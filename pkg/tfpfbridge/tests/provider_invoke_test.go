@@ -62,3 +62,30 @@ func TestBasicInvoke(t *testing.T) {
         `
 	testutils.Replay(t, server, testCase)
 }
+
+func TestInvokeWithInvalidData(t *testing.T) {
+	p := testprovider.TlsProvider()
+	g := genSchemaBytes(t, p)
+	server := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Invoke",
+          "request": {
+            "tok": "tls:index/getCertificate:getCertificate",
+            "args": {
+              "content": "INVALID CERT"
+            }
+          },
+          "response": {
+            "return": {},
+            "failures": [
+              {
+                "property": "content",
+                "reason": "Failed to decoded PEM: Value is not a valid PEM encoding of a certificate"
+              }
+            ]
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
