@@ -1344,7 +1344,7 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 	case v.IsNull():
 		return true
 	case v.IsBool():
-		//nolint this expression is clearer than !v.BoolValue()
+		//nolint:gosimple // This expression is clearer than !v.BoolValue()
 		return v.BoolValue() == false
 	case v.IsNumber():
 		return v.NumberValue() == 0

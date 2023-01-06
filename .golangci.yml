@@ -17,6 +17,7 @@ linters:
     - megacheck
     - misspell
     - nakedret
+    - nolintlint
     - revive
     - unconvert
     - unused

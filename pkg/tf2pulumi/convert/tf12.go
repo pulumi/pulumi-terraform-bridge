@@ -308,7 +308,7 @@ func (o *output) SyntaxNode() hclsyntax.Node {
 	return o.syntax
 }
 
-// nolint: structcheck, unused
+//nolint:structcheck, unused
 type module struct {
 	syntax *hclsyntax.Block
 
@@ -1076,7 +1076,7 @@ func (rr *resourceRewriter) pop() {
 	rr.stack = rr.stack[:len(rr.stack)-1]
 }
 
-// nolint: unused
+//nolint:unused
 func (rr *resourceRewriter) dumpStack() {
 	fmt.Printf("[")
 	for i, info := range rr.stack {

@@ -389,7 +389,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 	return nil, "", false
 }
 
-// nolint:lll
+//nolint:lll
 var (
 	// For example:
 	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
@@ -1479,7 +1479,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		}
 
 		// At least one language out of the given set has been generated, which is considered a success
-		// nolint:ineffassign
+		//nolint:ineffassign
 		err = nil
 	}
 
@@ -1603,7 +1603,6 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	}, elidedDoc
 }
 
-//nolint:lll
 var (
 	// Match a [markdown](link)
 	markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
