@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -45,30 +46,29 @@ func (p *Provider) Invoke(tok tokens.ModuleMember,
 			handle.terraformDataSourceName, err)
 	}
 
-	if err := p.validateDataResourceConfig(ctx, handle, config); err != nil {
-		return nil, nil, err
+	if failures, err := p.validateDataResourceConfig(ctx, handle, config); err != nil || len(failures) > 0 {
+		return nil, failures, err
 	}
 
-	outputs, err := p.readDataSource(ctx, handle, config)
-	return outputs, nil, err
+	return p.readDataSource(ctx, handle, config)
 }
 
 func (p *Provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) error {
+	config *tfprotov6.DynamicValue) ([]plugin.CheckFailure, error) {
 	req := &tfprotov6.ValidateDataResourceConfigRequest{
 		TypeName: handle.terraformDataSourceName,
 		Config:   config,
 	}
 	resp, err := p.tfServer.ValidateDataResourceConfig(ctx, req)
 	if err != nil {
-		return fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
+		return nil, fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
 	}
-	// TODO try to map resp.Diagnostics into CheckFailure instead of just error messages.
-	return p.processDiagnostics(resp.Diagnostics)
+	return p.processInvokeDiagnostics(handle.token, resp.Diagnostics)
 }
 
 func (p *Provider) readDataSource(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
 	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	req := &tfprotov6.ReadDataSourceRequest{
@@ -79,18 +79,49 @@ func (p *Provider) readDataSource(ctx context.Context, handle datasourceHandle,
 
 	resp, err := p.tfServer.ReadDataSource(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("error calling ReadDataSource: %w", err)
+		return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
 	}
 
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return nil, err
+	failures, err := p.processInvokeDiagnostics(handle.token, resp.Diagnostics)
+	if err != nil || len(failures) > 0 {
+		return nil, failures, err
 	}
 
 	propertyMap, err := convert.DecodePropertyMapFromDynamic(handle.decoder, typ, resp.State)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode state from a call to ReadDataSource for %q: %w",
+		return nil, nil, fmt.Errorf("cannot decode state from a call to ReadDataSource for %q: %w",
 			handle.terraformDataSourceName, err)
 	}
 
-	return propertyMap, nil
+	return propertyMap, nil, nil
+}
+
+func (p *Provider) processInvokeDiagnostics(tok tokens.ModuleMember,
+	diags []*tfprotov6.Diagnostic) ([]plugin.CheckFailure, error) {
+	failures, rest := p.parseInvokePropertyCheckFailures(tok, diags)
+	return failures, p.processDiagnostics(rest)
+}
+
+// Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
+// optimal rendering by Pulumi CLI.
+func (p *Provider) parseInvokePropertyCheckFailures(tok tokens.ModuleMember, diags []*tfprotov6.Diagnostic) (
+	[]plugin.CheckFailure, []*tfprotov6.Diagnostic) {
+	rest := []*tfprotov6.Diagnostic{}
+	failures := []plugin.CheckFailure{}
+
+	for _, d := range diags {
+		if pk, ok := functionPropertyKey(tok, p.propertyNames, d.Attribute); ok {
+			reason := strings.Join([]string{d.Summary, d.Detail}, ": ")
+			failure := plugin.CheckFailure{
+				Property: pk,
+				Reason:   reason,
+			}
+			failures = append(failures, failure)
+			continue
+		} else {
+			rest = append(rest, d)
+		}
+	}
+
+	return failures, rest
 }

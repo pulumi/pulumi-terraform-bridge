@@ -43,15 +43,16 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type Provider struct {
-	tfProvider   tfsdkprovider.Provider
-	tfServer     tfprotov6.ProviderServer
-	info         info.ProviderInfo
-	resources    pfutils.Resources
-	datasources  pfutils.DataSources
-	pulumiSchema []byte
-	packageSpec  pschema.PackageSpec
-	encoding     convert.Encoding
-	diagSink     diag.Sink
+	tfProvider    tfsdkprovider.Provider
+	tfServer      tfprotov6.ProviderServer
+	info          info.ProviderInfo
+	resources     pfutils.Resources
+	datasources   pfutils.DataSources
+	pulumiSchema  []byte
+	packageSpec   pschema.PackageSpec
+	encoding      convert.Encoding
+	propertyNames convert.PropertyNames
+	diagSink      diag.Sink
 }
 
 var _ plugin.Provider = &Provider{}
@@ -73,8 +74,8 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		panic(fmt.Errorf("Fatal failure gathering datasource metadata: %w", err))
 	}
 
-	var packageSpec pschema.PackageSpec
-	if err := json.Unmarshal(pulumiSchema, &packageSpec); err != nil {
+	var thePackageSpec pschema.PackageSpec
+	if err := json.Unmarshal(pulumiSchema, &thePackageSpec); err != nil {
 		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
 	}
 
@@ -83,15 +84,19 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		panic(fmt.Errorf("Failed to unmarshal Renames: %w", err))
 	}
 
+	propertyNames := newPrecisePropertyNames(renames)
+	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
+
 	return &Provider{
-		tfProvider:   p,
-		tfServer:     server6,
-		info:         info,
-		resources:    resources,
-		datasources:  datasources,
-		pulumiSchema: pulumiSchema,
-		packageSpec:  packageSpec,
-		encoding:     setupEncoding(packageSpec, renames),
+		tfProvider:    p,
+		tfServer:      server6,
+		info:          info,
+		resources:     resources,
+		datasources:   datasources,
+		pulumiSchema:  pulumiSchema,
+		packageSpec:   thePackageSpec,
+		propertyNames: propertyNames,
+		encoding:      enc,
 	}
 }
 
@@ -188,10 +193,6 @@ func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov
 
 func (p *Provider) GetMapping(key string) ([]byte, string, error) {
 	return []byte{}, "", nil
-}
-
-func setupEncoding(p pschema.PackageSpec, renames tfgen.Renames) convert.Encoding {
-	return convert.NewEncoding(packageSpec{&p}, newPrecisePropertyNames(renames))
 }
 
 type packageSpec struct {

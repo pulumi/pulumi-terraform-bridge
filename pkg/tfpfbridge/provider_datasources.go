@@ -28,6 +28,7 @@ import (
 )
 
 type datasourceHandle struct {
+	token                   tokens.ModuleMember
 	makeDataSource          func() datasource.DataSource
 	terraformDataSourceName string
 	schema                  tfsdk.Schema
@@ -42,34 +43,11 @@ func (p *Provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 	}
 
 	typeName := pfutils.TypeName(dsName)
-
 	schema := p.datasources.Schema(typeName)
 
 	makeDataSource := func() datasource.DataSource {
 		return p.datasources.DataSource(typeName)
 	}
-
-	// inputs := map[string]attr.Type{}
-	// outputs := map[string]attr.Type{}
-
-	// for name, attr := range schema.Attributes {
-	// 	if !(attr.IsComputed() && !attr.IsOptional()) {
-	// 		inputs[name] = attr.FrameworkType()
-	// 	}
-	// 	if attr.IsComputed() {
-	// 		outputs[name] = attr.FrameworkType()
-	// 	}
-	// }
-
-	// for name, block := range schema.Blocks {
-	// 	inputs[name] = block.Type()
-	// }
-
-	// inputAttrType := types.ObjectType{AttrTypes: inputs}
-	// outputAttrType := types.ObjectType{AttrTypes: outputs}
-
-	// inputType := inputAttrType.TerraformType(ctx).(tftypes.Object)
-	// outputType := outputAttrType.TerraformType(ctx).(tftypes.Object)
 
 	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
 
@@ -84,6 +62,7 @@ func (p *Provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 	}
 
 	return datasourceHandle{
+		token:                   token,
 		makeDataSource:          makeDataSource,
 		terraformDataSourceName: dsName,
 		schema:                  schema,
