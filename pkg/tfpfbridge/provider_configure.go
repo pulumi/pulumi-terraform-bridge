@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,34 @@
 package tfbridge
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *Provider) Configure(inputs resource.PropertyMap) error {
-	// TODO actually configure
-	return nil
+	ctx := context.TODO()
+
+	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
+	if err != nil {
+		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)
+	}
+
+	req := &tfprotov6.ConfigureProviderRequest{
+		Config:           config,
+		TerraformVersion: "pulumi-terraform-bridge",
+	}
+
+	resp, err := p.tfServer.ConfigureProvider(ctx, req)
+	if err != nil {
+		return fmt.Errorf("error calling ConfigureProvider: %w", err)
+	}
+
+	return p.processDiagnostics(resp.Diagnostics)
 }

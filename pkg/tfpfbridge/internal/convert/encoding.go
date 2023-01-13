@@ -36,6 +36,10 @@ func NewEncoding(spec PackageSpec, propertyNames PropertyNames) Encoding {
 	return &encoding{spec: spec, propertyNames: propertyNames}
 }
 
+func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
+	return nil, fmt.Errorf("TOO BAD")
+}
+
 func (e *encoding) NewResourceEncoder(resourceToken tokens.Type, objectType tftypes.Object) (Encoder, error) {
 	rspec := e.spec.Resource(resourceToken)
 	if rspec == nil {

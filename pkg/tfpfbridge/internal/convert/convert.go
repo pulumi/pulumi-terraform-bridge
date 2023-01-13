@@ -34,6 +34,7 @@ import (
 type TerraformPropertyName = string
 
 type Encoding interface {
+	NewConfigEncoder(tftypes.Object) (Encoder, error)
 	NewResourceDecoder(tokens.Type, tftypes.Object) (Decoder, error)
 	NewResourceEncoder(tokens.Type, tftypes.Object) (Encoder, error)
 	NewDataSourceDecoder(tokens.ModuleMember, tftypes.Object) (Decoder, error)
@@ -52,6 +53,9 @@ type PropertyNames interface {
 	//
 	// typeToken identifies the resource, data source, or named object type.
 	PropertyKey(typeToken tokens.Token, property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+
+	// Same as PropertyKey but for provider-level configuration properties.
+	ConfigPropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
 }
 
 type Encoder interface {

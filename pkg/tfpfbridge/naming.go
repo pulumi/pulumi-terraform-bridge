@@ -26,33 +26,46 @@ import (
 )
 
 type PrecisePropertyNames struct {
-	renames map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
+	renames       map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
+	configRenames map[convert.TerraformPropertyName]resource.PropertyKey
 }
 
 func newPrecisePropertyNames(renames tfgen.Renames) *PrecisePropertyNames {
-	result := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
+	renamesTable := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
 	// Invert renames.RenamedProperties maps for faster dynamic lookup.
 	for typ, typRenames := range renames.RenamedProperties {
 		m := map[convert.TerraformPropertyName]resource.PropertyKey{}
 		for k, v := range typRenames {
 			m[v] = resource.PropertyKey(string(k))
 		}
-		result[typ] = m
+		renamesTable[typ] = m
 	}
-	return &PrecisePropertyNames{result}
+	configRenames := map[convert.TerraformPropertyName]resource.PropertyKey{}
+	for k, v := range renames.RenamedConfigProperties {
+		configRenames[v] = resource.PropertyKey(string(k))
+	}
+	return &PrecisePropertyNames{
+		renames:       renamesTable,
+		configRenames: configRenames,
+	}
 }
 
 var _ convert.PropertyNames = (*PrecisePropertyNames)(nil)
 
-func (s *PrecisePropertyNames) PropertyKey(
-	typeToken tokens.Token,
-	property convert.TerraformPropertyName,
-	_ tftypes.Type,
-) resource.PropertyKey {
+func (s *PrecisePropertyNames) PropertyKey(typeToken tokens.Token,
+	property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	if renamedProps, ok := s.renames[typeToken]; ok {
 		if propertyKey, renamed := renamedProps[property]; renamed {
 			return propertyKey
 		}
+	}
+	return resource.PropertyKey(property)
+}
+
+func (s *PrecisePropertyNames) ConfigPropertyKey(property convert.TerraformPropertyName,
+	_ tftypes.Type) resource.PropertyKey {
+	if propertyKey, renamed := s.configRenames[property]; renamed {
+		return propertyKey
 	}
 	return resource.PropertyKey(property)
 }
@@ -65,6 +78,11 @@ type simplePropertyNames struct{}
 var _ convert.PropertyNames = (*simplePropertyNames)(nil)
 
 func (s *simplePropertyNames) PropertyKey(typeToken tokens.Token,
+	property convert.TerraformPropertyName, typ tftypes.Type) resource.PropertyKey {
+	return toPropertyKey(property, typ)
+}
+
+func (s *simplePropertyNames) ConfigPropertyKey(
 	property convert.TerraformPropertyName, typ tftypes.Type) resource.PropertyKey {
 	return toPropertyKey(property, typ)
 }
