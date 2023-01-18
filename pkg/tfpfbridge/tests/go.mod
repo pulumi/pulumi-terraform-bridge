@@ -19,6 +19,7 @@ replace (
 	github.com/hashicorp/terraform-provider-tls/shim => ./internal/tlsshim
 	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge => ../
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../../..
+	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20230117062402-cab81572f740
 	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/randomshim
 )
 
