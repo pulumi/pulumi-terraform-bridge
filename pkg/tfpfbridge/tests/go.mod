@@ -15,7 +15,7 @@ require (
 )
 
 replace (
-	github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v0.0.0-20221117105107-1239aabb49af
+	github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 	github.com/hashicorp/terraform-provider-tls/shim => ./internal/tlsshim
 	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge => ../
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../../..
@@ -133,7 +133,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.15.0 // indirect
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93 // indirect
-	github.com/hashicorp/terraform-plugin-framework-validators v0.6.0 // indirect
+	github.com/hashicorp/terraform-plugin-framework-validators v0.9.0 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/hashicorp/terraform-provider-tls v0.0.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.1.0 // indirect

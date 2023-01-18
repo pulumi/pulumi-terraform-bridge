@@ -7,7 +7,7 @@ require (
 	github.com/terraform-providers/terraform-provider-random v0.0.0
 )
 
-replace github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20221123190201-cb914720edaa
+replace github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20230117062402-cab81572f740
 
 require (
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0 // indirect
@@ -15,7 +15,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.2.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/hashicorp/terraform-plugin-framework-validators v0.6.0 // indirect
+	github.com/hashicorp/terraform-plugin-framework-validators v0.9.0 // indirect
 	github.com/hashicorp/terraform-plugin-go v0.14.3 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect

@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/hashicorp/go-hclog v1.2.2 // indirect
-	github.com/hashicorp/terraform-plugin-framework-validators v0.6.0 // indirect
+	github.com/hashicorp/terraform-plugin-framework-validators v0.9.0 // indirect
 	github.com/hashicorp/terraform-plugin-go v0.14.3 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -28,4 +28,4 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 )
 
-replace github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v0.0.0-20221117105107-1239aabb49af
+replace github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
