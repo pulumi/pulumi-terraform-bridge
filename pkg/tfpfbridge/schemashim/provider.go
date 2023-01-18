@@ -31,11 +31,12 @@ var _ shim.Provider = (*schemaOnlyProvider)(nil)
 
 func (p *schemaOnlyProvider) Schema() shim.SchemaMap {
 	ctx := p.ctx
-	schema, diags := p.tf.GetSchema(ctx)
-	if diags.HasError() {
+	schemaResp := &pfprovider.SchemaResponse{}
+	p.tf.Schema(ctx, pfprovider.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
 		panic("GetSchema returned error diags")
 	}
-	return newSchemaMap(&schema)
+	return newSchemaMap(pfutils.FromProviderSchema(schemaResp.Schema))
 }
 
 func (p *schemaOnlyProvider) ResourcesMap() shim.ResourceMap {

@@ -17,10 +17,10 @@ package pfutils
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -46,7 +46,7 @@ import (
 // When Pulumi programs retract attributes, config (checkedInputs) will have no entry for these, while priorState might
 // have an entry. ProposedNewState must have a Null entry in this case for Diff to work properly and recognize an
 // attribute deletion.
-func ProposedNew(ctx context.Context, schema tfsdk.Schema, priorState, config tftypes.Value) (tftypes.Value, error) {
+func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.Value) (tftypes.Value, error) {
 	// If the config and prior are both null, return early here before populating the prior block. The prevents
 	// non-null blocks from appearing the proposed state value.
 	if config.IsNull() && priorState.IsNull() {
@@ -60,13 +60,13 @@ func ProposedNew(ctx context.Context, schema tfsdk.Schema, priorState, config tf
 	}
 
 	joinOpts := JoinOptions{
-		SetElementEqual: NonComputedEq(&schema),
+		SetElementEqual: NonComputedEq(schema),
 	}
 
 	joinOpts.Reconcile = func(diff Diff) (*tftypes.Value, error) {
 		priorStateValue := diff.Value1
 		configValue := diff.Value2
-		pathType, err := getNearestEnclosingPathType(&schema, diff.Path)
+		pathType, err := getNearestEnclosingPathType(schema, diff.Path)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", diff.Path, err)
 		}
@@ -80,7 +80,7 @@ func ProposedNew(ctx context.Context, schema tfsdk.Schema, priorState, config tf
 				// Here priorStateValue must be unknown. If it was an object, Reconcile would not be
 				// called. If it was null, it got substituted via newObjectWithDefaults.
 				contract.Assert(!priorStateValue.IsKnown())
-				v, err := rewriteNullComputedAsUnknown(&schema, diff.Path, *configValue)
+				v, err := rewriteNullComputedAsUnknown(schema, diff.Path, *configValue)
 				return &v, err
 			}
 			return priorStateValue, nil
@@ -88,7 +88,7 @@ func ProposedNew(ctx context.Context, schema tfsdk.Schema, priorState, config tf
 			if configValue != nil {
 				if !configValue.IsNull() && configValue.IsKnown() {
 					if priorStateValue != nil && !priorStateValue.IsKnown() {
-						v, err := rewriteNullComputedAsUnknown(&schema, diff.Path, *configValue)
+						v, err := rewriteNullComputedAsUnknown(schema, diff.Path, *configValue)
 						return &v, err
 					}
 					return configValue, nil
@@ -113,7 +113,7 @@ func ProposedNew(ctx context.Context, schema tfsdk.Schema, priorState, config tf
 	return *joined, nil
 }
 
-func rewriteNullComputedAsUnknown(schema *tfsdk.Schema,
+func rewriteNullComputedAsUnknown(schema Schema,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		pt, err := getNearestEnclosingPathType(schema, joinPaths(offset, p))
@@ -150,14 +150,13 @@ const (
 	pathToComputedOptionalAttribute          = 5
 )
 
-func getPathType(schema *tfsdk.Schema, path *tftypes.AttributePath) (pathType, error) {
-	ctx := context.Background()
+func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	if len(path.Steps()) == 0 {
 		return pathToRoot, nil
 	}
-	attr, err := schema.AttributeAtTerraformPath(ctx, path)
+	attr, err := AttributeAtTerraformPath(schema, path)
 	switch {
-	case err == tfsdk.ErrPathIsBlock:
+	case strings.Contains(err.Error(), "path leads to block, not an attribute"):
 		return pathToBlock, nil
 	case err != nil:
 		return pathUnknown, err
@@ -175,11 +174,11 @@ func getPathType(schema *tfsdk.Schema, path *tftypes.AttributePath) (pathType, e
 }
 
 // Searches for non-erroring getPathType starting from path and upward (..).
-func getNearestEnclosingPathType(schema *tfsdk.Schema, path *tftypes.AttributePath) (pathType, error) {
+func getNearestEnclosingPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	for {
 		ty, err := getPathType(schema, path)
 		switch {
-		case err == tfsdk.ErrPathInsideAtomicAttribute:
+		case strings.Contains(err.Error(), "path leads to element, attribute, or block of a schema.Attribute that has no schema associated with it"):
 			steps := path.Steps()
 			path = tftypes.NewAttributePathWithSteps(steps[0 : len(steps)-1])
 			continue

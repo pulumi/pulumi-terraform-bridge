@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -29,10 +27,10 @@ type schemaMap struct {
 	blocks map[string]pfutils.Block
 }
 
-func newSchemaMap(tf *tfsdk.Schema) *schemaMap {
+func newSchemaMap(tf pfutils.Schema) *schemaMap {
 	return &schemaMap{
-		attrs:  pfutils.SchemaToAttrMap(tf),
-		blocks: pfutils.SchemaToBlockMap(tf),
+		attrs:  tf.Attrs(),
+		blocks: tf.Blocks(),
 	}
 }
 

@@ -85,7 +85,7 @@ func (s *attrSchema) Elem() interface{} {
 	//
 	// See also: documentation on shim.Schema.Elem().
 	if tt, ok := t.(types.ObjectType); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested)
+		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
 		return res
 	}
 
@@ -97,9 +97,9 @@ func (s *attrSchema) Elem() interface{} {
 	var schema shim.Schema
 	switch tt := t.(type) {
 	case types.MapType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested)
+		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
 	case types.ListType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested)
+		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
 	default:
 		// TODO SetType
 		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))

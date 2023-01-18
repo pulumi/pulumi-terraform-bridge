@@ -21,14 +21,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // Represents all provider's resources pre-indexed by TypeName.
 type Resources interface {
 	All() []TypeName
 	Has(TypeName) bool
-	Schema(TypeName) tfsdk.Schema
+	Schema(TypeName) Schema
 	Diagnostics(TypeName) diag.Diagnostics
 	AllDiagnostics() diag.Diagnostics
 	Resource(TypeName) resource.Resource
@@ -47,14 +46,17 @@ func GatherResources(ctx context.Context, prov provider.Provider) (Resources, er
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		resSchema, diag := res.GetSchema(ctx)
+		schemaResponse := &resource.SchemaResponse{}
+		res.Schema(ctx, resource.SchemaRequest{}, schemaResponse)
+
+		resSchema, diag := schemaResponse.Schema, schemaResponse.Diagnostics
 		if err := checkDiagsForErrors(diag); err != nil {
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
 		rs[TypeName(meta.TypeName)] = entry[func() resource.Resource]{
 			t:           makeResource,
-			schema:      resSchema,
+			schema:      FromResourceSchema(resSchema),
 			diagnostics: diag,
 		}
 	}
