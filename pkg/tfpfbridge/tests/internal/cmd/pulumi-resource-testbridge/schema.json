@@ -111,8 +111,21 @@
     },
     "resources": {
         "testbridge:index/testres:TestConfigRes": {
+            "properties": {
+                "configCopy": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "configCopy"
+            ],
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering TestConfigRes resources.\n",
+                "properties": {
+                    "configCopy": {
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             }
         },
