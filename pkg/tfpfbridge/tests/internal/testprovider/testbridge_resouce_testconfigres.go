@@ -54,7 +54,10 @@ testbridge_testconfigres is built to test Configure support in the provider.
 }
 
 func (e *testconfigres) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	e.config = req.ProviderData.(string)
+	cfg := req.ProviderData.(*string)
+	if cfg != nil {
+		e.config = *cfg
+	}
 }
 
 func (e *testconfigres) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

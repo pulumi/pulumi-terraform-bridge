@@ -72,10 +72,12 @@ func (p *syntheticProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagn
 }
 
 func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var stringConfigProp string
+	var stringConfigProp *string
 	diags := req.Config.GetAttribute(ctx, path.Root("stringConfigProp"), &stringConfigProp)
 	resp.Diagnostics.Append(diags...)
-	resp.ResourceData = stringConfigProp
+	if stringConfigProp != nil {
+		resp.ResourceData = stringConfigProp
+	}
 	return
 }
 
