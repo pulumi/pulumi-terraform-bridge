@@ -44,6 +44,9 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	case "/pulumirpc.ResourceProvider/Check":
 		replay(t, entry, new(pulumirpc.CheckRequest), server.Check)
 
+	case "/pulumirpc.ResourceProvider/Configure":
+		replay(t, entry, new(pulumirpc.ConfigureRequest), server.Configure)
+
 	case "/pulumirpc.ResourceProvider/Create":
 		replay(t, entry, new(pulumirpc.CreateRequest), server.Create)
 
@@ -64,6 +67,17 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 
 	default:
 		t.Errorf("Unknown method: %s", entry.Method)
+	}
+}
+
+func ReplaySequence(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
+	var entries []jsonLogEntry
+	err := json.Unmarshal([]byte(jsonLog), &entries)
+	assert.NoError(t, err)
+	for _, e := range entries {
+		bytes, err := json.Marshal(e)
+		assert.NoError(t, err)
+		Replay(t, server, string(bytes))
 	}
 }
 
