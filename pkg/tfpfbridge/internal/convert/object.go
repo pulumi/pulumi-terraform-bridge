@@ -20,42 +20,37 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type objectEncoder struct {
-	token            tokens.Token
 	objectType       tftypes.Object
 	propertyEncoders map[TerraformPropertyName]Encoder
-	propertyNames    PropertyNames
+	propertyNames    LocalPropertyNames
 }
 
 type objectDecoder struct {
-	token            tokens.Token
 	objectType       tftypes.Object
 	propertyDecoders map[TerraformPropertyName]Decoder
-	propertyNames    PropertyNames
+	propertyNames    LocalPropertyNames
 }
 
-func newObjectEncoder(token tokens.Token, objectType tftypes.Object,
-	propertyEncoders map[TerraformPropertyName]Encoder, propertyNames PropertyNames) (Encoder, error) {
+func newObjectEncoder(objectType tftypes.Object,
+	propertyEncoders map[TerraformPropertyName]Encoder, propertyNames LocalPropertyNames) (Encoder, error) {
 	for prop := range objectType.AttributeTypes {
 		if _, ok := propertyEncoders[prop]; !ok {
 			return nil, fmt.Errorf("Missing property encoder for %q", prop)
 		}
 	}
 	return &objectEncoder{
-		token:            token,
 		objectType:       objectType,
 		propertyEncoders: propertyEncoders,
 		propertyNames:    propertyNames,
 	}, nil
 }
 
-func newObjectDecoder(token tokens.Token, objectType tftypes.Object,
-	propertyDecoders map[TerraformPropertyName]Decoder, propertyNames PropertyNames) (Decoder, error) {
+func newObjectDecoder(objectType tftypes.Object,
+	propertyDecoders map[TerraformPropertyName]Decoder, propertyNames LocalPropertyNames) (Decoder, error) {
 	return &objectDecoder{
-		token:            token,
 		objectType:       objectType,
 		propertyDecoders: propertyDecoders,
 		propertyNames:    propertyNames,
@@ -77,7 +72,7 @@ func (enc *objectEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.V
 	values := map[string]tftypes.Value{}
 	for attr, attrEncoder := range enc.propertyEncoders {
 		t := enc.objectType.AttributeTypes[attr]
-		key := enc.propertyNames.PropertyKey(enc.token, attr, t)
+		key := enc.propertyNames.PropertyKey(attr, t)
 		pv, gotPV := pulumiMap[key]
 		if gotPV {
 			v, err := attrEncoder.FromPropertyValue(pv)
@@ -118,7 +113,7 @@ func (dec *objectDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyVal
 					fmt.Errorf("objectDecoder fails on property %q (value %s): %w",
 						attr, attrValue, err)
 			}
-			key := dec.propertyNames.PropertyKey(dec.token, attr, t)
+			key := dec.propertyNames.PropertyKey(attr, t)
 			if !pv.IsNull() {
 				values[key] = pv
 			}

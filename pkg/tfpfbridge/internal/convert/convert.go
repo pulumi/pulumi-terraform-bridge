@@ -43,6 +43,7 @@ type Encoding interface {
 
 // Subset of pschema.PackageSpec required for conversion.
 type PackageSpec interface {
+	Config() *pschema.ConfigSpec
 	Function(tok tokens.ModuleMember) *pschema.FunctionSpec
 	Resource(tok tokens.Type) *pschema.ResourceSpec
 	Type(tok tokens.Type) *pschema.ComplexTypeSpec
@@ -56,6 +57,36 @@ type PropertyNames interface {
 
 	// Same as PropertyKey but for provider-level configuration properties.
 	ConfigPropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+}
+
+// Like PropertyNames but specialized to either a type by token or config property.
+type LocalPropertyNames interface {
+	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+}
+
+type typeLocalPropertyNames struct {
+	propertyNames PropertyNames
+	typeToken     tokens.Token
+}
+
+func (l *typeLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
+	return l.propertyNames.PropertyKey(l.typeToken, property, t)
+}
+
+func NewTypeLocalPropertyNames(pn PropertyNames, tok tokens.Token) LocalPropertyNames {
+	return &typeLocalPropertyNames{pn, tok}
+}
+
+type configLocalPropertyNames struct {
+	propertyNames PropertyNames
+}
+
+func (l *configLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
+	return l.propertyNames.ConfigPropertyKey(property, t)
+}
+
+func NewConfigPropertyNames(pn PropertyNames) LocalPropertyNames {
+	return &configLocalPropertyNames{pn}
 }
 
 type Encoder interface {

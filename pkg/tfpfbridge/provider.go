@@ -218,6 +218,10 @@ type packageSpec struct {
 
 var _ convert.PackageSpec = (*packageSpec)(nil)
 
+func (p packageSpec) Config() *pschema.ConfigSpec {
+	return &p.spec.Config
+}
+
 func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
 	res, ok := p.spec.Resources[string(tok)]
 	if ok {
