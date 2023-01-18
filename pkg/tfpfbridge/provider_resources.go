@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -32,7 +31,7 @@ import (
 type resourceHandle struct {
 	makeResource          func() pfresource.Resource
 	terraformResourceName string
-	schema                tfsdk.Schema
+	schema                pfutils.Schema
 	pulumiResourceInfo    *info.ResourceInfo // optional
 	idExtractor           idExtractor
 	encoder               convert.Encoder

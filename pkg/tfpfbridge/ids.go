@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"

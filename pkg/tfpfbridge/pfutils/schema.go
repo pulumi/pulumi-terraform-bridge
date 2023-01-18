@@ -15,9 +15,12 @@
 package pfutils
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -31,6 +34,7 @@ type Schema interface {
 	Blocks() map[string]Block
 
 	DeprecationMessage() string
+	AttributeAtPath(context.Context, path.Path) (Attr, diag.Diagnostics)
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {

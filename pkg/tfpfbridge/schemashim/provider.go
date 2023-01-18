@@ -34,7 +34,7 @@ func (p *schemaOnlyProvider) Schema() shim.SchemaMap {
 	schemaResp := &pfprovider.SchemaResponse{}
 	p.tf.Schema(ctx, pfprovider.SchemaRequest{}, schemaResp)
 	if schemaResp.Diagnostics.HasError() {
-		panic("GetSchema returned error diags")
+		panic("Schema() returned error diags")
 	}
 	return newSchemaMap(pfutils.FromProviderSchema(schemaResp.Schema))
 }

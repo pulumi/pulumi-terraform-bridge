@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -31,7 +30,7 @@ type datasourceHandle struct {
 	token                   tokens.ModuleMember
 	makeDataSource          func() datasource.DataSource
 	terraformDataSourceName string
-	schema                  tfsdk.Schema
+	schema                  pfutils.Schema
 	encoder                 convert.Encoder
 	decoder                 convert.Decoder
 }
