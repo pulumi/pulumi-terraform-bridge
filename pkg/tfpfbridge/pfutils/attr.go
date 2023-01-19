@@ -91,7 +91,9 @@ func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
 	nestedAttributeObject := getNestedObjectResult[0]
 
 	getAttributes := nestedAttributeObject.MethodByName("GetAttributes")
-	contract.Assertf(getAttributes.IsValid(), "No NestedAttributeObject.GetAttributes method")
+	contract.Assertf(getAttributes.IsValid(),
+		"No NestedAttributeObject.GetAttributes method on type %s",
+		nestedAttributeObject.Type())
 
 	getAttributesResult := getAttributes.Call(nil)
 	contract.Assertf(len(getNestedObjectResult) == 1,
@@ -110,15 +112,18 @@ func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
 		result[key] = FromAttrLike(value)
 	}
 
-	getNestingMode := nestedAttributeObject.MethodByName("GetNestingMode")
-	contract.Assertf(getNestingMode.IsValid(), "No NestedAttributeObject.GetNestingMode method")
+	getNestingMode := attrLikeValue.MethodByName("GetNestingMode")
+	contract.Assertf(getNestingMode.IsValid(),
+		"No GetNestingMode method on type %s",
+		attrLikeValue.Type())
 
 	getNestingModeResult := getNestingMode.Call(nil)
 	contract.Assertf(len(getNestingModeResult) == 1,
 		"Expected NestedAttributeObject.GetNestingMode to return 1 value")
 
-	nestingModeValue := getNestedObjectResult[0]
-	nestingMode := NestingMode(nestingModeValue.Interface().(uint8))
+	nestingModeValue := getNestingModeResult[0]
+	nm := nestingModeValue.Convert(reflect.TypeOf(uint8(0))).Interface().(uint8)
+	nestingMode := NestingMode(nm)
 
 	return result, nestingMode
 }
