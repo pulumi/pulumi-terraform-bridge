@@ -62,14 +62,14 @@ func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataReque
 func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
-			"stringConfigProp": pschema.StringAttribute{},
+			"string_config_prop": pschema.StringAttribute{},
 		},
 	}
 }
 
 func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var stringConfigProp *string
-	diags := req.Config.GetAttribute(ctx, path.Root("stringConfigProp"), &stringConfigProp)
+	diags := req.Config.GetAttribute(ctx, path.Root("string_config_prop"), &stringConfigProp)
 	resp.Diagnostics.Append(diags...)
 	if stringConfigProp != nil {
 		resp.ResourceData = stringConfigProp

@@ -75,77 +75,77 @@ removes the cloud state, and Read copies it.
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"requiredInputString": schema.StringAttribute{
+			"required_input_string": schema.StringAttribute{
 				Required: true,
 			},
-			"optionalInputString": schema.StringAttribute{
+			"optional_input_string": schema.StringAttribute{
 				Optional: true,
 			},
-			"requiredInputStringCopy": schema.StringAttribute{
+			"required_input_string_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of requiredInputString",
+				Description: "Computed as a copy of required_input_string",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"optionalInputStringCopy": schema.StringAttribute{
+			"optional_input_string_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputString",
+				Description: "Computed as a copy of optional_input_string",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputString"},
+					PropagatesNullFrom{"optional_input_string"},
 				},
 			},
-			"optionalInputNumber": schema.NumberAttribute{
+			"optional_input_number": schema.NumberAttribute{
 				Optional: true,
 			},
-			"optionalInputNumberCopy": schema.NumberAttribute{
+			"optional_input_number_copy": schema.NumberAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputNumber",
+				Description: "Computed as a copy of optional_input_number",
 				PlanModifiers: []planmodifier.Number{
 					numberplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputNumber"},
+					PropagatesNullFrom{"optional_input_number"},
 				},
 			},
-			"optionalInputBool": schema.BoolAttribute{
+			"optional_input_bool": schema.BoolAttribute{
 				Optional: true,
 			},
-			"optionalInputBoolCopy": schema.BoolAttribute{
+			"optional_input_bool_copy": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputBool",
+				Description: "Computed as a copy of optional_input_bool",
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputBool"},
+					PropagatesNullFrom{"optional_input_bool"},
 				},
 			},
-			"optionalInputStringList": schema.ListAttribute{
+			"optional_input_string_list": schema.ListAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 			},
-			"optionalInputStringListCopy": schema.ListAttribute{
+			"optional_input_string_list_copy": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputStringList",
+				Description: "Computed as a copy of optional_input_string_list",
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputStringList"},
+					PropagatesNullFrom{"optional_input_string_list"},
 				},
 			},
-			"optionalInputStringMap": schema.MapAttribute{
+			"optional_input_string_map": schema.MapAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 			},
-			"optionalInputStringMapCopy": schema.MapAttribute{
+			"optional_input_string_map_copy": schema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputStringMap",
+				Description: "Computed as a copy of optional_input_string_map",
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputStringMap"},
+					PropagatesNullFrom{"optional_input_string_map"},
 				},
 			},
-			"singleNestedAttr": schema.SingleNestedAttribute{
-				MarkdownDescription: "singleNestedAttr: tests SingleNestedAttribute support",
+			"single_nested_attr": schema.SingleNestedAttribute{
+				MarkdownDescription: "single_nested_attr: tests SingleNestedAttribute support",
 				Optional:            true,
 				Attributes: map[string]rschema.Attribute{
 					"description": rschema.StringAttribute{
@@ -156,12 +156,12 @@ removes the cloud state, and Read copies it.
 					},
 				},
 			},
-			"singleNestedAttrJSONCopy": schema.StringAttribute{
+			"single_nested_attr_json_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a JSON-ified copy of singleNestedAttr input",
+				Description: "Computed as a JSON-ified copy of single_nested_attr input",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					PropagatesNullFrom{"singleNestedAttr"},
+					PropagatesNullFrom{"single_nested_attr"},
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
@@ -200,7 +200,7 @@ removes the cloud state, and Read copies it.
 					},
 				},
 			},
-			"servicesJSONCopy": schema.StringAttribute{
+			"services_json_copy": schema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a JSON-ified copy of services input",
 				PlanModifiers: []planmodifier.String{
@@ -347,7 +347,7 @@ type copyDataOptions struct {
 }
 
 func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T, opts copyDataOptions) bool {
-	outputProp := inputProp + "Copy"
+	outputProp := inputProp + "_copy"
 	if opts.outputProp != "" {
 		outputProp = opts.outputProp
 	}
@@ -389,39 +389,39 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 
 func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State, diag *diag.Diagnostics) {
 	var requiredInputString string
-	diag0 := state.GetAttribute(ctx, path.Root("requiredInputString"), &requiredInputString)
+	diag0 := state.GetAttribute(ctx, path.Root("required_input_string"), &requiredInputString)
 	diag.Append(diag0...)
 	if diag.HasError() {
 		return
 	}
-	diag1 := state.SetAttribute(ctx, path.Root("requiredInputStringCopy"), requiredInputString)
+	diag1 := state.SetAttribute(ctx, path.Root("required_input_string_copy"), requiredInputString)
 	diag.Append(diag1...)
 	if diag.HasError() {
 		return
 	}
 
 	var s *string
-	if ok := copyData(ctx, diag, state, "optionalInputString", &s, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string", &s, copyDataOptions{}); !ok {
 		return
 	}
 
 	var n *float64
-	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_number", &n, copyDataOptions{}); !ok {
 		return
 	}
 
 	var b *bool
-	if ok := copyData(ctx, diag, state, "optionalInputBool", &b, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_bool", &b, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sl *[]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string_list", &sl, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sm *map[string]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string_map", &sm, copyDataOptions{}); !ok {
 		return
 	}
 
@@ -435,15 +435,15 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 
 	var services *[]ServiceModel
 	if ok := copyData(ctx, diag, state, "services", &services, copyDataOptions{
-		outputProp: "servicesJSONCopy",
+		outputProp: "services_json_copy",
 		transform:  jsonify,
 	}); !ok {
 		return
 	}
 
 	var snaModel *SingleNestedAttrModel
-	if ok := copyData(ctx, diag, state, "singleNestedAttr", &snaModel, copyDataOptions{
-		outputProp: "singleNestedAttrJSONCopy",
+	if ok := copyData(ctx, diag, state, "single_nested_attr", &snaModel, copyDataOptions{
+		outputProp: "single_nested_attr_json_copy",
 		transform:  jsonify,
 	}); !ok {
 		return

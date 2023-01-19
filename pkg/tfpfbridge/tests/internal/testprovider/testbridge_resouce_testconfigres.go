@@ -42,7 +42,7 @@ testbridge_testconfigres is built to test Configure support in the provider.
 			"id": rschema.StringAttribute{
 				Computed: true,
 			},
-			"configCopy": rschema.StringAttribute{
+			"config_copy": rschema.StringAttribute{
 				Computed: true,
 			},
 		},
@@ -66,7 +66,7 @@ func (e *testconfigres) Schema(_ context.Context, _ resource.SchemaRequest, resp
 
 func (e *testconfigres) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	resp.State.SetAttribute(ctx, path.Root("id"), "id-1")
-	resp.State.SetAttribute(ctx, path.Root("configCopy"), e.config)
+	resp.State.SetAttribute(ctx, path.Root("config_copy"), e.config)
 }
 
 func (e *testconfigres) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
