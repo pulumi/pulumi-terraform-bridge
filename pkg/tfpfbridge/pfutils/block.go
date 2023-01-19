@@ -15,13 +15,7 @@
 package pfutils
 
 import (
-	// "fmt"
-	// "reflect"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-
-	// "github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	// "github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -29,144 +23,77 @@ import (
 )
 
 // Block type works around not being able to link to fwschema.Block from
-// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
+// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema".
 type Block interface {
+	BlockLike
+	NestedAttrs() map[string]Attr
+	NestedBlocks() map[string]Block
+	GetMaxItems() int64
+	GetMinItems() int64
+}
+
+type BlockLike interface {
 	GetDeprecationMessage() string
 	GetDescription() string
 	GetMarkdownDescription() string
 
-	GetMaxItems() int64
-	GetMinItems() int64
-
 	Type() attr.Type
-
-	NestedAttrs() map[string]Attr
 }
 
 func FromProviderBlock(x pschema.Block) Block {
-	panic("TODO")
+	return FromBlockLike(x)
 }
 
 func FromDataSourceBlock(x dschema.Block) Block {
-	panic("TODO")
+	return FromBlockLike(x)
 }
 
 func FromResourceBlock(x rschema.Block) Block {
-	//x.Type().TerraformType(context.Context)
-	panic("TODO")
+	return FromBlockLike(x)
 }
 
-// // Block type works around not being able to link to fwschema.Block from
-// // "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
-// //
-// // Most methods from fwschema.Block have simple signatures and are copied into blockLike interface. Casting to blockLike
-// // exposes these methods.
-// //
-// // There are some exceptions though such as GetBlocks() map[string]Block and GetAttributes() map[string]Attribute. These
-// // signatures refer to further internal types. Instead of direct linking, this information is recovered and recorded in
-// // new dedicated fields.
-// type Block struct {
-// 	BlockLike
-// 	BlockNestingMode BlockNestingMode
-// 	NestedBlocks     map[string]Block
-// 	NestedAttrs      map[string]Attr
-// }
+func FromBlockLike(x BlockLike) Block {
+	attrs, blocks, mode := extractBlockNesting(x)
+	return &blockAdapter{
+		BlockLike:    x,
+		nestedAttrs:  attrs,
+		nestedBlocks: blocks,
+		nestingMode:  mode,
+	}
+}
 
-// type BlockLike interface {
-// 	GetDeprecationMessage() string
-// 	GetDescription() string
-// 	GetMarkdownDescription() string
+type blockAdapter struct {
+	nestedAttrs  map[string]Attr
+	nestedBlocks map[string]Block
+	nestingMode  BlockNestingMode
+	BlockLike
+}
 
-// 	GetMaxItems() int64
-// 	GetMinItems() int64
+func (b *blockAdapter) GetMinItems() int64 {
+	return 0 // TODO can we guess this somehow?
+}
 
-// 	Type() pfattr.Type
-// }
+func (b *blockAdapter) GetMaxItems() int64 {
+	return 0 // TODO can we guess this somehow?
+}
 
-// func BlockAtTerraformPath(schema *tfsdk.Schema, path *tftypes.AttributePath) (Block, error) {
-// 	res, remaining, err := tftypes.WalkAttributePath(*schema, path)
-// 	if err != nil {
-// 		return Block{}, fmt.Errorf("%v still remains in the path: %w", remaining, err)
-// 	}
-// 	switch r := res.(type) {
-// 	case tfsdk.Block:
-// 		m := SchemaToBlockMap(&tfsdk.Schema{
-// 			Blocks: map[string]tfsdk.Block{
-// 				"x": r,
-// 			},
-// 		})
-// 		return m["x"], nil
-// 	default:
-// 		return Block{}, fmt.Errorf("Expected a Block but found %s at path %s",
-// 			reflect.TypeOf(r), path)
-// 	}
-// }
+func (b *blockAdapter) NestedAttrs() map[string]Attr {
+	return b.nestedAttrs
+}
 
-// func SchemaToBlockMap(schema *tfsdk.Schema) map[string]Block {
-// 	if schema.GetBlocks() == nil || len(schema.GetBlocks()) == 0 {
-// 		return map[string]Block{}
-// 	}
+func (b *blockAdapter) NestedBlocks() map[string]Block {
+	return b.nestedBlocks
+}
 
-// 	queue := schema.GetBlocks()
-// 	for k := range queue {
-// 		delete(queue, k)
-// 	}
+func (b *blockAdapter) NestingMode() BlockNestingMode {
+	return b.nestingMode
+}
 
-// 	type dest struct {
-// 		toMap map[string]Block
-// 		key   string
-// 	}
+type BlockNestingMode uint8
 
-// 	dests := map[string]dest{}
-
-// 	jobCounter := 0
-
-// 	finalMap := map[string]Block{}
-// 	for k, v := range schema.GetBlocks() {
-// 		job := fmt.Sprintf("%d", jobCounter)
-// 		jobCounter++
-// 		queue[job] = v
-// 		dests[job] = dest{toMap: finalMap, key: k}
-// 	}
-
-// 	for len(queue) > 0 {
-// 		job, inBlock := pop(queue)
-// 		blockDest := popAt(dests, job)
-
-// 		// outBlock := convert(inBlock)
-// 		outBlock := Block{
-// 			BlockLike:        inBlock,
-// 			BlockNestingMode: BlockNestingMode(uint8(inBlock.GetNestingMode())),
-// 			NestedBlocks:     map[string]Block{},
-// 			NestedAttrs:      map[string]Attr{},
-// 		}
-
-// 		for k, v := range inBlock.GetBlocks() {
-// 			job := fmt.Sprintf("%d", jobCounter)
-// 			jobCounter++
-// 			queue[job] = v
-// 			dests[job] = dest{toMap: outBlock.NestedBlocks, key: k}
-// 		}
-
-// 		if attributes := inBlock.GetAttributes(); attributes != nil {
-// 			m := make(map[string]tfsdk.Attribute)
-// 			for k, v := range attributes {
-// 				m[k] = v.(tfsdk.Attribute)
-// 			}
-// 			outBlock.NestedAttrs = SchemaToAttrMap(&tfsdk.Schema{Attributes: m})
-// 		}
-
-// 		blockDest.toMap[blockDest.key] = outBlock
-// 	}
-
-// 	return finalMap
-// }
-
-// type BlockNestingMode uint8
-
-// const (
-// 	BlockNestingModeUnknown BlockNestingMode = 0
-// 	BlockNestingModeList    BlockNestingMode = 1
-// 	BlockNestingModeSet     BlockNestingMode = 2
-// 	BlockNestingModeSingle  BlockNestingMode = 3
-// )
+const (
+	BlockNestingModeUnknown BlockNestingMode = 0
+	BlockNestingModeList    BlockNestingMode = 1
+	BlockNestingModeSet     BlockNestingMode = 2
+	BlockNestingModeSingle  BlockNestingMode = 3
+)

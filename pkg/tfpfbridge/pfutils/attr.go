@@ -23,8 +23,6 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -73,59 +71,6 @@ func FromAttrLike(attrLike AttrLike) Attr {
 		nestingMode: nestingMode,
 		AttrLike:    attrLike,
 	}
-}
-
-func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
-	attrLikeValue := reflect.ValueOf(attrLike)
-
-	// Check if attrLike implements fwschema.NestedAttribute. Use reflection because linkage is impossible.
-	getNestedObject := attrLikeValue.MethodByName("GetNestedObject")
-	if !getNestedObject.IsValid() {
-		return nil, 0
-	}
-	getNestedObjectResult := getNestedObject.Call(nil)
-	contract.Assertf(len(getNestedObjectResult) == 1,
-		"Expected NestedAttribute.GetNestedObject() to return 1 value")
-
-	// var nestedAttributeObject fwschema.NestedAttributeObject
-	nestedAttributeObject := getNestedObjectResult[0]
-
-	getAttributes := nestedAttributeObject.MethodByName("GetAttributes")
-	contract.Assertf(getAttributes.IsValid(),
-		"No NestedAttributeObject.GetAttributes method on type %s",
-		nestedAttributeObject.Type())
-
-	getAttributesResult := getAttributes.Call(nil)
-	contract.Assertf(len(getNestedObjectResult) == 1,
-		"Expected NestedAttributeObject.GetAttributes to return 1 value")
-
-	// type UnderlyingAttributes = map[string]fwschema.Attribute
-	// var underlyingAttributes fwchema.UnderlyingAttributes
-	underlyingAttributes := getAttributesResult[0]
-
-	result := map[string]Attr{}
-
-	mapIterator := underlyingAttributes.MapRange()
-	for mapIterator.Next() {
-		key := mapIterator.Key().Interface().(string)
-		value := mapIterator.Value().Interface().(AttrLike)
-		result[key] = FromAttrLike(value)
-	}
-
-	getNestingMode := attrLikeValue.MethodByName("GetNestingMode")
-	contract.Assertf(getNestingMode.IsValid(),
-		"No GetNestingMode method on type %s",
-		attrLikeValue.Type())
-
-	getNestingModeResult := getNestingMode.Call(nil)
-	contract.Assertf(len(getNestingModeResult) == 1,
-		"Expected NestedAttributeObject.GetNestingMode to return 1 value")
-
-	nestingModeValue := getNestingModeResult[0]
-	nm := nestingModeValue.Convert(reflect.TypeOf(uint8(0))).Interface().(uint8)
-	nestingMode := NestingMode(nm)
-
-	return result, nestingMode
 }
 
 type attrAdapter struct {
