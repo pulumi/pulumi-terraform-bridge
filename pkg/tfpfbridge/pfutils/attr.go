@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,12 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	//"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -36,49 +37,121 @@ import (
 // GetAttributes method is special since it returns a NestedAttributes interface that is also internal and cannot be
 // linked to. Instead, NestedAttriutes information is recorded in a dedicated new field.
 type Attr interface {
-	// AttrLike
-	// Nested map[string]Attr
+	AttrLike
+	IsNested() bool
+	Nested() map[string]Attr
+	NestingMode() NestingMode
+}
+
+type AttrLike interface {
 	IsComputed() bool
 	IsOptional() bool
 	IsRequired() bool
 	IsSensitive() bool
-
 	GetDeprecationMessage() string
 	GetDescription() string
 	GetMarkdownDescription() string
-
-	FrameworkType() attr.Type
-
-	Nested() map[string]Attr
+	GetType() attr.Type
 }
 
-// type AttrLike interface {
-// }
-
 func FromProviderAttribute(x pschema.Attribute) Attr {
-	panic("TODO")
+	return FromAttrLike(x)
 }
 
 func FromDataSourceAttribute(x dschema.Attribute) Attr {
-	panic("TODO")
+	return FromAttrLike(x)
 }
 
 func FromResourceAttribute(x rschema.Attribute) Attr {
-	panic("TODO")
+	return FromAttrLike(x)
 }
 
-func FromAnyAttribute(any interface{}) (Attr, error) {
-	switch a := any.(type) {
-	case rschema.Attribute:
-		return FromResourceAttribute(a), nil
-	case dschema.Attribute:
-		return FromDataSourceAttribute(a), nil
-	case pschema.Attribute:
-		return FromProviderAttribute(a), nil
-	default:
-		return nil, fmt.Errorf("Unrecognized attribute type: %v", reflect.TypeOf(any))
+func FromAttrLike(attrLike AttrLike) Attr {
+	nested, nestingMode := extractNestedAttributes(attrLike)
+	return &attrAdapter{
+		nested:      nested,
+		nestingMode: nestingMode,
+		AttrLike:    attrLike,
 	}
 }
+
+func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
+	attrLikeValue := reflect.ValueOf(attrLike)
+
+	// Check if attrLike implements fwschema.NestedAttribute. Use reflection because linkage is impossible.
+	getNestedObject := attrLikeValue.MethodByName("GetNestedObject")
+	if !getNestedObject.IsValid() {
+		return nil, 0
+	}
+	getNestedObjectResult := getNestedObject.Call(nil)
+	contract.Assertf(len(getNestedObjectResult) == 1,
+		"Expected NestedAttribute.GetNestedObject() to return 1 value")
+
+	// var nestedAttributeObject fwschema.NestedAttributeObject
+	nestedAttributeObject := getNestedObjectResult[0]
+
+	getAttributes := nestedAttributeObject.MethodByName("GetAttributes")
+	contract.Assertf(getAttributes.IsValid(), "No NestedAttributeObject.GetAttributes method")
+
+	getAttributesResult := getAttributes.Call(nil)
+	contract.Assertf(len(getNestedObjectResult) == 1,
+		"Expected NestedAttributeObject.GetAttributes to return 1 value")
+
+	// type UnderlyingAttributes = map[string]fwschema.Attribute
+	// var underlyingAttributes fwchema.UnderlyingAttributes
+	underlyingAttributes := getAttributesResult[0]
+
+	result := map[string]Attr{}
+
+	mapIterator := underlyingAttributes.MapRange()
+	for mapIterator.Next() {
+		key := mapIterator.Key().Interface().(string)
+		value := mapIterator.Value().Interface().(AttrLike)
+		result[key] = FromAttrLike(value)
+	}
+
+	getNestingMode := nestedAttributeObject.MethodByName("GetNestingMode")
+	contract.Assertf(getNestingMode.IsValid(), "No NestedAttributeObject.GetNestingMode method")
+
+	getNestingModeResult := getNestingMode.Call(nil)
+	contract.Assertf(len(getNestingModeResult) == 1,
+		"Expected NestedAttributeObject.GetNestingMode to return 1 value")
+
+	nestingModeValue := getNestedObjectResult[0]
+	nestingMode := NestingMode(nestingModeValue.Interface().(uint8))
+
+	return result, nestingMode
+}
+
+type attrAdapter struct {
+	nested      map[string]Attr
+	nestingMode NestingMode
+	AttrLike
+}
+
+var _ Attr = (*attrAdapter)(nil)
+
+func (a *attrAdapter) IsNested() bool {
+	return a.nested != nil
+}
+
+func (a *attrAdapter) Nested() map[string]Attr {
+	return a.nested
+}
+
+func (a *attrAdapter) NestingMode() NestingMode {
+	return a.nestingMode
+}
+
+type NestingMode uint8
+
+const (
+	NestingModeUnknown NestingMode = 0
+	NestingModeSingle  NestingMode = 1
+	NestingModeList    NestingMode = 2
+	NestingModeSet     NestingMode = 3
+	NestingModeMap     NestingMode = 4
+)
 
 func AttributeAtTerraformPath(schema Schema, path *tftypes.AttributePath) (Attr, error) {
 	// schema needs to implement AttributePathStepper here
@@ -86,67 +159,10 @@ func AttributeAtTerraformPath(schema Schema, path *tftypes.AttributePath) (Attr,
 	if err != nil {
 		return nil, fmt.Errorf("%v still remains in the path: %w", remaining, err)
 	}
-	a, err := FromAnyAttribute(res)
-	if err != nil {
-		return nil, fmt.Errorf("error at path %s: %w", path, err)
+	attrLike, ok := res.(AttrLike)
+	if !ok {
+		msg := "expected WalkAttributePath to return an AttrLike at path %s, got: %s"
+		return nil, fmt.Errorf(msg, path, reflect.TypeOf(res))
 	}
-	return a, nil
+	return FromAttrLike(attrLike), nil
 }
-
-// func SchemaToAttrMap(schema *tfsdk.Schema) map[string]Attr {
-// 	if schema.GetAttributes() == nil || len(schema.GetAttributes()) == 0 {
-// 		return map[string]Attr{}
-// 	}
-
-// 	// unable to reference fwschema.Attribute type directly, use GetAttriutes to hijack this type and get a
-// 	// collection variable (happens to be a map) that lets us track multiple instances of this type
-// 	queue := schema.GetAttributes()
-
-// 	// only the datastructure is needed, not the content, so clear all content here
-// 	for k := range queue {
-// 		delete(queue, k)
-// 	}
-
-// 	// pair queue with dests to record pending work; if queue[k] is a fwschema.Attribute to convert, then dests[k]
-// 	// records where the result of conversion should be stored:
-// 	//
-// 	//     dests[k].toMap[dests[k].key] = convert(queue[k])
-// 	type dest = struct {
-// 		toMap map[string]Attr
-// 		key   string
-// 	}
-// 	dests := map[string]dest{}
-
-// 	jobCounter := 0
-
-// 	// queue up converting schema.GetAttributes() into finalMap
-// 	finalMap := map[string]Attr{}
-// 	for k, v := range schema.GetAttributes() {
-// 		job := fmt.Sprintf("%d", jobCounter)
-// 		jobCounter++
-// 		queue[job] = v
-// 		dests[job] = dest{toMap: finalMap, key: k}
-// 	}
-
-// 	// keep converting until work queue is empty
-// 	for len(queue) > 0 {
-// 		job, inAttr := pop(queue)
-// 		attrDest := popAt(dests, job)
-
-// 		// outAttr := convert(inAttr)
-// 		outAttr := Attr{AttrLike: inAttr}
-// 		if nested := inAttr.GetAttributes(); nested != nil && nested.GetAttributes() != nil {
-// 			outAttr.Nested = map[string]Attr{}
-// 			for k, v := range nested.GetAttributes() {
-// 				// schedule outAttr.nested[k] = convert(v)
-// 				job := fmt.Sprintf("%d", jobCounter)
-// 				jobCounter++
-// 				queue[job] = v
-// 				dests[job] = dest{toMap: outAttr.Nested, key: k}
-// 			}
-// 		}
-// 		attrDest.toMap[attrDest.key] = outAttr
-// 	}
-
-// 	return finalMap
-// }

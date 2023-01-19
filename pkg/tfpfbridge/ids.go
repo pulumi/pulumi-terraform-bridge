@@ -43,7 +43,7 @@ func newIdExtractor(ctx context.Context, typeName string, schema pfutils.Schema)
 		return idExtractor{}, fmt.Errorf(msg, typeName, "id")
 	}
 
-	idAttrType := idAttr.FrameworkType().TerraformType(ctx)
+	idAttrType := idAttr.GetType().TerraformType(ctx)
 	if !idAttrType.Is(tftypes.String) {
 		msg := "Cannot bridge Terraform resource %q to Pulumi: " +
 			"the %q attribute has type %s but only %s is supported"

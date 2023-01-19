@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ type attrSchema struct {
 var _ shim.Schema = (*attrSchema)(nil)
 
 func (s *attrSchema) Type() shim.ValueType {
-	ty := s.attr.FrameworkType()
+	ty := s.attr.GetType()
 	vt, err := convertType(ty)
 	if err != nil {
 		panic(err)
@@ -77,7 +77,7 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
-	t := s.attr.FrameworkType()
+	t := s.attr.GetType()
 
 	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
 	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,

@@ -16,6 +16,8 @@ package pfutils
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -38,14 +40,80 @@ type Schema interface {
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {
-	panic("TODO")
+	attrs := convertMap(FromProviderAttribute, x.Attributes)
+	blocks := convertMap(FromProviderBlock, x.Blocks)
+	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
-	panic("TODO")
+	attrs := convertMap(FromDataSourceAttribute, x.Attributes)
+	blocks := convertMap(FromDataSourceBlock, x.Blocks)
+	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
-	//x.Type().TerraformType(context.Context)
-	panic("TODO")
+	attrs := convertMap(FromResourceAttribute, x.Attributes)
+	blocks := convertMap(FromResourceBlock, x.Blocks)
+	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+}
+
+type schemaAdapter[T any] struct {
+	attrType           attr.Type
+	deprecationMessage string
+	attrs              map[string]Attr
+	blocks             map[string]Block
+	attributeAtPath    func(context.Context, path.Path) (T, diag.Diagnostics)
+}
+
+var _ Schema = (*schemaAdapter[interface{}])(nil)
+
+func newSchemaAdapter[T any](
+	t attr.Type,
+	deprecationMessage string,
+	attrs map[string]Attr,
+	blocks map[string]Block,
+	atPath func(context.Context, path.Path) (T, diag.Diagnostics),
+) *schemaAdapter[T] {
+	return &schemaAdapter[T]{
+		attrType:           t,
+		deprecationMessage: deprecationMessage,
+		attributeAtPath:    atPath,
+		attrs:              attrs,
+		blocks:             blocks,
+	}
+}
+
+func (a *schemaAdapter[T]) DeprecationMessage() string {
+	return a.deprecationMessage
+}
+
+func (a *schemaAdapter[T]) AttributeAtPath(ctx context.Context, p path.Path) (Attr, diag.Diagnostics) {
+	raw, diag := a.attributeAtPath(ctx, p)
+	var rawbox interface{} = raw
+	attrLike, ok := rawbox.(AttrLike)
+	if !ok {
+		detail := fmt.Sprintf("Expected an AttrLike at path %s, got %s", p, reflect.TypeOf(raw))
+		diag.AddError("Bad attributeAtPath result", detail)
+	}
+	return FromAttrLike(attrLike), diag
+}
+
+func (a *schemaAdapter[T]) Attrs() map[string]Attr {
+	return a.attrs
+}
+
+func (a *schemaAdapter[T]) Blocks() map[string]Block {
+	return a.blocks
+}
+
+func (a *schemaAdapter[T]) Type() attr.Type {
+	return a.attrType
+}
+
+func convertMap[A any, B any](f func(A) B, m map[string]A) map[string]B {
+	r := map[string]B{}
+	for k, v := range m {
+		r[k] = f(v)
+	}
+	return r
 }
