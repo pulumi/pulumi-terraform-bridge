@@ -32,10 +32,10 @@ import (
 // Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
 // Check and the prior state. The implementation here calls PlanResourceChange Terraform method. Essentially:
 //
-//     Diff(priorState, checkedInputs):
-//         proposedNewState = priorState.applyChanges(checkedInputs)
-//         plannedState = PlanResourceChange(priorState, proposedNewState)
-//         priorState.Diff(plannedState)
+//	Diff(priorState, checkedInputs):
+//	    proposedNewState = priorState.applyChanges(checkedInputs)
+//	    plannedState = PlanResourceChange(priorState, proposedNewState)
+//	    priorState.Diff(plannedState)
 func (p *Provider) Diff(
 	urn resource.URN,
 	id resource.ID,
@@ -89,12 +89,14 @@ func (p *Provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	replaceKeys, err := diffPathsToPropertyKeySet(planResp.RequiresReplace)
+	renames := convert.NewTypeLocalPropertyNames(p.propertyNames, tokens.Token(rh.token))
+
+	replaceKeys, err := diffPathsToPropertyKeySet(renames, planResp.RequiresReplace)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	changedKeys, err := diffChangedKeys(tfDiff)
+	changedKeys, err := diffChangedKeys(renames, tfDiff)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -129,21 +131,22 @@ func (p *Provider) Diff(
 }
 
 // Every entry in tfDiff has an AttributePath; extract the set of paths and find their roots.
-func diffChangedKeys(tfDiff []tftypes.ValueDiff) ([]resource.PropertyKey, error) {
+func diffChangedKeys(renames convert.LocalPropertyNames, tfDiff []tftypes.ValueDiff) ([]resource.PropertyKey, error) {
 	paths := []*tftypes.AttributePath{}
 	for _, diff := range tfDiff {
 		paths = append(paths, diff.Path)
 	}
-	return diffPathsToPropertyKeySet(paths)
+	return diffPathsToPropertyKeySet(renames, paths)
 }
 
 // Convert AttributeName to PropertyKey. Currently assume property names are identical in Pulumi and TF worlds.
-func diffAttributeNameToPropertyKey(name tftypes.AttributeName) resource.PropertyKey {
-	return resource.PropertyKey(tokens.Name(string(name)))
+func diffAttributeNameToPropertyKey(renames convert.LocalPropertyNames, name tftypes.AttributeName) resource.PropertyKey {
+	var property convert.TerraformPropertyName = string(name)
+	return renames.PropertyKey(property, nil /* this param should be deprecated */)
 }
 
 // For AttributePath that drills down from a property key, return that top-level propery key.
-func diffPathToPropertyKey(path *tftypes.AttributePath) (resource.PropertyKey, error) {
+func diffPathToPropertyKey(renames convert.LocalPropertyNames, path *tftypes.AttributePath) (resource.PropertyKey, error) {
 	steps := path.Steps()
 	if len(steps) == 0 {
 		return "", fmt.Errorf("Unexpected empty AttributePath")
@@ -155,14 +158,14 @@ func diffPathToPropertyKey(path *tftypes.AttributePath) (resource.PropertyKey, e
 		return "", fmt.Errorf("AttributePath did not start with AttributeName: %v", path.String())
 	}
 
-	return diffAttributeNameToPropertyKey(name), nil
+	return diffAttributeNameToPropertyKey(renames, name), nil
 }
 
 // Computes diffPathToPropertyKey for every path and gathers root property keys into a set.
-func diffPathsToPropertyKeySet(paths []*tftypes.AttributePath) ([]resource.PropertyKey, error) {
+func diffPathsToPropertyKeySet(renames convert.LocalPropertyNames, paths []*tftypes.AttributePath) ([]resource.PropertyKey, error) {
 	keySet := map[resource.PropertyKey]struct{}{}
 	for _, path := range paths {
-		key, err := diffPathToPropertyKey(path)
+		key, err := diffPathToPropertyKey(renames, path)
 		if err != nil {
 			return nil, err
 		}
