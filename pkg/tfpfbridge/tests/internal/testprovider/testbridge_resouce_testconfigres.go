@@ -17,11 +17,9 @@ package testprovider
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 type testconfigres struct {
@@ -35,18 +33,16 @@ func newTestConfigRes() resource.Resource {
 	return &testconfigres{}
 }
 
-func (*testconfigres) schema() tfsdk.Schema {
-	return tfsdk.Schema{
+func (*testconfigres) schema() rschema.Schema {
+	return rschema.Schema{
 		Description: `
 testbridge_testconfigres is built to test Configure support in the provider.
 `,
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
+		Attributes: map[string]rschema.Attribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 			},
-			"configCopy": {
-				Type:     types.StringType,
+			"configCopy": rschema.StringAttribute{
 				Computed: true,
 			},
 		},
@@ -64,8 +60,8 @@ func (e *testconfigres) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_testconfigres"
 }
 
-func (e *testconfigres) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return e.schema(), nil
+func (e *testconfigres) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = e.schema()
 }
 
 func (e *testconfigres) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
