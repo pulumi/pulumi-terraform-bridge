@@ -15,11 +15,17 @@
 package pfutils
 
 import (
+	"context"
+	"regexp"
+	"strconv"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 // Block type works around not being able to link to fwschema.Block from
@@ -53,28 +59,60 @@ func FromResourceBlock(x rschema.Block) Block {
 }
 
 func FromBlockLike(x BlockLike) Block {
+	minItems, maxItems, _ := detectSizeConstraints(x)
 	attrs, blocks, mode := extractBlockNesting(x)
 	return &blockAdapter{
 		BlockLike:    x,
 		nestedAttrs:  attrs,
 		nestedBlocks: blocks,
 		nestingMode:  mode,
+		minItems:     minItems,
+		maxItems:     maxItems,
 	}
+}
+
+type hasListValidators interface {
+	ListValidators() []validator.List
+}
+
+var listSizeRegExp = regexp.MustCompile(`^list must contain at least (\d+) elements and at most (\d+) elements$`)
+
+func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
+	ctx := context.Background()
+
+	// List size constraints are especially important to Pulumi so this code goes the extra mile to try to detect
+	// them. This influences flattening lists with MaxItems=1.
+	if listBlock, isList := x.(hasListValidators); isList {
+		for _, v := range listBlock.ListValidators() {
+			desc := v.Description(ctx)
+			if m := listSizeRegExp.FindStringSubmatch(desc); m != nil {
+				minElements, err := strconv.Atoi(m[1])
+				contract.AssertNoError(err)
+				maxElements, err := strconv.Atoi(m[2])
+				contract.AssertNoError(err)
+				return int64(minElements), int64(maxElements), true
+			}
+		}
+	}
+
+	return 0, 0, false
 }
 
 type blockAdapter struct {
 	nestedAttrs  map[string]Attr
 	nestedBlocks map[string]Block
 	nestingMode  BlockNestingMode
+	minItems     int64
+	maxItems     int64
 	BlockLike
 }
 
 func (b *blockAdapter) GetMinItems() int64 {
-	return 0 // TODO can we guess this somehow?
+	return b.minItems
 }
 
 func (b *blockAdapter) GetMaxItems() int64 {
-	return 0 // TODO can we guess this somehow?
+	return b.maxItems
 }
 
 func (b *blockAdapter) NestedAttrs() map[string]Attr {
