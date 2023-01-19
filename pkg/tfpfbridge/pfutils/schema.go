@@ -25,11 +25,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // Attr type works around not being able to link to fwschema.Schema from
 // "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
 type Schema interface {
+	tftypes.AttributePathStepper
+
 	Type() attr.Type
 
 	Attrs() map[string]Attr
@@ -42,22 +45,23 @@ type Schema interface {
 func FromProviderSchema(x pschema.Schema) Schema {
 	attrs := convertMap(FromProviderAttribute, x.Attributes)
 	blocks := convertMap(FromProviderBlock, x.Blocks)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
 	attrs := convertMap(FromDataSourceAttribute, x.Attributes)
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
 }
 
 type schemaAdapter[T any] struct {
+	tftypes.AttributePathStepper
 	attrType           attr.Type
 	deprecationMessage string
 	attrs              map[string]Attr
@@ -68,6 +72,7 @@ type schemaAdapter[T any] struct {
 var _ Schema = (*schemaAdapter[interface{}])(nil)
 
 func newSchemaAdapter[T any](
+	stepper tftypes.AttributePathStepper,
 	t attr.Type,
 	deprecationMessage string,
 	attrs map[string]Attr,
@@ -75,11 +80,12 @@ func newSchemaAdapter[T any](
 	atPath func(context.Context, path.Path) (T, diag.Diagnostics),
 ) *schemaAdapter[T] {
 	return &schemaAdapter[T]{
-		attrType:           t,
-		deprecationMessage: deprecationMessage,
-		attributeAtPath:    atPath,
-		attrs:              attrs,
-		blocks:             blocks,
+		AttributePathStepper: stepper,
+		attrType:             t,
+		deprecationMessage:   deprecationMessage,
+		attributeAtPath:      atPath,
+		attrs:                attrs,
+		blocks:               blocks,
 	}
 }
 

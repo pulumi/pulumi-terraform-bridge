@@ -156,9 +156,10 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	}
 	attr, err := AttributeAtTerraformPath(schema, path)
 	switch {
-	case strings.Contains(err.Error(), "path leads to block, not an attribute"):
-		return pathToBlock, nil
 	case err != nil:
+		if strings.Contains(err.Error(), "path leads to block, not an attribute") {
+			return pathToBlock, nil
+		}
 		return pathUnknown, err
 	case !attr.IsComputed():
 		return pathToNonComputedAttribute, nil
@@ -178,11 +179,13 @@ func getNearestEnclosingPathType(schema Schema, path *tftypes.AttributePath) (pa
 	for {
 		ty, err := getPathType(schema, path)
 		switch {
-		case strings.Contains(err.Error(), "path leads to element, attribute, or block of a schema.Attribute that has no schema associated with it"):
-			steps := path.Steps()
-			path = tftypes.NewAttributePathWithSteps(steps[0 : len(steps)-1])
-			continue
 		case err != nil:
+			msg := "path leads to element, attribute, or block of a schema.Attribute that has no schema associated with it"
+			if strings.Contains(err.Error(), msg) {
+				steps := path.Steps()
+				path = tftypes.NewAttributePathWithSteps(steps[0 : len(steps)-1])
+				continue
+			}
 			return 0, err
 		default:
 			return ty, nil

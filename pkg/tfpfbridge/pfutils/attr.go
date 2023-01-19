@@ -104,7 +104,6 @@ const (
 )
 
 func AttributeAtTerraformPath(schema Schema, path *tftypes.AttributePath) (Attr, error) {
-	// schema needs to implement AttributePathStepper here
 	res, remaining, err := tftypes.WalkAttributePath(schema, path)
 	if err != nil {
 		return nil, fmt.Errorf("%v still remains in the path: %w", remaining, err)
