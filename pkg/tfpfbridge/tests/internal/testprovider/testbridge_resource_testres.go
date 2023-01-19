@@ -93,7 +93,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a copy of optionalInputString",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"optionalInputString"},
+					PropagatesNullFrom{"optionalInputString"},
 				},
 			},
 			"optionalInputNumber": schema.NumberAttribute{
@@ -104,7 +104,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a copy of optionalInputNumber",
 				PlanModifiers: []planmodifier.Number{
 					numberplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"optionalInputNumber"},
+					PropagatesNullFrom{"optionalInputNumber"},
 				},
 			},
 			"optionalInputBool": schema.BoolAttribute{
@@ -115,7 +115,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a copy of optionalInputBool",
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"optionalInputBool"},
+					PropagatesNullFrom{"optionalInputBool"},
 				},
 			},
 			"optionalInputStringList": schema.ListAttribute{
@@ -128,7 +128,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a copy of optionalInputStringList",
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"optionalInputStringList"},
+					PropagatesNullFrom{"optionalInputStringList"},
 				},
 			},
 			"optionalInputStringMap": schema.MapAttribute{
@@ -141,7 +141,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a copy of optionalInputStringMap",
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"optionalInputStringMap"},
+					PropagatesNullFrom{"optionalInputStringMap"},
 				},
 			},
 			"singleNestedAttr": schema.SingleNestedAttribute{
@@ -161,7 +161,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a JSON-ified copy of singleNestedAttr input",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"singleNestedAttr"},
+					PropagatesNullFrom{"singleNestedAttr"},
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
@@ -205,7 +205,7 @@ removes the cloud state, and Read copies it.
 				Description: "Computed as a JSON-ified copy of services input",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-					// PropagatesNullFrom{"services"},
+					PropagatesNullFrom{"services"},
 				},
 			},
 		},

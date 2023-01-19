@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -26,27 +28,11 @@ type PropagatesNullFrom struct {
 	AnotherAttribute string
 }
 
-func (mod PropagatesNullFrom) Modify(ctx context.Context, req tfsdk.ModifyAttributePlanRequest, resp *tfsdk.ModifyAttributePlanResponse) {
-	var attrs map[string]tftypes.Value
-	err := req.Config.Raw.As(&attrs)
-	if err != nil {
-		panic(err)
-	}
-	anotherAttr, ok := attrs[mod.AnotherAttribute]
-	if !ok {
-		panic(fmt.Errorf("No attribute in config: %s", mod.AnotherAttribute))
-	}
-
-	if anotherAttr.IsNull() {
-		attrTy := resp.AttributePlan.Type(ctx)
-		nilValue := tftypes.NewValue(attrTy.TerraformType(ctx), nil)
-		nilPlan, err := attrTy.ValueFromTerraform(ctx, nilValue)
-		if err != nil {
-			panic(err)
-		}
-		resp.AttributePlan = nilPlan
-	}
-}
+var _ planmodifier.String = PropagatesNullFrom{}
+var _ planmodifier.Number = PropagatesNullFrom{}
+var _ planmodifier.Bool = PropagatesNullFrom{}
+var _ planmodifier.List = PropagatesNullFrom{}
+var _ planmodifier.Map = PropagatesNullFrom{}
 
 func (mod PropagatesNullFrom) Description(_ context.Context) string {
 	return "Sets plan to null if AnotherAttribute is null in config"
@@ -54,4 +40,53 @@ func (mod PropagatesNullFrom) Description(_ context.Context) string {
 
 func (mod PropagatesNullFrom) MarkdownDescription(ctx context.Context) string {
 	return mod.Description(ctx)
+}
+
+func (mod PropagatesNullFrom) PlanModifyNumber(ctx context.Context, req planmodifier.NumberRequest,
+	resp *planmodifier.NumberResponse) {
+	if mod.anotherAttributeIsNull(req.Config) {
+		resp.PlanValue = types.NumberNull()
+	}
+}
+
+func (mod PropagatesNullFrom) PlanModifyString(ctx context.Context, req planmodifier.StringRequest,
+	resp *planmodifier.StringResponse) {
+	if mod.anotherAttributeIsNull(req.Config) {
+		resp.PlanValue = types.StringNull()
+	}
+}
+
+func (mod PropagatesNullFrom) PlanModifyBool(ctx context.Context, req planmodifier.BoolRequest,
+	resp *planmodifier.BoolResponse) {
+	if mod.anotherAttributeIsNull(req.Config) {
+		resp.PlanValue = types.BoolNull()
+	}
+}
+
+func (mod PropagatesNullFrom) PlanModifyList(ctx context.Context, req planmodifier.ListRequest,
+	resp *planmodifier.ListResponse) {
+	if mod.anotherAttributeIsNull(req.Config) {
+		resp.PlanValue = types.ListNull(req.PlanValue.ElementType(ctx))
+	}
+}
+
+func (mod PropagatesNullFrom) PlanModifyMap(ctx context.Context, req planmodifier.MapRequest,
+	resp *planmodifier.MapResponse) {
+	if mod.anotherAttributeIsNull(req.Config) {
+		resp.PlanValue = types.MapNull(req.PlanValue.ElementType(ctx))
+	}
+}
+
+func (mod PropagatesNullFrom) anotherAttributeIsNull(config tfsdk.Config) bool {
+	var attrs map[string]tftypes.Value
+	err := config.Raw.As(&attrs)
+	if err != nil {
+		panic(err)
+	}
+	anotherAttr, ok := attrs[mod.AnotherAttribute]
+	if !ok {
+		panic(fmt.Errorf("PropagatesNullFrom{%q} plan modifier did not find the %q attribute in config",
+			mod.AnotherAttribute, mod.AnotherAttribute))
+	}
+	return anotherAttr.IsNull()
 }
