@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schemashim
+package pfutils
 
 import (
 	"fmt"
+	"reflect"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// block type works around not being able to link to fwschema.Block from
+// Block type works around not being able to link to fwschema.Block from
 // "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
 //
 // Most methods from fwschema.Block have simple signatures and are copied into blockLike interface. Casting to blockLike
@@ -30,14 +32,14 @@ import (
 // There are some exceptions though such as GetBlocks() map[string]Block and GetAttributes() map[string]Attribute. These
 // signatures refer to further internal types. Instead of direct linking, this information is recovered and recorded in
 // new dedicated fields.
-type block struct {
-	blockLike
-	blockNestingMode blockNestingMode
-	nestedBlocks     map[string]block
-	nestedAttrs      map[string]attr
+type Block struct {
+	BlockLike
+	BlockNestingMode BlockNestingMode
+	NestedBlocks     map[string]Block
+	NestedAttrs      map[string]Attr
 }
 
-type blockLike interface {
+type BlockLike interface {
 	GetDeprecationMessage() string
 	GetDescription() string
 	GetMarkdownDescription() string
@@ -48,9 +50,28 @@ type blockLike interface {
 	Type() pfattr.Type
 }
 
-func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
+func BlockAtTerraformPath(schema *tfsdk.Schema, path *tftypes.AttributePath) (Block, error) {
+	res, remaining, err := tftypes.WalkAttributePath(*schema, path)
+	if err != nil {
+		return Block{}, fmt.Errorf("%v still remains in the path: %w", remaining, err)
+	}
+	switch r := res.(type) {
+	case tfsdk.Block:
+		m := SchemaToBlockMap(&tfsdk.Schema{
+			Blocks: map[string]tfsdk.Block{
+				"x": r,
+			},
+		})
+		return m["x"], nil
+	default:
+		return Block{}, fmt.Errorf("Expected a Block but found %s at path %s",
+			reflect.TypeOf(r), path)
+	}
+}
+
+func SchemaToBlockMap(schema *tfsdk.Schema) map[string]Block {
 	if schema.GetBlocks() == nil || len(schema.GetBlocks()) == 0 {
-		return map[string]block{}
+		return map[string]Block{}
 	}
 
 	queue := schema.GetBlocks()
@@ -59,7 +80,7 @@ func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
 	}
 
 	type dest struct {
-		toMap map[string]block
+		toMap map[string]Block
 		key   string
 	}
 
@@ -67,7 +88,7 @@ func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
 
 	jobCounter := 0
 
-	finalMap := map[string]block{}
+	finalMap := map[string]Block{}
 	for k, v := range schema.GetBlocks() {
 		job := fmt.Sprintf("%d", jobCounter)
 		jobCounter++
@@ -80,18 +101,18 @@ func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
 		blockDest := popAt(dests, job)
 
 		// outBlock := convert(inBlock)
-		outBlock := block{
-			blockLike:        inBlock,
-			blockNestingMode: blockNestingMode(uint8(inBlock.GetNestingMode())),
-			nestedBlocks:     map[string]block{},
-			nestedAttrs:      map[string]attr{},
+		outBlock := Block{
+			BlockLike:        inBlock,
+			BlockNestingMode: BlockNestingMode(uint8(inBlock.GetNestingMode())),
+			NestedBlocks:     map[string]Block{},
+			NestedAttrs:      map[string]Attr{},
 		}
 
 		for k, v := range inBlock.GetBlocks() {
 			job := fmt.Sprintf("%d", jobCounter)
 			jobCounter++
 			queue[job] = v
-			dests[job] = dest{toMap: outBlock.nestedBlocks, key: k}
+			dests[job] = dest{toMap: outBlock.NestedBlocks, key: k}
 		}
 
 		if attributes := inBlock.GetAttributes(); attributes != nil {
@@ -99,7 +120,7 @@ func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
 			for k, v := range attributes {
 				m[k] = v.(tfsdk.Attribute)
 			}
-			outBlock.nestedAttrs = schemaToAttrMap(&tfsdk.Schema{Attributes: m})
+			outBlock.NestedAttrs = SchemaToAttrMap(&tfsdk.Schema{Attributes: m})
 		}
 
 		blockDest.toMap[blockDest.key] = outBlock
@@ -108,11 +129,11 @@ func schemaToBlockMap(schema *tfsdk.Schema) map[string]block {
 	return finalMap
 }
 
-type blockNestingMode uint8
+type BlockNestingMode uint8
 
 const (
-	blockNestingModeUnknown blockNestingMode = 0
-	blockNestingModeList    blockNestingMode = 1
-	blockNestingModeSet     blockNestingMode = 2
-	blockNestingModeSingle  blockNestingMode = 3
+	BlockNestingModeUnknown BlockNestingMode = 0
+	BlockNestingModeList    BlockNestingMode = 1
+	BlockNestingModeSet     BlockNestingMode = 2
+	BlockNestingModeSingle  BlockNestingMode = 3
 )

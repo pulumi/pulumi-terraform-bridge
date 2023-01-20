@@ -20,12 +20,13 @@ import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type blockSchema struct {
 	key   string
-	block block
+	block pfutils.Block
 }
 
 var _ shim.Schema = (*blockSchema)(nil)
@@ -56,7 +57,7 @@ func (s *blockSchema) Elem() interface{} {
 	//
 	// See also: documentation on shim.Schema.Elem().
 	if tt, ok := t.(types.ObjectType); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.block.nestedAttrs)
+		var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs)
 		return res
 	}
 
@@ -68,9 +69,9 @@ func (s *blockSchema) Elem() interface{} {
 	var schema shim.Schema
 	switch tt := t.(type) {
 	case types.MapType:
-		schema = newTypeSchema(tt.ElemType, s.block.nestedAttrs)
+		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs)
 	case types.ListType:
-		schema = newTypeSchema(tt.ElemType, s.block.nestedAttrs)
+		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs)
 	default:
 		// TODO SetType
 		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))

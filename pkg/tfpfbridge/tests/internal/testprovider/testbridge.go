@@ -42,7 +42,8 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
 		Resources: map[string]*info.ResourceInfo{
-			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testres":     {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testcompres": {Tok: "testbridge:index/testres:Testcompres"},
 		},
 	}
 }
@@ -72,5 +73,6 @@ func (p *syntheticProvider) DataSources(context.Context) []func() datasource.Dat
 func (p *syntheticProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newTestres,
+		newTestCompRes,
 	}
 }

@@ -20,18 +20,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaMap struct {
-	attrs  map[string]attr
-	blocks map[string]block
+	attrs  map[string]pfutils.Attr
+	blocks map[string]pfutils.Block
 }
 
 func newSchemaMap(tf *tfsdk.Schema) *schemaMap {
 	return &schemaMap{
-		attrs:  schemaToAttrMap(tf),
-		blocks: schemaToBlockMap(tf),
+		attrs:  pfutils.SchemaToAttrMap(tf),
+		blocks: pfutils.SchemaToBlockMap(tf),
 	}
 }
 

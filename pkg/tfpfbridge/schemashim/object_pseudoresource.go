@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -29,10 +30,10 @@ import (
 type objectPseudoResource struct {
 	obj types.ObjectType
 
-	attrs map[string]attr
+	attrs map[string]pfutils.Attr
 }
 
-func newObjectPseudoResource(t types.ObjectType, attrs map[string]attr) *objectPseudoResource {
+func newObjectPseudoResource(t types.ObjectType, attrs map[string]pfutils.Attr) *objectPseudoResource {
 	return &objectPseudoResource{obj: t, attrs: attrs}
 }
 

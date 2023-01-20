@@ -101,6 +101,30 @@
         "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
     },
     "resources": {
+        "testbridge:index/testres:Testcompres": {
+            "properties": {
+                "ecdsacurve": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ecdsacurve"
+            ],
+            "inputProperties": {
+                "ecdsacurve": {
+                    "type": "string"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testcompres resources.\n",
+                "properties": {
+                    "ecdsacurve": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:Testres": {
             "properties": {
                 "optionalInputBool": {

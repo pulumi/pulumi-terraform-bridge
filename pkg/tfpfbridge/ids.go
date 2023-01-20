@@ -75,3 +75,20 @@ func (ie idExtractor) extractID(state tftypes.Value) (string, error) {
 	}
 	return idString, nil
 }
+
+// Drills down into a Value. Returns the found value and a flag indicating if it was found or not.
+func valueAtPath(p *tftypes.AttributePath, root tftypes.Value) (tftypes.Value, bool, error) {
+	result, _, err := tftypes.WalkAttributePath(root, p)
+	if err == tftypes.ErrInvalidStep {
+		return tftypes.Value{}, false, nil // not found
+	}
+	if err != nil {
+		return tftypes.Value{}, false, err // error
+	}
+	resultValue, ok := result.(tftypes.Value)
+	if !ok {
+		return tftypes.Value{}, false, fmt.Errorf(
+			"Expected a value of type tftypes.Value but got: %v", result)
+	}
+	return resultValue, true, nil
+}
