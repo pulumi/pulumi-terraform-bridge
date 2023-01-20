@@ -24,9 +24,11 @@ import (
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
