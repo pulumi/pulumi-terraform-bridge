@@ -186,7 +186,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	}
 
 	// Run the plugin and decode its provider config.
-	// nolint: gas
+	//nolint:gas
 	cmd := exec.Command(path, "-get-provider-info")
 	out, err := cmd.StdoutPipe()
 	if err != nil {

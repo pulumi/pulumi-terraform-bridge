@@ -129,8 +129,9 @@ func (ct *CoverageTracker) languageConversionSuccess(languageName string, progra
 	})
 }
 
-//nolint
 // Used when: generator has successfully converted current example, but threw out some warnings
+//
+//nolint:unused
 func (ct *CoverageTracker) languageConversionWarning(languageName string, warningDiagnostics hcl.Diagnostics) {
 	if ct == nil {
 		return
