@@ -177,6 +177,24 @@ func (e *encoding) deriveDecoderForNamedObjectType(ref string, t tftypes.Object)
 }
 
 func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (Encoder, error) {
+	if (t.Is(tftypes.List{}) || t.Is(tftypes.Set{})) && typeSpec.Type != "array" {
+		// For IsMaxItemOne lists or sets, Pulumi flattens List[T] or Set[T] to T.
+		var elementType tftypes.Type
+		if t.Is(tftypes.List{}) {
+			elementType = t.(tftypes.List).ElementType
+		} else {
+			elementType = t.(tftypes.Set).ElementType
+		}
+		encoder, err := e.deriveEncoder(typeSpec, elementType)
+		if err != nil {
+			return nil, err
+		}
+		return &flattenedEncoder{
+			collectionType: t,
+			elementEncoder: encoder,
+		}, nil
+	}
+
 	if typeSpec.Ref != "" {
 		oT, ok := t.(tftypes.Object)
 		if !ok {
@@ -223,6 +241,23 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 }
 
 func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (Decoder, error) {
+	if (t.Is(tftypes.List{}) || t.Is(tftypes.Set{})) && typeSpec.Type != "array" {
+		// In case of IsMaxItemOne lists or sets, Pulumi flattens List[T] or Set[T] to T.
+		var elementType tftypes.Type
+		if t.Is(tftypes.List{}) {
+			elementType = t.(tftypes.List).ElementType
+		} else {
+			elementType = t.(tftypes.Set).ElementType
+		}
+		decoder, err := e.deriveDecoder(typeSpec, elementType)
+		if err != nil {
+			return nil, err
+		}
+		return &flattenedDecoder{
+			elementDecoder: decoder,
+		}, nil
+	}
+
 	if typeSpec.Ref != "" {
 		oT, ok := t.(tftypes.Object)
 		if !ok {
