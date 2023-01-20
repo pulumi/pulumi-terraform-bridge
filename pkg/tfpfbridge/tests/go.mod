@@ -8,8 +8,8 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.14.2
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge v0.0.0
-	github.com/pulumi/pulumi/pkg/v3 v3.50.1
-	github.com/pulumi/pulumi/sdk/v3 v3.50.1
+	github.com/pulumi/pulumi/pkg/v3 v3.51.0
+	github.com/pulumi/pulumi/sdk/v3 v3.51.0
 	github.com/stretchr/testify v1.8.1
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
 )
