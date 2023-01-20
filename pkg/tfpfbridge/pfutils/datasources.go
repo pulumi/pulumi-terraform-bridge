@@ -18,54 +18,53 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
-// Represents all provider's resources pre-indexed by TypeName.
-type Resources interface {
+// Represents all provider's datasources pre-indexed by TypeName.
+type DataSources interface {
 	All() []TypeName
 	Has(TypeName) bool
 	Schema(TypeName) tfsdk.Schema
 	Diagnostics(TypeName) diag.Diagnostics
 	AllDiagnostics() diag.Diagnostics
-	Resource(TypeName) resource.Resource
+	DataSource(TypeName) datasource.DataSource
 }
 
-// Collects all resources from prov and indexes them by TypeName.
-func GatherResources(ctx context.Context, prov provider.Provider) (Resources, error) {
+func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources, error) {
 	provMetadata := queryProviderMetadata(ctx, prov)
-	rs := make(collection[func() resource.Resource])
+	ds := make(collection[func() datasource.DataSource])
 
-	for _, makeResource := range prov.Resources(ctx) {
-		res := makeResource()
+	for _, makeDataSource := range prov.DataSources(ctx) {
+		dataSource := makeDataSource()
 
-		meta := resource.MetadataResponse{}
-		res.Metadata(ctx, resource.MetadataRequest{
+		meta := datasource.MetadataResponse{}
+		dataSource.Metadata(ctx, datasource.MetadataRequest{
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		resSchema, diag := res.GetSchema(ctx)
+		dataSourceSchema, diag := dataSource.GetSchema(ctx)
 		if err := checkDiagsForErrors(diag); err != nil {
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		rs[TypeName(meta.TypeName)] = entry[func() resource.Resource]{
-			t:           makeResource,
-			schema:      resSchema,
+		ds[TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
+			t:           makeDataSource,
+			schema:      dataSourceSchema,
 			diagnostics: diag,
 		}
 	}
 
-	return &resources{collection: rs}, nil
+	return &dataSources{collection: ds}, nil
 }
 
-type resources struct {
-	collection[func() resource.Resource]
+type dataSources struct {
+	collection[func() datasource.DataSource]
 }
 
-func (r *resources) Resource(name TypeName) resource.Resource {
-	return r.collection[name].t()
+func (d *dataSources) DataSource(name TypeName) datasource.DataSource {
+	return d.collection[name].t()
 }

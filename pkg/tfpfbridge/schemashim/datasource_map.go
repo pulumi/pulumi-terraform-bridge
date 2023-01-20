@@ -15,27 +15,39 @@
 package schemashim
 
 import (
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-type schemaOnlyDataSourceMap struct{}
+type schemaOnlyDataSourceMap struct {
+	dataSources pfutils.DataSources
+}
 
 var _ shim.ResourceMap = (*schemaOnlyDataSourceMap)(nil)
 
 func (m *schemaOnlyDataSourceMap) Len() int {
-	return 0 // TODO
+	return len(m.dataSources.All())
 }
 
 func (m *schemaOnlyDataSourceMap) Get(key string) shim.Resource {
-	panic("TODO")
+	s := m.dataSources.Schema(pfutils.TypeName(key))
+	return &schemaOnlyDataSource{&s}
 }
 
 func (m *schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {
-	panic("TODO")
+	if !m.dataSources.Has(pfutils.TypeName(key)) {
+		return nil, false
+	}
+	return m.Get(key), true
 }
 
 func (m *schemaOnlyDataSourceMap) Range(each func(key string, value shim.Resource) bool) {
-	// TODO
+	for _, typeName := range m.dataSources.All() {
+		key := string(typeName)
+		if !each(key, m.Get(key)) {
+			return
+		}
+	}
 }
 
 func (*schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {

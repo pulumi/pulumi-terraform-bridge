@@ -52,8 +52,8 @@ type ProviderInfo struct {
 
 	// Config      map[string]*SchemaInfo             // a map of TF name to config schema overrides.
 	// ExtraConfig map[string]*ConfigInfo             // a list of Pulumi-only configuration variables.
-	Resources map[string]*ResourceInfo // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	// DataSources map[string]*DataSourceInfo         // a map of TF name to Pulumi resource info.
+	Resources   map[string]*ResourceInfo   // a map of TF name to Pulumi name; standard mangling occurs if no entry.
+	DataSources map[string]*DataSourceInfo // a map of TF name to Pulumi resource info.
 	// ExtraTypes  map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for overlaid types.
 
 	// ExtraResourceHclExamples is a slice of additional HCL examples attached to resources which are converted to the
@@ -116,7 +116,6 @@ type ResourceInfo struct {
 	//Aliases             []AliasInfo // aliases for this resources, if any.
 	DeprecationMessage string // message to use in deprecation warning
 	CSharpName         string // .NET-specific name
-
 }
 
 // GetTok returns a resource type token
@@ -130,6 +129,28 @@ func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Field
 
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 // func (info *ResourceInfo) ReplaceExamplesSection() bool {
+//	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+//}
+
+// DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
+type DataSourceInfo struct {
+	Tok tokens.ModuleMember
+	//      Fields map[string]*SchemaInfo
+	//	Docs               *DocInfo // overrides for finding and mapping TF docs.
+	DeprecationMessage string // message to use in deprecation warning
+}
+
+// GetTok returns a datasource type token
+func (info *DataSourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the datasource's custom fields
+// func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
+
+// GetDocs returns a datasource docs override from the Pulumi provider
+// func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }
+
+// ReplaceExamplesSection returns whether to replace the upstream examples with our own source
+//func (info *DataSourceInfo) ReplaceExamplesSection() bool {
 //	return info.Docs != nil && info.Docs.ReplaceExamplesSection
 //}
 

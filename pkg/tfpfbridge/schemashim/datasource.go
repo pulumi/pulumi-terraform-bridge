@@ -20,36 +20,36 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-type schemaOnlyResource struct {
+type schemaOnlyDataSource struct {
 	tf *tfsdk.Schema
 }
 
-var _ shim.Resource = (*schemaOnlyResource)(nil)
+var _ shim.Resource = (*schemaOnlyDataSource)(nil)
 
-func (r *schemaOnlyResource) Schema() shim.SchemaMap {
+func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
 	return newSchemaMap(r.tf)
 }
 
-func (*schemaOnlyResource) SchemaVersion() int { panic("TODO") }
+func (*schemaOnlyDataSource) SchemaVersion() int { panic("TODO") }
 
-func (r *schemaOnlyResource) DeprecationMessage() string {
+func (r *schemaOnlyDataSource) DeprecationMessage() string {
 	return r.tf.DeprecationMessage
 }
 
-func (*schemaOnlyResource) Importer() shim.ImportFunc {
-	panic("schemaOnlyResource does not implement runtime operation ImporterFunc")
+func (*schemaOnlyDataSource) Importer() shim.ImportFunc {
+	panic("schemaOnlyDataSource does not implement runtime operation ImporterFunc")
 }
 
-func (*schemaOnlyResource) Timeouts() *shim.ResourceTimeout {
-	panic("schemaOnlyResource does not implement runtime operation Timeouts")
+func (*schemaOnlyDataSource) Timeouts() *shim.ResourceTimeout {
+	panic("schemaOnlyDataSource does not implement runtime operation Timeouts")
 }
 
-func (*schemaOnlyResource) InstanceState(id string, object,
+func (*schemaOnlyDataSource) InstanceState(id string, object,
 	meta map[string]interface{}) (shim.InstanceState, error) {
-	panic("schemaOnlyResource does not implement runtime operation InstanceState")
+	panic("schemaOnlyDataSource does not implement runtime operation InstanceState")
 }
 
-func (*schemaOnlyResource) DecodeTimeouts(
+func (*schemaOnlyDataSource) DecodeTimeouts(
 	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	panic("schemaOnlyResource does not implement runtime operation DecodeTimeouts")
+	panic("schemaOnlyDataSource does not implement runtime operation DecodeTimeouts")
 }
