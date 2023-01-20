@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@ package tfbridge
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"unicode"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"golang.org/x/net/context"
 
@@ -95,6 +97,58 @@ type ProviderInfo struct {
 
 	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
+}
+
+// Add default tokens for resources and datasources according to the passed strategies.
+func (info *ProviderInfo) DefaultTokens(r ResourceTokenStrategy, d DataSourceTokenStrategy) error {
+	err := info.DefaultResourceTokens(r)
+	if err != nil {
+		return err
+	}
+	return info.DefaultDataSourceTokens(d)
+}
+
+// Apply strategy to generate missing resources.
+func (info *ProviderInfo) DefaultResourceTokens(strategy ResourceTokenStrategy) error {
+	if info.Resources == nil {
+		info.Resources = map[string]*ResourceInfo{}
+	}
+	return applyDefaultTokens(info.P.ResourcesMap(), info.Resources, strategy)
+}
+
+// Apply strategy to generate missing datsources.
+func (info *ProviderInfo) DefaultDataSourceTokens(strategy DataSourceTokenStrategy) error {
+	if info.DataSources == nil {
+		info.DataSources = map[string]*DataSourceInfo{}
+	}
+	return applyDefaultTokens(info.P.DataSourcesMap(), info.DataSources, strategy)
+}
+
+func applyDefaultTokens[T any](infoMap shim.ResourceMap, resultMap map[string]*T, tks TokenStrategy[T]) error {
+	keys := make([]string, 0, infoMap.Len())
+	infoMap.Range(func(key string, _ shim.Resource) bool {
+		keys = append(keys, key)
+		return true
+	})
+	sort.Strings(keys)
+
+	var errs multierror.Error
+	for _, k := range keys {
+		v := resultMap[k]
+		if v != nil {
+			// Skipping, since there is already a non-nil resource there.
+			continue
+		}
+		v, err := tks(k, keys)
+		if err != nil {
+			errs.Errors = append(errs.Errors, err)
+			continue
+		}
+		if v != nil {
+			resultMap[k] = v
+		}
+	}
+	return errs.ErrorOrNil()
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
