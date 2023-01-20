@@ -122,13 +122,13 @@ outputs:
   testStringMap__expect: |-
     {"a":"a1","b":"b1"}
 
-  testSingleNestedAttr__actual: ${singleNestedAttrRes.singleNestedAttrJSONCopy}
+  testSingleNestedAttr__actual: ${singleNestedAttrRes.singleNestedAttrJsonCopy}
   testSingleNestedAttr__expect:
     fn::toJSON:
       description: pi
       quantity: 3.14159
 
-  testListNestedAttributes__actual: ${listNestedAttrRes.servicesJSONCopy}
+  testListNestedAttributes__actual: ${listNestedAttrRes.servicesJsonCopy}
   testListNestedAttributes__expect:
     fn::toJSON:
       - intport: 8080
