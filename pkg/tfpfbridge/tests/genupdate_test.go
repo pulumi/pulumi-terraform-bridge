@@ -27,16 +27,20 @@ import (
 //
 // To re-capture try:
 //
-//    cd tests/integration
-//    PULUMI_DEBUG_GPRC=$PWD/grpc.json go test -run TestUpdateProgram
-//    jq -s . grpc.json
+//	cd tests/integration
+//	PULUMI_DEBUG_GPRC=$PWD/grpc.json go test -run TestUpdateProgram
+//	jq -s . grpc.json
 func TestGenUpdates(t *testing.T) {
 	os.Mkdir("state", 0700)
 
 	trace := "testdata/updateprogram.json"
+
+	schemaBytes := genTestBridgeSchemaBytes(t)
+
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testutils.ReplayTraceFile(t, server, trace)
 }

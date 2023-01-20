@@ -16,13 +16,16 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
@@ -32,6 +35,8 @@ type resourceHandle struct {
 	schema                tfsdk.Schema
 	pulumiResourceInfo    *info.ResourceInfo // optional
 	idExtractor           idExtractor
+	encoder               convert.Encoder
+	decoder               convert.Decoder
 }
 
 func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
@@ -63,5 +68,24 @@ func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 		result.pulumiResourceInfo = info
 	}
 
+	token := result.pulumiResourceInfo.Tok
+	if token == "" {
+		return resourceHandle{}, fmt.Errorf("Tok cannot be empty: %s", token)
+	}
+
+	objectType := result.schema.Type().TerraformType(ctx).(tftypes.Object)
+
+	encoder, err := p.encoding.NewResourceEncoder(token, objectType)
+	if err != nil {
+		return resourceHandle{}, fmt.Errorf("Failed to prepare a resource encoder: %s", err)
+	}
+
+	outputsDecoder, err := p.encoding.NewResourceDecoder(token, objectType)
+	if err != nil {
+		return resourceHandle{}, fmt.Errorf("Failed to prepare an resoure decoder: %s", err)
+	}
+
+	result.encoder = encoder
+	result.decoder = outputsDecoder
 	return result, nil
 }

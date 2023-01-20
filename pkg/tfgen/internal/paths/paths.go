@@ -21,6 +21,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
+// TypePath values uniquely identify locations within a Pulumi Package Schema that require generating types in a target
+// programming language when a provider SDK for that language is being built. Examples of such types include resources
+// (see ResourcePath), data sources (DataSourcePath), provider configuration (ConfigPath), and nested object types that
+// are used to describe the type of resource properties.
 type TypePath interface {
 	// Parent path, can be nil for root paths.
 	Parent() TypePath
@@ -39,15 +43,15 @@ type ResourcePath struct {
 	isProvider bool
 }
 
-func NewResourcePath(key string, resourceToken tokens.Type, isProvider bool) *ResourcePath {
-	if isProvider && key != "" {
-		panic("key should be empty when isProvider=true")
+func NewResourcePath(terraformResourceKey string, resourceToken tokens.Type, isProvider bool) *ResourcePath {
+	if isProvider && terraformResourceKey != "" {
+		panic("terraformResourceKey should be empty when isProvider=true")
 	}
-	if !isProvider && key == "" {
-		panic("key should not be empty when isProvider=false")
+	if !isProvider && terraformResourceKey == "" {
+		panic("terraformResourceKey should not be empty when isProvider=false")
 	}
 	return &ResourcePath{
-		key:        key,
+		key:        terraformResourceKey,
 		token:      resourceToken,
 		isProvider: isProvider,
 	}

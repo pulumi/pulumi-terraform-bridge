@@ -22,6 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 // Update updates an existing resource with new values.
@@ -43,12 +45,12 @@ func (p *Provider) Update(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorStateValue, err := ConvertPropertyMapToTFValue(tfType)(priorState)
+	priorStateValue, err := convert.EncodePropertyMap(rh.encoder, priorState)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -60,7 +62,8 @@ func (p *Provider) Update(
 
 	// TODO clarify what to do here, how to handle preview Update properly.
 	if preview {
-		plannedStatePropertyMap, err := ConvertDynamicValueToPropertyMap(tfType)(*planResp.PlannedState)
+		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(
+			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -97,7 +100,7 @@ func (p *Provider) Update(
 	}
 
 	// TODO handle resp.Private
-	updatedState, err := ConvertDynamicValueToPropertyMap(tfType)(*resp.NewState)
+	updatedState, err := convert.DecodePropertyMapFromDynamic(rh.decoder, tfType, resp.NewState)
 	if err != nil {
 		return nil, 0, err
 	}

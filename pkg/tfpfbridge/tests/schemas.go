@@ -28,23 +28,30 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen"
 )
 
-func genSchemaBytes(t *testing.T, info info.ProviderInfo) []byte {
-	packageSpec, err := tfgen.GenerateSchema(tfgen.GenerateSchemaOptions{
-		ProviderInfo: info,
-		Sink:         testSink(t),
-	})
-	require.NoError(t, err)
-	bytes, err := tfgen.MarshalSchema(packageSpec)
-	require.NoError(t, err)
-	return bytes
+type schemaBytes struct {
+	pulumiSchema []byte
+	renames      []byte
 }
 
-func genRandomSchemaBytes(t *testing.T) []byte {
+func genSchemaBytes(t *testing.T, info info.ProviderInfo) schemaBytes {
+	generated, err := tfgen.GenerateSchema(tfgen.GenerateSchemaOptions{
+		ProviderInfo:    info,
+		DiagnosticsSink: testSink(t),
+	})
+	require.NoError(t, err)
+	bytes, err := tfgen.MarshalSchema(&generated.PackageSpec)
+	require.NoError(t, err)
+	renameBytes, err := tfgen.MarshalRenames(&generated.Renames)
+	require.NoError(t, err)
+	return schemaBytes{pulumiSchema: bytes, renames: renameBytes}
+}
+
+func genRandomSchemaBytes(t *testing.T) schemaBytes {
 	info := testprovider.RandomProvider()
 	return genSchemaBytes(t, info)
 }
 
-func genTestBridgeSchemaBytes(t *testing.T) []byte {
+func genTestBridgeSchemaBytes(t *testing.T) schemaBytes {
 	info := testprovider.SyntheticTestBridgeProvider()
 	return genSchemaBytes(t, info)
 }
