@@ -389,16 +389,19 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte
 	return nil, "", false
 }
 
-// nolint:lll
+//nolint:lll
 var (
 	// For example:
 	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
+	)
 
-	attributeBulletRegexp = regexp.MustCompile("^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s+[–-]?\\s+(.*)")
+	attributeBulletRegexp = regexp.MustCompile(
+		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*[:–-]?\\s*(.*)",
+	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
 )
@@ -757,9 +760,6 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool) {
-	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s+`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?[–-]?\\s+(\\([^\\)]*\\)\\s*)?(.*)")
-
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 
 	if len(matches) > 4 {
@@ -788,12 +788,33 @@ func getNestedBlockName(line string) string {
 		// For example:
 		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
 		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+		// For example:
+		// elasticsearch_domain.html.markdown: "### advanced_security_options"
+		regexp.MustCompile("###+ ([a-z_]+).*"),
+
+		// For example:
+		// dynamodb_table.html.markdown: "### `server_side_encryption`"
+		regexp.MustCompile("###+ `([a-z_]+).*`"),
+
+		// For example:
+		// route53_record.html.markdown: "### Failover Routing Policy"
+		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+
+		// For example:
+		// sql_database_instance.html.markdown:
+		// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+		regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 	}
 
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
 			nested = strings.ToLower(matches[1])
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, "[]")
+			parts := strings.Split(nested, ".")
+			nested = parts[len(parts)-1]
 			break
 		}
 	}
@@ -1458,7 +1479,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		}
 
 		// At least one language out of the given set has been generated, which is considered a success
-		// nolint:ineffassign
+		//nolint:ineffassign
 		err = nil
 	}
 
@@ -1582,7 +1603,6 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	}, elidedDoc
 }
 
-//nolint:lll
 var (
 	// Match a [markdown](link)
 	markdownLink = regexp.MustCompile(`\[([^\]]*)\]\(([^\)]*)\)`)
@@ -1693,8 +1713,8 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 		text = strings.Replace(text, "~> ", "> ", -1)
 
 		// Trim Prefixes we see when the description is spread across multiple lines.
-		text = strings.TrimPrefix(text, "-\n(Required)\n")
-		text = strings.TrimPrefix(text, "-\n(Optional)\n")
+		text = strings.TrimPrefix(text, "\n(Required)\n")
+		text = strings.TrimPrefix(text, "\n(Optional)\n")
 
 		// Find markdown Terraform docs site reference links.
 		text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {

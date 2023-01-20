@@ -5,7 +5,7 @@ on:
   workflow_dispatch: {}
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.46.2
+  GOLANGCI_LINT_VERSION: v1.50.1
 jobs:
   weekly-pulumi-update:
     runs-on: ubuntu-latest

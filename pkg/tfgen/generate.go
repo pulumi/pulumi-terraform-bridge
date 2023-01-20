@@ -1240,8 +1240,8 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	failBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_MISSING_MAPPING_ERROR")) ||
-		isTruthy(os.Getenv("PULUMI_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
+		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
 	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
@@ -1254,11 +1254,11 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
 			if ignoreMappingError(g.info.IgnoreMappings, ds) {
-				g.debug("TF data source %q not found in provider map", ds)
+				g.debug("TF data source %q not found in provider map but ignored", ds)
 				continue
 			}
 
-			if failBuildOnMissingMapError {
+			if !skipFailBuildOnMissingMapError {
 				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
 					fmt.Errorf("TF data source %q not mapped to the Pulumi provider", ds))
 			} else {
