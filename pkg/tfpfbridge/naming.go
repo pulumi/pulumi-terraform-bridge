@@ -87,3 +87,22 @@ func pluralize(name string, typ tftypes.Type) (string, bool) {
 	}
 	return name, false
 }
+
+func functionPropertyKey(functionToken tokens.ModuleMember, propNames convert.PropertyNames,
+	path *tftypes.AttributePath) (resource.PropertyKey, bool) {
+	if path == nil {
+		return "", false
+	}
+	if len(path.Steps()) != 1 {
+		return "", false
+	}
+	switch attrName := path.LastStep().(type) {
+	case tftypes.AttributeName:
+		return propNames.PropertyKey(
+			tokens.Token(functionToken),
+			convert.TerraformPropertyName(attrName),
+			nil), true
+	default:
+		return "", false
+	}
+}

@@ -71,6 +71,42 @@ func (e *encoding) NewResourceDecoder(resourceToken tokens.Type, objectType tfty
 	return dec, nil
 }
 
+func (e *encoding) NewDataSourceEncoder(functionToken tokens.ModuleMember, objectType tftypes.Object) (Encoder, error) {
+	fspec := e.spec.Function(functionToken)
+	if fspec == nil {
+		return nil, fmt.Errorf("dangling function token %q", string(functionToken))
+	}
+	token := tokens.Token(functionToken)
+	spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(fspec.Outputs.Properties))
+	propertyEncoders, err := e.buildPropertyEncoders(token, spec, objectType)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
+	}
+	enc, err := newObjectEncoder(token, objectType, propertyEncoders, e.propertyNames)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
+	}
+	return enc, nil
+}
+
+func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objectType tftypes.Object) (Decoder, error) {
+	token := tokens.Token(functionToken)
+	fspec := e.spec.Function(functionToken)
+	if fspec == nil {
+		return nil, fmt.Errorf("dangling function token %q", string(token))
+	}
+	spec := specFinderWithFallback(specFinder(fspec.Outputs.Properties), specFinder(fspec.Inputs.Properties))
+	propertyDecoders, err := e.buildPropertyDecoders(token, spec, objectType)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an decoder for function %q: %w", string(token), err)
+	}
+	dec, err := newObjectDecoder(token, objectType, propertyDecoders, e.propertyNames)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive a decoder for function %q: %w", string(token), err)
+	}
+	return dec, nil
+}
+
 func (e *encoding) buildPropertyEncoders(
 	token tokens.Token,
 	propSpecs func(resource.PropertyKey) *pschema.PropertySpec,
@@ -318,7 +354,9 @@ func (r renamedProperties) PropertyKey(typ tokens.Token, prop TerraformPropertyN
 	return resource.PropertyKey(prop)
 }
 
-func specFinderWithID(props map[string]pschema.PropertySpec) func(pk resource.PropertyKey) *pschema.PropertySpec {
+type specFinderFn = func(pk resource.PropertyKey) *pschema.PropertySpec
+
+func specFinderWithID(props map[string]pschema.PropertySpec) specFinderFn {
 	return func(pk resource.PropertyKey) *pschema.PropertySpec {
 		if prop, ok := props[string(pk)]; ok {
 			return &prop
@@ -331,11 +369,21 @@ func specFinderWithID(props map[string]pschema.PropertySpec) func(pk resource.Pr
 	}
 }
 
-func specFinder(props map[string]pschema.PropertySpec) func(pk resource.PropertyKey) *pschema.PropertySpec {
+func specFinder(props map[string]pschema.PropertySpec) specFinderFn {
 	return func(pk resource.PropertyKey) *pschema.PropertySpec {
 		if prop, ok := props[string(pk)]; ok {
 			return &prop
 		}
 		return nil
+	}
+}
+
+func specFinderWithFallback(a, b specFinderFn) specFinderFn {
+	return func(pk resource.PropertyKey) *pschema.PropertySpec {
+		v := a(pk)
+		if v != nil {
+			return v
+		}
+		return b(pk)
 	}
 }

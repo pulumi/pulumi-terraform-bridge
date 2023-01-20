@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -42,13 +43,16 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type Provider struct {
-	tfProvider   tfsdkprovider.Provider
-	tfServer     tfprotov6.ProviderServer
-	info         info.ProviderInfo
-	resources    pfutils.Resources
-	pulumiSchema []byte
-	packageSpec  pschema.PackageSpec
-	encoding     convert.Encoding
+	tfProvider    tfsdkprovider.Provider
+	tfServer      tfprotov6.ProviderServer
+	info          info.ProviderInfo
+	resources     pfutils.Resources
+	datasources   pfutils.DataSources
+	pulumiSchema  []byte
+	packageSpec   pschema.PackageSpec
+	encoding      convert.Encoding
+	propertyNames convert.PropertyNames
+	diagSink      diag.Sink
 }
 
 var _ plugin.Provider = &Provider{}
@@ -65,8 +69,13 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
 	}
 
-	var packageSpec pschema.PackageSpec
-	if err := json.Unmarshal(pulumiSchema, &packageSpec); err != nil {
+	datasources, err := pfutils.GatherDatasources(ctx, p)
+	if err != nil {
+		panic(fmt.Errorf("Fatal failure gathering datasource metadata: %w", err))
+	}
+
+	var thePackageSpec pschema.PackageSpec
+	if err := json.Unmarshal(pulumiSchema, &thePackageSpec); err != nil {
 		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
 	}
 
@@ -75,14 +84,19 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		panic(fmt.Errorf("Failed to unmarshal Renames: %w", err))
 	}
 
+	propertyNames := newPrecisePropertyNames(renames)
+	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
+
 	return &Provider{
-		tfProvider:   p,
-		tfServer:     server6,
-		info:         info,
-		resources:    resources,
-		pulumiSchema: pulumiSchema,
-		packageSpec:  packageSpec,
-		encoding:     setupEncoding(packageSpec, renames),
+		tfProvider:    p,
+		tfServer:      server6,
+		info:          info,
+		resources:     resources,
+		datasources:   datasources,
+		pulumiSchema:  pulumiSchema,
+		packageSpec:   thePackageSpec,
+		propertyNames: propertyNames,
+		encoding:      enc,
 	}
 }
 
@@ -140,6 +154,15 @@ func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, err
 	return "", fmt.Errorf("[tfpfbridge] unknown resource token: %v", resourceToken)
 }
 
+func (p *Provider) terraformDatasourceName(functionToken tokens.ModuleMember) (string, error) {
+	for tfname, v := range p.info.DataSources {
+		if v.Tok == functionToken {
+			return tfname, nil
+		}
+	}
+	return "", fmt.Errorf("[tfpfbridge] unknown datasource token: %v", functionToken)
+}
+
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions) (plugin.CallResult, error) {
@@ -172,10 +195,6 @@ func (p *Provider) GetMapping(key string) ([]byte, string, error) {
 	return []byte{}, "", nil
 }
 
-func setupEncoding(p pschema.PackageSpec, renames tfgen.Renames) convert.Encoding {
-	return convert.NewEncoding(packageSpec{&p}, newPrecisePropertyNames(renames))
-}
-
 type packageSpec struct {
 	spec *pschema.PackageSpec
 }
@@ -194,6 +213,14 @@ func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
 	typ, ok := p.spec.Types[string(tok)]
 	if ok {
 		return &typ
+	}
+	return nil
+}
+
+func (p packageSpec) Function(tok tokens.ModuleMember) *pschema.FunctionSpec {
+	res, ok := p.spec.Functions[string(tok)]
+	if ok {
+		return &res
 	}
 	return nil
 }
