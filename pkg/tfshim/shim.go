@@ -78,13 +78,27 @@ type Schema interface {
 
 	// s.Elem() may return a nil, a Schema value, or a Resource value.
 	//
-	// If s represents an element or block of a compound type such TypeList, TypeSet or TypeMap, s.Elem() returns a
-	// Schema value representing its element type. That is, if s ~ List[String] then s.Elem() ~ String.
+	// The design of Elem() follows Terraform Plugin SDK directly. Case analysis:
 	//
-	// If s.Elem() returns a Resource, s represens a configuration block, and s.Elem() Resource only implements the
-	// Schema field, denoting the schema of the block.
+	// Case 1: s represents a compound type (s.Type() is one of TypeList, TypeSet or TypeMap), and s.Elem()
+	// represents the element of this type as a Schema value. That is, if s ~ List[String] then s.Elem() ~ String.
 	//
-	// The design of Elem() follows Terraform Plugin SDK directly.
+	// Case 2: s represents a single-nested Terraform block. Logically this is like s having an anonymous object
+	// type such as s ~ {"x": Int, "y": String}. In this case s.Type() == TypeMap and s.Elem() is a Resource value.
+	// This value is not a real Resource and only implements the Schema field to enable inspecting s.Elem().Schema()
+	// to find out the names ("x", "y") and types (Int, String) of the block properties.
+	//
+	// Case 3: s represents a list or set-nested Terraform block. That is, s ~ List[{"x": Int, "y": String}]. In
+	// this case s.Type() is one of TypeList, TypeSet, and s.Elem() is a Resource that encodes the object type
+	// similarly to Case 2.
+	//
+	// Case 4: s.Elem() is nil and s.Type() is a scalar type (none of TypeList, TypeSet, TypeMap).
+	//
+	// Case 5: s.Elem() is nil but s.Type() is one of TypeList, TypeSet, TypeMap. The element type is unknown.
+	//
+	// This encoding cannot support map-nested blocks or object types as it would introduce confusion with Case 2,
+	// because Map[String, {"x": Int}] and {"x": Int} both have s.Type() = TypeMap and s.Elem() being a Resource.
+	// Following the Terraform design, only set and list-nested blocks are supported.
 	//
 	// See also: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/schema.go#L231
 	Elem() interface{}

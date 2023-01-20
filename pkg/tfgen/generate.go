@@ -322,50 +322,72 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		return t
 	}
 
-	switch sch.Type() {
-	case shim.TypeBool:
-		t.kind = kindBool
-	case shim.TypeInt:
-		t.kind = kindInt
-	case shim.TypeFloat:
-		t.kind = kindFloat
-	case shim.TypeString:
-		t.kind = kindString
-	case shim.TypeList:
-		t.kind = kindList
-	case shim.TypeMap:
-		t.kind = kindMap
-	case shim.TypeSet:
-		t.kind = kindSet
-	}
-
 	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
 	if sch.Deprecated() != "" && elemInfo != nil {
 		elemInfo.DeprecationMessage = sch.Deprecated()
 	}
 
+	// Perform case analysis on Elem() and Type(). See shim.Schema.Elem() doc for reference. Start with scalars.
+	switch sch.Type() {
+	case shim.TypeBool:
+		t.kind = kindBool
+		return t
+	case shim.TypeInt:
+		t.kind = kindInt
+		return t
+	case shim.TypeFloat:
+		t.kind = kindFloat
+		return t
+	case shim.TypeString:
+		t.kind = kindString
+		return t
+	}
+
+	// Handle single-nested blocks next.
+	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
+		return g.makeObjectPropertyType(typePath, objectName, blockType, elemInfo, out, entityDocs)
+	}
+
+	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
+	flatten := false
+	switch sch.Type() {
+	case shim.TypeList, shim.TypeSet:
+		if tfbridge.IsMaxItemsOne(sch, info) {
+			flatten = true
+		}
+	}
+
+	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
+	// flattening that stays at the current path.
+	var elemPath paths.TypePath = paths.NewElementPath(typePath)
+	if flatten {
+		elemPath = typePath
+	}
+
+	// Recognize object types encoded as a shim.Resource and compute the element type.
+	var element *propertyType
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
-		t.element = g.makePropertyType(paths.NewElementPath(typePath),
-			objectName, elem, elemInfo, out, entityDocs)
+		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		t.element = g.makeObjectPropertyType(paths.NewElementPath(typePath),
-			objectName, elem, elemInfo, out, entityDocs)
+		element = g.makeObjectPropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	}
 
-	switch t.kind {
-	case kindList, kindSet:
-		if tfbridge.IsMaxItemsOne(sch, info) {
-			t = t.element
-		}
-	case kindMap:
-		// If this map has a "resource" element type, just use the generated element type. This works around a bug in
-		// TF that effectively forces this behavior.
-		if t.element != nil && t.element.kind == kindObject {
-			t = t.element
-		}
+	if flatten {
+		return element
 	}
 
+	switch sch.Type() {
+	case shim.TypeMap:
+		t.kind = kindMap
+	case shim.TypeList:
+		t.kind = kindList
+	case shim.TypeSet:
+		t.kind = kindSet
+	default:
+		panic("impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point")
+	}
+	t.element = element
 	return t
 }
 
