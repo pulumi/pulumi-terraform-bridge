@@ -281,6 +281,117 @@
                 }
             },
             "type": "object"
+        },
+        "tls:index/getCertificateCertificate:getCertificateCertificate": {
+            "properties": {
+                "certPem": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "isCa": {
+                    "type": "boolean",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "issuer": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "notAfter": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "notBefore": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "publicKeyAlgorithm": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "serialNumber": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "sha1Fingerprint": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "signatureAlgorithm": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "subject": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "version": {
+                    "type": "integer",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "certPem",
+                "isCa",
+                "issuer",
+                "notAfter",
+                "notBefore",
+                "publicKeyAlgorithm",
+                "serialNumber",
+                "sha1Fingerprint",
+                "signatureAlgorithm",
+                "subject",
+                "version"
+            ],
+            "language": {
+                "nodejs": {
+                    "requiredInputs": []
+                }
+            }
         }
     },
     "provider": {
@@ -972,6 +1083,109 @@
                     }
                 },
                 "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "tls:index/getCertificate:getCertificate": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getCertificate.\n",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "verifyChain": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by getCertificate.\n",
+                "properties": {
+                    "certificates": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/tls:index/getCertificateCertificate:getCertificateCertificate"
+                        }
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "verifyChain": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "certificates",
+                    "id"
+                ]
+            }
+        },
+        "tls:index/getPublicKey:getPublicKey": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getPublicKey.\n",
+                "properties": {
+                    "privateKeyOpenssh": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "privateKeyPem": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by getPublicKey.\n",
+                "properties": {
+                    "algorithm": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "privateKeyOpenssh": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "privateKeyPem": {
+                        "type": "string",
+                        "secret": true
+                    },
+                    "publicKeyFingerprintMd5": {
+                        "type": "string"
+                    },
+                    "publicKeyFingerprintSha256": {
+                        "type": "string"
+                    },
+                    "publicKeyOpenssh": {
+                        "type": "string"
+                    },
+                    "publicKeyPem": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "algorithm",
+                    "id",
+                    "publicKeyFingerprintMd5",
+                    "publicKeyFingerprintSha256",
+                    "publicKeyOpenssh",
+                    "publicKeyPem"
+                ]
             }
         }
     }
