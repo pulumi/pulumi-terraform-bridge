@@ -36,17 +36,32 @@ func NewEncoding(spec PackageSpec, propertyNames PropertyNames) Encoding {
 	return &encoding{spec: spec, propertyNames: propertyNames}
 }
 
+func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
+	spec := specFinder(e.spec.Config().Variables)
+	propNames := NewConfigPropertyNames(e.propertyNames)
+	propertyEncoders, err := e.buildPropertyEncoders(propNames, spec, configType)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
+	}
+	enc, err := newObjectEncoder(configType, propertyEncoders, propNames)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
+	}
+	return enc, nil
+}
+
 func (e *encoding) NewResourceEncoder(resourceToken tokens.Type, objectType tftypes.Object) (Encoder, error) {
 	rspec := e.spec.Resource(resourceToken)
 	if rspec == nil {
 		return nil, fmt.Errorf("dangling resource token %q", string(resourceToken))
 	}
 	spec := specFinderWithID(rspec.Properties)
-	propertyEncoders, err := e.buildPropertyEncoders(tokens.Token(resourceToken), spec, objectType)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, tokens.Token(resourceToken))
+	propertyEncoders, err := e.buildPropertyEncoders(propNames, spec, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", string(resourceToken), err)
 	}
-	enc, err := newObjectEncoder(tokens.Token(resourceToken), objectType, propertyEncoders, e.propertyNames)
+	enc, err := newObjectEncoder(objectType, propertyEncoders, propNames)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", string(resourceToken), err)
 	}
@@ -59,12 +74,13 @@ func (e *encoding) NewResourceDecoder(resourceToken tokens.Type, objectType tfty
 		return nil, fmt.Errorf("dangling resource token %q", string(resourceToken))
 	}
 	spec := specFinderWithID(rspec.Properties)
-	propertyDecoders, err := e.buildPropertyDecoders(tokens.Token(resourceToken), spec, objectType)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, tokens.Token(resourceToken))
+	propertyDecoders, err := e.buildPropertyDecoders(propNames, spec, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", string(resourceToken), err)
 	}
 	propertyDecoders["id"] = newStringDecoder()
-	dec, err := newObjectDecoder(tokens.Token(resourceToken), objectType, propertyDecoders, e.propertyNames)
+	dec, err := newObjectDecoder(objectType, propertyDecoders, propNames)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", string(resourceToken), err)
 	}
@@ -78,11 +94,12 @@ func (e *encoding) NewDataSourceEncoder(functionToken tokens.ModuleMember, objec
 	}
 	token := tokens.Token(functionToken)
 	spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(fspec.Outputs.Properties))
-	propertyEncoders, err := e.buildPropertyEncoders(token, spec, objectType)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
+	propertyEncoders, err := e.buildPropertyEncoders(propNames, spec, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
 	}
-	enc, err := newObjectEncoder(token, objectType, propertyEncoders, e.propertyNames)
+	enc, err := newObjectEncoder(objectType, propertyEncoders, propNames)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
 	}
@@ -96,11 +113,12 @@ func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objec
 		return nil, fmt.Errorf("dangling function token %q", string(token))
 	}
 	spec := specFinderWithFallback(specFinder(fspec.Outputs.Properties), specFinder(fspec.Inputs.Properties))
-	propertyDecoders, err := e.buildPropertyDecoders(token, spec, objectType)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
+	propertyDecoders, err := e.buildPropertyDecoders(propNames, spec, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an decoder for function %q: %w", string(token), err)
 	}
-	dec, err := newObjectDecoder(token, objectType, propertyDecoders, e.propertyNames)
+	dec, err := newObjectDecoder(objectType, propertyDecoders, propNames)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for function %q: %w", string(token), err)
 	}
@@ -108,13 +126,13 @@ func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objec
 }
 
 func (e *encoding) buildPropertyEncoders(
-	token tokens.Token,
+	propertyNames LocalPropertyNames,
 	propSpecs func(resource.PropertyKey) *pschema.PropertySpec,
 	objectType tftypes.Object,
 ) (map[TerraformPropertyName]Encoder, error) {
 	propertyEncoders := map[TerraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
-		key := e.propertyNames.PropertyKey(token, tfName, t)
+		key := propertyNames.PropertyKey(tfName, t)
 		puSpec := propSpecs(key)
 		if puSpec == nil {
 			return nil, fmt.Errorf("missing property %q", string(key))
@@ -129,13 +147,13 @@ func (e *encoding) buildPropertyEncoders(
 }
 
 func (e *encoding) buildPropertyDecoders(
-	token tokens.Token,
+	propertyNames LocalPropertyNames,
 	propSpecs func(resource.PropertyKey) *pschema.PropertySpec,
 	objectType tftypes.Object,
 ) (map[TerraformPropertyName]Decoder, error) {
 	propertyEncoders := map[TerraformPropertyName]Decoder{}
 	for tfName, t := range objectType.AttributeTypes {
-		key := e.propertyNames.PropertyKey(token, tfName, t)
+		key := propertyNames.PropertyKey(tfName, t)
 		puSpec := propSpecs(key)
 		if puSpec == nil {
 			return nil, fmt.Errorf("missing property %q", string(key))
@@ -190,11 +208,12 @@ func (e *encoding) deriveEncoderForNamedObjectType(ref string, t tftypes.Object)
 	if refSpec.Enum != nil {
 		return nil, fmt.Errorf("enums are not supported: %q", ref)
 	}
-	propertyEncoders, err := e.buildPropertyEncoders(tok, specFinder(refSpec.Properties), t)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, tok)
+	propertyEncoders, err := e.buildPropertyEncoders(propNames, specFinder(refSpec.Properties), t)
 	if err != nil {
 		return nil, fmt.Errorf("issue deriving an encoder for %q: %w", ref, err)
 	}
-	return newObjectEncoder(tok, t, propertyEncoders, e.propertyNames)
+	return newObjectEncoder(t, propertyEncoders, propNames)
 }
 
 func (e *encoding) deriveDecoderForNamedObjectType(ref string, t tftypes.Object) (Decoder, error) {
@@ -205,11 +224,12 @@ func (e *encoding) deriveDecoderForNamedObjectType(ref string, t tftypes.Object)
 	if refSpec.Enum != nil {
 		return nil, fmt.Errorf("enums are not supported: %q", ref)
 	}
-	propertyDecoders, err := e.buildPropertyDecoders(tok, specFinder(refSpec.Properties), t)
+	propNames := NewTypeLocalPropertyNames(e.propertyNames, tok)
+	propertyDecoders, err := e.buildPropertyDecoders(propNames, specFinder(refSpec.Properties), t)
 	if err != nil {
 		return nil, fmt.Errorf("issue deriving an decoder for %q: %w", ref, err)
 	}
-	return newObjectDecoder(tok, t, propertyDecoders, e.propertyNames)
+	return newObjectDecoder(t, propertyDecoders, propNames)
 }
 
 func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (Encoder, error) {

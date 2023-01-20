@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
@@ -42,8 +44,9 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
 		Resources: map[string]*info.ResourceInfo{
-			"testbridge_testres":     {Tok: "testbridge:index/testres:Testres"},
-			"testbridge_testcompres": {Tok: "testbridge:index/testres:Testcompres"},
+			"testbridge_testres":       {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
+			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 		},
 	}
 }
@@ -59,10 +62,22 @@ func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataReque
 }
 
 func (p *syntheticProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{}, nil
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{
+			"stringConfigProp": {
+				Type: types.StringType,
+			},
+		},
+	}, nil
 }
 
-func (p *syntheticProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
+func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var stringConfigProp *string
+	diags := req.Config.GetAttribute(ctx, path.Root("stringConfigProp"), &stringConfigProp)
+	resp.Diagnostics.Append(diags...)
+	if stringConfigProp != nil {
+		resp.ResourceData = stringConfigProp
+	}
 	return
 }
 
@@ -74,5 +89,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 	return []func() resource.Resource{
 		newTestres,
 		newTestCompRes,
+		newTestConfigRes,
 	}
 }

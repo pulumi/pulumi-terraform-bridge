@@ -23,6 +23,7 @@ import (
 	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -53,6 +54,8 @@ type Provider struct {
 	encoding      convert.Encoding
 	propertyNames convert.PropertyNames
 	diagSink      diag.Sink
+	configEncoder convert.Encoder
+	configType    tftypes.Object
 }
 
 var _ plugin.Provider = &Provider{}
@@ -87,6 +90,18 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 	propertyNames := newPrecisePropertyNames(renames)
 	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
 
+	schema, diags := p.GetSchema(ctx)
+	if diags.HasError() {
+		panic(fmt.Errorf("GetSchema returned diagnostics with HasError"))
+	}
+
+	providerConfigType := schema.Type().TerraformType(ctx).(tftypes.Object)
+
+	configEncoder, err := enc.NewConfigEncoder(providerConfigType)
+	if err != nil {
+		panic(fmt.Errorf("NewConfigEncoder failed: %w", err))
+	}
+
 	return &Provider{
 		tfProvider:    p,
 		tfServer:      server6,
@@ -97,6 +112,8 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		packageSpec:   thePackageSpec,
 		propertyNames: propertyNames,
 		encoding:      enc,
+		configEncoder: configEncoder,
+		configType:    providerConfigType,
 	}
 }
 
@@ -200,6 +217,10 @@ type packageSpec struct {
 }
 
 var _ convert.PackageSpec = (*packageSpec)(nil)
+
+func (p packageSpec) Config() *pschema.ConfigSpec {
+	return &p.spec.Config
+}
 
 func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
 	res, ok := p.spec.Resources[string(tok)]

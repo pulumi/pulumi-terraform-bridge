@@ -1,5 +1,6 @@
 {
   "resources": {
+    "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
     "testbridge:index/testres:Testcompres": "testbridge_testcompres",
     "testbridge:index/testres:Testres": "testbridge_testres"
   },
