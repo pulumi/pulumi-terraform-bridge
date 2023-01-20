@@ -24,11 +24,15 @@ import (
 //go:embed schema.json
 var schema []byte
 
+//go:embed renames.json
+var renames []byte
+
 func main() {
 	tfbridge.Main(
 		"testbridge",
 		"0.0.1",
 		testprovider.SyntheticTestBridgeProvider(),
 		schema,
+		renames,
 	)
 }

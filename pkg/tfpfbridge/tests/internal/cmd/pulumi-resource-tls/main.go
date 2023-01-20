@@ -24,11 +24,15 @@ import (
 //go:embed schema.json
 var schema []byte
 
+//go:embed renames.json
+var renames []byte
+
 func main() {
 	tfbridge.Main(
 		"tls",
 		"4.0.4",
 		testprovider.TlsProvider(),
 		schema,
+		renames,
 	)
 }

@@ -26,16 +26,22 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 type GenerateSchemaOptions struct {
-	Context      context.Context
-	ProviderInfo info.ProviderInfo
-	Sink         diag.Sink
+	Context         context.Context
+	ProviderInfo    info.ProviderInfo
+	DiagnosticsSink diag.Sink
 }
 
-func GenerateSchema(opts GenerateSchemaOptions) (*schema.PackageSpec, error) {
+type GenerateSchemaResult struct {
+	PackageSpec schema.PackageSpec
+	Renames     tfgen.Renames
+}
+
+func GenerateSchema(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	if opts.ProviderInfo.Name == "" {
 		return nil, fmt.Errorf("opts.ProviderInfo.Name cannot be empty")
 	}
@@ -43,18 +49,26 @@ func GenerateSchema(opts GenerateSchemaOptions) (*schema.PackageSpec, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	sink := opts.Sink
+	sink := opts.DiagnosticsSink
 	if sink == nil {
 		sink = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		})
 	}
 	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, opts.ProviderInfo)
-	schema, err := realtfgen.GenerateSchema(shimInfo, sink)
+
+	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
+		ProviderInfo:    shimInfo,
+		DiagnosticsSink: sink,
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	return &schema, nil
+	return &GenerateSchemaResult{
+		PackageSpec: generated.PackageSpec,
+		Renames:     generated.Renames,
+	}, nil
 }
 
 func MarshalSchema(schema *schema.PackageSpec) ([]byte, error) {
@@ -62,6 +76,17 @@ func MarshalSchema(schema *schema.PackageSpec) ([]byte, error) {
 		return nil, fmt.Errorf("schema should not be nil")
 	}
 	bytes, err := json.MarshalIndent(*schema, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return bytes, err
+}
+
+func MarshalRenames(renames *tfgen.Renames) ([]byte, error) {
+	if renames == nil {
+		return nil, fmt.Errorf("renames should not be nil")
+	}
+	bytes, err := json.MarshalIndent(renames, "", "  ")
 	if err != nil {
 		return nil, err
 	}

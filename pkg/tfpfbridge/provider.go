@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,7 +32,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -43,11 +47,13 @@ type Provider struct {
 	info         info.ProviderInfo
 	resources    pfutils.Resources
 	pulumiSchema []byte
+	packageSpec  pschema.PackageSpec
+	encoding     convert.Encoding
 }
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
+func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames []byte) plugin.Provider {
 	ctx := context.TODO()
 	p := info.P()
 	server6, err := newProviderServer6(ctx, p)
@@ -58,17 +64,34 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte) plugin.Provider {
 	if err != nil {
 		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
 	}
+
+	var packageSpec pschema.PackageSpec
+	if err := json.Unmarshal(pulumiSchema, &packageSpec); err != nil {
+		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
+	}
+
+	var renames tfgen.Renames
+	if err := json.Unmarshal(serializedRenames, &renames); err != nil {
+		panic(fmt.Errorf("Failed to unmarshal Renames: %w", err))
+	}
+
 	return &Provider{
 		tfProvider:   p,
 		tfServer:     server6,
 		info:         info,
 		resources:    resources,
 		pulumiSchema: pulumiSchema,
+		packageSpec:  packageSpec,
+		encoding:     setupEncoding(packageSpec, renames),
 	}
 }
 
-func NewProviderServer(info info.ProviderInfo, pulumiSchema []byte) pulumirpc.ResourceProviderServer {
-	return plugin.NewProviderServer(NewProvider(info, pulumiSchema))
+func NewProviderServer(
+	info info.ProviderInfo,
+	pulumiSchema []byte,
+	serializedRenames []byte,
+) pulumirpc.ResourceProviderServer {
+	return plugin.NewProviderServer(NewProvider(info, pulumiSchema, serializedRenames))
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -147,4 +170,30 @@ func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov
 
 func (p *Provider) GetMapping(key string) ([]byte, string, error) {
 	return []byte{}, "", nil
+}
+
+func setupEncoding(p pschema.PackageSpec, renames tfgen.Renames) convert.Encoding {
+	return convert.NewEncoding(packageSpec{&p}, newPrecisePropertyNames(renames))
+}
+
+type packageSpec struct {
+	spec *pschema.PackageSpec
+}
+
+var _ convert.PackageSpec = (*packageSpec)(nil)
+
+func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
+	res, ok := p.spec.Resources[string(tok)]
+	if ok {
+		return &res
+	}
+	return nil
+}
+
+func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
+	typ, ok := p.spec.Types[string(tok)]
+	if ok {
+		return &typ
+	}
+	return nil
 }

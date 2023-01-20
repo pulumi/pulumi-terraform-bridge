@@ -23,6 +23,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
@@ -44,14 +46,14 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 
 	// Note: that this conversion implicitly filters to only deal
 	// with the fields specified in the tfType schema.
-	currentState, err := ConvertPropertyMapToDynamicValue(tfType)(state)
+	currentState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, state)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
 	req := tfprotov6.ReadResourceRequest{
 		TypeName:     rh.terraformResourceName,
-		CurrentState: &currentState,
+		CurrentState: currentState,
 	}
 
 	// TODO Set ProviderMeta
@@ -86,7 +88,7 @@ func (p *Provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, resource.StatusUnknown, nil
 	}
 
-	readState, err := ConvertTFValueToPropertyMap(tfType)(readResourceStateValue)
+	readState, err := convert.DecodePropertyMap(rh.decoder, readResourceStateValue)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}

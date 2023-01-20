@@ -1,0 +1,11 @@
+{
+  "resources": {
+    "testbridge:index/testres:Testres": "testbridge_testres"
+  },
+  "renamedProperties": {
+    "testbridge:index/testres:Testres": {
+      "optionalInputStringListCopies": "optionalInputStringListCopy",
+      "optionalInputStringLists": "optionalInputStringList"
+    }
+  }
+}

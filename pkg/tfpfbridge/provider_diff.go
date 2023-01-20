@@ -25,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
@@ -52,12 +54,12 @@ func (p *Provider) Diff(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorStateValue, err := ConvertPropertyMapToTFValue(tfType)(priorState)
+	priorStateValue, err := convert.EncodePropertyMap(rh.encoder, priorState)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	checkedInputsValue, err := ConvertPropertyMapToTFValue(tfType)(checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}

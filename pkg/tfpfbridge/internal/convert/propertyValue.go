@@ -12,27 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements a Pulumi provider for testing the functionality of bridging Terraform Plugin Framework based providers.
-package main
+package convert
 
 import (
-	_ "embed"
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-//go:embed schema.json
-var schema []byte
-
-//go:embed renames.json
-var renames []byte
-
-func main() {
-	tfbridge.Main(
-		"random",
-		"4.8.2",
-		testprovider.RandomProvider(),
-		schema,
-		renames,
-	)
+// This is how p.ContainsUnknowns checks if the value itself is unknown before recursing.
+func propertyValueIsUnkonwn(p resource.PropertyValue) bool {
+	return p.IsComputed() || (p.IsOutput() && !p.OutputValue().Known)
 }

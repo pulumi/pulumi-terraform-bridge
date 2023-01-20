@@ -24,9 +24,11 @@ import (
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
@@ -55,9 +57,11 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
@@ -90,9 +94,11 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
+	schemaBytes := genTestBridgeSchemaBytes(t)
 	server := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
-		genTestBridgeSchemaBytes(t),
+		schemaBytes.pulumiSchema,
+		schemaBytes.renames,
 	)
 	testCase := `
         {
@@ -112,6 +118,52 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
               "optionalInputBool": true,
               "requiredInputString": "x",
               "statedir": "state"
+            }
+          },
+          "response": {
+            "changes": "DIFF_NONE"
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
+func TestDiffWithSecrets(t *testing.T) {
+	g := genRandomSchemaBytes(t)
+	server := tfbridge.NewProviderServer(
+		testprovider.RandomProvider(),
+		g.pulumiSchema,
+		g.renames,
+	)
+
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "none",
+            "urn": "urn:pulumi:p-it-antons-mac-ts-c25899e1::simple-random::random:index/randomPassword:RandomPassword::password",
+            "olds": {
+              "bcryptHash": {
+                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                "value": "$2a$10$kO5OLyiYS.C1IA/Es/wJPugt9F9GM4jKMLmZW5gjUwP5RB4OJ6WTK"
+              },
+              "id": "none",
+              "length": 32,
+              "lower": true,
+              "minLower": 0,
+              "minNumeric": 0,
+              "minSpecial": 0,
+              "minUpper": 0,
+              "number": true,
+              "numeric": true,
+              "result": {
+                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                "value": ":7WJQW2-7D%*fp:s$L!8ABF}_$A{L8>j"
+              },
+              "special": true,
+              "upper": true
+            },
+            "news": {
+              "length": 32
             }
           },
           "response": {
