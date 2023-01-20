@@ -285,8 +285,7 @@ func (p *ElementPath) UniqueKey() string {
 }
 
 func (p *ElementPath) String() string {
-	// TODO This seems wrong but it gets my tests passing!?
-	return p.parent.String()
+	return fmt.Sprintf("%s.$", p.parent.String())
 }
 
 func (p *ElementPath) Parent() TypePath {
