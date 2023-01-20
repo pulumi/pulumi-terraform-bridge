@@ -141,6 +141,13 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
 	}
 
+	if repoPathsEnvVar, has := os.LookupEnv("PULUMI_REPO_PATHS"); has {
+		path := findRepoPath(repoPathsEnvVar, moduleCoordinates)
+		if path != "" {
+			return path, nil
+		}
+	}
+
 	if path, ok := repoPaths.Load(moduleCoordinates); ok {
 		return path.(string), nil
 	}
@@ -178,6 +185,19 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	repoPaths.Store(moduleCoordinates, target.Dir)
 
 	return target.Dir, nil
+}
+
+// findRepoPath returns the value associated first match of the module coordinates.
+// repoPathsEnvVar is in the format "github.com/foo/terraform-provider-bar=./terraform-provider-bar"
+func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
+	for _, provider := range strings.Split(repoPathsEnvVar, ",") {
+		parts := strings.SplitN(provider, "=", 2)
+
+		if parts[0] == moduleCoordinates {
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 func getMarkdownDetails(sink diag.Sink, org string, provider string,
