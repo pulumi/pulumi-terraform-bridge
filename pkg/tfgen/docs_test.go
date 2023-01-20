@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+//nolint:lll
 package tfgen
 
 import (
 	"bytes"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 	"testing"
 	"text/template"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,20 +34,24 @@ type testcase struct {
 func TestURLRewrite(t *testing.T) {
 	tests := []testcase{
 		{
-			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", // nolint: lll
-			Expected: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", // nolint: lll
+			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
+			Expected: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
 		},
 		{
-			Input:    "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", // nolint: lll
-			Expected: "It's recommended to specify `createBeforeDestroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by `awsLbListener`).",                         // nolint: lll
+			Input:    "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
+			Expected: "It's recommended to specify `createBeforeDestroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by `awsLbListener`).",                         //nolint:lll
 		},
 		{
-			Input:    "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`",                       // nolint: lll
-			Expected: "The execution ARN to be used in [`lambdaPermission`](https://www.terraform.io/docs/providers/aws/r/lambda_permission.html)'s `sourceArn`", // nolint: lll
+			Input:    "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`",                       //nolint:lll
+			Expected: "The execution ARN to be used in [`lambdaPermission`](https://www.terraform.io/docs/providers/aws/r/lambda_permission.html)'s `sourceArn`", //nolint:lll
 		},
 		{
 			Input:    "See google_container_node_pool for schema.",
 			Expected: "See google.container.NodePool for schema.",
+		},
+		{
+			Input:    "\n(Required)\nThe app_ip of name of the Firebase webApp.",
+			Expected: "The appIp of name of the Firebase webApp.",
 		},
 	}
 
@@ -586,7 +590,7 @@ subtitle 2 content
 }
 
 func TestParseArgFromMarkdownLine(t *testing.T) {
-	// nolint:lll
+	//nolint:lll
 	tests := []struct {
 		input         string
 		expectedName  string
@@ -595,6 +599,11 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 	}{
 		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
 		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
+		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
+		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
+		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true},
+		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true},
+		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
 		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
 		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
 		{"", "", "", false},
@@ -609,15 +618,41 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 	}
 }
 
+func TestParseAttributesReferenceSection(t *testing.T) {
+	p := tfMarkdownParser{}
+	p.ret = entityDocs{
+		Arguments:  make(map[string]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	p.parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region` - The region of the Droplet",
+	})
+	assert.Len(t, p.ret.Attributes, 4)
+}
+
 func TestGetNestedBlockName(t *testing.T) {
 	var tests = []struct {
 		input, expected string
 	}{
 		{"", ""},
 		{"The `website` object supports the following:", "website"},
+		{"The optional `settings.location_preference` subblock supports:", "location_preference"},
+		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", "authorized_networks"},
 		{"#### result_configuration Argument Reference", "result_configuration"},
+		{"### advanced_security_options", "advanced_security_options"},
+		{"### `server_side_encryption`", "server_side_encryption"},
+		{"### Failover Routing Policy", "failover_routing_policy"},
+		{"##### `log_configuration`", "log_configuration"},
+		{"### data_format_conversion_configuration", "data_format_conversion_configuration"},
 		// This is a common starting line of base arguments, so should result in zero value:
 		{"The following arguments are supported:", ""},
+		{"* `kms_key_id` - ...", ""},
+		{"## Import", ""},
 	}
 
 	for _, tt := range tests {

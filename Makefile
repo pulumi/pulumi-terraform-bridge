@@ -1,11 +1,13 @@
+SHELL            := sh
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
+
+PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 build::
 	go mod tidy
 	go build ${PROJECT}/v3/pkg/...
 	go build ${PROJECT}/v3/internal/...
-	go install ${PROJECT}/v3/cmd/...
 
 fmt::
 	@gofmt -w -s .
@@ -14,7 +16,10 @@ lint::
 	golangci-lint run
 
 test::
-	go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
+	@mkdir -p bin
+	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
+	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
+		go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
