@@ -24,10 +24,22 @@ import (
 )
 
 // A strategy for generating missing resources.
-type ResourceTokenStrategy = TokenStrategy[ResourceInfo]
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type ResourceStrategy = Strategy[ResourceInfo]
 
 // A strategy for generating missing datasources.
-type DataSourceTokenStrategy = TokenStrategy[DataSourceInfo]
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type DatasourceStrategy = Strategy[DataSourceInfo]
+
+// A generic remapping strategy.
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string, tfTokens []string) (*T, error)
 
 // A function that joins a module and name into a pulumi type token.
 //
@@ -36,9 +48,10 @@ type DataSourceTokenStrategy = TokenStrategy[DataSourceInfo]
 //	func(module, name string) (string, error) {
 //	 return fmt.Sprintf("pkgName:%s:%s", module, name), nil
 //	}
-type FinalizeToken func(module, name string) (string, error)
-
-type TokenStrategy[T any] func(tfToken string, tfTokens []string) (*T, error)
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type MakeToken func(module, name string) (string, error)
 
 func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase(s)) }
 
@@ -53,15 +66,18 @@ func camelCase(s string) string {
 //	rStrat, dStrat := TokensSingleModule("pkgName_", "index", finalize)
 //
 // The above example would transform "pkgName_foo" into "pkgName:index:Foo".
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
 func TokensSingleModule(
-	tfPackagePrefix, moduleName string, finalize FinalizeToken,
-) (ResourceTokenStrategy, DataSourceTokenStrategy) {
+	tfPackagePrefix, moduleName string, finalize MakeToken,
+) (ResourceStrategy, DatasourceStrategy) {
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
-func tokensKnownModules[T any](
+func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
-) TokenStrategy[T] {
+) Strategy[T] {
 	return func(tfToken string, _ []string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
@@ -84,9 +100,12 @@ func tokensKnownModules[T any](
 // A strategy for assigning tokens to a hand generated set of modules.
 //
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
 func TokensKnownModules(
-	tfPackagePrefix, defaultModule string, modules []string, finalize FinalizeToken,
-) (ResourceTokenStrategy, DataSourceTokenStrategy) {
+	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
+) (ResourceStrategy, DatasourceStrategy) {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
@@ -107,7 +126,11 @@ func TokensKnownModules(
 		})
 }
 
-func (ts TokenStrategy[T]) Unmappable(substring string) TokenStrategy[T] {
+// Mark that a strategy cannot handle a sub-string.
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func (ts Strategy[T]) Unmappable(substring string) Strategy[T] {
 	return func(tfToken string, tfTokens []string) (*T, error) {
 		if strings.Contains(tfToken, substring) {
 			return nil, fmt.Errorf("token '%s' contains un-map-able sub-string '%s'", tfToken, substring)

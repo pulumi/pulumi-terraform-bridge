@@ -99,32 +99,45 @@ type ProviderInfo struct {
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 }
 
-// Add default tokens for resources and datasources according to the passed strategies.
-func (info *ProviderInfo) DefaultTokens(r ResourceTokenStrategy, d DataSourceTokenStrategy) error {
-	err := info.DefaultResourceTokens(r)
+// Add mapped resources and datasources according to the given strategies.
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func (info *ProviderInfo) ComputeDefaults(r ResourceStrategy, d DatasourceStrategy) error {
+	err := info.ComputeDefaultResources(r)
 	if err != nil {
 		return err
 	}
-	return info.DefaultDataSourceTokens(d)
+	return info.ComputeDefaultDataSources(d)
 }
 
 // Apply strategy to generate missing resources.
-func (info *ProviderInfo) DefaultResourceTokens(strategy ResourceTokenStrategy) error {
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func (info *ProviderInfo) ComputeDefaultResources(strategy ResourceStrategy) error {
 	if info.Resources == nil {
 		info.Resources = map[string]*ResourceInfo{}
 	}
-	return applyDefaultTokens(info.P.ResourcesMap(), info.Resources, strategy)
+	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy)
 }
 
 // Apply strategy to generate missing datsources.
-func (info *ProviderInfo) DefaultDataSourceTokens(strategy DataSourceTokenStrategy) error {
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func (info *ProviderInfo) ComputeDefaultDataSources(strategy DatasourceStrategy) error {
 	if info.DataSources == nil {
 		info.DataSources = map[string]*DataSourceInfo{}
 	}
-	return applyDefaultTokens(info.P.DataSourcesMap(), info.DataSources, strategy)
+	return applyComputedTokens(info.P.DataSourcesMap(), info.DataSources, strategy)
 }
 
-func applyDefaultTokens[T any](infoMap shim.ResourceMap, resultMap map[string]*T, tks TokenStrategy[T]) error {
+// For each key in the info map not present in the result map, compute a result and store
+// it in the result map.
+func applyComputedTokens[T ResourceInfo | DataSourceInfo](
+	infoMap shim.ResourceMap, resultMap map[string]*T, tks Strategy[T],
+) error {
 	keys := make([]string, 0, infoMap.Len())
 	infoMap.Range(func(key string, _ shim.Resource) bool {
 		keys = append(keys, key)

@@ -44,7 +44,7 @@ func TestTokensSingleModule(t *testing.T) {
 		return fmt.Sprintf("foo:%s:%s", module, name), nil
 	})
 
-	err := info.DefaultTokens(rTokens, dTokens)
+	err := info.ComputeDefaults(rTokens, dTokens)
 	require.NoError(t, err)
 
 	expectedResources := map[string]*tfbridge.ResourceInfo{
@@ -64,7 +64,7 @@ func TestTokensSingleModule(t *testing.T) {
 	info.Resources = map[string]*tfbridge.ResourceInfo{
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 	}
-	err = info.DefaultResourceTokens(rTokens)
+	err = info.ComputeDefaultResources(rTokens)
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
@@ -93,7 +93,7 @@ func TestTokensKnownModules(t *testing.T) {
 	}, func(module, name string) (string, error) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
-	err := info.DefaultResourceTokens(rTokens)
+	err := info.ComputeDefaultResources(rTokens)
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
@@ -126,7 +126,7 @@ func TestUnmappable(t *testing.T) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
 	strategy = strategy.Unmappable("five")
-	err := info.DefaultResourceTokens(strategy)
+	err := info.ComputeDefaultResources(strategy)
 	assert.ErrorContains(t, err, "contains un-map-able sub-string")
 
 	// Override the unmappable resources
@@ -135,7 +135,7 @@ func TestUnmappable(t *testing.T) {
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
 		"cs101_buzz_five":          {Tok: "cs101:buzz:Five"},
 	}
-	err = info.DefaultResourceTokens(strategy)
+	err = info.ComputeDefaultResources(strategy)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
