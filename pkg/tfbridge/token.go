@@ -133,8 +133,28 @@ func TokensKnownModules(
 func (ts Strategy[T]) Unmappable(substring string) Strategy[T] {
 	return func(tfToken string, tfTokens []string) (*T, error) {
 		if strings.Contains(tfToken, substring) {
-			return nil, fmt.Errorf("token '%s' contains un-map-able sub-string '%s'", tfToken, substring)
+			return nil, UnmappableError{
+				TfToken: tfToken,
+				Reason:  fmt.Errorf("contains unmapable sub-string '%s'", substring),
+			}
 		}
 		return ts(tfToken, tfTokens)
 	}
+}
+
+// Indicate that a token cannot be mapped.
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type UnmappableError struct {
+	TfToken string
+	Reason  error
+}
+
+func (err UnmappableError) Error() string {
+	return fmt.Sprintf("'%s' unmappable: %s", err.TfToken, err.Reason)
+}
+
+func (err UnmappableError) Unwrap() error {
+	return err.Reason
 }

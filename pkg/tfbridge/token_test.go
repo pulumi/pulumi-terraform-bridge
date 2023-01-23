@@ -127,7 +127,7 @@ func TestUnmappable(t *testing.T) {
 	})
 	strategy = strategy.Unmappable("five")
 	err := info.ComputeDefaultResources(strategy)
-	assert.ErrorContains(t, err, "contains un-map-able sub-string")
+	assert.ErrorContains(t, err, "contains unmapable sub-string")
 
 	// Override the unmappable resources
 	info.Resources = map[string]*tfbridge.ResourceInfo{
