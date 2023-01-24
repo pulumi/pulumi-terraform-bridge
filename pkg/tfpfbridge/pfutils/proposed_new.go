@@ -17,7 +17,6 @@ package pfutils
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -148,19 +147,23 @@ const (
 	pathToNonComputedAttribute               = 3
 	pathToReadOnlyAttribute                  = 4
 	pathToComputedOptionalAttribute          = 5
+	pathToNestedObject                       = 6
 )
 
 func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	if len(path.Steps()) == 0 {
 		return pathToRoot, nil
 	}
-	attr, err := AttributeAtTerraformPath(schema, path)
-	switch {
-	case err != nil:
-		if strings.Contains(err.Error(), "path leads to block, not an attribute") {
-			return pathToBlock, nil
-		}
+	lookupResult, err := LookupTerraformPath(schema, path)
+	if err != nil {
 		return pathUnknown, err
+	}
+	attr := lookupResult.Attr
+	switch {
+	case lookupResult.IsNestedObject:
+		return pathToNestedObject, nil
+	case lookupResult.IsBlock:
+		return pathToBlock, nil
 	case !attr.IsComputed():
 		return pathToNonComputedAttribute, nil
 	case !attr.IsOptional() && !attr.IsRequired():
@@ -178,15 +181,12 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 func getNearestEnclosingPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	for {
 		ty, err := getPathType(schema, path)
+		if err != nil {
+			return pathUnknown, err
+		}
 		switch {
-		case err != nil:
-			msg := "path leads to element, attribute, or block of a schema.Attribute that has no schema associated with it"
-			if strings.Contains(err.Error(), msg) {
-				steps := path.Steps()
-				path = tftypes.NewAttributePathWithSteps(steps[0 : len(steps)-1])
-				continue
-			}
-			return 0, err
+		case ty == pathToNestedObject:
+			path = path.WithoutLastStep()
 		default:
 			return ty, nil
 		}

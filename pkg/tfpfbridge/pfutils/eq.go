@@ -57,7 +57,7 @@ func replaceComputedAttributesWithNull(schema Schema,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		realPath := joinPaths(offset, p)
-		if attr, err := AttributeAtTerraformPath(schema, realPath); err == nil && attr.IsComputed() {
+		if ab, err := LookupTerraformPath(schema, realPath); err == nil && ab.IsAttr && ab.Attr.IsComputed() {
 			return tftypes.NewValue(v.Type(), nil), nil
 		}
 		return v, nil
