@@ -16,7 +16,6 @@ package pfutils
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -39,6 +38,7 @@ type Attr interface {
 	IsNested() bool
 	Nested() map[string]Attr
 	NestingMode() NestingMode
+	HasNestedObject() bool
 }
 
 type AttrLike interface {
@@ -81,6 +81,15 @@ type attrAdapter struct {
 
 var _ Attr = (*attrAdapter)(nil)
 
+func (a *attrAdapter) HasNestedObject() bool {
+	switch a.NestingMode() {
+	case NestingModeList, NestingModeMap, NestingModeSet:
+		return true
+	default:
+		return false
+	}
+}
+
 func (a *attrAdapter) IsNested() bool {
 	return a.nested != nil
 }
@@ -103,15 +112,51 @@ const (
 	NestingModeMap     NestingMode = 4
 )
 
-func AttributeAtTerraformPath(schema Schema, path *tftypes.AttributePath) (Attr, error) {
+type LookupResult struct {
+	IsAttr         bool
+	IsBlock        bool
+	IsNestedObject bool
+	Attr           Attr
+	Block          Block
+}
+
+func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResult, error) {
+	res, ok, err := tryLookupAttrOrBlock(schema, path)
+	if err != nil {
+		return res, err
+	}
+	if ok {
+		return res, nil
+	}
+
+	// Indirectly for fwschema.NestedBlockObject or fwschema.NestedAttributeObject.
+	if parent := path.WithoutLastStep(); parent != nil {
+		parentRes, parentOk, parentErr := tryLookupAttrOrBlock(schema, parent)
+		if parentErr == nil && parentOk {
+			if parentRes.IsAttr && parentRes.Attr.HasNestedObject() {
+				return LookupResult{IsNestedObject: true}, nil
+			}
+			if parentRes.IsBlock && parentRes.Block.HasNestedObject() {
+				return LookupResult{IsNestedObject: true}, nil
+			}
+		}
+	}
+
+	return res, fmt.Errorf("LookupTerraformPath failed at path %s, got unexpected %v", path, res)
+}
+
+func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupResult, bool, error) {
 	res, remaining, err := tftypes.WalkAttributePath(schema, path)
 	if err != nil {
-		return nil, fmt.Errorf("%v still remains in the path: %w", remaining, err)
+		return LookupResult{}, false, fmt.Errorf("%v still remains in the path: %w", remaining, err)
 	}
 	attrLike, ok := res.(AttrLike)
-	if !ok {
-		msg := "expected WalkAttributePath to return an AttrLike at path %s, got: %s"
-		return nil, fmt.Errorf(msg, path, reflect.TypeOf(res))
+	if ok {
+		return LookupResult{IsAttr: true, Attr: FromAttrLike(attrLike)}, true, nil
 	}
-	return FromAttrLike(attrLike), nil
+	blockLike, ok := res.(BlockLike)
+	if ok {
+		return LookupResult{IsBlock: true, Block: FromBlockLike(blockLike)}, true, nil
+	}
+	return LookupResult{}, false, nil
 }
