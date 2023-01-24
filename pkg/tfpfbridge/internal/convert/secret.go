@@ -15,8 +15,6 @@
 package convert
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -51,10 +49,15 @@ func (enc *secretEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.V
 	if p.IsNull() {
 		return tftypes.NewValue(enc.tfType, nil), nil
 	}
+	var v resource.PropertyValue
 	if !p.IsSecret() {
-		return tftypes.Value{}, fmt.Errorf("PropertyValue should be secret but is not")
+		// Relaxing the strict check due to https://github.com/pulumi/pulumi/issues/11971
+		//
+		// return tftypes.Value{}, fmt.Errorf("PropertyValue should be secret but is not")
+		v = p
+	} else {
+		v = p.SecretValue().Element
 	}
-	v := p.SecretValue().Element
 	return enc.elementEncoder.FromPropertyValue(v)
 }
 
