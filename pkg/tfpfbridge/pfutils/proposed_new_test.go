@@ -20,33 +20,34 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 type testcase struct {
-	Schema tfsdk.Schema
+	Schema Schema
 	Prior  valueBuilder
 	Config valueBuilder
 	Want   valueBuilder
 }
 
 func TestComputedOptionalBecomingUnknown(t *testing.T) {
-	checkTestCase(t, "basic", testcase{
-		Schema: tfsdk.Schema{Attributes: map[string]tfsdk.Attribute{
-			"foo": {
-				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-					"bar": {
-						Type:     types.StringType,
-						Optional: true,
-						Computed: true,
-					},
-				}),
-				Computed: true,
-				Optional: true,
+	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
+		"foo": rschema.SingleNestedAttribute{
+			Attributes: map[string]rschema.Attribute{
+				"bar": rschema.StringAttribute{
+					Optional: true,
+					Computed: true,
+				},
 			},
-		}},
+			Computed: true,
+			Optional: true,
+		},
+	}}
+	checkTestCase(t, "basic", testcase{
+		Schema: FromResourceSchema(schema),
 		Prior:  obj(field("foo", unk())),
 		Config: obj(field("foo", obj(field("bar", prim(nil))))),
 		Want:   obj(field("foo", obj(field("bar", unk())))),
@@ -57,9 +58,8 @@ func TestComputedOptionalBecomingUnknown(t *testing.T) {
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange.go
 func TestProposedNewBaseCases(t *testing.T) {
-	schema := tfsdk.Schema{Attributes: map[string]tfsdk.Attribute{
-		"foo": {
-			Type:     types.StringType,
+	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
+		"foo": rschema.StringAttribute{
 			Optional: true,
 			Computed: true,
 		},
@@ -194,7 +194,7 @@ func TestProposedNewBaseCases(t *testing.T) {
 	}
 
 	for name, tc := range testcases {
-		tc.Schema = schema
+		tc.Schema = FromResourceSchema(schema)
 		checkTestCase(t, name, tc)
 	}
 }
@@ -203,22 +203,18 @@ func TestProposedNewBaseCases(t *testing.T) {
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange_test.go#L12
 func TestProposedNewWithPortedCases(t *testing.T) {
-	testAttributes := map[string]tfsdk.Attribute{
-		"optional": {
-			Type:     types.StringType,
+	testAttributes := map[string]rschema.Attribute{
+		"optional": rschema.StringAttribute{
 			Optional: true,
 		},
-		"computed": {
-			Type:     types.StringType,
+		"computed": rschema.StringAttribute{
 			Computed: true,
 		},
-		"optional_computed": {
-			Type:     types.StringType,
+		"optional_computed": rschema.StringAttribute{
 			Computed: true,
 			Optional: true,
 		},
-		"required": {
-			Type:     types.StringType,
+		"required": rschema.StringAttribute{
 			Required: true,
 		},
 	}
@@ -226,44 +222,38 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 	tests := map[string]testcase{
 
 		"empty": {
-			tfsdk.Schema{Attributes: map[string]tfsdk.Attribute{}},
+			FromResourceSchema(rschema.Schema{Attributes: map[string]rschema.Attribute{}}),
 			prim(nil),
 			prim(nil),
 			prim(nil),
 		},
 
 		"no prior": (func() testcase {
-			schema := tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"foo": {
-						Type:     types.StringType,
+			schema := rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.StringAttribute{
 						Optional: true,
 					},
-					"bar": {
-						Type:     types.StringType,
+					"bar": rschema.StringAttribute{
 						Computed: true,
 					},
-					"bloop": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
+					"bloop": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"blop": rschema.StringAttribute{
 								Required: true,
 							},
-						}),
+						},
 						Computed: true,
 					},
 				},
-				Blocks: map[string]tfsdk.Block{
-					"baz": {
-						NestingMode: tfsdk.BlockNestingModeSingle,
-						Attributes: map[string]tfsdk.Attribute{
-							"boz": {
-								Type:     types.StringType,
+				Blocks: map[string]rschema.Block{
+					"baz": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"boz": rschema.StringAttribute{
 								Optional: true,
 								Computed: true,
 							},
-							"biz": {
-								Type:     types.StringType,
+							"biz": rschema.StringAttribute{
 								Optional: true,
 								Computed: true,
 							},
@@ -303,7 +293,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			)
 
 			return testcase{
-				Schema: schema,
+				Schema: FromResourceSchema(schema),
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -311,28 +301,24 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		})(),
 
 		"null block remains null": (func() testcase {
-			schema := tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"foo": {
-						Type:     types.StringType,
+			schema := rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.StringAttribute{
 						Optional: true,
 					},
-					"bloop": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
+					"bloop": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"blop": rschema.StringAttribute{
 								Required: true,
 							},
-						}),
+						},
 						Computed: true,
 					},
 				},
-				Blocks: map[string]tfsdk.Block{
-					"baz": {
-						NestingMode: tfsdk.BlockNestingModeSingle,
-						Attributes: map[string]tfsdk.Attribute{
-							"boz": {
-								Type:     types.StringType,
+				Blocks: map[string]rschema.Block{
+					"baz": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"boz": rschema.StringAttribute{
 								Optional: true,
 								Computed: true,
 							},
@@ -354,7 +340,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("baz", prim(nil)),
 			)
 			return testcase{
-				Schema: schema,
+				Schema: FromResourceSchema(schema),
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -364,27 +350,28 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		"no prior with set": (func() testcase {
 			// This one is here because our handling of sets is more complex than others (due to the fuzzy
 			// correlation heuristic) and historically that caused us some panic-related grief.
-			schema := tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"baz": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Attributes: map[string]tfsdk.Attribute{
-							"boz": {
-								Type:     types.StringType,
-								Optional: true,
-								Computed: true,
+			schema := rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"baz": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"boz": rschema.StringAttribute{
+									Optional: true,
+									Computed: true,
+								},
 							},
 						},
 					},
 				},
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
-								Required: true,
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"blop": rschema.StringAttribute{
+									Required: true,
+								},
 							},
-						}),
+						},
 						Computed: true,
 						Optional: true,
 					},
@@ -399,7 +386,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("bloop", set(obj(field("blop", prim("blub"))))),
 			)
 			return testcase{
-				Schema: schema,
+				Schema: FromResourceSchema(schema),
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -407,33 +394,28 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		})(),
 
 		"prior attributes": (func() testcase {
-			schema := tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"foo": {
-						Type:     types.StringType,
+			schema := rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.StringAttribute{
 						Optional: true,
 					},
-					"bar": {
-						Type:     types.StringType,
+					"bar": rschema.StringAttribute{
 						Computed: true,
 					},
-					"baz": {
-						Type:     types.StringType,
+					"baz": rschema.StringAttribute{
 						Optional: true,
 						Computed: true,
 					},
-					"boz": {
-						Type:     types.StringType,
+					"boz": rschema.StringAttribute{
 						Optional: true,
 						Computed: true,
 					},
-					"bloop": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
+					"bloop": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"blop": rschema.StringAttribute{
 								Required: true,
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
@@ -460,7 +442,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("bloop", obj(field("blop", prim("bleep")))),
 			)
 			return testcase{
-				Schema: schema,
+				Schema: FromResourceSchema(schema),
 				Prior:  prior,
 				Config: config,
 				Want:   want,
@@ -468,40 +450,35 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		})(),
 
 		"prior nested single": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeSingle,
-						Attributes: map[string]tfsdk.Attribute{
-							"bar": {
-								Type:     types.StringType,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"bar": rschema.StringAttribute{
 								Optional: true,
 								Computed: true,
 							},
-							"baz": {
-								Type:     types.StringType,
+							"baz": rschema.StringAttribute{
 								Optional: true,
 								Computed: true,
 							},
 						},
 					},
 				},
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"blop": rschema.StringAttribute{
 								Required: true,
 							},
-							"bleep": {
-								Type:     types.StringType,
+							"bleep": rschema.StringAttribute{
 								Optional: true,
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": object(map[string]valueBuilder{
 					"bar": prim("beep"),
@@ -536,36 +513,36 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior nested list": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeList,
-						Attributes: map[string]tfsdk.Attribute{
-							"bar": {
-								Type:     types.StringType,
-								Optional: true,
-								Computed: true,
-							},
-							"baz": {
-								Type:     types.StringType,
-								Optional: true,
-								Computed: true,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.ListNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{
+									Optional: true,
+									Computed: true,
+								},
+								"baz": rschema.StringAttribute{
+									Optional: true,
+									Computed: true,
+								},
 							},
 						},
 					},
 				},
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
-								Required: true,
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.ListNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"blop": rschema.StringAttribute{
+									Required: true,
+								},
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": list(
 					object(map[string]valueBuilder{
@@ -630,19 +607,20 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior nested map": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
-								Required: true,
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.MapNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"blop": rschema.StringAttribute{
+									Required: true,
+								},
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"bloop": mapv(map[string]valueBuilder{
 					"a": object(map[string]valueBuilder{
@@ -680,42 +658,41 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			}),
 		},
 		"prior nested set": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Attributes: map[string]tfsdk.Attribute{
-							"bar": {
-								// This non-computed attribute will serve
-								// as our matching key for propagating
-								// "baz" from elements in the prior value.
-								Type:     types.StringType,
-								Optional: true,
-							},
-							"baz": {
-								Type:     types.StringType,
-								Optional: true,
-								Computed: true,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{
+									// This non-computed attribute will serve
+									// as our matching key for propagating
+									// "baz" from elements in the prior value.
+									Optional: true,
+								},
+								"baz": rschema.StringAttribute{
+									Optional: true,
+									Computed: true,
+								},
 							},
 						},
 					},
 				},
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
-								Required: true,
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"blop": rschema.StringAttribute{
+									Required: true,
+								},
+								"bleep": rschema.StringAttribute{
+									Optional: true,
+								},
 							},
-							"bleep": {
-								Type:     types.StringType,
-								Optional: true,
-							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -790,31 +767,32 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"sets differing only by unknown": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"multi": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Attributes: map[string]tfsdk.Attribute{
-							"optional": {
-								Type:     types.StringType,
-								Optional: true,
-								Computed: true,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"multi": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"optional": rschema.StringAttribute{
+									Optional: true,
+									Computed: true,
+								},
 							},
 						},
 					},
 				},
-				Attributes: map[string]tfsdk.Attribute{
-					"bloop": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"blop": {
-								Type:     types.StringType,
-								Required: true,
+				Attributes: map[string]rschema.Attribute{
+					"bloop": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"blop": schema.StringAttribute{
+									Required: true,
+								},
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			prim(nil),
 			object(map[string]valueBuilder{
 				"multi": set(
@@ -859,28 +837,27 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"nested list in set": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Blocks: map[string]tfsdk.Block{
-							"bar": {
-								NestingMode: tfsdk.BlockNestingModeList,
-								Attributes: map[string]tfsdk.Attribute{
-									"baz": {
-										Type: types.StringType,
-									},
-									"qux": {
-										Type:     types.StringType,
-										Computed: true,
-										Optional: true,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Blocks: map[string]rschema.Block{
+								"bar": rschema.ListNestedBlock{
+									NestedObject: rschema.NestedBlockObject{
+										Attributes: map[string]rschema.Attribute{
+											"baz": rschema.StringAttribute{},
+											"qux": rschema.StringAttribute{
+												Computed: true,
+												Optional: true,
+											},
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -916,19 +893,21 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"empty nested list in set": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Blocks: map[string]tfsdk.Block{
-							"bar": {
-								NestingMode: tfsdk.BlockNestingModeList,
-								Blocks:      map[string]tfsdk.Block{},
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Blocks: map[string]rschema.Block{
+								"bar": rschema.ListNestedBlock{
+									NestedObject: rschema.NestedBlockObject{
+										Blocks: map[string]rschema.Block{},
+									},
+								},
 							},
 						},
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -954,24 +933,23 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		// Could not port empty nested map in set since tfsdk.BlockNestingModeMap is not supported, substituting
 		// an empty object instead.
 		"empty nested object in set": {
-			tfsdk.Schema{
-				Blocks: map[string]tfsdk.Block{
-					"foo": {
-						NestingMode: tfsdk.BlockNestingModeSet,
-						Blocks: map[string]tfsdk.Block{
-							"bar": {
-								NestingMode: tfsdk.BlockNestingModeSingle,
-								Attributes: map[string]tfsdk.Attribute{
-									"baz": {
-										Type:     types.StringType,
-										Optional: true,
+			FromResourceSchema(rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"foo": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Blocks: map[string]rschema.Block{
+								"bar": rschema.SingleNestedBlock{
+									Attributes: map[string]rschema.Attribute{
+										"baz": rschema.StringAttribute{
+											Optional: true,
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -996,23 +974,23 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 
 		// This example has a mixture of optional, computed and required in a deeply-nested NestedType attribute
 		"deeply NestedType": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"foo": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {
-								Attributes: tfsdk.SingleNestedAttributes(testAttributes),
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"bar": rschema.SingleNestedAttribute{
+								Attributes: testAttributes,
 								Required:   true,
 							},
-							"baz": {
-								Attributes: tfsdk.SingleNestedAttributes(testAttributes),
+							"baz": rschema.SingleNestedAttribute{
+								Attributes: testAttributes,
 								Optional:   true,
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 
 			object(map[string]valueBuilder{
 				"foo": object(map[string]valueBuilder{
@@ -1054,18 +1032,22 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"deeply nested set": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"foo": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {
-								Attributes: tfsdk.SetNestedAttributes(testAttributes),
-								Required:   true,
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.SetNestedAttribute{
+									NestedObject: rschema.NestedAttributeObject{
+										Attributes: testAttributes,
+									},
+									Required: true,
+								},
 							},
-						}),
+						},
 					},
 				},
-			},
+			}),
 
 			object(map[string]valueBuilder{
 				"foo": set(
@@ -1133,42 +1115,50 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"expected null NestedTypes": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"single": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"single": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"bar": rschema.StringAttribute{},
+						},
 						Optional: true,
 					},
-					"list": {
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
-						Optional: true,
-					},
-					"set": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
-						Optional: true,
-					},
-					"map": {
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
-						Optional: true,
-					},
-					"nested_map": {
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"inner": {
-								Attributes: tfsdk.SingleNestedAttributes(testAttributes),
+					"list": rschema.ListNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{},
 							},
-						}),
+						},
+						Optional: true,
+					},
+					"set": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{},
+							},
+						},
+						Optional: true,
+					},
+					"map": rschema.MapNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{},
+							},
+						},
+						Optional: true,
+					},
+					"nested_map": rschema.MapNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"inner": rschema.SingleNestedAttribute{
+									Attributes: testAttributes,
+								},
+							},
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"single": object(map[string]valueBuilder{"bar": prim("baz")}),
 				"list":   list(object(map[string]valueBuilder{"bar": prim("baz")})),
@@ -1206,22 +1196,26 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"expected empty NestedTypes": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"set": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"set": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{},
+							},
+						},
 						Optional: true,
 					},
-					"map": {
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {Type: types.StringType},
-						}),
+					"map": rschema.MapNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{},
+							},
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"map": mapv(nil),
 				"set": set(),
@@ -1239,19 +1233,20 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"optional types set replacement": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"set": {
-						Attributes: tfsdk.SetNestedAttributes(map[string]tfsdk.Attribute{
-							"bar": {
-								Type:     types.StringType,
-								Required: true,
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"set": rschema.SetNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{
+									Required: true,
+								},
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			object(map[string]valueBuilder{
 				"set": set(
 					object(map[string]valueBuilder{
@@ -1275,36 +1270,38 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior null nested objects": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"single": {
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"list": {
-								Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-									"foo": {
-										Type: types.StringType,
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"single": rschema.SingleNestedAttribute{
+						Attributes: map[string]rschema.Attribute{
+							"list": rschema.ListNestedAttribute{
+								NestedObject: rschema.NestedAttributeObject{
+									Attributes: map[string]rschema.Attribute{
+										"foo": rschema.StringAttribute{},
 									},
-								}),
+								},
 								Optional: true,
 							},
-						}),
+						},
 						Optional: true,
 					},
-					"map": {
-						Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
-							"list": {
-								Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-									"foo": {
-										Type: types.StringType,
+					"map": rschema.MapNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"list": rschema.ListNestedAttribute{
+									NestedObject: rschema.NestedAttributeObject{
+										Attributes: map[string]rschema.Attribute{
+											"foo": rschema.StringAttribute{},
+										},
 									},
-								}),
-								Optional: true,
+									Optional: true,
+								},
 							},
-						}),
+						},
 						Optional: true,
 					},
 				},
-			},
+			}),
 			prim(nil),
 
 			object(map[string]valueBuilder{
@@ -1362,23 +1359,25 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 
 		// data sources are planned with an unknown value
 		"unknown prior nested objects": {
-			tfsdk.Schema{
-				Attributes: map[string]tfsdk.Attribute{
-					"list": {
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"list": {
-								Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-									"foo": {
-										Type: types.StringType,
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"list": rschema.ListNestedAttribute{
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"list": rschema.ListNestedAttribute{
+									NestedObject: rschema.NestedAttributeObject{
+										Attributes: map[string]rschema.Attribute{
+											"foo": rschema.StringAttribute{},
+										},
 									},
-								}),
-								Computed: true,
+									Computed: true,
+								},
 							},
-						}),
+						},
 						Computed: true,
 					},
 				},
-			},
+			}),
 			unk(),
 
 			prim(nil),
