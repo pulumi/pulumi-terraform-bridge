@@ -20,16 +20,18 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
 	schemaBytes := genTestBridgeSchemaBytes(t)
-	server := tfbridge.NewProviderServer(
+	server, err := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		schemaBytes.pulumiSchema,
 		schemaBytes.renames,
 	)
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -58,11 +60,12 @@ func TestEmptyTestresDiff(t *testing.T) {
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
 	schemaBytes := genTestBridgeSchemaBytes(t)
-	server := tfbridge.NewProviderServer(
+	server, err := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		schemaBytes.pulumiSchema,
 		schemaBytes.renames,
 	)
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -95,11 +98,12 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 	schemaBytes := genTestBridgeSchemaBytes(t)
-	server := tfbridge.NewProviderServer(
+	server, err := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		schemaBytes.pulumiSchema,
 		schemaBytes.renames,
 	)
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -129,11 +133,12 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 
 func TestDiffWithSecrets(t *testing.T) {
 	g := genRandomSchemaBytes(t)
-	server := tfbridge.NewProviderServer(
+	server, err := tfbridge.NewProviderServer(
 		testprovider.RandomProvider(),
 		g.pulumiSchema,
 		g.renames,
 	)
+	require.NoError(t, err)
 
 	testCase := `
         {

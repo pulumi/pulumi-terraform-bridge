@@ -30,7 +30,6 @@ var renames []byte
 func main() {
 	tfbridge.Main(
 		"random",
-		"4.8.2",
 		testprovider.RandomProvider(),
 		schema,
 		renames,

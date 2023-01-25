@@ -22,12 +22,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
-func Serve(pkg, version string, prov info.ProviderInfo, pulumiSchema []byte, renames []byte) error {
-	if prov.Version == "" {
-		prov.Version = version
-	}
+func Serve(pkg string, prov info.ProviderInfo, pulumiSchema []byte, renames []byte) error {
 	return provider.Main(pkg, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-
-		return NewProviderServer(prov, pulumiSchema, renames), nil
+		return NewProviderServer(prov, pulumiSchema, renames)
 	})
 }

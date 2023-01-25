@@ -17,6 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
@@ -25,11 +27,12 @@ import (
 
 func TestCreateWithComputedOptionals(t *testing.T) {
 	schemaBytes := genTestBridgeSchemaBytes(t)
-	server := tfbridge.NewProviderServer(
+	server, err := tfbridge.NewProviderServer(
 		testprovider.SyntheticTestBridgeProvider(),
 		schemaBytes.pulumiSchema,
 		schemaBytes.renames,
 	)
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Create",
