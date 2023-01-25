@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -46,7 +45,7 @@ import (
 type Provider struct {
 	tfProvider    tfsdkprovider.Provider
 	tfServer      tfprotov6.ProviderServer
-	info          info.ProviderInfo
+	info          ProviderInfo
 	resources     pfutils.Resources
 	datasources   pfutils.DataSources
 	pulumiSchema  []byte
@@ -61,9 +60,9 @@ type Provider struct {
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames []byte) (plugin.Provider, error) {
+func NewProvider(info ProviderInfo, pulumiSchema []byte, serializedRenames []byte) (plugin.Provider, error) {
 	ctx := context.TODO()
-	p := info.P()
+	p := info.NewProvider()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
 		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
@@ -128,7 +127,7 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 }
 
 func NewProviderServer(
-	info info.ProviderInfo,
+	info ProviderInfo,
 	pulumiSchema []byte,
 	serializedRenames []byte,
 ) (pulumirpc.ResourceProviderServer, error) {

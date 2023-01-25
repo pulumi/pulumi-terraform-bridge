@@ -19,7 +19,7 @@ import (
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -31,72 +31,9 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 	}
 }
 
-func ShimSchemaOnlyProviderInfo(ctx context.Context, provider info.ProviderInfo) tfbridge.ProviderInfo {
-	shimProvider := ShimSchemaOnlyProvider(ctx, provider.P())
-	return tfbridge.ProviderInfo{
-		P:              shimProvider,
-		Name:           provider.Name,
-		ResourcePrefix: provider.ResourcePrefix,
-
-		GitHubOrg:   provider.GitHubOrg,
-		GitHubHost:  provider.GitHubHost,
-		Description: provider.Description,
-		Keywords:    provider.Keywords,
-		License:     provider.License,
-		LogoURL:     provider.LogoURL,
-		DisplayName: provider.DisplayName,
-		Publisher:   provider.Publisher,
-		Homepage:    provider.Homepage,
-		Repository:  provider.Repository,
-		Version:     provider.Version,
-
-		// TODO Config:      provider.Config,
-		// TODO ExtraConfig: provider.ExtraConfig,
-		Resources:   convertResourceMetadata(provider.Resources),
-		DataSources: convertDataSourceMetadata(provider.DataSources),
-		// TODO ExtraTypes:     provider.ExtraTypes,
-		// TODO ExtraResources: provider.ExtraResources,
-		// TODO ExtraFunctions: provider.ExtraFunctions,
-
-		// TODO ExtraResourceHclExamples: provider.ExtraResourceHclExamples,
-		// TODO ExtraFunctionHclExamples: provider.ExtraFunctionHclExamples,
-		IgnoreMappings:    provider.IgnoreMappings,
-		PluginDownloadURL: provider.PluginDownloadURL,
-
-		JavaScript: provider.JavaScript,
-		Python:     provider.Python,
-		Golang:     provider.Golang,
-		CSharp:     provider.CSharp,
-		Java:       provider.Java,
-
-		TFProviderVersion: provider.TFProviderVersion,
-		// TODO TFProviderLicense:       provider.TFProviderLicense,
-		TFProviderModuleVersion: provider.TFProviderModuleVersion,
-
-		// TODO PreConfigureCallback:           provider.PreConfigureCallback,
-		// TODO PreConfigureCallbackWithLogger: provider.PreConfigureCallbackWithLogger,
-	}
-}
-
-func convertResourceMetadata(inputs map[string]*info.ResourceInfo) map[string]*tfbridge.ResourceInfo {
-	result := map[string]*tfbridge.ResourceInfo{}
-	for k, v := range inputs {
-		result[k] = &tfbridge.ResourceInfo{
-			Tok: v.Tok,
-		}
-	}
-	return result
-}
-
-func convertDataSourceMetadata(inputs map[string]*info.DataSourceInfo) map[string]*tfbridge.DataSourceInfo {
-	result := map[string]*tfbridge.DataSourceInfo{}
-	for k, v := range inputs {
-		result[k] = &tfbridge.DataSourceInfo{
-			Tok: v.Tok,
-			// TODO Fields
-			// TODO Docs
-			DeprecationMessage: v.DeprecationMessage,
-		}
-	}
-	return result
+func ShimSchemaOnlyProviderInfo(ctx context.Context, provider tfpf.ProviderInfo) tfbridge.ProviderInfo {
+	shimProvider := ShimSchemaOnlyProvider(ctx, provider.NewProvider())
+	var copy tfbridge.ProviderInfo = provider.ProviderInfo
+	copy.P = shimProvider
+	return copy
 }

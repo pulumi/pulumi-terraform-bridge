@@ -18,9 +18,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
 
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -28,7 +28,7 @@ import (
 //
 // The resulting binary is able to generate Pulumi Package Schema and derived package sources in
 // various programming languages supported by Pulumi.
-func Main(provider, version string, info info.ProviderInfo) {
+func Main(provider, version string, info tfpf.ProviderInfo) {
 	ctx := context.Background()
 	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, info)
 

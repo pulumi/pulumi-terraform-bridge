@@ -24,9 +24,9 @@ import (
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 type resourceHandle struct {
@@ -34,7 +34,7 @@ type resourceHandle struct {
 	makeResource          func() pfresource.Resource
 	terraformResourceName string
 	schema                pfutils.Schema
-	pulumiResourceInfo    *info.ResourceInfo // optional
+	pulumiResourceInfo    *tfbridge.ResourceInfo // optional
 	idExtractor           idExtractor
 	encoder               convert.Encoder
 	decoder               convert.Decoder

@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -32,7 +32,7 @@ import (
 
 type GenerateSchemaOptions struct {
 	Context         context.Context
-	ProviderInfo    info.ProviderInfo
+	ProviderInfo    tfpf.ProviderInfo
 	DiagnosticsSink diag.Sink
 }
 

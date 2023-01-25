@@ -20,12 +20,13 @@ import (
 	"unicode"
 
 	tlsshim "github.com/hashicorp/terraform-provider-tls/shim"
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Adapts tls provider to tfbridge for testing tfbridge against another realistic provider.
-func TlsProvider() tfbridge.ProviderInfo {
+func TlsProvider() tfpf.ProviderInfo {
 	tlsPkg := "tls"
 	tlsMod := "index"
 	tlsVersion := "4.0.4"
@@ -48,8 +49,7 @@ func TlsProvider() tfbridge.ProviderInfo {
 		return tlsType(mod+"/"+fn, res)
 	}
 
-	return tfbridge.ProviderInfo{
-		P:           tlsshim.NewProvider,
+	info := tfbridge.ProviderInfo{
 		Name:        "tls",
 		Description: "A Pulumi package to create TLS resources in Pulumi programs.",
 		Keywords:    []string{"pulumi", "tls"},
@@ -97,5 +97,10 @@ func TlsProvider() tfbridge.ProviderInfo {
 			},
 		},
 		Version: tlsVersion,
+	}
+
+	return tfpf.ProviderInfo{
+		ProviderInfo: info,
+		NewProvider:  tlsshim.NewProvider,
 	}
 }

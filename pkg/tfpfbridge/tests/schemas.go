@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen"
 )
@@ -33,7 +33,7 @@ type schemaBytes struct {
 	renames      []byte
 }
 
-func genSchemaBytes(t *testing.T, info info.ProviderInfo) schemaBytes {
+func genSchemaBytes(t *testing.T, info tfpf.ProviderInfo) schemaBytes {
 	generated, err := tfgen.GenerateSchema(tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),

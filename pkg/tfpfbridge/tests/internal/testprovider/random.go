@@ -23,12 +23,13 @@ import (
 
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Adapts Random provider to tfbridge for testing tfbridge against a
 // realistic provider.
-func RandomProvider() tfbridge.ProviderInfo {
+func RandomProvider() tfpf.ProviderInfo {
 	randomPkg := "random"
 	randomMod := "index"
 
@@ -49,8 +50,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 		return randomType(mod+"/"+fn, res)
 	}
 
-	return tfbridge.ProviderInfo{
-		P:           randomshim.NewProvider,
+	info := tfbridge.ProviderInfo{
 		Name:        "random",
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
 		Keywords:    []string{"pulumi", "random"},
@@ -97,5 +97,10 @@ func RandomProvider() tfbridge.ProviderInfo {
 				"random": "Random",
 			},
 		},
+	}
+
+	return tfpf.ProviderInfo{
+		ProviderInfo: info,
+		NewProvider:  randomshim.NewProvider,
 	}
 }

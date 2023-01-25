@@ -23,12 +23,10 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
 // Main launches the tfbridge plugin for a given package pkg and provider prov.
-func Main(pkg string, prov info.ProviderInfo, pulumiSchema []byte, renames []byte) {
+func Main(pkg string, prov ProviderInfo, pulumiSchema []byte, renames []byte) {
 	version := prov.Version
 
 	// Look for a request to dump the provider info to stdout.
