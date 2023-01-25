@@ -27,7 +27,6 @@ func Serve(pkg, version string, prov info.ProviderInfo, pulumiSchema []byte, ren
 		prov.Version = version
 	}
 	return provider.Main(pkg, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-
-		return NewProviderServer(prov, pulumiSchema, renames), nil
+		return NewProviderServer(prov, pulumiSchema, renames)
 	})
 }

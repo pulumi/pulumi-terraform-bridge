@@ -60,31 +60,31 @@ type Provider struct {
 
 var _ plugin.Provider = &Provider{}
 
-func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames []byte) plugin.Provider {
+func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames []byte) (plugin.Provider, error) {
 	ctx := context.TODO()
 	p := info.P()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
-		panic(fmt.Errorf("Fatal failure starting a provider server: %w", err))
+		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
 	}
 	resources, err := pfutils.GatherResources(ctx, p)
 	if err != nil {
-		panic(fmt.Errorf("Fatal failure gathering resource metadata: %w", err))
+		return nil, fmt.Errorf("Fatal failure gathering resource metadata: %w", err)
 	}
 
 	datasources, err := pfutils.GatherDatasources(ctx, p)
 	if err != nil {
-		panic(fmt.Errorf("Fatal failure gathering datasource metadata: %w", err))
+		return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
 	}
 
 	var thePackageSpec pschema.PackageSpec
 	if err := json.Unmarshal(pulumiSchema, &thePackageSpec); err != nil {
-		panic(fmt.Errorf("Failed to unmarshal PackageSpec: %w", err))
+		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
 	}
 
 	var renames tfgen.Renames
 	if err := json.Unmarshal(serializedRenames, &renames); err != nil {
-		panic(fmt.Errorf("Failed to unmarshal Renames: %w", err))
+		return nil, fmt.Errorf("Failed to unmarshal Renames: %w", err)
 	}
 
 	propertyNames := newPrecisePropertyNames(renames)
@@ -94,14 +94,14 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 	p.Schema(ctx, tfsdkprovider.SchemaRequest{}, schemaResponse)
 	schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
 	if diags.HasError() {
-		panic(fmt.Errorf("Schema() returned diagnostics with HasError"))
+		return nil, fmt.Errorf("Schema() returned diagnostics with HasError")
 	}
 
 	providerConfigType := schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	configEncoder, err := enc.NewConfigEncoder(providerConfigType)
 	if err != nil {
-		panic(fmt.Errorf("NewConfigEncoder failed: %w", err))
+		return nil, fmt.Errorf("NewConfigEncoder failed: %w", err)
 	}
 
 	return &Provider{
@@ -116,15 +116,19 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		encoding:      enc,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
-	}
+	}, nil
 }
 
 func NewProviderServer(
 	info info.ProviderInfo,
 	pulumiSchema []byte,
 	serializedRenames []byte,
-) pulumirpc.ResourceProviderServer {
-	return plugin.NewProviderServer(NewProvider(info, pulumiSchema, serializedRenames))
+) (pulumirpc.ResourceProviderServer, error) {
+	p, err := NewProvider(info, pulumiSchema, serializedRenames)
+	if err != nil {
+		return nil, err
+	}
+	return plugin.NewProviderServer(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
