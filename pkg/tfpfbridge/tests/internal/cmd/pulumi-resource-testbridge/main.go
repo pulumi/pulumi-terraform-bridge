@@ -30,7 +30,6 @@ var renames []byte
 func main() {
 	tfbridge.Main(
 		"testbridge",
-		"0.0.1",
 		testprovider.SyntheticTestBridgeProvider(),
 		schema,
 		renames,

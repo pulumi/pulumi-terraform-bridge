@@ -17,6 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
@@ -26,7 +28,9 @@ import (
 func TestBasicInvoke(t *testing.T) {
 	p := testprovider.TlsProvider()
 	g := genSchemaBytes(t, p)
-	server := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
+	server, err := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
+	require.NoError(t, err)
+
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Invoke",
@@ -66,7 +70,9 @@ func TestBasicInvoke(t *testing.T) {
 func TestInvokeWithInvalidData(t *testing.T) {
 	p := testprovider.TlsProvider()
 	g := genSchemaBytes(t, p)
-	server := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
+	server, err := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
+	require.NoError(t, err)
+
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Invoke",

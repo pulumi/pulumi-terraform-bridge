@@ -30,7 +30,6 @@ var renames []byte
 func main() {
 	tfbridge.Main(
 		"tls",
-		"4.0.4",
 		testprovider.TlsProvider(),
 		schema,
 		renames,

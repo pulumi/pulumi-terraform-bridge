@@ -96,5 +96,6 @@ func TlsProvider() tfbridge.ProviderInfo {
 				"tls": "Tls",
 			},
 		},
+		Version: tlsVersion,
 	}
 }

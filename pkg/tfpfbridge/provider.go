@@ -56,6 +56,7 @@ type Provider struct {
 	diagSink      diag.Sink
 	configEncoder convert.Encoder
 	configType    tftypes.Object
+	version       semver.Version
 }
 
 var _ plugin.Provider = &Provider{}
@@ -104,6 +105,12 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		return nil, fmt.Errorf("NewConfigEncoder failed: %w", err)
 	}
 
+	semverVersion, err := semver.ParseTolerant(info.Version)
+	if err != nil {
+		return nil, fmt.Errorf("ProviderInfo needs a semver-compatible version string, got info.Version=%q",
+			info.Version)
+	}
+
 	return &Provider{
 		tfProvider:    p,
 		tfServer:      server6,
@@ -116,6 +123,7 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 		encoding:      enc,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
+		version:       semverVersion,
 	}, nil
 }
 
@@ -148,13 +156,9 @@ func (p *Provider) GetSchema(version int) ([]byte, error) {
 
 // GetPluginInfo returns this plugin's information.
 func (p *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
-	ver, err := semver.Parse(p.info.Version)
-	if err != nil {
-		return workspace.PluginInfo{}, err
-	}
 	info := workspace.PluginInfo{
 		Name:    p.info.Name,
-		Version: &ver,
+		Version: &p.version,
 		Kind:    workspace.ResourcePlugin,
 	}
 	return info, nil
