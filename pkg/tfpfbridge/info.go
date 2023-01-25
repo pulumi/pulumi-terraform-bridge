@@ -19,12 +19,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-// Configures a Pulumi provider bridged from a Terraform provider built using the Plugin Framework.
-//
-// See https://developer.hashicorp.com/terraform/plugin/framework
+// Configures Pulumi provider metadata and bridging options.
 type ProviderInfo struct {
 
-	// Inherit the options used for bridging providers built with the Terraform Plugin SDK.
+	// Inherits the options used for bridging providers built with the Terraform Plugin SDK.
 	//
 	// One notable exception is P (provider itself). When populating ProviderInfo, property P must be nil. Populate
 	// NewProvider instead.
