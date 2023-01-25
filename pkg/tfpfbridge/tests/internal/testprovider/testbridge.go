@@ -18,12 +18,10 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
@@ -54,26 +52,24 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 type syntheticProvider struct {
 }
 
-var _ provider.ProviderWithMetadata = (*syntheticProvider)(nil)
+var _ provider.Provider = (*syntheticProvider)(nil)
 
 func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "testbridge"
 	resp.Version = "0.0.1"
 }
 
-func (p *syntheticProvider) GetSchema(context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"stringConfigProp": {
-				Type: types.StringType,
-			},
+func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = pschema.Schema{
+		Attributes: map[string]pschema.Attribute{
+			"string_config_prop": pschema.StringAttribute{},
 		},
-	}, nil
+	}
 }
 
 func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var stringConfigProp *string
-	diags := req.Config.GetAttribute(ctx, path.Root("stringConfigProp"), &stringConfigProp)
+	diags := req.Config.GetAttribute(ctx, path.Root("string_config_prop"), &stringConfigProp)
 	resp.Diagnostics.Append(diags...)
 	if stringConfigProp != nil {
 		resp.ResourceData = stringConfigProp

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -41,8 +49,8 @@ func newTestres() resource.Resource {
 	return &testres{}
 }
 
-func (*testres) schema() tfsdk.Schema {
-	return tfsdk.Schema{
+func (*testres) schema() rschema.Schema {
+	return rschema.Schema{
 		Description: `
 testbridge_testres resource is built to facilitate testing the Pulumi bridge.
 
@@ -52,164 +60,151 @@ attribute.
 The CRUD model is as simple as possible. Update and Create replace the cloud state with the planned state, Delete
 removes the cloud state, and Read copies it.
 `,
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
+		Attributes: map[string]rschema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"statedir": {
-				Type:        types.StringType,
+			"statedir": schema.StringAttribute{
 				Required:    true,
 				Description: "Dir to store pseudo-cloud state in.",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					resource.RequiresReplace(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"requiredInputString": {
-				Type:     types.StringType,
+			"required_input_string": schema.StringAttribute{
 				Required: true,
 			},
-			"optionalInputString": {
-				Type:     types.StringType,
+			"optional_input_string": schema.StringAttribute{
 				Optional: true,
 			},
-			"requiredInputStringCopy": {
-				Type:        types.StringType,
+			"required_input_string_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of requiredInputString",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				Description: "Computed as a copy of required_input_string",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"optionalInputStringCopy": {
-				Type:        types.StringType,
+			"optional_input_string_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputString",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputString"},
+				Description: "Computed as a copy of optional_input_string",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"optional_input_string"},
 				},
 			},
-			"optionalInputNumber": {
-				Type:     types.NumberType,
+			"optional_input_number": schema.NumberAttribute{
 				Optional: true,
 			},
-			"optionalInputNumberCopy": {
-				Type:        types.NumberType,
+			"optional_input_number_copy": schema.NumberAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputNumber",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputNumber"},
+				Description: "Computed as a copy of optional_input_number",
+				PlanModifiers: []planmodifier.Number{
+					numberplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"optional_input_number"},
 				},
 			},
-			"optionalInputBool": {
-				Type:     types.BoolType,
+			"optional_input_bool": schema.BoolAttribute{
 				Optional: true,
 			},
-			"optionalInputBoolCopy": {
-				Type:        types.BoolType,
+			"optional_input_bool_copy": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputBool",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputBool"},
+				Description: "Computed as a copy of optional_input_bool",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"optional_input_bool"},
 				},
 			},
-			"optionalInputStringList": {
-				Type:     types.ListType{ElemType: types.StringType},
-				Optional: true,
+			"optional_input_string_list": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
 			},
-			"optionalInputStringListCopy": {
-				Type:        types.ListType{ElemType: types.StringType},
+			"optional_input_string_list_copy": schema.ListAttribute{
+				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputStringList",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputStringList"},
+				Description: "Computed as a copy of optional_input_string_list",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"optional_input_string_list"},
 				},
 			},
-			"optionalInputStringMap": {
-				Type:     types.MapType{ElemType: types.StringType},
-				Optional: true,
+			"optional_input_string_map": schema.MapAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
 			},
-			"optionalInputStringMapCopy": {
-				Type:        types.MapType{ElemType: types.StringType},
+			"optional_input_string_map_copy": schema.MapAttribute{
+				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Computed as a copy of optionalInputStringMap",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"optionalInputStringMap"},
+				Description: "Computed as a copy of optional_input_string_map",
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"optional_input_string_map"},
 				},
 			},
-			"singleNestedAttr": {
-				MarkdownDescription: "singleNestedAttr: tests SingleNestedAttribute support",
+			"single_nested_attr": schema.SingleNestedAttribute{
+				MarkdownDescription: "single_nested_attr: tests SingleNestedAttribute support",
 				Optional:            true,
-				Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-					"description": {
+				Attributes: map[string]rschema.Attribute{
+					"description": rschema.StringAttribute{
 						Optional: true,
-						Type:     types.StringType,
 					},
-					"quantity": {
+					"quantity": rschema.Float64Attribute{
 						Optional: true,
-						Type:     types.Float64Type,
 					},
-				}),
+				},
 			},
-			"singleNestedAttrJSONCopy": {
-				Type:        types.StringType,
+			"single_nested_attr_json_copy": schema.StringAttribute{
 				Computed:    true,
-				Description: "Computed as a JSON-ified copy of singleNestedAttr input",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
-					PropagatesNullFrom{"singleNestedAttr"},
+				Description: "Computed as a JSON-ified copy of single_nested_attr input",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					PropagatesNullFrom{"single_nested_attr"},
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
-			"services": {
+			"services": schema.ListNestedAttribute{
 				MarkdownDescription: "services: tests ListNestedAttributes support",
 				Optional:            true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"ports": {
-						MarkdownDescription: "External ports and handlers",
-						Required:            true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"port": {
-								MarkdownDescription: "External port",
-								Required:            true,
-								Type:                types.Int64Type,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"ports": schema.ListNestedAttribute{
+							MarkdownDescription: "External ports and handlers",
+							Required:            true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"port": schema.Int64Attribute{
+										MarkdownDescription: "External port",
+										Required:            true,
+									},
+									"handlers": schema.ListAttribute{
+										ElementType:         types.StringType,
+										MarkdownDescription: "How the edge should process requests",
+										Optional:            true,
+									},
+								},
 							},
-							"handlers": {
-								MarkdownDescription: "How the edge should process requests",
-								Optional:            true,
-								Type:                types.ListType{ElemType: types.StringType},
-							},
-						}),
+						},
+						"protocol": schema.StringAttribute{
+							MarkdownDescription: "network protocol",
+							Required:            true,
+						},
+						// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
+						// not work end-to-end yet.
+						"intport": schema.Int64Attribute{
+							MarkdownDescription: "Port application listens on internally",
+							Required:            true,
+						},
 					},
-					"protocol": {
-						MarkdownDescription: "network protocol",
-						Required:            true,
-						Type:                types.StringType,
-					},
-					// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
-					// not work end-to-end yet.
-					"intport": {
-						MarkdownDescription: "Port application listens on internally",
-						Required:            true,
-						Type:                types.Int64Type,
-					},
-				}),
+				},
 			},
-			"servicesJSONCopy": {
-				Type:        types.StringType,
+			"services_json_copy": schema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a JSON-ified copy of services input",
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					PropagatesNullFrom{"services"},
 				},
 			},
@@ -221,8 +216,8 @@ func (e *testres) Metadata(_ context.Context, req resource.MetadataRequest, resp
 	resp.TypeName = req.ProviderTypeName + "_testres"
 }
 
-func (e *testres) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return e.schema(), nil
+func (e *testres) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = e.schema()
 }
 
 func (e *testres) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -352,7 +347,7 @@ type copyDataOptions struct {
 }
 
 func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.State, inputProp string, slot *T, opts copyDataOptions) bool {
-	outputProp := inputProp + "Copy"
+	outputProp := inputProp + "_copy"
 	if opts.outputProp != "" {
 		outputProp = opts.outputProp
 	}
@@ -394,39 +389,39 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 
 func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State, diag *diag.Diagnostics) {
 	var requiredInputString string
-	diag0 := state.GetAttribute(ctx, path.Root("requiredInputString"), &requiredInputString)
+	diag0 := state.GetAttribute(ctx, path.Root("required_input_string"), &requiredInputString)
 	diag.Append(diag0...)
 	if diag.HasError() {
 		return
 	}
-	diag1 := state.SetAttribute(ctx, path.Root("requiredInputStringCopy"), requiredInputString)
+	diag1 := state.SetAttribute(ctx, path.Root("required_input_string_copy"), requiredInputString)
 	diag.Append(diag1...)
 	if diag.HasError() {
 		return
 	}
 
 	var s *string
-	if ok := copyData(ctx, diag, state, "optionalInputString", &s, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string", &s, copyDataOptions{}); !ok {
 		return
 	}
 
 	var n *float64
-	if ok := copyData(ctx, diag, state, "optionalInputNumber", &n, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_number", &n, copyDataOptions{}); !ok {
 		return
 	}
 
 	var b *bool
-	if ok := copyData(ctx, diag, state, "optionalInputBool", &b, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_bool", &b, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sl *[]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringList", &sl, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string_list", &sl, copyDataOptions{}); !ok {
 		return
 	}
 
 	var sm *map[string]string
-	if ok := copyData(ctx, diag, state, "optionalInputStringMap", &sm, copyDataOptions{}); !ok {
+	if ok := copyData(ctx, diag, state, "optional_input_string_map", &sm, copyDataOptions{}); !ok {
 		return
 	}
 
@@ -440,15 +435,15 @@ func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State,
 
 	var services *[]ServiceModel
 	if ok := copyData(ctx, diag, state, "services", &services, copyDataOptions{
-		outputProp: "servicesJSONCopy",
+		outputProp: "services_json_copy",
 		transform:  jsonify,
 	}); !ok {
 		return
 	}
 
 	var snaModel *SingleNestedAttrModel
-	if ok := copyData(ctx, diag, state, "singleNestedAttr", &snaModel, copyDataOptions{
-		outputProp: "singleNestedAttrJSONCopy",
+	if ok := copyData(ctx, diag, state, "single_nested_attr", &snaModel, copyDataOptions{
+		outputProp: "single_nested_attr_json_copy",
 		transform:  jsonify,
 	}); !ok {
 		return

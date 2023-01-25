@@ -21,14 +21,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // Represents all provider's datasources pre-indexed by TypeName.
 type DataSources interface {
 	All() []TypeName
 	Has(TypeName) bool
-	Schema(TypeName) tfsdk.Schema
+	Schema(TypeName) Schema
 	Diagnostics(TypeName) diag.Diagnostics
 	AllDiagnostics() diag.Diagnostics
 	DataSource(TypeName) datasource.DataSource
@@ -46,14 +45,18 @@ func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		dataSourceSchema, diag := dataSource.GetSchema(ctx)
+		schemaResponse := &datasource.SchemaResponse{}
+		dataSource.Schema(ctx, datasource.SchemaRequest{}, schemaResponse)
+
+		dataSourceSchema := schemaResponse.Schema
+		diag := schemaResponse.Diagnostics
 		if err := checkDiagsForErrors(diag); err != nil {
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
 		ds[TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
 			t:           makeDataSource,
-			schema:      dataSourceSchema,
+			schema:      FromDataSourceSchema(dataSourceSchema),
 			diagnostics: diag,
 		}
 	}

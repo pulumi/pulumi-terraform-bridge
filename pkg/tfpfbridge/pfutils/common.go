@@ -21,14 +21,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 func queryProviderMetadata(ctx context.Context, prov provider.Provider) *provider.MetadataResponse {
 	provMetadata := provider.MetadataResponse{}
-	if provWithMeta, ok := prov.(provider.ProviderWithMetadata); ok {
-		provWithMeta.Metadata(ctx, provider.MetadataRequest{}, &provMetadata)
-	}
+	prov.Metadata(ctx, provider.MetadataRequest{}, &provMetadata)
 	return &provMetadata
 }
 
@@ -46,7 +43,7 @@ func checkDiagsForErrors(diag diag.Diagnostics) error {
 }
 
 type entry[T any] struct {
-	schema      tfsdk.Schema
+	schema      Schema
 	t           T
 	diagnostics diag.Diagnostics
 }
@@ -72,7 +69,7 @@ func (c collection[T]) Has(name TypeName) bool {
 	return ok
 }
 
-func (c collection[T]) Schema(name TypeName) tfsdk.Schema {
+func (c collection[T]) Schema(name TypeName) Schema {
 	return c[name].schema
 }
 

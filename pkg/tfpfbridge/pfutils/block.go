@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,28 +15,28 @@
 package pfutils
 
 import (
-	"fmt"
-	"reflect"
+	"context"
+	"regexp"
+	"strconv"
 
-	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 // Block type works around not being able to link to fwschema.Block from
-// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
-//
-// Most methods from fwschema.Block have simple signatures and are copied into blockLike interface. Casting to blockLike
-// exposes these methods.
-//
-// There are some exceptions though such as GetBlocks() map[string]Block and GetAttributes() map[string]Attribute. These
-// signatures refer to further internal types. Instead of direct linking, this information is recovered and recorded in
-// new dedicated fields.
-type Block struct {
+// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema".
+type Block interface {
 	BlockLike
-	BlockNestingMode BlockNestingMode
-	NestedBlocks     map[string]Block
-	NestedAttrs      map[string]Attr
+	NestedAttrs() map[string]Attr
+	NestedBlocks() map[string]Block
+	GetMaxItems() int64
+	GetMinItems() int64
+	HasNestedObject() bool
 }
 
 type BlockLike interface {
@@ -44,89 +44,97 @@ type BlockLike interface {
 	GetDescription() string
 	GetMarkdownDescription() string
 
-	GetMaxItems() int64
-	GetMinItems() int64
-
-	Type() pfattr.Type
+	Type() attr.Type
 }
 
-func BlockAtTerraformPath(schema *tfsdk.Schema, path *tftypes.AttributePath) (Block, error) {
-	res, remaining, err := tftypes.WalkAttributePath(*schema, path)
-	if err != nil {
-		return Block{}, fmt.Errorf("%v still remains in the path: %w", remaining, err)
-	}
-	switch r := res.(type) {
-	case tfsdk.Block:
-		m := SchemaToBlockMap(&tfsdk.Schema{
-			Blocks: map[string]tfsdk.Block{
-				"x": r,
-			},
-		})
-		return m["x"], nil
-	default:
-		return Block{}, fmt.Errorf("Expected a Block but found %s at path %s",
-			reflect.TypeOf(r), path)
+func FromProviderBlock(x pschema.Block) Block {
+	return FromBlockLike(x)
+}
+
+func FromDataSourceBlock(x dschema.Block) Block {
+	return FromBlockLike(x)
+}
+
+func FromResourceBlock(x rschema.Block) Block {
+	return FromBlockLike(x)
+}
+
+func FromBlockLike(x BlockLike) Block {
+	minItems, maxItems, _ := detectSizeConstraints(x)
+	attrs, blocks, mode := extractBlockNesting(x)
+	return &blockAdapter{
+		BlockLike:    x,
+		nestedAttrs:  attrs,
+		nestedBlocks: blocks,
+		nestingMode:  mode,
+		minItems:     minItems,
+		maxItems:     maxItems,
 	}
 }
 
-func SchemaToBlockMap(schema *tfsdk.Schema) map[string]Block {
-	if schema.GetBlocks() == nil || len(schema.GetBlocks()) == 0 {
-		return map[string]Block{}
-	}
+type hasListValidators interface {
+	ListValidators() []validator.List
+}
 
-	queue := schema.GetBlocks()
-	for k := range queue {
-		delete(queue, k)
-	}
+var listSizeRegExp = regexp.MustCompile(`^list must contain at least (\d+) elements and at most (\d+) elements$`)
 
-	type dest struct {
-		toMap map[string]Block
-		key   string
-	}
+func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
+	ctx := context.Background()
 
-	dests := map[string]dest{}
-
-	jobCounter := 0
-
-	finalMap := map[string]Block{}
-	for k, v := range schema.GetBlocks() {
-		job := fmt.Sprintf("%d", jobCounter)
-		jobCounter++
-		queue[job] = v
-		dests[job] = dest{toMap: finalMap, key: k}
-	}
-
-	for len(queue) > 0 {
-		job, inBlock := pop(queue)
-		blockDest := popAt(dests, job)
-
-		// outBlock := convert(inBlock)
-		outBlock := Block{
-			BlockLike:        inBlock,
-			BlockNestingMode: BlockNestingMode(uint8(inBlock.GetNestingMode())),
-			NestedBlocks:     map[string]Block{},
-			NestedAttrs:      map[string]Attr{},
-		}
-
-		for k, v := range inBlock.GetBlocks() {
-			job := fmt.Sprintf("%d", jobCounter)
-			jobCounter++
-			queue[job] = v
-			dests[job] = dest{toMap: outBlock.NestedBlocks, key: k}
-		}
-
-		if attributes := inBlock.GetAttributes(); attributes != nil {
-			m := make(map[string]tfsdk.Attribute)
-			for k, v := range attributes {
-				m[k] = v.(tfsdk.Attribute)
+	// List size constraints are especially important to Pulumi so this code goes the extra mile to try to detect
+	// them. This influences flattening lists with MaxItems=1.
+	if listBlock, isList := x.(hasListValidators); isList {
+		for _, v := range listBlock.ListValidators() {
+			desc := v.Description(ctx)
+			if m := listSizeRegExp.FindStringSubmatch(desc); m != nil {
+				minElements, err := strconv.Atoi(m[1])
+				contract.AssertNoError(err)
+				maxElements, err := strconv.Atoi(m[2])
+				contract.AssertNoError(err)
+				return int64(minElements), int64(maxElements), true
 			}
-			outBlock.NestedAttrs = SchemaToAttrMap(&tfsdk.Schema{Attributes: m})
 		}
-
-		blockDest.toMap[blockDest.key] = outBlock
 	}
 
-	return finalMap
+	return 0, 0, false
+}
+
+type blockAdapter struct {
+	nestedAttrs  map[string]Attr
+	nestedBlocks map[string]Block
+	nestingMode  BlockNestingMode
+	minItems     int64
+	maxItems     int64
+	BlockLike
+}
+
+func (b *blockAdapter) HasNestedObject() bool {
+	switch b.NestingMode() {
+	case BlockNestingModeList, BlockNestingModeSet:
+		return true
+	default:
+		return false
+	}
+}
+
+func (b *blockAdapter) GetMinItems() int64 {
+	return b.minItems
+}
+
+func (b *blockAdapter) GetMaxItems() int64 {
+	return b.maxItems
+}
+
+func (b *blockAdapter) NestedAttrs() map[string]Attr {
+	return b.nestedAttrs
+}
+
+func (b *blockAdapter) NestedBlocks() map[string]Block {
+	return b.nestedBlocks
+}
+
+func (b *blockAdapter) NestingMode() BlockNestingMode {
+	return b.nestingMode
 }
 
 type BlockNestingMode uint8

@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
@@ -39,7 +38,7 @@ import (
 func (p *Provider) plan(
 	ctx context.Context,
 	typeName string,
-	schema tfsdk.Schema,
+	schema pfutils.Schema,
 	priorState tftypes.Value,
 	checkedInputs tftypes.Value,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ type attrSchema struct {
 var _ shim.Schema = (*attrSchema)(nil)
 
 func (s *attrSchema) Type() shim.ValueType {
-	ty := s.attr.FrameworkType()
+	ty := s.attr.GetType()
 	vt, err := convertType(ty)
 	if err != nil {
 		panic(err)
@@ -77,7 +77,7 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
-	t := s.attr.FrameworkType()
+	t := s.attr.GetType()
 
 	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
 	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,
@@ -85,7 +85,7 @@ func (s *attrSchema) Elem() interface{} {
 	//
 	// See also: documentation on shim.Schema.Elem().
 	if tt, ok := t.(types.ObjectType); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested)
+		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
 		return res
 	}
 
@@ -97,9 +97,9 @@ func (s *attrSchema) Elem() interface{} {
 	var schema shim.Schema
 	switch tt := t.(type) {
 	case types.MapType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested)
+		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
 	case types.ListType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested)
+		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
 	default:
 		// TODO SetType
 		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))

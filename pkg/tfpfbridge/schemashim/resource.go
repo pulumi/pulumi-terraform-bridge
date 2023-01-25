@@ -15,13 +15,12 @@
 package schemashim
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaOnlyResource struct {
-	tf *tfsdk.Schema
+	tf pfutils.Schema
 }
 
 var _ shim.Resource = (*schemaOnlyResource)(nil)
@@ -33,7 +32,7 @@ func (r *schemaOnlyResource) Schema() shim.SchemaMap {
 func (*schemaOnlyResource) SchemaVersion() int { panic("TODO") }
 
 func (r *schemaOnlyResource) DeprecationMessage() string {
-	return r.tf.DeprecationMessage
+	return r.tf.DeprecationMessage()
 }
 
 func (*schemaOnlyResource) Importer() shim.ImportFunc {

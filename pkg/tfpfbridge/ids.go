@@ -19,8 +19,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
 )
 
 type idExtractor struct {
@@ -32,7 +33,7 @@ type idExtractor struct {
 // present. This code encapsulates extracting ID and all the error handling. It tries to fail early at the static level
 // if a schema for a resource does not specify the expected ID field, but may also fail later at runtime if the data
 // does not have an ID or it is of the wrong type.
-func newIdExtractor(ctx context.Context, typeName string, schema tfsdk.Schema) (idExtractor, error) {
+func newIdExtractor(ctx context.Context, typeName string, schema pfutils.Schema) (idExtractor, error) {
 	idPath := path.Root("id")
 
 	idAttr, diags := schema.AttributeAtPath(ctx, idPath)
@@ -42,7 +43,7 @@ func newIdExtractor(ctx context.Context, typeName string, schema tfsdk.Schema) (
 		return idExtractor{}, fmt.Errorf(msg, typeName, "id")
 	}
 
-	idAttrType := idAttr.FrameworkType().TerraformType(ctx)
+	idAttrType := idAttr.GetType().TerraformType(ctx)
 	if !idAttrType.Is(tftypes.String) {
 		msg := "Cannot bridge Terraform resource %q to Pulumi: " +
 			"the %q attribute has type %s but only %s is supported"

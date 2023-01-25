@@ -31,7 +31,7 @@ func (m *schemaOnlyDataSourceMap) Len() int {
 
 func (m *schemaOnlyDataSourceMap) Get(key string) shim.Resource {
 	s := m.dataSources.Schema(pfutils.TypeName(key))
-	return &schemaOnlyDataSource{&s}
+	return &schemaOnlyDataSource{s}
 }
 
 func (m *schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {

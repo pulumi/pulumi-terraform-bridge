@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	pfresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
@@ -30,9 +30,10 @@ import (
 )
 
 type resourceHandle struct {
+	token                 tokens.Type
 	makeResource          func() pfresource.Resource
 	terraformResourceName string
-	schema                tfsdk.Schema
+	schema                pfutils.Schema
 	pulumiResourceInfo    *info.ResourceInfo // optional
 	idExtractor           idExtractor
 	encoder               convert.Encoder
@@ -87,5 +88,6 @@ func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	result.encoder = encoder
 	result.decoder = outputsDecoder
+	result.token = token
 	return result, nil
 }

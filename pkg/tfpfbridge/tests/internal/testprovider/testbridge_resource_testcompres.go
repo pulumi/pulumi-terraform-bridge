@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 )
 
 // Tests for Computed Attributes support.
@@ -34,23 +34,21 @@ func newTestCompRes() resource.Resource {
 	return &testCompRes{}
 }
 
-func (*testCompRes) schema() tfsdk.Schema {
-	return tfsdk.Schema{
+func (*testCompRes) schema() rschema.Schema {
+	return rschema.Schema{
 		Description: `Additional tests for Computed attributes`,
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
+		Attributes: map[string]rschema.Attribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"ecdsacurve": {
-				Type:     types.StringType,
+			"ecdsacurve": rschema.StringAttribute{
 				Optional: true,
 				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.RequiresReplace(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 		},
@@ -61,8 +59,8 @@ func (e *testCompRes) Metadata(_ context.Context, req resource.MetadataRequest, 
 	resp.TypeName = req.ProviderTypeName + "_testcompres"
 }
 
-func (e *testCompRes) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return e.schema(), nil
+func (e *testCompRes) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = e.schema()
 }
 
 func (e *testCompRes) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

@@ -32,7 +32,7 @@ func (m *schemaOnlyResourceMap) Len() int {
 func (m *schemaOnlyResourceMap) Get(key string) shim.Resource {
 	n := pfutils.TypeName(key)
 	s := m.resources.Schema(n)
-	return &schemaOnlyResource{&s}
+	return &schemaOnlyResource{s}
 }
 
 func (m *schemaOnlyResourceMap) GetOk(key string) (shim.Resource, bool) {

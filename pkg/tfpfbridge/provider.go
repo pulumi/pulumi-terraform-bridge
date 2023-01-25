@@ -90,9 +90,11 @@ func NewProvider(info info.ProviderInfo, pulumiSchema []byte, serializedRenames 
 	propertyNames := newPrecisePropertyNames(renames)
 	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
 
-	schema, diags := p.GetSchema(ctx)
+	schemaResponse := &tfsdkprovider.SchemaResponse{}
+	p.Schema(ctx, tfsdkprovider.SchemaRequest{}, schemaResponse)
+	schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
 	if diags.HasError() {
-		panic(fmt.Errorf("GetSchema returned diagnostics with HasError"))
+		panic(fmt.Errorf("Schema() returned diagnostics with HasError"))
 	}
 
 	providerConfigType := schema.Type().TerraformType(ctx).(tftypes.Object)

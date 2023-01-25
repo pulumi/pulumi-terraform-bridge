@@ -15,7 +15,6 @@
 package pfutils
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -33,7 +32,7 @@ func (defaultEq) Equal(_ *tftypes.AttributePath, a, b tftypes.Value) (bool, erro
 var DefaultEq Eq = defaultEq(0)
 
 type nonComputedEq struct {
-	Schema *tfsdk.Schema
+	Schema Schema
 }
 
 func (eq *nonComputedEq) Equal(p *tftypes.AttributePath, a, b tftypes.Value) (bool, error) {
@@ -50,15 +49,15 @@ func (eq *nonComputedEq) Equal(p *tftypes.AttributePath, a, b tftypes.Value) (bo
 }
 
 // Considers two tftype.Value values equal if all their non-computed attributes are equal.
-func NonComputedEq(schema *tfsdk.Schema) Eq {
+func NonComputedEq(schema Schema) Eq {
 	return &nonComputedEq{schema}
 }
 
-func replaceComputedAttributesWithNull(schema *tfsdk.Schema,
+func replaceComputedAttributesWithNull(schema Schema,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		realPath := joinPaths(offset, p)
-		if attr, err := AttributeAtTerraformPath(schema, realPath); err == nil && attr.IsComputed() {
+		if ab, err := LookupTerraformPath(schema, realPath); err == nil && ab.IsAttr && ab.Attr.IsComputed() {
 			return tftypes.NewValue(v.Type(), nil), nil
 		}
 		return v, nil
