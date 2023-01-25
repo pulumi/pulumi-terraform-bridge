@@ -88,15 +88,17 @@ func ensureTestBridgeProviderCompiled(wd string) error {
 	exe := "pulumi-resource-testbridge"
 	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe))
 	cmd.Dir = filepath.Join(wd, "..", "internal", "cmd", exe)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
 // Stacks may define tests inline by a simple convention of providing
 // ${test}__expect and ${test}__actual pairs. For example:
 //
-//    outputs:
-//      test1__expect: 1
-//      test1__actual: ${res1.out}
+//	outputs:
+//	  test1__expect: 1
+//	  test1__actual: ${res1.out}
 //
 // This function interpretes these outputs to actual tests.
 func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationStackInfo) {

@@ -26,7 +26,7 @@ import (
 )
 
 // Update updates an existing resource with new values.
-func (p *Provider) Update(
+func (p *provider) Update(
 	urn resource.URN,
 	id resource.ID,
 	priorState resource.PropertyMap,

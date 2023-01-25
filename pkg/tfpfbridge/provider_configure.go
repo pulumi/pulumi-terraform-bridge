@@ -26,7 +26,7 @@ import (
 )
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *Provider) Configure(inputs resource.PropertyMap) error {
+func (p *provider) Configure(inputs resource.PropertyMap) error {
 	ctx := context.TODO()
 
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)

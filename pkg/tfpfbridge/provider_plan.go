@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 )
 
 // Simplifies calling PlanResourceChanges in Terraform.
@@ -35,7 +35,7 @@ import (
 //	Create(checkedInputs):
 //	    plannedState = plan(nilState, checkedInputs)
 //	    ApplyResourceChange(plannedState)
-func (p *Provider) plan(
+func (p *provider) plan(
 	ctx context.Context,
 	typeName string,
 	schema pfutils.Schema,

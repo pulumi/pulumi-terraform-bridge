@@ -15,7 +15,7 @@
 package tfpfbridge
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/provider"
+	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -29,5 +29,5 @@ type ProviderInfo struct {
 	tfbridge.ProviderInfo
 
 	// Constructs a new instance of the Terraform provider for bridging.
-	NewProvider func() provider.Provider
+	NewProvider func() pfprovider.Provider
 }

@@ -15,41 +15,43 @@
 package schemashim
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-type schemaOnlyDataSourceMap struct {
-	dataSources pfutils.DataSources
+type schemaOnlyResourceMap struct {
+	resources pfutils.Resources
 }
 
-var _ shim.ResourceMap = (*schemaOnlyDataSourceMap)(nil)
+var _ shim.ResourceMap = (*schemaOnlyResourceMap)(nil)
 
-func (m *schemaOnlyDataSourceMap) Len() int {
-	return len(m.dataSources.All())
+func (m *schemaOnlyResourceMap) Len() int {
+	return len(m.resources.All())
 }
 
-func (m *schemaOnlyDataSourceMap) Get(key string) shim.Resource {
-	s := m.dataSources.Schema(pfutils.TypeName(key))
-	return &schemaOnlyDataSource{s}
+func (m *schemaOnlyResourceMap) Get(key string) shim.Resource {
+	n := pfutils.TypeName(key)
+	s := m.resources.Schema(n)
+	return &schemaOnlyResource{s}
 }
 
-func (m *schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {
-	if !m.dataSources.Has(pfutils.TypeName(key)) {
+func (m *schemaOnlyResourceMap) GetOk(key string) (shim.Resource, bool) {
+	n := pfutils.TypeName(key)
+	if !m.resources.Has(n) {
 		return nil, false
 	}
 	return m.Get(key), true
 }
 
-func (m *schemaOnlyDataSourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for _, typeName := range m.dataSources.All() {
-		key := string(typeName)
+func (m *schemaOnlyResourceMap) Range(each func(key string, value shim.Resource) bool) {
+	for _, name := range m.resources.All() {
+		key := string(name)
 		if !each(key, m.Get(key)) {
 			return
 		}
 	}
 }
 
-func (*schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {
+func (*schemaOnlyResourceMap) Set(key string, value shim.Resource) {
 	panic("Set not supported - is it possible to treat this as immutable?")
 }

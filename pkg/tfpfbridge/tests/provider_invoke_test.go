@@ -17,19 +17,12 @@ package tfbridgetests
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
-
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
 func TestBasicInvoke(t *testing.T) {
-	p := testprovider.TlsProvider()
-	g := genSchemaBytes(t, p)
-	server, err := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
-	require.NoError(t, err)
+	server := newProviderServer(t, testprovider.TlsProvider())
 
 	testCase := `
         {
@@ -69,9 +62,7 @@ func TestBasicInvoke(t *testing.T) {
 
 func TestInvokeWithInvalidData(t *testing.T) {
 	p := testprovider.TlsProvider()
-	g := genSchemaBytes(t, p)
-	server, err := tfbridge.NewProviderServer(p, g.pulumiSchema, g.renames)
-	require.NoError(t, err)
+	server := newProviderServer(t, p)
 
 	testCase := `
         {

@@ -14,15 +14,16 @@
 
 package tfpfbridge
 
-import (
-	"context"
-	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
+// Defines bridged provider metadata that is pre-computed at build time with tfgen (tfgen
+// ("github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen") and typically made available to the provider
+// binary at runtime with [embed].
+//
+// [embed]: https://pkg.go.dev/embed
+type ProviderMetadata struct {
+	// JSON-serialzed Pulumi Package Schema.
+	PackageSchema []byte
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-)
-
-func serve(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) error {
-	return rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		return newProviderServer(ctx, prov, meta)
-	})
+	// Additional metadata used by the bridge. This metadata is subject to change and should be treated as opaque by
+	// consuming code.
+	BridgeMetadata []byte
 }

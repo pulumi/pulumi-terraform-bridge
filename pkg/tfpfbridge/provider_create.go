@@ -26,7 +26,7 @@ import (
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
-func (p *Provider) Create(
+func (p *provider) Create(
 	urn resource.URN,
 	checkedInputs resource.PropertyMap,
 	timeout float64,

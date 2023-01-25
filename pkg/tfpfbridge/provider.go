@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	tfsdkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -34,7 +34,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -42,8 +42,8 @@ import (
 // Terraform plugin built with Terraform Plugin Framework.
 //
 // https://www.terraform.io/plugin/framework
-type Provider struct {
-	tfProvider    tfsdkprovider.Provider
+type provider struct {
+	tfProvider    pfprovider.Provider
 	tfServer      tfprotov6.ProviderServer
 	info          ProviderInfo
 	resources     pfutils.Resources
@@ -58,10 +58,11 @@ type Provider struct {
 	version       semver.Version
 }
 
-var _ plugin.Provider = &Provider{}
+var _ plugin.Provider = &provider{}
 
-func NewProvider(info ProviderInfo, pulumiSchema []byte, serializedRenames []byte) (plugin.Provider, error) {
-	ctx := context.TODO()
+// Adaptes a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
+// functional binary.
+func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
 	p := info.NewProvider()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
@@ -78,20 +79,20 @@ func NewProvider(info ProviderInfo, pulumiSchema []byte, serializedRenames []byt
 	}
 
 	var thePackageSpec pschema.PackageSpec
-	if err := json.Unmarshal(pulumiSchema, &thePackageSpec); err != nil {
+	if err := json.Unmarshal(meta.PackageSchema, &thePackageSpec); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
 	}
 
 	var renames tfgen.Renames
-	if err := json.Unmarshal(serializedRenames, &renames); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal Renames: %w", err)
+	if err := json.Unmarshal(meta.BridgeMetadata, &renames); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal BridgeMetadata: %w", err)
 	}
 
 	propertyNames := newPrecisePropertyNames(renames)
 	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
 
-	schemaResponse := &tfsdkprovider.SchemaResponse{}
-	p.Schema(ctx, tfsdkprovider.SchemaRequest{}, schemaResponse)
+	schemaResponse := &pfprovider.SchemaResponse{}
+	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
 	schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
 	if diags.HasError() {
 		return nil, fmt.Errorf("Schema() returned diagnostics with HasError")
@@ -110,13 +111,13 @@ func NewProvider(info ProviderInfo, pulumiSchema []byte, serializedRenames []byt
 			info.Version)
 	}
 
-	return &Provider{
+	return &provider{
 		tfProvider:    p,
 		tfServer:      server6,
 		info:          info,
 		resources:     resources,
 		datasources:   datasources,
-		pulumiSchema:  pulumiSchema,
+		pulumiSchema:  meta.PackageSchema,
 		packageSpec:   thePackageSpec,
 		propertyNames: propertyNames,
 		encoding:      enc,
@@ -126,12 +127,9 @@ func NewProvider(info ProviderInfo, pulumiSchema []byte, serializedRenames []byt
 	}, nil
 }
 
-func NewProviderServer(
-	info ProviderInfo,
-	pulumiSchema []byte,
-	serializedRenames []byte,
-) (pulumirpc.ResourceProviderServer, error) {
-	p, err := NewProvider(info, pulumiSchema, serializedRenames)
+func newProviderServer(ctx context.Context,
+	info ProviderInfo, meta ProviderMetadata) (pulumirpc.ResourceProviderServer, error) {
+	p, err := NewProvider(ctx, info, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -139,22 +137,22 @@ func NewProviderServer(
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
-func (p *Provider) Close() error {
+func (p *provider) Close() error {
 	panic("TODO")
 }
 
 // Pkg fetches this provider's package.
-func (p *Provider) Pkg() tokens.Package {
+func (p *provider) Pkg() tokens.Package {
 	panic("TODO")
 }
 
 // GetSchema returns the schema for the provider.
-func (p *Provider) GetSchema(version int) ([]byte, error) {
+func (p *provider) GetSchema(version int) ([]byte, error) {
 	return p.pulumiSchema, nil
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	info := workspace.PluginInfo{
 		Name:    p.info.Name,
 		Version: &p.version,
@@ -167,11 +165,11 @@ func (p *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // aborted in this way will return an error (e.g., `Update` and `Create` will either a creation error or an
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
-func (p *Provider) SignalCancellation() error {
+func (p *provider) SignalCancellation() error {
 	return nil // TODO proper handling
 }
 
-func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, error) {
+func (p *provider) terraformResourceName(resourceToken tokens.Type) (string, error) {
 	for tfname, v := range p.info.Resources {
 		if v.Tok == resourceToken {
 			return tfname, nil
@@ -180,7 +178,7 @@ func (p *Provider) terraformResourceName(resourceToken tokens.Type) (string, err
 	return "", fmt.Errorf("[tfpfbridge] unknown resource token: %v", resourceToken)
 }
 
-func (p *Provider) terraformDatasourceName(functionToken tokens.ModuleMember) (string, error) {
+func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (string, error) {
 	for tfname, v := range p.info.DataSources {
 		if v.Tok == functionToken {
 			return tfname, nil
@@ -190,20 +188,20 @@ func (p *Provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 }
 
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
-func (p *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions) (plugin.CallResult, error) {
 	return plugin.CallResult{},
 		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
-func (p *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
 }
 
-func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov6.ProviderServer, error) {
+func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.ProviderServer, error) {
 	newServer6 := providerserver.NewProtocol6(p)
 	server6 := newServer6()
 
@@ -217,7 +215,7 @@ func newProviderServer6(ctx context.Context, p tfsdkprovider.Provider) (tfprotov
 	return server6, nil
 }
 
-func (p *Provider) GetMapping(key string) ([]byte, string, error) {
+func (p *provider) GetMapping(key string) ([]byte, string, error) {
 	return []byte{}, "", nil
 }
 

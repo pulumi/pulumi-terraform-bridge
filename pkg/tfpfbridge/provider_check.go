@@ -21,7 +21,7 @@ import (
 
 // Check validates the given resource inputs from the user program and computes checked inputs that fill out default
 // values. The checked inputs are then passed to subsequent, Diff, Create, or Update.
-func (p *Provider) Check(urn resource.URN, oldState, inputs resource.PropertyMap,
+func (p *provider) Check(urn resource.URN, oldState, inputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	// TODO can any validation and default value substitution happen at this stage?

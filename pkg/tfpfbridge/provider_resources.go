@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -40,7 +40,7 @@ type resourceHandle struct {
 	decoder               convert.Decoder
 }
 
-func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
+func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
 	resources := p.resources
 
 	typeName, err := p.terraformResourceName(urn.Type())

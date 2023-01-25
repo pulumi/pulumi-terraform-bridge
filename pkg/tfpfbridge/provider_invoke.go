@@ -29,7 +29,7 @@ import (
 )
 
 // Invoke dynamically executes a built-in function in the provider.
-func (p *Provider) Invoke(tok tokens.ModuleMember,
+func (p *provider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx := context.TODO()
 
@@ -53,7 +53,7 @@ func (p *Provider) Invoke(tok tokens.ModuleMember,
 	return p.readDataSource(ctx, handle, config)
 }
 
-func (p *Provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
+func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
 	config *tfprotov6.DynamicValue) ([]plugin.CheckFailure, error) {
 	req := &tfprotov6.ValidateDataResourceConfigRequest{
 		TypeName: handle.terraformDataSourceName,
@@ -66,7 +66,7 @@ func (p *Provider) validateDataResourceConfig(ctx context.Context, handle dataso
 	return p.processInvokeDiagnostics(handle.token, resp.Diagnostics)
 }
 
-func (p *Provider) readDataSource(ctx context.Context, handle datasourceHandle,
+func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
@@ -96,7 +96,7 @@ func (p *Provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	return propertyMap, nil, nil
 }
 
-func (p *Provider) processInvokeDiagnostics(tok tokens.ModuleMember,
+func (p *provider) processInvokeDiagnostics(tok tokens.ModuleMember,
 	diags []*tfprotov6.Diagnostic) ([]plugin.CheckFailure, error) {
 	failures, rest := p.parseInvokePropertyCheckFailures(tok, diags)
 	return failures, p.processDiagnostics(rest)
@@ -104,7 +104,7 @@ func (p *Provider) processInvokeDiagnostics(tok tokens.ModuleMember,
 
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
 // optimal rendering by Pulumi CLI.
-func (p *Provider) parseInvokePropertyCheckFailures(tok tokens.ModuleMember, diags []*tfprotov6.Diagnostic) (
+func (p *provider) parseInvokePropertyCheckFailures(tok tokens.ModuleMember, diags []*tfprotov6.Diagnostic) (
 	[]plugin.CheckFailure, []*tfprotov6.Diagnostic) {
 	rest := []*tfprotov6.Diagnostic{}
 	failures := []plugin.CheckFailure{}

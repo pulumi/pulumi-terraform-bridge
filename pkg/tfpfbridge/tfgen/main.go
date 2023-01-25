@@ -18,17 +18,22 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/schemashim"
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
-// Used to implement main() in programs such as pulumi-tfgen-random.
+// Implements main() logic for a provider built-time helper utility. By convention these utilities are named
+// pulumi-tfgen-$provider, for example when building a "random" provider the program would be called
+// pulumi-tfgen-random.
 //
-// The resulting binary is able to generate Pulumi Package Schema and derived package sources in
-// various programming languages supported by Pulumi.
-func Main(provider, version string, info tfpf.ProviderInfo) {
+// The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
+// programming languages supported by Pulumi such as TypeScript, Go, and Python.
+//
+// [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
+func Main(provider string, info tfpf.ProviderInfo) {
+	version := info.Version
 	ctx := context.Background()
 	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, info)
 
@@ -58,7 +63,7 @@ func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
 		return err
 	}
 
-	renamesFile, err := opts.Root.Create("renames.json")
+	renamesFile, err := opts.Root.Create("bridge-metadata.json")
 	if err != nil {
 		return err
 	}

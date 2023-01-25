@@ -21,7 +21,7 @@ import (
 )
 
 // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of responses.
-func (p *Provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
+func (p *provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 	panic("TODO")
 }

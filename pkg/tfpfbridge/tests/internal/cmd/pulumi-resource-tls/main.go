@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
@@ -24,14 +25,10 @@ import (
 //go:embed schema.json
 var schema []byte
 
-//go:embed renames.json
-var renames []byte
+//go:embed bridge-metadata.json
+var bridgeMetadata []byte
 
 func main() {
-	tfbridge.Main(
-		"tls",
-		testprovider.TlsProvider(),
-		schema,
-		renames,
-	)
+	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
+	tfbridge.Main(context.Background(), "tls", testprovider.TlsProvider(), meta)
 }
