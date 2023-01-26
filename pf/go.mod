@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf
 
-go 1.18
+go 1.19
 
 replace github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
 
@@ -9,7 +9,6 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/hashicorp/terraform-plugin-framework v1.1.1
 	github.com/hashicorp/terraform-plugin-go v0.14.3
-	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge v0.0.0-20230126195725-626180e58302
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
 	github.com/pulumi/pulumi/pkg/v3 v3.51.0
 	github.com/pulumi/pulumi/sdk/v3 v3.51.0
