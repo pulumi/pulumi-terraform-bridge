@@ -21,7 +21,6 @@ import (
 
 	"github.com/gedex/inflector"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -102,8 +101,7 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 	casingActivated := false // tolerate leading underscores
 	for i, c := range name {
 		if c == '_' && casingActivated {
-			// skip underscores and make sure the next one is capitalized.
-			contract.Assertf(!nextCap, "Unexpected duplicate underscore: %v", name)
+			// any number of consecutive underscores in a string, e.g. foo__dot__bar, result in capitalization
 			nextCap = true
 		} else {
 			if c != '_' && !casingActivated {
