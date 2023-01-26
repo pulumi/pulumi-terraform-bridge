@@ -23,7 +23,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"golang.org/x/net/context"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
