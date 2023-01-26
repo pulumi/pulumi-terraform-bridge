@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 
-go 1.18
+go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
@@ -183,7 +183,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.7.1 // indirect
-	github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge v0.0.0-20230126195725-626180e58302 // indirect
 	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
 	github.com/pulumi/schema-tools v0.1.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
