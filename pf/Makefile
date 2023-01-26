@@ -15,7 +15,7 @@ test.integration::
 	cd tests/integration && go test -test.v
 
 test.cover::
-	cd tests && go test -cover -coverpkg=github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge -coverprofile=cover.out
+	cd tests && go test -cover -coverpkg=github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge -coverprofile=cover.out
 	go tool cover -html=tests/cover.out
 
 build::
