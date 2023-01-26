@@ -5,10 +5,12 @@ providers](https://www.pulumi.com/docs/intro/concepts/resources/providers/) from
 Providers](https://github.com/terraform-providers) built using the [Terraform Plugin
 Framework](https://developer.hashicorp.com/terraform/plugin/framework).
 
-This bridge is in active development and has an incomplete feature set. If you need to adapt Terraform providers to
-Pulumi today see [Pulumi Terraform Bridge](https://github.com/pulumi/pulumi-terraform-bridge) which only works with
-providers built with the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) but is complete.
+This bridge is in active development and has an incomplete feature set. Progress is tracked in
+[#744](https://github.com/pulumi/pulumi-terraform-bridge/issues/744).
 
+If you need to adapt Terraform providers to Pulumi today see [Pulumi Terraform
+Bridge](https://github.com/pulumi/pulumi-terraform-bridge) which only works with providers built with the [Terraform
+Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) but is complete.
 
 ## How to Bridge a Provider
 
@@ -27,67 +29,79 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
    provider name.
 
     ```go
-    package myprovider
+package myprovider
 
-    import (
-          "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
-          "github.com/terraform-providers/terraform-provider-random/internal/provider"
-    )
+import (
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+)
 
-    func getProvider() provider.Provider {
-          return nil // TODO fill in Terraform Provider from Step 1
-    }
-
-    func MyProvider() info.ProviderInfo {
-        return tfbridge.ProviderInfo{
-            P:           getProvider,
-            Name:        "myprovider",
-            Version:     "1.2.3",
-            Resources: map[string]*tfbridge.ResourceInfo{
-                "myresource": {Tok: "myprovider::MyResource"},
-            },
-        }
-    }
+func MyProvider() tfpfbridge.ProviderInfo {
+	info := tfbridge.ProviderInfo{
+		Name:    "myprovider",
+		Version: "1.2.3",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"myresource": {Tok: "myprovider::MyResource"},
+		},
+	}
+	return tfpfbridge.ProviderInfo{
+		ProviderInfo: info,
+		NewProvider: func() provider.Provider {
+			return nil // TODO fill in Terraform Provider from Step 1
+		},
+	}
+}
     ```
 
 3. Build a `pulumi-tfgen-myprovider` binary.
 
     ```go
-    package main
+package main
 
-    import (
-          "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen"
-    )
+import (
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen"
+    // import myprovider
+)
 
-    func main() {
-          tfgen.Main("myprovider", "1.2.3", myprovider.MyProvider())
-    }
+func main() {
+	tfgen.Main("myprovider", myprovider.MyProvider())
+}
     ```
 
-4. Generate a [Pulumi Package Schema](https://www.pulumi.com/docs/guides/pulumi-packages/schema/).
+4. Generate a [Pulumi Package Schema](https://www.pulumi.com/docs/guides/pulumi-packages/schema/) and bridge metadata.
 
     ```bash
     mkdir -p ./schema
     pulumi-tfgen-myprovider schema --out ./schema
     jq . ./schema/schema.json
+    jq . ./schema/bridge-metadata.json
     ```
 
-5. Build the Pulumi provider binary `pulumi-resource-myprovider`, embedding the generated `schema.json` from Step 4.
+5. Build the Pulumi provider binary `pulumi-resource-myprovider`, embedding the generated `schema.json` and
+   `bridge-metadata.json` from Step 4.
 
     ```go
-    package main
+package main
 
-    import (
-          _ "embed"
-          bridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
-    )
+import (
+	"context"
+	_ "embed"
 
-    //go:embed schema.json
-    var schema []byte
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+    // import myprovider
+)
 
-    func main() {
-          bridge.Main("myprovider", "1.2.3", myprovider.MyProvider(), schema)
-    }
+//go:embed schema.json
+var schema []byte
+
+//go:embed bridge-metadata.json
+var bridgeMetadata []byte
+
+func main() {
+	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
+	tfbridge.Main(context.Background(), "myprovider", myprovider.MyProvider(), meta)
+}
     ```
 
 6. To try out the provider, place `pulumi-resource-myprovider` in PATH and create a new Pulumi YAML project to
