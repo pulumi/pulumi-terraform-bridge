@@ -12,30 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfpfbridge
+package schemashim
 
 import (
-	"testing"
+	"context"
 
-	"github.com/stretchr/testify/assert"
+	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func TestTerraformResourceName(t *testing.T) {
-	urn := resource.URN("urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority")
-	p := &provider{
-		info: ProviderInfo{
-			ProviderInfo: tfbridge.ProviderInfo{
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"random_integer": {Tok: "random:index/randomInteger:RandomInteger"},
-				},
-			},
-		},
+func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
+	return &schemaOnlyProvider{
+		ctx: ctx,
+		tf:  provider,
 	}
-	name, err := p.terraformResourceName(urn.Type())
-	assert.NoError(t, err)
-	assert.Equal(t, name, "random_integer")
+}
+
+func ShimSchemaOnlyProviderInfo(ctx context.Context, provider tfpf.ProviderInfo) tfbridge.ProviderInfo {
+	shimProvider := ShimSchemaOnlyProvider(ctx, provider.NewProvider())
+	var copy tfbridge.ProviderInfo = provider.ProviderInfo
+	copy.P = shimProvider
+	return copy
 }

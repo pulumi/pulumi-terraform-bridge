@@ -17,10 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
-	"github.com/stretchr/testify/require"
 )
 
 // These tests replay gRPC logs from a well-behaved test program in testdatagen/genrandom to verify
@@ -41,15 +39,13 @@ func TestGenRandom(t *testing.T) {
 		"testdata/genrandom/random-replace-preview.json",
 		"testdata/genrandom/random-replace-update.json",
 	}
-	schema := genRandomSchemaBytes(t)
 
 	for _, trace := range traces {
 		trace := trace
 
 		t.Run(trace, func(t *testing.T) {
 			p := testprovider.RandomProvider()
-			server, err := tfbridge.NewProviderServer(p, schema.pulumiSchema, schema.renames)
-			require.NoError(t, err)
+			server := newProviderServer(t, p)
 			testutils.ReplayTraceFile(t, server, trace)
 		})
 	}

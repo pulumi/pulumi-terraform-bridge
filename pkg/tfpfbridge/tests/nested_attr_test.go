@@ -22,14 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
 func TestNestedType(t *testing.T) {
 	ctx := context.TODO()
 	info := testprovider.SyntheticTestBridgeProvider()
-	res, err := pfutils.GatherResources(ctx, info.P())
+	res, err := pfutils.GatherResources(ctx, info.NewProvider())
 	require.NoError(t, err)
 	testresTypeName := pfutils.TypeName("testbridge_testres")
 	testresType := res.Schema(testresTypeName).Type().TerraformType(ctx)

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,21 +17,13 @@ package tfbridgetests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
-	"github.com/stretchr/testify/require"
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
-	schemaBytes := genTestBridgeSchemaBytes(t)
-	server, err := tfbridge.NewProviderServer(
-		testprovider.SyntheticTestBridgeProvider(),
-		schemaBytes.pulumiSchema,
-		schemaBytes.renames,
-	)
-	require.NoError(t, err)
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -59,13 +51,7 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
-	schemaBytes := genTestBridgeSchemaBytes(t)
-	server, err := tfbridge.NewProviderServer(
-		testprovider.SyntheticTestBridgeProvider(),
-		schemaBytes.pulumiSchema,
-		schemaBytes.renames,
-	)
-	require.NoError(t, err)
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -97,13 +83,7 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
-	schemaBytes := genTestBridgeSchemaBytes(t)
-	server, err := tfbridge.NewProviderServer(
-		testprovider.SyntheticTestBridgeProvider(),
-		schemaBytes.pulumiSchema,
-		schemaBytes.renames,
-	)
-	require.NoError(t, err)
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -132,13 +112,7 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 }
 
 func TestDiffWithSecrets(t *testing.T) {
-	g := genRandomSchemaBytes(t)
-	server, err := tfbridge.NewProviderServer(
-		testprovider.RandomProvider(),
-		g.pulumiSchema,
-		g.renames,
-	)
-	require.NoError(t, err)
+	server := newProviderServer(t, testprovider.RandomProvider())
 
 	testCase := `
         {

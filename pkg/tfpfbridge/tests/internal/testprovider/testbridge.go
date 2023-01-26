@@ -23,17 +23,17 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
-func SyntheticTestBridgeProvider() info.ProviderInfo {
+func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 	defineProvider := func() provider.Provider {
 		return &syntheticProvider{}
 	}
-	return info.ProviderInfo{
-		P:           defineProvider,
+	info := tfbridge.ProviderInfo{
 		Name:        "testbridge",
 		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
 		Keywords:    []string{},
@@ -41,11 +41,15 @@ func SyntheticTestBridgeProvider() info.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
-		Resources: map[string]*info.ResourceInfo{
+		Resources: map[string]*tfbridge.ResourceInfo{
 			"testbridge_testres":       {Tok: "testbridge:index/testres:Testres"},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 		},
+	}
+	return tfpf.ProviderInfo{
+		ProviderInfo: info,
+		NewProvider:  defineProvider,
 	}
 }
 

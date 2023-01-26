@@ -16,13 +16,18 @@ package tfbridgetests
 
 import (
 	"testing"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
 )
 
 func TestSchemaGen(t *testing.T) {
 	t.Run("random", func(t *testing.T) {
-		genRandomSchemaBytes(t)
+		genMetadata(t, testprovider.RandomProvider())
+	})
+	t.Run("tls", func(t *testing.T) {
+		genMetadata(t, testprovider.TlsProvider())
 	})
 	t.Run("testbridge", func(t *testing.T) {
-		genTestBridgeSchemaBytes(t)
+		genMetadata(t, testprovider.SyntheticTestBridgeProvider())
 	})
 }

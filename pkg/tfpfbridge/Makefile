@@ -4,7 +4,7 @@ build.tests::
 	cd tests/integration && go test -test.run NONE
 
 test::
-	go test . ./pfutils ./internal/convert
+	go test . ./internal/...
 	cd tests && rm -rf state && mkdir state
 	cd tests && go test
 	cd tests && rm -rf state && mkdir state

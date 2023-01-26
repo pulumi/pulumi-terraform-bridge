@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements a Pulumi provider for testing the functionality of bridging Terraform Plugin Framework based providers.
-package main
+package tfbridgetests
 
 import (
 	"context"
-	_ "embed"
+	"testing"
 
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 )
 
-//go:embed schema.json
-var schema []byte
-
-//go:embed bridge-metadata.json
-var bridgeMetadata []byte
-
-func main() {
-	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
-	tfbridge.Main(context.Background(), "random", testprovider.RandomProvider(), meta)
+func newProviderServer(t *testing.T, info tfpf.ProviderInfo) pulumirpc.ResourceProviderServer {
+	ctx := context.TODO()
+	meta := genMetadata(t, info)
+	p, err := tfpf.NewProvider(ctx, info, meta)
+	require.NoError(t, err)
+	return plugin.NewProviderServer(p)
 }

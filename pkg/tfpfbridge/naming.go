@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"github.com/gedex/inflector"
@@ -25,12 +25,12 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
-type PrecisePropertyNames struct {
+type precisePropertyNames struct {
 	renames       map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
 	configRenames map[convert.TerraformPropertyName]resource.PropertyKey
 }
 
-func newPrecisePropertyNames(renames tfgen.Renames) *PrecisePropertyNames {
+func newPrecisePropertyNames(renames tfgen.Renames) *precisePropertyNames {
 	renamesTable := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
 	// Invert renames.RenamedProperties maps for faster dynamic lookup.
 	for typ, typRenames := range renames.RenamedProperties {
@@ -44,15 +44,15 @@ func newPrecisePropertyNames(renames tfgen.Renames) *PrecisePropertyNames {
 	for k, v := range renames.RenamedConfigProperties {
 		configRenames[v] = resource.PropertyKey(string(k))
 	}
-	return &PrecisePropertyNames{
+	return &precisePropertyNames{
 		renames:       renamesTable,
 		configRenames: configRenames,
 	}
 }
 
-var _ convert.PropertyNames = (*PrecisePropertyNames)(nil)
+var _ convert.PropertyNames = (*precisePropertyNames)(nil)
 
-func (s *PrecisePropertyNames) PropertyKey(typeToken tokens.Token,
+func (s *precisePropertyNames) PropertyKey(typeToken tokens.Token,
 	property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	if renamedProps, ok := s.renames[typeToken]; ok {
 		if propertyKey, renamed := renamedProps[property]; renamed {
@@ -62,7 +62,7 @@ func (s *PrecisePropertyNames) PropertyKey(typeToken tokens.Token,
 	return resource.PropertyKey(property)
 }
 
-func (s *PrecisePropertyNames) ConfigPropertyKey(property convert.TerraformPropertyName,
+func (s *precisePropertyNames) ConfigPropertyKey(property convert.TerraformPropertyName,
 	_ tftypes.Type) resource.PropertyKey {
 	if propertyKey, renamed := s.configRenames[property]; renamed {
 		return propertyKey

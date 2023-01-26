@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,12 +24,10 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 )
 
-// Main launches the tfbridge plugin for a given package pkg and provider prov.
-func Main(pkg string, prov info.ProviderInfo, pulumiSchema []byte, renames []byte) {
+// Implements main() or a bridged Pulumi plugin, complete with argument parsing.
+func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
 	version := prov.Version
 
 	// Look for a request to dump the provider info to stdout.
@@ -76,7 +75,7 @@ func Main(pkg string, prov info.ProviderInfo, pulumiSchema []byte, renames []byt
 	// TODO Initialize Terraform logging.
 	// prov.P.InitLogging()
 
-	if err := Serve(pkg, prov, pulumiSchema, renames); err != nil {
+	if err := serve(ctx, pkg, prov, meta); err != nil {
 		cmdutil.ExitError(err.Error())
 	}
 }

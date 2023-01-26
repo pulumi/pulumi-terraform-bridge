@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 )
 
 type datasourceHandle struct {
@@ -35,7 +35,7 @@ type datasourceHandle struct {
 	decoder                 convert.Decoder
 }
 
-func (p *Provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
+func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
 	dsName, err := p.terraformDatasourceName(token)
 	if err != nil {
 		return datasourceHandle{}, err

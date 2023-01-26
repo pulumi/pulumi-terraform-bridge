@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"context"
@@ -24,9 +24,9 @@ import (
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 type resourceHandle struct {
@@ -34,13 +34,13 @@ type resourceHandle struct {
 	makeResource          func() pfresource.Resource
 	terraformResourceName string
 	schema                pfutils.Schema
-	pulumiResourceInfo    *info.ResourceInfo // optional
+	pulumiResourceInfo    *tfbridge.ResourceInfo // optional
 	idExtractor           idExtractor
 	encoder               convert.Encoder
 	decoder               convert.Decoder
 }
 
-func (p *Provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
+func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
 	resources := p.resources
 
 	typeName, err := p.terraformResourceName(urn.Type())

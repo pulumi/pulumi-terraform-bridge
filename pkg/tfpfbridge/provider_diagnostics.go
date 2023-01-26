@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
-func (p *Provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error {
+func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error {
 	// Format and flush to diagSink.
 	if p.diagSink != nil {
 		for _, d := range diagnostics {
@@ -44,7 +44,7 @@ func (p *Provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error
 	return nil
 }
 
-func (p *Provider) logDiagnostic(d *tfprotov6.Diagnostic) {
+func (p *provider) logDiagnostic(d *tfprotov6.Diagnostic) {
 	if p.diagSink == nil {
 		return
 	}

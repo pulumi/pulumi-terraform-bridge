@@ -22,5 +22,5 @@ import (
 )
 
 func main() {
-	tfgen.Main("random", "4.8.2", testprovider.RandomProvider())
+	tfgen.Main("random", testprovider.RandomProvider())
 }

@@ -22,5 +22,5 @@ import (
 )
 
 func main() {
-	tfgen.Main("testbridge", "0.0.1", testprovider.SyntheticTestBridgeProvider())
+	tfgen.Main("testbridge", testprovider.SyntheticTestBridgeProvider())
 }

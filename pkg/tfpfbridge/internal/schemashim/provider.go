@@ -19,7 +19,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/pfutils"
 )
 
 type schemaOnlyProvider struct {

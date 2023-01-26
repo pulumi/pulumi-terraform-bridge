@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,32 +20,29 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/schemashim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/schemashim"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 type GenerateSchemaOptions struct {
-	Context         context.Context
-	ProviderInfo    info.ProviderInfo
+	ProviderInfo    tfpf.ProviderInfo
 	DiagnosticsSink diag.Sink
 }
 
 type GenerateSchemaResult struct {
-	PackageSpec schema.PackageSpec
-	Renames     tfgen.Renames
+	ProviderMetadata tfpf.ProviderMetadata
 }
 
-func GenerateSchema(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+// Generates the Pulumi Package Schema and bridge-specific metadata. Most users do not need to call this directly but
+// instead use Main to build a build-time helper CLI tool.
+func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	if opts.ProviderInfo.Name == "" {
 		return nil, fmt.Errorf("opts.ProviderInfo.Name cannot be empty")
 	}
-	ctx := opts.Context
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -65,30 +62,21 @@ func GenerateSchema(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	schema, err := json.Marshal(generated.PackageSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	meta, err := json.Marshal(generated.Renames)
+	if err != nil {
+		return nil, err
+	}
+
 	return &GenerateSchemaResult{
-		PackageSpec: generated.PackageSpec,
-		Renames:     generated.Renames,
+		ProviderMetadata: tfpf.ProviderMetadata{
+			PackageSchema:  schema,
+			BridgeMetadata: meta,
+		},
 	}, nil
-}
-
-func MarshalSchema(schema *schema.PackageSpec) ([]byte, error) {
-	if schema == nil {
-		return nil, fmt.Errorf("schema should not be nil")
-	}
-	bytes, err := json.MarshalIndent(*schema, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return bytes, err
-}
-
-func MarshalRenames(renames *tfgen.Renames) ([]byte, error) {
-	if renames == nil {
-		return nil, fmt.Errorf("renames should not be nil")
-	}
-	bytes, err := json.MarshalIndent(renames, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return bytes, err
 }

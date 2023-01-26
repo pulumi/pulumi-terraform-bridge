@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,37 +24,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tests/internal/testprovider"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/tfgen"
 )
 
-type schemaBytes struct {
-	pulumiSchema []byte
-	renames      []byte
-}
-
-func genSchemaBytes(t *testing.T, info info.ProviderInfo) schemaBytes {
-	generated, err := tfgen.GenerateSchema(tfgen.GenerateSchemaOptions{
+func genMetadata(t *testing.T, info tfpf.ProviderInfo) tfpf.ProviderMetadata {
+	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),
 	})
 	require.NoError(t, err)
-	bytes, err := tfgen.MarshalSchema(&generated.PackageSpec)
-	require.NoError(t, err)
-	renameBytes, err := tfgen.MarshalRenames(&generated.Renames)
-	require.NoError(t, err)
-	return schemaBytes{pulumiSchema: bytes, renames: renameBytes}
-}
-
-func genRandomSchemaBytes(t *testing.T) schemaBytes {
-	info := testprovider.RandomProvider()
-	return genSchemaBytes(t, info)
-}
-
-func genTestBridgeSchemaBytes(t *testing.T) schemaBytes {
-	info := testprovider.SyntheticTestBridgeProvider()
-	return genSchemaBytes(t, info)
+	return generated.ProviderMetadata
 }
 
 func testSink(t *testing.T) diag.Sink {

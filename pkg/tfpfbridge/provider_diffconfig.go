@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -20,7 +20,7 @@ import (
 )
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
 	// TODO proper implementation here.

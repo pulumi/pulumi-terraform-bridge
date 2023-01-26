@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -21,7 +21,7 @@ import (
 )
 
 // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of responses.
-func (p *Provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
+func (p *provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 	panic("TODO")
 }

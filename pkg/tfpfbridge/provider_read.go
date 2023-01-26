@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *Provider) Read(urn resource.URN, id resource.ID,
+func (p *provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 	// TODO test for a resource that is not found

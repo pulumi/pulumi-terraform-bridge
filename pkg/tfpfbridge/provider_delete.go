@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pkg/tfpfbridge/internal/convert"
 )
 
-func (p *Provider) Delete(urn resource.URN, id resource.ID,
+func (p *provider) Delete(urn resource.URN, id resource.ID,
 	props resource.PropertyMap, timeout float64) (resource.Status, error) {
 
 	ctx := context.TODO()

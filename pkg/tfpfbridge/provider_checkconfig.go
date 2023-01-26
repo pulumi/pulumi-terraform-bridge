@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -20,7 +20,7 @@ import (
 )
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *Provider) CheckConfig(urn resource.URN,
+func (p *provider) CheckConfig(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	// TODO proper implementation here.
 	return news, []plugin.CheckFailure{}, nil

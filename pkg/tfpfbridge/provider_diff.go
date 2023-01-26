@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package tfpfbridge
 
 import (
 	"context"
@@ -36,7 +36,7 @@ import (
 //	    proposedNewState = priorState.applyChanges(checkedInputs)
 //	    plannedState = PlanResourceChange(priorState, proposedNewState)
 //	    priorState.Diff(plannedState)
-func (p *Provider) Diff(
+func (p *provider) Diff(
 	urn resource.URN,
 	id resource.ID,
 	priorState resource.PropertyMap,
