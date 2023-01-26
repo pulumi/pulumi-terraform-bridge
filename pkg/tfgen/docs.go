@@ -30,14 +30,14 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/spf13/afero"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/gen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/spf13/afero"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -141,6 +141,13 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
 	}
 
+	if repoPathsEnvVar, has := os.LookupEnv("PULUMI_REPO_PATHS"); has {
+		path := findRepoPath(repoPathsEnvVar, moduleCoordinates)
+		if path != "" {
+			return path, nil
+		}
+	}
+
 	if path, ok := repoPaths.Load(moduleCoordinates); ok {
 		return path.(string), nil
 	}
@@ -178,6 +185,19 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	repoPaths.Store(moduleCoordinates, target.Dir)
 
 	return target.Dir, nil
+}
+
+// findRepoPath returns the value associated first match of the module coordinates.
+// repoPathsEnvVar is in the format "github.com/foo/terraform-provider-bar=./terraform-provider-bar"
+func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
+	for _, provider := range strings.Split(repoPathsEnvVar, ",") {
+		parts := strings.SplitN(provider, "=", 2)
+
+		if parts[0] == moduleCoordinates {
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 func getMarkdownDetails(sink diag.Sink, org string, provider string,
