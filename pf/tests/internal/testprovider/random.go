@@ -23,7 +23,7 @@ import (
 
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 

@@ -23,13 +23,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfpf.ProviderInfo) pulumirpc.ResourceProviderServer {
+func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
 	ctx := context.TODO()
 	meta := genMetadata(t, info)
-	p, err := tfpf.NewProvider(ctx, info, meta)
+	p, err := tfbridge.NewProvider(ctx, info, meta)
 	require.NoError(t, err)
 	return plugin.NewProviderServer(p)
 }
