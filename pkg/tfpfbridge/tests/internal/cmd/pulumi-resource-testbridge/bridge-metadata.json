@@ -1,0 +1,35 @@
+{
+  "resources": {
+    "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
+    "testbridge:index/testres:Testcompres": "testbridge_testcompres",
+    "testbridge:index/testres:Testres": "testbridge_testres"
+  },
+  "renamedProperties": {
+    "testbridge:index/testres:TestConfigRes": {
+      "configCopy": "config_copy"
+    },
+    "testbridge:index/testres:Testres": {
+      "optionalInputBool": "optional_input_bool",
+      "optionalInputBoolCopy": "optional_input_bool_copy",
+      "optionalInputNumber": "optional_input_number",
+      "optionalInputNumberCopy": "optional_input_number_copy",
+      "optionalInputString": "optional_input_string",
+      "optionalInputStringCopy": "optional_input_string_copy",
+      "optionalInputStringListCopies": "optional_input_string_list_copy",
+      "optionalInputStringLists": "optional_input_string_list",
+      "optionalInputStringMap": "optional_input_string_map",
+      "optionalInputStringMapCopy": "optional_input_string_map_copy",
+      "requiredInputString": "required_input_string",
+      "requiredInputStringCopy": "required_input_string_copy",
+      "servicesJsonCopy": "services_json_copy",
+      "singleNestedAttr": "single_nested_attr",
+      "singleNestedAttrJsonCopy": "single_nested_attr_json_copy"
+    },
+    "testbridge:index:Provider": {
+      "stringConfigProp": "string_config_prop"
+    }
+  },
+  "renamedConfigProperties": {
+    "stringConfigProp": "string_config_prop"
+  }
+}

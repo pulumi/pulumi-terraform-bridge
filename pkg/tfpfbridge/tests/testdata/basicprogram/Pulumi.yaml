@@ -1,0 +1,149 @@
+name: basicprogram
+runtime: yaml
+resources:
+
+  minimalRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: |-
+        input1
+
+  chainedRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: ${minimalRes.requiredInputStringCopy}
+
+  strRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputString: "y"
+
+  numRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputNumber: 3
+
+  boolRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputBool: true
+
+  stringListRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputStringLists:
+        - a
+        - b
+        - c
+
+  stringMapRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      optionalInputStringMap:
+        a: a1
+        b: b1
+
+  singleNestedAttrRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      singleNestedAttr:
+        description: pi
+        quantity: 3.14159
+
+  listNestedAttrRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      services:
+        - protocol: http
+          intport: 8080
+          ports:
+            - port: 80
+              handlers:
+                - httpHandler
+                - jsonPHandler
+            - port: 443
+              handlers:
+                - httpsHandler
+        - protocol: ssh
+          intport: 22
+          ports:
+            - port: 22
+              handlers:
+                - sshd
+
+outputs:
+
+  testMinimal__actual: ${minimalRes.requiredInputStringCopy}
+  testMinimal__expect: |-
+    input1
+
+  testComputedNull__actual:
+    fn::toJSON: ${minimalRes.optionalInputStringCopy}
+  testComputedNull__expect: |-
+    null
+
+  testChained__actual: ${chainedRes.requiredInputStringCopy}
+  testChained__expect: |-
+    input1
+
+  testString__actual: ${strRes.optionalInputStringCopy}
+  testString__expect: |-
+    y
+
+  testNumber__actual: ${numRes.optionalInputNumberCopy}
+  testNumber__expect: 3
+
+  testBool__actual: ${boolRes.optionalInputBoolCopy}
+  testBool__expect: true
+
+  testStringList__actual:
+    fn::toJSON: ${stringListRes.optionalInputStringListCopies}
+  testStringList__expect: |-
+    ["a","b","c"]
+
+  testStringMap__actual:
+    fn::toJSON: ${stringMapRes.optionalInputStringMapCopy}
+  testStringMap__expect: |-
+    {"a":"a1","b":"b1"}
+
+  testSingleNestedAttr__actual: ${singleNestedAttrRes.singleNestedAttrJsonCopy}
+  testSingleNestedAttr__expect:
+    fn::toJSON:
+      description: pi
+      quantity: 3.14159
+
+  testListNestedAttributes__actual: ${listNestedAttrRes.servicesJsonCopy}
+  testListNestedAttributes__expect:
+    fn::toJSON:
+      - intport: 8080
+        ports:
+          - handlers:
+              - httpHandler
+              - jsonPHandler
+            port: 80
+          - handlers:
+              - httpsHandler
+            port: 443
+        protocol: http
+      - intport: 22
+        ports:
+          - handlers:
+              - sshd
+            port: 22
+        protocol: ssh
