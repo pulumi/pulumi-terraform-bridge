@@ -188,7 +188,7 @@ to the Plugin Framework.
 
 3. Find the provider binary `main` that calls `tfbridge.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and update it to `Main` from
-   `github.com/pulumi/pulumi-terraform-bridge/pf/pfbridge`. Note the signature changes: version parameter is removed,
+   `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge`. Note the signature changes: version parameter is removed,
    `Context` is now required, and there is a new `bridge-metadata.json` blob that needs to be embedded:
 
      ```go
