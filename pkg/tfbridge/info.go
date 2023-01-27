@@ -97,6 +97,8 @@ type ProviderInfo struct {
 
 	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
+
+	DocEdits DocEdits
 }
 
 // Add mapped resources and datasources according to the given strategies.
@@ -362,8 +364,29 @@ type ConfigInfo struct {
 // the raw string is still accepted as a possible input value.
 type Transformer func(resource.PropertyValue) (resource.PropertyValue, error)
 
+// An edit to be performed on TF documentation.
+type DocEdit func([]byte) ([]byte, error)
+
+func (de DocEdit) Compose(next DocEdit) DocEdit {
+	return func(doc []byte) ([]byte, error) {
+		var err error
+		doc, err = de(doc)
+		if err != nil {
+			return nil, err
+		}
+		return next(doc)
+	}
+}
+
+// A set of edits for a resource/datasource/provider.
+type DocEdits struct {
+	UniveralEdits DocEdit            // An edit to be applied to all files.
+	FileEdits     map[string]DocEdit // File specific edits.
+}
+
 // DocInfo contains optional overrides for finding and mapping TF docs.
 type DocInfo struct {
+	DocEdits
 	Source                         string // an optional override to locate TF docs; "" uses the default.
 	Markdown                       []byte // an optional override for the source markdown.
 	IncludeAttributesFrom          string // optionally include attributes from another raw resource for docs.
@@ -375,6 +398,8 @@ type DocInfo struct {
 	// this document will satisfy the criteria `docs/pulumiToken.md`
 	// The examples need to wrapped in the correct shortcodes
 	ReplaceExamplesSection bool
+
+	EditList DocEdits
 }
 
 // GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
