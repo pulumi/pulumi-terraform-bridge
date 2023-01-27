@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -179,34 +178,4 @@ func diffPathsToPropertyKeySet(renames convert.LocalPropertyNames, paths []*tfty
 		return keySlice[i] < keySlice[j]
 	})
 	return keySlice, nil
-}
-
-func makeDynamicValues2(a, b tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
-	var n tfprotov6.DynamicValue
-	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
-	if err != nil {
-		return n, n, err
-	}
-	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
-	if err != nil {
-		return n, n, err
-	}
-	return av, bv, nil
-}
-
-func makeDynamicValues3(a, b, c tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
-	var n tfprotov6.DynamicValue
-	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
-	if err != nil {
-		return n, n, n, err
-	}
-	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
-	if err != nil {
-		return n, n, n, err
-	}
-	cv, err := tfprotov6.NewDynamicValue(c.Type(), c)
-	if err != nil {
-		return n, n, n, err
-	}
-	return av, bv, cv, nil
 }
