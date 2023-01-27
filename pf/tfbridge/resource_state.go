@@ -34,13 +34,20 @@ type resourceState struct {
 	Value           tftypes.Value
 }
 
-func newResourceState(ctx context.Context, rh *resourceHandle) *resourceState {
+// Resource state where UpgradeResourceState has been already done if necessary.
+type upgradedResourceState struct {
+	state *resourceState
+}
+
+func newResourceState(ctx context.Context, rh *resourceHandle) *upgradedResourceState {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
-	return &resourceState{
-		Value:           value,
-		TFSchemaVersion: schemaVersion,
+	return &upgradedResourceState{
+		&resourceState{
+			Value:           value,
+			TFSchemaVersion: schemaVersion,
+		},
 	}
 }
 

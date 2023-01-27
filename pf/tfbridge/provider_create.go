@@ -66,7 +66,7 @@ func (p *provider) Create(
 		return "", plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateValue, configValue, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
+	priorStateValue, configValue, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}

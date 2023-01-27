@@ -51,7 +51,12 @@ func (p *provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	priorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -83,7 +88,7 @@ func (p *provider) Diff(
 	// fmt.Printf("priorStateValue   = %s\n\n", priorStateValue)
 	// fmt.Printf("plannedStateValue = %s\n\n", plannedStateValue)
 
-	tfDiff, err := priorState.Value.Diff(plannedStateValue)
+	tfDiff, err := priorState.state.Value.Diff(plannedStateValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
