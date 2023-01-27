@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -37,6 +38,22 @@ type resourceState struct {
 // Resource state where UpgradeResourceState has been already done if necessary.
 type upgradedResourceState struct {
 	state *resourceState
+}
+
+func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.PropertyMap, error) {
+	propMap, err := convert.DecodePropertyMap(rh.decoder, u.state.Value)
+	if err != nil {
+		return nil, err
+	}
+	return addTFSchemaVersion(propMap, u.state.TFSchemaVersion)
+}
+
+func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, error) {
+	idString, err := rh.idExtractor.extractID(u.state.Value)
+	if err != nil {
+		return "", err
+	}
+	return resource.ID(idString), nil
 }
 
 func newResourceState(ctx context.Context, rh *resourceHandle) *upgradedResourceState {
@@ -66,10 +83,44 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	}, nil
 }
 
-func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
-	type metaBlock struct {
-		SchemaVersion string `json:"schema_version"`
+func parseResourceStateFromTF(
+	ctx context.Context,
+	rh *resourceHandle,
+	state *tfprotov6.DynamicValue,
+) (*upgradedResourceState, error) {
+	tfType := rh.schema.Type().TerraformType(ctx)
+	v, err := state.Unmarshal(tfType)
+	if err != nil {
+		return nil, err
 	}
+	return &upgradedResourceState{state: &resourceState{
+		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
+		Value:           v,
+	}}, nil
+}
+
+type metaBlock struct {
+	SchemaVersion string `json:"schema_version"`
+}
+
+func addTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
+	if version == 0 {
+		return m, nil
+	}
+	if _, hasMeta := m[metaKey]; hasMeta {
+		return nil, fmt.Errorf("cannot add %q property as it is already set", metaKey)
+	}
+	b := metaBlock{SchemaVersion: fmt.Sprintf("%d", version)}
+	bytes, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+	c := m.Copy()
+	c[metaKey] = resource.NewStringProperty(string(bytes))
+	return c, nil
+}
+
+func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 	var meta metaBlock
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {

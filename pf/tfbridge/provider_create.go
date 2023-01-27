@@ -94,20 +94,20 @@ func (p *provider) Create(
 
 	// TODO handle resp.Private field to save that state inside Pulumi state.
 
-	stateValue, err := resp.NewState.Unmarshal(tfType)
+	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	idString, err := rh.idExtractor.extractID(stateValue)
+	createdStateMap, err := createdState.ToPropertyMap(&rh)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	createdState, err := convert.DecodePropertyMap(rh.decoder, stateValue)
+	createdID, err := createdState.ExtractID(&rh)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	return resource.ID(idString), createdState, resource.StatusOK, nil
+	return createdID, createdStateMap, resource.StatusOK, nil
 }

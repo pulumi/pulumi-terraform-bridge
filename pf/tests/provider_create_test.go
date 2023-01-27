@@ -15,10 +15,13 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
@@ -43,4 +46,24 @@ func TestCreateWithComputedOptionals(t *testing.T) {
         }
         `
 	testutils.Replay(t, server, testCase)
+}
+
+func TestCreateWritesSchemaVersion(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+	ctx := context.Background()
+	resp, err := server.Create(ctx, testutils.NewCreateRequest(t, `
+           {
+             "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
+             "properties": {
+                "length": 1
+              }
+          }
+        `))
+	require.NoError(t, err)
+	response := testutils.ParseResponse(t, resp, new(struct {
+		Properties struct {
+			META interface{} `json:"__meta"`
+		} `json:"properties"`
+	}))
+	assert.Equal(t, `{"schema_version":"2"}`, response.Properties.META)
 }
