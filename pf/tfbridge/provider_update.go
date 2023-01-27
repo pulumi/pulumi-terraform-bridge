@@ -96,10 +96,15 @@ func (p *provider) Update(
 	}
 
 	// TODO handle resp.Private
-	updatedState, err := convert.DecodePropertyMapFromDynamic(rh.decoder, tfType, resp.NewState)
+	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return updatedState, resource.StatusOK, nil
+	updatedStateMap, err := updatedState.ToPropertyMap(&rh)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return updatedStateMap, resource.StatusOK, nil
 }
