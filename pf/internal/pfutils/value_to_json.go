@@ -176,7 +176,7 @@ func jsonMarshalObject(
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	var res map[string]interface{}
+	res := map[string]interface{}{}
 	for k, v := range vs {
 		ep := p.WithElementKeyValue(v)
 		e, err := jsonMarshal(v, elementTypes[k], ep)
