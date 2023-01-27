@@ -29,7 +29,7 @@ import (
 func (p *provider) Update(
 	urn resource.URN,
 	id resource.ID,
-	priorState resource.PropertyMap,
+	priorStateMap resource.PropertyMap,
 	checkedInputs resource.PropertyMap,
 	timeout float64,
 	ignoreChanges []string,
@@ -44,7 +44,7 @@ func (p *provider) Update(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorStateValue, err := convert.EncodePropertyMap(rh.encoder, priorState)
+	priorState, err := parseResourceState(&rh, priorStateMap)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -54,7 +54,7 @@ func (p *provider) Update(
 		return nil, 0, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -69,7 +69,7 @@ func (p *provider) Update(
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -41,15 +41,14 @@ func (p *provider) Create(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	// priorState is nil since we are in Create
-	priorStateValue := tftypes.NewValue(tfType, nil)
+	priorState := newResourceState(ctx, &rh)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
@@ -67,16 +66,16 @@ func (p *provider) Create(
 		return "", plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorState, config, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
+	priorStateValue, configValue, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:     rh.terraformResourceName,
-		PriorState:   &priorState,
+		PriorState:   &priorStateValue,
 		PlannedState: planResp.PlannedState,
-		Config:       &config,
+		Config:       &configValue,
 
 		// TODO PlannedPrivate []byte{},
 		// TODO Set ProviderMeta

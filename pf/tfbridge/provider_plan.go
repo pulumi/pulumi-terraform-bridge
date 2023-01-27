@@ -39,16 +39,16 @@ func (p *provider) plan(
 	ctx context.Context,
 	typeName string,
 	schema pfutils.Schema,
-	priorState tftypes.Value,
+	priorState *resourceState,
 	checkedInputs tftypes.Value,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {
-	proposedNewState, err := pfutils.ProposedNew(ctx, schema, priorState, checkedInputs)
+	proposedNewState, err := pfutils.ProposedNew(ctx, schema, priorState.Value, checkedInputs)
 	if err != nil {
 		return nil, err
 	}
 
 	priorStateV, configV, proposedNewStateV, err := makeDynamicValues3(
-		priorState, checkedInputs, proposedNewState)
+		priorState.Value, checkedInputs, proposedNewState)
 	if err != nil {
 		return nil, err
 	}

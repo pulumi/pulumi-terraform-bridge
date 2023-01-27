@@ -40,33 +40,43 @@ type Schema interface {
 
 	DeprecationMessage() string
 	AttributeAtPath(context.Context, path.Path) (Attr, diag.Diagnostics)
+
+	// Resource schemas are versioned for [State Upgrade].
+	//
+	// [State Upgrade]: https://developer.hashicorp.com/terraform/plugin/framework/resources/state-upgrade
+	ResourceSchemaVersion() int64
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {
 	attrs := convertMap(FromProviderAttribute, x.Attributes)
 	blocks := convertMap(FromProviderBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	// Provider schemas cannot be versioned, see also x.GetVersion() always returning 0.
+	version := int64(0)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
 	attrs := convertMap(FromDataSourceAttribute, x.Attributes)
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	// Data source schemas cannot be versioned, see also x.GetVersion() always returning 0.
+	version := int64(0)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, x.Version)
 }
 
 type schemaAdapter[T any] struct {
 	tftypes.AttributePathStepper
-	attrType           attr.Type
-	deprecationMessage string
-	attrs              map[string]Attr
-	blocks             map[string]Block
-	attributeAtPath    func(context.Context, path.Path) (T, diag.Diagnostics)
+	attrType              attr.Type
+	deprecationMessage    string
+	attrs                 map[string]Attr
+	blocks                map[string]Block
+	attributeAtPath       func(context.Context, path.Path) (T, diag.Diagnostics)
+	resourceSchemaVersion int64
 }
 
 var _ Schema = (*schemaAdapter[interface{}])(nil)
@@ -78,15 +88,21 @@ func newSchemaAdapter[T any](
 	attrs map[string]Attr,
 	blocks map[string]Block,
 	atPath func(context.Context, path.Path) (T, diag.Diagnostics),
+	resourceSchemaVersion int64,
 ) *schemaAdapter[T] {
 	return &schemaAdapter[T]{
-		AttributePathStepper: stepper,
-		attrType:             t,
-		deprecationMessage:   deprecationMessage,
-		attributeAtPath:      atPath,
-		attrs:                attrs,
-		blocks:               blocks,
+		AttributePathStepper:  stepper,
+		attrType:              t,
+		deprecationMessage:    deprecationMessage,
+		attributeAtPath:       atPath,
+		attrs:                 attrs,
+		blocks:                blocks,
+		resourceSchemaVersion: resourceSchemaVersion,
 	}
+}
+
+func (a *schemaAdapter[T]) ResourceSchemaVersion() int64 {
+	return a.resourceSchemaVersion
 }
 
 func (a *schemaAdapter[T]) DeprecationMessage() string {
