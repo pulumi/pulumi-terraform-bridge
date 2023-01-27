@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -27,7 +28,6 @@ import (
 )
 
 const metaKey = "__meta"
-const schemaVersionKey = "schema_version"
 
 type resourceState struct {
 	TFSchemaVersion int64
@@ -61,16 +61,22 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 
 func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 	type metaBlock struct {
-		SchemaVersion int64 `json:"schema_version"`
+		SchemaVersion string `json:"schema_version"`
 	}
 	var meta metaBlock
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
-			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %v",
+			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
 				metaKey, err)
 			return 0, err
 		}
-		return meta.SchemaVersion, nil
+		versionN, err := strconv.Atoi(meta.SchemaVersion)
+		if err != nil {
+			err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
+				metaKey, meta.SchemaVersion, err)
+			return 0, err
+		}
+		return int64(versionN), nil
 	}
 	return 0, nil
 }
