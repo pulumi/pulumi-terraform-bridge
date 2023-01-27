@@ -33,10 +33,10 @@ func ValueToJSON(typ tftypes.Type, v tftypes.Value) ([]byte, error) {
 
 func jsonMarshal(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePath) (interface{}, error) {
 	if v.IsNull() {
-		return []byte(`null`), nil
+		return nil, nil
 	}
 	if !v.IsKnown() {
-		return nil, fmt.Errorf("unknown values cannot be serialized to JSON")
+		return nil, p.NewErrorf("unknown values cannot be serialized to JSON")
 	}
 	switch {
 	case typ.Is(tftypes.String):
@@ -178,7 +178,7 @@ func jsonMarshalObject(
 	}
 	res := map[string]interface{}{}
 	for k, v := range vs {
-		ep := p.WithElementKeyValue(v)
+		ep := p.WithAttributeName(k)
 		e, err := jsonMarshal(v, elementTypes[k], ep)
 		if err != nil {
 			return nil, ep.NewError(err)
