@@ -151,3 +151,48 @@ func TestDiffWithSecrets(t *testing.T) {
         }`
 	testutils.Replay(t, server, testCase)
 }
+
+// See https://github.com/pulumi/pulumi-random/issues/258
+func TestDiffVersionUpgrade(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "none",
+            "urn": "urn:pulumi:dev::repro-pulumi-random-258::random:index/randomPassword:RandomPassword::access-token-",
+            "olds": {
+              "__meta": "{\"schema_version\":\"1\"}",
+              "bcryptHash": {
+                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                "value": "$2a$10$S97m.MSYGqJwssuBpH9.ge/2.b5bJgQG4EqqNdj8SAaRYowINbaW6"
+              },
+              "id": "none",
+              "length": 16,
+              "lower": true,
+              "minLower": 0,
+              "minNumeric": 0,
+              "minSpecial": 0,
+              "minUpper": 0,
+              "number": true,
+              "overrideSpecial": "_%@:",
+              "result": {
+                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                "value": "6c83gZo_72VOYy6l"
+              },
+              "special": true,
+              "upper": true
+            },
+            "news": {
+              "length": 16,
+              "overrideSpecial": "_%@:",
+              "special": true
+            }
+          },
+          "response": {
+            "changes": "DIFF_NONE"
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+
+}
