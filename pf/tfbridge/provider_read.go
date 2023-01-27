@@ -29,8 +29,12 @@ import (
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *provider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+func (p *provider) Read(
+	urn resource.URN,
+	id resource.ID,
+	inputs,
+	currentStateMap resource.PropertyMap,
+) (plugin.ReadResult, resource.Status, error) {
 
 	// TODO test for a resource that is not found
 
@@ -43,16 +47,19 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	// Note: that this conversion implicitly filters to only deal
-	// with the fields specified in the tfType schema.
-	currentState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, state)
+	currentState, err := parseResourceState(&rh, currentStateMap)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
+
+	currentStateDV, err := makeDynamicValue(currentState.Value)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
 	req := tfprotov6.ReadResourceRequest{
 		TypeName:     rh.terraformResourceName,
-		CurrentState: currentState,
+		CurrentState: &currentStateDV,
 	}
 
 	// TODO Set ProviderMeta
