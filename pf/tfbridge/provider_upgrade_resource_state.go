@@ -30,7 +30,7 @@ func (p *provider) UpgradeResourceState(
 	rh *resourceHandle,
 	st *resourceState,
 ) (*upgradedResourceState, error) {
-	if st.TFSchemaVersion == 0 || st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
+	if st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
 		return &upgradedResourceState{st}, nil
 	}
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
