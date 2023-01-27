@@ -85,6 +85,10 @@ func NewCreateRequest(t *testing.T, encoded string) *pulumirpc.CreateRequest {
 	return newRequest(t, new(pulumirpc.CreateRequest), encoded)
 }
 
+func NewUpdateRequest(t *testing.T, encoded string) *pulumirpc.UpdateRequest {
+	return newRequest(t, new(pulumirpc.UpdateRequest), encoded)
+}
+
 func newRequest[Req proto.Message](t *testing.T, req Req, jsonRequest string) Req {
 	err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(jsonRequest)), req)
 	require.NoError(t, err)
