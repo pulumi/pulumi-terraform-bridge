@@ -24,15 +24,16 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 )
 
-// Resource state where UpgradeResourceState has been already done if necessary.
-type upgradedResourceState *resourceState
-
 // Wraps running state migration via the underlying TF UpgradeResourceState method.
 func (p *provider) UpgradeResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
 	st *resourceState,
-) (upgradedResourceState, error) {
+) (*upgradedResourceState, error) {
+	if st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
+		return &upgradedResourceState{st}, nil
+	}
+
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 	rawState, err := pfutils.NewRawState(tfType, st.Value)
 	req := &tfprotov6.UpgradeResourceStateRequest{
@@ -51,8 +52,8 @@ func (p *provider) UpgradeResourceState(
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling the repsonse from UpgradeResourceState: %w", err)
 	}
-	return upgradedResourceState(&resourceState{
+	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
-	}), nil
+	}}, nil
 }

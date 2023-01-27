@@ -44,7 +44,12 @@ func (p *provider) Update(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -69,7 +74,7 @@ func (p *provider) Update(
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
