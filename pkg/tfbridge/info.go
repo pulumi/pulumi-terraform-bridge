@@ -104,11 +104,16 @@ type ProviderInfo struct {
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
 func (info *ProviderInfo) ComputeDefaults(r ResourceStrategy, d DatasourceStrategy) error {
+	var errs multierror.Error
 	err := info.ComputeDefaultResources(r)
 	if err != nil {
-		return err
+		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
 	}
-	return info.ComputeDefaultDataSources(d)
+	err = info.ComputeDefaultDataSources(d)
+	if err != nil {
+		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
+	}
+	return errs.ErrorOrNil()
 }
 
 // Apply strategy to generate missing resources.
