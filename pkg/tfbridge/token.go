@@ -16,11 +16,12 @@ package tfbridge
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/utils"
 )
 
 // A strategy for generating missing resources.
@@ -76,7 +77,7 @@ func TokensSingleModule(
 }
 
 func tokensKnownModules[T ResourceInfo | DataSourceInfo](
-	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
+	prefix, defaultModule string, modules *utils.SortedMap[string, string], new func(string, string) (*T, error),
 ) Strategy[T] {
 	return func(tfToken string, _ []string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
@@ -84,20 +85,21 @@ func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 			return nil, fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
 		}
 		mod := defaultModule
-		for _, m := range modules {
+		for _, m := range modules.Keys() {
 			if strings.HasPrefix(tk, m) {
-				mod = m
+				mod, _ = modules.Get(m)
 				break
 			}
 		}
 		if mod == "" {
-			return nil, fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
+			return nil, fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules.Keys())
 		}
-		return new(camelCase(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
+		return new(mod, upperCamelCase(strings.TrimPrefix(tk, mod)))
 	}
 }
 
-// A strategy for assigning tokens to a hand generated set of modules.
+// A strategy for assigning tokens to a hand generated set of modules with a default
+// mapping from TF modules to pulumi modules.
 //
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
 //
@@ -106,18 +108,34 @@ func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
 ) (ResourceStrategy, DatasourceStrategy) {
+	m := make(map[string]string, len(modules))
+	for _, mod := range modules {
+		m[mod] = camelCase(mod)
+	}
+	return TokensKnownModulesMap(tfPackagePrefix, defaultModule, m, finalize)
+}
+
+// A strategy for assigning tokens to a hand generated set of modules.
+//
+// If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func TokensKnownModulesMap(
+	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
+) (ResourceStrategy, DatasourceStrategy) {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
-	sort.Sort(sort.Reverse(sort.StringSlice(modules)))
+	m := utils.NewSortedMap(modules)
 
-	return tokensKnownModules(tfPackagePrefix, defaultModule, modules, func(mod, tk string) (*ResourceInfo, error) {
+	return tokensKnownModules(tfPackagePrefix, defaultModule, m, func(mod, tk string) (*ResourceInfo, error) {
 			tk, err := finalize(mod, tk)
 			if err != nil {
 				return nil, err
 			}
 			return &ResourceInfo{Tok: tokens.Type(tk)}, nil
-		}), tokensKnownModules(tfPackagePrefix, defaultModule, modules, func(mod, tk string) (*DataSourceInfo, error) {
+		}), tokensKnownModules(tfPackagePrefix, defaultModule, m, func(mod, tk string) (*DataSourceInfo, error) {
 			tk, err := finalize(mod, "get"+tk)
 			if err != nil {
 				return nil, err
