@@ -57,7 +57,8 @@ type MakeToken func(module, name string) (string, error)
 // Convert a Terraform token to a Pulumi token with the standard mapping.
 //
 // The mapping is
-//   (pkg, module, name) => pkg:module/lowerFirst(name):name
+//
+//	(pkg, module, name) => pkg:module/lowerFirst(name):name
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
