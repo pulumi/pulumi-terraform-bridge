@@ -45,6 +45,7 @@ func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.Prop
 	if err != nil {
 		return nil, err
 	}
+
 	return addTFSchemaVersion(propMap, u.state.TFSchemaVersion)
 }
 
