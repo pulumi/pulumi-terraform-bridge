@@ -18,12 +18,9 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
 
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
@@ -35,7 +32,6 @@ func (p *provider) Read(
 	inputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
-
 	// TODO test for a resource that is not found
 
 	ctx := context.TODO()
@@ -45,14 +41,17 @@ func (p *provider) Read(
 		return plugin.ReadResult{}, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
-
-	currentState, err := parseResourceState(&rh, currentStateMap)
+	currentStateRaw, err := parseResourceState(&rh, currentStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
-	currentStateDV, err := makeDynamicValue(currentState.Value)
+	currentState, err := p.UpgradeResourceState(ctx, &rh, currentStateRaw)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
+
+	currentStateDV, err := makeDynamicValue(currentState.state.Value)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
@@ -80,25 +79,25 @@ func (p *provider) Read(
 		return plugin.ReadResult{}, resource.StatusUnknown, nil
 	}
 
-	readResourceStateValue, err := resp.NewState.Unmarshal(tfType)
-	if err != nil {
-		return plugin.ReadResult{}, resource.StatusUnknown, nil
-	}
-
-	readState, err := convert.DecodePropertyMap(rh.decoder, readResourceStateValue)
+	readState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
-	readID, err := rh.idExtractor.extractID(readResourceStateValue)
+	readID, err := readState.ExtractID(&rh)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
+
+	readStateMap, err := readState.ToPropertyMap(&rh)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
 	return plugin.ReadResult{
-		ID: resource.ID(readID),
+		ID: readID,
 		// TODO support populating inputs, see extractInputsFromOutputs in the prod bridge.
 		Inputs:  nil,
-		Outputs: readState,
+		Outputs: readStateMap,
 	}, resource.StatusOK, nil
 }

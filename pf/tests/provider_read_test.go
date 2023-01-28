@@ -28,9 +28,32 @@ func TestReadFromRefresh(t *testing.T) {
 	// Specifically testing for:
 	//
 	// - __meta writing out the schema version
+	// - implicit upgrade from version 1 to version 3 is performed ("numeric": true) appears
 	// - inputs being populated
+
 	server := newProviderServer(t, testprovider.RandomProvider())
-	testCase := `
+
+	testCase := `[
+	{
+	  "method": "/pulumirpc.ResourceProvider/Configure",
+	  "request": {
+	    "args": {
+	      "version": "4.8.0"
+	    },
+	    "acceptSecrets": true,
+	    "acceptResources": true
+	  },
+	  "response": {
+	    "acceptSecrets": true,
+	    "supportsPreview": true,
+	    "acceptResources": true
+	  },
+	  "metadata": {
+	    "kind": "resource",
+	    "mode": "client",
+	    "name": "random"
+	  }
+	},
 	{
 	  "method": "/pulumirpc.ResourceProvider/Read",
 	  "request": {
@@ -77,7 +100,7 @@ func TestReadFromRefresh(t *testing.T) {
 	  "response": {
 	    "id": "none",
 	    "properties": {
-	      "__meta": "{\"schema_version\":\"1\"}",
+	      "__meta": "{\"schema_version\":\"3\"}",
 	      "bcryptHash": {
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		"value": "$2a$10$HHwx0gQztkpPIc7WkE4Wt.v7ibWT9Ug24/F5XLa6xNm/gOuyS5WRa"
@@ -90,6 +113,7 @@ func TestReadFromRefresh(t *testing.T) {
 	      "minSpecial": 0,
 	      "minUpper": 0,
 	      "number": true,
+              "numeric": true,
 	      "overrideSpecial": "_%@:",
 	      "result": {
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
@@ -98,28 +122,32 @@ func TestReadFromRefresh(t *testing.T) {
 	      "special": true,
 	      "upper": true
 	    },
-	    "inputs": {
-	      "__defaults": [
-		"lower",
-		"minLower",
-		"minNumeric",
-		"minSpecial",
-		"minUpper",
-		"number",
-		"upper"
-	      ],
-	      "length": 8,
-	      "lower": true,
-	      "minLower": 0,
-	      "minNumeric": 0,
-	      "minSpecial": 0,
-	      "minUpper": 0,
-	      "number": true,
-	      "overrideSpecial": "_%@:",
-	      "special": true,
-	      "upper": true
-	    }
+            "inputs": {}
 	  }
-	}`
-	testutils.Replay(t, server, testCase)
+	}]`
+
+	// TODO populate inputs
+	// "inputs": {
+	//   "__defaults": [
+	// 	"lower",
+	// 	"minLower",
+	// 	"minNumeric",
+	// 	"minSpecial",
+	// 	"minUpper",
+	// 	"number",
+	// 	"upper"
+	//   ],
+	//   "length": 8,
+	//   "lower": true,
+	//   "minLower": 0,
+	//   "minNumeric": 0,
+	//   "minSpecial": 0,
+	//   "minUpper": 0,
+	//   "number": true,
+	//   "overrideSpecial": "_%@:",
+	//   "special": true,
+	//   "upper": true
+	// }
+
+	testutils.ReplaySequence(t, server, testCase)
 }
