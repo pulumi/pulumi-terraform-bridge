@@ -34,7 +34,7 @@ type ResourceStrategy = Strategy[ResourceInfo]
 //
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
-type DatasourceStrategy = Strategy[DataSourceInfo]
+type DataSourceStrategy = Strategy[DataSourceInfo]
 
 // A generic remapping strategy.
 //
@@ -57,7 +57,8 @@ type MakeToken func(module, name string) (string, error)
 // Convert a Terraform token to a Pulumi token with the standard mapping.
 //
 // The mapping is
-//   (pkg, module, name) => pkg:module/lowerFirst(name):name
+//
+//	(pkg, module, name) => pkg:module/lowerFirst(name):name
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
@@ -86,7 +87,7 @@ func camelCase(s string) string {
 // subject to change without warning.
 func TokensSingleModule(
 	tfPackagePrefix, moduleName string, finalize MakeToken,
-) (ResourceStrategy, DatasourceStrategy) {
+) (ResourceStrategy, DataSourceStrategy) {
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
@@ -120,7 +121,7 @@ func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 // subject to change without warning.
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
-) (ResourceStrategy, DatasourceStrategy) {
+) (ResourceStrategy, DataSourceStrategy) {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.

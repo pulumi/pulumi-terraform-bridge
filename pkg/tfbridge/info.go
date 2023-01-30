@@ -99,28 +99,31 @@ type ProviderInfo struct {
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 }
 
-// Add mapped resources and datasources according to the given strategies.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaults(r ResourceStrategy, d DatasourceStrategy) error {
+// ComputeDefaults populates mappings such as the Resources mapping by computing sensible defaults in code. This is
+// especially useful for larger providers that have thousands of entries in Resources. Manually specified mappings
+// always take precedence: ComputeDefaults will never override an entry in the Resources map, only add new entries.
+func (info *ProviderInfo) ComputeDefaults(defaults ProviderInfoStrategy) error {
 	var errs multierror.Error
-	err := info.ComputeDefaultResources(r)
-	if err != nil {
-		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
+	if defaults.Resources != nil {
+		if err := info.computeDefaultResources(defaults.Resources); err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
+		}
 	}
-	err = info.ComputeDefaultDataSources(d)
-	if err != nil {
-		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
+	if defaults.DataSources != nil {
+		if err := info.computeDefaultDataSources(defaults.DataSources); err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
+		}
 	}
 	return errs.ErrorOrNil()
 }
 
+type ProviderInfoStrategy struct {
+	Resources   ResourceStrategy
+	DataSources DataSourceStrategy
+}
+
 // Apply strategy to generate missing resources.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaultResources(strategy ResourceStrategy) error {
+func (info *ProviderInfo) computeDefaultResources(strategy ResourceStrategy) error {
 	if info.Resources == nil {
 		info.Resources = map[string]*ResourceInfo{}
 	}
@@ -128,10 +131,7 @@ func (info *ProviderInfo) ComputeDefaultResources(strategy ResourceStrategy) err
 }
 
 // Apply strategy to generate missing datsources.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaultDataSources(strategy DatasourceStrategy) error {
+func (info *ProviderInfo) computeDefaultDataSources(strategy DataSourceStrategy) error {
 	if info.DataSources == nil {
 		info.DataSources = map[string]*DataSourceInfo{}
 	}
