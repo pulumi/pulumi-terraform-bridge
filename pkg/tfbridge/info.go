@@ -896,11 +896,17 @@ func GetModuleMajorVersion(version string) string {
 }
 
 // MakeMember manufactures a type token for the package and the given module and type.
+//
+// Deprecated: Use MakeResource or call into the `tokens` module in
+// "github.com/pulumi/pulumi/sdk/v3/go/common/tokens" directly.
 func MakeMember(pkg string, mod string, mem string) tokens.ModuleMember {
 	return tokens.ModuleMember(pkg + ":" + mod + ":" + mem)
 }
 
 // MakeType manufactures a type token for the package and the given module and type.
+//
+// Deprecated: Use MakeResource or call into the `tokens` module in
+// "github.com/pulumi/pulumi/sdk/v3/go/common/tokens" directly.
 func MakeType(pkg string, mod string, typ string) tokens.Type {
 	return tokens.Type(MakeMember(pkg, mod, typ))
 }
@@ -908,17 +914,38 @@ func MakeType(pkg string, mod string, typ string) tokens.Type {
 // MakeDataSource manufactures a standard Pulumi function token given a package, module, and data source name.  It
 // automatically uses the main package and names the file by simply lower casing the data source's
 // first character.
-func MakeDataSource(pkg string, mod string, res string) tokens.ModuleMember {
-	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
-	return MakeMember(pkg, mod+"/"+fn, res)
+//
+// Invalid inputs panic.
+func MakeDataSource(pkg string, mod string, name string) tokens.ModuleMember {
+	contract.Assertf(tokens.IsName(name), "invalid datasource name: '%s'", name)
+	modT := makeModule(pkg, mod, name)
+	return tokens.NewModuleMemberToken(modT, tokens.ModuleMemberName(name))
+}
+
+// makeModule manufactures a standard pulumi module from a (pkg, mod, member) triple.
+//
+// For example:
+//
+//	(pkg, mod, Resource) => pkg:mod/resource
+//
+// Invalid inputs panic.
+func makeModule(pkg, mod, member string) tokens.Module {
+	mod += "/" + string(unicode.ToLower(rune(member[0]))) + member[1:]
+	contract.Assertf(tokens.IsQName(pkg), "invalid pkg name: '%s'", pkg)
+	pkgT := tokens.NewPackageToken(tokens.PackageName(pkg))
+	contract.Assertf(tokens.IsQName(mod), "invalid module name: '%s'", mod)
+	return tokens.NewModuleToken(pkgT, tokens.ModuleName(mod))
 }
 
 // MakeResource manufactures a standard resource token given a package, module and resource name.  It
 // automatically uses the main package and names the file by simply lower casing the resource's
 // first character.
+//
+// Invalid inputs panic.
 func MakeResource(pkg string, mod string, res string) tokens.Type {
-	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
-	return MakeType(pkg, mod+"/"+fn, res)
+	contract.Assertf(tokens.IsName(res), "invalid resource name: '%s'", res)
+	modT := makeModule(pkg, mod, res)
+	return tokens.NewTypeToken(modT, tokens.TypeName(res))
 }
 
 // BoolRef returns a reference to the bool argument.
