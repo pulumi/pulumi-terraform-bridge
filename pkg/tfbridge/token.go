@@ -40,7 +40,7 @@ type DataSourceStrategy = Strategy[DataSourceInfo]
 //
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
-type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string, tfTokens []string) (*T, error)
+type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string) (*T, error)
 
 // A function that joins a module and name into a pulumi type token.
 //
@@ -94,7 +94,7 @@ func TokensSingleModule(
 func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
 ) Strategy[T] {
-	return func(tfToken string, _ []string) (*T, error) {
+	return func(tfToken string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
 			return nil, fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
@@ -147,14 +147,14 @@ func TokensKnownModules(
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
 func (ts Strategy[T]) Unmappable(substring string) Strategy[T] {
-	return func(tfToken string, tfTokens []string) (*T, error) {
+	return func(tfToken string) (*T, error) {
 		if strings.Contains(tfToken, substring) {
 			return nil, UnmappableError{
 				TfToken: tfToken,
 				Reason:  fmt.Errorf("contains unmapable sub-string '%s'", substring),
 			}
 		}
-		return ts(tfToken, tfTokens)
+		return ts(tfToken)
 	}
 }
 

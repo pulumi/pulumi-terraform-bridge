@@ -157,7 +157,7 @@ func applyComputedTokens[T ResourceInfo | DataSourceInfo](
 			// Skipping, since there is already a non-nil resource there.
 			continue
 		}
-		v, err := tks(k, keys)
+		v, err := tks(k)
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue
