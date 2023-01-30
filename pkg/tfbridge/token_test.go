@@ -64,7 +64,7 @@ func TestTokensSingleModule(t *testing.T) {
 	info.Resources = map[string]*tfbridge.ResourceInfo{
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 	}
-	err = info.ComputeDefaults(tfbridge.ComputeDefaultInfo{
+	err = info.ComputeDefaults(tfbridge.DefaultStrategy{
 		Resource: opts.Resource,
 	})
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestTokensKnownModules(t *testing.T) {
 		},
 	}
 
-	err := info.ComputeDefaults(tfbridge.ComputeDefaultInfo{
+	err := info.ComputeDefaults(tfbridge.DefaultStrategy{
 		Resource: tfbridge.TokensKnownModules("cs101_", "index", []string{
 			"fizz_", "buzz_", "fizz_buzz_",
 		}, func(module, name string) (string, error) {

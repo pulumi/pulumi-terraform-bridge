@@ -87,7 +87,7 @@ func camelCase(s string) string {
 // subject to change without warning.
 func TokensSingleModule(
 	tfPackagePrefix, moduleName string, finalize MakeToken,
-) ComputeDefaultInfo {
+) DefaultStrategy {
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
@@ -121,13 +121,13 @@ func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 // subject to change without warning.
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
-) ComputeDefaultInfo {
+) DefaultStrategy {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
 	sort.Sort(sort.Reverse(sort.StringSlice(modules)))
 
-	return ComputeDefaultInfo{
+	return DefaultStrategy{
 		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
 			func(mod, tk string) (*ResourceInfo, error) {
 				tk, err := finalize(mod, tk)
@@ -147,7 +147,7 @@ func TokensKnownModules(
 	}
 }
 
-func (ts ComputeDefaultInfo) Unmappable(substring, reason string) ComputeDefaultInfo {
+func (ts DefaultStrategy) Unmappable(substring, reason string) DefaultStrategy {
 	ts.DataSource = ts.DataSource.Unmappable(substring, reason)
 	ts.Resource = ts.Resource.Unmappable(substring, reason)
 	return ts

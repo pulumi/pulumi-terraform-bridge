@@ -104,7 +104,7 @@ type ProviderInfo struct {
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
-type ComputeDefaultInfo struct {
+type DefaultStrategy struct {
 	Resource   ResourceStrategy
 	DataSource DataSourceStrategy
 }
@@ -113,7 +113,7 @@ type ComputeDefaultInfo struct {
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
-func (info *ProviderInfo) ComputeDefaults(opts ComputeDefaultInfo) error {
+func (info *ProviderInfo) ComputeDefaults(opts DefaultStrategy) error {
 	var errs multierror.Error
 	err := info.computeDefaultResources(opts.Resource)
 	if err != nil {
