@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -52,6 +53,21 @@ type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string, tfTokens []s
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
 type MakeToken func(module, name string) (string, error)
+
+// Convert a Terraform token to a Pulumi token with the standard mapping.
+//
+// The mapping is
+//
+//	(pkg, module, name) => pkg:module/lowerFirst(name):name
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+func MakeStandardToken(pkgName string) MakeToken {
+	return func(module, name string) (string, error) {
+		lowerName := string(unicode.ToLower(rune(name[0]))) + name[1:]
+		return fmt.Sprintf("%s:%s/%s:%s", pkgName, module, lowerName, name), nil
+	}
+}
 
 func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase(s)) }
 
