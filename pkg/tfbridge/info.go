@@ -99,39 +99,47 @@ type ProviderInfo struct {
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 }
 
+// Describe the mapping from resource and datasource tokens to Pulumi resources and
+// datasources.
+//
+// NOTE: Experimental; We are still iterating on the design of this function, and it is
+// subject to change without warning.
+type DefaultStrategy struct {
+	Resource   ResourceStrategy
+	DataSource DataSourceStrategy
+}
+
 // Add mapped resources and datasources according to the given strategies.
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
-func (info *ProviderInfo) ComputeDefaults(r ResourceStrategy, d DatasourceStrategy) error {
+func (info *ProviderInfo) ComputeDefaults(opts DefaultStrategy) error {
 	var errs multierror.Error
-	err := info.ComputeDefaultResources(r)
+	err := info.computeDefaultResources(opts.Resource)
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
 	}
-	err = info.ComputeDefaultDataSources(d)
+	err = info.computeDefaultDataSources(opts.DataSource)
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
 	}
 	return errs.ErrorOrNil()
 }
 
-// Apply strategy to generate missing resources.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaultResources(strategy ResourceStrategy) error {
+func (info *ProviderInfo) computeDefaultResources(strategy ResourceStrategy) error {
+	if strategy == nil {
+		return nil
+	}
 	if info.Resources == nil {
 		info.Resources = map[string]*ResourceInfo{}
 	}
 	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy)
 }
 
-// Apply strategy to generate missing datsources.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaultDataSources(strategy DatasourceStrategy) error {
+func (info *ProviderInfo) computeDefaultDataSources(strategy DataSourceStrategy) error {
+	if strategy == nil {
+		return nil
+	}
 	if info.DataSources == nil {
 		info.DataSources = map[string]*DataSourceInfo{}
 	}
@@ -157,7 +165,7 @@ func applyComputedTokens[T ResourceInfo | DataSourceInfo](
 			// Skipping, since there is already a non-nil resource there.
 			continue
 		}
-		v, err := tks(k, keys)
+		v, err := tks(k)
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue

@@ -34,13 +34,13 @@ type ResourceStrategy = Strategy[ResourceInfo]
 //
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
-type DatasourceStrategy = Strategy[DataSourceInfo]
+type DataSourceStrategy = Strategy[DataSourceInfo]
 
 // A generic remapping strategy.
 //
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
-type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string, tfTokens []string) (*T, error)
+type Strategy[T ResourceInfo | DataSourceInfo] func(tfToken string) (*T, error)
 
 // A function that joins a module and name into a pulumi type token.
 //
@@ -87,14 +87,14 @@ func camelCase(s string) string {
 // subject to change without warning.
 func TokensSingleModule(
 	tfPackagePrefix, moduleName string, finalize MakeToken,
-) (ResourceStrategy, DatasourceStrategy) {
+) DefaultStrategy {
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
 func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
 ) Strategy[T] {
-	return func(tfToken string, _ []string) (*T, error) {
+	return func(tfToken string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
 			return nil, fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
@@ -121,40 +121,55 @@ func tokensKnownModules[T ResourceInfo | DataSourceInfo](
 // subject to change without warning.
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
-) (ResourceStrategy, DatasourceStrategy) {
+) DefaultStrategy {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
 	sort.Sort(sort.Reverse(sort.StringSlice(modules)))
 
-	return tokensKnownModules(tfPackagePrefix, defaultModule, modules, func(mod, tk string) (*ResourceInfo, error) {
-			tk, err := finalize(mod, tk)
-			if err != nil {
-				return nil, err
-			}
-			return &ResourceInfo{Tok: tokens.Type(tk)}, nil
-		}), tokensKnownModules(tfPackagePrefix, defaultModule, modules, func(mod, tk string) (*DataSourceInfo, error) {
-			tk, err := finalize(mod, "get"+tk)
-			if err != nil {
-				return nil, err
-			}
-			return &DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
-		})
+	return DefaultStrategy{
+		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
+			func(mod, tk string) (*ResourceInfo, error) {
+				tk, err := finalize(mod, tk)
+				if err != nil {
+					return nil, err
+				}
+				return &ResourceInfo{Tok: tokens.Type(tk)}, nil
+			}),
+		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
+			func(mod, tk string) (*DataSourceInfo, error) {
+				tk, err := finalize(mod, "get"+tk)
+				if err != nil {
+					return nil, err
+				}
+				return &DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+			}),
+	}
+}
+
+func (ts DefaultStrategy) Unmappable(substring, reason string) DefaultStrategy {
+	ts.DataSource = ts.DataSource.Unmappable(substring, reason)
+	ts.Resource = ts.Resource.Unmappable(substring, reason)
+	return ts
 }
 
 // Mark that a strategy cannot handle a sub-string.
 //
 // NOTE: Experimental; We are still iterating on the design of this function, and it is
 // subject to change without warning.
-func (ts Strategy[T]) Unmappable(substring string) Strategy[T] {
-	return func(tfToken string, tfTokens []string) (*T, error) {
+func (ts Strategy[T]) Unmappable(substring, reason string) Strategy[T] {
+	msg := fmt.Sprintf("cannot map tokens that contains '%s'", substring)
+	if reason != "" {
+		msg += ": " + reason
+	}
+	return func(tfToken string) (*T, error) {
 		if strings.Contains(tfToken, substring) {
 			return nil, UnmappableError{
 				TfToken: tfToken,
-				Reason:  fmt.Errorf("contains unmapable sub-string '%s'", substring),
+				Reason:  fmt.Errorf(msg),
 			}
 		}
-		return ts(tfToken, tfTokens)
+		return ts(tfToken)
 	}
 }
 
