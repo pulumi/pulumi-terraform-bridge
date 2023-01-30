@@ -40,11 +40,11 @@ func TestTokensSingleModule(t *testing.T) {
 		},
 	}
 
-	rTokens, dTokens := tfbridge.TokensSingleModule("foo_", "index", func(module, name string) (string, error) {
+	makeToken := func(module, name string) (string, error) {
 		return fmt.Sprintf("foo:%s:%s", module, name), nil
-	})
-
-	err := info.ComputeDefaults(rTokens, dTokens)
+	}
+	opts := tfbridge.TokensSingleModule("foo_", "index", makeToken)
+	err := info.ComputeDefaults(opts)
 	require.NoError(t, err)
 
 	expectedResources := map[string]*tfbridge.ResourceInfo{
@@ -64,7 +64,9 @@ func TestTokensSingleModule(t *testing.T) {
 	info.Resources = map[string]*tfbridge.ResourceInfo{
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 	}
-	err = info.ComputeDefaultResources(rTokens)
+	err = info.ComputeDefaults(tfbridge.ComputeDefaultInfo{
+		Resource: opts.Resource,
+	})
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
@@ -88,12 +90,13 @@ func TestTokensKnownModules(t *testing.T) {
 		},
 	}
 
-	rTokens, _ := tfbridge.TokensKnownModules("cs101_", "index", []string{
-		"fizz_", "buzz_", "fizz_buzz_",
-	}, func(module, name string) (string, error) {
-		return fmt.Sprintf("cs101:%s:%s", module, name), nil
+	err := info.ComputeDefaults(tfbridge.ComputeDefaultInfo{
+		Resource: tfbridge.TokensKnownModules("cs101_", "index", []string{
+			"fizz_", "buzz_", "fizz_buzz_",
+		}, func(module, name string) (string, error) {
+			return fmt.Sprintf("cs101:%s:%s", module, name), nil
+		}).Resource,
 	})
-	err := info.ComputeDefaultResources(rTokens)
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
@@ -120,14 +123,14 @@ func TestUnmappable(t *testing.T) {
 		},
 	}
 
-	strategy, _ := tfbridge.TokensKnownModules("cs101_", "index", []string{
+	strategy := tfbridge.TokensKnownModules("cs101_", "index", []string{
 		"fizz_", "buzz_", "fizz_buzz_",
 	}, func(module, name string) (string, error) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
-	strategy = strategy.Unmappable("five")
-	err := info.ComputeDefaultResources(strategy)
-	assert.ErrorContains(t, err, "contains unmapable sub-string")
+	strategy = strategy.Unmappable("five", "SomeGoodReason")
+	err := info.ComputeDefaults(strategy)
+	assert.ErrorContains(t, err, "SomeGoodReason")
 
 	// Override the unmappable resources
 	info.Resources = map[string]*tfbridge.ResourceInfo{
@@ -135,7 +138,7 @@ func TestUnmappable(t *testing.T) {
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
 		"cs101_buzz_five":          {Tok: "cs101:buzz:Five"},
 	}
-	err = info.ComputeDefaultResources(strategy)
+	err = info.ComputeDefaults(strategy)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
