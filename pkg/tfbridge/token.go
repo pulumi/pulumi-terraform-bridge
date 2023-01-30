@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A strategy for generating missing resources.
@@ -188,4 +190,100 @@ func (err UnmappableError) Error() string {
 
 func (err UnmappableError) Unwrap() error {
 	return err.Reason
+}
+
+// A strategy that can handle renames between runs of `make tfgen`.
+//
+// Renamed resources and datasources are appropriately back-aliased to their new names.
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+func RenameTokens(p *ProviderInfo, data []byte, strategy DefaultStrategy) (DefaultStrategy, func() []byte, error) {
+	var mapping durableTokenMapping
+	if data == nil {
+		// No incoming data, so set up a new mapping
+		mapping = durableTokenMapping{
+			Resources:  map[string]*durableToken[tokens.Type]{},
+			DataSource: map[string]*durableToken[tokens.ModuleMember]{},
+		}
+	} else {
+		err := json.Unmarshal(data, &mapping)
+		if err != nil {
+			return DefaultStrategy{}, nil, fmt.Errorf("unmarshaling data: %w", err)
+		}
+	}
+
+	serialize := func() []byte {
+		bytes, err := json.Marshal(mapping)
+		contract.AssertNoError(err)
+		return bytes
+	}
+
+	return DefaultStrategy{
+		Resource:   durableResource(p, mapping, strategy.Resource),
+		DataSource: durableDataSource(p, mapping, strategy.DataSource),
+	}, serialize, nil
+}
+
+func durableResource(p *ProviderInfo, mapping durableTokenMapping, strategy ResourceStrategy) ResourceStrategy {
+	getToken := func(info *ResourceInfo) tokens.Type { return info.Tok }
+	makeAlias := func(tfToken string, legacyTok tokens.Type, new *ResourceInfo) {
+		p.RenameResourceWithAlias(tfToken,
+			legacyTok, new.Tok,
+			legacyTok.Module().String(), new.Tok.Module().String(),
+			new)
+	}
+	return makeDurable(mapping.Resources, strategy, getToken, makeAlias)
+}
+
+func durableDataSource(p *ProviderInfo, mapping durableTokenMapping, strategy DataSourceStrategy) DataSourceStrategy {
+	getToken := func(info *DataSourceInfo) tokens.ModuleMember { return info.Tok }
+	makeAlias := func(tfToken string, legacyTok tokens.ModuleMember, new *DataSourceInfo) {
+		p.RenameDataSource(tfToken,
+			legacyTok, new.Tok,
+			legacyTok.Module().String(), new.Tok.Module().String(),
+			new)
+	}
+	return makeDurable(mapping.DataSource, strategy, getToken, makeAlias)
+}
+
+func makeDurable[T ~string, Info ResourceInfo | DataSourceInfo](
+	mapping map[string]*durableToken[T], strategy Strategy[Info],
+	getToken func(*Info) T, makeAlias func(string, T, *Info),
+) Strategy[Info] {
+	return func(tfToken string) (*Info, error) {
+		result, err := strategy(tfToken)
+		if err != nil || result == nil {
+			return result, err
+		}
+
+		tk := getToken(result)
+		if tk != "" {
+			durable, found := mapping[tfToken]
+			if !found {
+				mapping[tfToken] = &durableToken[T]{
+					Current: tk,
+				}
+			} else {
+				if tk != durable.Current {
+					durable.History = append(durable.History, durable.Current)
+					durable.Current = tk
+				}
+				for _, alias := range durable.History {
+					makeAlias(tfToken, alias, result)
+				}
+			}
+		}
+		return result, nil
+	}
+}
+
+type durableTokenMapping struct {
+	Resources  map[string]*durableToken[tokens.Type]         `json:"resources,omitempty"`
+	DataSource map[string]*durableToken[tokens.ModuleMember] `json:"datasources,omitempty"`
+}
+
+type durableToken[T ~string] struct {
+	Current T   `json:"current,omitempty"`
+	History []T `json:"history,omitempty"`
 }
