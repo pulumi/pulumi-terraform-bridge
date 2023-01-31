@@ -150,6 +150,25 @@ func TestUnmappable(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestIgnored(t *testing.T) {
+	info := tfbridge.ProviderInfo{
+		P: Provider{
+			resources: map[string]struct{}{
+				"cs101_one_five":  {},
+				"cs101_three":     {},
+				"cs101_three_six": {},
+			},
+		},
+		IgnoreMappings: []string{"cs101_three"},
+	}
+	err := info.ComputeDefaults(tfbridge.TokensSingleModule("cs101_", "index_", tfbridge.MakeStandardToken("cs101")))
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"cs101_one_five":  {Tok: "cs101:index/oneFive:OneFive"},
+		"cs101_three_six": {Tok: "cs101:index/threeSix:ThreeSix"},
+	}, info.Resources)
+}
+
 type Provider struct {
 	util.UnimplementedProvider
 
