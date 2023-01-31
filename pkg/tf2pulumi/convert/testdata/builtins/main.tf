@@ -5,20 +5,238 @@ locals {
     # A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of
     # the current module, but tf2pulumi doesn't support that so we replace it with local.path_module.
     path_module = "some/path"
+
+    # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
+    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+    path_root = "root/path"
 }
+
+#if EXPERIMENTAL
+
+# Examples for abs
+output "funcAbs0" {
+  value = abs(23)
+}
+output "funcAbs1" {
+  value = abs(0)
+}
+output "funcAbs2" {
+  value = abs(-12.4)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for abspath
+output "funcAbspath" {
+  value = abspath(local.path_root)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for base64decode
+output "funcBase64decode" {
+  value = base64decode("SGVsbG8gV29ybGQ=")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for base64encode
+output "funcBase64encode" {
+  value = base64encode("Hello World")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for base64gzip
+output "funcBase64gzip" {
+  value = base64gzip("test")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for base64sha256
+output "funcBase64sha256" {
+  value = base64sha256("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for base64sha512
+output "funcBase64sha512" {
+  value = base64sha512("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for basename
+output "funcBasename" {
+  value = basename("foo/bar/baz.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for bcrypt
+output "funcBcrypt" {
+  value = bcrypt("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for ceil
+output "funcCeil0" {
+  value = ceil(5)
+}
+output "funcCeil1" {
+  value = ceil(5.1)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for chomp
+output "funcChomp0" {
+  value = chomp("hello\n")
+}
+output "funcChomp1" {
+  value = chomp("hello\r\n")
+}
+output "funcChomp2" {
+  value = chomp("hello\n\n")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for cidrhost
+output "funcCidrhost0" {
+  value = cidrhost("10.12.112.0/20", 16)
+}
+output "funcCidrhost1" {
+  value = cidrhost("10.12.112.0/20", 268)
+}
+output "funcCidrhost2" {
+  value = cidrhost("fd00:fd12:3456:7890:00a2::/72", 34)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for cidrnetmask
+output "funcCidrnetmask" {
+  value = cidrnetmask("172.16.0.0/12")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for cidrsubnet
+output "funcCidrsubnet0" {
+  value = cidrsubnet("172.16.0.0/12", 4, 2)
+}
+output "funcCidrsubnet1" {
+  value = cidrsubnet("10.1.2.0/24", 4, 15)
+}
+output "funcCidrsubnet2" {
+  value = cidrsubnet("fd00:fd12:3456:7890::/56", 16, 162)
+}
+output "funcCidrsubnet3" {
+  value = cidrhost("10.1.2.240/28", 1)
+}
+output "funcCidrsubnet4" {
+  value = cidrhost("10.1.2.240/28", 14)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for compact
+output "funcCompact" {
+  value = compact(["a", "", "b", "c"])
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for csvdecode
+output "funcCsvdecode" {
+  value = csvdecode("a,b,c\n1,2,3\n4,5,6")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for dirname
+output "funcDirname" {
+  value = dirname("foo/bar/baz.txt")
+}
+
+#endif
+
 
 # Examples for element
 output "funcElement0" {
   value = element(["a", "b", "c"], 1)
 }
-
 output "funcElement1" {
   value = element(["a", "b", "c"], 3)
 }
-
 output "funcElement2" {
   value = element(["a", "b", "c"], length(["a", "b", "c"])-1)
 }
+
+
+#if EXPERIMENTAL
+
+# Examples for endswith
+output "funcEndswith0" {
+  value = endswith("hello world", "world")
+}
+output "funcEndswith1" {
+  value = endswith("hello world", "hello")
+}
+
+#endif
 
 
 # Examples for file
@@ -39,6 +257,102 @@ output "funcFilebase64sha256" {
 }
 
 
+#if EXPERIMENTAL
+
+# Examples for filebase64sha512
+output "funcFilebase64sha512" {
+  value = filebase64sha512("hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for fileexists
+output "funcFileexists" {
+  value = fileexists("${local.path_module}/hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for filemd5
+output "funcFilemd5" {
+  value = filemd5("hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for filesha1
+output "funcFilesha1" {
+  value = filesha1("hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for filesha256
+output "funcFilesha256" {
+  value = filesha256("hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for filesha512
+output "funcFilesha512" {
+  value = filesha512("hello.txt")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for floor
+output "funcFloor0" {
+  value = floor(5)
+}
+output "funcFloor1" {
+  value = floor(4.9)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for indent
+output "funcIndent" {
+  value = "  items: ${indent(2, "[\n  foo,\n  bar,\n]\n")}"
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for join
+output "funcJoin0" {
+  value = join(", ", ["foo", "bar", "baz"])
+}
+output "funcJoin1" {
+  value = join(", ", ["foo"])
+}
+
+#endif
+
+
 # Examples for jsonencode
 output "funcJsonencode" {
   value = jsonencode({"hello"="world"})
@@ -49,32 +363,213 @@ output "funcJsonencode" {
 output "funcLength0" {
   value = length([])
 }
-
 output "funcLength1" {
   value = length(["a", "b"])
 }
-
 output "funcLength2" {
   value = length({"a" = "b"})
 }
-
 output "funcLength3" {
   value = length("hello")
 }
-
 output "funcLength4" {
   value = length("👾🕹️")
 }
+
+
+#if EXPERIMENTAL
+
+# Examples for log
+output "funcLog0" {
+  value = log(50, 10)
+}
+output "funcLog1" {
+  value = log(16, 2)
+}
+output "funcLog2" {
+  value = ceil(log(15, 2))
+}
+output "funcLog3" {
+  value = ceil(log(16, 2))
+}
+output "funcLog4" {
+  value = ceil(log(17, 2))
+}
+
+#endif
 
 
 # Examples for lookup
 output "funcLookup0" {
   value = lookup({a="ay", b="bee"}, "a", "what?")
 }
-
 output "funcLookup1" {
   value = lookup({a="ay", b="bee"}, "c", "what?")
 }
+
+
+#if EXPERIMENTAL
+
+# Examples for lower
+output "funcLower0" {
+  value = lower("HELLO")
+}
+output "funcLower1" {
+  value = lower("АЛЛО!")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for max
+output "funcMax0" {
+  value = max(12, 54, 3)
+}
+output "funcMax1" {
+  value = max([12, 54, 3]...)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for md5
+output "funcMd5" {
+  value = md5("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for min
+output "funcMin0" {
+  value = min(12, 54, 3)
+}
+output "funcMin1" {
+  value = min([12, 54, 3]...)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for parseint
+output "funcParseint0" {
+  value = parseint("100", 10)
+}
+output "funcParseint1" {
+  value = parseint("FF", 16)
+}
+output "funcParseint2" {
+  value = parseint("-10", 16)
+}
+output "funcParseint3" {
+  value = parseint("1011111011101111", 2)
+}
+output "funcParseint4" {
+  value = parseint("aA", 62)
+}
+output "funcParseint5" {
+  value = parseint("12", 2)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for pathexpand
+output "funcPathexpand0" {
+  value = pathexpand("~/.ssh/id_rsa")
+}
+output "funcPathexpand1" {
+  value = pathexpand("/etc/resolv.conf")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for pow
+output "funcPow0" {
+  value = pow(3, 2)
+}
+output "funcPow1" {
+  value = pow(4, 0)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for range
+output "funcRange0" {
+  value = range(3)
+}
+output "funcRange1" {
+  value = range(1, 4)
+}
+output "funcRange2" {
+  value = range(1, 8, 2)
+}
+output "funcRange3" {
+  value = range(1, 4, 0.5)
+}
+output "funcRange4" {
+  value = range(4, 1)
+}
+output "funcRange5" {
+  value = range(10, 5, -2)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for replace
+output "funcReplace0" {
+  value = replace("1 + 2 + 3", "+", "-")
+}
+output "funcReplace1" {
+  value = replace("hello world", "/w.*d/", "everybody")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for rsadecrypt
+output "funcRsadecrypt" {
+  value = rsadecrypt(filebase64("${local.path_module}/ciphertext"), file("privatekey.pem"))
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for sensitive
+output "funcSensitive0" {
+  value = sensitive(1)
+}
+output "funcSensitive1" {
+  value = sensitive("hello")
+}
+output "funcSensitive2" {
+  value = sensitive([])
+}
+
+#endif
 
 
 # Examples for sha1
@@ -83,16 +578,262 @@ output "funcSha1" {
 }
 
 
+#if EXPERIMENTAL
+
+# Examples for sha256
+output "funcSha256" {
+  value = sha256("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for sha512
+output "funcSha512" {
+  value = sha512("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for signum
+output "funcSignum0" {
+  value = signum(-13)
+}
+output "funcSignum1" {
+  value = signum(0)
+}
+output "funcSignum2" {
+  value = signum(344)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for sort
+output "funcSort" {
+  value = sort(["e", "d", "a", "x"])
+}
+
+#endif
+
+
 # Examples for split
 output "funcSplit0" {
   value = split(",", "foo,bar,baz")
 }
-
 output "funcSplit1" {
   value = split(",", "foo")
 }
-
 output "funcSplit2" {
   value = split(",", "")
 }
+
+
+#if EXPERIMENTAL
+
+# Examples for startswith
+output "funcStartswith0" {
+  value = startswith("hello world", "hello")
+}
+output "funcStartswith1" {
+  value = startswith("hello world", "world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for strrev
+output "funcStrrev0" {
+  value = strrev("hello")
+}
+output "funcStrrev1" {
+  value = strrev("a ☃")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for substr
+output "funcSubstr0" {
+  value = substr("hello world", 1, 4)
+}
+output "funcSubstr1" {
+  value = substr("🤔🤷", 0, 1)
+}
+output "funcSubstr2" {
+  value = substr("hello world", -5, -1)
+}
+output "funcSubstr3" {
+  value = substr("hello world", 6, 10)
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for sum
+output "funcSum" {
+  value = sum([10, 13, 6, 4.5])
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for timeadd
+output "funcTimeadd" {
+  value = timeadd("2017-11-22T00:00:00Z", "10m")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for timecmp
+output "funcTimecmp0" {
+  value = timecmp("2017-11-22T00:00:00Z", "2017-11-22T00:00:00Z")
+}
+output "funcTimecmp1" {
+  value = timecmp("2017-11-22T00:00:00Z", "2017-11-22T01:00:00Z")
+}
+output "funcTimecmp2" {
+  value = timecmp("2017-11-22T01:00:00Z", "2017-11-22T00:00:00Z")
+}
+output "funcTimecmp3" {
+  value = timecmp("2017-11-22T01:00:00Z", "2017-11-22T00:00:00-01:00")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for timestamp
+output "funcTimestamp" {
+  value = timestamp()
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for title
+output "funcTitle" {
+  value = title("hello world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for transpose
+output "funcTranspose" {
+  value = transpose({"a" = ["1", "2"], "b" = ["2", "3"]})
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for trim
+output "funcTrim0" {
+  value = trim("?!hello?!", "!?")
+}
+output "funcTrim1" {
+  value = trim("foobar", "far")
+}
+output "funcTrim2" {
+  value = trim("   hello! world.!  ", "! ")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for trimprefix
+output "funcTrimprefix0" {
+  value = trimprefix("helloworld", "hello")
+}
+output "funcTrimprefix1" {
+  value = trimprefix("helloworld", "cat")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for trimspace
+output "funcTrimspace" {
+  value = trimspace("  hello\n\n")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for trimsuffix
+output "funcTrimsuffix" {
+  value = trimsuffix("helloworld", "world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for upper
+output "funcUpper0" {
+  value = upper("hello")
+}
+output "funcUpper1" {
+  value = upper("алло!")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for urlencode
+output "funcUrlencode0" {
+  value = urlencode("Hello World!")
+}
+output "funcUrlencode1" {
+  value = urlencode("☃")
+}
+output "funcUrlencode2" {
+  value = "http://example.com/search?q=${urlencode("terraform urlencode")}"
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for uuid
+output "funcUuid" {
+  value = uuid()
+}
+
+#endif
 

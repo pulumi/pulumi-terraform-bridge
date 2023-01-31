@@ -1,6 +1,9 @@
     # A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of
     # the current module, but tf2pulumi doesn't support that so we replace it with local.path_module.
     pathModule = "some/path"
+    # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
+    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+    pathRoot = "root/path"
 # Examples for element
 output funcElement0 {
   value = element(["a", "b", "c"], 1)
