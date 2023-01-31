@@ -53,15 +53,15 @@ func (s v2Schema) Required() bool {
 }
 
 func (s v2Schema) Default() interface{} {
-	return s.tf.Default
+	return withPatchedDefaults(s.tf).Default
 }
 
 func (s v2Schema) DefaultFunc() shim.SchemaDefaultFunc {
-	return shim.SchemaDefaultFunc(s.tf.DefaultFunc)
+	return shim.SchemaDefaultFunc(withPatchedDefaults(s.tf).DefaultFunc)
 }
 
 func (s v2Schema) DefaultValue() (interface{}, error) {
-	return s.tf.DefaultValue()
+	return withPatchedDefaults(s.tf).DefaultValue()
 }
 
 func (s v2Schema) Description() string {
