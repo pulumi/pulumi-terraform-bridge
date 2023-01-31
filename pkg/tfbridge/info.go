@@ -115,41 +115,48 @@ type DefaultStrategy struct {
 // subject to change without warning.
 func (info *ProviderInfo) ComputeDefaults(opts DefaultStrategy) error {
 	var errs multierror.Error
-	err := info.computeDefaultResources(opts.Resource)
+
+	ignored := map[string]bool{}
+	for _, tk := range info.IgnoreMappings {
+		ignored[tk] = true
+	}
+
+	err := info.computeDefaultResources(opts.Resource, ignored)
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
 	}
-	err = info.computeDefaultDataSources(opts.DataSource)
+	err = info.computeDefaultDataSources(opts.DataSource, ignored)
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
 	}
 	return errs.ErrorOrNil()
 }
 
-func (info *ProviderInfo) computeDefaultResources(strategy ResourceStrategy) error {
+func (info *ProviderInfo) computeDefaultResources(strategy ResourceStrategy, ignored map[string]bool) error {
 	if strategy == nil {
 		return nil
 	}
 	if info.Resources == nil {
 		info.Resources = map[string]*ResourceInfo{}
 	}
-	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy)
+	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy, ignored)
 }
 
-func (info *ProviderInfo) computeDefaultDataSources(strategy DataSourceStrategy) error {
+func (info *ProviderInfo) computeDefaultDataSources(strategy DataSourceStrategy, ignored map[string]bool) error {
 	if strategy == nil {
 		return nil
 	}
 	if info.DataSources == nil {
 		info.DataSources = map[string]*DataSourceInfo{}
 	}
-	return applyComputedTokens(info.P.DataSourcesMap(), info.DataSources, strategy)
+	return applyComputedTokens(info.P.DataSourcesMap(), info.DataSources, strategy, ignored)
 }
 
 // For each key in the info map not present in the result map, compute a result and store
 // it in the result map.
 func applyComputedTokens[T ResourceInfo | DataSourceInfo](
 	infoMap shim.ResourceMap, resultMap map[string]*T, tks Strategy[T],
+	ignoredMappings map[string]bool,
 ) error {
 	keys := make([]string, 0, infoMap.Len())
 	infoMap.Range(func(key string, _ shim.Resource) bool {
@@ -161,7 +168,7 @@ func applyComputedTokens[T ResourceInfo | DataSourceInfo](
 	var errs multierror.Error
 	for _, k := range keys {
 		v := resultMap[k]
-		if v != nil {
+		if v != nil || ignoredMappings[k] {
 			// Skipping, since there is already a non-nil resource there.
 			continue
 		}
