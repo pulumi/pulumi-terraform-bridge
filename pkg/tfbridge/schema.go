@@ -312,16 +312,18 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, and need to wrap it
 	// into a single-element array before passing to Terraform.
 	if IsMaxItemsOne(tfs, ps) {
-		if old.IsNull() {
-			old = resource.NewArrayProperty([]resource.PropertyValue{})
-		} else {
-			old = resource.NewArrayProperty([]resource.PropertyValue{old})
+		makeScaler := func(v resource.PropertyValue) resource.PropertyValue {
+			if v.IsNull() || v.IsArray() && len(v.ArrayValue()) == 0 {
+				return resource.NewArrayProperty([]resource.PropertyValue{})
+			}
+			if v.IsArray() && len(v.ArrayValue()) == 1 {
+				return v
+			}
+			contract.Assertf(!v.IsArray(), "'%s': make sure we're not trying to wrap an array in itself: %#v", name, v)
+			return resource.NewArrayProperty([]resource.PropertyValue{v})
 		}
-		if v.IsNull() {
-			v = resource.NewArrayProperty([]resource.PropertyValue{})
-		} else {
-			v = resource.NewArrayProperty([]resource.PropertyValue{v})
-		}
+		old = makeScaler(old)
+		v = makeScaler(v)
 	}
 
 	// If there is a custom transform for this value, run it before processing the value.
