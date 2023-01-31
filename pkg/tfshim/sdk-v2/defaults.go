@@ -30,14 +30,12 @@ func withPatchedDefaults(s *schema.Schema) *schema.Schema {
 }
 
 func hasInvalidDefault(s *schema.Schema) bool {
-	if s.Default == nil && s.ValidateFunc == nil {
+	if s.Default == nil || s.ValidateFunc == nil {
 		return false
 	}
 	_, errors := s.ValidateFunc(s.Default, "field")
 	for _, err := range errors {
-		glog.V(9).Infof("ignoring a Default value %v that does not validate with ValidateFunc: %v",
-			s.Default,
-			err)
+		glog.V(9).Infof("ignoring an invalid (per ValidateFunc) Default %v: %v", s.Default, err)
 	}
 	return len(errors) > 0
 }
