@@ -448,6 +448,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) (map[string]interface{}, error) {
 
 	result := make(map[string]interface{})
+	tfAttributesToPulumiProperties := make(map[string]string)
 
 	// Enumerate the inputs provided and add them to the map using their Terraform names.
 	for key, value := range news {
@@ -460,7 +461,23 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 		// First translate the Pulumi property name to a Terraform name.
 		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, rawNames)
 		contract.Assert(name != "")
-
+		if _, duplicate := result[name]; duplicate {
+			// If multiple Pulumi `key`s map to the same Terraform attribute `name`, then
+			// this function's output is dependent on the iteration order of `news`, and
+			// thus non-deterministic. Values clober each other when assigning to
+			// `result[name]`.
+			//
+			// We fail with an "internal" error because this duplication should have been
+			// caught when `make tfgen` was run.
+			//
+			// For context, see:
+			// - https://github.com/pulumi/pulumi-terraform-bridge/issues/774
+			// - https://github.com/pulumi/pulumi-terraform-bridge/issues/773
+			return nil, fmt.Errorf(
+				"internal: Pulumi property '%s' mapped non-uniquely to Terraform attribute '%s' (duplicates Pulumi key '%s')",
+				key, name, tfAttributesToPulumiProperties[name])
+		}
+		tfAttributesToPulumiProperties[name] = string(key)
 		var old resource.PropertyValue
 		if ctx.ApplyDefaults && olds != nil {
 			old = olds[key]

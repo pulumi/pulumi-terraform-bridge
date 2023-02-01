@@ -41,8 +41,13 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 		}
 	}
 	// Singularize names which were pluralized because they were array-shaped Pulumi values
-	if tfs != nil {
-		singularResult := inflector.Singularize(result)
+	if singularResult := inflector.Singularize(result); singularResult != result && tfs != nil {
+
+		// Check if the plural name points to an existing TF attribute.
+		if _, existingPlural := tfs.GetOk(result); existingPlural {
+			return result
+		}
+
 		// Note: If the name is not found in it's singular form in the schema map, that may be because the TF name was
 		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
 		// result.
@@ -87,7 +92,7 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 	// Pluralize names that will become array-shaped Pulumi values
 	if !isPulumiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
 		pluralized := inflector.Pluralize(name)
-		if pluralized == name || inflector.Singularize(pluralized) == name {
+		if inflector.Singularize(pluralized) == name {
 			//			contract.Assertf(
 			//				inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			//				"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),

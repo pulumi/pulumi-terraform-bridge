@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"sort"
 	"strings"
 	"testing"
 
@@ -22,7 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestPulumiToTerraformName(t *testing.T) {
@@ -144,4 +147,105 @@ func TestFromName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, out1, len("n1")+1+7+len(".fifo"))
 	assert.True(t, strings.HasSuffix(out1.(string), ".fifo"))
+}
+
+func TestBijectiveNameConversion(t *testing.T) {
+	t.Parallel()
+
+	certSchema := func() map[string]*schemav2.Schema {
+		return map[string]*schemav2.Schema{
+			"certificate_authority": {
+				Type: schemav2.TypeList, Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{"data": {
+						Type:     schema.TypeString,
+						Computed: true,
+					}},
+				},
+			},
+			"certificate_authorities": {
+				Type: schemav2.TypeList, Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{"data": {
+						Type:     schema.TypeString,
+						Computed: true,
+					}},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		schema   map[string]*schemav2.Schema
+		info     map[string]*SchemaInfo
+		expected map[string]string
+	}{
+		// NOTE:
+		//
+		// Cannot be fully bijective because TerraformToPulumiName does not have scope
+		// level information like PulumiToTerraformName. We should change the signature of
+		// TerraformToPulumiName so it's the inverse of PulumiToTerraformName.
+		//
+		// It's not that bad, since codegen will fail for these types of conflicts.
+		//
+		// Currently fails because "certificate_authority" maps to
+		// "certificateAuthorities" instead of "certificateAuthority".
+		//
+		// {
+		// 	schema: certSchema(),
+		// 	expected: map[string]string{
+		// 		"certificateAuthority":   "certificate_authority",
+		// 		"certificateAuthorities": "certificate_authorities",
+		// 	},
+		// },
+		{
+			schema: certSchema(),
+			info: map[string]*SchemaInfo{
+				"certificate_authority": {
+					MaxItemsOne: BoolRef(true),
+				},
+			},
+			expected: map[string]string{
+				"certificateAuthority":   "certificate_authority",
+				"certificateAuthorities": "certificate_authorities",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		// Assert that forall (k, v) in tt.expected:
+		// - PulumiToTerraformName(k) = v
+		// - TerraformToPulumiName(v) = k
+		t.Run("", func(t *testing.T) {
+			pulumiProps := make([]string, 0, len(tt.expected))
+			tfAttributes := make([]string, 0, len(tt.expected))
+
+			pulumiToTf := tt.expected
+			tfToPulumi := map[string]string{}
+
+			for k, v := range pulumiToTf {
+				pulumiProps = append(pulumiProps, k)
+				tfAttributes = append(tfAttributes, v)
+				tfToPulumi[v] = k
+			}
+			sort.Slice(pulumiProps, func(i, j int) bool { return pulumiProps[i] < pulumiProps[j] })
+			sort.Slice(tfAttributes, func(i, j int) bool { return tfAttributes[i] < tfAttributes[j] })
+
+			assert.Equal(t, len(pulumiToTf), len(tfToPulumi), "map must be invertable")
+
+			for _, tf := range tfAttributes {
+				t.Run(tf+"->"+tfToPulumi[tf], func(t *testing.T) {
+					m := shimv2.NewSchemaMap(tt.schema)
+					assert.Equal(t, tfToPulumi[tf], TerraformToPulumiName(tf, m.Get(tf), tt.info[tf], false))
+				})
+			}
+			for _, prop := range pulumiProps {
+				t.Run(prop+"->"+pulumiToTf[prop], func(t *testing.T) {
+					m := shimv2.NewSchemaMap(tt.schema)
+					assert.Equal(t, pulumiToTf[prop], PulumiToTerraformName(prop, m, tt.info))
+				})
+			}
+		})
+	}
 }
