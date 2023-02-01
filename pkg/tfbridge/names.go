@@ -28,6 +28,15 @@ import (
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
 func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) string {
+
+	if tfs != nil {
+		// Inefficient but improves precision of inverting TerraformToPulumiName.
+		t := pulumiToTerraformNameTable(tfs, ps)
+		if result, ok := t[name]; ok {
+			return result
+		}
+	}
+
 	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
@@ -64,6 +73,17 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 		}
 	}
 	return result
+}
+
+// A strict inverse of TerraformToPulumiName(upper=false) that tabulates it based on the SchemaMap.
+func pulumiToTerraformNameTable(schemaMap shim.SchemaMap, ps map[string]*SchemaInfo) map[string]string {
+	m := map[string]string{}
+	schemaMap.Range(func(key string, schema shim.Schema) bool {
+		puName := TerraformToPulumiName(key, schema, ps[key], false)
+		m[puName] = key
+		return true
+	})
+	return m
 }
 
 func checkTfMaxItems(tfs shim.Schema, maxItemsOne bool) bool {
