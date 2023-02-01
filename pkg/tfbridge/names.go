@@ -29,6 +29,13 @@ import (
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
 func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) string {
+	// First, check if a .Name override applies
+	for k, v := range ps {
+		if v.Name == name {
+			return k
+		}
+	}
+
 	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
@@ -111,6 +118,12 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 	var psInfo *SchemaInfo
 	if ps != nil {
 		psInfo = ps[name]
+	}
+
+	if psInfo != nil {
+		if name := psInfo.Name; name != "" {
+			return name
+		}
 	}
 
 	// Pluralize names that will become array-shaped Pulumi values

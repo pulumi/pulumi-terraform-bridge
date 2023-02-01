@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -180,14 +181,14 @@ func TestBijectiveNameConversion(t *testing.T) {
 		info     map[string]*SchemaInfo
 		expected map[string]string
 	}{
-		{
+		{ // Conflicting plural types
 			schema: certSchema(),
 			expected: map[string]string{
 				"certificateAuthority":   "certificate_authority",
 				"certificateAuthorities": "certificate_authorities",
 			},
 		},
-		{
+		{ // Conflicting plural types with one made singular with MaxItemsOne
 			schema: certSchema(),
 			info: map[string]*SchemaInfo{
 				"certificate_authority": {
@@ -199,6 +200,29 @@ func TestBijectiveNameConversion(t *testing.T) {
 				"certificateAuthorities": "certificate_authorities",
 			},
 		},
+		{ // Respect .Name information
+			schema: map[string]*schemav2.Schema{
+				"singular_property": {
+					Type: schemav2.TypeInt,
+				},
+				"plural_property": {
+					Type: schemav2.TypeList,
+					Elem: schemav2.TypeInt,
+				},
+			},
+			info: map[string]*SchemaInfo{
+				"singular_property": {
+					Name: "singular",
+				},
+				"plural_property": {
+					Name: "plural",
+				},
+			},
+			expected: map[string]string{
+				"singular": "singular_property",
+				"plural":   "plural_property",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -207,6 +231,8 @@ func TestBijectiveNameConversion(t *testing.T) {
 		// - PulumiToTerraformName(k) = v
 		// - TerraformToPulumiName(v) = k
 		t.Run("", func(t *testing.T) {
+			require.Equal(t, len(tt.expected), len(tt.schema),
+				"expected or schema misspecified")
 			pulumiProps := make([]string, 0, len(tt.expected))
 			tfAttributes := make([]string, 0, len(tt.expected))
 
@@ -220,7 +246,6 @@ func TestBijectiveNameConversion(t *testing.T) {
 			}
 			sort.Slice(pulumiProps, func(i, j int) bool { return pulumiProps[i] < pulumiProps[j] })
 			sort.Slice(tfAttributes, func(i, j int) bool { return tfAttributes[i] < tfAttributes[j] })
-
 			assert.Equal(t, len(pulumiToTf), len(tfToPulumi), "map must be invertable")
 
 			for _, tf := range tfAttributes {
