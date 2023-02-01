@@ -66,7 +66,7 @@ func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 		},
 	}
 
-	name := TerraformToPulumiName("list_property", shimv1.NewSchema(tfs["list_property"]), ps["list_property"], false)
+	name := TerraformToPulumiNameV2("list_property", shimv1.NewSchemaMap(tfs), ps)
 	if name != "listProperty" {
 		t.Errorf("Expected `listProperty`, got %s", name)
 	}
@@ -180,24 +180,13 @@ func TestBijectiveNameConversion(t *testing.T) {
 		info     map[string]*SchemaInfo
 		expected map[string]string
 	}{
-		// NOTE:
-		//
-		// Cannot be fully bijective because TerraformToPulumiName does not have scope
-		// level information like PulumiToTerraformName. We should change the signature of
-		// TerraformToPulumiName so it's the inverse of PulumiToTerraformName.
-		//
-		// It's not that bad, since codegen will fail for these types of conflicts.
-		//
-		// Currently fails because "certificate_authority" maps to
-		// "certificateAuthorities" instead of "certificateAuthority".
-		//
-		// {
-		// 	schema: certSchema(),
-		// 	expected: map[string]string{
-		// 		"certificateAuthority":   "certificate_authority",
-		// 		"certificateAuthorities": "certificate_authorities",
-		// 	},
-		// },
+		{
+			schema: certSchema(),
+			expected: map[string]string{
+				"certificateAuthority":   "certificate_authority",
+				"certificateAuthorities": "certificate_authorities",
+			},
+		},
 		{
 			schema: certSchema(),
 			info: map[string]*SchemaInfo{
@@ -237,7 +226,7 @@ func TestBijectiveNameConversion(t *testing.T) {
 			for _, tf := range tfAttributes {
 				t.Run(tf+"->"+tfToPulumi[tf], func(t *testing.T) {
 					m := shimv2.NewSchemaMap(tt.schema)
-					assert.Equal(t, tfToPulumi[tf], TerraformToPulumiName(tf, m.Get(tf), tt.info[tf], false))
+					assert.Equal(t, tfToPulumi[tf], TerraformToPulumiNameV2(tf, m, tt.info))
 				})
 			}
 			for _, prop := range pulumiProps {

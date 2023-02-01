@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
@@ -82,25 +83,64 @@ func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
 	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
 }
 
-// TerraformToPulumiName performs a standard transformation on the given name string, from Terraform's underscore_casing
-// to Pulumi's PascalCasing (if upper is true) or camelCasing (if upper is false).
+// TerraformToPulumiNameV2 performs a standard transformation on the given name string,
+// from Terraform's underscore_casing to Pulumi's camelCasing.
+func TerraformToPulumiNameV2(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo) string {
+	return terraformToPulumiName(name, sch, ps, false)
+}
+
+// TerraformToPulumiName performs a standard transformation on the given name
+// string, from Terraform's underscore_casing to Pulumi's PascalCasing (if upper is true)
+// or camelCasing (if upper is false).
+//
+// Deprecated: Convert to TerraformToPulumiNameV2
+//
+// TODO: Playbook for transition
 func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper bool) string {
+	return terraformToPulumiName(name,
+		schema.SchemaMap(map[string]shim.Schema{name: sch}),
+		map[string]*SchemaInfo{name: ps},
+		upper)
+}
+
+func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
 
+	var psInfo *SchemaInfo
+	if ps != nil {
+		psInfo = ps[name]
+	}
+
 	// Pluralize names that will become array-shaped Pulumi values
-	if !isPulumiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
+	if sch != nil && !isPulumiMaxItemsOne(psInfo) && checkTfMaxItems(sch.Get(name), false) {
 		pluralized := inflector.Pluralize(name)
-		if inflector.Singularize(pluralized) == name {
+		candidate := name
+		if inflector.Singularize(pluralized) == candidate {
 			//			contract.Assertf(
 			//				inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
 			//				"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
 			//				inflector.Singularize(inflector.Pluralize(name)))
 
-			name = pluralized
+			candidate = pluralized
 		}
-		name = inflector.Pluralize(name)
+		candidate = inflector.Pluralize(candidate)
+
+		var conflict bool
+		sch.Range(func(key string, value shim.Schema) bool {
+			if key == name {
+				return true
+			}
+			if key == candidate {
+				conflict = true
+			}
+			return !conflict
+		})
+
+		if !conflict {
+			name = candidate
+		}
 	}
 
 	casingActivated := false // tolerate leading underscores

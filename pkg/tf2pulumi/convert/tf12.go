@@ -1109,7 +1109,8 @@ func terraformToPulumiName(tfName string, schemas il.Schemas) string {
 	if schemas.Pulumi != nil && schemas.Pulumi.Name != "" {
 		return schemas.Pulumi.Name
 	}
-	return tfbridge.TerraformToPulumiName(tfName, schemas.TF, schemas.Pulumi, false)
+	return tfbridge.TerraformToPulumiName(
+		tfName, schemas.TF, schemas.Pulumi, false)
 }
 
 func (rr *resourceRewriter) terraformToPulumiName(tfName string) string {
@@ -1524,7 +1525,8 @@ func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
 			if schemas.Pulumi != nil && schemas.Pulumi.Name != "" {
 				traverser.Name = schemas.Pulumi.Name
 			} else {
-				traverser.Name = tfbridge.TerraformToPulumiName(traverser.Name, schemas.TF, schemas.Pulumi, false)
+				traverser.Name = tfbridge.TerraformToPulumiName(
+					traverser.Name, schemas.TF, schemas.Pulumi, false)
 			}
 			newTraversal = append(newTraversal, traverser)
 		case hcl.TraverseIndex:

@@ -82,7 +82,7 @@ func cleanName(name string) string {
 
 // pulumiName computes the Pulumi form of the given name.
 func (nt *nameTable) pulumiName(name string) string {
-	return camel(tfbridge.TerraformToPulumiName(name, nil, nil, false))
+	return camel(tfbridge.TerraformToPulumiNameV2(name, nil, nil))
 }
 
 // disambiguate ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
