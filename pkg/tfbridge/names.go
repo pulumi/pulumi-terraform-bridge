@@ -29,14 +29,23 @@ import (
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
 func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) string {
-	// First, check if a .Name override applies
-	for k, v := range ps {
-		if v.Name == name {
-			return k
+	var result string
+	// First, check if any tf name points to this one.
+	if tfs != nil {
+		// NOTE: TerraformToPulumiNameV2 is O(n) with n = # of properties. That makes
+		// PulumiToTerraformName O(n^2).
+		tfs.Range(func(key string, value shim.Schema) bool {
+			v := TerraformToPulumiNameV2(key, tfs, ps)
+			if v == name {
+				result = key
+			}
+			return result == ""
+		})
+		if result != "" {
+			return result
 		}
 	}
 
-	var result string
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
 			// if upper case, add an underscore (if it's not #1), and then the lower case version.
@@ -48,29 +57,7 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 			result += string(c)
 		}
 	}
-	// Singularize names which were pluralized because they were array-shaped Pulumi values
-	if singularResult := inflector.Singularize(result); singularResult != result && tfs != nil {
 
-		// Check if the plural name points to an existing TF attribute.
-		if _, existingPlural := tfs.GetOk(result); existingPlural {
-			return result
-		}
-
-		// Note: If the name is not found in it's singular form in the schema map, that may be because the TF name was
-		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
-		// result.
-		var info *SchemaInfo
-		sch, ok := tfs.GetOk(singularResult)
-		if ps != nil {
-			if p, ok := ps[singularResult]; ok {
-				info = p
-			}
-		}
-
-		if ok && checkTfMaxItems(sch, false) || isPulumiMaxItemsOne(info) {
-			result = singularResult
-		}
-	}
 	return result
 }
 
@@ -131,11 +118,6 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 		pluralized := inflector.Pluralize(name)
 		candidate := name
 		if inflector.Singularize(pluralized) == candidate {
-			//			contract.Assertf(
-			//				inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
-			//				"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
-			//				inflector.Singularize(inflector.Pluralize(name)))
-
 			candidate = pluralized
 		}
 		candidate = inflector.Pluralize(candidate)

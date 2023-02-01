@@ -223,6 +223,18 @@ func TestBijectiveNameConversion(t *testing.T) {
 				"plural":   "plural_property",
 			},
 		},
+		{ // Check number mapping
+			schema: map[string]*schemav2.Schema{
+				"base_32_string_seed": {Type: schemav2.TypeString},
+				"rfc_4180":            {Type: schemav2.TypeInt},
+				"ext_100_with200":     {Type: schemav2.TypeInt},
+			},
+			expected: map[string]string{
+				"base32StringSeed": "base_32_string_seed",
+				"rfc4180":          "rfc_4180",
+				"ext100With200":    "ext_100_with200",
+			},
+		},
 	}
 
 	for _, tt := range tests {
