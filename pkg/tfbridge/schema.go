@@ -214,9 +214,11 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 	// and override the deleteBeforeReplace e.g. name or namePrefix
 	// if any of these values change then we can assume we can
 	if len(resourceInfo.UniqueNameFields) > 0 {
-		for _, name := range resourceInfo.UniqueNameFields {
-			key := resource.PropertyKey(name)
-			_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
+		fieldsIter := newFieldsIterator(resourceInfo.UniqueNameFields, tfs, fields, false)
+
+		for fieldsIter.Next() {
+			key := fieldsIter.PropertyKey()
+			_, _, psi := fieldsIter.Info()
 
 			oldVal := olds[key]
 			newVal := news[key]
@@ -233,8 +235,10 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 		return true
 	}
 
-	for key := range news {
-		_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
+	newsIter := newPropertyMapIterator(news, tfs, fields, false)
+	for newsIter.Next() {
+		key := newsIter.PropertyKey()
+		_, _, psi := newsIter.Info()
 		if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && !hasDefault[key] {
 			return true
 		}
@@ -450,8 +454,12 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
 
+	newsIter := newPropertyMapIterator(news, tfs, ps, rawNames)
+
 	// Enumerate the inputs provided and add them to the map using their Terraform names.
-	for key, value := range news {
+	for newsIter.Next() {
+		key, value := newsIter.KeyValue()
+
 		// If this is a reserved property, ignore it.
 		switch key {
 		case defaultsKey, metaKey:
@@ -459,7 +467,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 		}
 
 		// First translate the Pulumi property name to a Terraform name.
-		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, rawNames)
+		name, tfi, psi := newsIter.Info()
 		contract.Assert(name != "")
 		if _, duplicate := result[name]; duplicate {
 			// If multiple Pulumi `key`s map to the same Terraform attribute `name`, then
@@ -1154,8 +1162,90 @@ func getInfoFromTerraformName(key string,
 	return resource.PropertyKey(name), getSchema(tfs, key), info
 }
 
+type propertyMapIterator struct {
+	pm         resource.PropertyMap
+	stableKeys []resource.PropertyKey
+	position   int
+	schemaMap  shim.SchemaMap
+	infos      map[string]*SchemaInfo
+	rawName    bool
+}
+
+func (i *propertyMapIterator) Next() bool {
+	i.position++
+	return i.position < len(i.stableKeys)
+}
+
+func (i *propertyMapIterator) KeyValue() (resource.PropertyKey, resource.PropertyValue) {
+	return i.PropertyKey(), i.PropertyValue()
+}
+
+func (i *propertyMapIterator) PropertyKey() resource.PropertyKey {
+	return i.stableKeys[i.position]
+}
+
+func (i *propertyMapIterator) PropertyValue() resource.PropertyValue {
+	return i.pm[i.PropertyKey()]
+}
+
+func (i *propertyMapIterator) Info() (string, shim.Schema, *SchemaInfo) {
+	return getInfoFromPulumiName00(i.PropertyKey(), i.schemaMap, i.infos, i.rawName)
+}
+
+func newPropertyMapIterator(
+	pm resource.PropertyMap,
+	schemaMap shim.SchemaMap,
+	infos map[string]*SchemaInfo,
+	rawName bool,
+) *propertyMapIterator {
+	return &propertyMapIterator{
+		pm:         pm,
+		stableKeys: pm.StableKeys(),
+		position:   -1,
+		schemaMap:  schemaMap,
+		infos:      infos,
+		rawName:    rawName,
+	}
+}
+
+type fieldsIterator struct {
+	fields    []string
+	position  int
+	schemaMap shim.SchemaMap
+	infos     map[string]*SchemaInfo
+	rawName   bool
+}
+
+func (i *fieldsIterator) Next() bool {
+	i.position++
+	return i.position < len(i.fields)
+}
+
+func (i *fieldsIterator) PropertyKey() resource.PropertyKey {
+	return resource.PropertyKey(i.fields[i.position])
+}
+
+func (i *fieldsIterator) Info() (string, shim.Schema, *SchemaInfo) {
+	return getInfoFromPulumiName00(i.PropertyKey(), i.schemaMap, i.infos, i.rawName)
+}
+
+func newFieldsIterator(
+	fields []string,
+	schemaMap shim.SchemaMap,
+	infos map[string]*SchemaInfo,
+	rawName bool,
+) *fieldsIterator {
+	return &fieldsIterator{
+		fields:    fields,
+		position:  -1,
+		schemaMap: schemaMap,
+		infos:     infos,
+		rawName:   rawName,
+	}
+}
+
 // getInfoFromPulumiName does a reverse map lookup to find the Terraform name and schema info for a Pulumi name, if any.
-func getInfoFromPulumiName(key resource.PropertyKey,
+func getInfoFromPulumiName00(key resource.PropertyKey,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawName bool) (string,
 	shim.Schema, *SchemaInfo) {
 	// To do this, we will first look to see if there's a known custom schema that uses this name.  If yes, we
@@ -1298,10 +1388,12 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 			}
 		}
 
-		for name, oldValue := range oldMap {
+		oldMapIter := newPropertyMapIterator(oldMap, tfflds, psflds, rawNames || useRawNames(tfs))
+		for oldMapIter.Next() {
+			name, oldValue := oldMapIter.KeyValue()
 			defaultElem := false
 			if newValue, ok := newMap[name]; ok {
-				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, rawNames || useRawNames(tfs))
+				_, etfs, eps := oldMapIter.Info()
 				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, rawNames || useRawNames(tfs))
 			} else {
 				delete(oldMap, name)
@@ -1416,8 +1508,11 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 
 		obj := state.ObjectValue()
 		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
-		for k, e := range obj {
-			_, etfs, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames || useRawNames(tfs))
+
+		objIter := newPropertyMapIterator(obj, tfflds, psflds, rawNames || useRawNames(tfs))
+		for objIter.Next() {
+			k, e := objIter.KeyValue()
+			_, etfs, eps := objIter.Info()
 			if isInput := isMap || etfs != nil && (etfs.Optional() || etfs.Required()); !isInput {
 				glog.V(9).Infof("skipping '%v' (not an input)", k)
 				continue

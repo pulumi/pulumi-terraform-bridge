@@ -134,7 +134,9 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 		}
 
 		rawElementNames := rawNames || useRawNames(tfs)
-		for k, e := range v.ObjectValue() {
+		iter := newPropertyMapIterator(v.ObjectValue(), tfflds, psflds, rawElementNames)
+		for iter.Next() {
+			k, e := iter.KeyValue()
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
 				elementPath = fmt.Sprintf(`%s.["%s"]`, path, strings.ReplaceAll(string(k), `"`, `\"`))
@@ -142,7 +144,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 				elementPath = fmt.Sprintf("%s.%s", path, k)
 			}
 
-			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawElementNames)
+			en, etf, eps := iter.Info()
 			visitPropertyValue(name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
 		}
 	}
@@ -251,12 +253,18 @@ func doIgnoreChanges(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news r
 		}
 		return true
 	}
-	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+
+	oldsIter := newPropertyMapIterator(olds, tfs, ps, false)
+	for oldsIter.Next() {
+		k, v := oldsIter.KeyValue()
+		en, etf, eps := oldsIter.Info()
 		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
 	}
-	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+
+	newsIter := newPropertyMapIterator(news, tfs, ps, false)
+	for newsIter.Next() {
+		k, v := newsIter.KeyValue()
+		en, etf, eps := newsIter.Info()
 		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
 	}
 
@@ -281,16 +289,22 @@ func makeDetailedDiff(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news 
 	// property in a resource's state, then with each property in its config. Any diffs that only appear in the config
 	// are treated as adds; diffs that appear in both the state and config are treated as updates.
 	diff := map[string]*pulumirpc.PropertyDiff{}
-	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+	oldsIter1 := newPropertyMapIterator(olds, tfs, ps, false)
+	for oldsIter1.Next() {
+		k, v := oldsIter1.KeyValue()
+		en, etf, eps := oldsIter1.Info()
 		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
 	}
-	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+	newsIter := newPropertyMapIterator(news, tfs, ps, false)
+	for newsIter.Next() {
+		k, v := newsIter.KeyValue()
+		en, etf, eps := newsIter.Info()
 		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
 	}
-	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+	oldsIter2 := newPropertyMapIterator(olds, tfs, ps, false)
+	for oldsIter2.Next() {
+		k, v := oldsIter2.KeyValue()
+		en, etf, eps := oldsIter2.Info()
 		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, true, useRawNames(etf))
 	}
 	return diff

@@ -517,28 +517,39 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	p.setLoggingContext(ctx)
+
 	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
 	// we will need to translate into simply the configuration variable names.
 	vars := make(resource.PropertyMap)
-	for k, v := range req.GetVariables() {
-		mm, err := tokens.ParseModuleMember(k)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration token '%v'", k)
-		}
-		if mm.Module() != p.baseConfigMod() && mm.Module() != p.configMod() {
-			continue
+	{
+		// First popualte vars with the right keys and raw strings as values.
+		for k, v := range req.GetVariables() {
+			mm, err := tokens.ParseModuleMember(k)
+			if err != nil {
+				return nil, errors.Wrapf(err, "malformed configuration token '%v'", k)
+			}
+			if mm.Module() != p.baseConfigMod() && mm.Module() != p.configMod() {
+				continue
+			}
+			vars[resource.PropertyKey(mm.Name())] = resource.NewStringProperty(v)
 		}
 
-		typ := shim.TypeString
-		_, sch, _ := getInfoFromPulumiName(resource.PropertyKey(mm.Name()), p.config, p.info.Config, false)
-		if sch != nil {
-			typ = sch.Type()
+		// Next do a pass to convert raw strings.
+		varsIter := newPropertyMapIterator(vars, p.config, p.info.Config, false)
+		for varsIter.Next() {
+			key := varsIter.PropertyKey()
+			v := varsIter.PropertyValue().StringValue()
+			typ := shim.TypeString
+			_, sch, _ := varsIter.Info()
+			if sch != nil {
+				typ = sch.Type()
+			}
+			pv, err := convertStringToPropertyValue(v, typ)
+			if err != nil {
+				return nil, errors.Wrapf(err, "malformed configuration value '%v'", v)
+			}
+			vars[key] = pv
 		}
-		pv, err := convertStringToPropertyValue(v, typ)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration value '%v'", v)
-		}
-		vars[resource.PropertyKey(mm.Name())] = pv
 	}
 
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
