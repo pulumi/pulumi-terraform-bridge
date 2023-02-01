@@ -146,11 +146,7 @@ func validatePropertyNames(
 	errors := []nameError{}
 	mapping := map[string]string{}
 	schemaMap.Range(func(tfAttr string, tfAttrSchema shim.Schema) bool {
-		var info *tfbridge.SchemaInfo
-		if infos != nil {
-			info = infos[tfAttr]
-		}
-		pulumiName := tfbridge.TerraformToPulumiName(tfAttr, tfAttrSchema, info, false)
+		pulumiName := tfbridge.TerraformToPulumiNameV2(tfAttr, schemaMap, infos)
 
 		if oldAttr, exists := mapping[pulumiName]; exists {
 			errors = append(errors, newNameCollisionError(nc, tfKey, tfAttr, pulumiName, oldAttr))
