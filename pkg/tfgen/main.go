@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 // Main executes the TFGen process for the given package pkg and provider prov.
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 	MainWithCustomGenerate(pkg, version, prov, func(opts GeneratorOptions) error {
+		validatePropertyNamesForProvider(prov).Report(opts.Sink)
 
 		// Create a generator with the specified settings.
 		g, err := NewGenerator(opts)
