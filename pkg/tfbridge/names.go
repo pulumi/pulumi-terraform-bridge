@@ -115,12 +115,7 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && !isPulumiMaxItemsOne(psInfo) && checkTfMaxItems(sch.Get(name), false) {
-		pluralized := inflector.Pluralize(name)
-		candidate := name
-		if inflector.Singularize(pluralized) == candidate {
-			candidate = pluralized
-		}
-		candidate = inflector.Pluralize(candidate)
+		candidate := inflector.Pluralize(name)
 
 		var conflict bool
 		sch.Range(func(key string, value shim.Schema) bool {

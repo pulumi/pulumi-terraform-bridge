@@ -746,7 +746,7 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 					}
 				} else {
 					elementKey := tfbridge.TerraformToPulumiNameV2(element,
-						schema.SchemaMap{element: schemas.TF},
+						schema.SchemaMap{element: elemSchemas.TF},
 						map[string]*tfbridge.SchemaInfo{element: elemSchemas.Pulumi})
 					if path == "" {
 						path = elementKey
