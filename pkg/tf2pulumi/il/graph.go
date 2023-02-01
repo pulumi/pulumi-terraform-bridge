@@ -707,11 +707,8 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 					return true
 				}
 
-				var p *tfbridge.SchemaInfo
-				if schemas.Pulumi != nil {
-					p = schemas.Pulumi.Fields[k]
-				}
-				ignoreChanges = append(ignoreChanges, tfbridge.TerraformToPulumiName(k, v, p, false))
+				propName := tfbridge.TerraformToPulumiNameV2(k, schemas.TFRes.Schema(), schemas.Pulumi.Fields)
+				ignoreChanges = append(ignoreChanges, propName)
 				return true
 			})
 			sort.Strings(ignoreChanges)
@@ -726,12 +723,9 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 			// For the last element, we only need a prefix match. Take care of that here.
 			if i == len(elements)-1 && elemSchemas.TFRes != nil {
 				elemSchemas.TFRes.Schema().Range(func(k string, v shim.Schema) bool {
-					var p *tfbridge.SchemaInfo
-					if schemas.Pulumi != nil {
-						p = schemas.Pulumi.Fields[k]
-					}
 					if strings.HasPrefix(k, element) {
-						elementKey := tfbridge.TerraformToPulumiName(k, v, p, false)
+						elementKey := tfbridge.TerraformToPulumiNameV2(k,
+							elemSchemas.TFRes.Schema(), schemas.Pulumi.Fields)
 						if path == "" {
 							ignoreChanges = append(ignoreChanges, elementKey)
 						} else {
@@ -751,7 +745,9 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 						path = fmt.Sprintf("%s[%s]", path, element)
 					}
 				} else {
-					elementKey := tfbridge.TerraformToPulumiName(element, elemSchemas.TF, elemSchemas.Pulumi, false)
+					elementKey := tfbridge.TerraformToPulumiNameV2(element,
+						schema.SchemaMap{element: schemas.TF},
+						map[string]*tfbridge.SchemaInfo{element: elemSchemas.Pulumi})
 					if path == "" {
 						path = elementKey
 					} else {
