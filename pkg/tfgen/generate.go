@@ -1487,14 +1487,6 @@ func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 //	would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
 //	name transformation process).  This isn't impossible, but certainly complicates matters.
 func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.SchemaInfo) string {
-	// Use the name override, if one exists, or use the standard name mangling otherwise.
-	if custom != nil {
-		v := custom[key]
-		if v != nil && v.Name != "" {
-			return v.Name
-		}
-	}
-
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
 	key = strings.TrimSuffix(key, ":")
 
