@@ -15,6 +15,7 @@
 package x
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A function that joins a module and name into a pulumi type token.
@@ -117,4 +119,161 @@ func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase
 
 func camelCase(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
+}
+
+type tokenHistory[T ~string] struct {
+	Current T          `json:"current"`        // the current Pulumi token for the resource
+	Past    []alias[T] `json:"past,omitempty"` // Previous tokens
+}
+
+type alias[T ~string] struct {
+	Name      T    `json:"name"`      // The previous token.
+	InCodegen bool `json:"inCodegen"` // If the alias is a fully generated resource, or just a schema alias.
+}
+
+type aliasHistory struct {
+	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources"`
+	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
+}
+
+// Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
+// changes.
+//
+// artifact is the byte sequence used to store history. The next artifact is returned by
+// calling the returned callback. The returned callback must be called on the provider
+// that utilized the returned strategy, after ComputeDefaults was called.
+//
+// artifact should be considered an opaque blob.
+func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, func(*ProviderInfo) []byte, error) {
+	var hist aliasHistory
+	if artifact == nil {
+		hist = aliasHistory{
+			Resources:   map[string]*tokenHistory[tokens.Type]{},
+			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
+		}
+	} else {
+		err := json.Unmarshal(artifact, &hist)
+		if err != nil {
+			return DefaultStrategy{}, nil, fmt.Errorf("parsing artifact: %w", err)
+		}
+	}
+	remaps := &[]func(*ProviderInfo){}
+
+	serialize := func(p *ProviderInfo) []byte {
+		for _, r := range *remaps {
+			r(p)
+		}
+		bytes, err := json.MarshalIndent(hist, "", "    ")
+		contract.AssertNoError(err)
+		return bytes
+	}
+
+	return aliasing(hist, defaults, remaps), serialize, nil
+}
+
+func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*ProviderInfo)) DefaultStrategy {
+	return DefaultStrategy{
+		Resource:   aliasResources(hist.Resources, defaults.Resource, remaps),
+		DataSource: aliasDataSources(hist.DataSources, defaults.DataSource, remaps),
+	}
+}
+
+func aliasResources(
+	hist map[string]*tokenHistory[tokens.Type],
+	strategy ResourceStrategy, remaps *[]func(*ProviderInfo),
+) ResourceStrategy {
+	return func(tfToken string) (*ResourceInfo, error) {
+		computed, err := strategy(tfToken)
+		if err != nil {
+			return nil, err
+		}
+
+		prev, hasPrev := hist[tfToken]
+		if !hasPrev {
+			// It's not in the history, so it must be new. Stick it in the history for
+			// next time.
+			*remaps = append(*remaps, func(*ProviderInfo) {
+				hist[tfToken] = &tokenHistory[tokens.Type]{
+					Current: computed.Tok,
+				}
+			})
+		} else if prev.Current != computed.Tok {
+			// It's in history, but something has changed. Update the history to reflect
+			// the new reality, then add aliases.
+			*remaps = append(*remaps, func(p *ProviderInfo) {
+				// re-fetch the resource, to make sure we have the right pointer.
+				computed, ok := p.Resources[tfToken]
+				contract.Assertf(ok, "Resource %s decided but not present", tfToken)
+
+				var alreadyPresent bool
+				for _, a := range prev.Past {
+					if a.Name == prev.Current {
+						alreadyPresent = true
+						break
+					}
+				}
+				if !alreadyPresent {
+					prev.Past = append(prev.Past, alias[tokens.Type]{
+						Name:      prev.Current,
+						InCodegen: true,
+					})
+				}
+				for _, a := range prev.Past {
+					legacy := a.Name
+					if a.InCodegen {
+						p.RenameResourceWithAlias(tfToken, legacy,
+							computed.Tok, legacy.Module().Name().String(),
+							computed.Tok.Module().Name().String(), computed)
+					} else {
+						computed.Aliases = append(computed.Aliases, AliasInfo{Type: (*string)(&legacy)})
+					}
+				}
+			})
+
+		}
+
+		return computed, nil
+	}
+}
+
+func aliasDataSources(
+	hist map[string]*tokenHistory[tokens.ModuleMember],
+	strategy DataSourceStrategy, remaps *[]func(*ProviderInfo),
+) DataSourceStrategy {
+	return func(tfToken string) (*DataSourceInfo, error) {
+		computed, err := strategy(tfToken)
+		if err != nil {
+			return nil, err
+		}
+
+		prev, hasPrev := hist[tfToken]
+		if !hasPrev {
+			// It's not in the history, so it must be new. Stick it in the history for
+			// next time.
+			hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
+				Current: computed.Tok,
+			}
+		} else if prev.Current != computed.Tok {
+			// It's in history, but something has changed. Update the history to reflect
+			// the new reality, then add aliases.
+			*remaps = append(*remaps, func(p *ProviderInfo) {
+				// re-fetch the resource, to make sure we have the right pointer.
+				computed, ok := p.DataSources[tfToken]
+				contract.Assertf(ok, "DataSource %s decided but not present", tfToken)
+				alias := alias[tokens.ModuleMember]{
+					Name: prev.Current,
+				}
+				prev.Past = append(prev.Past, alias)
+				for _, a := range prev.Past {
+					legacy := a.Name
+					p.RenameDataSource(tfToken, legacy,
+						computed.Tok, legacy.Module().Name().String(),
+						computed.Tok.Module().Name().String(), computed)
+				}
+			})
+
+		}
+
+		return computed, nil
+	}
 }

@@ -169,6 +169,82 @@ func TestIgnored(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestAliasing(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		return &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]struct{}{
+					"pkg_mod1_r1": {},
+					"pkg_mod1_r2": {},
+					"pkg_mod2_r1": {},
+				},
+			},
+		}
+	}
+	simple := provider()
+
+	aliasing, finish, err := tfbridge.Aliasing(nil,
+		tfbridge.TokensSingleModule("pkg_", "index", tfbridge.MakeStandardToken("pkg")))
+	require.NoError(t, err)
+	err = simple.ComputeDefaults(aliasing)
+	require.NoError(t, err)
+
+	hist1 := finish(simple)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
+		"pkg_mod1_r2": {Tok: "pkg:index/mod1R2:Mod1R2"},
+		"pkg_mod2_r1": {Tok: "pkg:index/mod2R1:Mod2R1"},
+	}, simple.Resources)
+
+	modules := provider()
+	knownModules := tfbridge.TokensKnownModules("pkg_", "",
+		[]string{"mod1", "mod2"}, tfbridge.MakeStandardToken("pkg"))
+	aliasing, finish, err = tfbridge.Aliasing(hist1, knownModules)
+	require.NoError(t, err)
+	err = modules.ComputeDefaults(aliasing)
+	require.NoError(t, err)
+	hist2 := finish(modules)
+	ref := func(s string) *string { return &s }
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {
+			Tok:     "pkg:mod1/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+		},
+		"pkg_mod1_r1_legacy": {
+			Tok:                "pkg:index/mod1R1:Mod1R1",
+			DeprecationMessage: "pkg.index/mod1r1.Mod1R1 has been deprecated in favor of pkg.mod1/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		},
+		"pkg_mod1_r2": {
+			Tok:     "pkg:mod1/r2:R2",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R2:Mod1R2")}},
+		},
+		"pkg_mod1_r2_legacy": {
+			Tok:                "pkg:index/mod1R2:Mod1R2",
+			DeprecationMessage: "pkg.index/mod1r2.Mod1R2 has been deprecated in favor of pkg.mod1/r2.R2",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r2.html.markdown"},
+		},
+		"pkg_mod2_r1": {
+			Tok:     "pkg:mod2/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
+		},
+		"pkg_mod2_r1_legacy": {
+			Tok:                "pkg:index/mod2R1:Mod2R1",
+			DeprecationMessage: "pkg.index/mod2r1.Mod2R1 has been deprecated in favor of pkg.mod2/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
+		},
+	}, modules.Resources)
+
+	modules2 := provider()
+	aliasing, finish, err = tfbridge.Aliasing(hist2, knownModules)
+	require.NoError(t, err)
+	err = modules2.ComputeDefaults(aliasing)
+	require.NoError(t, err)
+	hist3 := finish(modules2)
+	assert.Equal(t, string(hist2), string(hist3), "No changes should imply no change in history")
+	assert.Equal(t, modules, modules2)
+}
+
 type Provider struct {
 	util.UnimplementedProvider
 
