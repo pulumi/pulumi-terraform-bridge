@@ -3,10 +3,12 @@
 # Generating a file with _all_ the terraform builtins is a lot of copy and paste!
 # But we can just grab code for all of these from their website examples!
 
-import re
 import os
-from git import Repo
+import re
 import tempfile
+
+from git import Repo
+
 
 def trimext(file: str) -> str:
     i = file.rindex(".")
@@ -40,12 +42,10 @@ overrides = {
     ],
 }
 
-# There's a number of functions we _don't_ support yet, so we exclude emitting these to the file
-unsupported = set([
+# There's a number of functions we only support in the new experimental converter
+experimental = {
     "abs",
     "abspath",
-    "alltrue",
-    "anytrue",
     "base64decode",
     "base64encode",
     "base64gzip",
@@ -53,103 +53,109 @@ unsupported = set([
     "base64sha512",
     "basename",
     "bcrypt",
-    "can",
     "ceil",
     "chomp",
-    "chunklist",
+    "cidrhost",
     "cidrnetmask",
     "cidrsubnet",
-    "cidrhost",
-    "cidrsubnets",
-    "coalesce",
-    "coalescelist",
     "compact",
-    "concat",
-    "contains",
     "csvdecode",
     "dirname",
-    "distinct",
     "endswith",
     "filebase64sha512",
     "fileexists",
     "filemd5",
-    "fileset",
     "filesha1",
     "filesha256",
     "filesha512",
-    "flatten",
     "floor",
-    "format",
-    "formatdate",
-    "formatlist",
     "indent",
-    "index",
     "join",
-    "jsondecode",
-    "keys",
-    "list",
     "log",
     "lower",
-    "map",
-    "matchkeys",
     "max",
     "md5",
-    "merge",
     "min",
-    "nonsensitive",
-    "one",
     "parseint",
     "pathexpand",
     "pow",
     "range",
-    "regex",
-    "regexall",
     "replace",
-    "reverse",
     "rsadecrypt",
     "sensitive",
-    "setintersection",
-    "setproduct",
-    "setsubtract",
-    "setunion",
     "sha256",
     "sha512",
     "signum",
-    "slice",
     "sort",
     "startswith",
     "strrev",
     "substr",
     "sum",
-    "templatefile",
-    "textdecodebase64",
-    "textencodebase64",
     "timeadd",
     "timecmp",
     "timestamp",
     "title",
+    "transpose",
+    "trim",
+    "trimprefix",
+    "trimspace",
+    "trimsuffix",
+    "upper",
+    "urlencode",
+    "uuid",
+}
+
+# There's a number of functions we _don't_ support yet, so we exclude emitting these to the file
+unsupported = {
+    "alltrue",
+    "anytrue",
+    "can",
+    "chunklist",
+    "cidrsubnets",
+    "coalesce",
+    "coalescelist",
+    "concat",
+    "contains",
+    "distinct",
+    "fileset",
+    "flatten",
+    "format",
+    "formatdate",
+    "formatlist",
+    "index",
+    "jsondecode",
+    "keys",
+    "list",
+    "map",
+    "matchkeys",
+    "merge",
+    "nonsensitive",
+    "one",
+    "regex",
+    "regexall",
+    "reverse",
+    "setintersection",
+    "setproduct",
+    "setsubtract",
+    "setunion",
+    "slice",
+    "templatefile",
+    "textdecodebase64",
+    "textencodebase64",
     "tobool",
     "tolist",
     "tomap",
     "tonumber",
     "toset",
     "tostring",
-    "transpose",
-    "trim",
-    "trimprefix",
-    "trimspace",
-    "trimsuffix",
     "try",
     "type",
-    "upper",
-    "urlencode",
-    "uuid",
     "uuidv5",
     "values",
     "yamldecode",
     "yamlencode",
     "zipmap",
-])
+}
 
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as dir:
@@ -162,6 +168,10 @@ locals {
     # A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of
     # the current module, but tf2pulumi doesn't support that so we replace it with local.path_module.
     path_module = "some/path"
+
+    # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
+    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+    path_root = "root/path"
 }
 """
 
@@ -196,7 +206,7 @@ locals {
 
                     if in_code:
                         if line.startswith("> "):
-                            code = line[1:].strip().replace("path.module", "local.path_module")
+                            code = line[1:].strip().replace("path.module", "local.path_module").replace("path.root", "local.path_root")
                             example_code.append(code)
 
             if function_name in overrides:
@@ -208,18 +218,28 @@ locals {
             elif not example_code:
                 raise Exception(f"No examples found for {function_name}")
 
-            if function_name not in unsupported:
-                # Only write out the example if we support it
-                hcl += "\n# Examples for " + function_name + "\n"
-                for index, example in enumerate(example_code):
-                    suffix = ""
-                    if len(example_code) > 1:
-                        # If we have more than one example suffix with the index
-                        suffix = str(index)
+            if function_name in unsupported:
+                continue
 
-                    hcl += "output \"func" + function_name.capitalize() + suffix + "\" {\n"
-                    hcl += "  value = " + example + "\n"
-                    hcl += "}\n\n"
+            if function_name in experimental:
+                # Write out an #if EXPERIMENTAL if it's "unsupported"
+                hcl += "\n#if EXPERIMENTAL\n"
+
+            # Only write out the example if we support it
+            hcl += "\n# Examples for " + function_name + "\n"
+            for index, example in enumerate(example_code):
+                suffix = ""
+                if len(example_code) > 1:
+                    # If we have more than one example suffix with the index
+                    suffix = str(index)
+
+                hcl += "output \"func" + function_name.capitalize() + suffix + "\" {\n"
+                hcl += "  value = " + example + "\n"
+                hcl += "}\n"
+
+            if function_name in experimental:
+                hcl += "\n#endif\n"
+            hcl += "\n"
 
 
         targetFile = os.path.join(os.path.dirname(__file__), "..", "pkg", "tf2pulumi", "convert", "testdata", "builtins", "main.tf")

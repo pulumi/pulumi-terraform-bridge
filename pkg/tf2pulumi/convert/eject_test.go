@@ -15,7 +15,11 @@
 package convert
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,6 +78,89 @@ func isTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
+// applyPragmas parses the text from `src` and writes the resulting text to `dst`. It can exclude blocks of
+// text based on pragmas and the `isExperimental` flag.
+// Pragmas should take the form of:
+// #if EXPERIMENTAL
+//
+//	/* for experimental code */
+//
+// #else
+//
+//	/* for normal code */
+//
+// #endif
+//
+// The #else block is optional.
+func applyPragmas(src io.Reader, dst io.Writer, isExperimental bool) error {
+	scanner := bufio.NewScanner(src)
+	inIf := false
+	inElse := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		// We don't want to test against lines with whitespace, that is "   #else", "  #else ", and "#else "
+		// should all be seen as an "#else" line, but when we write the line to `dst` we want to maintain it's
+		// whitespace.
+		trimLine := strings.TrimSpace(scanner.Text())
+
+		if trimLine == "#if EXPERIMENTAL" {
+			if inIf || inElse {
+				return fmt.Errorf("Saw #if while already in an if or else block")
+			}
+			inIf = true
+			continue
+		}
+		if trimLine == "#else" {
+			if !inIf {
+				return fmt.Errorf("Saw #else while not in an if block")
+			}
+			if inElse {
+				return fmt.Errorf("Saw #else while already in an else block")
+			}
+			inIf = false
+			inElse = true
+			continue
+		}
+		if trimLine == "#endif" {
+			if !(inElse || inIf) {
+				return fmt.Errorf("Saw #endif while not in an if or else block")
+			}
+			inIf = false
+			inElse = false
+			continue
+		}
+
+		doWrite := (inIf && isExperimental) ||
+			(inElse && !isExperimental) ||
+			(!inIf && !inElse)
+
+		if doWrite {
+			_, err := dst.Write([]byte(line + "\n"))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if inIf {
+		return fmt.Errorf("Unclosed #if statement")
+	}
+	if inElse {
+		return fmt.Errorf("Unclosed #else statement")
+	}
+	return scanner.Err()
+}
+
+// TestEject runs through all the folders in testdata (except for "schemas" and "mappings") and tries to
+// convert all the .tf files in that folder into PCL.
+//
+// It will use schemas from the testdata/schemas folder, and mappings from the testdata/mappings folder. The
+// resulting PCL will be checked against PCL written to a subfolder inside each test folder called "pcl".
+//
+// The .tf code for each test can also contain pragma comments, see the "applyPramgas" function for
+// information about pragmas.
+//
+// These tests can also be run with PULUMI_EXPERIMENTAL=1, in which case the resulting pcl is checked against
+// a folder "experimental_pcl".
 func TestEject(t *testing.T) {
 	// Test framework for eject
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
@@ -109,8 +196,58 @@ func TestEject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			hclPath := tt.path
+			isExperimental := isTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
+
 			pclPath := filepath.Join(tt.path, "pcl")
+			// We want to support running this in experimental mode as well as compatibility mode
+			if isExperimental {
+				pclPath = filepath.Join(tt.path, "experimental_pcl")
+			}
+
+			// Copy the .tf files to a new directory and fix up any "#if EXPERIMENTAL/#else/#endif" sections
+			hclPath := filepath.Join(t.TempDir(), tt.name)
+			err := os.MkdirAll(hclPath, 0750)
+			require.NoError(t, err)
+
+			err = filepath.WalkDir(tt.path, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if strings.HasSuffix(d.Name(), ".tf") {
+					src, err := os.Open(path)
+					if err != nil {
+						return fmt.Errorf("could not open src: %w", err)
+					}
+					defer src.Close()
+
+					relativePath, err := filepath.Rel(tt.path, path)
+					if err != nil {
+						return err
+					}
+
+					dstPath := filepath.Join(hclPath, relativePath)
+					dstDir := filepath.Dir(dstPath)
+					err = os.MkdirAll(dstDir, 0750)
+					if err != nil {
+						return fmt.Errorf("could not create dst dir: %w", err)
+					}
+
+					dst, err := os.Create(dstPath)
+					if err != nil {
+						return fmt.Errorf("could not open dst: %w", err)
+					}
+					defer dst.Close()
+
+					err = applyPragmas(src, dst, isExperimental)
+					if err != nil {
+						return err
+					}
+				}
+
+				return nil
+			})
+			require.NoError(t, err)
 
 			// If this is a partial test turn on the options to allow missing bits
 			partial := strings.HasPrefix(tt.name, "partial_")
