@@ -34,8 +34,6 @@ import (
 // Main executes the TFGen process for the given package pkg and provider prov.
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 	MainWithCustomGenerate(pkg, version, prov, func(opts GeneratorOptions) error {
-		validatePropertyNamesForProvider(prov).Report(opts.Sink)
-
 		// Create a generator with the specified settings.
 		g, err := NewGenerator(opts)
 		if err != nil {
