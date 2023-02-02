@@ -100,7 +100,32 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 
 	switch l {
 	case Golang:
-		return gogen.GeneratePackage(tfgen, pkg)
+		if psi := info.Golang; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".go", root)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err = cleanDir(root, pkg.Name, nil)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+
+		m, err := gogen.GeneratePackage(tfgen, pkg)
+		if err != nil {
+			return nil, err
+		}
+		var errs multierror.Error
+		for k, v := range extraFiles {
+			f := m[k]
+			if f != nil {
+				errs.Errors = append(errs.Errors,
+					fmt.Errorf("overlay conflicts with generated file at '%s'", k))
+			}
+			m[k] = v
+		}
+		return m, errs.ErrorOrNil()
 	case NodeJS:
 		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", root)
@@ -108,7 +133,6 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 				return nil, err
 			}
 		}
-
 		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
 		// store tests here. We don't want to include them in the overlays because we don't want it
 		// exported with the module, but we don't want them deleted in a cleanup of the directory.
@@ -1728,6 +1752,9 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to
 // target that use-case.
 func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
+	if exclusions == nil {
+		exclusions = codegen.NewStringSet()
+	}
 	subPaths, err := afero.ReadDir(fs, dirPath)
 	if err != nil {
 		return err
