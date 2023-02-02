@@ -32,8 +32,6 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 	var result string
 	// First, check if any tf name points to this one.
 	if tfs != nil {
-		// NOTE: TerraformToPulumiNameV2 is O(n) with n = # of properties. That makes
-		// PulumiToTerraformName O(n^2).
 		tfs.Range(func(key string, value shim.Schema) bool {
 			v := TerraformToPulumiNameV2(key, tfs, ps)
 			if v == name {
@@ -116,19 +114,7 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && !isPulumiMaxItemsOne(psInfo) && isTfPlural(sch.Get(name)) {
 		candidate := inflector.Pluralize(name)
-
-		var conflict bool
-		sch.Range(func(key string, value shim.Schema) bool {
-			if key == name {
-				return true
-			}
-			if key == candidate {
-				conflict = true
-			}
-			return !conflict
-		})
-
-		if !conflict {
+		if _, conflict := sch.GetOk(candidate); !conflict {
 			name = candidate
 		}
 	}
