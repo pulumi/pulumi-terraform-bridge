@@ -865,6 +865,10 @@ func (g *Generator) Generate() error {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
 		files = map[string][]byte{"schema.json": bytes}
+
+		if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
+			return err
+		}
 	case PCL:
 		if g.skipExamples {
 			return fmt.Errorf("Cannot set skipExamples and get PCL")
@@ -915,7 +919,7 @@ func (g *Generator) Generate() error {
 
 // Remanes can be called after a successful call to Generate to extract name mappings.
 func (g *Generator) Renames() (Renames, error) {
-	return g.renamesBuilder.build(), nil
+	return g.renamesBuilder.BuildRenames()
 }
 
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
@@ -1505,7 +1509,10 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
-		g.renamesBuilder.registerProperty(parentPath, propName)
+
+		if g.renamesBuilder != nil {
+			g.renamesBuilder.registerProperty(parentPath, propName)
+		}
 
 		var schema shim.Schema
 		if sch != nil {

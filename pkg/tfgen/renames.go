@@ -59,27 +59,27 @@ func (r Renames) renamedProps(tok tokens.Token) map[tokens.Name]string {
 	return props
 }
 
-type rename struct {
-	parent paths.TypePath
-	name   paths.PropertyName
-}
-
 type renamesBuilder struct {
 	pkg            tokens.Package
 	resourcePrefix string
-	renames        []rename
-	resources      map[tokens.Type]string
-	functions      map[tokens.ModuleMember]string
-	objectTypes    map[string]tokens.Type
+	properties     []struct {
+		parent paths.TypePath
+		name   paths.PropertyName
+	}
+	resources       map[tokens.Type]string
+	functions       map[tokens.ModuleMember]string
+	objectTypes     map[string]tokens.Type
+	objectTypePaths map[tokens.Type]paths.TypePathSet
 }
 
 func newRenamesBuilder(pkg tokens.Package, resourcePrefix string) *renamesBuilder {
 	return &renamesBuilder{
-		pkg:            pkg,
-		resourcePrefix: resourcePrefix,
-		resources:      map[tokens.Type]string{},
-		functions:      map[tokens.ModuleMember]string{},
-		objectTypes:    map[string]tokens.Type{},
+		pkg:             pkg,
+		resourcePrefix:  resourcePrefix,
+		resources:       map[tokens.Type]string{},
+		functions:       map[tokens.ModuleMember]string{},
+		objectTypes:     map[string]tokens.Type{},
+		objectTypePaths: map[tokens.Type]paths.TypePathSet{},
 	}
 }
 
@@ -102,40 +102,116 @@ func (r *renamesBuilder) registerNamedObjectType(paths paths.TypePathSet, token 
 	for _, p := range paths.Paths() {
 		r.objectTypes[p.String()] = token
 	}
+	r.objectTypePaths[token] = paths
 }
 
 func (r *renamesBuilder) registerProperty(parent paths.TypePath, name paths.PropertyName) {
-	if name.Key == string(name.Name) {
-		return
-	}
-	r.renames = append(r.renames, rename{parent, name})
+	r.properties = append(r.properties, struct {
+		parent paths.TypePath
+		name   paths.PropertyName
+	}{parent: parent, name: name})
 }
 
-func (r *renamesBuilder) build() Renames {
+func (*renamesBuilder) isConfig(propertyParentPath paths.TypePath) bool {
+	_, ok := propertyParentPath.(*paths.ConfigPath)
+	return ok
+}
+
+func (r *renamesBuilder) propertyParentToken(propertyParentPath paths.TypePath) (tokens.Token, error) {
+	switch parent := propertyParentPath.(type) {
+	case *paths.ConfigPath:
+		panic("ConfigPath should have been detected with isConfig")
+	case *paths.ResourceMemberPath:
+		return tokens.Token(parent.ResourcePath.Token()), nil
+	case *paths.DataSourceMemberPath:
+		return tokens.Token(parent.DataSourcePath.Token()), nil
+	default:
+		tok, err := r.findObjectTypeToken(parent)
+		if err != nil {
+			return "", err
+		}
+		return tokens.Token(tok), nil
+	}
+}
+
+// Like BuildRenames().BuildConfigProperties  but retains all properties for validation.
+func (r *renamesBuilder) BuildConfigProperties() []paths.PropertyName {
+	configProps := []paths.PropertyName{}
+	for _, item := range r.properties {
+		if !r.isConfig(item.parent) {
+			continue
+		}
+		configProps = append(configProps, item.name)
+	}
+	return r.dedup(configProps)
+}
+
+// Like BuildRenames().RenamedProperties but retains all properties for validation.
+func (r *renamesBuilder) BuildProperties() (map[tokens.Token][]paths.PropertyName, error) {
+	props := map[tokens.Token][]paths.PropertyName{}
+	for _, item := range r.properties {
+		if r.isConfig(item.parent) {
+			continue
+		}
+		t, err := r.propertyParentToken(item.parent)
+		if err != nil {
+			return nil, err
+		}
+		props[t] = append(props[t], item.name)
+	}
+	for k := range props {
+		props[k] = r.dedup(props[k])
+	}
+	return props, nil
+}
+
+// Multiple locations may share a named Pulumi object type. This reverse lookup finds all locations that map to an
+// object type identified by tok.
+func (r *renamesBuilder) ObjectTypePaths(tok tokens.Type) paths.TypePathSet {
+	res := r.objectTypePaths[tok]
+	if res == nil {
+		res = paths.NewTypePathSet()
+	}
+	return res
+}
+
+func (*renamesBuilder) dedup(names []paths.PropertyName) []paths.PropertyName {
+	seen := map[string]bool{}
+	uniq := []paths.PropertyName{}
+	for _, pn := range names {
+		k := fmt.Sprintf("%d%s%d%s", len(pn.Key), pn.Key, len(pn.Name), pn.Name)
+		if !seen[k] {
+			uniq = append(uniq, pn)
+		}
+		seen[k] = true
+	}
+	return uniq
+}
+
+func (r *renamesBuilder) BuildRenames() (Renames, error) {
 	re := newRenames()
 
-	for _, item := range r.renames {
+	for _, item := range r.properties {
+		if item.name.Key == string(item.name.Name) {
+			continue
+		}
+
 		var m map[tokens.Name]string
-		switch parent := item.parent.(type) {
-		case *paths.ConfigPath:
+		if r.isConfig(item.parent) {
 			m = re.RenamedConfigProperties
-		case *paths.ResourceMemberPath:
-			m = re.renamedProps(tokens.Token(parent.ResourcePath.Token()))
-		case *paths.DataSourceMemberPath:
-			m = re.renamedProps(tokens.Token(parent.DataSourcePath.Token()))
-		default:
-			tok, err := r.findObjectTypeToken(parent)
+		} else {
+			t, err := r.propertyParentToken(item.parent)
 			if err != nil {
-				panic(err)
+				return Renames{}, err
 			}
-			m = re.renamedProps(tokens.Token(tok))
+			m = re.renamedProps(t)
 		}
 		m[item.name.Name] = item.name.Key
 	}
 
 	re.Functions = r.functions
 	re.Resources = r.resources
-	return re
+	return re, nil
 }
 
 func (r renamesBuilder) findObjectTypeToken(path paths.TypePath) (tokens.Type, error) {
