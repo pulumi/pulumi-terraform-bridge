@@ -200,7 +200,7 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
-func getMarkdownDetails(sink diag.Sink, org string, provider string,
+func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 	resourcePrefix string, kind DocKind, rawname string,
 	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string) ([]byte, string, bool) {
 
@@ -212,11 +212,14 @@ func getMarkdownDetails(sink diag.Sink, org string, provider string,
 		return docinfo.Markdown, "", true
 	}
 
-	repoPath, err := getRepoPath(githost, org, provider, providerModuleVersion)
-	if err != nil {
-		msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-		sink.Debugf(&diag.Diag{Message: msg}, rawname, githost, org, provider, providerModuleVersion, err)
-		return nil, "", false
+	if repoPath == "" {
+		var err error
+		repoPath, err = getRepoPath(githost, org, provider, providerModuleVersion)
+		if err != nil {
+			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
+			sink.Debugf(&diag.Diag{Message: msg}, rawname, githost, org, provider, providerModuleVersion, err)
+			return nil, "", false
+		}
 	}
 
 	possibleMarkdownNames := []string{
@@ -276,7 +279,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, org, provider,
+	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
 		resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
 	if !found {
 		entitiesMissingDocs++

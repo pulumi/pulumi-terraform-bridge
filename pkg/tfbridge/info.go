@@ -97,6 +97,8 @@ type ProviderInfo struct {
 
 	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
+
+	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
 }
 
 // Describe the mapping from resource and datasource tokens to Pulumi resources and
