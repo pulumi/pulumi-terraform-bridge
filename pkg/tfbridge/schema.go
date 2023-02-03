@@ -1147,7 +1147,7 @@ func getInfoFromTerraformName(key string,
 			name = key
 		} else {
 			// If no name override exists, use the default name mangling scheme.
-			name = TerraformToPulumiName(key, getSchema(tfs, key), ps[key], false)
+			name = TerraformToPulumiNameV2(key, tfs, ps)
 		}
 	}
 

@@ -20,9 +20,11 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -278,8 +280,13 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 	contract.Assertf(strings.HasPrefix(name, prefix),
 		"Expected all Terraform resources in this module to have a '%v' prefix", prefix)
 	name = name[len(prefix):]
-	return TerraformToPulumiName(name, nil, nil, false),
-		TerraformToPulumiName(name, nil, nil, true)
+	camel := TerraformToPulumiNameV2(name, nil, nil)
+	pascal := camel
+	if pascal != "" {
+		pascal = string(unicode.ToUpper(rune(pascal[0]))) + pascal[1:]
+	}
+	return camel, pascal
+
 }
 
 func convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
@@ -391,7 +398,7 @@ func validateProviderConfig(ctx context.Context, p *Provider, config shim.Resour
 	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
 	p.config.Range(func(key string, meta shim.Schema) bool {
 		if meta.Required() && !config.IsSet(key) {
-			name := TerraformToPulumiName(key, meta, nil, false)
+			name := TerraformToPulumiNameV2(key, p.config, nil)
 			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
 
 			// TF descriptions often have newlines in inopportune positions. This makes them present
@@ -602,10 +609,8 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 	// Translate the name in missing-required-field error from TF to Pulumi naming scheme
 	parts := requiredFieldRegex.FindStringSubmatch(reason)
 	if len(parts) == 2 {
-		schema := getSchema(res.TF.Schema(), parts[1])
-		info := res.Schema.Fields[parts[1]]
-		if schema != nil {
-			name := TerraformToPulumiName(parts[1], schema, info, false)
+		if getSchema(res.TF.Schema(), parts[1]) != nil {
+			name := TerraformToPulumiNameV2(parts[1], res.TF.Schema(), res.Schema.Fields)
 			message := fmt.Sprintf("Missing required property '%s'", name)
 			// If a required field is missing and the value can be set via config,
 			// extend the error with a hint to set the proper config value
@@ -630,24 +635,29 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []string {
 	res.Schema.GetTok()
 	ap := []string{tokenType.Name().String()}
-	var schema shim.Schema
+	var sch shim.Schema
 	var info *SchemaInfo
 	for _, step := range p {
 		switch selector := step.(type) {
 		case cty.GetAttrStep:
 			ap = append(ap, ".")
-			if schema == nil {
-				schema = getSchema(res.TF.Schema(), selector.Name)
+			if sch == nil {
+				sch = getSchema(res.TF.Schema(), selector.Name)
 				info = res.Schema.Fields[selector.Name]
 			} else {
-				schema, info = elemSchemas(schema, info)
+				sch, info = elemSchemas(sch, info)
 			}
-			name := TerraformToPulumiName(selector.Name, schema, info, true)
+			name := TerraformToPulumiNameV2(selector.Name,
+				schema.SchemaMap{selector.Name: sch},
+				map[string]*SchemaInfo{selector.Name: info})
+			if name != "" {
+				name = string(unicode.ToUpper(rune(name[0]))) + name[1:]
+			}
 			ap = append(ap, name)
 		case cty.IndexStep:
 			// list type with max items 1 are collapsed.
-			if IsMaxItemsOne(schema, info) {
-				schema, info = elemSchemas(schema, info)
+			if IsMaxItemsOne(sch, info) {
+				sch, info = elemSchemas(sch, info)
 				continue
 			}
 			key := selector.Key

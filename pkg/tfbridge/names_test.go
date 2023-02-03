@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -66,7 +67,7 @@ func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 		},
 	}
 
-	name := TerraformToPulumiName("list_property", shimv1.NewSchema(tfs["list_property"]), ps["list_property"], false)
+	name := TerraformToPulumiNameV2("list_property", shimv1.NewSchemaMap(tfs), ps)
 	if name != "listProperty" {
 		t.Errorf("Expected `listProperty`, got %s", name)
 	}
@@ -180,25 +181,14 @@ func TestBijectiveNameConversion(t *testing.T) {
 		info     map[string]*SchemaInfo
 		expected map[string]string
 	}{
-		// NOTE:
-		//
-		// Cannot be fully bijective because TerraformToPulumiName does not have scope
-		// level information like PulumiToTerraformName. We should change the signature of
-		// TerraformToPulumiName so it's the inverse of PulumiToTerraformName.
-		//
-		// It's not that bad, since codegen will fail for these types of conflicts.
-		//
-		// Currently fails because "certificate_authority" maps to
-		// "certificateAuthorities" instead of "certificateAuthority".
-		//
-		// {
-		// 	schema: certSchema(),
-		// 	expected: map[string]string{
-		// 		"certificateAuthority":   "certificate_authority",
-		// 		"certificateAuthorities": "certificate_authorities",
-		// 	},
-		// },
-		{
+		{ // Conflicting plural types
+			schema: certSchema(),
+			expected: map[string]string{
+				"certificateAuthority":   "certificate_authority",
+				"certificateAuthorities": "certificate_authorities",
+			},
+		},
+		{ // Conflicting plural types with one made singular with MaxItemsOne
 			schema: certSchema(),
 			info: map[string]*SchemaInfo{
 				"certificate_authority": {
@@ -210,6 +200,41 @@ func TestBijectiveNameConversion(t *testing.T) {
 				"certificateAuthorities": "certificate_authorities",
 			},
 		},
+		{ // Respect .Name information
+			schema: map[string]*schemav2.Schema{
+				"singular_property": {
+					Type: schemav2.TypeInt,
+				},
+				"plural_property": {
+					Type: schemav2.TypeList,
+					Elem: schemav2.TypeInt,
+				},
+			},
+			info: map[string]*SchemaInfo{
+				"singular_property": {
+					Name: "singular",
+				},
+				"plural_property": {
+					Name: "plural",
+				},
+			},
+			expected: map[string]string{
+				"singular": "singular_property",
+				"plural":   "plural_property",
+			},
+		},
+		{ // Check number mapping
+			schema: map[string]*schemav2.Schema{
+				"base_32_string_seed": {Type: schemav2.TypeString},
+				"rfc_4180":            {Type: schemav2.TypeInt},
+				"ext_100_with200":     {Type: schemav2.TypeInt},
+			},
+			expected: map[string]string{
+				"base32StringSeed": "base_32_string_seed",
+				"rfc4180":          "rfc_4180",
+				"ext100With200":    "ext_100_with200",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,6 +243,8 @@ func TestBijectiveNameConversion(t *testing.T) {
 		// - PulumiToTerraformName(k) = v
 		// - TerraformToPulumiName(v) = k
 		t.Run("", func(t *testing.T) {
+			require.Equal(t, len(tt.expected), len(tt.schema),
+				"expected or schema misspecified")
 			pulumiProps := make([]string, 0, len(tt.expected))
 			tfAttributes := make([]string, 0, len(tt.expected))
 
@@ -231,13 +258,12 @@ func TestBijectiveNameConversion(t *testing.T) {
 			}
 			sort.Slice(pulumiProps, func(i, j int) bool { return pulumiProps[i] < pulumiProps[j] })
 			sort.Slice(tfAttributes, func(i, j int) bool { return tfAttributes[i] < tfAttributes[j] })
-
 			assert.Equal(t, len(pulumiToTf), len(tfToPulumi), "map must be invertable")
 
 			for _, tf := range tfAttributes {
 				t.Run(tf+"->"+tfToPulumi[tf], func(t *testing.T) {
 					m := shimv2.NewSchemaMap(tt.schema)
-					assert.Equal(t, tfToPulumi[tf], TerraformToPulumiName(tf, m.Get(tf), tt.info[tf], false))
+					assert.Equal(t, tfToPulumi[tf], TerraformToPulumiNameV2(tf, m, tt.info))
 				})
 			}
 			for _, prop := range pulumiProps {

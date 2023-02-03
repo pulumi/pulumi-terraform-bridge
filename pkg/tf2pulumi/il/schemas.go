@@ -26,6 +26,8 @@ import (
 // Schemas bundles a property's Terraform and Pulumi schema information into a single type. This information is then
 // used to determine type and name information for the property. If the Terraform property is of a composite type--a
 // map, list, or set--the property's schemas may also be used to access child schemas.
+//
+// TF and TFRes form a union, TF will be set for properties. TFRes will be set for resources.
 type Schemas struct {
 	TF     shim.Schema
 	TFRes  shim.Resource

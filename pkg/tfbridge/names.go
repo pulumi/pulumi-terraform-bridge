@@ -23,12 +23,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
 // camelCasing, to Terraform's underscore_casing.
 func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) string {
 	var result string
+	// First, check if any tf name points to this one.
+	if tfs != nil {
+		tfs.Range(func(key string, value shim.Schema) bool {
+			v := TerraformToPulumiNameV2(key, tfs, ps)
+			if v == name {
+				result = key
+			}
+			return result == ""
+		})
+		if result != "" {
+			return result
+		}
+	}
+
 	for i, c := range name {
 		if c >= 'A' && c <= 'Z' {
 			// if upper case, add an underscore (if it's not #1), and then the lower case version.
@@ -40,33 +55,11 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 			result += string(c)
 		}
 	}
-	// Singularize names which were pluralized because they were array-shaped Pulumi values
-	if singularResult := inflector.Singularize(result); singularResult != result && tfs != nil {
 
-		// Check if the plural name points to an existing TF attribute.
-		if _, existingPlural := tfs.GetOk(result); existingPlural {
-			return result
-		}
-
-		// Note: If the name is not found in it's singular form in the schema map, that may be because the TF name was
-		// already plural, and thus pluralization was a noop.  In this case, we know we should return the raw (plural)
-		// result.
-		var info *SchemaInfo
-		sch, ok := tfs.GetOk(singularResult)
-		if ps != nil {
-			if p, ok := ps[singularResult]; ok {
-				info = p
-			}
-		}
-
-		if ok && checkTfMaxItems(sch, false) || isPulumiMaxItemsOne(info) {
-			result = singularResult
-		}
-	}
 	return result
 }
 
-func checkTfMaxItems(tfs shim.Schema, maxItemsOne bool) bool {
+func isTfPlural(tfs shim.Schema) bool {
 	if tfs == nil {
 		return false
 	}
@@ -75,32 +68,67 @@ func checkTfMaxItems(tfs shim.Schema, maxItemsOne bool) bool {
 		return false
 	}
 
-	return (tfs.MaxItems() == 1) == maxItemsOne
+	return tfs.MaxItems() != 1
 }
 
 func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
 	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
 }
 
-// TerraformToPulumiName performs a standard transformation on the given name string, from Terraform's underscore_casing
-// to Pulumi's PascalCasing (if upper is true) or camelCasing (if upper is false).
+// TerraformToPulumiNameV2 performs a standard transformation on the given name string,
+// from Terraform's underscore_casing to Pulumi's camelCasing.
+func TerraformToPulumiNameV2(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo) string {
+	return terraformToPulumiName(name, sch, ps, false)
+}
+
+// TerraformToPulumiName performs a standard transformation on the given name
+// string, from Terraform's underscore_casing to Pulumi's PascalCasing (if upper is true)
+// or camelCasing (if upper is false).
+//
+// Deprecated: Convert to TerraformToPulumiNameV2, see comment for conversion instructions.
+//
+// TerraformToPulumiNameV2 includes enough information for a bijective mapping between
+// Terraform attributes and Pulumi properties. If the full naming context cannot be
+// acquired, you can construct a partial naming context:
+//
+//	TerraformToPulumiNameV2(name,
+//		schema.SchemaMap(map[string]shim.Schema{name: sch}),
+//		map[string]*SchemaInfo{name: ps})
+//
+// If the previous (non-invertable) camel casing is necessary, it must be implemented
+// manually:
+//
+//	name := TerraformToPulumiNameV2(key, sch, ps)
+//	name = strings(uniode.ToUpper(rune(name[0]))) + name[1:]
 func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper bool) string {
+	return terraformToPulumiName(name,
+		schema.SchemaMap(map[string]shim.Schema{name: sch}),
+		map[string]*SchemaInfo{name: ps},
+		upper)
+}
+
+func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo, upper bool) string {
 	var result string
 	var nextCap bool
 	var prev rune
 
-	// Pluralize names that will become array-shaped Pulumi values
-	if !isPulumiMaxItemsOne(ps) && checkTfMaxItems(sch, false) {
-		pluralized := inflector.Pluralize(name)
-		if inflector.Singularize(pluralized) == name {
-			//			contract.Assertf(
-			//				inflector.Pluralize(name) == name || inflector.Singularize(inflector.Pluralize(name)) == name,
-			//				"expected to be able to safely pluralize name: %s (%s, %s)", name, inflector.Pluralize(name),
-			//				inflector.Singularize(inflector.Pluralize(name)))
+	var psInfo *SchemaInfo
+	if ps != nil {
+		psInfo = ps[name]
+	}
 
-			name = pluralized
+	if psInfo != nil {
+		if name := psInfo.Name; name != "" {
+			return name
 		}
-		name = inflector.Pluralize(name)
+	}
+
+	// Pluralize names that will become array-shaped Pulumi values
+	if sch != nil && !isPulumiMaxItemsOne(psInfo) && isTfPlural(sch.Get(name)) {
+		candidate := inflector.Pluralize(name)
+		if _, conflict := sch.GetOk(candidate); !conflict {
+			name = candidate
+		}
 	}
 
 	casingActivated := false // tolerate leading underscores

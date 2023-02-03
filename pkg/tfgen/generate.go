@@ -412,12 +412,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	}
 
 	for _, key := range stableSchemas(res.Schema()) {
-		propertySchema := res.Schema().Get(key)
-
-		var propertyInfo *tfbridge.SchemaInfo
-		if propertyInfos != nil {
-			propertyInfo = propertyInfos[key]
-		}
+		propertySchema := res.Schema()
 
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
@@ -425,7 +420,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
 
 		if v := g.propertyVariable(typePath, key,
-			propertySchema, propertyInfo, doc, "", out, entityDocs); v != nil {
+			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
@@ -993,7 +988,7 @@ func (g *Generator) gatherConfig() *module {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
 		prop := g.propertyVariable(cfgPath,
-			key, sch, custom[key], "", sch.Description(), true /*out*/, entityDocs{})
+			key, cfg, custom, "", sch.Description(), true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -1008,9 +1003,15 @@ func (g *Generator) gatherConfig() *module {
 	}
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
+	extraConfigInfo := map[string]*tfbridge.SchemaInfo{}
+	extraConfigMap := schema.SchemaMap{}
 	for key, val := range g.info.ExtraConfig {
+		extraConfigInfo[key] = val.Info
+		extraConfigMap.Set(key, val.Schema)
+	}
+	for key := range g.info.ExtraConfig {
 		if prop := g.propertyVariable(cfgPath,
-			key, val.Schema, val.Info, "", "", true /*out*/, entityDocs{}); prop != nil {
+			key, extraConfigMap, extraConfigInfo, "", "", true /*out*/, entityDocs{}); prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
@@ -1165,8 +1166,8 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := g.propertyVariable(resourcePath.Outputs(), key, propschema,
-				propinfo, doc, rawdoc, true /*out*/, entityDocs)
+			outprop := g.propertyVariable(resourcePath.Outputs(), key, schema.Schema(),
+				info.Fields, doc, rawdoc, true /*out*/, entityDocs)
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -1181,7 +1182,7 @@ func (g *Generator) gatherResource(rawname string,
 			}
 
 			inprop := g.propertyVariable(resourcePath.Inputs(),
-				key, propschema, propinfo, doc, rawdoc, false /*out*/, entityDocs)
+				key, schema.Schema(), info.Fields, doc, rawdoc, false /*out*/, entityDocs)
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -1191,7 +1192,7 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := g.propertyVariable(resourcePath.State(), key, propschema, propinfo,
+		stateVar := g.propertyVariable(resourcePath.State(), key, schema.Schema(), info.Fields,
 			doc, rawdoc, false /*out*/, entityDocs)
 		stateVar.opt = true
 		stateVars = append(stateVars, stateVar)
@@ -1359,7 +1360,7 @@ func (g *Generator) gatherDataSource(rawname string,
 			}
 
 			argvar := g.propertyVariable(dataSourcePath.Args(),
-				arg, sch, cust, doc, "", false /*out*/, entityDocs)
+				arg, ds.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
 			fun.args = append(fun.args, argvar)
 			if !argvar.optional() {
 				fun.reqargs[argvar.name] = true
@@ -1370,18 +1371,20 @@ func (g *Generator) gatherDataSource(rawname string,
 		// Emit documentation for the property if available
 		fun.rets = append(fun.rets,
 			g.propertyVariable(dataSourcePath.Results(),
-				arg, sch, cust, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
+				arg, ds.Schema(), info.Fields, entityDocs.Attributes[arg], "", true /*out*/, entityDocs))
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
 	// sources.
 	if id, has := ds.Schema().GetOk("id"); !has || id.Removed() != "" {
-		cust := &tfbridge.SchemaInfo{}
+		cust := map[string]*tfbridge.SchemaInfo{"id": {}}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
-		idSchema := &schema.Schema{Type: shim.TypeString, Computed: true}
+		idSchema := schema.SchemaMap(map[string]shim.Schema{
+			"id": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+		})
 		fun.rets = append(fun.rets,
 			g.propertyVariable(dataSourcePath.Results(),
-				"id", idSchema.Shim(), cust, "", rawdoc, true /*out*/, entityDocs))
+				"id", idSchema, cust, "", rawdoc, true /*out*/, entityDocs))
 	}
 
 	// Produce the args/return types, if needed.
@@ -1483,18 +1486,11 @@ func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 //
 //	would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
 //	name transformation process).  This isn't impossible, but certainly complicates matters.
-func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) string {
-	// Use the name override, if one exists, or use the standard name mangling otherwise.
-	if custom != nil {
-		if custom.Name != "" {
-			return custom.Name
-		}
-	}
-
+func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.SchemaInfo) string {
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
 	key = strings.TrimSuffix(key, ":")
 
-	return tfbridge.TerraformToPulumiName(key, sch, custom, false /*no to PascalCase; we want camelCase*/)
+	return tfbridge.TerraformToPulumiNameV2(key, sch, custom)
 }
 
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
@@ -1503,21 +1499,31 @@ func propertyName(key string, sch shim.Schema, custom *tfbridge.SchemaInfo) stri
 //
 // parentPath together with key uniquely locates the property in the Terraform schema.
 func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
-	sch shim.Schema, info *tfbridge.SchemaInfo,
+	sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
 	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
 
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
 		g.renamesBuilder.registerProperty(parentPath, propName)
+
+		var schema shim.Schema
+		if sch != nil {
+			schema = sch.Get(key)
+		}
+		var varInfo *tfbridge.SchemaInfo
+		if info != nil {
+			varInfo = info[key]
+		}
+
 		return &variable{
 			name:         name,
 			out:          out,
 			doc:          doc,
 			rawdoc:       rawdoc,
-			schema:       sch,
-			info:         info,
-			typ:          g.makePropertyType(typePath, strings.ToLower(key), sch, info, out, entityDocs),
+			schema:       schema,
+			info:         varInfo,
+			typ:          g.makePropertyType(typePath, strings.ToLower(key), schema, varInfo, out, entityDocs),
 			parentPath:   parentPath,
 			propertyName: propName,
 		}
@@ -1530,8 +1536,8 @@ func dataSourceName(provider string, rawname string,
 	info *tfbridge.DataSourceInfo) (tokens.ModuleMemberName, tokens.ModuleName) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)                // strip off the pkg prefix.
-		name = tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase
+		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		name = tfbridge.TerraformToPulumiNameV2(name, nil, nil)
 		return tokens.ModuleMemberName(name), tokens.ModuleName(name)
 	}
 	// otherwise, a custom transformation exists; use it.
@@ -1546,9 +1552,12 @@ func resourceName(provider string, rawname string,
 	}
 	if info == nil || info.Tok == "" {
 		// default transformations.
-		name := withoutPackageName(provider, rawname)                  // strip off the pkg prefix.
-		camel := tfbridge.TerraformToPulumiName(name, nil, nil, false) // camelCase the module name.
-		pascal := tfbridge.TerraformToPulumiName(name, nil, nil, true) // PascalCase the resource name.
+		name := withoutPackageName(provider, rawname)              // strip off the pkg prefix.
+		camel := tfbridge.TerraformToPulumiNameV2(name, nil, nil)  // camelCase the module name.
+		pascal := tfbridge.TerraformToPulumiNameV2(name, nil, nil) // PascalCase the resource name.
+		if pascal != "" {
+			pascal = string(unicode.ToUpper(rune(pascal[0]))) + pascal[1:]
+		}
 
 		modName := tokens.ModuleName(camel)
 		return tokens.TypeName(pascal), modName
