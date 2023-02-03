@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -55,6 +56,10 @@ const (
 	defaultOutDir = "sdk/"
 	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
+
+// Additional files to put next schema.json when it is generated.
+var additionalSchemaFilesHook = map[string][]byte{}
+var hookMutex = new(sync.Mutex)
 
 type Generator struct {
 	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
@@ -1790,4 +1795,16 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
+}
+
+// Add a file to be emitted next to the schema.json only when the schema is itself
+// emitted.
+func AdditionalSchemaFile(path string, bytes []byte) {
+	hookMutex.Lock()
+	defer hookMutex.Unlock()
+	contract.Assertf(path != "", "Cannot add additional schema file with empty path")
+	contract.Assertf(path != "schema.json", "Cannot override '%s'", path)
+	_, has := additionalSchemaFilesHook[path]
+	contract.Assertf(!has, "Cannot overwrite an additional file that has already been added: '%s'", path)
+	additionalSchemaFilesHook[path] = bytes
 }

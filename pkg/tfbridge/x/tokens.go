@@ -474,6 +474,12 @@ type aliasHistory struct {
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
+// Finish an alias operation. The new alias blob is returned.
+//
+// NOTE: Experimental; We are still iterating on the design of this type, and it is
+// subject to change without warning.
+type FinishAlias = func(*ProviderInfo) []byte
+
 // Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
 // changes.
 //
@@ -482,7 +488,7 @@ type aliasHistory struct {
 // that utilized the returned strategy, after ComputeDefaults was called.
 //
 // artifact should be considered an opaque blob.
-func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, func(*ProviderInfo) []byte, error) {
+func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, FinishAlias, error) {
 	var hist aliasHistory
 	if artifact == nil {
 		hist = aliasHistory{
