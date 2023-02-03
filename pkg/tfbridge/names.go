@@ -85,9 +85,21 @@ func TerraformToPulumiNameV2(name string, sch shim.SchemaMap, ps map[string]*Sch
 // string, from Terraform's underscore_casing to Pulumi's PascalCasing (if upper is true)
 // or camelCasing (if upper is false).
 //
-// Deprecated: Convert to TerraformToPulumiNameV2
+// Deprecated: Convert to TerraformToPulumiNameV2, see comment for conversion instructions.
 //
-// TODO: Playbook for transition
+// TerraformToPulumiNameV2 includes enough information for a bijective mapping between
+// Terraform attributes and Pulumi properties. If the full naming context cannot be
+// acquired, you can construct a partial naming context:
+//
+//	TerraformToPulumiNameV2(name,
+//		schema.SchemaMap(map[string]shim.Schema{name: sch}),
+//		map[string]*SchemaInfo{name: ps})
+//
+// If the previous (non-invertable) camel casing is necessary, it must be implemented
+// manually:
+//
+//	name := TerraformToPulumiNameV2(key, sch, ps)
+//	name = strings(uniode.ToUpper(rune(name[0]))) + name[1:]
 func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper bool) string {
 	return terraformToPulumiName(name,
 		schema.SchemaMap(map[string]shim.Schema{name: sch}),
