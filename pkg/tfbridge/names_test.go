@@ -235,6 +235,19 @@ func TestBijectiveNameConversion(t *testing.T) {
 				"ext100With200":    "ext_100_with200",
 			},
 		},
+		{ // Check manually overwritten remaps
+			schema: map[string]*schemav2.Schema{
+				"plural_type":  {Type: schemav2.TypeList},
+				"plural_types": {Type: schemav2.TypeList},
+			},
+			info: map[string]*SchemaInfo{
+				"plural_types": {Name: "remaped"},
+			},
+			expected: map[string]string{
+				"pluralTypes": "plural_type",
+				"remaped":     "plural_types",
+			},
+		},
 	}
 
 	for _, tt := range tests {

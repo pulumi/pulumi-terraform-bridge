@@ -126,7 +126,23 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 	// Pluralize names that will become array-shaped Pulumi values
 	if sch != nil && !isPulumiMaxItemsOne(psInfo) && isTfPlural(sch.Get(name)) {
 		candidate := inflector.Pluralize(name)
-		if _, conflict := sch.GetOk(candidate); !conflict {
+		// We don't assign a plural name if there is another key in the namespace that
+		// would conflict with our name... unless that key is manually assigned a .Name
+		// that prevents the conflict.
+		//
+		// NOTE Without full cycle analysis, it is possible to get a non-bijective
+		// mapping when there is another key that is manually mapped to a conflicting
+		// value.
+		//
+		// This will be non-bijective:
+		//
+		//	[
+		//		{key: "key", type: List},        // Maps to "keys"
+		//		{key: "conflict", Name: "keys"}, // Set to "keys"
+		//	]
+		//
+		// The non-bijectivity will be caught at tfgen time and a warning will be emitted.
+		if _, conflict := sch.GetOk(candidate); !conflict || (ps[candidate] != nil && ps[candidate].Name != candidate) {
 			name = candidate
 		}
 	}
