@@ -60,8 +60,9 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 ### Releasing
 
-We use git tags and [GitHub Releases](https://github.com/pulumi/pulumi-terraform-bridge/releases).
-Maintainers will push a new semver tag when appropriate.
+We use git tags and [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+1. Maintainers will push a new semver [tag](https://github.com/pulumi/pulumi-terraform-bridge/tags) when appropriate
+1. Maintainers will then generate a Release with Changelog using [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), using the tag pushed in the first step.
 
 ### Adapting a New Terraform Provider
 
