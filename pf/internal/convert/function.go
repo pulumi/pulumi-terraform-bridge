@@ -16,7 +16,7 @@ package convert
 
 import "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
-func funcOutputs(spec *schema.FunctionSpec) *schema.ObjectTypeSpec {
+func functionOutputs(spec *schema.FunctionSpec) *schema.ObjectTypeSpec {
 	switch {
 	case spec.Outputs != nil && spec.ReturnType == nil:
 		return spec.Outputs
