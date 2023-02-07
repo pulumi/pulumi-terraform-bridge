@@ -49,7 +49,7 @@ func (p *provider) UpgradeResourceState(
 	}
 	v, err := resp.UpgradedState.Unmarshal(tfType)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling the repsonse from UpgradeResourceState: %w", err)
+		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
 	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
