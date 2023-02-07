@@ -32,7 +32,7 @@ func (p *provider) Read(
 	inputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
-	// TODO test for a resource that is not found
+	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 
 	ctx := context.TODO()
 
