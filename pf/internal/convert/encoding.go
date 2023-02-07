@@ -93,7 +93,7 @@ func (e *encoding) NewDataSourceEncoder(functionToken tokens.ModuleMember, objec
 		return nil, fmt.Errorf("dangling function token %q", string(functionToken))
 	}
 	token := tokens.Token(functionToken)
-	spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(fspec.Outputs.Properties))
+	spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(funcOutputs(fspec).Properties))
 	propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
 	propertyEncoders, err := e.buildPropertyEncoders(propNames, spec, objectType)
 	if err != nil {
@@ -112,7 +112,7 @@ func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objec
 	if fspec == nil {
 		return nil, fmt.Errorf("dangling function token %q", string(token))
 	}
-	spec := specFinderWithFallback(specFinder(fspec.Outputs.Properties), specFinder(fspec.Inputs.Properties))
+	spec := specFinderWithFallback(specFinder(funcOutputs(fspec).Properties), specFinder(fspec.Inputs.Properties))
 	propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
 	propertyDecoders, err := e.buildPropertyDecoders(propNames, spec, objectType)
 	if err != nil {
