@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,39 +24,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateWithComputedOptionals(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
-	testCase := `
-        {
-          "method": "/pulumirpc.ResourceProvider/Create",
-          "request": {
-            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:Testcompres::r1",
-            "properties": {
-              "ecdsacurve": "P384"
-            },
-            "preview": false
-          },
-          "response": {
-            "id": "r1",
-            "properties": {
-              "ecdsacurve": "P384",
-              "id": "r1"
-            }
-          }
-        }
-        `
-	testutils.Replay(t, server, testCase)
-}
-
-func TestCreateWritesSchemaVersion(t *testing.T) {
+func TestUpdateWritesSchemaVersion(t *testing.T) {
 	server := newProviderServer(t, testprovider.RandomProvider())
 	ctx := context.Background()
-	resp, err := server.Create(ctx, testutils.NewCreateRequest(t, `
+	resp, err := server.Update(ctx, testutils.NewUpdateRequest(t, `
            {
+             "id": "0",
              "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
-             "properties": {
-                "length": 1
-              }
+             "olds": {
+               "__meta": "{\"schema_version\": \"2\"}",
+               "length": 1,
+               "result": "x"
+             },
+             "news": {
+               "length": 2
+             }
           }
         `))
 	require.NoError(t, err)

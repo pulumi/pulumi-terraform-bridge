@@ -81,6 +81,30 @@ func ReplaySequence(t *testing.T, server pulumirpc.ResourceProviderServer, jsonL
 	}
 }
 
+func NewCreateRequest(t *testing.T, encoded string) *pulumirpc.CreateRequest {
+	return newRequest(t, new(pulumirpc.CreateRequest), encoded)
+}
+
+func NewUpdateRequest(t *testing.T, encoded string) *pulumirpc.UpdateRequest {
+	return newRequest(t, new(pulumirpc.UpdateRequest), encoded)
+}
+
+func newRequest[Req proto.Message](t *testing.T, req Req, jsonRequest string) Req {
+	err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(jsonRequest)), req)
+	require.NoError(t, err)
+	return req
+}
+
+func ParseResponse[Resp proto.Message, Parsed any](t *testing.T, resp Resp, parsed Parsed) Parsed {
+	m := jsonpb.Marshaler{}
+	buf := bytes.Buffer{}
+	err := m.Marshal(&buf, resp)
+	require.NoError(t, err)
+	err = json.Unmarshal(buf.Bytes(), parsed)
+	require.NoError(t, err)
+	return parsed
+}
+
 func replay[Req proto.Message, Resp proto.Message](
 	t *testing.T,
 	entry jsonLogEntry,

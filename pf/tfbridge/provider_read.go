@@ -18,21 +18,21 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
 
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *provider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
-	// TODO test for a resource that is not found
+func (p *provider) Read(
+	urn resource.URN,
+	id resource.ID,
+	inputs,
+	currentStateMap resource.PropertyMap,
+) (plugin.ReadResult, resource.Status, error) {
+	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 
 	ctx := context.TODO()
 
@@ -41,22 +41,28 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	currentStateRaw, err := parseResourceState(&rh, currentStateMap)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
 
-	// Note: that this conversion implicitly filters to only deal
-	// with the fields specified in the tfType schema.
-	currentState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, state)
+	currentState, err := p.UpgradeResourceState(ctx, &rh, currentStateRaw)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
+
+	currentStateDV, err := makeDynamicValue(currentState.state.Value)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
 	req := tfprotov6.ReadResourceRequest{
 		TypeName:     rh.terraformResourceName,
-		CurrentState: currentState,
+		CurrentState: &currentStateDV,
 	}
 
-	// TODO Set ProviderMeta
-	// TODO Set Private
+	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
+	// TODO[pulumi/pulumi-terraform-bridge#747] set Private
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
@@ -67,31 +73,30 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		return plugin.ReadResult{}, 0, err
 	}
 
-	// TODO handle resp.Private
-
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 	if resp.NewState == nil {
 		return plugin.ReadResult{}, resource.StatusUnknown, nil
 	}
 
-	readResourceStateValue, err := resp.NewState.Unmarshal(tfType)
-	if err != nil {
-		return plugin.ReadResult{}, resource.StatusUnknown, nil
-	}
-
-	readState, err := convert.DecodePropertyMap(rh.decoder, readResourceStateValue)
+	readState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
-	readID, err := rh.idExtractor.extractID(readResourceStateValue)
+	readID, err := readState.ExtractID(&rh)
+	if err != nil {
+		return plugin.ReadResult{}, 0, err
+	}
+
+	readStateMap, err := readState.ToPropertyMap(&rh)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
 	}
 
 	return plugin.ReadResult{
-		ID: resource.ID(readID),
-		// TODO support populating inputs, see extractInputsFromOutputs in the prod bridge.
+		ID: readID,
+		// TODO[pulumi/pulumi-terraform-bridge#795] populate Inputs
 		Inputs:  nil,
-		Outputs: readState,
+		Outputs: readStateMap,
 	}, resource.StatusOK, nil
 }

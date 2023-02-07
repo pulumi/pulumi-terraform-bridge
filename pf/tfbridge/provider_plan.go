@@ -39,16 +39,16 @@ func (p *provider) plan(
 	ctx context.Context,
 	typeName string,
 	schema pfutils.Schema,
-	priorState tftypes.Value,
+	priorState *upgradedResourceState,
 	checkedInputs tftypes.Value,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {
-	proposedNewState, err := pfutils.ProposedNew(ctx, schema, priorState, checkedInputs)
+	proposedNewState, err := pfutils.ProposedNew(ctx, schema, priorState.state.Value, checkedInputs)
 	if err != nil {
 		return nil, err
 	}
 
 	priorStateV, configV, proposedNewStateV, err := makeDynamicValues3(
-		priorState, checkedInputs, proposedNewState)
+		priorState.state.Value, checkedInputs, proposedNewState)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +59,8 @@ func (p *provider) plan(
 		ProposedNewState: &proposedNewStateV,
 		Config:           &configV,
 
-		// TODO PriorPrivate
-		// TODO ProviderMeta
+		// TODO[pulumi/pulumi-terraform-bridge#747] PriorPrivate
+		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	}
 
 	planResp, err := p.tfServer.PlanResourceChange(ctx, &planReq)

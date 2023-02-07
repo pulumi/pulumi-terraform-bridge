@@ -29,7 +29,7 @@ import (
 func (p *provider) Update(
 	urn resource.URN,
 	id resource.ID,
-	priorState resource.PropertyMap,
+	priorStateMap resource.PropertyMap,
 	checkedInputs resource.PropertyMap,
 	timeout float64,
 	ignoreChanges []string,
@@ -44,7 +44,12 @@ func (p *provider) Update(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorStateValue, err := convert.EncodePropertyMap(rh.encoder, priorState)
+	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -54,7 +59,7 @@ func (p *provider) Update(
 		return nil, 0, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -69,7 +74,7 @@ func (p *provider) Update(
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -90,11 +95,16 @@ func (p *provider) Update(
 		return nil, 0, err
 	}
 
-	// TODO handle resp.Private
-	updatedState, err := convert.DecodePropertyMapFromDynamic(rh.decoder, tfType, resp.NewState)
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
+	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return updatedState, resource.StatusOK, nil
+	updatedStateMap, err := updatedState.ToPropertyMap(&rh)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return updatedStateMap, resource.StatusOK, nil
 }

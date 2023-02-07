@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -39,7 +38,7 @@ import (
 func (p *provider) Diff(
 	urn resource.URN,
 	id resource.ID,
-	priorState resource.PropertyMap,
+	priorStateMap resource.PropertyMap,
 	checkedInputs resource.PropertyMap,
 	allowUnknowns bool,
 	ignoreChanges []string,
@@ -52,24 +51,29 @@ func (p *provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
-
-	priorStateValue, err := convert.EncodePropertyMap(rh.encoder, priorState)
+	rawPriorState, err := parseResourceState(&rh, priorStateMap)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
+
+	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	// TODO handle planResp.PlannedPrivate
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 
 	// TODO detect errors in planResp.Diagnostics
 
@@ -84,7 +88,7 @@ func (p *provider) Diff(
 	// fmt.Printf("priorStateValue   = %s\n\n", priorStateValue)
 	// fmt.Printf("plannedStateValue = %s\n\n", plannedStateValue)
 
-	tfDiff, err := priorStateValue.Diff(plannedStateValue)
+	tfDiff, err := priorState.state.Value.Diff(plannedStateValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -179,34 +183,4 @@ func diffPathsToPropertyKeySet(renames convert.LocalPropertyNames, paths []*tfty
 		return keySlice[i] < keySlice[j]
 	})
 	return keySlice, nil
-}
-
-func makeDynamicValues2(a, b tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
-	var n tfprotov6.DynamicValue
-	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
-	if err != nil {
-		return n, n, err
-	}
-	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
-	if err != nil {
-		return n, n, err
-	}
-	return av, bv, nil
-}
-
-func makeDynamicValues3(a, b, c tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
-	var n tfprotov6.DynamicValue
-	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
-	if err != nil {
-		return n, n, n, err
-	}
-	bv, err := tfprotov6.NewDynamicValue(b.Type(), b)
-	if err != nil {
-		return n, n, n, err
-	}
-	cv, err := tfprotov6.NewDynamicValue(c.Type(), c)
-	if err != nil {
-		return n, n, n, err
-	}
-	return av, bv, cv, nil
 }

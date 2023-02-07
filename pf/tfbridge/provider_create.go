@@ -41,21 +41,20 @@ func (p *provider) Create(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	// priorState is nil since we are in Create
-	priorStateValue := tftypes.NewValue(tfType, nil)
+	priorState := newResourceState(ctx, &rh)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorStateValue, checkedInputsValue)
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
 	// TODO handle planResp.Diagnostics
-	// TODO handle planResp.PlannedPrivate
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 	// TODO handle planResp.RequiresReplace - probably can be ignored in Create
 
 	if preview {
@@ -67,19 +66,19 @@ func (p *provider) Create(
 		return "", plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorState, config, err := makeDynamicValues2(priorStateValue, checkedInputsValue)
+	priorStateValue, configValue, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:     rh.terraformResourceName,
-		PriorState:   &priorState,
+		PriorState:   &priorStateValue,
 		PlannedState: planResp.PlannedState,
-		Config:       &config,
+		Config:       &configValue,
 
-		// TODO PlannedPrivate []byte{},
-		// TODO Set ProviderMeta
+		// TODO[pulumi/pulumi-terraform-bridge#747] PlannedPrivate []byte{},
+		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 		//
 		// See https://www.terraform.io/internals/provider-meta
 	}
@@ -93,22 +92,22 @@ func (p *provider) Create(
 		return "", nil, 0, err
 	}
 
-	// TODO handle resp.Private field to save that state inside Pulumi state.
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private field to save that state inside Pulumi state.
 
-	stateValue, err := resp.NewState.Unmarshal(tfType)
+	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	idString, err := rh.idExtractor.extractID(stateValue)
+	createdStateMap, err := createdState.ToPropertyMap(&rh)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	createdState, err := convert.DecodePropertyMap(rh.decoder, stateValue)
+	createdID, err := createdState.ExtractID(&rh)
 	if err != nil {
 		return "", nil, 0, err
 	}
 
-	return resource.ID(idString), createdState, resource.StatusOK, nil
+	return createdID, createdStateMap, resource.StatusOK, nil
 }
