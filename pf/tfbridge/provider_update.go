@@ -95,7 +95,7 @@ func (p *provider) Update(
 		return nil, 0, err
 	}
 
-	// TODO handle resp.Private
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
 		return nil, 0, err
