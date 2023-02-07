@@ -61,8 +61,8 @@ func (p *provider) Read(
 		CurrentState: &currentStateDV,
 	}
 
-	// TODO Set ProviderMeta
-	// TODO Set Private
+	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
+	// TODO[pulumi/pulumi-terraform-bridge#747] set Private
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
@@ -73,8 +73,7 @@ func (p *provider) Read(
 		return plugin.ReadResult{}, 0, err
 	}
 
-	// TODO handle resp.Private
-
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 	if resp.NewState == nil {
 		return plugin.ReadResult{}, resource.StatusUnknown, nil
 	}
@@ -96,7 +95,7 @@ func (p *provider) Read(
 
 	return plugin.ReadResult{
 		ID: readID,
-		// TODO support populating inputs, see extractInputsFromOutputs in the prod bridge.
+		// TODO[pulumi/pulumi-terraform-bridge#795] populate Inputs
 		Inputs:  nil,
 		Outputs: readStateMap,
 	}, resource.StatusOK, nil

@@ -54,7 +54,7 @@ func (p *provider) Create(
 	}
 
 	// TODO handle planResp.Diagnostics
-	// TODO handle planResp.PlannedPrivate
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 	// TODO handle planResp.RequiresReplace - probably can be ignored in Create
 
 	if preview {
@@ -77,8 +77,8 @@ func (p *provider) Create(
 		PlannedState: planResp.PlannedState,
 		Config:       &configValue,
 
-		// TODO PlannedPrivate []byte{},
-		// TODO Set ProviderMeta
+		// TODO[pulumi/pulumi-terraform-bridge#747] PlannedPrivate []byte{},
+		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 		//
 		// See https://www.terraform.io/internals/provider-meta
 	}
@@ -92,7 +92,7 @@ func (p *provider) Create(
 		return "", nil, 0, err
 	}
 
-	// TODO handle resp.Private field to save that state inside Pulumi state.
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private field to save that state inside Pulumi state.
 
 	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
 	if err != nil {
