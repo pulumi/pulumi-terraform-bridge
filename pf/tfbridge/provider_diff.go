@@ -73,7 +73,7 @@ func (p *provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	// TODO handle planResp.PlannedPrivate
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 
 	// TODO detect errors in planResp.Diagnostics
 

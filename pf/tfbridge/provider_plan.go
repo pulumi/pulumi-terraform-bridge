@@ -59,8 +59,8 @@ func (p *provider) plan(
 		ProposedNewState: &proposedNewStateV,
 		Config:           &configV,
 
-		// TODO PriorPrivate
-		// TODO ProviderMeta
+		// TODO[pulumi/pulumi-terraform-bridge#747] PriorPrivate
+		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	}
 
 	planResp, err := p.tfServer.PlanResourceChange(ctx, &planReq)

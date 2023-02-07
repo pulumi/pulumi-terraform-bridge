@@ -74,7 +74,7 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	req := &tfprotov6.ReadDataSourceRequest{
 		Config:   config,
 		TypeName: handle.terraformDataSourceName,
-		// TODO ProviderMeta
+		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	}
 
 	resp, err := p.tfServer.ReadDataSource(ctx, req)

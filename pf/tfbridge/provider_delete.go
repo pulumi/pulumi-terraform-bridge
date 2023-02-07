@@ -54,7 +54,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID,
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	// TODO handle resp.Private
+	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
 		return resource.StatusPartialFailure, err
