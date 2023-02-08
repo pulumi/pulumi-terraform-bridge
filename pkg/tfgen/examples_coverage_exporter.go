@@ -346,19 +346,43 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 		return err
 	}
 
+	// Make coverage output stable. For examples.
+	sort.Slice(brokenExamples, func(i, j int) bool {
+		return brokenExamples[i].ExampleName < brokenExamples[j].ExampleName
+	})
+
 	out := ""
 	for _, example := range brokenExamples {
 
-		successes := make(map[string]LanguageConversionResult)
-		failures := make(map[string]LanguageConversionResult)
+		type exampleResult struct {
+			lang   string
+			result LanguageConversionResult
+		}
+
+		successes := []exampleResult{}
+		failures := []exampleResult{}
 
 		for lang, result := range example.ConversionResults {
 			if result.FailureSeverity == Success {
-				successes[lang] = *result
+				successes = append(successes, exampleResult{
+					lang:   lang,
+					result: *result,
+				})
 				continue
 			}
-			failures[lang] = *result
+			failures = append(failures, exampleResult{
+				lang:   lang,
+				result: *result,
+			})
 		}
+
+		// Make coverage output stable. For language results.
+		sort.Slice(successes, func(i, j int) bool {
+			return successes[i].lang < successes[j].lang
+		})
+		sort.Slice(failures, func(i, j int) bool {
+			return failures[i].lang < failures[j].lang
+		})
 
 		isCompleteFailure := len(successes) == 0
 
@@ -379,14 +403,14 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 
 		// print failures
 		out += "\n### Failed Languages\n"
-		for lang, err := range failures {
-			out += fmt.Sprintf("\n#### %s\n", lang)
+		for _, fail := range failures {
+			out += fmt.Sprintf("\n#### %s\n", fail.lang)
 			out += "\n```text\n"
 
-			errMsg := err.FailureInfo
-			if len(err.FailureInfo) > 1000 {
+			errMsg := fail.result.FailureInfo
+			if len(fail.result.FailureInfo) > 1000 {
 				// truncate extremely long error messages
-				errMsg = err.FailureInfo[:1000]
+				errMsg = fail.result.FailureInfo[:1000]
 			}
 			out += errMsg
 			out += "\n```\n"
@@ -399,11 +423,11 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 
 		// print successes
 		out += "\n### Successes\n"
-		for lang, success := range successes {
+		for _, success := range successes {
 			out += "\n<details>\n"
-			out += fmt.Sprintf("\n<summary>%s</summary>\n", lang)
-			out += fmt.Sprintf("\n```%s\n", lang)
-			out += success.Program
+			out += fmt.Sprintf("\n<summary>%s</summary>\n", success.lang)
+			out += fmt.Sprintf("\n```%s\n", success.lang)
+			out += success.result.Program
 			out += "\n```\n"
 			out += "\n</details>\n"
 		}
