@@ -296,6 +296,7 @@ func (n *node) dfs_inner(parent_stack *[]*node, iter func(parent func(int) *node
 	iter(func(i int) *node { return (*parent_stack)[len(*parent_stack)-1-i] }, n)
 }
 
+// Precompute the mapping from tf tokens to pulumi modules.
 func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]tokenInfo {
 	contract.Assertf(opts.TfPkgPrefix != "", "TF package prefix not provided or computed")
 	tree := &node{segment: opts.TfPkgPrefix}
@@ -432,7 +433,7 @@ func tokenFromMap[T ResourceInfo | DataSourceInfo](tokenMap map[string]tokenInfo
 			}
 			return nil, fmt.Errorf("TF token '%s' not present when prefix computed, found %#v", tfToken, existing)
 		}
-		tk, err := finalize(info.mod, info.name)
+		tk, err := finalize(camelCase(info.mod), upperCamelCase(info.name))
 		if err != nil {
 			return nil, err
 		}
