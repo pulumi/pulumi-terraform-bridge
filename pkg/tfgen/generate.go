@@ -772,16 +772,13 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:          pkg,
-		version:      version,
-		language:     lang,
-		info:         info,
-		root:         root,
-		providerShim: providerShim,
-		pluginHost: &cachingProviderHost{
-			Host:  host,
-			cache: map[string]plugin.Provider{},
-		},
+		pkg:              pkg,
+		version:          version,
+		language:         lang,
+		info:             info,
+		root:             root,
+		providerShim:     providerShim,
+		pluginHost:       newCachingProviderHost(host),
 		packageCache:     pcl.NewPackageCache(),
 		infoSource:       host,
 		terraformVersion: opts.TerraformVersion,

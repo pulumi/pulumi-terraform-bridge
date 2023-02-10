@@ -136,6 +136,13 @@ type cachingProviderHost struct {
 	cache map[string]plugin.Provider
 }
 
+func newCachingProviderHost(host plugin.Host) plugin.Host {
+	return &cachingProviderHost{
+		Host:  host,
+		cache: map[string]plugin.Provider{},
+	}
+}
+
 func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool) {
 	host.m.RLock()
 	defer host.m.RUnlock()
