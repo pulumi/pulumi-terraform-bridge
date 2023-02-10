@@ -169,6 +169,86 @@ func TestIgnored(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensInferredModules(t *testing.T) {
+	tests := []struct {
+		name            string
+		resourceMapping map[string]string
+		opts            *tfbridge.InferredModulesOpts
+	}{
+		{
+			name: "non-overlapping mapping",
+			resourceMapping: map[string]string{
+				"pkg_foo_bar":             "index:foo_bar",
+				"pkg_fizz_buzz":           "index:fizz_buzz",
+				"pkg_resource":            "index:resource",
+				"pkg_very_long_name":      "index:very_long_name",
+				"pkg_very_very_long_name": "index:very_very_long_name",
+			},
+		},
+		{
+			name: "detect a simple module",
+			resourceMapping: map[string]string{
+				"pkg_hello_world":   "hello:world",
+				"pkg_hello_pulumi":  "hello:pulumi",
+				"pkg_hello":         "hello:hello",
+				"pkg_goodbye_folks": "index:goodbye_folks",
+				"pkg_hi":            "index:hi",
+			},
+			opts: &tfbridge.InferredModulesOpts{
+				MinimumModuleSize: 2,
+			},
+		},
+		{
+			name: "nested modules",
+			resourceMapping: map[string]string{
+				"pkg_mod_r1":     "mod:r1",
+				"pkg_mod_r2":     "mod:r2",
+				"pkg_mod_r3":     "mod:r3",
+				"pkg_mod_r4":     "mod:r4",
+				"pkg_mod_sub_r1": "mod_sub:r1",
+				"pkg_mod_sub_r2": "mod_sub:r2",
+				"pkg_mod_sub_r3": "mod_sub:r3",
+				"pkg_mod_sub_r4": "mod_sub:r4",
+				"pkg_mod_not_r1": "mod:not_r1",
+				"pkg_mod_not_r2": "mod:not_r2",
+			},
+			opts: &tfbridge.InferredModulesOpts{
+				TfPkgPrefix:          "pkg_",
+				MinimumModuleSize:    3,
+				MimimumSubmoduleSize: 4,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			resources := map[string]struct{}{}
+			for k := range tt.resourceMapping {
+				resources[k] = struct{}{}
+			}
+			info := &tfbridge.ProviderInfo{
+				P: Provider{
+					resources: resources,
+				},
+			}
+
+			strategy, err := tfbridge.TokensInferredModules(info,
+				func(module, name string) (string, error) { return module + ":" + name, nil },
+				tt.opts)
+			require.NoError(t, err)
+			err = info.ComputeDefaults(strategy)
+			require.NoError(t, err)
+
+			mapping := map[string]string{}
+			for k, v := range info.Resources {
+				mapping[k] = v.Tok.String()
+			}
+			assert.Equal(t, tt.resourceMapping, mapping)
+		})
+	}
+}
+
 type Provider struct {
 	util.UnimplementedProvider
 

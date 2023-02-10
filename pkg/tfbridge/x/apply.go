@@ -28,10 +28,7 @@ import (
 func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
 	var errs multierror.Error
 
-	ignored := map[string]bool{}
-	for _, tk := range info.IgnoreMappings {
-		ignored[tk] = true
-	}
+	ignored := ignoredTokens(info)
 
 	err := computeDefaultResources(info, opts.Resource, ignored)
 	if err != nil {
@@ -42,6 +39,17 @@ func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
 		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
 	}
 	return errs.ErrorOrNil()
+}
+
+func ignoredTokens(info *b.ProviderInfo) map[string]bool {
+	ignored := map[string]bool{}
+	if info == nil {
+		return ignored
+	}
+	for _, tk := range info.IgnoreMappings {
+		ignored[tk] = true
+	}
+	return ignored
 }
 
 func computeDefaultResources(info *b.ProviderInfo, strategy ResourceStrategy, ignored map[string]bool) error {
