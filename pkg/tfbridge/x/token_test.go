@@ -218,6 +218,20 @@ func TestTokensInferredModules(t *testing.T) {
 				MimimumSubmoduleSize: 4,
 			},
 		},
+		{
+			name: "nested-collapse",
+			resourceMapping: map[string]string{
+				"pkg_mod_r1":     "mod:R1",
+				"pkg_mod_r2":     "mod:R2",
+				"pkg_mod_sub_r1": "mod:SubR1",
+				"pkg_mod_sub_r2": "mod:SubR2",
+			},
+			opts: &tfbridge.InferredModulesOpts{
+				TfPkgPrefix:          "pkg_",
+				MinimumModuleSize:    4,
+				MimimumSubmoduleSize: 3,
+			},
+		},
 	}
 
 	for _, tt := range tests {

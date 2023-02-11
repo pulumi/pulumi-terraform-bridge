@@ -243,13 +243,22 @@ func (n *node) child(segment string) *node {
 	return child
 }
 
+func (n *node) insert(child *node) {
+	if n.children == nil {
+		n.children = map[string]*node{}
+	}
+	_, ok := n.children[child.segment]
+	contract.Assertf(!ok, "duplicate segment in child: %q", child.segment)
+	n.children[child.segment] = child
+}
+
 func (n *node) len() int {
 	if n == nil {
 		return 0
 	}
 	i := 0
 	if n.tfToken != "" {
-		i += 1
+		i++
 	}
 	for _, child := range n.children {
 		i += child.len()
@@ -261,20 +270,20 @@ func (n *node) len() int {
 //
 // parent is a function that returns parent nodes, with the immediate parent starting at 0
 // and each increment increasing the indirection. 1 yields the grandparent, 2 the
-// great-grandparet, ect. parent panics when no node is available.
+// great-grandparent, etc. parent panics when no node is available.
 //
 // dfs will pick up nodes inserted up the hierarchy during traversal, but only if they
 // were inserted with unique names.
 func (n *node) dfs(iter func(parent func(int) *node, node *node)) {
-	parent_stack := []*node{n}
+	parentStack := []*node{n}
 	for _, c := range n.children {
-		c.dfs_inner(&parent_stack, iter)
+		c.dfsInner(&parentStack, iter)
 	}
 }
 
-func (n *node) dfs_inner(parent_stack *[]*node, iter func(parent func(int) *node, node *node)) {
+func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, node *node)) {
 	// Pop this node onto the parent stack so children can access it
-	*parent_stack = append(*parent_stack, n)
+	*parentStack = append(*parentStack, n)
 	// Iterate over children by key, making sure that newly added keys are iterated over
 	seen := map[string]bool{}
 	for done := false; !done; {
@@ -286,14 +295,14 @@ func (n *node) dfs_inner(parent_stack *[]*node, iter func(parent func(int) *node
 			seen[k] = true
 			done = false
 
-			v.dfs_inner(parent_stack, iter)
+			v.dfsInner(parentStack, iter)
 		}
 	}
 
 	// Pop the node off afterwards
-	*parent_stack = (*parent_stack)[:len(*parent_stack)-1]
+	*parentStack = (*parentStack)[:len(*parentStack)-1]
 
-	iter(func(i int) *node { return (*parent_stack)[len(*parent_stack)-1-i] }, n)
+	iter(func(i int) *node { return (*parentStack)[len(*parentStack)-1-i] }, n)
 }
 
 // Precompute the mapping from tf tokens to pulumi modules.
@@ -332,7 +341,6 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 					}
 				}
 				if n.tfToken != "" {
-					contract.Assertf(n.tfToken != "", "leaf: %#v", n)
 					output[n.tfToken] = tokenInfo{
 						mod:  opts.MainModule,
 						name: n.segment,
@@ -350,7 +358,6 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 				}
 				// If the node is both a module and a item, put the item in the module
 				if n.tfToken != "" {
-					contract.Assertf(n.tfToken != "", "leaf: %#v", n)
 					output[n.tfToken] = tokenInfo{
 						mod:  n.segment,
 						name: n.segment,
@@ -362,26 +369,26 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 			if n.len() < opts.MimimumSubmoduleSize {
 				for _, child := range n.children {
 					contract.Assertf(child.children == nil, "module already flattened")
-					segment := n.segment + "_" + child.segment
-					parent(0).children[segment] = &node{
-						segment: segment,
+					parent(0).insert(&node{
+						segment: n.segment + "_" + child.segment,
 						tfToken: child.tfToken,
-					}
+					})
 				}
+				// Clear the children, since they have been moved to the parent
+				n.children = nil
 				if n.tfToken == "" {
 					// If this is only a leaf node, we can cut it
 					delete(parent(0).children, n.segment)
-				} else {
-					// This also holds an actual item, so just clear the children, since
-					// they have been moved into the grandparent.
-					n.children = nil
 				}
 			} else {
 				// Inject the node into the grand-parent, putting it next to the parent
 				// and remove it as a child of parent.
 				delete(parent(0).children, n.segment)
-				n.segment = parent(0).segment + "_" + n.segment
-				parent(1).children[n.segment] = n
+				parent(1).insert(&node{
+					segment:  parent(0).segment + "_" + n.segment,
+					tfToken:  n.tfToken,
+					children: n.children,
+				})
 			}
 		}
 	})
@@ -423,7 +430,9 @@ func sharedPrefix(s1, s2 string) string {
 
 type tokenInfo struct{ mod, name string }
 
-func tokenFromMap[T ResourceInfo | DataSourceInfo](tokenMap map[string]tokenInfo, finalize MakeToken, new func(tk string) *T) Strategy[T] {
+func tokenFromMap[T ResourceInfo | DataSourceInfo](
+	tokenMap map[string]tokenInfo, finalize MakeToken, new func(tk string) *T,
+) Strategy[T] {
 	return func(tfToken string) (*T, error) {
 		info, ok := tokenMap[tfToken]
 		if !ok {
