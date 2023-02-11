@@ -232,6 +232,18 @@ func TestTokensInferredModules(t *testing.T) {
 				MimimumSubmoduleSize: 3,
 			},
 		},
+		{
+			name: "module and item",
+			resourceMapping: map[string]string{
+				"pkg_mod":    "mod:Mod",
+				"pkg_mod_r1": "mod:R1",
+				"pkg_mod_r2": "mod:R2",
+				"pkg_r1":     "index:R1",
+			},
+			opts: &tfbridge.InferredModulesOpts{
+				MinimumModuleSize: 3,
+			},
+		},
 	}
 
 	for _, tt := range tests {
