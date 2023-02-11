@@ -253,9 +253,6 @@ func (n *node) insert(child *node) {
 }
 
 func (n *node) len() int {
-	if n == nil {
-		return 0
-	}
 	i := 0
 	if n.tfToken != "" {
 		i++
@@ -276,8 +273,28 @@ func (n *node) len() int {
 // were inserted with unique names.
 func (n *node) dfs(iter func(parent func(int) *node, node *node)) {
 	parentStack := []*node{n}
-	for _, c := range n.children {
-		c.dfsInner(&parentStack, iter)
+	fullIter(n.children, func(_ string, child *node) {
+		child.dfsInner(&parentStack, iter)
+	})
+}
+
+// Iterate over a map in any order, ensuring that all keys in the map are iterated over,
+// even if they were added during the iteration.
+//
+// There is no guarantee of the order of the iteration.
+func fullIter[K comparable, V any](m map[K]V, f func(K, V)) {
+	seen := map[K]bool{}
+	for done := false; !done; {
+		done = true
+		for k, v := range m {
+			if seen[k] {
+				continue
+			}
+			seen[k] = true
+			done = false
+
+			f(k, v)
+		}
 	}
 }
 
@@ -285,19 +302,9 @@ func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, 
 	// Pop this node onto the parent stack so children can access it
 	*parentStack = append(*parentStack, n)
 	// Iterate over children by key, making sure that newly added keys are iterated over
-	seen := map[string]bool{}
-	for done := false; !done; {
-		done = true
-		for k, v := range n.children {
-			if seen[k] {
-				continue
-			}
-			seen[k] = true
-			done = false
-
-			v.dfsInner(parentStack, iter)
-		}
-	}
+	fullIter(n.children, func(k string, v *node) {
+		v.dfsInner(parentStack, iter)
+	})
 
 	// Pop the node off afterwards
 	*parentStack = (*parentStack)[:len(*parentStack)-1]
@@ -306,11 +313,17 @@ func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, 
 }
 
 // Precompute the mapping from tf tokens to pulumi modules.
+//
+// The resulting map is complete for all TF resources and datasources in info.P.
 func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]tokenInfo {
 	contract.Assertf(opts.TfPkgPrefix != "", "TF package prefix not provided or computed")
 	tree := &node{segment: opts.TfPkgPrefix}
 
-	// build segment tree
+	// Build segment tree:
+	//
+	// Expand each item (resource | datasource) into it's segments (divided by "_"), then
+	// insert each token into the tree structure. The tree is defined by segments, where
+	// each node represents a segment and each path a token.
 	mapProviderItems(info, func(s string, _ shim.Resource) bool {
 		segments := strings.Split(strings.TrimPrefix(s, opts.TfPkgPrefix), "_")
 		contract.Assertf(len(segments) > 0, "No segments found")
@@ -325,8 +338,7 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 
 	contract.Assertf(tree.tfToken == "", "We don't expect a resource called '%s'", opts.TfPkgPrefix)
 	output := map[string]tokenInfo{}
-
-	// collapse segment tree
+	// Collapse the segment tree via a depth first traversal.
 	tree.dfs(func(parent func(int) *node, n *node) {
 		if parent(0) == tree {
 			// Inject each path as a node
@@ -334,7 +346,6 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 				// Node segment is not big enough for its own module, so inject each token
 				// into the main module
 				for _, child := range n.children {
-					contract.Assertf(child.tfToken != "", "child: %#v", child)
 					output[child.tfToken] = tokenInfo{
 						mod:  opts.MainModule,
 						name: n.segment + "_" + child.segment,
