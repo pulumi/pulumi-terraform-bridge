@@ -258,6 +258,7 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 		}
 		return e.deriveEncoderForNamedObjectType(typeSpec.Ref, oT)
 	}
+
 	switch typeSpec.Type {
 	case "boolean":
 		return newBoolEncoder(), nil
@@ -268,15 +269,30 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	case "string":
 		return newStringEncoder(), nil
 	case "array":
-		lt, ok := t.(tftypes.List)
-		if !ok {
-			return nil, fmt.Errorf("expected a List, got %s", t.String())
+		switch t := t.(type) {
+		case tftypes.List:
+			elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newListEncoder(t.ElementType, elementEncoder)
+		case tftypes.Tuple:
+			types := t.ElementTypes
+			encoders := make([]Encoder, len(types))
+			for i := range t.ElementTypes {
+				var err error
+				encoders[i], err = e.deriveEncoder(typeSpec.Items, types[i])
+				if err != nil {
+					return nil, fmt.Errorf("cannot build encoder for tuple element %d: %w", i, err)
+				}
+			}
+			return &tupleEncoder{
+				types:    types,
+				encoders: encoders,
+			}, nil
+		default:
+			return nil, fmt.Errorf("expected a List or Tuple, got %s", t.String())
 		}
-		elementEncoder, err := e.deriveEncoder(typeSpec.Items, lt.ElementType)
-		if err != nil {
-			return nil, err
-		}
-		return newListEncoder(lt.ElementType, elementEncoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
@@ -331,15 +347,28 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	case "string":
 		return newStringDecoder(), nil
 	case "array":
-		lt, ok := t.(tftypes.List)
-		if !ok {
+		switch t := t.(type) {
+		case tftypes.List:
+			elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newListDecoder(elementDecoder)
+		case tftypes.Tuple:
+			decoders := make([]Decoder, len(t.ElementTypes))
+			for i := range t.ElementTypes {
+				var err error
+				decoders[i], err = e.deriveDecoder(typeSpec.Items, t.ElementTypes[i])
+				if err != nil {
+					return nil, fmt.Errorf("cannot build a decoder for tuple type %s: %w", t, err)
+				}
+			}
+			return &tupleDecoder{
+				decoders: decoders,
+			}, nil
+		default:
 			return nil, fmt.Errorf("expected a List, got %s", t.String())
 		}
-		elementDecoder, err := e.deriveDecoder(typeSpec.Items, lt.ElementType)
-		if err != nil {
-			return nil, err
-		}
-		return newListDecoder(elementDecoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
@@ -355,7 +384,7 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 		}
 		return newMapDecoder(elementDecoder)
 	default:
-		return nil, fmt.Errorf("Cannot build an ecoderfor type %q", typeSpec.Type)
+		return nil, fmt.Errorf("Cannot build a decoder type %q", typeSpec.Type)
 	}
 }
 
