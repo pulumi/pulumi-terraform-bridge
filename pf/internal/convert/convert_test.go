@@ -134,7 +134,9 @@ func convertTurnaroundNilTestCase(ty tftypes.Type) convertTurnaroundTestCase {
 	}
 }
 
-func convertTurnaroundTestCases[T any](ty tftypes.Type, topv func(x T) resource.PropertyValue, vals ...T) []convertTurnaroundTestCase {
+func convertTurnaroundTestCases[T any](
+	ty tftypes.Type, topv func(x T) resource.PropertyValue, vals ...T,
+) []convertTurnaroundTestCase {
 	var zero T
 	zeroValue := topv(zero)
 	cases := []convertTurnaroundTestCase{

@@ -136,7 +136,7 @@ func jsonMarshalMap(v tftypes.Value, elementType tftypes.Type, p *tftypes.Attrib
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	var res map[string]interface{}
+	res := map[string]interface{}{}
 	for k, v := range vs {
 		ep := p.WithElementKeyValue(v)
 		e, err := jsonMarshal(v, elementType, ep)

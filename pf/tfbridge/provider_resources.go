@@ -51,7 +51,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	n := pfutils.TypeName(typeName)
 	schema := resources.Schema(n)
 
-	idExtractor, err := newIdExtractor(ctx, typeName, schema)
+	idExtractor, err := newIDExtractor(ctx, typeName, schema)
 	if err != nil {
 		return resourceHandle{}, err
 	}

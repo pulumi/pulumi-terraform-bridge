@@ -332,7 +332,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("baz", prim(nil)),
 			)
 
-			// The bloop attribue and baz block does not exist in the config, and therefore shouldn't be
+			// The bloop attribute and baz block does not exist in the config, and therefore shouldn't be
 			// planned.
 			want := obj(
 				field("foo", prim("bar")),
