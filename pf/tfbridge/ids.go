@@ -33,7 +33,7 @@ type idExtractor struct {
 // present. This code encapsulates extracting ID and all the error handling. It tries to fail early at the static level
 // if a schema for a resource does not specify the expected ID field, but may also fail later at runtime if the data
 // does not have an ID or it is of the wrong type.
-func newIdExtractor(ctx context.Context, typeName string, schema pfutils.Schema) (idExtractor, error) {
+func newIDExtractor(ctx context.Context, typeName string, schema pfutils.Schema) (idExtractor, error) {
 	idPath := path.Root("id")
 
 	idAttr, diags := schema.AttributeAtPath(ctx, idPath)
@@ -56,12 +56,12 @@ func newIdExtractor(ctx context.Context, typeName string, schema pfutils.Schema)
 func (ie idExtractor) extractID(state tftypes.Value) (string, error) {
 	typeName := ie.typeName
 	idAttrPath := tftypes.NewAttributePath().WithAttributeName("id")
-	idValue, gotIdValue, err := valueAtPath(idAttrPath, state)
+	idValue, gotIDValue, err := valueAtPath(idAttrPath, state)
 	if err != nil {
 		return "", fmt.Errorf(
 			"Cannot extract ID from %q resource state: %w", typeName, err)
 	}
-	if !gotIdValue {
+	if !gotIDValue {
 		return "", fmt.Errorf(
 			"Cannot extract ID from %q resource state: ID attribute is missing", typeName)
 	}

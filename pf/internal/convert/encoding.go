@@ -359,21 +359,6 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	}
 }
 
-type renamedProperties map[tokens.Token]map[TerraformPropertyName]resource.PropertyKey
-
-func (r renamedProperties) Renames(typ tokens.Token) map[TerraformPropertyName]resource.PropertyKey {
-	return r[typ]
-}
-
-func (r renamedProperties) PropertyKey(typ tokens.Token, prop TerraformPropertyName) resource.PropertyKey {
-	if m, ok := r[typ]; ok {
-		if v, ok := m[prop]; ok {
-			return v
-		}
-	}
-	return resource.PropertyKey(prop)
-}
-
 type specFinderFn = func(pk resource.PropertyKey) *pschema.PropertySpec
 
 func specFinderWithID(props map[string]pschema.PropertySpec) specFinderFn {

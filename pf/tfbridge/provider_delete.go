@@ -44,7 +44,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID,
 
 	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request DELETE.
 	//
-	// See https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
+	//nolint:lll // See
+	// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:   rh.terraformResourceName,
 		PriorState: priorState,

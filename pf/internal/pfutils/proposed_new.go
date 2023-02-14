@@ -25,7 +25,7 @@ import (
 
 // Computes the ProposedNewState from priorState and config.
 //
-// Likely the canonical implementaiton is ProposedNew objchange.go:
+// Likely the canonical implementation is ProposedNew objchange.go:
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange.go#L27-#L27
 //
@@ -142,12 +142,12 @@ type pathType uint16
 
 const (
 	pathUnknown                     pathType = 0
-	pathToRoot                               = 1
-	pathToBlock                              = 2
-	pathToNonComputedAttribute               = 3
-	pathToReadOnlyAttribute                  = 4
-	pathToComputedOptionalAttribute          = 5
-	pathToNestedObject                       = 6
+	pathToRoot                      pathType = 1
+	pathToBlock                     pathType = 2
+	pathToNonComputedAttribute      pathType = 3
+	pathToReadOnlyAttribute         pathType = 4
+	pathToComputedOptionalAttribute pathType = 5
+	pathToNestedObject              pathType = 6
 )
 
 func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {

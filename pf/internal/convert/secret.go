@@ -66,7 +66,7 @@ func (dec *secretDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyVal
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
-	// Not entirely certain here if Pulumi needs nil and unknown secerts to wrapped in resource.MakeSecret or not,
+	// Not entirely certain here if Pulumi needs nil and unknown secrets to wrapped in resource.MakeSecret or not,
 	// assuming they do not need to be wrapped.
 	if !v.IsKnown() || v.IsNull() {
 		return encoded, nil

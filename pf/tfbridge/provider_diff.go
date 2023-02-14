@@ -144,13 +144,17 @@ func diffChangedKeys(renames convert.LocalPropertyNames, tfDiff []tftypes.ValueD
 }
 
 // Convert AttributeName to PropertyKey. Currently assume property names are identical in Pulumi and TF worlds.
-func diffAttributeNameToPropertyKey(renames convert.LocalPropertyNames, name tftypes.AttributeName) resource.PropertyKey {
+func diffAttributeNameToPropertyKey(
+	renames convert.LocalPropertyNames, name tftypes.AttributeName,
+) resource.PropertyKey {
 	var property convert.TerraformPropertyName = string(name)
 	return renames.PropertyKey(property, nil /* this param should be deprecated */)
 }
 
 // For AttributePath that drills down from a property key, return that top-level propery key.
-func diffPathToPropertyKey(renames convert.LocalPropertyNames, path *tftypes.AttributePath) (resource.PropertyKey, error) {
+func diffPathToPropertyKey(
+	renames convert.LocalPropertyNames, path *tftypes.AttributePath,
+) (resource.PropertyKey, error) {
 	steps := path.Steps()
 	if len(steps) == 0 {
 		return "", fmt.Errorf("Unexpected empty AttributePath")
@@ -166,7 +170,9 @@ func diffPathToPropertyKey(renames convert.LocalPropertyNames, path *tftypes.Att
 }
 
 // Computes diffPathToPropertyKey for every path and gathers root property keys into a set.
-func diffPathsToPropertyKeySet(renames convert.LocalPropertyNames, paths []*tftypes.AttributePath) ([]resource.PropertyKey, error) {
+func diffPathsToPropertyKeySet(
+	renames convert.LocalPropertyNames, paths []*tftypes.AttributePath,
+) ([]resource.PropertyKey, error) {
 	keySet := map[resource.PropertyKey]struct{}{}
 	for _, path := range paths {
 		key, err := diffPathToPropertyKey(renames, path)

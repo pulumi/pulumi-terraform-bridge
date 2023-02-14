@@ -60,7 +60,7 @@ type provider struct {
 
 var _ plugin.Provider = &provider{}
 
-// Adaptes a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
+// Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
 func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
 	p := info.NewProvider()

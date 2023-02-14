@@ -41,7 +41,11 @@ func makeDynamicValues2(a, b tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.D
 	return av, bv, nil
 }
 
-func makeDynamicValues3(a, b, c tftypes.Value) (tfprotov6.DynamicValue, tfprotov6.DynamicValue, tfprotov6.DynamicValue, error) {
+func makeDynamicValues3(a, b, c tftypes.Value) (
+	tfprotov6.DynamicValue, tfprotov6.DynamicValue,
+	tfprotov6.DynamicValue,
+	error,
+) {
 	var n tfprotov6.DynamicValue
 	av, err := tfprotov6.NewDynamicValue(a.Type(), a)
 	if err != nil {
