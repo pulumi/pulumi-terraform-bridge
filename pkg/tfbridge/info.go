@@ -17,12 +17,10 @@ package tfbridge
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 	"golang.org/x/net/context"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -99,91 +97,6 @@ type ProviderInfo struct {
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
-}
-
-// Describe the mapping from resource and datasource tokens to Pulumi resources and
-// datasources.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-type DefaultStrategy struct {
-	Resource   ResourceStrategy
-	DataSource DataSourceStrategy
-}
-
-// Add mapped resources and datasources according to the given strategies.
-//
-// NOTE: Experimental; We are still iterating on the design of this function, and it is
-// subject to change without warning.
-func (info *ProviderInfo) ComputeDefaults(opts DefaultStrategy) error {
-	var errs multierror.Error
-
-	ignored := map[string]bool{}
-	for _, tk := range info.IgnoreMappings {
-		ignored[tk] = true
-	}
-
-	err := info.computeDefaultResources(opts.Resource, ignored)
-	if err != nil {
-		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
-	}
-	err = info.computeDefaultDataSources(opts.DataSource, ignored)
-	if err != nil {
-		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
-	}
-	return errs.ErrorOrNil()
-}
-
-func (info *ProviderInfo) computeDefaultResources(strategy ResourceStrategy, ignored map[string]bool) error {
-	if strategy == nil {
-		return nil
-	}
-	if info.Resources == nil {
-		info.Resources = map[string]*ResourceInfo{}
-	}
-	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy, ignored)
-}
-
-func (info *ProviderInfo) computeDefaultDataSources(strategy DataSourceStrategy, ignored map[string]bool) error {
-	if strategy == nil {
-		return nil
-	}
-	if info.DataSources == nil {
-		info.DataSources = map[string]*DataSourceInfo{}
-	}
-	return applyComputedTokens(info.P.DataSourcesMap(), info.DataSources, strategy, ignored)
-}
-
-// For each key in the info map not present in the result map, compute a result and store
-// it in the result map.
-func applyComputedTokens[T ResourceInfo | DataSourceInfo](
-	infoMap shim.ResourceMap, resultMap map[string]*T, tks Strategy[T],
-	ignoredMappings map[string]bool,
-) error {
-	keys := make([]string, 0, infoMap.Len())
-	infoMap.Range(func(key string, _ shim.Resource) bool {
-		keys = append(keys, key)
-		return true
-	})
-	sort.Strings(keys)
-
-	var errs multierror.Error
-	for _, k := range keys {
-		v := resultMap[k]
-		if v != nil || ignoredMappings[k] {
-			// Skipping, since there is already a non-nil resource there.
-			continue
-		}
-		v, err := tks(k)
-		if err != nil {
-			errs.Errors = append(errs.Errors, err)
-			continue
-		}
-		if v != nil {
-			resultMap[k] = v
-		}
-	}
-	return errs.ErrorOrNil()
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
