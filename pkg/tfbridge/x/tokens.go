@@ -126,8 +126,6 @@ func camelCase(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
 }
 
-// NOTE: Experimental; We are still iterating on the design of this type, and it is
-// subject to change without warning.
 type InferredModulesOpts struct {
 	// The TF prefix of the package.
 	TfPkgPrefix string
@@ -159,10 +157,9 @@ type InferredModulesOpts struct {
 }
 
 // A strategy to infer module placement from global analysis of all items (Resources & DataSources).
-//
-// NOTE: Experimental; We are still iterating on the design of this type, and it is
-// subject to change without warning.
-func TokensInferredModules(info *ProviderInfo, finalize MakeToken, opts *InferredModulesOpts) (DefaultStrategy, error) {
+func TokensInferredModules(
+	info *b.ProviderInfo, finalize MakeToken, opts *InferredModulesOpts,
+) (DefaultStrategy, error) {
 	if opts == nil {
 		opts = &InferredModulesOpts{}
 	}
@@ -184,16 +181,16 @@ func TokensInferredModules(info *ProviderInfo, finalize MakeToken, opts *Inferre
 	tokenMap := opts.computeTokens(info)
 
 	return DefaultStrategy{
-		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *ResourceInfo {
-			return &ResourceInfo{Tok: tokens.Type(tk)}
+		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *b.ResourceInfo {
+			return &b.ResourceInfo{Tok: tokens.Type(tk)}
 		}),
-		DataSource: tokenFromMap(tokenMap, finalize, func(tk string) *DataSourceInfo {
-			return &DataSourceInfo{Tok: tokens.ModuleMember(tk)}
+		DataSource: tokenFromMap(tokenMap, finalize, func(tk string) *b.DataSourceInfo {
+			return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}
 		}),
 	}, nil
 }
 
-func (opts *InferredModulesOpts) ensurePrefix(info *ProviderInfo) error {
+func (opts *InferredModulesOpts) ensurePrefix(info *b.ProviderInfo) error {
 	prefix := opts.TfPkgPrefix
 	var noCommonality bool
 	findPrefix := func(key string, _ shim.Resource) bool {
@@ -315,7 +312,7 @@ func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, 
 // Precompute the mapping from tf tokens to pulumi modules.
 //
 // The resulting map is complete for all TF resources and datasources in info.P.
-func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]tokenInfo {
+func (opts *InferredModulesOpts) computeTokens(info *b.ProviderInfo) map[string]tokenInfo {
 	contract.Assertf(opts.TfPkgPrefix != "", "TF package prefix not provided or computed")
 	tree := &node{segment: opts.TfPkgPrefix}
 
@@ -407,8 +404,8 @@ func (opts *InferredModulesOpts) computeTokens(info *ProviderInfo) map[string]to
 	return output
 }
 
-func mapProviderItems(info *ProviderInfo, each func(string, shim.Resource) bool) {
-	ignored := info.ignoredTokens()
+func mapProviderItems(info *b.ProviderInfo, each func(string, shim.Resource) bool) {
+	ignored := ignoredTokens(info)
 	info.P.ResourcesMap().Range(func(key string, value shim.Resource) bool {
 		if ignored[key] {
 			return true
@@ -441,7 +438,7 @@ func sharedPrefix(s1, s2 string) string {
 
 type tokenInfo struct{ mod, name string }
 
-func tokenFromMap[T ResourceInfo | DataSourceInfo](
+func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
 	tokenMap map[string]tokenInfo, finalize MakeToken, new func(tk string) *T,
 ) Strategy[T] {
 	return func(tfToken string) (*T, error) {

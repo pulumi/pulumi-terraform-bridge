@@ -173,7 +173,7 @@ func TestTokensInferredModules(t *testing.T) {
 	tests := []struct {
 		name            string
 		resourceMapping map[string]string
-		opts            *tfbridge.InferredModulesOpts
+		opts            *InferredModulesOpts
 	}{
 		{
 			name: "non-overlapping mapping",
@@ -194,7 +194,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_goodbye_folks": "index:GoodbyeFolks",
 				"pkg_hi":            "index:Hi",
 			},
-			opts: &tfbridge.InferredModulesOpts{
+			opts: &InferredModulesOpts{
 				MinimumModuleSize: 2,
 			},
 		},
@@ -212,7 +212,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_not_r1": "mod:NotR1",
 				"pkg_mod_not_r2": "mod:NotR2",
 			},
-			opts: &tfbridge.InferredModulesOpts{
+			opts: &InferredModulesOpts{
 				TfPkgPrefix:          "pkg_",
 				MinimumModuleSize:    3,
 				MimimumSubmoduleSize: 4,
@@ -226,7 +226,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_sub_r1": "mod:SubR1",
 				"pkg_mod_sub_r2": "mod:SubR2",
 			},
-			opts: &tfbridge.InferredModulesOpts{
+			opts: &InferredModulesOpts{
 				TfPkgPrefix:          "pkg_",
 				MinimumModuleSize:    4,
 				MimimumSubmoduleSize: 3,
@@ -240,7 +240,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_r2": "mod:R2",
 				"pkg_r1":     "index:R1",
 			},
-			opts: &tfbridge.InferredModulesOpts{
+			opts: &InferredModulesOpts{
 				MinimumModuleSize: 3,
 			},
 		},
@@ -259,11 +259,11 @@ func TestTokensInferredModules(t *testing.T) {
 				},
 			}
 
-			strategy, err := tfbridge.TokensInferredModules(info,
+			strategy, err := TokensInferredModules(info,
 				func(module, name string) (string, error) { return module + ":" + name, nil },
 				tt.opts)
 			require.NoError(t, err)
-			err = info.ComputeDefaults(strategy)
+			err = ComputeDefaults(info, strategy)
 			require.NoError(t, err)
 
 			mapping := map[string]string{}
