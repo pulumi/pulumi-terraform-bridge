@@ -58,7 +58,7 @@ tests/bin/pulumi-tfgen-testbridge::
 gen.testdata::
 	(cd tests/testdatagen/genrandom && ./generate.sh)
 
-.PHONY: Test tidy
+.PHONY: test tidy
 
 tidy::
 	go mod tidy
@@ -66,3 +66,7 @@ tidy::
 	cd tests/internal/randomshim && go mod tidy
 	cd tests/internal/tlsshim && go mod tidy
 	cd tests/testdatagen/genrandom && go mod tidy
+
+.PHONY: lint
+lint:
+	golangci-lint run
