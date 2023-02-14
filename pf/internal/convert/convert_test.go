@@ -76,15 +76,50 @@ func TestConvertTurnaround(t *testing.T) {
 		map[string]map[string]string{"x": {"a": "a"}, "y": {"empty": "", "b": "b"}},
 	)...)
 
-	cases = append(cases, []convertTurnaroundTestCase{
-		{
-			name:    "tftypes.Number/int",
-			ty:      tftypes.Number,
-			val:     tftypesNewValue(tftypes.Number, int64(42)),
-			prop:    resource.NewNumberProperty(42),
-			normVal: normNum,
-		},
-	}...)
+	cases = append(cases, convertTurnaroundTestCase{
+		name:    "tftypes.Number/int",
+		ty:      tftypes.Number,
+		val:     tftypesNewValue(tftypes.Number, int64(42)),
+		prop:    resource.NewNumberProperty(42),
+		normVal: normNum,
+	})
+
+	tupleCase := func(
+		name string, val []tftypes.Value, prop resource.PropertyValue, elements ...tftypes.Type,
+	) convertTurnaroundTestCase {
+		t := tftypes.Tuple{ElementTypes: elements}
+		return convertTurnaroundTestCase{
+			name: "tftypes.Tuple/" + name,
+			ty:   t,
+			val:  tftypesNewValue(t, val),
+			prop: prop,
+		}
+	}
+
+	cases = append(cases,
+
+		tupleCase("scalars", []tftypes.Value{
+			tftypes.NewValue(tftypes.Bool, true),
+			tftypes.NewValue(tftypes.String, "foo"),
+		}, resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewBoolProperty(true),
+			resource.NewStringProperty("foo"),
+		}), tftypes.Bool, tftypes.String),
+
+		tupleCase("compound", []tftypes.Value{
+			tftypes.NewValue(tftypes.List{ElementType: tftypes.Number}, []tftypes.Value{
+				tftypes.NewValue(tftypes.Number, 1.0),
+				tftypes.NewValue(tftypes.Number, 2.0),
+			}),
+			tftypes.NewValue(tftypes.String, "top"),
+		}, resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewNumberProperty(1),
+				resource.NewNumberProperty(2),
+			}),
+			resource.NewStringProperty("top"),
+		}), tftypes.List{ElementType: tftypes.Number}, tftypes.String),
+	)
 
 	for _, testcase := range cases {
 		testcase := testcase
@@ -252,6 +287,29 @@ func byType(typ tftypes.Type) (Encoder, Decoder, error) {
 			return nil, nil, err
 		}
 		return enc, dec, err
+	case typ.Is(tftypes.Tuple{}):
+		var (
+			types    []tftypes.Type
+			encoders []Encoder
+			decoders []Decoder
+		)
+
+		for i, t := range typ.(tftypes.Tuple).ElementTypes {
+			enc, dec, err := byType(t)
+			if err != nil {
+				return nil, nil, fmt.Errorf("tuple[%d]: %w", i, err)
+			}
+			types = append(types, t)
+			encoders = append(encoders, enc)
+			decoders = append(decoders, dec)
+		}
+
+		return &tupleEncoder{
+				types:    types,
+				encoders: encoders,
+			}, &tupleDecoder{
+				decoders: decoders,
+			}, nil
 	default:
 
 		return nil, nil, fmt.Errorf("Yet to support type: %v", typ.String())
