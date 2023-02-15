@@ -26,7 +26,14 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
 
+// Implements support for ignoreChanges property.
+//
+// There is some complexity here since Plugin Framework returns diffs in terms of Terraform paths, so the implementation
+// tries to translate TF paths to Pulumi paths to decide if they match.
+//
+// See also https://www.pulumi.com/docs/intro/concepts/resources/options/ignorechanges/
 type ignoreChanges struct {
+	// Delegate syntax parsing to resource.PropertyPath.
 	paths []resource.PropertyPath
 	ss    schemaStepper
 }
@@ -48,8 +55,10 @@ func newIgnoreChanges(
 	return &ignoreChanges{
 		paths: paths,
 		ss: &namedEntitySchemaStepper{
-			schema:  schema,
-			token:   token,
+			schema: schema,
+			token:  token,
+			// Another complication is that Pulumi renames the properties, this uses the Renames framework
+			// to track the name tables.
 			renames: renames,
 		},
 	}, nil
@@ -115,7 +124,7 @@ func (p *typeSchemaStepper) PropertyKey(n convert.TerraformPropertyName) resourc
 	return resource.PropertyKey(tokens.Name(string(n)))
 }
 
-// Matching names at a Resource, DataSource, or named object type.
+// Matching names at a Resource or named object type.
 type namedEntitySchemaStepper struct {
 	schema  *schema.PackageSpec
 	token   tokens.Token
@@ -123,12 +132,22 @@ type namedEntitySchemaStepper struct {
 }
 
 func (r *namedEntitySchemaStepper) Property(k resource.PropertyKey) schemaStepper {
-	rr := r.schema.Resources[string(r.token)]
-	if p, ok := rr.Properties[string(k)]; ok {
-		return typeStepper(r.renames, r.schema, &p.TypeSpec)
+	// If this is a Resource..
+	if rr, ok := r.schema.Resources[string(r.token)]; ok {
+		// Only InputProperties here, not Properties because the docs state that:
+		//
+		//     The ignoreChanges option only applies to resource inputs, not outputs.
+		//
+		// See https://www.pulumi.com/docs/intro/concepts/resources/options/ignorechanges/
+		if p, ok := rr.InputProperties[string(k)]; ok {
+			return typeStepper(r.renames, r.schema, &p.TypeSpec)
+		}
 	}
-	if p, ok := rr.InputProperties[string(k)]; ok {
-		return typeStepper(r.renames, r.schema, &p.TypeSpec)
+	// If this is a named type..
+	if tt, ok := r.schema.Types[string(r.token)]; ok {
+		if p, ok := tt.Properties[string(k)]; ok {
+			return typeStepper(r.renames, r.schema, &p.TypeSpec)
+		}
 	}
 	return nil
 }
