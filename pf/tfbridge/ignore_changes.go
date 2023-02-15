@@ -1,0 +1,279 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tfbridge
+
+import (
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+)
+
+type ignoreChanges struct {
+	paths []resource.PropertyPath
+	ss    schemaStepper
+}
+
+func newIgnoreChanges(
+	schema *schema.PackageSpec,
+	token tokens.Token,
+	renames convert.PropertyNames,
+	rawIgnoreChanges []string,
+) (*ignoreChanges, error) {
+	var paths []resource.PropertyPath
+	for _, p := range rawIgnoreChanges {
+		pp, err := resource.ParsePropertyPath(p)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, pp)
+	}
+	return &ignoreChanges{
+		paths: paths,
+		ss: &namedEntitySchemaStepper{
+			schema:  schema,
+			token:   token,
+			renames: renames,
+		},
+	}, nil
+}
+
+func (ic *ignoreChanges) IsIgnored(ap *tftypes.AttributePath) bool {
+	for _, p := range ic.paths {
+		if ic.isIgnoredBy(p, ap) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ic *ignoreChanges) isIgnoredBy(pattern resource.PropertyPath, ap *tftypes.AttributePath) bool {
+	mc := &matchingContext{
+		remainingPattern: pattern,
+		schemaStepper:    ic.ss,
+	}
+	match, remain, err := tftypes.WalkAttributePath(mc, ap)
+	if err != nil {
+		return false
+	}
+	if remain != nil && len(remain.Steps()) > 0 {
+		return false
+	}
+	if m, ok := match.(*matchingContext); ok {
+		if !m.matchFailed {
+			return true
+		}
+	}
+	return false
+}
+
+type schemaStepper interface {
+	Property(resource.PropertyKey) schemaStepper
+	Element() schemaStepper
+	PropertyKey(convert.TerraformPropertyName) resource.PropertyKey
+}
+
+type typeSchemaStepper struct {
+	renames convert.PropertyNames
+	schema  *schema.PackageSpec
+	t       *schema.TypeSpec
+}
+
+var _ schemaStepper = (*typeSchemaStepper)(nil)
+
+func (p *typeSchemaStepper) Element() schemaStepper {
+	if p.t.AdditionalProperties != nil {
+		return typeStepper(p.renames, p.schema, p.t.AdditionalProperties)
+	}
+	return nil
+}
+
+func (*typeSchemaStepper) Property(k resource.PropertyKey) schemaStepper {
+	// there are no named properties here, those are supported by namedEntitySchemaStepper
+	return nil
+}
+
+func (p *typeSchemaStepper) PropertyKey(n convert.TerraformPropertyName) resource.PropertyKey {
+	// translate verbatim, no tables
+	return resource.PropertyKey(tokens.Name(string(n)))
+}
+
+// Matching names at a Resource, DataSource, or named object type.
+type namedEntitySchemaStepper struct {
+	schema  *schema.PackageSpec
+	token   tokens.Token
+	renames convert.PropertyNames
+}
+
+func (r *namedEntitySchemaStepper) Property(k resource.PropertyKey) schemaStepper {
+	rr := r.schema.Resources[string(r.token)]
+	if p, ok := rr.Properties[string(k)]; ok {
+		return typeStepper(r.renames, r.schema, &p.TypeSpec)
+	}
+	if p, ok := rr.InputProperties[string(k)]; ok {
+		return typeStepper(r.renames, r.schema, &p.TypeSpec)
+	}
+	return nil
+}
+
+func (*namedEntitySchemaStepper) Element() schemaStepper {
+	// list or map element path does not make sense for resources, data sources, named object types
+	return nil
+}
+
+func (r *namedEntitySchemaStepper) PropertyKey(n convert.TerraformPropertyName) resource.PropertyKey {
+	return r.renames.PropertyKey(r.token, n, nil)
+}
+
+func typeStepper(renames convert.PropertyNames, s *schema.PackageSpec, t *schema.TypeSpec) schemaStepper {
+	// properties may refer to named object types via refs
+	if t.Ref != "" {
+		// understand local type refs
+		if strings.HasPrefix(t.Ref, "#/types/") {
+			tok := strings.TrimPrefix(t.Ref, "#/types/")
+			// dangling refs not supported
+			if _, ok := s.Types[tok]; !ok {
+				return nil
+			}
+			return &namedEntitySchemaStepper{
+				schema:  s,
+				token:   tokens.Token(tok),
+				renames: renames,
+			}
+		}
+		// cross-package refs are not supported yet
+		return nil
+	}
+	return &typeSchemaStepper{
+		renames: renames,
+		schema:  s,
+		t:       t,
+	}
+}
+
+var _ schemaStepper = (*namedEntitySchemaStepper)(nil)
+
+type matchingContext struct {
+	schemaStepper    schemaStepper
+	remainingPattern resource.PropertyPath
+	matchFailed      bool
+}
+
+func (*matchingContext) fail() *matchingContext {
+	return &matchingContext{matchFailed: true}
+}
+
+func (*matchingContext) pulumiNameMatches(pattern interface{}, puName resource.PropertyKey) bool {
+	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
+		if p == string(puName) {
+			return true
+		}
+	}
+	return false
+}
+
+func (*matchingContext) rawNameMatches(pattern interface{}, rawName string) bool {
+	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
+		if p == string(rawName) {
+			return true
+		}
+	}
+	return false
+}
+
+func (*matchingContext) intMatches(pattern interface{}, n int64) bool {
+	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
+	}
+	if p, ok := pattern.(int); ok {
+		if int64(p) == n {
+			return true
+		}
+	}
+	return false
+}
+
+func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (interface{}, error) {
+	switch s := step.(type) {
+	case tftypes.AttributeName:
+		if len(mc.remainingPattern) == 0 {
+			return mc.fail(), nil
+		}
+		tfName := convert.TerraformPropertyName(string(s))
+		puName := mc.schemaStepper.PropertyKey(tfName)
+		if !mc.pulumiNameMatches(mc.remainingPattern[0], puName) {
+			return mc.fail(), nil
+		}
+		down := mc.schemaStepper.Property(puName)
+		if down == nil {
+			return mc.fail(), nil
+		}
+		return &matchingContext{
+			schemaStepper:    down,
+			remainingPattern: mc.remainingPattern[1:],
+		}, nil
+	case tftypes.ElementKeyString:
+		if len(mc.remainingPattern) == 0 {
+			return mc.fail(), nil
+		}
+		rawName := string(s)
+		if !mc.rawNameMatches(mc.remainingPattern[0], rawName) {
+			return mc.fail(), nil
+		}
+		down := mc.schemaStepper.Element()
+		if down == nil {
+			return mc.fail(), nil
+		}
+		return &matchingContext{
+			schemaStepper:    down,
+			remainingPattern: mc.remainingPattern[1:],
+		}, nil
+	case tftypes.ElementKeyInt:
+		if len(mc.remainingPattern) == 0 {
+			return mc.fail(), nil
+		}
+		i := int64(s)
+		if !mc.intMatches(mc.remainingPattern[0], i) {
+			return mc.fail(), nil
+		}
+		down := mc.schemaStepper.Element()
+		if down == nil {
+			return mc.fail(), nil
+		}
+		return &matchingContext{
+			schemaStepper:    down,
+			remainingPattern: mc.remainingPattern[1:],
+		}, nil
+	case tftypes.ElementKeyValue:
+		// ignoreChanges not supported yet for set elements
+		return mc.fail(), nil
+	}
+	return mc, nil
+}
+
+var _ tftypes.AttributePathStepper = (*matchingContext)(nil)
