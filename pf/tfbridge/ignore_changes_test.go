@@ -58,6 +58,15 @@ func TestIgnoreChanges(t *testing.T) {
 						},
 					},
 				},
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"outProp": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -110,6 +119,12 @@ func TestIgnoreChanges(t *testing.T) {
 			notes:         "any map element is ignored",
 			ignoreChanges: []string{"mapProp[*]"},
 			path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+		},
+		{
+			notes:           "output-only properties are not ignored",
+			ignoreChanges:   []string{"outProp"},
+			path:            tftypes.NewAttributePath().WithAttributeName("out_prop"),
+			shouldNotIgnore: true,
 		},
 	}
 
