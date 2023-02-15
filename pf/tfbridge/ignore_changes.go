@@ -111,6 +111,9 @@ func (p *typeSchemaStepper) Element() schemaStepper {
 	if p.t.AdditionalProperties != nil {
 		return typeStepper(p.renames, p.schema, p.t.AdditionalProperties)
 	}
+	if p.t.Items != nil {
+		return typeStepper(p.renames, p.schema, p.t.Items)
+	}
 	return nil
 }
 
