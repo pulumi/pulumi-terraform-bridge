@@ -64,7 +64,6 @@ func (p *provider) Update(
 		return nil, 0, err
 	}
 
-	// TODO clarify what to do here, how to handle preview Update properly.
 	if preview {
 		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(
 			rh.decoder, tfType, planResp.PlannedState)

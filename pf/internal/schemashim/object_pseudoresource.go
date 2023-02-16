@@ -44,25 +44,35 @@ func (r *objectPseudoResource) Schema() shim.SchemaMap {
 	return r
 }
 
-func (*objectPseudoResource) SchemaVersion() int         { panic("TODO") }
-func (*objectPseudoResource) DeprecationMessage() string { panic("TODO") }
+func (*objectPseudoResource) SchemaVersion() int {
+	panic("This is an Object type encoded as a shim.Resource, and " +
+		"SchemaVersion() should not be called on this entity during schema generation")
+}
+
+func (*objectPseudoResource) DeprecationMessage() string {
+	return ""
+}
 
 func (*objectPseudoResource) Importer() shim.ImportFunc {
-	panic("objectPseudoResource does not implement runtime operation ImporterFunc")
+	panic("This is an Object type encoded as a shim.Resource, and " +
+		"ImporterFunc() should not be called on this entity during schema generation")
 }
 
 func (*objectPseudoResource) Timeouts() *shim.ResourceTimeout {
-	panic("objectPseudoResource does not implement runtime operation Timeouts")
+	panic("This is an Object type encoded as a shim.Resource, and " +
+		"Timeouts() should not be called on this entity during schema generation")
 }
 
 func (*objectPseudoResource) InstanceState(id string, object,
 	meta map[string]interface{}) (shim.InstanceState, error) {
-	panic("objectPseudoResource does not implement runtime operation InstanceState")
+	panic("This is an Object type encoded as a shim.Resource, and " +
+		"InstanceState() should not be called on this entity during schema generation")
 }
 
 func (*objectPseudoResource) DecodeTimeouts(
 	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	panic("objectPseudoResource does not implement runtime operation DecodeTimeouts")
+	panic("This is an Object type encoded as a shim.Resource, and " +
+		"DecodeTimeouts() should not be called on this entity during schema generation")
 }
 
 func (r *objectPseudoResource) Len() int {

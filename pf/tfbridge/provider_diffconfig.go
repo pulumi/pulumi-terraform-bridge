@@ -23,6 +23,6 @@ import (
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
-	// TODO proper implementation here.
+	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
 	return plugin.DiffResult{}, nil
 }

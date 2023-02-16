@@ -20,8 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of responses.
 func (p *provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
-	panic("TODO")
+	panic("StreamInvoke() should not be called for bridged providers")
 }

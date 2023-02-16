@@ -75,10 +75,11 @@ func (p *provider) Diff(
 
 	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 
-	// TODO detect errors in planResp.Diagnostics
+	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
+		return plugin.DiffResult{}, err
+	}
 
-	// TODO process ignoreChanges
-
+	// TODO[pulumi/pulumi-terraform-bridge#751] ignoreChanges support
 	plannedStateValue, err := planResp.PlannedState.Unmarshal(tfType)
 	if err != nil {
 		return plugin.DiffResult{}, err
@@ -105,8 +106,7 @@ func (p *provider) Diff(
 		return plugin.DiffResult{}, err
 	}
 
-	// Compute deleteBeforeReplace. TODO there are some intricacies in the old bridge regarding
-	// nameRequiresDeleteBeforeReplace that are not handled yet.
+	// TODO[pulumi/pulumi-terraform-bridge#823] nameRequiresDeleteBeforeReplace intricacies
 	deleteBeforeReplace := false
 	if len(replaceKeys) > 0 {
 		info := rh.pulumiResourceInfo
@@ -127,10 +127,9 @@ func (p *provider) Diff(
 		DeleteBeforeReplace: deleteBeforeReplace,
 	}
 
-	// TODO how to compute StableKeys
+	// TODO[pulumi/pulumi-terraform-bridge#824] StableKeys
 
-	// TODO currently not yet computing DetailedDiff, which is intricate in the old bridge due to Set encoding as
-	// lists in Pulumi.
+	// TODO[pulumi/pulumi-terraform-bridge#752] DetailedDiff
 	return diffResult, nil
 }
 

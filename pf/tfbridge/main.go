@@ -56,7 +56,7 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 
 	if *dumpInfo {
-		// TODO: port MarshalProviderInfo
+		// TODO[pulumi/pulumi-terraform-bridge#819] port MarshalProviderInfo
 		//
 		// if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
 		// 	cmdutil.ExitError(err.Error())
@@ -72,7 +72,7 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 		os.Exit(0)
 	}
 
-	// TODO Initialize Terraform logging.
+	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()
 
 	if err := serve(ctx, pkg, prov, meta); err != nil {

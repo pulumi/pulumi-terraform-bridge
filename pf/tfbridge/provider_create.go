@@ -53,9 +53,13 @@ func (p *provider) Create(
 		return "", nil, 0, err
 	}
 
-	// TODO handle planResp.Diagnostics
+	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
+		return "", nil, 0, err
+	}
+
 	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
-	// TODO handle planResp.RequiresReplace - probably can be ignored in Create
+
+	// NOTE: it seems that planResp.RequiresReplace can be ignored in Create and must be false.
 
 	if preview {
 		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(

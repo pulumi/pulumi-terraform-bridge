@@ -138,12 +138,12 @@ func newProviderServer(ctx context.Context,
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 func (p *provider) Close() error {
-	panic("TODO")
+	return nil
 }
 
 // Pkg fetches this provider's package.
 func (p *provider) Pkg() tokens.Package {
-	panic("TODO")
+	return tokens.Package(p.packageSpec.Name)
 }
 
 // GetSchema returns the schema for the provider.
@@ -166,7 +166,8 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
 func (p *provider) SignalCancellation() error {
-	return nil // TODO proper handling
+	// Some improvements are possible here to gracefully shut down.
+	return nil
 }
 
 func (p *provider) terraformResourceName(resourceToken tokens.Type) (string, error) {
