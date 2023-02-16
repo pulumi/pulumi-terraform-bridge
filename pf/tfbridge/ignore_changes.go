@@ -124,7 +124,7 @@ func (*typeSchemaStepper) Property(k resource.PropertyKey) schemaStepper {
 
 func (p *typeSchemaStepper) PropertyKey(n convert.TerraformPropertyName) resource.PropertyKey {
 	// translate verbatim, no tables
-	return resource.PropertyKey(tokens.Name(string(n)))
+	return resource.PropertyKey(tokens.Name(n))
 }
 
 // Matching names at a Resource or named object type.
@@ -219,7 +219,7 @@ func (*matchingContext) rawNameMatches(pattern interface{}, rawName string) bool
 		if p == "*" {
 			return true
 		}
-		if p == string(rawName) {
+		if p == rawName {
 			return true
 		}
 	}
@@ -246,7 +246,7 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 		if len(mc.remainingPattern) == 0 {
 			return mc.fail(), nil
 		}
-		tfName := convert.TerraformPropertyName(string(s))
+		tfName := convert.TerraformPropertyName(s)
 		puName := mc.schemaStepper.PropertyKey(tfName)
 		if !mc.pulumiNameMatches(mc.remainingPattern[0], puName) {
 			return mc.fail(), nil

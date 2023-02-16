@@ -30,7 +30,7 @@ import (
 )
 
 func TestIgnoreChanges(t *testing.T) {
-	token := "my:res:Res"
+	token := "my:res:Res" //nolint:gosec
 
 	schema := &schema.PackageSpec{
 		Resources: map[string]schema.ResourceSpec{
@@ -170,7 +170,8 @@ type ignoreChangesTestCase struct {
 // Use default name manglers.
 type testRenames struct{}
 
-func (*testRenames) PropertyKey(_ tokens.Token, property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
+func (*testRenames) PropertyKey(_ tokens.Token,
+	property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	return resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(property, nil, nil))
 }
 
