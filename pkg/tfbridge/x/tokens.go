@@ -15,7 +15,6 @@
 package x
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -24,6 +23,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -136,11 +137,11 @@ type aliasHistory struct {
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
-// Finish an alias operation. The new alias blob is returned.
+// Finish an alias operation.
 //
-// NOTE: Experimental; We are still iterating on the design of this type, and it is
-// subject to change without warning.
-type FinishAlias = func(*b.ProviderInfo) []byte
+// This writes the finished operation to the passed in metadata.Provider, as well as
+// updating the passed ProviderInfo passed to ComputeDefault.
+type FinishAlias = func(*b.ProviderInfo)
 
 // Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
 // changes.
@@ -150,28 +151,26 @@ type FinishAlias = func(*b.ProviderInfo) []byte
 // that utilized the returned strategy, after ComputeDefaults was called.
 //
 // artifact should be considered an opaque blob.
-func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, FinishAlias, error) {
-	var hist aliasHistory
-	if artifact == nil {
+func Aliasing(artifact metadata.Provider, defaults DefaultStrategy) (DefaultStrategy, FinishAlias, error) {
+	const artifactKey = "auto-aliasing"
+	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
+	if !ok {
 		hist = aliasHistory{
 			Resources:   map[string]*tokenHistory[tokens.Type]{},
 			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
 		}
-	} else {
-		err := json.Unmarshal(artifact, &hist)
-		if err != nil {
-			return DefaultStrategy{}, nil, fmt.Errorf("parsing artifact: %w", err)
-		}
+	}
+	if err != nil {
+		return DefaultStrategy{}, nil, err
 	}
 	remaps := &[]func(*b.ProviderInfo){}
 
-	serialize := func(p *b.ProviderInfo) []byte {
+	serialize := func(p *b.ProviderInfo) {
 		for _, r := range *remaps {
 			r(p)
 		}
-		bytes, err := json.MarshalIndent(hist, "", "    ")
+		err := md.Set(artifact, artifactKey, hist)
 		contract.AssertNoError(err)
-		return bytes
 	}
 
 	return aliasing(hist, defaults, remaps), serialize, nil
