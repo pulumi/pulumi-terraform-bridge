@@ -93,12 +93,22 @@ func (ic *ignoreChanges) isIgnoredBy(pattern resource.PropertyPath, ap *tftypes.
 	return false
 }
 
+// All the helper infrastructure below including schemaStepper, typeSchemaStepper and namedEntitySchemaStepper simply
+// support a recursive algorithm from ignoreChanges.isIgnoredBy. This algorithm may have a simpler expression as a set
+// of recursive function calls, but using types allows the code to use tftypes.WalkAttributePath to actually recur.
+//
+// The types are really contexts of the traversal of an AttributePath that is being matched segment-wise against a
+// PropertyPath pattern. As the algo drills down the path, it needs to keep track of where it is in the schema so that
+// it can find the right Property rename metadata.
+//
+// See ignore_changes_test.go for test cases that define what the matching should do.
 type schemaStepper interface {
 	Property(resource.PropertyKey) schemaStepper
 	Element() schemaStepper
 	PropertyKey(convert.TerraformPropertyName) resource.PropertyKey
 }
 
+// Matching names at an intermediary type such as List[T].
 type typeSchemaStepper struct {
 	renames convert.PropertyNames
 	schema  *schema.PackageSpec
