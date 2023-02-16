@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTokensSingleModule(t *testing.T) {
@@ -360,13 +363,16 @@ func TestAliasing(t *testing.T) {
 	}
 	simple := provider()
 
-	aliasing, finish, err := Aliasing(nil,
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	aliasing, finish, err := Aliasing(metadata,
 		TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 	require.NoError(t, err)
 	err = ComputeDefaults(simple, aliasing)
 	require.NoError(t, err)
 
-	hist1 := finish(simple)
+	finish(simple)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
 		"pkg_mod1_r2": {Tok: "pkg:index/mod1R2:Mod1R2"},
@@ -376,11 +382,12 @@ func TestAliasing(t *testing.T) {
 	modules := provider()
 	knownModules := TokensKnownModules("pkg_", "",
 		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
-	aliasing, finish, err = Aliasing(hist1, knownModules)
+	aliasing, finish, err = Aliasing(metadata, knownModules)
 	require.NoError(t, err)
 	err = ComputeDefaults(modules, aliasing)
 	require.NoError(t, err)
-	hist2 := finish(modules)
+	finish(modules)
+	hist2 := md.Clone(metadata)
 	ref := func(s string) *string { return &s }
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"pkg_mod1_r1": {
@@ -413,12 +420,13 @@ func TestAliasing(t *testing.T) {
 	}, modules.Resources)
 
 	modules2 := provider()
-	aliasing, finish, err = Aliasing(hist2, knownModules)
+	aliasing, finish, err = Aliasing(metadata, knownModules)
 	require.NoError(t, err)
 	err = ComputeDefaults(modules2, aliasing)
 	require.NoError(t, err)
-	hist3 := finish(modules2)
-	assert.Equal(t, string(hist2), string(hist3), "No changes should imply no change in history")
+	finish(modules2)
+	hist3 := md.Clone(metadata)
+	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
 }
 
