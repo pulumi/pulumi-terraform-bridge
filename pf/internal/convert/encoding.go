@@ -262,7 +262,7 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	case "boolean":
 		return newBoolEncoder(), nil
 	case "integer":
-		return newNumberEncoder(), nil // TODO integerEncoder
+		return newNumberEncoder(), nil
 	case "number":
 		return newNumberEncoder(), nil
 	case "string":
@@ -325,7 +325,7 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	case "boolean":
 		return newBoolDecoder(), nil
 	case "integer":
-		return newNumberDecoder(), nil // TODO integerEncoder
+		return newNumberDecoder(), nil
 	case "number":
 		return newNumberDecoder(), nil
 	case "string":

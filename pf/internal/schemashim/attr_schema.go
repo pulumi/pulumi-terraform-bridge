@@ -48,9 +48,15 @@ func (s *attrSchema) Required() bool {
 	return s.attr.IsRequired()
 }
 
-func (*attrSchema) Default() interface{}                { panic("TODO") }
-func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc { panic("TODO") }
-func (*attrSchema) DefaultValue() (interface{}, error)  { panic("TODO") }
+func (*attrSchema) Default() interface{} {
+	panic("Default() should not be called during schema generation")
+}
+func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
+	panic("DefaultFunc() should not be called during schema generation")
+}
+func (*attrSchema) DefaultValue() (interface{}, error) {
+	panic("DefaultValue() should not be called during schema generation")
+}
 
 func (s *attrSchema) Description() string {
 	if desc := s.attr.GetMarkdownDescription(); desc != "" {
@@ -64,16 +70,13 @@ func (s *attrSchema) Computed() bool {
 }
 
 func (s *attrSchema) ForceNew() bool {
-	// TODO is there a way to detect this?
-	//
-	// Plugin Framework providers use plan modifiers to indicate something similar:
-	// https://developer.hashicorp.com/terraform/plugin/framework/resources/plan-modification#attribute-plan-modification
-	//
-	// Detecting it may be tricky.
+	// TODO[pulumi/pulumi-terraform-bridge#818] try harder to detect
 	return false
 }
 
-func (*attrSchema) StateFunc() shim.SchemaStateFunc { panic("TODO") }
+func (*attrSchema) StateFunc() shim.SchemaStateFunc {
+	panic("StateFunc() should not be caleld during schema generation")
+}
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
@@ -101,37 +104,53 @@ func (s *attrSchema) Elem() interface{} {
 	case types.ListType:
 		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
 	default:
-		// TODO SetType
-		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
+		// TODO[pulumi/pulumi-terraform-bridge#731]
+		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
 	}
 	return schema
 }
 
 func (*attrSchema) MaxItems() int {
-	// TODO is there a way to find MaxItems?
+	// There seems to be no way to find MaxItems/MinItems on attributes. There are workarounds employed to find them
+	// for Blocks.
 	return 0
 }
 
 func (*attrSchema) MinItems() int {
-	// TODO is there a way to find MinItems?
+	// There seems to be no way to find MaxItems/MinItems on attributes. There are workarounds employed to find them
+	// for Blocks.
 	return 0
 }
 
-func (*attrSchema) ConflictsWith() []string { panic("TODO") }
-func (*attrSchema) ExactlyOneOf() []string  { panic("TODO") }
+func (*attrSchema) ConflictsWith() []string {
+	panic("ConflictsWith() should not be called during schema generation")
+
+}
+func (*attrSchema) ExactlyOneOf() []string {
+	panic("ExactlyOneOf() should not be called during schema generation")
+}
 
 func (s *attrSchema) Deprecated() string {
 	return s.attr.GetDeprecationMessage()
 }
 
 func (*attrSchema) Removed() string {
-	return "" // TODO
+	// Following v2, returning empty string here. This does not seem to be supported.
+	return ""
 }
 
 func (s *attrSchema) Sensitive() bool {
 	return s.attr.IsSensitive()
 }
 
-func (*attrSchema) UnknownValue() interface{}                          { panic("TODO") }
-func (*attrSchema) SetElement(config interface{}) (interface{}, error) { panic("TODO") }
-func (*attrSchema) SetHash(v interface{}) int                          { panic("TODO") }
+func (*attrSchema) UnknownValue() interface{} {
+	panic("UnknownValue() should not be called during schema generation")
+}
+
+func (*attrSchema) SetElement(config interface{}) (interface{}, error) {
+	panic("SetElement() should not be called during schema generation")
+}
+
+func (*attrSchema) SetHash(v interface{}) int {
+	panic("SetHash() should not be called during schema generation")
+}

@@ -73,8 +73,8 @@ func (s *blockSchema) Elem() interface{} {
 	case types.ListType:
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	default:
-		// TODO SetType
-		panic(fmt.Errorf("TODO: unhandled elem case: %v", t))
+		// TODO[pulumi/pulumi-terraform-bridge#731] support Set type
+		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
 	}
 	return schema
 }
@@ -95,12 +95,38 @@ func (s *blockSchema) Deprecated() string { return s.block.GetDeprecationMessage
 func (s *blockSchema) MaxItems() int      { return int(s.block.GetMaxItems()) }
 func (s *blockSchema) MinItems() int      { return int(s.block.GetMinItems()) }
 
-func (*blockSchema) ConflictsWith() []string                            { panic("TODO") }
-func (*blockSchema) Default() interface{}                               { panic("TODO") }
-func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc                { panic("TODO") }
-func (*blockSchema) DefaultValue() (interface{}, error)                 { panic("TODO") }
-func (*blockSchema) ExactlyOneOf() []string                             { panic("TODO") }
-func (*blockSchema) SetElement(config interface{}) (interface{}, error) { panic("TODO") }
-func (*blockSchema) SetHash(v interface{}) int                          { panic("TODO") }
-func (*blockSchema) StateFunc() shim.SchemaStateFunc                    { panic("TODO") }
-func (*blockSchema) UnknownValue() interface{}                          { panic("TODO") }
+func (*blockSchema) ConflictsWith() []string {
+	panic("ConflictsWith() should not be called during schema generation")
+}
+
+func (*blockSchema) Default() interface{} {
+	panic("Default() should not be called during schema generation")
+}
+
+func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
+	panic("DefaultFunc() should not be called during schema generation")
+}
+
+func (*blockSchema) DefaultValue() (interface{}, error) {
+	panic("DefaultValue() should not be called during schema generation")
+}
+
+func (*blockSchema) ExactlyOneOf() []string {
+	panic("ExactlyOneOf() should not be called during schema generation")
+}
+
+func (*blockSchema) SetElement(config interface{}) (interface{}, error) {
+	panic("SetElement() should not be called during schema generation")
+}
+
+func (*blockSchema) SetHash(v interface{}) int {
+	panic("SetHash() should not be called during schema generation")
+}
+
+func (*blockSchema) StateFunc() shim.SchemaStateFunc {
+	panic("StateFunc() should not be called during schema generation")
+}
+
+func (*blockSchema) UnknownValue() interface{} {
+	panic("UnknownValue() should not be called during schema generation")
+}
