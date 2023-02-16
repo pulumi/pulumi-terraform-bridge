@@ -478,7 +478,7 @@ type aliasHistory struct {
 //
 // NOTE: Experimental; We are still iterating on the design of this type, and it is
 // subject to change without warning.
-type FinishAlias = func(*ProviderInfo) []byte
+type FinishAlias = func(*b.ProviderInfo) []byte
 
 // Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
 // changes.
@@ -501,9 +501,9 @@ func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, Finis
 			return DefaultStrategy{}, nil, fmt.Errorf("parsing artifact: %w", err)
 		}
 	}
-	remaps := &[]func(*ProviderInfo){}
+	remaps := &[]func(*b.ProviderInfo){}
 
-	serialize := func(p *ProviderInfo) []byte {
+	serialize := func(p *b.ProviderInfo) []byte {
 		for _, r := range *remaps {
 			r(p)
 		}
@@ -515,7 +515,7 @@ func Aliasing(artifact []byte, defaults DefaultStrategy) (DefaultStrategy, Finis
 	return aliasing(hist, defaults, remaps), serialize, nil
 }
 
-func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*ProviderInfo)) DefaultStrategy {
+func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*b.ProviderInfo)) DefaultStrategy {
 	return DefaultStrategy{
 		Resource:   aliasResources(hist.Resources, defaults.Resource, remaps),
 		DataSource: aliasDataSources(hist.DataSources, defaults.DataSource, remaps),
@@ -524,9 +524,9 @@ func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*Provi
 
 func aliasResources(
 	hist map[string]*tokenHistory[tokens.Type],
-	strategy ResourceStrategy, remaps *[]func(*ProviderInfo),
+	strategy ResourceStrategy, remaps *[]func(*b.ProviderInfo),
 ) ResourceStrategy {
-	return func(tfToken string) (*ResourceInfo, error) {
+	return func(tfToken string) (*b.ResourceInfo, error) {
 		computed, err := strategy(tfToken)
 		if err != nil {
 			return nil, err
@@ -536,7 +536,7 @@ func aliasResources(
 		if !hasPrev {
 			// It's not in the history, so it must be new. Stick it in the history for
 			// next time.
-			*remaps = append(*remaps, func(*ProviderInfo) {
+			*remaps = append(*remaps, func(*b.ProviderInfo) {
 				hist[tfToken] = &tokenHistory[tokens.Type]{
 					Current: computed.Tok,
 				}
@@ -544,7 +544,7 @@ func aliasResources(
 		} else if prev.Current != computed.Tok {
 			// It's in history, but something has changed. Update the history to reflect
 			// the new reality, then add aliases.
-			*remaps = append(*remaps, func(p *ProviderInfo) {
+			*remaps = append(*remaps, func(p *b.ProviderInfo) {
 				// re-fetch the resource, to make sure we have the right pointer.
 				computed, ok := p.Resources[tfToken]
 				contract.Assertf(ok, "Resource %s decided but not present", tfToken)
@@ -569,7 +569,7 @@ func aliasResources(
 							computed.Tok, legacy.Module().Name().String(),
 							computed.Tok.Module().Name().String(), computed)
 					} else {
-						computed.Aliases = append(computed.Aliases, AliasInfo{Type: (*string)(&legacy)})
+						computed.Aliases = append(computed.Aliases, b.AliasInfo{Type: (*string)(&legacy)})
 					}
 				}
 			})
@@ -582,9 +582,9 @@ func aliasResources(
 
 func aliasDataSources(
 	hist map[string]*tokenHistory[tokens.ModuleMember],
-	strategy DataSourceStrategy, remaps *[]func(*ProviderInfo),
+	strategy DataSourceStrategy, remaps *[]func(*b.ProviderInfo),
 ) DataSourceStrategy {
-	return func(tfToken string) (*DataSourceInfo, error) {
+	return func(tfToken string) (*b.DataSourceInfo, error) {
 		computed, err := strategy(tfToken)
 		if err != nil {
 			return nil, err
@@ -600,7 +600,7 @@ func aliasDataSources(
 		} else if prev.Current != computed.Tok {
 			// It's in history, but something has changed. Update the history to reflect
 			// the new reality, then add aliases.
-			*remaps = append(*remaps, func(p *ProviderInfo) {
+			*remaps = append(*remaps, func(p *b.ProviderInfo) {
 				// re-fetch the resource, to make sure we have the right pointer.
 				computed, ok := p.DataSources[tfToken]
 				contract.Assertf(ok, "DataSource %s decided but not present", tfToken)
