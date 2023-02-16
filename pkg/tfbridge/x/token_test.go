@@ -183,10 +183,10 @@ func TestAliasing(t *testing.T) {
 	}
 	simple := provider()
 
-	aliasing, finish, err := tfbridge.Aliasing(nil,
-		tfbridge.TokensSingleModule("pkg_", "index", tfbridge.MakeStandardToken("pkg")))
+	aliasing, finish, err := Aliasing(nil,
+		TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 	require.NoError(t, err)
-	err = simple.ComputeDefaults(aliasing)
+	err = ComputeDefaults(simple, aliasing)
 	require.NoError(t, err)
 
 	hist1 := finish(simple)
@@ -197,11 +197,11 @@ func TestAliasing(t *testing.T) {
 	}, simple.Resources)
 
 	modules := provider()
-	knownModules := tfbridge.TokensKnownModules("pkg_", "",
-		[]string{"mod1", "mod2"}, tfbridge.MakeStandardToken("pkg"))
-	aliasing, finish, err = tfbridge.Aliasing(hist1, knownModules)
+	knownModules := TokensKnownModules("pkg_", "",
+		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
+	aliasing, finish, err = Aliasing(hist1, knownModules)
 	require.NoError(t, err)
-	err = modules.ComputeDefaults(aliasing)
+	err = ComputeDefaults(modules, aliasing)
 	require.NoError(t, err)
 	hist2 := finish(modules)
 	ref := func(s string) *string { return &s }
@@ -236,9 +236,9 @@ func TestAliasing(t *testing.T) {
 	}, modules.Resources)
 
 	modules2 := provider()
-	aliasing, finish, err = tfbridge.Aliasing(hist2, knownModules)
+	aliasing, finish, err = Aliasing(hist2, knownModules)
 	require.NoError(t, err)
-	err = modules2.ComputeDefaults(aliasing)
+	err = ComputeDefaults(modules2, aliasing)
 	require.NoError(t, err)
 	hist3 := finish(modules2)
 	assert.Equal(t, string(hist2), string(hist3), "No changes should imply no change in history")
