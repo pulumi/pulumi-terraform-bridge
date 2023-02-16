@@ -190,7 +190,14 @@ func typeStepper(renames convert.PropertyNames, s *schema.PackageSpec, t *schema
 				renames: renames,
 			}
 		}
-		// cross-package refs are not supported yet
+
+		// According to https://www.pulumi.com/docs/guides/pulumi-packages/schema/#type there may be external
+		// references also like "/aws/v3.30.0/schema.json#/resources/aws:lambda%2Ffunction:Function".
+		//
+		// The current implementation uses Renames tables under the hood to understand Pulumi-TF property name
+		// mapping, but currently does not know how to lookup the tables across providers. Because of this
+		// limitation, ignoreChanges bails here and does not work for ignoring changes over cross-package
+		// imported types.
 		return nil
 	}
 	return &typeSchemaStepper{
