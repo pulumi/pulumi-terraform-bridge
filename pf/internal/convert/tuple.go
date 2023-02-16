@@ -40,10 +40,14 @@ type tupleDecoder struct {
 func propertyValueTuple(values ...resource.PropertyValue) resource.PropertyValue {
 	m := resource.PropertyMap{}
 	for i, v := range values {
-		k := fmt.Sprintf("t%d", i)
+		k := tuplePropertyName(i)
 		m[resource.PropertyKey(k)] = v
 	}
 	return resource.NewObjectProperty(m)
+}
+
+func tuplePropertyName(i int) string {
+	return fmt.Sprintf("t%d", i)
 }
 
 func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
