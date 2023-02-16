@@ -70,6 +70,3 @@ tidy::
 .PHONY: lint todos
 lint:
 	golangci-lint run
-
-todos::
-	git grep TODO | grep -v terraform-bridge | grep -v context.TODO
