@@ -28,8 +28,7 @@ func (p *provider) Check(
 	allowUnknowns bool,
 	randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
-	// TODO can any validation and default value substitution happen at this stage?
+	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
 	checkedInputs := inputs.Copy()
 
 	return checkedInputs, []plugin.CheckFailure{}, nil

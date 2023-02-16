@@ -22,6 +22,6 @@ import (
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfig(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	// TODO proper implementation here.
+	// TODO[pulumi/pulumi-terraform-bridge#821] validate provider config
 	return news, []plugin.CheckFailure{}, nil
 }

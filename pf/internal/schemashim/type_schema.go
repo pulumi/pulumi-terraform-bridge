@@ -67,7 +67,7 @@ func (s *typeSchema) Elem() interface{} {
 		contract.Assert(s.nested == nil || len(s.nested) == 0)
 		return newTypeSchema(tt.ElemType, nil)
 	default:
-		// TODO Set case
+		// TODO[pulumi/pulumi-terraform-bridge#731] Set case
 		return nil
 	}
 }
@@ -76,15 +76,44 @@ func (*typeSchema) MaxItems() int      { return 0 }
 func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }
 
-func (*typeSchema) Default() interface{}                { panic("TODO") }
-func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc { panic("TODO") }
-func (*typeSchema) DefaultValue() (interface{}, error)  { panic("TODO") }
-func (*typeSchema) Description() string                 { panic("TODO") }
-func (*typeSchema) StateFunc() shim.SchemaStateFunc     { panic("TODO") }
-func (*typeSchema) ConflictsWith() []string             { panic("TODO") }
-func (*typeSchema) ExactlyOneOf() []string              { panic("TODO") }
-func (*typeSchema) Removed() string                     { panic("TODO") }
+func (*typeSchema) Default() interface{} {
+	panic("Default() should not be called during schema generation")
+}
 
-func (*typeSchema) UnknownValue() interface{}                          { panic("TODO") }
-func (*typeSchema) SetElement(config interface{}) (interface{}, error) { panic("TODO") }
-func (*typeSchema) SetHash(v interface{}) int                          { panic("TODO") }
+func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
+	panic("DefaultFunc() should not be called during schema generation")
+}
+
+func (*typeSchema) DefaultValue() (interface{}, error) {
+	panic("DefaultValue() should not be called during schema generation")
+}
+
+func (*typeSchema) Description() string {
+	panic("Description() should not be called during schema generation")
+}
+
+func (*typeSchema) StateFunc() shim.SchemaStateFunc {
+	panic("StateFunc() should not be called during schema generation")
+}
+
+func (*typeSchema) ConflictsWith() []string {
+	panic("ConflictsWith() should not be called during schema generation")
+}
+
+func (*typeSchema) ExactlyOneOf() []string {
+	panic("ExactlyOneOf() should not be called during schema generation")
+}
+
+func (*typeSchema) Removed() string { panic("Removed() should not be called during schema generation") }
+
+func (*typeSchema) UnknownValue() interface{} {
+	panic("UnknownValue() should not be called during schema generation")
+}
+
+func (*typeSchema) SetElement(config interface{}) (interface{}, error) {
+	panic("SetElement() should not be called during schema generation")
+}
+
+func (*typeSchema) SetHash(v interface{}) int {
+	panic("SetHash() should not be called during schema generation")
+}
