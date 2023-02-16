@@ -16,6 +16,8 @@ package convert
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -35,6 +37,15 @@ type tupleDecoder struct {
 	decoders []Decoder
 }
 
+func propertyValueTuple(values ...resource.PropertyValue) resource.PropertyValue {
+	m := resource.PropertyMap{}
+	for i, v := range values {
+		k := fmt.Sprintf("t%d", i)
+		m[resource.PropertyKey(k)] = v
+	}
+	return resource.NewObjectProperty(m)
+}
+
 func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	typ := tftypes.Tuple{ElementTypes: enc.types}
 	if propertyValueIsUnkonwn(p) {
@@ -43,20 +54,24 @@ func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Va
 	if p.IsNull() {
 		return tftypes.NewValue(typ, nil), nil
 	}
-	if !p.IsArray() || len(p.ArrayValue()) != len(enc.types) {
+	if !p.IsObject() || len(p.ObjectValue()) != len(enc.types) {
 		return tftypes.NewValue(typ, nil),
 			fmt.Errorf("Expected an Array PropertyValue of length %d", len(enc.types))
 	}
 
-	var values []tftypes.Value
-	for i, pv := range p.ArrayValue() {
-		v, err := enc.encoders[i].FromPropertyValue(pv)
+	values := make([]tftypes.Value, len(p.ObjectValue()))
+	for k, pv := range p.ObjectValue() {
+		k := strings.TrimPrefix(string(k), "t")
+		i, err := strconv.Atoi(k)
+		if err != nil {
+			return tftypes.Value{}, fmt.Errorf("could not parse tuple key as location: %w", err)
+		}
+		values[i], err = enc.encoders[i].FromPropertyValue(pv)
 		if err != nil {
 			return tftypes.NewValue(typ, nil),
 				fmt.Errorf("failed to encode '%v' into tuple[%d] (%v): %w",
 					pv, i, enc.types[i], err)
 		}
-		values = append(values, v)
 	}
 	return tftypes.NewValue(typ, values), nil
 }
@@ -84,5 +99,5 @@ func (dec *tupleDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValu
 				fmt.Errorf("failed to decode tuple[%d] (%s): %w", i, v, err)
 		}
 	}
-	return resource.NewArrayProperty(values), nil
+	return propertyValueTuple(values...), nil
 }

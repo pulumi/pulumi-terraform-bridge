@@ -101,10 +101,10 @@ func TestConvertTurnaround(t *testing.T) {
 		tupleCase("scalars", []tftypes.Value{
 			tftypes.NewValue(tftypes.Bool, true),
 			tftypes.NewValue(tftypes.String, "foo"),
-		}, resource.NewArrayProperty([]resource.PropertyValue{
+		}, propertyValueTuple(
 			resource.NewBoolProperty(true),
 			resource.NewStringProperty("foo"),
-		}), tftypes.Bool, tftypes.String),
+		), tftypes.Bool, tftypes.String),
 
 		tupleCase("compound", []tftypes.Value{
 			tftypes.NewValue(tftypes.List{ElementType: tftypes.Number}, []tftypes.Value{
@@ -112,13 +112,13 @@ func TestConvertTurnaround(t *testing.T) {
 				tftypes.NewValue(tftypes.Number, 2.0),
 			}),
 			tftypes.NewValue(tftypes.String, "top"),
-		}, resource.NewArrayProperty([]resource.PropertyValue{
+		}, propertyValueTuple(
 			resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewNumberProperty(1),
 				resource.NewNumberProperty(2),
 			}),
 			resource.NewStringProperty("top"),
-		}), tftypes.List{ElementType: tftypes.Number}, tftypes.String),
+		), tftypes.List{ElementType: tftypes.Number}, tftypes.String),
 	)
 
 	for _, testcase := range cases {
