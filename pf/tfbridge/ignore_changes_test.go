@@ -91,60 +91,60 @@ func TestIgnoreChanges(t *testing.T) {
 	}
 
 	cases := []ignoreChangesTestCase{
-		// {
-		// 	notes:           "no ignoreChanges means nothing is ignored",
-		// 	ignoreChanges:   []string{},
-		// 	path:            tftypes.NewAttributePath().WithAttributeName("top_prop"),
-		// 	shouldNotIgnore: true,
-		// },
-		// {
-		// 	notes:         "property is ignored recognizing TF/PU name style differences",
-		// 	ignoreChanges: []string{"topProp"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
-		// },
-		// {
-		// 	notes:         "wildcard ignores everything",
-		// 	ignoreChanges: []string{"*"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
-		// },
-		// {
-		// 	notes:         "known list element is ignored",
-		// 	ignoreChanges: []string{"listProp[1]"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
-		// },
-		// {
-		// 	notes:           "known list element is not ignored",
-		// 	ignoreChanges:   []string{"listProp[2]"},
-		// 	path:            tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
-		// 	shouldNotIgnore: true,
-		// },
-		// {
-		// 	notes:         "any list element is ignored",
-		// 	ignoreChanges: []string{"listProp[*]"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
-		// },
-		// {
-		// 	notes:         "known map element is ignored",
-		// 	ignoreChanges: []string{"mapProp.foo"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
-		// },
-		// {
-		// 	notes:           "known map element is not ignored",
-		// 	ignoreChanges:   []string{"mapProp.bar"},
-		// 	path:            tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
-		// 	shouldNotIgnore: true,
-		// },
-		// {
-		// 	notes:         "any map element is ignored",
-		// 	ignoreChanges: []string{"mapProp[*]"},
-		// 	path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
-		// },
-		// {
-		// 	notes:           "output-only properties are not ignored",
-		// 	ignoreChanges:   []string{"outProp"},
-		// 	path:            tftypes.NewAttributePath().WithAttributeName("out_prop"),
-		// 	shouldNotIgnore: true,
-		// },
+		{
+			notes:           "no ignoreChanges means nothing is ignored",
+			ignoreChanges:   []string{},
+			path:            tftypes.NewAttributePath().WithAttributeName("top_prop"),
+			shouldNotIgnore: true,
+		},
+		{
+			notes:         "property is ignored recognizing TF/PU name style differences",
+			ignoreChanges: []string{"topProp"},
+			path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
+		},
+		{
+			notes:         "wildcard ignores everything",
+			ignoreChanges: []string{"*"},
+			path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
+		},
+		{
+			notes:         "known list element is ignored",
+			ignoreChanges: []string{"listProp[1]"},
+			path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+		},
+		{
+			notes:           "known list element is not ignored",
+			ignoreChanges:   []string{"listProp[2]"},
+			path:            tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+			shouldNotIgnore: true,
+		},
+		{
+			notes:         "any list element is ignored",
+			ignoreChanges: []string{"listProp[*]"},
+			path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+		},
+		{
+			notes:         "known map element is ignored",
+			ignoreChanges: []string{"mapProp.foo"},
+			path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+		},
+		{
+			notes:           "known map element is not ignored",
+			ignoreChanges:   []string{"mapProp.bar"},
+			path:            tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+			shouldNotIgnore: true,
+		},
+		{
+			notes:         "any map element is ignored",
+			ignoreChanges: []string{"mapProp[*]"},
+			path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+		},
+		{
+			notes:           "output-only properties are not ignored",
+			ignoreChanges:   []string{"outProp"},
+			path:            tftypes.NewAttributePath().WithAttributeName("out_prop"),
+			shouldNotIgnore: true,
+		},
 		{
 			notes:         "named object properties are  ignored",
 			ignoreChanges: []string{"refProp.objProp"},
