@@ -48,9 +48,7 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 		switch tftype.(type) {
 		case tftypes.List:
 			return shim.TypeList, nil
-		case tftypes.Map:
-			return shim.TypeMap, nil
-		case tftypes.Object, tftypes.Tuple:
+		case tftypes.Map, tftypes.Object, tftypes.Tuple:
 			return shim.TypeMap, nil
 		default:
 			return shim.TypeInvalid, fmt.Errorf("[pf/tfbridge] Failed to translate type %v (%[1]T) to Pulumi", typ)

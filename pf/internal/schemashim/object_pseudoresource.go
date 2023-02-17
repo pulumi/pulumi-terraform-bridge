@@ -17,7 +17,9 @@ package schemashim
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
+	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
@@ -28,13 +30,16 @@ import (
 // which assumes schema.Elem() would return either a Resource or a Schema. This struct packages the object field names
 // an types schema through a pseudo-Resource.
 type objectPseudoResource struct {
+	schemaOnly
 	obj types.ObjectType
 
 	attrs map[string]pfutils.Attr
 }
 
 func newObjectPseudoResource(t types.ObjectType, attrs map[string]pfutils.Attr) *objectPseudoResource {
-	return &objectPseudoResource{obj: t, attrs: attrs}
+	return &objectPseudoResource{
+		schemaOnly: schemaOnly{"objectPseudoResource"},
+		obj:        t, attrs: attrs}
 }
 
 var _ shim.Resource = (*objectPseudoResource)(nil)
@@ -118,4 +123,99 @@ func (*objectPseudoResource) Set(key string, value shim.Schema) {
 
 func (*objectPseudoResource) Delete(key string) {
 	panic("Delete not supported - is it possible to treat this as immutable?")
+}
+
+type tuplePseudoResource struct {
+	schemaOnly
+	tuple pfattr.TypeWithElementTypes
+}
+
+func newTuplePseudoResource(t pfattr.TypeWithElementTypes) shim.Resource {
+	return &tuplePseudoResource{
+		schemaOnly: schemaOnly{"tuplePseudoResource"},
+		tuple:      t}
+}
+
+func (*tuplePseudoResource) SchemaVersion() int         { panic("TODO") }
+func (*tuplePseudoResource) DeprecationMessage() string { panic("TODO") }
+
+func (r *tuplePseudoResource) Schema() shim.SchemaMap {
+	return r
+}
+
+func (r *tuplePseudoResource) Get(key string) shim.Schema {
+	v, ok := r.GetOk(key)
+	if !ok {
+		return nil
+	}
+	return v
+}
+
+func (r *tuplePseudoResource) GetOk(key string) (shim.Schema, bool) {
+	if key == "" || key[0] != 't' {
+		return nil, false
+	}
+	i, err := strconv.Atoi(key[1:])
+	types := r.tuple.ElementTypes()
+	if err != nil || i > len(types) {
+		return nil, false
+	}
+	return newTypeSchema(types[i], nil), false
+}
+
+func (r *tuplePseudoResource) Len() int {
+	return len(r.tuple.ElementTypes())
+}
+
+func (r *tuplePseudoResource) Range(each func(key string, value shim.Schema) bool) {
+	for i, v := range r.tuple.ElementTypes() {
+		k := fmt.Sprintf("t%d", i)
+		if !each(k, newTypeSchema(v, nil)) {
+			break
+		}
+	}
+}
+
+func (*tuplePseudoResource) Set(key string, value shim.Schema) {
+	panic("Set not supported - is it possible to treat this as immutable?")
+}
+
+func (*tuplePseudoResource) Delete(key string) {
+	panic("Delete not supported - is it possible to treat this as immutable?")
+}
+
+type schemaOnly struct{ typ string }
+
+func (s *schemaOnly) Importer() shim.ImportFunc {
+	m := "type"
+	if s != nil || s.typ != "" {
+		m = s.typ
+	}
+	panic(m + " does not implement runtime operation ImporterFunc")
+}
+
+func (s *schemaOnly) Timeouts() *shim.ResourceTimeout {
+	m := "type"
+	if s != nil || s.typ != "" {
+		m = s.typ
+	}
+	panic(m + " does not implement runtime operation Timeouts")
+}
+
+func (s *schemaOnly) InstanceState(id string, object,
+	meta map[string]interface{}) (shim.InstanceState, error) {
+	m := "type"
+	if s != nil || s.typ != "" {
+		m = s.typ
+	}
+	panic(m + " does not implement runtime operation InstanceState")
+}
+
+func (s *schemaOnly) DecodeTimeouts(
+	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	m := "type"
+	if s != nil || s.typ != "" {
+		m = s.typ
+	}
+	panic(m + " does not implement runtime operation DecodeTimeouts")
 }

@@ -318,7 +318,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	}
 
 	if sch == nil {
-		contract.Assert(info != nil)
+		contract.Assertf(info != nil, "missing info when sch is nil on type: "+typePath.String())
 		return t
 	}
 
