@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -240,7 +239,14 @@ func (c TupleType) tftype(ctx context.Context) tftypes.Tuple {
 }
 
 func (c TupleType) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (any, error) {
-	return c.tftype(context.Background()).ApplyTerraform5AttributePathStep(step)
+	i, ok := step.(tftypes.ElementKeyInt)
+	if !ok {
+		return nil, fmt.Errorf("cannot index a tuple with %#v", step)
+	}
+	if int(i) >= len(c.Types) {
+		return nil, fmt.Errorf("index %d out of bounds on tuple with length %d", i, len(c.Types))
+	}
+	return c.Types[i], nil
 }
 
 var _ attr.TypeWithElementTypes = ((*TupleType)(nil))
@@ -286,7 +292,7 @@ func (c TupleType) ValueFromTerraform(ctx context.Context, val tftypes.Value) (a
 			typ:   c,
 		}, nil
 	}
-	values := []any{}
+	var values []tftypes.Value
 	if err := val.As(&values); err != nil {
 		return nil, err
 	}
@@ -299,7 +305,7 @@ func (c TupleType) ValueFromTerraform(ctx context.Context, val tftypes.Value) (a
 }
 
 func (c TupleType) ValueType(context.Context) attr.Value {
-	return TupleValue{}
+	return TupleValue{typ: c}
 }
 
 func (c TupleType) WithElementTypes(types []attr.Type) attr.TypeWithElementTypes {
@@ -312,13 +318,23 @@ func (c TupleValue) String() string                 { return fmt.Sprintf("%#v", 
 func (c TupleValue) Type(context.Context) attr.Type { return c.typ }
 
 func (c TupleValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	return tftypes.NewValue(c.typ.tftype(ctx), c.val), nil
+	t := c.typ.tftype(ctx)
+	if c.state == attr.ValueStateKnown {
+		return tftypes.NewValue(t, tftypes.UnknownValue), nil
+	}
+	if c.state == attr.ValueStateNull {
+		return tftypes.NewValue(t, nil), nil
+	}
+	if err := tftypes.ValidateValue(t, c.val); err != nil {
+		return tftypes.NewValue(t, nil), err
+	}
+	return tftypes.NewValue(t, c.val), nil
 }
 
 type TupleValue struct {
 	state attr.ValueState
 	typ   TupleType
-	val   []any
+	val   []tftypes.Value
 }
 
 func (v TupleValue) Equal(o attr.Value) bool {
@@ -336,7 +352,7 @@ func (v TupleValue) Equal(o attr.Value) bool {
 		return true
 	}
 	for i := range v.val {
-		if !reflect.DeepEqual(v.val[i], oV.val[i]) {
+		if !v.val[i].Equal(oV.val[i]) {
 			return false
 		}
 	}
