@@ -108,6 +108,24 @@ type schemaStepper interface {
 	PropertyKey(convert.TerraformPropertyName) resource.PropertyKey
 }
 
+type terminalStepper struct {
+	inner schemaStepper
+}
+
+func (s *terminalStepper) Property(resource.PropertyKey) schemaStepper {
+	return nil
+}
+
+func (s *terminalStepper) Element() schemaStepper {
+	return nil
+}
+
+func (s *terminalStepper) PropertyKey(n convert.TerraformPropertyName) resource.PropertyKey {
+	return s.inner.PropertyKey(n)
+}
+
+var _ schemaStepper = (*terminalStepper)(nil)
+
 // Matching names at an intermediary type such as List[T].
 type typeSchemaStepper struct {
 	renames convert.PropertyNames
@@ -188,6 +206,23 @@ func typeStepper(renames convert.PropertyNames, s *schema.PackageSpec, t *schema
 				schema:  s,
 				token:   tokens.Token(tok),
 				renames: renames,
+			}
+		}
+
+		if strings.HasPrefix(t.Ref, "#/resources/") {
+			tok := strings.TrimPrefix(t.Ref, "#/resources/")
+			// dangling refs not supported
+			if _, ok := s.Resources[tok]; !ok {
+				return nil
+			}
+			// #/resources/ refs do not need ignoreChanges to recur into the referenced resource properties,
+			// hence the terminalStepper.
+			return &terminalStepper{
+				&namedEntitySchemaStepper{
+					schema:  s,
+					token:   tokens.Token(tok),
+					renames: renames,
+				},
 			}
 		}
 

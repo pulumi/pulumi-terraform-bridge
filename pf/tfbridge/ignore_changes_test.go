@@ -30,7 +30,8 @@ import (
 )
 
 func TestIgnoreChanges(t *testing.T) {
-	token := "my:res:Res" //nolint:gosec
+	token := "my:res:Res"   //nolint:gosec
+	token2 := "my:res:Res2" //nolint:gosec
 
 	schema := &schema.PackageSpec{
 		Resources: map[string]schema.ResourceSpec{
@@ -63,6 +64,12 @@ func TestIgnoreChanges(t *testing.T) {
 							Ref:  "#/types/my:t:Typ",
 						},
 					},
+					"resourceProp": {
+						TypeSpec: schema.TypeSpec{
+							Type: "resource",
+							Ref:  "#/resources/" + token2,
+						},
+					},
 				},
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
@@ -70,6 +77,15 @@ func TestIgnoreChanges(t *testing.T) {
 							TypeSpec: schema.TypeSpec{
 								Type: "string",
 							},
+						},
+					},
+				},
+			},
+			token2: {
+				InputProperties: map[string]schema.PropertySpec{
+					"fooProp": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
 						},
 					},
 				},
@@ -146,9 +162,14 @@ func TestIgnoreChanges(t *testing.T) {
 			shouldNotIgnore: true,
 		},
 		{
-			notes:         "named object properties are  ignored",
+			notes:         "named object properties are ignored",
 			ignoreChanges: []string{"refProp.objProp"},
 			path:          tftypes.NewAttributePath().WithAttributeName("ref_prop").WithAttributeName("obj_prop"),
+		},
+		{
+			notes:         "resource refs can be ignored (without recurring into the properties)",
+			ignoreChanges: []string{"resourceProp"},
+			path:          tftypes.NewAttributePath().WithAttributeName("resourceProp"),
 		},
 	}
 
