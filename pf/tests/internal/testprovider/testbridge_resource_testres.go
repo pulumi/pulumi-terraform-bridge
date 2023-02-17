@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -35,6 +37,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -208,8 +211,136 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"services"},
 				},
 			},
+			"tuples_optional": schema.ListAttribute{
+				ElementType: TupleType{
+					Types: []attr.Type{
+						basetypes.BoolType{},
+						basetypes.StringType{},
+					},
+				},
+				Optional:    true,
+				Description: "A list that takes a tuple",
+			},
 		},
 	}
+}
+
+type TupleType struct {
+	Types []attr.Type
+}
+
+func (c TupleType) tftype(ctx context.Context) tftypes.Tuple {
+	types := make([]tftypes.Type, len(c.Types))
+	for i, v := range c.Types {
+		types[i] = v.TerraformType(ctx)
+	}
+	return tftypes.Tuple{
+		ElementTypes: types,
+	}
+}
+
+func (c TupleType) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (any, error) {
+	return c.tftype(context.Background()).ApplyTerraform5AttributePathStep(step)
+}
+
+var _ attr.TypeWithElementTypes = ((*TupleType)(nil))
+
+func (c TupleType) Equal(o attr.Type) bool {
+	tt, ok := o.(TupleType)
+	if !ok {
+		return false
+	}
+	if len(tt.Types) != len(c.Types) {
+		return false
+	}
+	for i := range c.Types {
+		if !c.Types[i].Equal(tt.Types[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c TupleType) String() string {
+	return c.tftype(context.Background()).String()
+}
+
+func (c TupleType) TerraformType(ctx context.Context) tftypes.Type {
+	return c.tftype(ctx)
+}
+
+func (c TupleType) ElementTypes() []attr.Type {
+	return c.Types
+}
+
+func (c TupleType) ValueFromTerraform(ctx context.Context, val tftypes.Value) (attr.Value, error) {
+	if !val.IsKnown() {
+		return TupleValue{
+			state: attr.ValueStateUnknown,
+			typ:   c,
+		}, nil
+	}
+	if !val.IsNull() {
+		return TupleValue{
+			state: attr.ValueStateNull,
+			typ:   c,
+		}, nil
+	}
+	values := []any{}
+	if err := val.As(&values); err != nil {
+		return nil, err
+	}
+
+	return TupleValue{
+		state: attr.ValueStateKnown,
+		typ:   c,
+		val:   values,
+	}, nil
+}
+
+func (c TupleType) ValueType(context.Context) attr.Value {
+	return TupleValue{}
+}
+
+func (c TupleType) WithElementTypes(types []attr.Type) attr.TypeWithElementTypes {
+	return TupleType{Types: types}
+}
+
+func (c TupleValue) IsNull() bool                   { return c.state == attr.ValueStateNull }
+func (c TupleValue) IsUnknown() bool                { return c.state == attr.ValueStateUnknown }
+func (c TupleValue) String() string                 { return fmt.Sprintf("%#v", c) }
+func (c TupleValue) Type(context.Context) attr.Type { return c.typ }
+
+func (c TupleValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	return tftypes.NewValue(c.typ.tftype(ctx), c.val), nil
+}
+
+type TupleValue struct {
+	state attr.ValueState
+	typ   TupleType
+	val   []any
+}
+
+func (v TupleValue) Equal(o attr.Value) bool {
+	oV, ok := o.(TupleValue)
+	if !ok {
+		return false
+	}
+	if !v.typ.Equal(oV.typ) {
+		return false
+	}
+	if v.IsNull() && o.IsNull() {
+		return true
+	}
+	if v.IsUnknown() && o.IsUnknown() {
+		return true
+	}
+	for i := range v.val {
+		if !reflect.DeepEqual(v.val[i], oV.val[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *testres) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

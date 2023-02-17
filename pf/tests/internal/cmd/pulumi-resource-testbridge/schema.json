@@ -231,6 +231,16 @@
                 "statedir": {
                     "type": "string",
                     "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        }
+                    },
+                    "description": "A list that takes a tuple\n"
                 }
             },
             "required": [
@@ -284,6 +294,16 @@
                 "statedir": {
                     "type": "string",
                     "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        }
+                    },
+                    "description": "A list that takes a tuple\n"
                 }
             },
             "requiredInputs": [
@@ -369,6 +389,16 @@
                     "statedir": {
                         "type": "string",
                         "description": "Dir to store pseudo-cloud state in.\n"
+                    },
+                    "tuplesOptionals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "pulumi.json#/Any"
+                            }
+                        },
+                        "description": "A list that takes a tuple\n"
                     }
                 },
                 "type": "object"
