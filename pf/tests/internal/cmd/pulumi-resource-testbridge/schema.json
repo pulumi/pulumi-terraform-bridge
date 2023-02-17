@@ -104,6 +104,31 @@
                 }
             },
             "type": "object"
+        },
+        "testbridge:index/TestresTuplesOptional:TestresTuplesOptional": {
+            "properties": {
+                "t0": {
+                    "type": "boolean",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "t1": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "t0",
+                "t1"
+            ]
         }
     },
     "provider": {
@@ -235,10 +260,7 @@
                 "tuplesOptionals": {
                     "type": "array",
                     "items": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "$ref": "pulumi.json#/Any"
-                        }
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                     },
                     "description": "A list that takes a tuple\n"
                 }
@@ -298,10 +320,7 @@
                 "tuplesOptionals": {
                     "type": "array",
                     "items": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "$ref": "pulumi.json#/Any"
-                        }
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                     },
                     "description": "A list that takes a tuple\n"
                 }
@@ -393,10 +412,7 @@
                     "tuplesOptionals": {
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "$ref": "pulumi.json#/Any"
-                            }
+                            "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                         },
                         "description": "A list that takes a tuple\n"
                     }

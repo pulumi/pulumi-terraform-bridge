@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -127,12 +128,31 @@ func (*objectPseudoResource) Delete(key string) {
 
 type tuplePseudoResource struct {
 	schemaOnly
+	attrs map[string]pfutils.Attr
 	tuple pfattr.TypeWithElementTypes
 }
 
+type tupElementAttr struct{ e pfattr.Type }
+
+func (tupElementAttr) GetDeprecationMessage() string  { return "" }
+func (tupElementAttr) GetDescription() string         { return "" }
+func (tupElementAttr) GetMarkdownDescription() string { return "" }
+func (tupElementAttr) IsOptional() bool               { return false }
+func (tupElementAttr) IsRequired() bool               { return true }
+func (tupElementAttr) IsSensitive() bool              { return false }
+func (tupElementAttr) IsComputed() bool               { return false }
+
+func (t tupElementAttr) GetType() attr.Type { return t.e }
+
 func newTuplePseudoResource(t pfattr.TypeWithElementTypes) shim.Resource {
+	attrs := make(map[string]pfutils.Attr, len(t.ElementTypes()))
+	for i, e := range t.ElementTypes() {
+		k := fmt.Sprintf("t%d", i)
+		attrs[k] = pfutils.FromAttrLike(tupElementAttr{e})
+	}
 	return &tuplePseudoResource{
 		schemaOnly: schemaOnly{"tuplePseudoResource"},
+		attrs:      attrs,
 		tuple:      t}
 }
 
@@ -146,7 +166,7 @@ func (r *tuplePseudoResource) Schema() shim.SchemaMap {
 func (r *tuplePseudoResource) Get(key string) shim.Schema {
 	v, ok := r.GetOk(key)
 	if !ok {
-		return nil
+		panic(fmt.Sprintf("Missing key: '%s' in tuple with %d elements", key, r.Len()))
 	}
 	return v
 }
@@ -160,7 +180,7 @@ func (r *tuplePseudoResource) GetOk(key string) (shim.Schema, bool) {
 	if err != nil || i > len(types) {
 		return nil, false
 	}
-	return newTypeSchema(types[i], nil), false
+	return newTypeSchema(types[i], r.attrs), true
 }
 
 func (r *tuplePseudoResource) Len() int {
@@ -170,7 +190,7 @@ func (r *tuplePseudoResource) Len() int {
 func (r *tuplePseudoResource) Range(each func(key string, value shim.Schema) bool) {
 	for i, v := range r.tuple.ElementTypes() {
 		k := fmt.Sprintf("t%d", i)
-		if !each(k, newTypeSchema(v, nil)) {
+		if !each(k, newTypeSchema(v, r.attrs)) {
 			break
 		}
 	}
