@@ -40,6 +40,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
@@ -228,6 +229,17 @@ type TupleType struct {
 	Types []attr.Type
 }
 
+func (c TupleType) attr(i int) schema.Attribute {
+	switch t := c.Types[i].(type) {
+	case basetypes.BoolType:
+		return schema.BoolAttribute{}
+	case basetypes.StringType:
+		return schema.StringAttribute{}
+	default:
+		panic(fmt.Sprintf("Unhandled type: %T", t))
+	}
+}
+
 func (c TupleType) tftype(ctx context.Context) tftypes.Tuple {
 	types := make([]tftypes.Type, len(c.Types))
 	for i, v := range c.Types {
@@ -246,10 +258,16 @@ func (c TupleType) ApplyTerraform5AttributePathStep(step tftypes.AttributePathSt
 	if int(i) >= len(c.Types) {
 		return nil, fmt.Errorf("index %d out of bounds on tuple with length %d", i, len(c.Types))
 	}
-	return c.Types[i], nil
+	return c.attr(int(i)), nil
 }
 
 var _ attr.TypeWithElementTypes = ((*TupleType)(nil))
+var _ pfutils.BlockLike = ((*TupleType)(nil))
+
+func (c TupleType) GetDeprecationMessage() string  { return "" }
+func (c TupleType) GetDescription() string         { return "" }
+func (c TupleType) GetMarkdownDescription() string { return "" }
+func (c TupleType) Type() attr.Type                { panic("NA") }
 
 func (c TupleType) Equal(o attr.Type) bool {
 	tt, ok := o.(TupleType)
