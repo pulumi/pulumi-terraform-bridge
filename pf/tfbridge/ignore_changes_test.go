@@ -73,11 +73,8 @@ func TestIgnoreChanges(t *testing.T) {
 					// Emulate MaxItems=1 flattening problems.
 					"flatListProp": {
 						TypeSpec: schema.TypeSpec{
-							Type: "array",
-							Items: &schema.TypeSpec{
-								Type: "object",
-								Ref:  "#/types/my:t:Typ",
-							},
+							Type: "object",
+							Ref:  "#/types/my:t:Typ",
 						},
 					},
 				},
@@ -186,12 +183,12 @@ func TestIgnoreChanges(t *testing.T) {
 			ignoreChanges: []string{"resourceProp"},
 			path:          tftypes.NewAttributePath().WithAttributeName("resourceProp"),
 		},
-		// {
-		// 	notes:         "flattened maxitems=1 list paths can be ignored",
-		// 	ignoreChanges: []string{"flatListProp.objProp"},
-		// 	path: tftypes.NewAttributePath().WithAttributeName("flat_list_prop").
-		// 		WithElementKeyInt(1).WithAttributeName("obj_prop"),
-		// },
+		{
+			notes:         "flattened maxitems=1 list paths can be ignored",
+			ignoreChanges: []string{"flatListProp.objProp"},
+			path: tftypes.NewAttributePath().WithAttributeName("flat_list_prop").
+				WithElementKeyInt(1).WithAttributeName("obj_prop"),
+		},
 	}
 
 	for _, c := range cases {

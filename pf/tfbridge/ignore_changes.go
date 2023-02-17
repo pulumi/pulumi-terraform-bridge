@@ -308,6 +308,14 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 		return mc, nil
 	}
 
+	// maxItems=1 flattening workaround. What happens here is Pulumi flattens what is a List or Set in TF, therefore
+	// stepping down an element in the TF path should be a no-op in the Pulumi path. Unfortunately it is currently
+	// inconvenient to get the metadata in here to make sure this is the maxItems=1 situation, so the workaroud is
+	// to proceed where otherwise the function would have returned mc.fail().
+	maxItems1Workaround := func() (interface{}, error) {
+		return mc, nil
+	}
+
 	switch s := step.(type) {
 	case tftypes.AttributeName:
 		if len(mc.remainingPattern) == 0 {
@@ -331,11 +339,11 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 			return mc.terminate(), nil
 		}
 		rawName := string(s)
-		if !mc.rawNameMatches(mc.remainingPattern[0], rawName) {
-			return mc.fail(), nil
-		}
 		down := mc.schemaStepper.Element()
 		if down == nil {
+			return maxItems1Workaround()
+		}
+		if !mc.rawNameMatches(mc.remainingPattern[0], rawName) {
 			return mc.fail(), nil
 		}
 		return &matchingContext{
@@ -347,11 +355,11 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 			return mc.terminate(), nil
 		}
 		i := int64(s)
-		if !mc.intMatches(mc.remainingPattern[0], i) {
-			return mc.fail(), nil
-		}
 		down := mc.schemaStepper.Element()
 		if down == nil {
+			return maxItems1Workaround()
+		}
+		if !mc.intMatches(mc.remainingPattern[0], i) {
 			return mc.fail(), nil
 		}
 		return &matchingContext{
@@ -360,6 +368,7 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 		}, nil
 	case tftypes.ElementKeyValue:
 		// ignoreChanges not supported yet for set elements
+		// TODO[pulumi/pulumi-terraform-bridge#731] Set support
 		return mc.fail(), nil
 	}
 	return mc, nil
