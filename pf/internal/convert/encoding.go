@@ -272,15 +272,15 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	case "string":
 		return newStringEncoder(), nil
 	case "array":
-		t, ok := t.(tftypes.List)
+		lt, ok := t.(tftypes.List)
 		if !ok {
-			return nil, fmt.Errorf("expected a List or Tuple, got %s", t.String())
+			return nil, fmt.Errorf("expected a List, got %s", t.String())
 		}
-		elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
+		elementEncoder, err := e.deriveEncoder(typeSpec.Items, lt.ElementType)
 		if err != nil {
 			return nil, err
 		}
-		return newListEncoder(t.ElementType, elementEncoder)
+		return newListEncoder(lt.ElementType, elementEncoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
@@ -338,11 +338,11 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	case "string":
 		return newStringDecoder(), nil
 	case "array":
-		t, ok := t.(tftypes.List)
+		lt, ok := t.(tftypes.List)
 		if !ok {
 			return nil, fmt.Errorf("expected a List, got %s", t.String())
 		}
-		elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+		elementDecoder, err := e.deriveDecoder(typeSpec.Items, lt.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -352,13 +352,11 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
 			return nil, fmt.Errorf("expected Ref or AdditionalProperties set")
 		}
-
-		t, ok := t.(tftypes.Map)
+		mt, ok := t.(tftypes.Map)
 		if !ok {
 			return nil, fmt.Errorf("expected a Map, got %s", t.String())
 		}
-
-		elementDecoder, err := e.deriveDecoder(typeSpec.AdditionalProperties, t.ElementType)
+		elementDecoder, err := e.deriveDecoder(typeSpec.AdditionalProperties, mt.ElementType)
 		if err != nil {
 			return nil, err
 		}
