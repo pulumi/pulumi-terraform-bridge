@@ -16,7 +16,9 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
@@ -68,5 +70,12 @@ func (p *provider) plan(
 		return nil, err
 	}
 
-	return planResp, nil
+	var diags multierror.Error
+	for _, diag := range planResp.Diagnostics {
+		if diag.Severity == tfprotov6.DiagnosticSeverityError {
+			diags.Errors = append(diags.Errors, fmt.Errorf("%s: %s - %s", diag.Attribute, diag.Summary, diag.Detail))
+		}
+	}
+
+	return planResp, diags.ErrorOrNil()
 }
