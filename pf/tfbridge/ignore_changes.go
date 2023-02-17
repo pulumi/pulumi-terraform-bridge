@@ -247,11 +247,22 @@ var _ schemaStepper = (*namedEntitySchemaStepper)(nil)
 type matchingContext struct {
 	schemaStepper    schemaStepper
 	remainingPattern resource.PropertyPath
+	terminated       bool
 	matchFailed      bool
 }
 
+func (mc *matchingContext) terminate() *matchingContext {
+	return &matchingContext{
+		terminated:  true,
+		matchFailed: mc.matchFailed,
+	}
+}
+
 func (*matchingContext) fail() *matchingContext {
-	return &matchingContext{matchFailed: true}
+	return &matchingContext{
+		terminated:  true,
+		matchFailed: true,
+	}
 }
 
 func (*matchingContext) pulumiNameMatches(pattern interface{}, puName resource.PropertyKey) bool {
@@ -293,10 +304,14 @@ func (*matchingContext) intMatches(pattern interface{}, n int64) bool {
 }
 
 func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (interface{}, error) {
+	if mc.terminated {
+		return mc, nil
+	}
+
 	switch s := step.(type) {
 	case tftypes.AttributeName:
 		if len(mc.remainingPattern) == 0 {
-			return mc.fail(), nil
+			return mc.terminate(), nil
 		}
 		tfName := convert.TerraformPropertyName(s)
 		puName := mc.schemaStepper.PropertyKey(tfName)
@@ -313,7 +328,7 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 		}, nil
 	case tftypes.ElementKeyString:
 		if len(mc.remainingPattern) == 0 {
-			return mc.fail(), nil
+			return mc.terminate(), nil
 		}
 		rawName := string(s)
 		if !mc.rawNameMatches(mc.remainingPattern[0], rawName) {
@@ -329,7 +344,7 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 		}, nil
 	case tftypes.ElementKeyInt:
 		if len(mc.remainingPattern) == 0 {
-			return mc.fail(), nil
+			return mc.terminate(), nil
 		}
 		i := int64(s)
 		if !mc.intMatches(mc.remainingPattern[0], i) {
