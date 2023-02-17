@@ -272,30 +272,15 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	case "string":
 		return newStringEncoder(), nil
 	case "array":
-		switch t := t.(type) {
-		case tftypes.List:
-			elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newListEncoder(t.ElementType, elementEncoder)
-		case tftypes.Tuple:
-			types := t.ElementTypes
-			encoders := make([]Encoder, len(types))
-			for i := range t.ElementTypes {
-				var err error
-				encoders[i], err = e.deriveEncoder(typeSpec.Items, types[i])
-				if err != nil {
-					return nil, fmt.Errorf("cannot build encoder for tuple element %d: %w", i, err)
-				}
-			}
-			return &tupleEncoder{
-				types:    types,
-				encoders: encoders,
-			}, nil
-		default:
+		t, ok := t.(tftypes.List)
+		if !ok {
 			return nil, fmt.Errorf("expected a List or Tuple, got %s", t.String())
 		}
+		elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newListEncoder(t.ElementType, elementEncoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
