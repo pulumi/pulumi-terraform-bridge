@@ -33,7 +33,7 @@ func simpleDiff(
 	res *schema.Resource,
 	s *terraform.InstanceState,
 	c *terraform.ResourceConfig,
-	rawConfig hcty.Value,
+	rawConfigVal hcty.Value,
 	meta interface{},
 ) (*terraform.InstanceDiff, error) {
 	b, err := configschemaBlock(res)
@@ -41,7 +41,9 @@ func simpleDiff(
 		return nil, err
 	}
 
-	proposedNewStateVal, err := proposedNew(b, s.RawState, rawConfig)
+	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+
+	proposedNewStateVal, err := proposedNew(b, priorStateVal, rawConfigVal)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +65,9 @@ func proposedNew(schema *configschema.Block, prior, config hcty.Value) (hcty.Val
 }
 
 func htype2ctype(t hcty.Type) (cty.Type, error) {
+	if t.Equals(hcty.NilType) {
+		return cty.NilType, nil
+	}
 	typeJson, err := hctyjson.MarshalType(t)
 	if err != nil {
 		return cty.Bool, err
@@ -71,6 +76,9 @@ func htype2ctype(t hcty.Type) (cty.Type, error) {
 }
 
 func hcty2cty(v hcty.Value) (cty.Value, error) {
+	if v.Equals(hcty.NilVal).True() {
+		return cty.NilVal, nil
+	}
 	typ, err := htype2ctype(v.Type())
 	if err != nil {
 		return cty.False, err
@@ -83,6 +91,10 @@ func hcty2cty(v hcty.Value) (cty.Value, error) {
 }
 
 func cty2hcty(v cty.Value) (hcty.Value, error) {
+	if v.Equals(cty.NilVal).True() {
+		return hcty.NilVal, nil
+	}
+
 	typeJson, err := ctyjson.MarshalType(v.Type())
 	if err != nil {
 		return hcty.False, err
