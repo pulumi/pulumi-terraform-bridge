@@ -49,7 +49,7 @@ func main() {
 
 func files() []file {
 	oldPkg := "github.com/hashicorp/terraform"
-	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/objchange"
+	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf"
 
 	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
 		oldPkg, newPkg))

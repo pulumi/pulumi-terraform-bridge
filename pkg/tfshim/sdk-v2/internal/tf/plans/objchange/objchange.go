@@ -6,7 +6,7 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/objchange/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/configs/configschema"
 )
 
 // ProposedNew constructs a proposed new object value by combining the
