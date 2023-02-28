@@ -42,6 +42,9 @@ func simpleDiff(
 	}
 
 	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+	if err != nil {
+		return nil, err
+	}
 
 	proposedNewStateVal, err := proposedNew(b, priorStateVal, rawConfigVal)
 	if err != nil {
@@ -68,11 +71,11 @@ func htype2ctype(t hcty.Type) (cty.Type, error) {
 	if t.Equals(hcty.NilType) {
 		return cty.NilType, nil
 	}
-	typeJson, err := hctyjson.MarshalType(t)
+	typeJSON, err := hctyjson.MarshalType(t)
 	if err != nil {
 		return cty.Bool, err
 	}
-	return ctyjson.UnmarshalType(typeJson)
+	return ctyjson.UnmarshalType(typeJSON)
 }
 
 func hcty2cty(v hcty.Value) (cty.Value, error) {
@@ -83,11 +86,11 @@ func hcty2cty(v hcty.Value) (cty.Value, error) {
 	if err != nil {
 		return cty.False, err
 	}
-	valueJson, err := hctyjson.Marshal(v, v.Type())
+	valueJSON, err := hctyjson.Marshal(v, v.Type())
 	if err != nil {
 		return cty.False, err
 	}
-	return ctyjson.Unmarshal(valueJson, typ)
+	return ctyjson.Unmarshal(valueJSON, typ)
 }
 
 func cty2hcty(v cty.Value) (hcty.Value, error) {
@@ -95,19 +98,19 @@ func cty2hcty(v cty.Value) (hcty.Value, error) {
 		return hcty.NilVal, nil
 	}
 
-	typeJson, err := ctyjson.MarshalType(v.Type())
+	typeJSON, err := ctyjson.MarshalType(v.Type())
 	if err != nil {
 		return hcty.False, err
 	}
-	valueJson, err := ctyjson.Marshal(v, v.Type())
+	valueJSON, err := ctyjson.Marshal(v, v.Type())
 	if err != nil {
 		return hcty.False, err
 	}
-	typ, err := hctyjson.UnmarshalType(typeJson)
+	typ, err := hctyjson.UnmarshalType(typeJSON)
 	if err != nil {
 		return hcty.False, err
 	}
-	return hctyjson.Unmarshal(valueJson, typ)
+	return hctyjson.Unmarshal(valueJSON, typ)
 }
 
 func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
@@ -136,10 +139,6 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 			Sensitive:       a.Sensitive,
 			Deprecated:      a.Deprecated,
 		}
-	}
-
-	type job struct {
-		key string
 	}
 
 	queue := newQueue(schema.BlockTypes)
@@ -192,10 +191,6 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 	return block, nil
 }
 
-func convertStringKind(from int) configschema.StringKind {
-	return configschema.StringKind(from)
-}
-
 type queue[T any] struct {
 	elems []struct {
 		key   string
@@ -203,18 +198,18 @@ type queue[T any] struct {
 	}
 }
 
-func (q queue[T]) dequeue() (string, *T) {
+func (q *queue[T]) dequeue() (string, *T) {
 	k := q.elems[0].key
 	v := q.elems[0].value
 	q.elems = q.elems[1:]
 	return k, v
 }
 
-func (q queue[T]) empty() bool {
+func (q *queue[T]) empty() bool {
 	return len(q.elems) == 0
 }
 
-func (q queue[T]) enqueue(key string, value *T) {
+func (q *queue[T]) enqueue(key string, value *T) {
 	q.elems = append(q.elems, struct {
 		key   string
 		value *T
