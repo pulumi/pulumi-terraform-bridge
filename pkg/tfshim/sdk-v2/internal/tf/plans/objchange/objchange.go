@@ -271,7 +271,7 @@ func proposedNewNestedBlock(schema *configschema.NestedBlock, prior, config cty.
 
 	default:
 		// Should never happen, since the above cases are comprehensive.
-		panic(fmt.Sprintf("unsupported block nesting mode %s", schema.Nesting))
+		panic(fmt.Sprintf("unsupported block nesting mode %v", schema.Nesting))
 	}
 	return newV
 }
@@ -593,7 +593,7 @@ func setElementCompareValue(schema *configschema.Block, v cty.Value, isConfig bo
 
 		default:
 			// Should never happen, since the above cases are comprehensive.
-			panic(fmt.Sprintf("unsupported block nesting mode %s", blockType.Nesting))
+			panic(fmt.Sprintf("unsupported block nesting mode %v", blockType.Nesting))
 		}
 	}
 

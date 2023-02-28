@@ -57,6 +57,7 @@ func files() []file {
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
+		fixupCodeTypeError,
 	}
 
 	return []file{
@@ -160,4 +161,10 @@ func gofmtReplace(spec string) func(string) string {
 
 func doNotEditWarning(code string) string {
 	return "// Code copied from " + terraformRepo + " by go generate; DO NOT EDIT.\n" + code
+}
+
+func fixupCodeTypeError(code string) string {
+	before := `panic(fmt.Sprintf("unsupported block nesting mode %s"`
+	after := `panic(fmt.Sprintf("unsupported block nesting mode %v"`
+	return strings.ReplaceAll(code, before, after)
 }
