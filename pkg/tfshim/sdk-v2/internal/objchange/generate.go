@@ -54,29 +54,44 @@ func files() []file {
 	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
 		oldPkg, newPkg))
 
+	transforms := []func(string) string{
+		replacePkg,
+		doNotEditWarning,
+	}
+
 	return []file{
 		{
-			src:  "internal/configs/configschema/schema.go",
-			dest: "configs/configschema/schema.go",
+			src:  "LICENSE",
+			dest: "configs/configschema/LICENSE",
 		},
 		{
-			src:  "internal/configs/configschema/empty_value.go",
-			dest: "configs/configschema/empty_value.go",
+			src:  "LICENSE",
+			dest: "plans/objchange/LICENSE",
 		},
 		{
-			src:  "internal/configs/configschema/implied_type.go",
-			dest: "configs/configschema/implied_type.go",
+			src:        "internal/configs/configschema/schema.go",
+			dest:       "configs/configschema/schema.go",
+			transforms: transforms,
 		},
 		{
-			src:  "internal/configs/configschema/decoder_spec.go",
-			dest: "configs/configschema/decoder_spec.go",
+			src:        "internal/configs/configschema/empty_value.go",
+			dest:       "configs/configschema/empty_value.go",
+			transforms: transforms,
 		},
 		{
-			src:  "internal/plans/objchange/objchange.go",
-			dest: "plans/objchange/objchange.go",
-			transforms: []func(string) string{
-				replacePkg,
-			},
+			src:        "internal/configs/configschema/implied_type.go",
+			dest:       "configs/configschema/implied_type.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/configs/configschema/decoder_spec.go",
+			dest:       "configs/configschema/decoder_spec.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plans/objchange/objchange.go",
+			dest:       "plans/objchange/objchange.go",
+			transforms: transforms,
 		},
 	}
 }
@@ -141,4 +156,8 @@ func gofmtReplace(spec string) func(string) string {
 		}
 		return stdout.String()
 	}
+}
+
+func doNotEditWarning(code string) string {
+	return "// Code copied from " + terraformRepo + " by go generate; DO NOT EDIT.\n" + code
 }
