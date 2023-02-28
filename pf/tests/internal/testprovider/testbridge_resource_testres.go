@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -35,6 +36,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -207,6 +209,16 @@ removes the cloud state, and Read copies it.
 					stringplanmodifier.UseStateForUnknown(),
 					PropagatesNullFrom{"services"},
 				},
+			},
+			"tuples_optional": schema.ListAttribute{
+				ElementType: TupleType{
+					Types: []attr.Type{
+						basetypes.BoolType{},
+						basetypes.StringType{},
+					},
+				},
+				Optional:    true,
+				Description: "A list that takes a tuple",
 			},
 		},
 	}

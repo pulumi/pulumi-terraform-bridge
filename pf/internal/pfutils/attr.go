@@ -150,13 +150,12 @@ func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupRes
 	if err != nil {
 		return LookupResult{}, false, fmt.Errorf("%v still remains in the path: %w", remaining, err)
 	}
-	attrLike, ok := res.(AttrLike)
-	if ok {
-		return LookupResult{IsAttr: true, Attr: FromAttrLike(attrLike)}, true, nil
+	switch res := res.(type) {
+	case AttrLike:
+		return LookupResult{IsAttr: true, Attr: FromAttrLike(res)}, true, nil
+	case BlockLike:
+		return LookupResult{IsBlock: true, Block: FromBlockLike(res)}, true, nil
 	}
-	blockLike, ok := res.(BlockLike)
-	if ok {
-		return LookupResult{IsBlock: true, Block: FromBlockLike(blockLike)}, true, nil
-	}
+
 	return LookupResult{}, false, nil
 }

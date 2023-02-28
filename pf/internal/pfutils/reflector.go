@@ -36,6 +36,9 @@ func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
 
 func extractBlockNesting(blockLike BlockLike) (map[string]Attr, map[string]Block, BlockNestingMode) {
 	obj := reflect.ValueOf(blockLike)
+	if !hasMethod(obj, "GetNestedObject") {
+		return nil, nil, 0
+	}
 	nestedObj := callGetter(obj, "GetNestedObject") // fwschema.NestedBlockObject
 	nestingMode := callGetter(obj, "GetNestingMode")
 	underlyingAttributes := callGetter(nestedObj, "GetAttributes") // fwschema.UnderlyingAttributes

@@ -23,7 +23,8 @@
       "requiredInputStringCopy": "required_input_string_copy",
       "servicesJsonCopy": "services_json_copy",
       "singleNestedAttr": "single_nested_attr",
-      "singleNestedAttrJsonCopy": "single_nested_attr_json_copy"
+      "singleNestedAttrJsonCopy": "single_nested_attr_json_copy",
+      "tuplesOptionals": "tuples_optional"
     },
     "testbridge:index:Provider": {
       "stringConfigProp": "string_config_prop"

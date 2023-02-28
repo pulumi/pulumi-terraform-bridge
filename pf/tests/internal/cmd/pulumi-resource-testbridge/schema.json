@@ -104,6 +104,31 @@
                 }
             },
             "type": "object"
+        },
+        "testbridge:index/TestresTuplesOptional:TestresTuplesOptional": {
+            "properties": {
+                "t0": {
+                    "type": "boolean",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                },
+                "t1": {
+                    "type": "string",
+                    "language": {
+                        "python": {
+                            "mapCase": false
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "t0",
+                "t1"
+            ]
         }
     },
     "provider": {
@@ -231,6 +256,13 @@
                 "statedir": {
                     "type": "string",
                     "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                    },
+                    "description": "A list that takes a tuple\n"
                 }
             },
             "required": [
@@ -284,6 +316,13 @@
                 "statedir": {
                     "type": "string",
                     "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                    },
+                    "description": "A list that takes a tuple\n"
                 }
             },
             "requiredInputs": [
@@ -369,6 +408,13 @@
                     "statedir": {
                         "type": "string",
                         "description": "Dir to store pseudo-cloud state in.\n"
+                    },
+                    "tuplesOptionals": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                        },
+                        "description": "A list that takes a tuple\n"
                     }
                 },
                 "type": "object"

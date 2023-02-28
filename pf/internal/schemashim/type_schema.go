@@ -66,6 +66,9 @@ func (s *typeSchema) Elem() interface{} {
 	case types.MapType:
 		contract.Assert(s.nested == nil || len(s.nested) == 0)
 		return newTypeSchema(tt.ElemType, nil)
+	case pfattr.TypeWithElementTypes:
+		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
+		return pseudoResource
 	default:
 		// TODO[pulumi/pulumi-terraform-bridge#731] Set case
 		return nil

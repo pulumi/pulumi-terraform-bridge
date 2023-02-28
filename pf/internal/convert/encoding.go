@@ -252,12 +252,16 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	}
 
 	if typeSpec.Ref != "" {
-		oT, ok := t.(tftypes.Object)
-		if !ok {
-			return nil, fmt.Errorf("expected Object type but got %s", t.String())
+		switch t := t.(type) {
+		case tftypes.Object:
+			return e.deriveEncoderForNamedObjectType(typeSpec.Ref, t)
+		case tftypes.Tuple:
+			return e.deriveTupleEncoder(typeSpec.Ref, t)
+		default:
+			return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
 		}
-		return e.deriveEncoderForNamedObjectType(typeSpec.Ref, oT)
 	}
+
 	switch typeSpec.Type {
 	case "boolean":
 		return newBoolEncoder(), nil
@@ -315,11 +319,14 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	}
 
 	if typeSpec.Ref != "" {
-		oT, ok := t.(tftypes.Object)
-		if !ok {
-			return nil, fmt.Errorf("expected Object type but got %s", t.String())
+		switch t := t.(type) {
+		case tftypes.Object:
+			return e.deriveDecoderForNamedObjectType(typeSpec.Ref, t)
+		case tftypes.Tuple:
+			return e.deriveTupleDecoder(typeSpec.Ref, t)
+		default:
+			return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
 		}
-		return e.deriveDecoderForNamedObjectType(typeSpec.Ref, oT)
 	}
 	switch typeSpec.Type {
 	case "boolean":
@@ -355,8 +362,56 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 		}
 		return newMapDecoder(elementDecoder)
 	default:
-		return nil, fmt.Errorf("Cannot build an ecoderfor type %q", typeSpec.Type)
+		return nil, fmt.Errorf("Cannot build a decoder type %q", typeSpec.Type)
 	}
+}
+
+// A generic base function for deriving tuple encoders and decoders.
+//
+// It handles reference validation and property discovery.
+func deriveTupleBase[T any](
+	e *encoding, f func(*pschema.TypeSpec, tftypes.Type) (T, error), ref string, t tftypes.Tuple,
+) ([]T, error) {
+	const typPrefix = "#/types/"
+	if !strings.HasPrefix(ref, typPrefix) {
+		return nil, fmt.Errorf("expected '%s' prefix, found '%s'", typPrefix, ref)
+	}
+	ref = strings.TrimPrefix(ref, typPrefix)
+	typ := e.spec.Type(tokens.Type(ref))
+	if typ == nil {
+		return nil, fmt.Errorf("dangling ref: '%s'", ref)
+	}
+	elements := make([]T, len(t.ElementTypes))
+	for i := range t.ElementTypes {
+		propName := tuplePropertyName(i)
+		prop, ok := typ.Properties[propName]
+		if !ok {
+			return nil, fmt.Errorf("could not find expected property '%s' on typ '%s'",
+				propName, ref)
+		}
+		var err error
+		elements[i], err = f(&prop.TypeSpec, t.ElementTypes[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return elements, nil
+}
+
+func (e *encoding) deriveTupleEncoder(ref string, t tftypes.Tuple) (*tupleEncoder, error) {
+	encoders, err := deriveTupleBase(e, e.deriveEncoder, ref, t)
+	if err != nil {
+		return nil, fmt.Errorf("could not build tuple encoder: %w", err)
+	}
+	return &tupleEncoder{t.ElementTypes, encoders}, nil
+}
+
+func (e *encoding) deriveTupleDecoder(ref string, t tftypes.Tuple) (*tupleDecoder, error) {
+	decoders, err := deriveTupleBase(e, e.deriveDecoder, ref, t)
+	if err != nil {
+		return nil, fmt.Errorf("could not build tuple decoder: %w", err)
+	}
+	return &tupleDecoder{decoders}, nil
 }
 
 type specFinderFn = func(pk resource.PropertyKey) *pschema.PropertySpec

@@ -91,6 +91,10 @@ func (s *attrSchema) Elem() interface{} {
 		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
 		return res
 	}
+	if tt, ok := t.(pfattr.TypeWithElementTypes); ok {
+		var res shim.Resource = newTuplePseudoResource(tt)
+		return res
+	}
 
 	// Anything else that does not have an ElementType can be skipped.
 	if _, ok := t.(pfattr.TypeWithElementType); !ok {
