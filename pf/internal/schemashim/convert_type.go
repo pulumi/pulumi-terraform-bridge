@@ -30,7 +30,7 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 	// implementation. This allows us to maintain an exhaustive list of possible types and
 	// values.
 	tftype := typ.TerraformType(context.Background())
-	is := func(typ tftypes.Type) bool { return typ.Is(tftype) }
+	is := func(typ tftypes.Type) bool { return typ.Equal(tftype) }
 	switch {
 	case is(tftypes.Bool):
 		return shim.TypeBool, nil
