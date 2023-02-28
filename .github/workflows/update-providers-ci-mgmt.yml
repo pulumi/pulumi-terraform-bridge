@@ -1,0 +1,4 @@
+name: Update Providers with new bridge version via ci-mgmt
+on:
+  workflow_dispatch:
+    
