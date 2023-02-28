@@ -183,6 +183,7 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 
 		destinations[b][name] = &configschema.NestedBlock{
 			Block:    nested,
+			Nesting:  configschema.NestingMode(int(b.Nesting)),
 			MinItems: b.MinItems,
 			MaxItems: b.MaxItems,
 		}
