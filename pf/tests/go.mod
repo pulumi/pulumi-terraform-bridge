@@ -19,6 +19,7 @@ replace (
 	github.com/pulumi/pulumi-terraform-bridge/pf => ../
 	github.com/pulumi/pulumi-terraform-bridge/testing => ../../testing
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
 	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20230117062402-cab81572f740
 	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/randomshim
 )
@@ -140,6 +141,7 @@ require (
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93 // indirect
 	github.com/hashicorp/terraform-plugin-framework-validators v0.9.0 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.7.0 // indirect
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1 // indirect
 	github.com/hashicorp/terraform-provider-tls v0.0.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.1.0 // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
@@ -187,6 +189,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.8.0 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.0-00010101000000-000000000000 // indirect
 	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.59.0
 	github.com/pulumi/pulumi/sdk/v3 v3.59.0

@@ -850,9 +850,18 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	// Now push the schema through the rest of the generator.
+	return g.GenerateFromSchema(pulumiPackageSpec)
+}
+
+// GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
+// generator was initialized with.
+func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) error {
+
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
+	var err error
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal intermediate schema")
@@ -933,7 +942,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Emit the Pulumi project information.
-	if err = g.emitProjectMetadata(pack); err != nil {
+	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
 		return errors.Wrapf(err, "failed to create project file")
 	}
 
@@ -1496,15 +1505,15 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 }
 
 // emitProjectMetadata emits the Pulumi.yaml project file into the package's root directory.
-func (g *Generator) emitProjectMetadata(pack *pkg) error {
+func (g *Generator) emitProjectMetadata(name tokens.Package, language Language) error {
 	w, err := newGenWriter(tfgen, g.root, "Pulumi.yaml")
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(w)
-	w.Writefmtln("name: %s", pack.name)
-	w.Writefmtln("description: A Pulumi resource provider for %s.", pack.name)
-	w.Writefmtln("language: %s", pack.language)
+	w.Writefmtln("name: %s", name)
+	w.Writefmtln("description: A Pulumi resource provider for %s.", name)
+	w.Writefmtln("language: %s", language)
 	return nil
 }
 

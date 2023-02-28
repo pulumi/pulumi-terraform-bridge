@@ -22,14 +22,29 @@ import (
 	"io"
 	"os"
 
+	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
-	version := prov.Version
+	handleFlags(prov.Version)
+	// TODO[pulumi/pulumi-terraform-bridge#820]
+	// prov.P.InitLogging()
 
+	if err := serve(ctx, pkg, prov, meta); err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+}
+
+func handleFlags(version string) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 
@@ -71,8 +86,58 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 		fmt.Println(version)
 		os.Exit(0)
 	}
+}
 
-	if err := serve(ctx, pkg, prov, meta); err != nil {
+// Implements main() or a bridged Pulumi plugin, complete with argument parsing.
+func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed) {
+	version := infos[0].GetInfo().Version
+	schema := string(meta.PackageSchema)
+	mapping, found, err := metadata.Get[muxer.ComputedMapping](infos[0].GetInfo().GetMetadata(), "mux")
+	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
+	if !found {
+		fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
+		os.Exit(1)
+	}
+	m := muxer.Main{
+		ComputedMapping: mapping,
+		Schema:          schema,
+	}
+
+	for _, info := range infos {
+		// Add PF based servers to the runtime.
+		if info.PF != nil {
+			m.Servers = append(m.Servers, muxer.Endpoint{
+				Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+					return newProviderServer(ctx, *info.PF, meta)
+				}})
+			continue
+		}
+		m.Servers = append(m.Servers, muxer.Endpoint{
+			Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+				return tfbridge.NewProvider(ctx, host, pkg, version, info.SDK.P, *info.SDK, meta.PackageSchema), nil
+			}})
+	}
+	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+		return m.Server(host, pkg, version)
+	})
+	if err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+}
+
+// A union of pf and sdk based ProviderInfo for use in MainWithMuxer.
+//
+// Exactly 1 field of this struct should hold a value
+type Muxed struct {
+	PF  *ProviderInfo
+	SDK *sdkBridge.ProviderInfo
+}
+
+func (m Muxed) GetInfo() sdkBridge.ProviderInfo {
+	if m.PF == nil {
+		return *m.SDK
+	}
+	return m.PF.ProviderInfo
 }
