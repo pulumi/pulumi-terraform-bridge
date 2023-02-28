@@ -16,16 +16,52 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Serve fires up a Pulumi resource provider listening to inbound gRPC traffic,
 // and translates calls from Pulumi into actions against the provided Terraform Provider.
-func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte) error {
+func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte, options ...Option) error {
+	opts := opts{}
+	for _, applyOption := range options {
+		applyOption(&opts)
+	}
+
 	// Create a new resource provider server and listen for and serve incoming connections.
-	return provider.Main(module, func(host *provider.HostClient) (lumirpc.ResourceProviderServer, error) {
+	return provider.Main(module, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+		if len(opts.muxWith) > 0 {
+			// If we have multiple providers to serve, Mux them together.
+
+			var mapping muxer.ComputedMapping
+			if m, found, err := metadata.Get[muxer.ComputedMapping](info.GetMetadata(), "muxer"); err != nil {
+				return nil, err
+			} else if found {
+				mapping = m
+			} else {
+				return nil, fmt.Errorf("missing pre-computed muxer mapping")
+			}
+
+			servers := []muxer.Endpoint{{
+				Server: func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+					return NewProvider(context.Background(), host, module, version, info.P, info, pulumiSchema), nil
+				},
+			}}
+			for _, f := range opts.muxWith {
+				servers = append(servers, muxer.Endpoint{Server: f})
+			}
+
+			muxer.Main{
+				Schema:          string(pulumiSchema),
+				ComputedMapping: mapping,
+				Servers:         servers,
+			}.Server(host, module, version)
+		}
+
 		// Create a new bridge provider.
 		return NewProvider(context.TODO(), host, module, version, info.P, info, pulumiSchema), nil
 	})

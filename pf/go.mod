@@ -4,6 +4,8 @@ go 1.19
 
 replace github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
 
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
@@ -92,7 +94,6 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
-	github.com/go-git/go-git/v5 v5.6.0 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
@@ -208,7 +209,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	gocloud.dev v0.27.0 // indirect
 	gocloud.dev/secrets/hashivault v0.27.0 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
