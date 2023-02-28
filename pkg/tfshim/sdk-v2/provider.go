@@ -103,10 +103,12 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	diff, err := r.SimpleDiff(context.TODO(), state, config, p.tf.Meta())
+
+	diff, err := simpleDiff(context.TODO(), r, state, config, rawConfig, p.tf.Meta())
 	if diff != nil {
 		diff.RawConfig = rawConfig
 	}
+
 	return diffToShim(diff), err
 }
 
