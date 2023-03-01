@@ -15,13 +15,10 @@
 package tfbridgetests
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
@@ -50,20 +47,34 @@ func TestCreateWithComputedOptionals(t *testing.T) {
 
 func TestCreateWritesSchemaVersion(t *testing.T) {
 	server := newProviderServer(t, testprovider.RandomProvider())
-	ctx := context.Background()
-	resp, err := server.Create(ctx, testutils.NewCreateRequest(t, `
-           {
-             "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
-             "properties": {
-                "length": 1
-              }
-          }
-        `))
-	require.NoError(t, err)
-	response := testutils.ParseResponse(t, resp, new(struct {
-		Properties struct {
-			META interface{} `json:"__meta"`
-		} `json:"properties"`
-	}))
-	assert.Equal(t, `{"schema_version":"2"}`, response.Properties.META)
+
+	testutils.Replay(t, server, `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
+	    "properties": {
+	      "length": 1
+	    }
+	  },
+	  "response": {
+	    "id": "*",
+	    "properties": {
+	      "__meta": "{\"schema_version\":\"2\"}",
+	      "id": "*",
+	      "result": "*",
+	      "length": 1,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "numeric": true,
+	      "special": true,
+	      "upper": true
+	    }
+	  }
+	}
+        `)
 }

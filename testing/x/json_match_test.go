@@ -19,10 +19,10 @@ import (
 )
 
 func TestJsonMatch(t *testing.T) {
-	assertJsonMatchesPattern(t, []byte(`1`), []byte(`1`))
-	assertJsonMatchesPattern(t, []byte(`"*"`), []byte(`1`))
-	assertJsonMatchesPattern(t, []byte(`"*"`), []byte(`2`))
-	assertJsonMatchesPattern(t, []byte(`{"\\": "*"}`), []byte(`"*"`))
-	assertJsonMatchesPattern(t, []byte(`[1, "*", 3]`), []byte(`[1, 2, 3]`))
-	assertJsonMatchesPattern(t, []byte(`{"foo": "*", "bar": 3}`), []byte(`{"foo": 1, "bar": 3}`))
+	assertJSONMatchesPattern(t, []byte(`1`), []byte(`1`))
+	assertJSONMatchesPattern(t, []byte(`"*"`), []byte(`1`))
+	assertJSONMatchesPattern(t, []byte(`"*"`), []byte(`2`))
+	assertJSONMatchesPattern(t, []byte(`{"\\": "*"}`), []byte(`"*"`))
+	assertJSONMatchesPattern(t, []byte(`[1, "*", 3]`), []byte(`[1, 2, 3]`))
+	assertJSONMatchesPattern(t, []byte(`{"foo": "*", "bar": 3}`), []byte(`{"foo": 1, "bar": 3}`))
 }

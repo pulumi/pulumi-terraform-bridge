@@ -32,7 +32,7 @@ import (
 //
 // {"\\": x} matches only JSON documents strictly equal to x. This pattern essentially escapes the sub-tree, for example
 // use {"\\": "*"} to match only the literal string "*".
-func assertJsonMatchesPattern(
+func assertJSONMatchesPattern(
 	t *testing.T,
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
@@ -65,17 +65,17 @@ func assertJsonMatchesPattern(
 		switch pp := p.(type) {
 		case string:
 			if pp != "*" {
-				assertJsonEquals(t, path, p, a)
+				assertJSONEquals(t, path, p, a)
 			}
 		case []interface{}:
 			aa, ok := a.([]interface{})
 			if !ok {
-				t.Errorf("[%s]: expected an array, but got %s", path, prettyJson(t, a))
+				t.Errorf("[%s]: expected an array, but got %s", path, prettyJSON(t, a))
 				return
 			}
 			if len(aa) != len(pp) {
 				t.Errorf("[%s]: expected an array of length %d, but got %s",
-					path, len(pp), prettyJson(t, a))
+					path, len(pp), prettyJSON(t, a))
 			}
 			for i, pv := range pp {
 				av := aa[i]
@@ -83,13 +83,13 @@ func assertJsonMatchesPattern(
 			}
 		case map[string]interface{}:
 			if esc, isEsc := detectEscape(pp); isEsc {
-				assertJsonEquals(t, path, esc, a)
+				assertJSONEquals(t, path, esc, a)
 				return
 			}
 
 			aa, ok := a.(map[string]interface{})
 			if !ok {
-				t.Errorf("[%s]: expected an object, but got %s", path, prettyJson(t, a))
+				t.Errorf("[%s]: expected an object, but got %s", path, prettyJSON(t, a))
 				return
 			}
 
@@ -119,24 +119,24 @@ func assertJsonMatchesPattern(
 				case gotPV && gotAV:
 					match(subPath, pv, av)
 				case !gotPV && gotAV:
-					t.Errorf("[%s] unexpected value %s", subPath, prettyJson(t, av))
+					t.Errorf("[%s] unexpected value %s", subPath, prettyJSON(t, av))
 				case gotPV && !gotAV:
 					t.Errorf("[%s] missing a required value", subPath)
 				}
 			}
 		default:
-			assertJsonEquals(t, path, p, a)
+			assertJSONEquals(t, path, p, a)
 		}
 	}
 
 	match("#", p, a)
 }
 
-func assertJsonEquals(t *testing.T, path string, expected, actual interface{}) {
-	assert.Equalf(t, prettyJson(t, expected), prettyJson(t, actual), "at %s", path)
+func assertJSONEquals(t *testing.T, path string, expected, actual interface{}) {
+	assert.Equalf(t, prettyJSON(t, expected), prettyJSON(t, actual), "at %s", path)
 }
 
-func prettyJson(t *testing.T, msg interface{}) string {
+func prettyJSON(t *testing.T, msg interface{}) string {
 	bytes, err := json.MarshalIndent(msg, "", "  ")
 	assert.NoError(t, err)
 	return string(bytes)

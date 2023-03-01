@@ -15,15 +15,14 @@
 package testing
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	jsonpb "google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/assert"
@@ -113,31 +112,7 @@ func ReplaySequence(t *testing.T, server pulumirpc.ResourceProviderServer, jsonL
 	}
 }
 
-func NewCreateRequest(t *testing.T, encoded string) *pulumirpc.CreateRequest {
-	return newRequest(t, new(pulumirpc.CreateRequest), encoded)
-}
-
-func NewUpdateRequest(t *testing.T, encoded string) *pulumirpc.UpdateRequest {
-	return newRequest(t, new(pulumirpc.UpdateRequest), encoded)
-}
-
-func newRequest[Req proto.Message](t *testing.T, req Req, jsonRequest string) Req {
-	err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(jsonRequest)), req)
-	require.NoError(t, err)
-	return req
-}
-
-func ParseResponse[Resp proto.Message, Parsed any](t *testing.T, resp Resp, parsed Parsed) Parsed {
-	m := jsonpb.Marshaler{}
-	buf := bytes.Buffer{}
-	err := m.Marshal(&buf, resp)
-	require.NoError(t, err)
-	err = json.Unmarshal(buf.Bytes(), parsed)
-	require.NoError(t, err)
-	return parsed
-}
-
-func replay[Req proto.Message, Resp proto.Message](
+func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 	t *testing.T,
 	entry jsonLogEntry,
 	req Req,
@@ -145,20 +120,18 @@ func replay[Req proto.Message, Resp proto.Message](
 ) {
 	ctx := context.Background()
 
-	err := jsonpb.Unmarshal(bytes.NewBuffer([]byte(entry.Request)), req)
+	err := jsonpb.Unmarshal([]byte(entry.Request), req)
 	assert.NoError(t, err)
 
 	resp, err := serve(ctx, req)
 	require.NoError(t, err)
 
-	m := jsonpb.Marshaler{}
-	buf := bytes.Buffer{}
-	err = m.Marshal(&buf, resp)
+	bytes, err := jsonpb.Marshal(resp)
 	assert.NoError(t, err)
 
-	var expected, actual json.RawMessage = entry.Response, buf.Bytes()
+	var expected, actual json.RawMessage = entry.Response, bytes
 
-	assertJsonMatchesPattern(t, expected, actual)
+	assertJSONMatchesPattern(t, expected, actual)
 }
 
 // Replays all the events from traceFile=log.json captured by PULUMI_DEBUG_GPRC=log.json against a given server.
