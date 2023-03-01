@@ -6,7 +6,8 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 )
 
 var awsSSMParameterSchema = &schema.Resource{
@@ -369,6 +370,7 @@ func TestMakeResourceRawConfig(t *testing.T) {
 		schema   *schema.Resource
 		config   map[string]interface{}
 		expected cty.Value
+		skip     bool
 	}{
 		{
 			// Equivalent TF config:
@@ -415,20 +417,20 @@ func TestMakeResourceRawConfig(t *testing.T) {
 			},
 			expected: cty.ObjectVal(map[string]cty.Value{
 				"allowed_logout_urls": cty.NullVal(cty.List(cty.String)),
-				"change_password": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"change_password": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				})),
+				}))),
 				"default_audience":        cty.NullVal(cty.String),
 				"default_directory":       cty.NullVal(cty.String),
 				"default_redirection_uri": cty.NullVal(cty.String),
 				"enabled_locales":         cty.NullVal(cty.List(cty.String)),
-				"error_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"error_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"html":          cty.String,
 					"show_log_link": cty.Bool,
 					"url":           cty.String,
-				})),
-				"flags": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				}))),
+				"flags": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"allow_legacy_delegation_grant_types":    cty.Bool,
 					"allow_legacy_ro_grant_types":            cty.Bool,
 					"allow_legacy_tokeninfo_endpoint":        cty.Bool,
@@ -451,28 +453,28 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					"revoke_refresh_token_grant":             cty.Bool,
 					"universal_login":                        cty.Bool,
 					"use_scope_descriptions_for_consent":     cty.Bool,
-				})),
+				}))),
 				"friendly_name": cty.StringVal("Tenant Name"),
-				"guardian_mfa_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"guardian_mfa_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				})),
+				}))),
 				"id":                    cty.NullVal(cty.String),
 				"idle_session_lifetime": cty.NullVal(cty.Number),
 				"picture_url":           cty.NullVal(cty.String),
 				"sandbox_version":       cty.NullVal(cty.String),
-				"session_cookie": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"session_cookie": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"mode": cty.String,
-				})),
+				}))),
 				"session_lifetime": cty.NullVal(cty.Number),
 				"support_email":    cty.NullVal(cty.String),
 				"support_url":      cty.NullVal(cty.String),
-				"universal_login": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"universal_login": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"colors": cty.List(cty.Object(map[string]cty.Type{
 						"page_background": cty.String,
 						"primary":         cty.String,
 					})),
-				})),
+				}))),
 			}),
 		},
 		{
@@ -514,19 +516,19 @@ func TestMakeResourceRawConfig(t *testing.T) {
 			},
 			expected: cty.ObjectVal(map[string]cty.Value{
 				"allowed_logout_urls": cty.NullVal(cty.List(cty.String)),
-				"change_password": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"change_password": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				})),
+				}))),
 				"default_audience":        cty.NullVal(cty.String),
 				"default_directory":       cty.NullVal(cty.String),
 				"default_redirection_uri": cty.NullVal(cty.String),
 				"enabled_locales":         cty.NullVal(cty.List(cty.String)),
-				"error_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"error_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"html":          cty.String,
 					"show_log_link": cty.Bool,
 					"url":           cty.String,
-				})),
+				}))),
 				"flags": cty.ListVal([]cty.Value{
 					cty.ObjectVal(map[string]cty.Value{
 						"allow_legacy_delegation_grant_types":    cty.NullVal(cty.Bool),
@@ -554,17 +556,17 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					}),
 				}),
 				"friendly_name": cty.StringVal("Tenant Name"),
-				"guardian_mfa_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"guardian_mfa_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				})),
+				}))),
 				"id":                    cty.NullVal(cty.String),
 				"idle_session_lifetime": cty.NullVal(cty.Number),
 				"picture_url":           cty.NullVal(cty.String),
 				"sandbox_version":       cty.NullVal(cty.String),
-				"session_cookie": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"session_cookie": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
 					"mode": cty.String,
-				})),
+				}))),
 				"session_lifetime": cty.NullVal(cty.Number),
 				"support_email":    cty.NullVal(cty.String),
 				"support_url":      cty.NullVal(cty.String),
@@ -580,15 +582,59 @@ func TestMakeResourceRawConfig(t *testing.T) {
 				}),
 			}),
 		},
+		{
+			name:   "Regress an issue with set values being parsed as tuples",
+			schema: testprovider.ProviderV2().ResourcesMap["example_resource"],
+			config: (func() map[string]interface{} {
+				data := map[string]interface{}{
+					"string_property_value": "foo",
+					"set_property_value":    []interface{}{"e1", "e2"},
+				}
+				return data
+			})(),
+			expected: cty.ObjectVal(map[string]cty.Value{
+				"string_property_value": cty.StringVal("foo"),
+				"set_property_value": cty.SetVal([]cty.Value{
+					cty.StringVal("e1"),
+					cty.StringVal("e2"),
+				}),
+			}),
+		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			if c.skip {
+				t.Skip()
+			}
+
 			resourceConfig := &terraform.ResourceConfig{Raw: c.config}
 			config := makeResourceRawConfig(resourceConfig, c.schema)
-			if !assert.True(t, config.RawEquals(c.expected)) {
-				t.Log(config.GoString())
-				t.Log(c.expected.GoString())
+
+			actualMap := config.AsValueMap()
+			expectedMap := c.expected.AsValueMap()
+
+			keys := map[string]bool{}
+
+			for k := range actualMap {
+				keys[k] = true
+			}
+
+			for k := range expectedMap {
+				keys[k] = true
+			}
+
+			for k := range keys {
+				ev, gotEv := expectedMap[k]
+				av, gotAv := actualMap[k]
+				switch {
+				case gotAv && !gotEv && !av.IsNull(): // tolerate Null to avoid spelling it out in expected
+					t.Errorf("Key %q has an unexpected entry %v", k, av.GoString())
+				case !gotAv && gotEv:
+					t.Errorf("Key %q is missing an entry, expecting %v", k, av.GoString())
+				case gotAv && gotEv && !av.RawEquals(ev):
+					t.Errorf("Key %q expected to have a value %v but got %v", k, ev.GoString(), av.GoString())
+				}
 			}
 		})
 	}
