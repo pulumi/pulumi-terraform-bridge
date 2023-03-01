@@ -154,15 +154,9 @@ func ReplayTraceFile(t *testing.T, server pulumirpc.ResourceProviderServer, trac
 		}
 		// TODO support replaying all these method calls.
 		switch entry.Method {
-		case "/pulumirpc.ResourceProvider/Configure":
-			continue
-		case "/pulumirpc.ResourceProvider/CheckConfigure":
+		case "/pulumirpc.ResourceProvider/StreamInvoke":
 			continue
 		case "/pulumirpc.ResourceProvider/GetPluginInfo":
-			continue
-		case "/pulumirpc.ResourceProvider/DiffConfig":
-			continue
-		case "/pulumirpc.ResourceProvider/CheckConfig":
 			continue
 		default:
 			entryBytes, err := json.Marshal(entry)
