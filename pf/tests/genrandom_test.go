@@ -17,8 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
 
 // These tests replay gRPC logs from a well-behaved test program in testdatagen/genrandom to verify

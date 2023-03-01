@@ -18,8 +18,8 @@ import (
 	"os"
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
 
 // These tests replay Update gRPC logs to get some unit test coverage for Update.

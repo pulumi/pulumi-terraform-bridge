@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
