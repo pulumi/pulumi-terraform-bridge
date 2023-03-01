@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,36 +35,67 @@ import (
 // Replays a provider operation log captured by PULUMI_DEBUG_GPRC=log.json against a server and asserts that the
 // response matches the one from the log.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
+	ctx := context.Background()
 	var entry jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entry)
 	assert.NoError(t, err)
 
-	t.Logf(entry.Method)
-
 	switch entry.Method {
-	case "/pulumirpc.ResourceProvider/Check":
-		replay(t, entry, new(pulumirpc.CheckRequest), server.Check)
+
+	case "/pulumirpc.ResourceProvider/GetSchema":
+		replay(t, entry, new(pulumirpc.GetSchemaRequest), server.GetSchema)
+
+	case "/pulumirpc.ResourceProvider/CheckConfig":
+		replay(t, entry, new(pulumirpc.CheckRequest), server.CheckConfig)
+
+	case "/pulumirpc.ResourceProvider/DiffConfig":
+		replay(t, entry, new(pulumirpc.DiffRequest), server.DiffConfig)
 
 	case "/pulumirpc.ResourceProvider/Configure":
 		replay(t, entry, new(pulumirpc.ConfigureRequest), server.Configure)
 
-	case "/pulumirpc.ResourceProvider/Create":
-		replay(t, entry, new(pulumirpc.CreateRequest), server.Create)
+	case "/pulumirpc.ResourceProvider/Invoke":
+		replay(t, entry, new(pulumirpc.InvokeRequest), server.Invoke)
 
-	case "/pulumirpc.ResourceProvider/Delete":
-		replay(t, entry, new(pulumirpc.DeleteRequest), server.Delete)
+	// TODO StreamInvoke might need some special handling as it is a streaming RPC method.
+
+	case "/pulumirpc.ResourceProvider/Call":
+		replay(t, entry, new(pulumirpc.CallRequest), server.Call)
+
+	case "/pulumirpc.ResourceProvider/Check":
+		replay(t, entry, new(pulumirpc.CheckRequest), server.Check)
 
 	case "/pulumirpc.ResourceProvider/Diff":
 		replay(t, entry, new(pulumirpc.DiffRequest), server.Diff)
 
-	case "/pulumirpc.ResourceProvider/Invoke":
-		replay(t, entry, new(pulumirpc.InvokeRequest), server.Invoke)
+	case "/pulumirpc.ResourceProvider/Create":
+		replay(t, entry, new(pulumirpc.CreateRequest), server.Create)
 
 	case "/pulumirpc.ResourceProvider/Read":
 		replay(t, entry, new(pulumirpc.ReadRequest), server.Read)
 
 	case "/pulumirpc.ResourceProvider/Update":
 		replay(t, entry, new(pulumirpc.UpdateRequest), server.Update)
+
+	case "/pulumirpc.ResourceProvider/Delete":
+		replay(t, entry, new(pulumirpc.DeleteRequest), server.Delete)
+
+	case "/pulumirpc.ResourceProvider/Construct":
+		replay(t, entry, new(pulumirpc.ConstructRequest), server.Construct)
+
+	case "/pulumirpc.ResourceProvider/Cancel":
+		_, err := server.Cancel(ctx, &emptypb.Empty{})
+		assert.NoError(t, err)
+
+	// TODO GetPluginInfo is a bit odd in that it has an Empty request, need to generealize replay() function.
+	//
+	// rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+
+	case "/pulumirpc.ResourceProvider/Attach":
+		replay(t, entry, new(pulumirpc.PluginAttach), server.Attach)
+
+	case "/pulumirpc.ResourceProvider/GetMapping":
+		replay(t, entry, new(pulumirpc.GetMappingRequest), server.GetMapping)
 
 	default:
 		t.Errorf("Unknown method: %s", entry.Method)
@@ -125,7 +157,8 @@ func replay[Req proto.Message, Resp proto.Message](
 	assert.NoError(t, err)
 
 	var expected, actual json.RawMessage = entry.Response, buf.Bytes()
-	assert.Equal(t, pretty(t, expected), pretty(t, actual))
+
+	assertJsonMatchesPattern(t, expected, actual)
 }
 
 // Replays all the events from traceFile=log.json captured by PULUMI_DEBUG_GPRC=log.json against a given server.
@@ -172,11 +205,4 @@ type jsonLogEntry struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
-}
-
-func pretty(t *testing.T, raw json.RawMessage) string {
-	buf := bytes.Buffer{}
-	err := json.Indent(&buf, []byte(raw), "", "  ")
-	assert.NoError(t, err)
-	return buf.String()
 }
