@@ -297,7 +297,6 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestIgnoreChangesV2(t *testing.T) {
-	t.Skip()
 	provider := &Provider{
 		tf:     shimv2.NewProvider(testTFProviderV2),
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -437,7 +436,6 @@ func TestProviderPreview(t *testing.T) {
 }
 
 func TestProviderPreviewV2(t *testing.T) {
-	t.Skip()
 	provider := &Provider{
 		tf:     shimv2.NewProvider(testTFProviderV2),
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),

@@ -16,6 +16,7 @@ package sdkv2
 
 import (
 	"context"
+	"fmt"
 
 	hcty "github.com/hashicorp/go-cty/cty"
 	hctyjson "github.com/hashicorp/go-cty/cty/json"
@@ -36,31 +37,38 @@ func simpleDiff(
 	rawConfigVal hcty.Value,
 	meta interface{},
 ) (*terraform.InstanceDiff, error) {
-	b, err := configschemaBlock(res)
-	if err != nil {
-		return nil, err
-	}
 
 	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
 	if err != nil {
 		return nil, err
 	}
 
-	proposedNewStateVal, err := proposedNew(b, priorStateVal, rawConfigVal)
+	proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf(" ==== simpleDiff ========\n\n")
+	fmt.Printf("priorStateVal.Type() = %v\n\n", priorStateVal.Type().GoString())
+	fmt.Printf("rawConfigVal.Type()  = %v\n\n", rawConfigVal.Type().GoString())
+	fmt.Printf("priorStateVal = %v\n\n", priorStateVal.GoString())
+	fmt.Printf("rawConfigVal = %v\n\n", rawConfigVal.GoString())
+	fmt.Printf("proposesedNewStateVal = %v\n\n", proposedNewStateVal.GoString())
+	fmt.Printf(" ==== end simpleDiff ====\n\n")
 
 	config := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
 	return res.SimpleDiff(ctx, s, config, meta)
 }
 
-func proposedNew(schema *configschema.Block, prior, config hcty.Value) (hcty.Value, error) {
+func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
+	schema, err := configschemaBlock(res)
+	if err != nil {
+		return hcty.False, err
+	}
 	priorC, err := hcty2cty(prior)
 	if err != nil {
 		return hcty.False, err
 	}
-	configC, err := hcty2cty(prior)
+	configC, err := hcty2cty(config)
 	if err != nil {
 		return hcty.False, err
 	}
