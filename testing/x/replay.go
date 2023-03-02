@@ -83,6 +83,8 @@ import (
 // actual resource provider will side-effect. For example, replaying Create calls against pulumi-aws provider may try to
 // create resorces in AWS. This is not an issue with side-effect-free providers such as pulumi-random, or for methods
 // that do not involve cloud interaction such as Diff.
+//
+// Replay does not assume that the provider is a bridged provider and can be generally useful.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
 	ctx := context.Background()
 	var entry jsonLogEntry
