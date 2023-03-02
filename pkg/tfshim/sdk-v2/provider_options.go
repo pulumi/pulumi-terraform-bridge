@@ -37,3 +37,15 @@ func WithDiffStrategy(s DiffStrategy) providerOption {
 		return opts, nil
 	}
 }
+
+func getProviderOptions(opts []providerOption) (providerOptions, error) {
+	res := providerOptions{}
+	for _, o := range opts {
+		var err error
+		res, err = o(res)
+		if err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
