@@ -46,7 +46,7 @@ func TestGenRandom(t *testing.T) {
 		t.Run(trace, func(t *testing.T) {
 			p := testprovider.RandomProvider()
 			server := newProviderServer(t, p)
-			testutils.ReplayTraceFile(t, server, trace)
+			testutils.ReplayFile(t, server, trace)
 		})
 	}
 }

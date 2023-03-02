@@ -35,5 +35,5 @@ func TestGenUpdates(t *testing.T) {
 	trace := "testdata/updateprogram.json"
 
 	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
-	testutils.ReplayTraceFile(t, server, trace)
+	testutils.ReplayFile(t, server, trace)
 }
