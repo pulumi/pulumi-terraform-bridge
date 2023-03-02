@@ -176,6 +176,68 @@ func TestTokensInferredModules(t *testing.T) {
 		opts            *InferredModulesOpts
 	}{
 		{
+			name: "oci-example",
+			// Motivating example and explanation:
+			//
+			// The algorithm only has the list of token names to work off
+			// of. It doesn't know what modules should exist, so it needs to
+			// figure out.
+			//
+			// Tokens can be cleanly divided into segments at '_'
+			// boundaries. However, its unclear how many segments make up the
+			// module, and how many segments make up the name.
+			//
+			// Giving a concrete example, the algorithm needs to figure out
+			// what Pulumi token to give the Terraform token
+			// oci_apm_apm_domain:
+			//
+			//   Dividing into segments, the algorithm has module [apm apm
+			//   domain] and name [], written [apm apm domain]:[].
+			//
+			//   It starts by considering all token segments as part of the
+			//   module name. Examining the module [apm apm domain], the
+			//   algorithm notices that there are not enough objects in the
+			//   [apm apm domain] module to satisfy MinimumModuleSize. It then
+			//   downshifts the perspective token to [apm apm]:[domain].
+			//
+			//   The algorithm will process all tokens with modules that start
+			//   with [apm apm $NEXT] for all $NEXT before it reconsiders the
+			//   [apm apm] module.
+			//
+			//   Next iteration, the algorithm considers [apm
+			//   apm]:[domain]. Because the [apm apm] module has only 1
+			//   member, the algorithm downshifs [apm apm]:[domain] to
+			//   [apm]:[apm domain].
+			//
+			//   Next iteration, the algorithm sees 2 different tokens within
+			//   the [apm] module: [apm]:[apm domain] and [apm]:[sub
+			//   domain]. Since 2 >= MinimumModuleSize, the algorithm
+			//   finalizes both tokens into apm:ApmDomain and apm:SubDomain
+			//   respectively.
+			//
+			//
+			// The process is unstable for insertion: if the user added
+			// "oci_apm_apm_thingy" resource, then there'd be two entries and
+			// it might decide oci_apm_apm is now a module.
+			resourceMapping: map[string]string{
+				"oci_adm_knowledge_base": "index:AdmKnowledgeBase",
+				"oci_apm_apm_domain":     "apm:ApmDomain",
+				"oci_apm_sub_domain":     "apm:SubDomain",
+
+				"oci_apm_config_config": "apmConfig:Config",
+				"oci_apm_config_user":   "apmConfig:User",
+
+				"oci_apm_synthetics_monitor":                 "apmSynthetics:Monitor",
+				"oci_apm_synthetics_script":                  "apmSynthetics:Script",
+				"oci_apm_synthetics_dedicated_vantage_point": "apmSynthetics:DedicatedVantagePoint",
+			},
+			opts: &InferredModulesOpts{
+				TfPkgPrefix:          "oci_",
+				MinimumModuleSize:    2,
+				MimimumSubmoduleSize: 2,
+			},
+		},
+		{
 			name: "non-overlapping mapping",
 			resourceMapping: map[string]string{
 				"pkg_foo_bar":             "index:FooBar",
@@ -195,7 +257,10 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_hi":            "index:Hi",
 			},
 			opts: &InferredModulesOpts{
-				MinimumModuleSize: 2,
+				// We set MinimumModuleSize down to 3 to so we only need
+				// tree entries prefixed with `pkg_hello` to have a hello
+				// module created.
+				MinimumModuleSize: 3,
 			},
 		},
 		{
@@ -213,9 +278,15 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_not_r2": "mod:NotR2",
 			},
 			opts: &InferredModulesOpts{
-				TfPkgPrefix:          "pkg_",
-				MinimumModuleSize:    3,
-				MimimumSubmoduleSize: 4,
+				TfPkgPrefix: "pkg_",
+				// We set the minimum module size to 4. This ensures that
+				// `pkg_mod` is picked up as a module.
+				MinimumModuleSize: 4,
+				// We set the MimimumSubmoduleSize to 3, ensuring that
+				// `pkg_mod_sub_*` is is given its own `modSub` module (4
+				// elements), while `pkg_mod_not_*` is put in the `mod`
+				// module, since `pkg_mod_not` only has 2 elements.
+				MimimumSubmoduleSize: 3,
 			},
 		},
 		{
