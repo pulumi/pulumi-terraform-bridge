@@ -49,11 +49,15 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 }
 
 type v2Provider struct {
-	tf *schema.Provider
+	tf   *schema.Provider
+	opts []providerOption
 }
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
-	return v2Provider{p}
+	return v2Provider{
+		tf:   p,
+		opts: opts,
+	}
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {
