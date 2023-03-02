@@ -609,7 +609,7 @@ func TestMakeResourceRawConfig(t *testing.T) {
 			}
 
 			resourceConfig := &terraform.ResourceConfig{Raw: c.config}
-			config := makeResourceRawConfig(resourceConfig, c.schema)
+			config := makeResourceRawConfig(PlanState, resourceConfig, c.schema)
 
 			actualMap := config.AsValueMap()
 			expectedMap := c.expected.AsValueMap()

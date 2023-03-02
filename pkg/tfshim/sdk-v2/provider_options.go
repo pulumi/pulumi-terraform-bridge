@@ -20,7 +20,7 @@ type providerOptions struct {
 
 type providerOption func(providerOptions) (providerOptions, error)
 
-func WithDiffStrategy(s DiffStrategy) providerOption {
+func WithDiffStrategy(s DiffStrategy) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 
 		diffStrategyFromEnv, gotDiffStrategyFromEnv, err := ParseDiffStrategyFromEnv()

@@ -30,22 +30,28 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
+
+	opts, err := getProviderOptions(p.opts)
+	if err != nil {
+		return nil, err
+	}
+
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
 	config, state := configFromShim(c), stateFromShim(s)
-	rawConfig := makeResourceRawConfig(config, r)
+	rawConfig := makeResourceRawConfig(opts.diffStrategy, config, r)
 	if state != nil {
 		state.RawConfig = rawConfig
 	}
 
-	state, err := upgradeResourceState(p.tf, r, state)
+	state, err = upgradeResourceState(p.tf, r, state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	diff, err := p.simpleDiff(r, state, config, rawConfig, p.tf.Meta())
+	diff, err := p.simpleDiff(opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
 	if diff != nil {
 		diff.RawConfig = rawConfig
 	}
@@ -53,6 +59,7 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 }
 
 func (p v2Provider) simpleDiff(
+	diffStrat DiffStrategy,
 	res *schema.Resource,
 	s *terraform.InstanceState,
 	c *terraform.ResourceConfig,
@@ -61,35 +68,17 @@ func (p v2Provider) simpleDiff(
 ) (*terraform.InstanceDiff, error) {
 	ctx := context.TODO()
 
-	opts, err := getProviderOptions(p.opts)
-	if err != nil {
-		return nil, err
-	}
-
-	switch opts.diffStrategy {
+	switch diffStrat {
 	case ClassicDiff:
 		return res.SimpleDiff(ctx, s, c, meta)
-	case PlanState, TryPlanState:
-		priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
-		if err != nil {
-			return nil, err
-		}
-		proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
-		if err != nil {
-			return nil, err
-		}
-		config := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-
-		if opts.diffStrategy == PlanState {
-			return res.SimpleDiff(ctx, s, config, meta)
-		}
-
-		// Otherwise diffStrategy = TryPlanState needs to try both and compare
+	case PlanState:
+		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
+	case TryPlanState:
 		classicResult, err := res.SimpleDiff(ctx, s, c, meta)
 		if err != nil {
 			return nil, err
 		}
-		planStateResult, err := res.SimpleDiff(ctx, s, config, meta)
+		planStateResult, err := simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
 		if err != nil {
 			glog.Errorf("Ignoring PlanState DiffStrategy that failed with an unexpected error. "+
 				"You can set the environment variable %s to %q to avoid this message. "+
@@ -121,6 +110,25 @@ func (p v2Provider) simpleDiff(
 	default:
 		return res.SimpleDiff(ctx, s, c, meta)
 	}
+}
+
+func simpleDiffViaPlanState(
+	ctx context.Context,
+	res *schema.Resource,
+	s *terraform.InstanceState,
+	rawConfigVal hcty.Value,
+	meta interface{},
+) (*terraform.InstanceDiff, error) {
+	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+	if err != nil {
+		return nil, err
+	}
+	proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
+	if err != nil {
+		return nil, err
+	}
+	planned := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
+	return res.SimpleDiff(ctx, s, planned, meta)
 }
 
 func showDiffChangeType(b byte) string {
