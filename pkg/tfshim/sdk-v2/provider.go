@@ -52,7 +52,7 @@ type v2Provider struct {
 	tf *schema.Provider
 }
 
-func NewProvider(p *schema.Provider) shim.Provider {
+func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	return v2Provider{p}
 }
 
