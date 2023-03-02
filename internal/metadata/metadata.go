@@ -41,10 +41,20 @@ func (d *Data) Marshal() []byte {
 		d = &Data{m: make(map[string]json.RawMessage)}
 	}
 	bytes, err := json.MarshalIndent(d.m, "", "    ")
+	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
+	// it is asked to serialize an unmarshalable type (complex, function or channel)
+	// or a cyclic data structure. Because `string` and `json.RawMessage` are
+	// trivially marshallable and cannot contain cycles, all values of `d.m` can be
+	// marshaled without error.
+	//
+	// See https://pkg.go.dev/encoding/json#Marshal for details.
 	contract.AssertNoErrorf(err, "internal: failed to marshal metadata")
 	return bytes
 }
 
+// Set a piece of metadata to a value.
+//
+// Set errors only if value fails to serialize.
 func Set(d *Data, key string, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -72,6 +82,13 @@ func Clone(data *Data) *Data {
 	for k, v := range data.m {
 		dst := make(json.RawMessage, len(v))
 		n := copy(dst, v)
+		// According to the documentation for `copy`:
+		//
+		//   Copy returns the number of elements copied, which will be the minimum
+		//   of len(src) and len(dst).
+		//
+		// Since `len(src)` is `len(dst)`, and `copy` cannot copy more bytes the
+		// its source, we know that `n == len(v)`.
 		contract.Assertf(n == len(v), "failed to perform full copy")
 		m[k] = dst
 	}

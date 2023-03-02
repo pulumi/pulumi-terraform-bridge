@@ -1800,6 +1800,9 @@ func ignoreMappingError(s []string, str string) bool {
 
 // Add a file to be emitted next to the schema.json only when the schema is itself
 // emitted.
+//
+// `panic`s if called with a `path` that conflicts with an existing file, including
+// `schema.json`.
 func AdditionalSchemaFile(path string, bytes []byte) {
 	hookMutex.Lock()
 	defer hookMutex.Unlock()
