@@ -15,13 +15,9 @@
 package sdkv2
 
 import (
-	"context"
-	"fmt"
-
 	hcty "github.com/hashicorp/go-cty/cty"
 	hctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
@@ -29,35 +25,28 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/plans/objchange"
 )
 
-func simpleDiff(
-	ctx context.Context,
-	res *schema.Resource,
-	s *terraform.InstanceState,
-	c *terraform.ResourceConfig,
-	rawConfigVal hcty.Value,
-	meta interface{},
-) (*terraform.InstanceDiff, error) {
+// func simpleDiff(
+// 	ctx context.Context,
+// 	res *schema.Resource,
+// 	s *terraform.InstanceState,
+// 	c *terraform.ResourceConfig,
+// 	rawConfigVal hcty.Value,
+// 	meta interface{},
+// ) (*terraform.InstanceDiff, error) {
 
-	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
-	if err != nil {
-		return nil, err
-	}
+// 	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf(" ==== simpleDiff ========\n\n")
-	fmt.Printf("priorStateVal.Type() = %v\n\n", priorStateVal.Type().GoString())
-	fmt.Printf("rawConfigVal.Type()  = %v\n\n", rawConfigVal.Type().GoString())
-	fmt.Printf("priorStateVal = %v\n\n", priorStateVal.GoString())
-	fmt.Printf("rawConfigVal = %v\n\n", rawConfigVal.GoString())
-	fmt.Printf("proposesedNewStateVal = %v\n\n", proposedNewStateVal.GoString())
-	fmt.Printf(" ==== end simpleDiff ====\n\n")
+// 	proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	config := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-	return res.SimpleDiff(ctx, s, config, meta)
-}
+// 	config := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
+// 	return res.SimpleDiff(ctx, s, config, meta)
+// }
 
 func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
 	schema, err := configschemaBlock(res)
