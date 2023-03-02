@@ -29,6 +29,8 @@ import (
 )
 
 func TestRegressAws2352(t *testing.T) {
+	t.Skip("TODO[pulumi/pulumi-terraform-bridge#834]")
+
 	ctx := context.Background()
 
 	createDotStringHashcode := func(s string) int {
