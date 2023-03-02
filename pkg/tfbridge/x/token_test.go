@@ -169,6 +169,112 @@ func TestIgnored(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensInferredModules(t *testing.T) {
+	tests := []struct {
+		name            string
+		resourceMapping map[string]string
+		opts            *InferredModulesOpts
+	}{
+		{
+			name: "non-overlapping mapping",
+			resourceMapping: map[string]string{
+				"pkg_foo_bar":             "index:FooBar",
+				"pkg_fizz_buzz":           "index:FizzBuzz",
+				"pkg_resource":            "index:Resource",
+				"pkg_very_long_name":      "index:VeryLongName",
+				"pkg_very_very_long_name": "index:VeryVeryLongName",
+			},
+		},
+		{
+			name: "detect a simple module",
+			resourceMapping: map[string]string{
+				"pkg_hello_world":   "hello:World",
+				"pkg_hello_pulumi":  "hello:Pulumi",
+				"pkg_hello":         "hello:Hello",
+				"pkg_goodbye_folks": "index:GoodbyeFolks",
+				"pkg_hi":            "index:Hi",
+			},
+			opts: &InferredModulesOpts{
+				MinimumModuleSize: 2,
+			},
+		},
+		{
+			name: "nested modules",
+			resourceMapping: map[string]string{
+				"pkg_mod_r1":     "mod:R1",
+				"pkg_mod_r2":     "mod:R2",
+				"pkg_mod_r3":     "mod:R3",
+				"pkg_mod_r4":     "mod:R4",
+				"pkg_mod_sub_r1": "modSub:R1",
+				"pkg_mod_sub_r2": "modSub:R2",
+				"pkg_mod_sub_r3": "modSub:R3",
+				"pkg_mod_sub_r4": "modSub:R4",
+				"pkg_mod_not_r1": "mod:NotR1",
+				"pkg_mod_not_r2": "mod:NotR2",
+			},
+			opts: &InferredModulesOpts{
+				TfPkgPrefix:          "pkg_",
+				MinimumModuleSize:    3,
+				MimimumSubmoduleSize: 4,
+			},
+		},
+		{
+			name: "nested-collapse",
+			resourceMapping: map[string]string{
+				"pkg_mod_r1":     "mod:R1",
+				"pkg_mod_r2":     "mod:R2",
+				"pkg_mod_sub_r1": "mod:SubR1",
+				"pkg_mod_sub_r2": "mod:SubR2",
+			},
+			opts: &InferredModulesOpts{
+				TfPkgPrefix:          "pkg_",
+				MinimumModuleSize:    4,
+				MimimumSubmoduleSize: 3,
+			},
+		},
+		{
+			name: "module and item",
+			resourceMapping: map[string]string{
+				"pkg_mod":    "mod:Mod",
+				"pkg_mod_r1": "mod:R1",
+				"pkg_mod_r2": "mod:R2",
+				"pkg_r1":     "index:R1",
+			},
+			opts: &InferredModulesOpts{
+				MinimumModuleSize: 3,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			resources := map[string]struct{}{}
+			for k := range tt.resourceMapping {
+				resources[k] = struct{}{}
+			}
+			info := &tfbridge.ProviderInfo{
+				P: Provider{
+					resources: resources,
+				},
+			}
+
+			strategy, err := TokensInferredModules(info,
+				func(module, name string) (string, error) { return module + ":" + name, nil },
+				tt.opts)
+			require.NoError(t, err)
+			err = ComputeDefaults(info, strategy)
+			require.NoError(t, err)
+
+			mapping := map[string]string{}
+			for k, v := range info.Resources {
+				mapping[k] = v.Tok.String()
+			}
+			assert.Equal(t, tt.resourceMapping, mapping)
+		})
+	}
+}
+
 type Provider struct {
 	util.UnimplementedProvider
 
