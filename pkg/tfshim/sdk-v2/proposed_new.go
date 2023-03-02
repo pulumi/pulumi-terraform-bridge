@@ -25,29 +25,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/plans/objchange"
 )
 
-// func simpleDiff(
-// 	ctx context.Context,
-// 	res *schema.Resource,
-// 	s *terraform.InstanceState,
-// 	c *terraform.ResourceConfig,
-// 	rawConfigVal hcty.Value,
-// 	meta interface{},
-// ) (*terraform.InstanceDiff, error) {
-
-// 	priorStateVal, err := s.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	proposedNewStateVal, err := proposedNew(res, priorStateVal, rawConfigVal)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	config := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-// 	return res.SimpleDiff(ctx, s, config, meta)
-// }
-
 func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
 	schema, err := configschemaBlock(res)
 	if err != nil {
