@@ -32,7 +32,7 @@ import (
 //
 // {"\\": x} matches only JSON documents strictly equal to x. This pattern essentially escapes the sub-tree, for example
 // use {"\\": "*"} to match only the literal string "*".
-func assertJSONMatchesPattern(
+func AssertJSONMatchesPattern(
 	t *testing.T,
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,

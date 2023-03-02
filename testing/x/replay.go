@@ -31,8 +31,58 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Replays a provider operation log captured by PULUMI_DEBUG_GPRC=log.json against a server and asserts that the
-// response matches the one from the log.
+// Replay executes a request from a provider operation log against an in-memory resource provider server and asserts
+// that the server's response matches the logged response.
+//
+// The jsonLog parameter is a verbatim JSON string such as this one:
+//
+//	{
+//	  "method": "/pulumirpc.ResourceProvider/Create",
+//	  "request": {
+//	    "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
+//	    "properties": {
+//	      "length": 1
+//	    }
+//	  },
+//	  "response": {
+//	    "id": "*",
+//	    "properties": {
+//	      "__meta": "{\"schema_version\":\"2\"}",
+//	      "id": "*",
+//	      "result": "*",
+//	      "length": 1,
+//	      "lower": true,
+//	      "minLower": 0,
+//	      "minNumeric": 0,
+//	      "minSpecial": 0,
+//	      "minUpper": 0,
+//	      "number": true,
+//	      "numeric": true,
+//	      "special": true,
+//	      "upper": true
+//	    }
+//	  }
+//	}
+//
+// The format is the JSON encoding of the gRPC protocol used by Pulumi ResourceProvider service.
+//
+//	https://github.com/pulumi/pulumi/blob/master/proto/pulumi/provider.proto#L27
+//
+// Conveniently, the format matches what Pulumi CLI emits when invoked with PULUMI_DEBUG_GPRC:
+//
+//	PULUMI_DEBUG_GPRC=$PWD/log.json pulumi up
+//
+// This allows quickly turning fragments of the program execution trace into test cases.
+//
+// Instead of direct JSON equality, Replay uses AssertJSONMatchesPattern to compare the actual and expected responses.
+// This allows patterns such as "*". In the above example, the random provider will generate new strings with every
+// invocation and they would fail a strict equality check. Using "*" allows the test to succeed while ignoring the
+// randomness.
+//
+// Beware possible side-effects: although Replay executes in-memory without actual gRPC sockets, replaying against an
+// actual resource provider will side-effect. For example, replaying Create calls against pulumi-aws provider may try to
+// create resorces in AWS. This is not an issue with side-effect-free providers such as pulumi-random, or for methods
+// that do not involve cloud interaction such as Diff.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
 	ctx := context.Background()
 	var entry jsonLogEntry
@@ -101,6 +151,8 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	}
 }
 
+// ReplaySequence is exactly like Replay, but expects jsonLog to encode a sequence of events `[e1, e2, e3]`, and will
+// call Replay on each of those events in the given order.
 func ReplaySequence(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
 	var entries []jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entries)
@@ -131,11 +183,18 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 
 	var expected, actual json.RawMessage = entry.Response, bytes
 
-	assertJSONMatchesPattern(t, expected, actual)
+	AssertJSONMatchesPattern(t, expected, actual)
 }
 
-// Replays all the events from traceFile=log.json captured by PULUMI_DEBUG_GPRC=log.json against a given server.
-func ReplayTraceFile(t *testing.T, server pulumirpc.ResourceProviderServer, traceFile string) {
+// ReplayFile executes ReplaySequence on all pulumirpc.ResourceProvider events found in the file produced with
+// PULUMI_DEBUG_GPRC. For example:
+//
+//	PULUMI_DEBUG_GPRC=testdata/log.json pulumi up
+//
+// This produces the testdata/log.json file, which can then be used for Replay-style testing:
+//
+//	ReplayFile(t, server, "testdata/log.json")
+func ReplayFile(t *testing.T, server pulumirpc.ResourceProviderServer, traceFile string) {
 	bytes, err := os.ReadFile(traceFile)
 	require.NoError(t, err)
 
