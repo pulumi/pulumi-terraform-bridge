@@ -195,7 +195,10 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_hi":            "index:Hi",
 			},
 			opts: &InferredModulesOpts{
-				MinimumModuleSize: 2,
+				// We set MinimumModuleSize down to 3 to so we only need
+				// tree entries prefixed with `pkg_hello` to have a hello
+				// module created.
+				MinimumModuleSize: 3,
 			},
 		},
 		{
@@ -213,9 +216,15 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_not_r2": "mod:NotR2",
 			},
 			opts: &InferredModulesOpts{
-				TfPkgPrefix:          "pkg_",
-				MinimumModuleSize:    3,
-				MimimumSubmoduleSize: 4,
+				TfPkgPrefix: "pkg_",
+				// We set the minimum module size to 4. This ensures that
+				// `pkg_mod` is picked up as a module.
+				MinimumModuleSize: 4,
+				// We set the MimimumSubmoduleSize to 3, ensuring that
+				// `pkg_mod_sub_*` is is given its own `modSub` module (4
+				// elements), while `pkg_mod_not_*` is put in the `mod`
+				// module, since `pkg_mod_not` only has 2 elements.
+				MimimumSubmoduleSize: 3,
 			},
 		},
 		{
