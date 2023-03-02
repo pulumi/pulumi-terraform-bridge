@@ -65,6 +65,7 @@ func (p v2Provider) simpleDiff(
 	if err != nil {
 		return nil, err
 	}
+
 	switch opts.diffStrategy {
 	case ClassicDiff:
 		return res.SimpleDiff(ctx, s, c, meta)
@@ -90,8 +91,8 @@ func (p v2Provider) simpleDiff(
 		}
 		planStateResult, err := res.SimpleDiff(ctx, s, config, meta)
 		if err != nil {
-			glog.Warningf("Ignoring PlanState DiffStrategy that failed with an unexpected error. "+
-				"You can set the environment variable %s to %q to avoid this warning. "+
+			glog.Errorf("Ignoring PlanState DiffStrategy that failed with an unexpected error. "+
+				"You can set the environment variable %s to %q to avoid this message. "+
 				"Please report the error details to github.com/pulumi/pulumi-terraform-bridge: %v",
 				diffStrategyEnvVar, ClassicDiff.String(), err)
 			return classicResult, nil
@@ -99,7 +100,7 @@ func (p v2Provider) simpleDiff(
 		if planStateResult.ChangeType() != classicResult.ChangeType() {
 			glog.Warningf("Ignoring PlanState DiffStrategy that returns %q disagreeing "+
 				" with ClassicDiff result %q. "+
-				"You can set the environment variable %s to %q to avoid this warning. "+
+				"You can set the environment variable %s to %q to avoid this message. "+
 				"Please report this warning to github.com/pulumi/pulumi-terraform-bridge",
 				showDiffChangeType(byte(planStateResult.ChangeType())),
 				showDiffChangeType(byte(classicResult.ChangeType())),
@@ -109,7 +110,7 @@ func (p v2Provider) simpleDiff(
 		if planStateResult.RequiresNew() != classicResult.RequiresNew() {
 			glog.Warningf("Ignoring PlanState DiffStrategy that decided RequiresNew()=%v disagreeing "+
 				" with ClassicDiff result RequiresNew()=%v. "+
-				"You can set the environment variable %s to %q to avoid this warning. "+
+				"You can set the environment variable %s to %q to avoid this message. "+
 				"Please report this warning to github.com/pulumi/pulumi-terraform-bridge",
 				planStateResult.RequiresNew(),
 				classicResult.RequiresNew(),
