@@ -23,11 +23,11 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -508,7 +508,9 @@ func Aliasing(artifact metadata.Provider, defaults DefaultStrategy) (DefaultStra
 			r(p)
 		}
 		err := md.Set(artifact, artifactKey, hist)
-		contract.AssertNoError(err)
+		// Set fails only when `hist` is not serializable. Because `hist` is
+		// composed of marshallable, non-cyclic types, this is impossible.
+		contract.AssertNoErrorf(err, "History failed to serialize")
 	}
 
 	return aliasing(hist, defaults, remaps), serialize, nil
@@ -546,7 +548,12 @@ func aliasResources(
 			*remaps = append(*remaps, func(p *b.ProviderInfo) {
 				// re-fetch the resource, to make sure we have the right pointer.
 				computed, ok := p.Resources[tfToken]
-				contract.Assertf(ok, "Resource %s decided but not present", tfToken)
+				if !ok {
+					// The resource to be remapped has been removed
+					// from the resource map. There is nothing to
+					// alias anymore.
+					return
+				}
 
 				var alreadyPresent bool
 				for _, a := range prev.Past {
@@ -568,7 +575,8 @@ func aliasResources(
 							computed.Tok, legacy.Module().Name().String(),
 							computed.Tok.Module().Name().String(), computed)
 					} else {
-						computed.Aliases = append(computed.Aliases, b.AliasInfo{Type: (*string)(&legacy)})
+						computed.Aliases = append(computed.Aliases,
+							b.AliasInfo{Type: (*string)(&legacy)})
 					}
 				}
 			})
@@ -602,7 +610,11 @@ func aliasDataSources(
 			*remaps = append(*remaps, func(p *b.ProviderInfo) {
 				// re-fetch the resource, to make sure we have the right pointer.
 				computed, ok := p.DataSources[tfToken]
-				contract.Assertf(ok, "DataSource %s decided but not present", tfToken)
+				if !ok {
+					// The DataSource to alias has been removed. There
+					// is nothing to alias anymore.
+					return
+				}
 				alias := alias[tokens.ModuleMember]{
 					Name: prev.Current,
 				}
