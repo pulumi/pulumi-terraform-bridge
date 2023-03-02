@@ -17,7 +17,7 @@ package tfbridgetests
 import (
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 )

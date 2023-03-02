@@ -17,8 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
 
 // These tests replay gRPC logs from a well-behaved test program in testdatagen/genrandom to verify
@@ -46,7 +46,7 @@ func TestGenRandom(t *testing.T) {
 		t.Run(trace, func(t *testing.T) {
 			p := testprovider.RandomProvider()
 			server := newProviderServer(t, p)
-			testutils.ReplayTraceFile(t, server, trace)
+			testutils.ReplayFile(t, server, trace)
 		})
 	}
 }
