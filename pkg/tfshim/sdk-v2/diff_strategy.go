@@ -31,8 +31,8 @@ const (
 	// diff, and performs better than ClassicDiff in complicated cases of set-nested blocks.
 	PlanState DiffStrategy = 1
 
-	// This strategy would run both PlanState and ClassicDiff strategies and compre their result, generating a
-	// warning if they mismatch.
+	// This strategy would run both PlanState and ClassicDiff strategies and compare their result, generating a
+	// warning if they mismatch. It always behaves as ClassicDiff execept for the warnings.
 	TryPlanState DiffStrategy = 2
 )
 

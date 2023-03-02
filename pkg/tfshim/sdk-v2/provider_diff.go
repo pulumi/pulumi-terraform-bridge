@@ -106,7 +106,7 @@ func (p v2Provider) simpleDiff(
 				diffStrategyEnvVar, ClassicDiff.String())
 			return classicResult, nil
 		}
-		return planStateResult, nil
+		return classicResult, nil
 	default:
 		return res.SimpleDiff(ctx, s, c, meta)
 	}
