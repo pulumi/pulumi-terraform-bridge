@@ -29,8 +29,6 @@ import (
 )
 
 func TestRegressAws2352(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#834]")
-
 	ctx := context.Background()
 
 	createDotStringHashcode := func(s string) int {
@@ -117,7 +115,7 @@ func TestRegressAws2352(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider)
+	p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
 
 	info := tfbridge.ProviderInfo{
 		P:           p,
@@ -196,10 +194,8 @@ func TestRegressAws2352(t *testing.T) {
 	  },
 	  "response": {
 	    "stables": "*",
-            "diffs": "*",
 	    "changes": "DIFF_NONE",
-	    "hasDetailedDiff": "*",
-            "detailedDiff": "*"
+	    "hasDetailedDiff": "*"
 	  }
 	}`
 	testutils.Replay(t, server, testCase)
