@@ -34,3 +34,14 @@ generate_builtins_test::
 	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi
 	. ./scripts/venv/*/activate && python -m pip install -r ./scripts/requirements.txt
 	. ./scripts/venv/*/activate &&  python ./scripts/generate_builtins.py
+
+
+tidy::
+	cd pf && go mod tidy
+	cd pf/tests && go mod tidy
+	cd pf/tests/internal/randomshim && go mod tidy
+	cd pf/tests/internal/tlsshim && go mod tidy
+	cd pf/tests/testdatagen/genrandom && go mod tidy
+	cd pkg/tests && go mod tidy
+	cd testing && go mod tidy
+	go mod tidy
