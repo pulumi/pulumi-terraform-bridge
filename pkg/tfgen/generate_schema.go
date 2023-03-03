@@ -380,7 +380,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 
 	if javai := g.info.Java; javai != nil {
 		spec.Language["java"] = rawMessage(map[string]interface{}{
-			"basePackage": javai.BasePackage,
+			"basePackage":                     javai.BasePackage,
+			"buildFiles":                      javai.BuildFiles,
+			"gradleNexusPublishPluginVersion": javai.GradleNexusPublishPluginVersion,
 		})
 	}
 

@@ -386,6 +386,15 @@ type CSharpInfo struct {
 
 type JavaInfo struct {
 	BasePackage string // the Base package for the Java SDK
+
+	// If set to "gradle" enables a generation of a basic set of
+	// Gradle build files.
+	BuildFiles string
+
+	// If non-empty and BuildFiles="gradle", enables the use of a
+	// given version of io.github.gradle-nexus.publish-plugin in
+	// the generated Gradle build files.
+	GradleNexusPublishPluginVersion string
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
