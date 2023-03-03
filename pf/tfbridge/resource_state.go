@@ -159,21 +159,22 @@ func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 }
 
 func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
+	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
-		var meta map[string]interface{}
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
 				metaKey, err)
 			return nil, err
 		}
-		meta["schema_version"] = version
-		updatedMeta, err := json.Marshal(meta)
-		if err != nil {
-			return nil, err
-		}
-		c := m.Copy()
-		c[metaKey] = resource.NewStringProperty(string(updatedMeta))
-		return c, nil
+	} else {
+		meta = map[string]interface{}{}
 	}
-	return nil, nil
+	meta["schema_version"] = version
+	updatedMeta, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	c := m.Copy()
+	c[metaKey] = resource.NewStringProperty(string(updatedMeta))
+	return c, nil
 }
