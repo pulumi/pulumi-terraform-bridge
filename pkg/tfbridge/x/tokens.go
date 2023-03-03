@@ -217,7 +217,8 @@ func aliasResources(
 		if err != nil {
 			return nil, err
 		}
-		return aliasResource(hist, res, tfToken, remaps)
+		aliasResource(hist, res, tfToken, remaps)
+		return res, nil
 	}
 }
 
@@ -226,7 +227,7 @@ func aliasResource(
 	computed *b.ResourceInfo,
 	tfToken string,
 	remaps *[]func(*b.ProviderInfo),
-) (*b.ResourceInfo, error) {
+) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
@@ -244,7 +245,6 @@ func aliasResource(
 		})
 
 	}
-	return computed, nil
 }
 
 func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type]) {
