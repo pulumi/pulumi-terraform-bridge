@@ -202,13 +202,16 @@ func TestAliasing(t *testing.T) {
 	}, simple.Resources)
 
 	modules := provider()
+
 	knownModules := TokensKnownModules("pkg_", "",
 		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
-	aliasing, finish, err := Aliasing(metadata, knownModules)
+
+	err = ComputeDefaults(modules, knownModules)
 	require.NoError(t, err)
-	err = ComputeDefaults(modules, aliasing)
+
+	err = AutoAliasing(metadata, modules)
 	require.NoError(t, err)
-	finish(modules)
+
 	hist2 := md.Clone(metadata)
 	ref := func(s string) *string { return &s }
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
@@ -242,7 +245,7 @@ func TestAliasing(t *testing.T) {
 	}, modules.Resources)
 
 	modules2 := provider()
-	aliasing, finish, err = Aliasing(metadata, knownModules)
+	aliasing, finish, err := Aliasing(metadata, knownModules)
 	require.NoError(t, err)
 	err = ComputeDefaults(modules2, aliasing)
 	require.NoError(t, err)
