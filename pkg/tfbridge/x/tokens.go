@@ -208,45 +208,50 @@ func aliasResources(
 			// It's in history, but something has changed. Update the history to reflect
 			// the new reality, then add aliases.
 			*remaps = append(*remaps, func(p *b.ProviderInfo) {
-				// re-fetch the resource, to make sure we have the right pointer.
-				computed, ok := p.Resources[tfToken]
-				if !ok {
-					// The resource to be remapped has been removed
-					// from the resource map. There is nothing to
-					// alias anymore.
-					return
-				}
-
-				var alreadyPresent bool
-				for _, a := range prev.Past {
-					if a.Name == prev.Current {
-						alreadyPresent = true
-						break
-					}
-				}
-				if !alreadyPresent {
-					prev.Past = append(prev.Past, alias[tokens.Type]{
-						Name:      prev.Current,
-						InCodegen: true,
-					})
-				}
-				for _, a := range prev.Past {
-					legacy := a.Name
-					if a.InCodegen {
-						p.RenameResourceWithAlias(tfToken, legacy,
-							computed.Tok, legacy.Module().Name().String(),
-							computed.Tok.Module().Name().String(), computed)
-					} else {
-						computed.Aliases = append(computed.Aliases,
-							b.AliasInfo{Type: (*string)(&legacy)})
-					}
-				}
+				aliasOrRenameResource(p, tfToken, prev)
 			})
 
 		}
 
 		return computed, nil
 	}
+}
+
+func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type]) {
+	// re-fetch the resource, to make sure we have the right pointer.
+	res, ok := p.Resources[tfToken]
+	if !ok {
+		// The resource to be remapped has been removed
+		// from the resource map. There is nothing to
+		// alias anymore.
+		return
+	}
+
+	var alreadyPresent bool
+	for _, a := range hist.Past {
+		if a.Name == hist.Current {
+			alreadyPresent = true
+			break
+		}
+	}
+	if !alreadyPresent {
+		hist.Past = append(hist.Past, alias[tokens.Type]{
+			Name:      hist.Current,
+			InCodegen: true,
+		})
+	}
+	for _, a := range hist.Past {
+		legacy := a.Name
+		if a.InCodegen {
+			p.RenameResourceWithAlias(tfToken, legacy,
+				res.Tok, legacy.Module().Name().String(),
+				res.Tok.Module().Name().String(), res)
+		} else {
+			res.Aliases = append(res.Aliases,
+				b.AliasInfo{Type: (*string)(&legacy)})
+		}
+	}
+
 }
 
 func aliasDataSources(
