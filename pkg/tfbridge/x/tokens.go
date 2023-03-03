@@ -137,12 +137,6 @@ type aliasHistory struct {
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
-// Finish an alias operation.
-//
-// This writes the finished operation to the passed in metadata.Provider, as well as
-// updating the passed ProviderInfo passed to ComputeDefault.
-type FinishAlias = func(*b.ProviderInfo)
-
 func AutoAliasing(providerInfo *b.ProviderInfo, artifact metadata.Provider) error {
 	remaps := &[]func(*b.ProviderInfo){}
 
@@ -174,34 +168,6 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact metadata.Provider) erro
 
 const artifactKey = "auto-aliasing"
 
-// Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
-// changes.
-//
-// artifact is the byte sequence used to store history. The next artifact is returned by
-// calling the returned callback. The returned callback must be called on the provider
-// that utilized the returned strategy, after ComputeDefaults was called.
-//
-// artifact should be considered an opaque blob.
-func Aliasing(artifact metadata.Provider, defaults DefaultStrategy) (DefaultStrategy, FinishAlias, error) {
-	hist, err := getHistory(artifact)
-	if err != nil {
-		return DefaultStrategy{}, nil, err
-	}
-	remaps := &[]func(*b.ProviderInfo){}
-
-	serialize := func(p *b.ProviderInfo) {
-		for _, r := range *remaps {
-			r(p)
-		}
-		err := md.Set(artifact, artifactKey, hist)
-		// Set fails only when `hist` is not serializable. Because `hist` is
-		// composed of marshallable, non-cyclic types, this is impossible.
-		contract.AssertNoErrorf(err, "History failed to serialize")
-	}
-
-	return aliasing(hist, defaults, remaps), serialize, nil
-}
-
 func getHistory(artifact metadata.Provider) (aliasHistory, error) {
 	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
 	if err != nil {
@@ -214,27 +180,6 @@ func getHistory(artifact metadata.Provider) (aliasHistory, error) {
 		}
 	}
 	return hist, nil
-}
-
-func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*b.ProviderInfo)) DefaultStrategy {
-	return DefaultStrategy{
-		Resource:   aliasResources(hist.Resources, defaults.Resource, remaps),
-		DataSource: aliasDataSources(hist.DataSources, defaults.DataSource, remaps),
-	}
-}
-
-func aliasResources(
-	hist map[string]*tokenHistory[tokens.Type],
-	strategy ResourceStrategy, remaps *[]func(*b.ProviderInfo),
-) ResourceStrategy {
-	return func(tfToken string) (*b.ResourceInfo, error) {
-		res, err := strategy(tfToken)
-		if err != nil {
-			return nil, err
-		}
-		aliasResource(hist, res, tfToken, remaps)
-		return res, nil
-	}
 }
 
 func aliasResource(
@@ -297,20 +242,6 @@ func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory
 		}
 	}
 
-}
-
-func aliasDataSources(
-	hist map[string]*tokenHistory[tokens.ModuleMember],
-	strategy DataSourceStrategy, remaps *[]func(*b.ProviderInfo),
-) DataSourceStrategy {
-	return func(tfToken string) (*b.DataSourceInfo, error) {
-		computed, err := strategy(tfToken)
-		if err != nil {
-			return nil, err
-		}
-		aliasDataSource(hist, computed, tfToken, remaps)
-		return computed, nil
-	}
 }
 
 func aliasDataSource(
