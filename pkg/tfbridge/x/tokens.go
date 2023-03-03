@@ -154,6 +154,17 @@ func AutoAliasing(artifact metadata.Provider, providerInfo *b.ProviderInfo) erro
 	for tfToken, computed := range providerInfo.Resources {
 		aliasResource(hist.Resources, computed, tfToken, remaps)
 	}
+
+	for _, r := range *remaps {
+		r(providerInfo)
+	}
+
+	if err := md.Set(artifact, artifactKey, hist); err != nil {
+		// Set fails only when `hist` is not serializable. Because `hist` is
+		// composed of marshallable, non-cyclic types, this is impossible.
+		contract.AssertNoErrorf(err, "History failed to serialize")
+	}
+
 	return nil
 }
 
