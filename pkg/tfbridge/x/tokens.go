@@ -304,39 +304,50 @@ func aliasDataSources(
 		if err != nil {
 			return nil, err
 		}
-
-		prev, hasPrev := hist[tfToken]
-		if !hasPrev {
-			// It's not in the history, so it must be new. Stick it in the history for
-			// next time.
-			hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
-				Current: computed.Tok,
-			}
-		} else if prev.Current != computed.Tok {
-			// It's in history, but something has changed. Update the history to reflect
-			// the new reality, then add aliases.
-			*remaps = append(*remaps, func(p *b.ProviderInfo) {
-				// re-fetch the resource, to make sure we have the right pointer.
-				computed, ok := p.DataSources[tfToken]
-				if !ok {
-					// The DataSource to alias has been removed. There
-					// is nothing to alias anymore.
-					return
-				}
-				alias := alias[tokens.ModuleMember]{
-					Name: prev.Current,
-				}
-				prev.Past = append(prev.Past, alias)
-				for _, a := range prev.Past {
-					legacy := a.Name
-					p.RenameDataSource(tfToken, legacy,
-						computed.Tok, legacy.Module().Name().String(),
-						computed.Tok.Module().Name().String(), computed)
-				}
-			})
-
-		}
-
+		aliasDataSource(hist, computed, tfToken, remaps)
 		return computed, nil
 	}
+}
+
+func aliasDataSource(
+	hist map[string]*tokenHistory[tokens.ModuleMember],
+	computed *b.DataSourceInfo,
+	tfToken string,
+	remaps *[]func(*b.ProviderInfo),
+) {
+	prev, hasPrev := hist[tfToken]
+	if !hasPrev {
+		// It's not in the history, so it must be new. Stick it in the history for
+		// next time.
+		hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
+			Current: computed.Tok,
+		}
+	} else if prev.Current != computed.Tok {
+		aliasOrRenameDataSource(tfToken, remaps, prev)
+	}
+}
+
+func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember]) {
+	// It's in history, but something has changed. Update the history to reflect
+	// the new reality, then add aliases.
+	*remaps = append(*remaps, func(p *b.ProviderInfo) {
+		// re-fetch the resource, to make sure we have the right pointer.
+		computed, ok := p.DataSources[tfToken]
+		if !ok {
+			// The DataSource to alias has been removed. There
+			// is nothing to alias anymore.
+			return
+		}
+		alias := alias[tokens.ModuleMember]{
+			Name: prev.Current,
+		}
+		prev.Past = append(prev.Past, alias)
+		for _, a := range prev.Past {
+			legacy := a.Name
+			p.RenameDataSource(tfToken, legacy,
+				computed.Tok, legacy.Module().Name().String(),
+				computed.Tok.Module().Name().String(), computed)
+		}
+	})
+
 }
