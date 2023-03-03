@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 const metaKey = "__meta"
@@ -74,6 +75,23 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	if err != nil {
 		return nil, err
 	}
+
+	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
+		var err error
+		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
+			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
+			PriorState:              props.Copy(),
+			PriorStateSchemaVersion: stateVersion,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
+		}
+		props, err = updateTFSchemaVersion(props, stateVersion)
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
+		}
+	}
+
 	value, err := convert.EncodePropertyMap(rh.encoder, props)
 	if err != nil {
 		return nil, err
@@ -138,4 +156,24 @@ func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 		return int64(versionN), nil
 	}
 	return 0, nil
+}
+
+func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
+	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
+		var meta map[string]interface{}
+		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
+			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
+				metaKey, err)
+			return nil, err
+		}
+		meta["schema_version"] = version
+		updatedMeta, err := json.Marshal(meta)
+		if err != nil {
+			return nil, err
+		}
+		c := m.Copy()
+		c[metaKey] = resource.NewStringProperty(string(updatedMeta))
+		return c, nil
+	}
+	return nil, nil
 }
