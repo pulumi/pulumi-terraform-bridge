@@ -155,6 +155,10 @@ func AutoAliasing(artifact metadata.Provider, providerInfo *b.ProviderInfo) erro
 		aliasResource(hist.Resources, computed, tfToken, remaps)
 	}
 
+	for tfToken, computed := range providerInfo.DataSources {
+		aliasDataSource(hist.DataSources, computed, tfToken, remaps)
+	}
+
 	for _, r := range *remaps {
 		r(providerInfo)
 	}
