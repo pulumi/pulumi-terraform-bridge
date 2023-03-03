@@ -143,6 +143,22 @@ type aliasHistory struct {
 // updating the passed ProviderInfo passed to ComputeDefault.
 type FinishAlias = func(*b.ProviderInfo)
 
+func AutoAliasing(artifact metadata.Provider, providerInfo *b.ProviderInfo) error {
+	remaps := &[]func(*b.ProviderInfo){}
+
+	hist, err := getHistory(artifact)
+	if err != nil {
+		return err
+	}
+
+	for tfToken, computed := range providerInfo.Resources {
+		aliasResource(hist.Resources, computed, tfToken, remaps)
+	}
+	return nil
+}
+
+const artifactKey = "auto-aliasing"
+
 // Make a default strategy aliasing, so it is safe for the inner strategy to make breaking
 // changes.
 //
@@ -152,14 +168,7 @@ type FinishAlias = func(*b.ProviderInfo)
 //
 // artifact should be considered an opaque blob.
 func Aliasing(artifact metadata.Provider, defaults DefaultStrategy) (DefaultStrategy, FinishAlias, error) {
-	const artifactKey = "auto-aliasing"
-	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
-	if !ok {
-		hist = aliasHistory{
-			Resources:   map[string]*tokenHistory[tokens.Type]{},
-			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
-		}
-	}
+	hist, err := getHistory(artifact)
 	if err != nil {
 		return DefaultStrategy{}, nil, err
 	}
@@ -178,6 +187,20 @@ func Aliasing(artifact metadata.Provider, defaults DefaultStrategy) (DefaultStra
 	return aliasing(hist, defaults, remaps), serialize, nil
 }
 
+func getHistory(artifact metadata.Provider) (aliasHistory, error) {
+	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
+	if err != nil {
+		return aliasHistory{}, err
+	}
+	if !ok {
+		hist = aliasHistory{
+			Resources:   map[string]*tokenHistory[tokens.Type]{},
+			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
+		}
+	}
+	return hist, nil
+}
+
 func aliasing(hist aliasHistory, defaults DefaultStrategy, remaps *[]func(*b.ProviderInfo)) DefaultStrategy {
 	return DefaultStrategy{
 		Resource:   aliasResources(hist.Resources, defaults.Resource, remaps),
@@ -190,31 +213,38 @@ func aliasResources(
 	strategy ResourceStrategy, remaps *[]func(*b.ProviderInfo),
 ) ResourceStrategy {
 	return func(tfToken string) (*b.ResourceInfo, error) {
-		computed, err := strategy(tfToken)
+		res, err := strategy(tfToken)
 		if err != nil {
 			return nil, err
 		}
-
-		prev, hasPrev := hist[tfToken]
-		if !hasPrev {
-			// It's not in the history, so it must be new. Stick it in the history for
-			// next time.
-			*remaps = append(*remaps, func(*b.ProviderInfo) {
-				hist[tfToken] = &tokenHistory[tokens.Type]{
-					Current: computed.Tok,
-				}
-			})
-		} else if prev.Current != computed.Tok {
-			// It's in history, but something has changed. Update the history to reflect
-			// the new reality, then add aliases.
-			*remaps = append(*remaps, func(p *b.ProviderInfo) {
-				aliasOrRenameResource(p, tfToken, prev)
-			})
-
-		}
-
-		return computed, nil
+		return aliasResource(hist, res, tfToken, remaps)
 	}
+}
+
+func aliasResource(
+	hist map[string]*tokenHistory[tokens.Type],
+	computed *b.ResourceInfo,
+	tfToken string,
+	remaps *[]func(*b.ProviderInfo),
+) (*b.ResourceInfo, error) {
+	prev, hasPrev := hist[tfToken]
+	if !hasPrev {
+		// It's not in the history, so it must be new. Stick it in the history for
+		// next time.
+		*remaps = append(*remaps, func(*b.ProviderInfo) {
+			hist[tfToken] = &tokenHistory[tokens.Type]{
+				Current: computed.Tok,
+			}
+		})
+	} else if prev.Current != computed.Tok {
+		// It's in history, but something has changed. Update the history to reflect
+		// the new reality, then add aliases.
+		*remaps = append(*remaps, func(p *b.ProviderInfo) {
+			aliasOrRenameResource(p, tfToken, prev)
+		})
+
+	}
+	return computed, nil
 }
 
 func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type]) {
