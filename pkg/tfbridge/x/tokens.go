@@ -143,7 +143,7 @@ type aliasHistory struct {
 // updating the passed ProviderInfo passed to ComputeDefault.
 type FinishAlias = func(*b.ProviderInfo)
 
-func AutoAliasing(artifact metadata.Provider, providerInfo *b.ProviderInfo) error {
+func AutoAliasing(providerInfo *b.ProviderInfo, artifact metadata.Provider) error {
 	remaps := &[]func(*b.ProviderInfo){}
 
 	hist, err := getHistory(artifact)
