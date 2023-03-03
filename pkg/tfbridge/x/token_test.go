@@ -245,11 +245,13 @@ func TestAliasing(t *testing.T) {
 	}, modules.Resources)
 
 	modules2 := provider()
-	aliasing, finish, err := Aliasing(metadata, knownModules)
+
+	err = ComputeDefaults(modules2, knownModules)
 	require.NoError(t, err)
-	err = ComputeDefaults(modules2, aliasing)
+
+	err = AutoAliasing(metadata, modules2)
 	require.NoError(t, err)
-	finish(modules2)
+
 	hist3 := md.Clone(metadata)
 	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
