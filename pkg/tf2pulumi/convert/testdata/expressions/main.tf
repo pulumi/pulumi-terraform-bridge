@@ -99,3 +99,7 @@ output "relative_traversal_attr" {
 output "relative_traversal_index" {
     value = local.a_list_of_maps[0]["x"]
 }
+
+output "conditional_expr" {
+    value = local.a_value == 0 ? "true" : "false"
+}

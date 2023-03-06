@@ -80,3 +80,6 @@ output relativeTraversalAttr {
 output relativeTraversalIndex {
     value = aListOfMaps[0]["x"]
 }
+output conditionalExpr {
+    value = aValue == 0 ? "true" : "false"
+}
