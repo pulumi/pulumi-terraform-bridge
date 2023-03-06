@@ -964,6 +964,8 @@ func ConfigBoolValue(vars resource.PropertyMap, prop resource.PropertyKey, envs 
 // stored in Pulumi. It can be used to perform idempotent corrections on corrupt state and to compensate for
 // Terraform-level state upgrade not working as expected. Returns the corrected resource state and version. To be used
 // with care.
+//
+// See also: https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework/resource/schema#Schema.Version
 type PreStateUpgradeHook = func(PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error)
 
 type PreStateUpgradeHookArgs struct {
