@@ -67,7 +67,7 @@ const diffStrategyEnvVar = "PULUMI_DIFF_STRATEGY"
 func ParseDiffStrategyFromEnv() (DiffStrategy, bool, error) {
 	s := os.Getenv(diffStrategyEnvVar)
 	if s == "" {
-		return 0, false, nil
+		return ClassicDiff, false, nil
 	}
 	p, err := ParseDiffStrategy(s)
 	return p, err == nil, err
