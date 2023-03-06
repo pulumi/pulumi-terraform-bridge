@@ -180,8 +180,8 @@ type ResourceInfo struct {
 	DeprecationMessage  string      // message to use in deprecation warning
 	CSharpName          string      // .NET-specific name
 
-	// Optional hook to run before upgrading the state. This is currently only supported for Plugin-Framework based
-	// providers.
+	// Optional hook to run before upgrading the state. TODO[pulumi/pulumi-terraform-bridge#864] this is currently
+	// only supported for Plugin-Framework based providers.
 	PreStateUpgradeHook PreStateUpgradeHook
 }
 
