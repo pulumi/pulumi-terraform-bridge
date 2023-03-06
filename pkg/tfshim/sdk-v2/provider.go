@@ -49,11 +49,15 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 }
 
 type v2Provider struct {
-	tf *schema.Provider
+	tf   *schema.Provider
+	opts []providerOption
 }
 
-func NewProvider(p *schema.Provider) shim.Provider {
-	return v2Provider{p}
+func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
+	return v2Provider{
+		tf:   p,
+		opts: opts,
+	}
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {
@@ -82,32 +86,6 @@ func (p v2Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]strin
 
 func (p v2Provider) Configure(c shim.ResourceConfig) error {
 	return errors(p.tf.Configure(context.TODO(), configFromShim(c)))
-}
-
-func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	if c == nil {
-		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
-	}
-	r, ok := p.tf.ResourcesMap[t]
-	if !ok {
-		return nil, fmt.Errorf("unknown resource %v", t)
-	}
-
-	config, state := configFromShim(c), stateFromShim(s)
-	rawConfig := makeResourceRawConfig(config, r)
-	if state != nil {
-		state.RawConfig = rawConfig
-	}
-
-	state, err := upgradeResourceState(p.tf, r, state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
-	}
-	diff, err := r.SimpleDiff(context.TODO(), state, config, p.tf.Meta())
-	if diff != nil {
-		diff.RawConfig = rawConfig
-	}
-	return diffToShim(diff), err
 }
 
 func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
