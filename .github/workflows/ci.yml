@@ -34,6 +34,8 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: Test PF
+        run: cd pf && make test
 
   downstream-test:
     name: Test ${{ matrix.provider }} Downstream
