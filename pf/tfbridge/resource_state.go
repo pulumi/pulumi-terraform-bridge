@@ -47,7 +47,7 @@ func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.Prop
 		return nil, err
 	}
 
-	return addTFSchemaVersion(propMap, u.state.TFSchemaVersion)
+	return updateTFSchemaVersion(propMap, u.state.TFSchemaVersion)
 }
 
 func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, error) {
@@ -122,23 +122,8 @@ type metaBlock struct {
 	SchemaVersion string `json:"schema_version"`
 }
 
-func addTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
-	if version == 0 {
-		return m, nil
-	}
-	if _, hasMeta := m[metaKey]; hasMeta {
-		return nil, fmt.Errorf("cannot add %q property as it is already set", metaKey)
-	}
-	b := metaBlock{SchemaVersion: fmt.Sprintf("%d", version)}
-	bytes, err := json.Marshal(b)
-	if err != nil {
-		return nil, err
-	}
-	c := m.Copy()
-	c[metaKey] = resource.NewStringProperty(string(bytes))
-	return c, nil
-}
-
+// Restores Terraform Schema version encoded in __meta.schema_version section of Pulumi state. If __meta block is
+// absent, returns 0, which is the correct implied schema version.
 func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 	var meta metaBlock
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
@@ -158,6 +143,8 @@ func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
 	return 0, nil
 }
 
+// Stores Terraform Schema Version in the __meta.schema_version section of Pulumi state. If the __meta block is absent,
+// adds it. If __meta block is present, copies it and only updates the schema_version field.
 func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
