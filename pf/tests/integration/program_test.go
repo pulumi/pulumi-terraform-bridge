@@ -86,7 +86,7 @@ func prepareStateFolder(root string) error {
 
 func ensureTestBridgeProviderCompiled(wd string) error {
 	exe := "pulumi-resource-testbridge"
-	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe))
+	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe)) //nolint:gosec
 	cmd.Dir = filepath.Join(wd, "..", "internal", "cmd", exe)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

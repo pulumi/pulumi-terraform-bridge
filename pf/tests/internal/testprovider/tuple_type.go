@@ -156,22 +156,22 @@ type TupleValue struct {
 	val   []tftypes.Value
 }
 
-func (v TupleValue) Equal(o attr.Value) bool {
+func (c TupleValue) Equal(o attr.Value) bool {
 	oV, ok := o.(TupleValue)
 	if !ok {
 		return false
 	}
-	if !v.typ.Equal(oV.typ) {
+	if !c.typ.Equal(oV.typ) {
 		return false
 	}
-	if v.IsNull() && o.IsNull() {
+	if c.IsNull() && o.IsNull() {
 		return true
 	}
-	if v.IsUnknown() && o.IsUnknown() {
+	if c.IsUnknown() && o.IsUnknown() {
 		return true
 	}
-	for i := range v.val {
-		if !v.val[i].Equal(oV.val[i]) {
+	for i := range c.val {
+		if !c.val[i].Equal(oV.val[i]) {
 			return false
 		}
 	}

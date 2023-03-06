@@ -30,5 +30,5 @@ var bridgeMetadata []byte
 
 func main() {
 	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
-	tfbridge.Main(context.Background(), "tls", testprovider.TlsProvider(), meta)
+	tfbridge.Main(context.Background(), "tls", testprovider.TLSProvider(), meta)
 }

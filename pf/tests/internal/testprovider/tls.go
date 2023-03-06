@@ -26,7 +26,7 @@ import (
 )
 
 // Adapts tls provider to tfbridge for testing tfbridge against another realistic provider.
-func TlsProvider() tfpf.ProviderInfo {
+func TLSProvider() tfpf.ProviderInfo {
 	tlsPkg := "tls"
 	tlsMod := "index"
 	tlsVersion := "4.0.4"
