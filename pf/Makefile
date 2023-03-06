@@ -67,6 +67,4 @@ tidy::
 	cd tests/internal/tlsshim && go mod tidy
 	cd tests/testdatagen/genrandom && go mod tidy
 
-.PHONY: lint todos
-lint:
-	golangci-lint run
+.PHONY: todos
