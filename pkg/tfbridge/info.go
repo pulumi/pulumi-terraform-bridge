@@ -186,7 +186,12 @@ type ResourceInfo struct {
 func (info *ResourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
 
 // GetFields returns information about the resource's custom fields
-func (info *ResourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
+func (info *ResourceInfo) GetFields() map[string]*SchemaInfo {
+	if info == nil {
+		return nil
+	}
+	return info.Fields
+}
 
 // GetDocs returns a resource docs override from the Pulumi provider
 func (info *ResourceInfo) GetDocs() *DocInfo { return info.Docs }
@@ -208,7 +213,12 @@ type DataSourceInfo struct {
 func (info *DataSourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
 
 // GetFields returns information about the datasource's custom fields
-func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo { return info.Fields }
+func (info *DataSourceInfo) GetFields() map[string]*SchemaInfo {
+	if info == nil {
+		return nil
+	}
+	return info.Fields
+}
 
 // GetDocs returns a datasource docs override from the Pulumi provider
 func (info *DataSourceInfo) GetDocs() *DocInfo { return info.Docs }

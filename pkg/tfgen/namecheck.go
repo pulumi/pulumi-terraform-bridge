@@ -84,26 +84,44 @@ func nameCheck(
 		all = append(all, ps)
 	}
 
+	// It is not required that all resources/functions are mapped in `prov`. We need
+	// to be resilient to missing items.
+	schemaGetter := func(resourceMap func() shim.ResourceMap) func(string) shim.SchemaMap {
+		m := resourceMap()
+		return func(key string) shim.SchemaMap {
+			if m == nil {
+				return nil
+			}
+			r, ok := m.GetOk(key)
+			if !ok || r == nil {
+				return nil
+			}
+			return r.Schema()
+		}
+	}
+
+	resourceSchema := schemaGetter(prov.P.ResourcesMap)
 	for tok := range spec.Resources {
 		key := renames.Resources[tokens.Type(tok)]
 		loc := fmt.Sprintf("Resource: %q\n    Token: %q", tok, key)
 		ps := nameCheckPropSet{
 			location:  loc,
 			props:     props[tokens.Token(tok)],
-			schemaMap: prov.P.ResourcesMap().Get(key).Schema(),
-			infos:     prov.Resources[key].Fields,
+			schemaMap: resourceSchema(key),
+			infos:     prov.Resources[key].GetFields(),
 		}
 		all = append(all, ps)
 	}
 
+	functionSchema := schemaGetter(prov.P.DataSourcesMap)
 	for tok := range spec.Functions {
 		key := renames.Functions[tokens.ModuleMember(tok)]
 		loc := fmt.Sprintf("Function: %q\n    Token: %q", key, tok)
 		ps := nameCheckPropSet{
 			location:  loc,
 			props:     props[tokens.Token(tok)],
-			schemaMap: prov.P.DataSourcesMap().Get(key).Schema(),
-			infos:     prov.DataSources[key].Fields,
+			schemaMap: functionSchema(key),
+			infos:     prov.DataSources[key].GetFields(),
 		}
 		all = append(all, ps)
 	}
