@@ -156,7 +156,12 @@ func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.Prop
 	} else {
 		meta = map[string]interface{}{}
 	}
-	meta["schema_version"] = version
+	if version != 0 {
+		meta["schema_version"] = fmt.Sprintf("%d", version)
+	}
+	if len(meta) == 0 {
+		return m, nil
+	}
 	updatedMeta, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
