@@ -115,6 +115,14 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 		}
 	}
 
+	// The code below converts each schema.BlockTypes block to *configschema.NestedBlock, and populates
+	// block.BlockTypes. This is a trivial conversion (copying identical fields) that is necessary because Go
+	// toolchain currently sees the two NestedBlock structs as distinct types. If the type of schema.BlockType was
+	// not internal, this could have been expressed as a recursive func, but given that it is internal, Go compiler
+	// rejects such function definition. To workaround, an explicit queue is introduced to track all NestedBlock
+	// values that need converting, and destinations structure is introduced to track where the conversion results
+	// should go. The code can then proceed without an explicit recursive func definition or resorting to
+	// reflection.
 	queue := newQueue(schema.BlockTypes)
 
 	destinations := map[interface{}]map[string]*configschema.NestedBlock{}
