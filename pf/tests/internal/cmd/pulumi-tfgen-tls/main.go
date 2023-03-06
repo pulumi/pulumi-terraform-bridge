@@ -20,5 +20,5 @@ import (
 )
 
 func main() {
-	tfgen.Main("tls", testprovider.TlsProvider())
+	tfgen.Main("tls", testprovider.TLSProvider())
 }

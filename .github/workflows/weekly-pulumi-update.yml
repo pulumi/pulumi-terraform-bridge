@@ -5,7 +5,6 @@ on:
   workflow_dispatch: {}
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.50.1
 jobs:
   weekly-pulumi-update:
     runs-on: ubuntu-latest
@@ -13,7 +12,7 @@ jobs:
       fail-fast: true
       matrix:
         goversion:
-        - 1.19.x
+        - 1.20.x
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3
@@ -22,7 +21,7 @@ jobs:
     - name: Unshallow clone for tags
       run: git fetch --prune --unshallow --tags
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{matrix.goversion}}
     - name: Download module dependencies
@@ -30,7 +29,9 @@ jobs:
         GOPROXY: "https://proxy.golang.org"
       run: go mod download
     - name: Install golangci-lint
-      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
+      uses: golangci/golangci-lint-action@v3
+      with:
+          version: v1.51.2
     - name: Update Pulumi/Pulumi
       id: gomod
       run: >-

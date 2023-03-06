@@ -30,7 +30,10 @@ import (
 //	PULUMI_DEBUG_GPRC=$PWD/grpc.json go test -run TestUpdateProgram
 //	jq -s . grpc.json
 func TestGenUpdates(t *testing.T) {
-	os.Mkdir("state", 0700)
+	err := os.Mkdir("state", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	trace := "testdata/updateprogram.json"
 

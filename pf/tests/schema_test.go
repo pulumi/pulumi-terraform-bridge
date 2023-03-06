@@ -25,7 +25,7 @@ func TestSchemaGen(t *testing.T) {
 		genMetadata(t, testprovider.RandomProvider())
 	})
 	t.Run("tls", func(t *testing.T) {
-		genMetadata(t, testprovider.TlsProvider())
+		genMetadata(t, testprovider.TLSProvider())
 	})
 	t.Run("testbridge", func(t *testing.T) {
 		genMetadata(t, testprovider.SyntheticTestBridgeProvider())

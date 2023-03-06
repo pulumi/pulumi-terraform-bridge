@@ -64,7 +64,7 @@ func (e *testCompRes) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 }
 
 func (e *testCompRes) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	resourceId := "r1"
+	resourceID := "r1"
 
 	// Copy plan to state.
 	resp.State.Raw = req.Plan.Raw.Copy()
@@ -77,7 +77,7 @@ func (e *testCompRes) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	diags2 := resp.State.SetAttribute(ctx, path.Root("id"), resourceId)
+	diags2 := resp.State.SetAttribute(ctx, path.Root("id"), resourceID)
 	resp.Diagnostics.Append(diags2...)
 	if resp.Diagnostics.HasError() {
 		return

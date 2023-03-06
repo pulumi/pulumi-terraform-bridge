@@ -78,7 +78,6 @@ func (p *syntheticProvider) Configure(ctx context.Context, req provider.Configur
 	if stringConfigProp != nil {
 		resp.ResourceData = stringConfigProp
 	}
-	return
 }
 
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
