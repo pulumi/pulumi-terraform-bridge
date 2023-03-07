@@ -16,7 +16,7 @@
 package metadata
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 // A store persisted between `tfgen` and a running provider.

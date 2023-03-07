@@ -25,9 +25,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	md "github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 const (

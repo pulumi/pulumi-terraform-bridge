@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	md "github.com/pulumi/pulumi-terraform-bridge/v3/internal/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestTokensSingleModule(t *testing.T) {
