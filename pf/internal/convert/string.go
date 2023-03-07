@@ -49,8 +49,7 @@ func (*stringEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value
 
 func (*stringDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		unknown := resource.NewOutputProperty(resource.Output{Known: false})
-		return unknown, nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
