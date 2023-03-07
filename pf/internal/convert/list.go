@@ -72,8 +72,7 @@ func (enc *listEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Val
 
 func (dec *listDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		zero := resource.NewArrayProperty([]resource.PropertyValue{})
-		return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		return resource.NewOutputProperty(resource.Output{Known: false}), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil

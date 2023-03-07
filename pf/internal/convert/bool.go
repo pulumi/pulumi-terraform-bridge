@@ -49,8 +49,7 @@ func (*boolEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, 
 
 func (*boolDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		c := resource.Computed{Element: resource.NewBoolProperty(false)}
-		unknown := resource.NewComputedProperty(c)
+		unknown := resource.NewOutputProperty(resource.Output{Known: false})
 		return unknown, nil
 	}
 	if v.IsNull() {

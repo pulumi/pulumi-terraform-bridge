@@ -156,7 +156,7 @@ func convertTurnaroundUnknownTestCase(ty tftypes.Type, zeroValue resource.Proper
 		name: ty.String() + "/unknown",
 		ty:   ty,
 		val:  tftypesNewValue(ty, tftypes.UnknownValue),
-		prop: resource.NewComputedProperty(resource.Computed{Element: zeroValue}),
+		prop: resource.NewOutputProperty(resource.Output{Known: false}),
 	}
 }
 
