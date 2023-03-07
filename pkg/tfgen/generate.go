@@ -20,9 +20,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
-	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
@@ -55,10 +56,6 @@ const (
 	defaultOutDir = "sdk/"
 	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
-
-// Additional files to put next schema.json when it is generated.
-var additionalSchemaFilesHook = map[string][]byte{}
-var hookMutex = new(sync.Mutex)
 
 type Generator struct {
 	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
@@ -896,10 +893,12 @@ func (g *Generator) Generate() error {
 			return err
 		}
 
-		hookMutex.Lock()
-		defer hookMutex.Unlock()
-		for path, bytes := range additionalSchemaFilesHook {
-			files[path] = bytes
+		if meta := g.info.MetadataInfo; meta != nil {
+			// Use reflect to read private fields.
+			s := reflect.ValueOf(meta).Elem()
+			data := s.FieldByName("data").Interface().(*metadata.Data)
+			path := s.FieldByName("path").String()
+			files[path] = (*metadata.Data)(data).Marshal()
 		}
 	case PCL:
 		if g.skipExamples {
@@ -1796,19 +1795,4 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
-}
-
-// Add a file to be emitted next to the schema.json only when the schema is itself
-// emitted.
-//
-// `panic`s if called with a `path` that conflicts with an existing file, including
-// `schema.json`.
-func AdditionalSchemaFile(path string, bytes []byte) {
-	hookMutex.Lock()
-	defer hookMutex.Unlock()
-	contract.Assertf(path != "", "Cannot add additional schema file with empty path")
-	contract.Assertf(path != "schema.json", "Cannot override '%s'", path)
-	_, has := additionalSchemaFilesHook[path]
-	contract.Assertf(!has, "Cannot overwrite an additional file that has already been added: '%s'", path)
-	additionalSchemaFilesHook[path] = bytes
 }
