@@ -98,8 +98,9 @@ type ProviderInfo struct {
 
 	// Information for the embedded metadata file.
 	//
-	// If provided, the user should embed the file at `MetadataInfo.Path`, and store
-	// the resulting embedded bytes in `MetadataInfo.Bytes`.
+	// If provided, the user should call NewMetadataInfo(path, bytes) where path is
+	// the path (relative to schema.json) of the embedded file, and bytes is the
+	// compile time embedded file.
 	MetadataInfo *MetadataInfo
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
@@ -121,7 +122,7 @@ func (info ProviderInfo) GetResourcePrefix() string {
 
 func (info ProviderInfo) GetMetadata() ProviderMetadata {
 	info.MetadataInfo.assertValid()
-	return info.MetadataInfo.data
+	return info.MetadataInfo.Data
 }
 
 func (info ProviderInfo) GetGitHubOrg() string {

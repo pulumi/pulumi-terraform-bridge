@@ -23,23 +23,15 @@ import (
 type ProviderMetadata *metadata.Data
 
 type MetadataInfo struct {
-	bytes []byte
-
-	// Field names are depended upon via reflect by tfgen/generate.go.
-	// It needs to be adjusted in tandem.
-	//
-	// This doesn't introduce version compatibility problems because tfgen is in the
-	// same module as tfbride (this module), just a different package. They are
-	// versioned together.
-	path string
-	data ProviderMetadata
+	Path string
+	Data ProviderMetadata
 }
 
 // Describe a metadata file to ProviderInfo.
 //
 // `path` is the path (relative to schema.json) where the metadata file is stored.
 // `bytes` is the embedded metadata file.
-func NewProviderMetadata(path string, bytes []byte) MetadataInfo {
+func NewProviderMetadata(path string, bytes []byte) *MetadataInfo {
 	data, err := newProviderMetadata(bytes)
 	// We assert instead of returning an (MetadataInfo, error) because we are
 	// validating compile time embedded data.
@@ -47,12 +39,10 @@ func NewProviderMetadata(path string, bytes []byte) MetadataInfo {
 	// The error could never be handled, because it signals that invalid data was
 	// `go:embed`ed.
 	contract.AssertNoErrorf(err, "This always signals an error at compile time.")
-	// We assert instead of returning an (MetadataInfo, error) because path should be
-	// a string constant, the tfgen time location from which bytes was extracted. This
-	// error is irrecoverable and needs to be fixed at compile time.
-	contract.Assertf(path != "", "Path must be non-empty")
 
-	return MetadataInfo{bytes, path, data}
+	info := &MetadataInfo{path, data}
+	info.assertValid()
+	return info
 }
 
 // Create a new ProviderMetadata from a persisted byte slice.
@@ -71,4 +61,10 @@ func marshalProviderMetadata(p ProviderMetadata) []byte {
 func (info *MetadataInfo) assertValid() {
 	contract.Assertf(info != nil,
 		"Attempting to use provider metadata without setting ProviderInfo.MetadataInfo")
+
+	// We assert instead of returning an (MetadataInfo, error) because path should be
+	// a string constant, the tfgen time location from which bytes was extracted. This
+	// error is irrecoverable and needs to be fixed at compile time.
+	contract.Assertf(info.Path != "", "Path must be non-empty")
+
 }

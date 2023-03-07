@@ -20,7 +20,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"unicode"
@@ -894,11 +893,7 @@ func (g *Generator) Generate() error {
 		}
 
 		if meta := g.info.MetadataInfo; meta != nil {
-			// Use reflect to read private fields.
-			s := reflect.ValueOf(meta).Elem()
-			data := s.FieldByName("data").Interface().(*metadata.Data)
-			path := s.FieldByName("path").String()
-			files[path] = (*metadata.Data)(data).Marshal()
+			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
 		}
 	case PCL:
 		if g.skipExamples {
