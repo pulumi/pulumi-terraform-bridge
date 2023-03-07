@@ -18,6 +18,10 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
+      - name: Install pulumi
+        uses: pulumi/setup-pulumi@v2
+        with:
+          pulumi-version: ^3.0.0
       - name: Check out source code
         uses: actions/checkout@master
       - name: Download module dependencies
@@ -34,6 +38,8 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: Test PF
+        run: cd pf && make test
 
   downstream-test:
     name: Test ${{ matrix.provider }} Downstream

@@ -1,18 +1,18 @@
+TESTPARALLELISM := 10
+
 build.tests::
 	go test -test.run NONE
 	cd tests && go test -test.run NONE
 	cd tests/integration && go test -test.run NONE
 
-test::
-	go test ./tfbridge/...
-	go test ./tfgen/...
-	go test ./internal/...
-	cd tests && rm -rf state && mkdir state
-	cd tests && go test
-	cd tests && rm -rf state && mkdir state
+test::	test.unit test.integration
+
+test.unit::
+	go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
+	cd tests && go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} # tests have a separte go.mod
 
 test.integration::
-	cd tests/integration && go test -test.v
+	cd tests/integration && go test -v -count=1 -timeout 2h -parallel ${TESTPARALLELISM}
 
 test.cover::
 	cd tests && go test -cover -coverpkg=github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge -coverprofile=cover.out

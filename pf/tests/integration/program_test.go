@@ -12,32 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgeintegrationtests
+package itests
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 func TestBasicProgram(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	bin := filepath.Join(wd, "..", "bin")
-
-	t.Run("compile-test-provider", func(t *testing.T) {
-		err := ensureTestBridgeProviderCompiled(wd)
-		require.NoError(t, err)
-	})
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
@@ -50,14 +49,13 @@ func TestBasicProgram(t *testing.T) {
 }
 
 func TestUpdateProgram(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	bin := filepath.Join(wd, "..", "bin")
-
-	t.Run("compile-test-provider", func(t *testing.T) {
-		err := ensureTestBridgeProviderCompiled(wd)
-		require.NoError(t, err)
-	})
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
