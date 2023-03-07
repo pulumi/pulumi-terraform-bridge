@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/metadata"
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -475,7 +474,7 @@ type aliasHistory struct {
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
-func AutoAliasing(providerInfo *b.ProviderInfo, artifact metadata.Provider) error {
+func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
 	remaps := &[]func(*b.ProviderInfo){}
 
 	hist, err := getHistory(artifact)
@@ -506,7 +505,7 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact metadata.Provider) erro
 
 const artifactKey = "auto-aliasing"
 
-func getHistory(artifact metadata.Provider) (aliasHistory, error) {
+func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
 	if err != nil {
 		return aliasHistory{}, err
