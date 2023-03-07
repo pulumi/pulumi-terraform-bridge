@@ -27,7 +27,7 @@ type Data struct {
 
 func New(data []byte) (*Data, error) {
 	m := map[string]json.RawMessage{}
-	if data != nil {
+	if len(data) > 0 {
 		err := json.Unmarshal(data, &m)
 		if err != nil {
 			return nil, err

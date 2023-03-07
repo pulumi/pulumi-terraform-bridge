@@ -32,7 +32,7 @@ type MetadataInfo struct {
 // `path` is the path (relative to schema.json) where the metadata file is stored.
 // `bytes` is the embedded metadata file.
 func NewProviderMetadata(path string, bytes []byte) *MetadataInfo {
-	data, err := newProviderMetadata(bytes)
+	parsed, err := metadata.New(bytes)
 	// We assert instead of returning an (MetadataInfo, error) because we are
 	// validating compile time embedded data.
 	//
@@ -40,22 +40,9 @@ func NewProviderMetadata(path string, bytes []byte) *MetadataInfo {
 	// `go:embed`ed.
 	contract.AssertNoErrorf(err, "This always signals an error at compile time.")
 
-	info := &MetadataInfo{path, data}
+	info := &MetadataInfo{path, ProviderMetadata(parsed)}
 	info.assertValid()
 	return info
-}
-
-// Create a new ProviderMetadata from a persisted byte slice.
-func newProviderMetadata(data []byte) (ProviderMetadata, error) {
-	parsed, err := metadata.New(data)
-	if err != nil {
-		return nil, err
-	}
-	return ProviderMetadata(parsed), nil
-}
-
-func marshalProviderMetadata(p ProviderMetadata) []byte {
-	return (*metadata.Data)(p).Marshal()
 }
 
 func (info *MetadataInfo) assertValid() {
