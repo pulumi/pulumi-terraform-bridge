@@ -78,3 +78,35 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 	}
         `)
 }
+
+func TestPreviewCreate(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::repro::random:index/randomInteger:RandomInteger::k",
+	    "properties": {
+	      "max": 10,
+	      "min": 0
+	    },
+	    "preview": true
+	  },
+	  "response": {
+	    "properties": {
+	      "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+	      "max": 10,
+	      "min": 0,
+	      "result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	    }
+	  },
+	  "metadata": {
+	    "kind": "resource",
+	    "mode": "client",
+	    "name": "random"
+	  }
+	}
+`
+	testutils.Replay(t, server, testCase)
+}

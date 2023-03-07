@@ -13,7 +13,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "genradom",
-      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pf/tests/testdatagen/genrandom",
       "program": "."
     },
     "response": {
@@ -171,7 +171,7 @@
         "min": 1,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "GHX81YBaMe4uwWyZFP+SIu93X++x/+JwNS8veSgTDiA="
+      "randomSeed": "08LTuOSvPg3R3V6/QViEvgsQw/6vAQ5nkDGj5R3uHIE="
     },
     "response": {
       "inputs": {
@@ -267,14 +267,14 @@
     "request": {
       "project": "genradom",
       "stack": "generate",
-      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pkg/tfpfbridge/tests/testdatagen/genrandom",
+      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pf/tests/testdatagen/genrandom",
       "program": ".",
       "config": {
         "genradom:min": "1"
       },
       "dryRun": true,
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:57339",
+      "monitorAddress": "127.0.0.1:57281",
       "organization": "t0yv0"
     },
     "response": {},

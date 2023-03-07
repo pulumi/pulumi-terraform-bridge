@@ -50,8 +50,7 @@ func (*numberEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value
 
 func (*numberDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		unknown := resource.NewComputedProperty(resource.Computed{Element: resource.NewNumberProperty(0)})
-		return unknown, nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil

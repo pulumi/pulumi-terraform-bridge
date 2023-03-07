@@ -18,6 +18,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+func unknownProperty() resource.PropertyValue {
+	return resource.NewOutputProperty(resource.Output{Known: false})
+}
+
 // This is how p.ContainsUnknowns checks if the value itself is unknown before recursing.
 func propertyValueIsUnkonwn(p resource.PropertyValue) bool {
 	return p.IsComputed() || (p.IsOutput() && !p.OutputValue().Known)

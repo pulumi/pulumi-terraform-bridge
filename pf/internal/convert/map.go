@@ -70,8 +70,7 @@ func (enc *mapEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 
 func (dec *mapDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		zero := resource.NewObjectProperty(make(resource.PropertyMap))
-		return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
