@@ -98,9 +98,7 @@ type ProviderInfo struct {
 
 	// Information for the embedded metadata file.
 	//
-	// If provided, the user should call NewMetadataInfo(path, bytes) where path is
-	// the path (relative to schema.json) of the embedded file, and bytes is the
-	// compile time embedded file.
+	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
 	MetadataInfo *MetadataInfo
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup

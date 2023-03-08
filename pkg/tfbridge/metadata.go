@@ -19,19 +19,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// A store persisted between `tfgen` and a running provider.
+// A KV store persisted between `tfgen` and a running provider.
+//
+// The store is read-write when the schema is being generated, and is persisted to disk
+// with schema.json. During normal provider operation (pulumi-resource-${PKG}), the store
+// if not persisted (making it effectively read-only).
 type ProviderMetadata *metadata.Data
 
+// Information necessary to persist and use provider level metadata.
 type MetadataInfo struct {
+	// The path (relative to schema.json) of the metadata file.
 	Path string
+	// The parsed metadata.
 	Data ProviderMetadata
 }
 
-// Describe a metadata file to ProviderInfo.
+// Describe a metadata file called `bridge-metadata.json`.
 //
-// `path` is the path (relative to schema.json) where the metadata file is stored.
 // `bytes` is the embedded metadata file.
-func NewProviderMetadata(path string, bytes []byte) *MetadataInfo {
+func NewProviderMetadata(bytes []byte) *MetadataInfo {
 	parsed, err := metadata.New(bytes)
 	// We assert instead of returning an (MetadataInfo, error) because we are
 	// validating compile time embedded data.
@@ -40,7 +46,7 @@ func NewProviderMetadata(path string, bytes []byte) *MetadataInfo {
 	// `go:embed`ed.
 	contract.AssertNoErrorf(err, "This always signals an error at compile time.")
 
-	info := &MetadataInfo{path, ProviderMetadata(parsed)}
+	info := &MetadataInfo{"bridge-metadata.json", ProviderMetadata(parsed)}
 	info.assertValid()
 	return info
 }
@@ -50,8 +56,8 @@ func (info *MetadataInfo) assertValid() {
 		"Attempting to use provider metadata without setting ProviderInfo.MetadataInfo")
 
 	// We assert instead of returning an (MetadataInfo, error) because path should be
-	// a string constant, the tfgen time location from which bytes was extracted. This
-	// error is irrecoverable and needs to be fixed at compile time.
+	// a string constant, the "tfgen time" location from which bytes was
+	// extracted. This error is irrecoverable and needs to be fixed at compile time.
 	contract.Assertf(info.Path != "", "Path must be non-empty")
 
 }

@@ -14,8 +14,10 @@
 
 // A package that exposes an unstable interface across go module boundaries. This is
 // necessary to get around granularity limitations of the `internal` path that go modules
-// provides.
+// provides. Conceptually, the content of `unstable` is an implementation detail of this
+// repository.
 //
 // It is not recommended to rely on exports from this package. We do not provide stability
-// guarantees for this package.
+// guarantees for this package. Unlike experimental `x` packages, APIs in `unstable` are
+// not intended to be stabilized.
 package unstable
