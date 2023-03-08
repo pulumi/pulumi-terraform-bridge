@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestTokensSingleModule(t *testing.T) {
@@ -344,6 +347,91 @@ func TestTokensInferredModules(t *testing.T) {
 			assert.Equal(t, tt.resourceMapping, mapping)
 		})
 	}
+}
+
+func TestAliasing(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		return &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]struct{}{
+					"pkg_mod1_r1": {},
+					"pkg_mod1_r2": {},
+					"pkg_mod2_r1": {},
+				},
+			},
+		}
+	}
+	simple := provider()
+
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	err = ComputeDefaults(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+	require.NoError(t, err)
+
+	err = AutoAliasing(simple, metadata)
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
+		"pkg_mod1_r2": {Tok: "pkg:index/mod1R2:Mod1R2"},
+		"pkg_mod2_r1": {Tok: "pkg:index/mod2R1:Mod2R1"},
+	}, simple.Resources)
+
+	modules := provider()
+
+	knownModules := TokensKnownModules("pkg_", "",
+		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
+
+	err = ComputeDefaults(modules, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules, metadata)
+	require.NoError(t, err)
+
+	hist2 := md.Clone(metadata)
+	ref := func(s string) *string { return &s }
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {
+			Tok:     "pkg:mod1/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+		},
+		"pkg_mod1_r1_legacy": {
+			Tok:                "pkg:index/mod1R1:Mod1R1",
+			DeprecationMessage: "pkg.index/mod1r1.Mod1R1 has been deprecated in favor of pkg.mod1/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		},
+		"pkg_mod1_r2": {
+			Tok:     "pkg:mod1/r2:R2",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R2:Mod1R2")}},
+		},
+		"pkg_mod1_r2_legacy": {
+			Tok:                "pkg:index/mod1R2:Mod1R2",
+			DeprecationMessage: "pkg.index/mod1r2.Mod1R2 has been deprecated in favor of pkg.mod1/r2.R2",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r2.html.markdown"},
+		},
+		"pkg_mod2_r1": {
+			Tok:     "pkg:mod2/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
+		},
+		"pkg_mod2_r1_legacy": {
+			Tok:                "pkg:index/mod2R1:Mod2R1",
+			DeprecationMessage: "pkg.index/mod2r1.Mod2R1 has been deprecated in favor of pkg.mod2/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
+		},
+	}, modules.Resources)
+
+	modules2 := provider()
+
+	err = ComputeDefaults(modules2, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules2, metadata)
+	require.NoError(t, err)
+
+	hist3 := md.Clone(metadata)
+	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
+	assert.Equal(t, modules, modules2)
 }
 
 type Provider struct {
