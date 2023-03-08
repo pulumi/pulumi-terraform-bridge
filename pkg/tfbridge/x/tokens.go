@@ -494,7 +494,7 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 		r(providerInfo)
 	}
 
-	if err := md.Set(artifact, artifactKey, hist); err != nil {
+	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
 		// Set fails only when `hist` is not serializable. Because `hist` is
 		// composed of marshallable, non-cyclic types, this is impossible.
 		contract.AssertNoErrorf(err, "History failed to serialize")
@@ -503,10 +503,10 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 	return nil
 }
 
-const artifactKey = "auto-aliasing"
+const aliasMetadataKey = "auto-aliasing"
 
 func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
-	hist, ok, err := md.Get[aliasHistory](artifact, artifactKey)
+	hist, ok, err := md.Get[aliasHistory](artifact, aliasMetadataKey)
 	if err != nil {
 		return aliasHistory{}, err
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -362,7 +363,7 @@ func TestAliasing(t *testing.T) {
 	}
 	simple := provider()
 
-	metadata, err := tfbridge.NewProviderMetadata(nil)
+	metadata, err := metadata.New(nil)
 	require.NoError(t, err)
 
 	err = ComputeDefaults(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
