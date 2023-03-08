@@ -96,6 +96,11 @@ type ProviderInfo struct {
 	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 
+	// Information for the embedded metadata file.
+	//
+	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
+	MetadataInfo *MetadataInfo
+
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
 }
 
@@ -111,6 +116,11 @@ func (info ProviderInfo) GetResourcePrefix() string {
 	}
 
 	return info.ResourcePrefix
+}
+
+func (info ProviderInfo) GetMetadata() ProviderMetadata {
+	info.MetadataInfo.assertValid()
+	return info.MetadataInfo.Data
 }
 
 func (info ProviderInfo) GetGitHubOrg() string {

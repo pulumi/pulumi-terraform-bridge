@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
@@ -889,6 +890,10 @@ func (g *Generator) Generate() error {
 
 		if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
 			return err
+		}
+
+		if meta := g.info.MetadataInfo; meta != nil {
+			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
 		}
 	case PCL:
 		if g.skipExamples {
