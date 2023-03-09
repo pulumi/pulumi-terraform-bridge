@@ -55,7 +55,9 @@ func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
 	panic("DefaultFunc() should not be called during schema generation")
 }
 func (*attrSchema) DefaultValue() (interface{}, error) {
-	panic("DefaultValue() should not be called during schema generation")
+	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
+	// returning nil is better than a panic.
+	return nil, nil
 }
 
 func (s *attrSchema) Description() string {
