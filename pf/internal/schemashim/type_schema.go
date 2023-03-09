@@ -96,7 +96,8 @@ func (*typeSchema) Description() string {
 }
 
 func (*typeSchema) StateFunc() shim.SchemaStateFunc {
-	panic("StateFunc() should not be called during schema generation")
+	// StateFunc() should not be called during schema generation, but may be called by ExtractInputsFromOutputs.
+	return nil
 }
 
 func (*typeSchema) ConflictsWith() []string {
