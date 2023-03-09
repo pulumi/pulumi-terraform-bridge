@@ -86,10 +86,8 @@ func (u *notSupportedUtil) assertNotZero(path string, shouldBeZero interface{}) 
 }
 
 func (u *notSupportedUtil) fields(path string, f map[string]*tfbridge.SchemaInfo) {
-	if f != nil {
-		for k, v := range f {
-			u.schema(path+".Fields."+k, v)
-		}
+	for k, v := range f {
+		u.schema(path+".Fields."+k, v)
 	}
 }
 
