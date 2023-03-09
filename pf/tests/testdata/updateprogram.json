@@ -13,7 +13,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -55,17 +55,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -87,7 +99,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -121,14 +133,14 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {},
       "news": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
-      "randomSeed": "Sqav4keFU/KVUnh7nrHvWetsASJ0IsbBWJrXRB/bkk0="
+      "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
     },
     "response": {
       "inputs": {
@@ -146,7 +158,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/Create",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "properties": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
@@ -175,19 +187,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "object": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
@@ -201,7 +218,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalString__actual": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
         "testOptionalString__expect": "input2",
@@ -218,12 +235,12 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "dryRun": true,
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65059"
+      "monitorAddress": "127.0.0.1:62229"
     },
     "response": {},
     "metadata": {
@@ -246,7 +263,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -288,17 +305,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -320,7 +349,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -354,14 +383,14 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {},
       "news": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
-      "randomSeed": "TPqy5OFGXBx+D6kcx7L9kvLUGHmgLHcSYuLBUfVimgM="
+      "randomSeed": "mXxjZs8RWIdR4ZkDvZGY436ECmglOiT4Vl51+CTTVfs="
     },
     "response": {
       "inputs": {
@@ -379,7 +408,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/Create",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "properties": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
@@ -408,19 +437,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "id": "0",
       "object": {
         "id": "0",
@@ -438,7 +472,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalString__actual": "input2",
         "testOptionalString__expect": "input2",
@@ -455,11 +489,11 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65079"
+      "monitorAddress": "127.0.0.1:62246"
     },
     "response": {},
     "metadata": {
@@ -482,7 +516,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -554,17 +588,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -586,7 +632,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -602,7 +648,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/DiffConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -616,7 +662,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
@@ -627,7 +673,7 @@
         "requiredInputString": "input1",
         "statedir": "state"
       },
-      "randomSeed": "joCgzdLbHgSWPr4BpmN2tXpqD5fKjs2ajRGOPzC27WA="
+      "randomSeed": "PBGGd3cPiHkDPOLcY6t7sbeE8lyU+RtsjYm1qcLwwqI="
     },
     "response": {
       "inputs": {
@@ -646,7 +692,7 @@
     "method": "/pulumirpc.ResourceProvider/Diff",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -675,19 +721,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "id": "0",
       "object": {
         "id": "0",
@@ -705,7 +756,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalString__actual": "input2",
         "testOptionalString__expect": "input2",
@@ -722,12 +773,12 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "dryRun": true,
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65106"
+      "monitorAddress": "127.0.0.1:62267"
     },
     "response": {},
     "metadata": {
@@ -750,7 +801,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -822,17 +873,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -854,7 +917,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -870,7 +933,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/DiffConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -884,7 +947,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
@@ -895,7 +958,7 @@
         "requiredInputString": "input1",
         "statedir": "state"
       },
-      "randomSeed": "0IJO7oOdpCForD8heaesgTsNhB1wz1r4vIFf1ZkJiqk="
+      "randomSeed": "PSQjjsavj+BDo7myDo7Vd3Inz0QVgJ6VetG5XUQV9LE="
     },
     "response": {
       "inputs": {
@@ -914,7 +977,7 @@
     "method": "/pulumirpc.ResourceProvider/Diff",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -943,19 +1006,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2",
         "requiredInputString": "input1",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "id": "0",
       "object": {
         "id": "0",
@@ -973,7 +1041,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalString__actual": "input2",
         "testOptionalString__expect": "input2",
@@ -990,11 +1058,11 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65131"
+      "monitorAddress": "127.0.0.1:62288"
     },
     "response": {},
     "metadata": {
@@ -1037,7 +1105,7 @@
     "method": "/pulumirpc.ResourceProvider/Read",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "properties": {
         "id": "0",
         "optionalInputString": "input2",
@@ -1062,7 +1130,11 @@
         "requiredInputStringCopy": "input1",
         "statedir": "state"
       },
-      "inputs": {}
+      "inputs": {
+        "optionalInputString": "input2",
+        "requiredInputString": "input1",
+        "statedir": "state"
+      }
     },
     "metadata": {
       "kind": "resource",
@@ -1084,7 +1156,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -1156,17 +1228,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -1188,7 +1272,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -1204,7 +1288,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/DiffConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -1218,14 +1302,18 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
-      "olds": {},
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
+      "olds": {
+        "optionalInputString": "input2",
+        "requiredInputString": "input1",
+        "statedir": "state"
+      },
       "news": {
         "optionalInputString": "input2-updated",
         "requiredInputString": "input1-updated",
         "statedir": "state"
       },
-      "randomSeed": "MQIuy8SpmPGzxPes07ANWtgyfxw8yEaVQ21NRLzPSJ8="
+      "randomSeed": "8Y14Kr2WGr7ZQCdtUM/YVlzKQMmmI+JWfDimFhI4x3o="
     },
     "response": {
       "inputs": {
@@ -1244,7 +1332,7 @@
     "method": "/pulumirpc.ResourceProvider/Diff",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -1276,7 +1364,7 @@
     "method": "/pulumirpc.ResourceProvider/Update",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -1313,19 +1401,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2-updated",
         "requiredInputString": "input1-updated",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "id": "0",
       "object": {
         "id": "0",
@@ -1343,7 +1436,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalStringAfterUpdate__actual": "input2",
         "testOptionalStringAfterUpdate__expect": "input2-updated",
@@ -1360,12 +1453,12 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "dryRun": true,
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65164"
+      "monitorAddress": "127.0.0.1:62314"
     },
     "response": {},
     "metadata": {
@@ -1388,7 +1481,7 @@
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "updateprogram",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": "."
     },
     "response": {
@@ -1460,17 +1553,29 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
-      "name": "updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "name": "updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "object": {}
     },
     "metadata": {
@@ -1492,7 +1597,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/CheckConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -1508,7 +1613,7 @@
   {
     "method": "/pulumirpc.ResourceProvider/DiffConfig",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:providers:testbridge::default",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:providers:testbridge::default",
       "olds": {},
       "news": {}
     },
@@ -1522,14 +1627,18 @@
   {
     "method": "/pulumirpc.ResourceProvider/Check",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
-      "olds": {},
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
+      "olds": {
+        "optionalInputString": "input2",
+        "requiredInputString": "input1",
+        "statedir": "state"
+      },
       "news": {
         "optionalInputString": "input2-updated",
         "requiredInputString": "input1-updated",
         "statedir": "state"
       },
-      "randomSeed": "lJaW1czReZ1fe8rBgBIwWyWUq5U+PExTtlhCmGag+XA="
+      "randomSeed": "+Z91SD4Kl0Ka/Ds9LlYogGCFTO6OLfYv+P6aTDv21sA="
     },
     "response": {
       "inputs": {
@@ -1548,7 +1657,7 @@
     "method": "/pulumirpc.ResourceProvider/Diff",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -1580,7 +1689,7 @@
     "method": "/pulumirpc.ResourceProvider/Update",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "olds": {
         "id": "0",
         "optionalInputString": "input2",
@@ -1616,19 +1725,24 @@
     "request": {
       "type": "testbridge:index/testres:Testres",
       "name": "r",
-      "parent": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "parent": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "custom": true,
       "object": {
         "optionalInputString": "input2-updated",
         "requiredInputString": "input1-updated",
         "statedir": "state"
       },
+      "propertyDependencies": {
+        "optionalInputString": {},
+        "requiredInputString": {},
+        "statedir": {}
+      },
       "acceptSecrets": true,
       "customTimeouts": {},
       "acceptResources": true
     },
     "response": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "id": "0",
       "object": {
         "id": "0",
@@ -1646,7 +1760,7 @@
   {
     "method": "/pulumirpc.ResourceMonitor/RegisterResourceOutputs",
     "request": {
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-eda2f96d",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::pulumi:pulumi:Stack::updateprogram-p-it-antons-mac-updateprog-459bc9d7",
       "outputs": {
         "testOptionalStringAfterUpdate__actual": "input2-updated",
         "testOptionalStringAfterUpdate__expect": "input2-updated",
@@ -1663,11 +1777,11 @@
     "method": "/pulumirpc.LanguageRuntime/Run",
     "request": {
       "project": "updateprogram",
-      "stack": "p-it-antons-mac-updateprog-eda2f96d",
-      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-eda2f96d-1774672388",
+      "stack": "p-it-antons-mac-updateprog-459bc9d7",
+      "pwd": "/private/var/folders/gk/cchgxh512m72f_dmkcc3d09h0000gp/T/p-it-antons-mac-updateprog-459bc9d7-3471742073",
       "program": ".",
       "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:65189"
+      "monitorAddress": "127.0.0.1:62335"
     },
     "response": {},
     "metadata": {
@@ -1710,7 +1824,7 @@
     "method": "/pulumirpc.ResourceProvider/Delete",
     "request": {
       "id": "0",
-      "urn": "urn:pulumi:p-it-antons-mac-updateprog-eda2f96d::updateprogram::testbridge:index/testres:Testres::r",
+      "urn": "urn:pulumi:p-it-antons-mac-updateprog-459bc9d7::updateprogram::testbridge:index/testres:Testres::r",
       "properties": {
         "id": "0",
         "optionalInputString": "input2-updated",
