@@ -27,6 +27,10 @@ type schemaMap struct {
 	blocks map[string]pfutils.Block
 }
 
+func NewSchemaMap(pf pfutils.Schema) shim.SchemaMap {
+	return newSchemaMap(pf)
+}
+
 func newSchemaMap(tf pfutils.Schema) *schemaMap {
 	return &schemaMap{
 		attrs:  tf.Attrs(),
