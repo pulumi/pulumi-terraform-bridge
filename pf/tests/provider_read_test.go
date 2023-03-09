@@ -122,32 +122,20 @@ func TestReadFromRefresh(t *testing.T) {
 	      "special": true,
 	      "upper": true
 	    },
-            "inputs": {}
+	    "inputs": {
+	      "length": 8,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "overrideSpecial": "_%@:",
+	      "special": true,
+	      "upper": true
+	    }
 	  }
 	}]`
-
-	// TODO populate inputs
-	// "inputs": {
-	//   "__defaults": [
-	// 	"lower",
-	// 	"minLower",
-	// 	"minNumeric",
-	// 	"minSpecial",
-	// 	"minUpper",
-	// 	"number",
-	// 	"upper"
-	//   ],
-	//   "length": 8,
-	//   "lower": true,
-	//   "minLower": 0,
-	//   "minNumeric": 0,
-	//   "minSpecial": 0,
-	//   "minUpper": 0,
-	//   "number": true,
-	//   "overrideSpecial": "_%@:",
-	//   "special": true,
-	//   "upper": true
-	// }
 
 	testutils.ReplaySequence(t, server, testCase)
 }
