@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,9 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
@@ -30,9 +33,13 @@ import (
 func (p *provider) Read(
 	urn resource.URN,
 	id resource.ID,
-	inputs,
+	oldInputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
+	var err error
+
+	// Returning Status is required by the signature but ignored by the server implementation.
+	var ignoredStatus resource.Status = resource.StatusOK
 
 	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 	ctx := context.TODO()
@@ -45,14 +52,30 @@ func (p *provider) Read(
 	// Both "get" and "refresh" scenarios call Read. Detect and dispatch.
 	isRefresh := len(currentStateMap) != 0
 
+	var result plugin.ReadResult
+
 	if isRefresh {
-		return p.readViaReadResource(ctx, &rh, id, inputs, currentStateMap)
+		result, err = p.readViaReadResource(ctx, &rh, id, oldInputs, currentStateMap)
+	} else {
+		result, err = p.readViaImportResourceState(ctx, &rh, id)
+	}
+	if err != nil {
+		return result, ignoredStatus, err
 	}
 
-	return p.readViaImportResourceState(ctx, &rh, id)
+	if result.Outputs != nil {
+		result.Inputs, err = tfbridge.ExtractInputsFromOutputs(
+			oldInputs,
+			result.Outputs,
+			schemashim.NewSchemaMap(rh.schema),
+			rh.pulumiResourceInfo.Fields,
+			isRefresh)
+		if err != nil {
+			return result, ignoredStatus, err
+		}
+	}
 
-	// panic(fmt.Sprintf("READ urn=%v id=%v inputs=%v currentStateMap=%v", urn, id, len(inputs), len(currentStateMap)))
-	// panic: READ urn=urn:pulumi:dev::re::random:index/randomPassword:RandomPassword::newPassword id=supersecret inputs=0 currentStateMap=0
+	return result, ignoredStatus, err
 }
 
 func (p *provider) readViaReadResource(
@@ -61,21 +84,21 @@ func (p *provider) readViaReadResource(
 	id resource.ID,
 	unusedInputs,
 	currentStateMap resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
+) (plugin.ReadResult, error) {
 
 	currentStateRaw, err := parseResourceState(rh, currentStateMap)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	currentState, err := p.UpgradeResourceState(ctx, rh, currentStateRaw)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	currentStateDV, err := makeDynamicValue(currentState.state.Value)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	req := tfprotov6.ReadResourceRequest{
@@ -88,21 +111,21 @@ func (p *provider) readViaReadResource(
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 	if resp.NewState == nil {
-		return plugin.ReadResult{}, resource.StatusOK, nil
+		return plugin.ReadResult{}, nil
 	}
 
 	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	readID, err := readState.ExtractID(rh)
@@ -112,22 +135,20 @@ func (p *provider) readViaReadResource(
 
 	readStateMap, err := readState.ToPropertyMap(rh)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	return plugin.ReadResult{
-		ID: readID,
-		// TODO[pulumi/pulumi-terraform-bridge#795] populate Inputs
-		Inputs:  nil,
+		ID:      readID,
 		Outputs: readStateMap,
-	}, resource.StatusOK, nil
+	}, nil
 }
 
 func (p *provider) readViaImportResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
 	id resource.ID,
-) (plugin.ReadResult, resource.Status, error) {
+) (plugin.ReadResult, error) {
 	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	// TODO[pulumi/pulumi-terraform-bridge#747] set Private
 	req := tfprotov6.ImportResourceStateRequest{
@@ -137,23 +158,23 @@ func (p *provider) readViaImportResourceState(
 
 	resp, err := p.tfServer.ImportResourceState(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	if len(resp.ImportedResources) > 1 {
-		return plugin.ReadResult{}, 0,
+		return plugin.ReadResult{},
 			fmt.Errorf("ImportResourceState returned more than one result, " +
 				"but reading only one is supported by Pulumi")
 	}
 
 	if len(resp.ImportedResources) == 0 {
-		return plugin.ReadResult{}, 0,
+		return plugin.ReadResult{},
 			fmt.Errorf("ImportResourceState failed to return a result")
 	}
 
@@ -161,23 +182,21 @@ func (p *provider) readViaImportResourceState(
 
 	readState, err := parseResourceStateFromTF(ctx, rh, r.State)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	finalID, err := readState.ExtractID(rh)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	readStateMap, err := readState.ToPropertyMap(rh)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResult{}, err
 	}
 
 	return plugin.ReadResult{
-		ID: finalID,
-		// TODO[pulumi/pulumi-terraform-bridge#795] populate Inputs
-		Inputs:  nil,
+		ID:      finalID,
 		Outputs: readStateMap,
-	}, resource.StatusOK, nil
+	}, nil
 }
