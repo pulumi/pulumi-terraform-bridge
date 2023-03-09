@@ -75,7 +75,9 @@ func (s *attrSchema) ForceNew() bool {
 }
 
 func (*attrSchema) StateFunc() shim.SchemaStateFunc {
-	panic("StateFunc() should not be caleld during schema generation")
+	// StateFunc() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
+	// returning nil is better than a panic.
+	return nil
 }
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
