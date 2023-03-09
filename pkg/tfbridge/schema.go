@@ -1437,7 +1437,7 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 	}
 }
 
-func extractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
+func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, isRefresh bool) (resource.PropertyMap, error) {
 
 	sch := (&schema.Schema{

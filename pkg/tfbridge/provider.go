@@ -998,7 +998,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		inputs, err := extractInputsFromOutputs(oldInputs, props, res.TF.Schema(), res.Schema.Fields, isRefresh)
+		inputs, err := ExtractInputsFromOutputs(oldInputs, props, res.TF.Schema(), res.Schema.Fields, isRefresh)
 		if err != nil {
 			return nil, err
 		}
