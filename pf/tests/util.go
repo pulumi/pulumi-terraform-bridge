@@ -20,9 +20,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	serverutil "github.com/pulumi/pulumi-terraform-bridge/pf/internal/server"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
@@ -31,5 +31,5 @@ func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.Resou
 	meta := genMetadata(t, info)
 	p, err := tfbridge.NewProvider(ctx, info, meta)
 	require.NoError(t, err)
-	return plugin.NewProviderServer(p)
+	return serverutil.NewProviderServer(p)
 }

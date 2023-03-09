@@ -35,6 +35,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	serverutil "github.com/pulumi/pulumi-terraform-bridge/pf/internal/server"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -133,7 +134,7 @@ func newProviderServer(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	return plugin.NewProviderServer(p), nil
+	return serverutil.NewProviderServer(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).

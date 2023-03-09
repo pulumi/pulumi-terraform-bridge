@@ -151,3 +151,37 @@ func TestReadFromRefresh(t *testing.T) {
 
 	testutils.ReplaySequence(t, server, testCase)
 }
+
+func TestImportRandomPassword(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Read",
+	  "request": {
+	    "id": "supersecret",
+	    "urn": "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
+	    "properties": {}
+	  },
+	  "response": {
+	    "id": "none",
+	    "properties": {
+	      "__meta": "{\"schema_version\":\"3\"}",
+	      "bcryptHash": "*",
+	      "id": "none",
+	      "length": 11,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "numeric": true,
+	      "result": "*",
+	      "special": true,
+	      "upper": true
+	    },
+	    "inputs": {}
+	  }
+	}`
+	testutils.Replay(t, server, testCase)
+}
