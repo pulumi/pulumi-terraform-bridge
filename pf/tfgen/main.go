@@ -38,6 +38,11 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, info)
 
 	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
+
+		if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
+			return err
+		}
+
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
