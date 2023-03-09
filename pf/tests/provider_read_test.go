@@ -180,7 +180,14 @@ func TestImportRandomPassword(t *testing.T) {
 	      "special": true,
 	      "upper": true
 	    },
-	    "inputs": {}
+	    "inputs": {
+              "length": 11,
+              "lower": true,
+              "number": true,
+              "numeric": true,
+              "special": true,
+              "upper": true
+            }
 	  }
 	}`
 	testutils.Replay(t, server, testCase)

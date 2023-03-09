@@ -73,6 +73,11 @@ func (p *provider) Read(
 		if err != nil {
 			return result, ignoredStatus, err
 		}
+
+		// __defaults is not needed for Plugin Framework bridged providers
+		if _, ok := result.Inputs["__defaults"]; ok {
+			delete(result.Inputs, "__defaults")
+		}
 	}
 
 	return result, ignoredStatus, err
