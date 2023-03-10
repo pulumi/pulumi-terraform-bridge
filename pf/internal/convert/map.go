@@ -44,7 +44,7 @@ func newMapDecoder(elementDecoder Decoder) (Decoder, error) {
 	}, nil
 }
 
-func (enc *mapEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	mapTy := tftypes.Map{ElementType: enc.elementType}
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(mapTy, tftypes.UnknownValue), nil
@@ -58,7 +58,7 @@ func (enc *mapEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	}
 	values := map[string]tftypes.Value{}
 	for key, pv := range p.ObjectValue() {
-		v, err := enc.elementEncoder.FromPropertyValue(pv)
+		v, err := enc.elementEncoder.fromPropertyValue(pv)
 		if err != nil {
 			return tftypes.NewValue(mapTy, nil),
 				fmt.Errorf("encMap failed on %v", pv)
@@ -68,7 +68,7 @@ func (enc *mapEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	return tftypes.NewValue(mapTy, values), nil
 }
 
-func (dec *mapDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *mapDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		return unknownProperty(), nil
 	}
@@ -83,7 +83,7 @@ func (dec *mapDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue,
 
 	values := make(resource.PropertyMap)
 	for k, e := range elements {
-		ev, err := dec.elementDecoder.ToPropertyValue(e)
+		ev, err := dec.elementDecoder.toPropertyValue(e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("decMap fails with %s: %w", e.String(), err)

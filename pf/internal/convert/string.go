@@ -33,7 +33,7 @@ func newStringDecoder() Decoder {
 	return &stringDecoder{}
 }
 
-func (*stringEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.String, tftypes.UnknownValue), nil
 	}
@@ -47,7 +47,7 @@ func (*stringEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	return tftypes.NewValue(tftypes.String, p.StringValue()), nil
 }
 
-func (*stringDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (*stringDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		return unknownProperty(), nil
 	}
