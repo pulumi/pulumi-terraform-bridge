@@ -20,12 +20,7 @@
     "blocks:index/data_sourceAListOfResource:data_sourceAListOfResource": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"
@@ -33,12 +28,7 @@
     "blocks:index/resourceAListOfResource:resourceAListOfResource": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"

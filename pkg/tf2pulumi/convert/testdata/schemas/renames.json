@@ -20,12 +20,7 @@
     "renames:index/data_sourceTheResource:data_sourceTheResource": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"
@@ -33,12 +28,7 @@
     "renames:index/resourceTheResource:resourceTheResource": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"

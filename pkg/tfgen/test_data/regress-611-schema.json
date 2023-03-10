@@ -63,20 +63,10 @@
     "aws:iam/RoleInlinePolicy:RoleInlinePolicy": {
       "properties": {
         "name": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "policy": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"
@@ -84,36 +74,16 @@
     "aws:iam/getGroupUser:getGroupUser": {
       "properties": {
         "arn": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "path": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "userId": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "userName": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object",
@@ -132,22 +102,12 @@
     "aws:index/getAvailabilityZoneFilter:getAvailabilityZoneFilter": {
       "properties": {
         "name": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         }
       },
@@ -160,22 +120,12 @@
     "aws:index/getAvailabilityZonesFilter:getAvailabilityZonesFilter": {
       "properties": {
         "name": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         }
       },
@@ -188,22 +138,12 @@
     "aws:index/getRegionsFilter:getRegionsFilter": {
       "properties": {
         "name": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         }
       },
@@ -219,94 +159,49 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "conditions": {
           "type": "array",
           "items": {
             "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "effect": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "notActions": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "notPrincipals": {
           "type": "array",
           "items": {
             "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementNotPrincipal:getPolicyDocumentStatementNotPrincipal"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "notResources": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "principals": {
           "type": "array",
           "items": {
             "$ref": "#/types/aws:x/iam/getPolicyDocumentStatementPrincipal:getPolicyDocumentStatementPrincipal"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "resources": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "sid": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"
@@ -314,31 +209,16 @@
     "aws:x/iam/getPolicyDocumentStatementCondition:getPolicyDocumentStatementCondition": {
       "properties": {
         "test": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "variable": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object",
@@ -354,20 +234,10 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "type": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object",
@@ -382,20 +252,10 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "language": {
-            "python": {
-              "mapCase": false
-            }
           }
         },
         "type": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object",
