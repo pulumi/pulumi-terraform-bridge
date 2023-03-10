@@ -15,7 +15,6 @@
 package schemashim
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
@@ -25,6 +24,10 @@ import (
 type schemaMap struct {
 	attrs  map[string]pfutils.Attr
 	blocks map[string]pfutils.Block
+}
+
+func NewSchemaMap(pf pfutils.Schema) shim.SchemaMap {
+	return newSchemaMap(pf)
 }
 
 func newSchemaMap(tf pfutils.Schema) *schemaMap {
@@ -48,7 +51,7 @@ func (m *schemaMap) Len() int {
 func (m *schemaMap) Get(key string) shim.Schema {
 	s, ok := m.GetOk(key)
 	if !ok {
-		panic(fmt.Sprintf("Missing key: %v", key))
+		return nil
 	}
 	return s
 }

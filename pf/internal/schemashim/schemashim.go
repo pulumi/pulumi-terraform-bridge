@@ -18,9 +18,6 @@ import (
 	"context"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-
-	pf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -29,11 +26,4 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 		ctx: ctx,
 		tf:  provider,
 	}
-}
-
-func ShimSchemaOnlyProviderInfo(ctx context.Context, provider pf.ProviderInfo) tfbridge.ProviderInfo {
-	shimProvider := ShimSchemaOnlyProvider(ctx, provider.NewProvider())
-	var copy tfbridge.ProviderInfo = provider.ProviderInfo
-	copy.P = shimProvider
-	return copy
 }

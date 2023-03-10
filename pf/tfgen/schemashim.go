@@ -12,24 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package tfgen
 
 import (
 	"context"
-	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	serverutil "github.com/pulumi/pulumi-terraform-bridge/pf/internal/server"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	pf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
-	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
-	require.NoError(t, err)
-	return serverutil.NewProviderServer(p)
+func shimSchemaOnlyProviderInfo(ctx context.Context, provider pf.ProviderInfo) tfbridge.ProviderInfo {
+	shimProvider := schemashim.ShimSchemaOnlyProvider(ctx, provider.NewProvider())
+	var copy tfbridge.ProviderInfo = provider.ProviderInfo
+	copy.P = shimProvider
+	return copy
 }

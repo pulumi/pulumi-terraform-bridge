@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
@@ -52,7 +51,7 @@ func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateS
 			Color: colors.Never,
 		})
 	}
-	shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, opts.ProviderInfo)
+	shimInfo := shimSchemaOnlyProviderInfo(ctx, opts.ProviderInfo)
 
 	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
 		ProviderInfo:    shimInfo,
