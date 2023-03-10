@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -90,19 +91,19 @@ func NewConfigPropertyNames(pn PropertyNames) LocalPropertyNames {
 }
 
 type Encoder interface {
-	FromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
+	fromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
 }
 
 type Decoder interface {
-	ToPropertyValue(tftypes.Value) (resource.PropertyValue, error)
+	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
 }
 
 func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, error) {
-	return enc.FromPropertyValue(resource.NewObjectProperty(pmap))
+	return enc.fromPropertyValue(propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
 }
 
 func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
-	pv, err := dec.ToPropertyValue(v)
+	pv, err := dec.toPropertyValue(v)
 	if err != nil {
 		return nil, err
 	}

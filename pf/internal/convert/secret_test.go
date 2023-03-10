@@ -26,11 +26,32 @@ import (
 // Due to https://github.com/pulumi/pulumi/issues/11971 provider may receive secret values that are not explicitly
 // wrapped, and should tolerate it.
 func TestRelaxedSecretHandling(t *testing.T) {
-	encoder, err := newSecretEncoder(newStringEncoder(), tftypes.String)
+	ty := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"x": tftypes.String,
+		},
+	}
+
+	encoder, err := newObjectEncoder(ty, map[TerraformPropertyName]Encoder{
+		"x": newStringEncoder(),
+	}, &trivialLocalPropertyNames{})
 	require.NoError(t, err)
 
-	v, err := encoder.FromPropertyValue(resource.NewStringProperty("OK"))
+	v, err := EncodePropertyMap(encoder, resource.PropertyMap{"x": resource.NewStringProperty("OK")})
 	require.NoError(t, err)
 
-	require.Equal(t, tftypes.NewValue(tftypes.String, "OK"), v)
+	expect := tftypes.NewValue(ty, map[string]tftypes.Value{
+		"x": tftypes.NewValue(tftypes.String, "OK"),
+	})
+
+	require.Equal(t, expect, v)
 }
+
+type trivialLocalPropertyNames struct{}
+
+func (*trivialLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
+	return resource.PropertyKey(property)
+}
+
+// Like PropertyNames but specialized to either a type by token or config property.
+var _ LocalPropertyNames = &trivialLocalPropertyNames{}

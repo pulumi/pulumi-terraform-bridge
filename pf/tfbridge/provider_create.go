@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
@@ -33,6 +34,11 @@ func (p *provider) Create(
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	ctx := context.TODO()
+
+	// There is impedance mismatch for first-class secret values. These may be coming out of Pulumi programs but
+	// have no representaition in tftypes.Value. Currently convert.EncodePropertyMap chokes on these, so discard
+	// them here instead.
+	checkedInputs = propertyvalue.RemoveSecrets(resource.NewObjectProperty(checkedInputs)).ObjectValue()
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
