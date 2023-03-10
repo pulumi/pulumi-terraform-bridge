@@ -80,8 +80,7 @@ func TransformErr(
 
 // Removes any resource.NewSecretProperty wrappers. Removes Secret: true flags from any first-class outputs.
 func RemoveSecrets(pv resource.PropertyValue) resource.PropertyValue {
-	var unsecret func(pv resource.PropertyValue) resource.PropertyValue
-	unsecret = func(pv resource.PropertyValue) resource.PropertyValue {
+	unsecret := func(pv resource.PropertyValue) resource.PropertyValue {
 		if pv.IsSecret() {
 			return pv.SecretValue().Element
 		}
