@@ -110,3 +110,29 @@ func TestPreviewCreate(t *testing.T) {
 `
 	testutils.Replay(t, server, testCase)
 }
+
+func TestCreateWithFirstClassSecrets(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::pulumi-terraform-bridge-812::random:index/randomPet:RandomPet::pet",
+	    "properties": {
+	      "separator": {
+		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		"value": "BbAXG:}h"
+	      }
+	    },
+	    "preview": true
+	  },
+	  "response": {
+            "properties": {
+              "id": "*",
+              "length": 2,
+              "separator": "BbAXG:}h"
+            }
+          }
+	}`
+	testutils.Replay(t, server, testCase)
+}
