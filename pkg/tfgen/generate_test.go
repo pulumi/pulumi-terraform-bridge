@@ -125,16 +125,18 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 	infos, err := os.ReadDir(mappingsPath)
 	require.NoError(t, err)
 	for _, info := range infos {
-		// Strip off the .json part to make the package name
-		pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
-		provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
-		require.NoError(t, err)
+		t.Run(info.Name(), func(t *testing.T) {
+			// Strip off the .json part to make the package name
+			pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
+			provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
+			require.NoError(t, err)
 
-		schema, err := GenerateSchema(*provInfo, nilSink)
-		require.NoError(t, err)
+			schema, err := GenerateSchema(*provInfo, nilSink)
+			require.NoError(t, err)
 
-		schemaPath := filepath.Join(schemasPath, pkg+".json")
-		bridgetesting.AssertEqualsJSONFile(t, schemaPath, schema)
+			schemaPath := filepath.Join(schemasPath, pkg+".json")
+			bridgetesting.AssertEqualsJSONFile(t, schemaPath, schema)
+		})
 	}
 }
 
