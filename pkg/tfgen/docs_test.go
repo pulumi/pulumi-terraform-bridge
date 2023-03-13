@@ -17,13 +17,20 @@ package tfgen
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 	"text/template"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
 
 type testcase struct {
@@ -844,6 +851,51 @@ func TestFindRepoPath(t *testing.T) {
 	actual := findRepoPath(env, "github.com/foo/terraform-provider-bar")
 
 	assert.Equal(t, "./terraform-provider-bar", actual)
+}
+
+func TestExampleGeneration(t *testing.T) {
+	info := testprovider.ProviderMiniRandom()
+
+	markdown := []byte(`
+## Examples
+
+There is some more code in here.
+
+~~~java
+throw new Exception("!");
+~~~
+`)
+
+	markdown = bytes.ReplaceAll([]byte(markdown), []byte("~~~"), []byte("```"))
+
+	info.Resources["random_integer"].Docs = &tfbridge.DocInfo{
+		Markdown: markdown,
+	}
+
+	inmem := afero.NewMemMapFs()
+
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	err = g.Generate()
+	assert.NoError(t, err)
+
+	f, err := inmem.Open("schema.json")
+	assert.NoError(t, err)
+
+	schemaBytes, err := io.ReadAll(f)
+	assert.NoError(t, err)
+
+	assert.NotContains(t, string(schemaBytes), "{{% //examples %}}")
 }
 
 type mockResource struct {
