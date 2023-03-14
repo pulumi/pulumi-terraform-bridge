@@ -72,9 +72,6 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 		os.Exit(0)
 	}
 
-	// TODO[pulumi/pulumi-terraform-bridge#820]
-	// prov.P.InitLogging()
-
 	if err := serve(ctx, pkg, prov, meta); err != nil {
 		cmdutil.ExitError(err.Error())
 	}

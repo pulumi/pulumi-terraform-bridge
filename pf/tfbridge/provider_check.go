@@ -15,19 +15,25 @@
 package tfbridge
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // Check validates the given resource inputs from the user program and computes checked inputs that fill out default
 // values. The checked inputs are then passed to subsequent, Diff, Create, or Update.
-func (p *provider) Check(
+func (p *provider) CheckWithContext(
+	ctx context.Context,
 	urn resource.URN,
 	priorState resource.PropertyMap,
 	inputs resource.PropertyMap,
 	allowUnknowns bool,
 	randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
+	ctx = initLogging(ctx)
+
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
 	checkedInputs := inputs.Copy()
 

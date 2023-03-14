@@ -26,13 +26,14 @@ import (
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
-func (p *provider) Create(
+func (p *provider) CreateWithContext(
+	ctx context.Context,
 	urn resource.URN,
 	checkedInputs resource.PropertyMap,
 	timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	ctx := context.TODO()
+	ctx = initLogging(ctx)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

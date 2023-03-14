@@ -25,10 +25,11 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
 
-func (p *provider) Delete(urn resource.URN, id resource.ID,
+func (p *provider) DeleteWithContext(ctx context.Context,
+	urn resource.URN, id resource.ID,
 	props resource.PropertyMap, timeout float64) (resource.Status, error) {
 
-	ctx := context.TODO()
+	ctx = initLogging(ctx)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

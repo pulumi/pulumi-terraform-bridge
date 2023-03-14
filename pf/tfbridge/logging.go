@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,17 +17,11 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
 )
 
-// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfigWithContext(ctx context.Context,
-	urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-
-	ctx = initLogging(ctx)
-
-	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
-	return plugin.DiffResult{}, nil
+func initLogging(ctx context.Context) context.Context {
+	ctx = tfsdklog.NewRootProviderLogger(ctx)
+	ctx = tfsdklog.NewRootSDKLogger(ctx)
+	return ctx
 }

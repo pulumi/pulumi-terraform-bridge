@@ -30,19 +30,21 @@ import (
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *provider) Read(
+func (p *provider) ReadWithContext(
+	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
 	oldInputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
+	ctx = initLogging(ctx)
+
 	var err error
 
 	// Returning Status is required by the signature but ignored by the server implementation.
 	var ignoredStatus resource.Status = resource.StatusOK
 
 	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
-	ctx := context.TODO()
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
