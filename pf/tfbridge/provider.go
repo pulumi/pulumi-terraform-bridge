@@ -34,6 +34,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
@@ -56,7 +57,7 @@ type provider struct {
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
-	logSink       logSink
+	logSink       logutils.LogSink
 }
 
 var _ plugin.ProviderWithContext = &provider{}
@@ -130,7 +131,7 @@ func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) 
 
 func newProviderServer(
 	ctx context.Context,
-	logSink logSink,
+	logSink logutils.LogSink,
 	info ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {

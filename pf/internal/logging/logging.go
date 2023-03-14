@@ -16,10 +16,24 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 
 	"github.com/hashicorp/go-hclog"
+
+	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
+
+// Abstracts the logging interface to HostClient. This is the interface providers use to report logging information back
+// to the Pulumi CLI over gRPC.
+type LogSink interface {
+	Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
+	LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
+}
+
+var _ LogSink = (*rprovider.HostClient)(nil)
 
 // Directs any logs written using the tflog API in the given Context as JSON messages to the given output.
 //
@@ -46,4 +60,36 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 		IndependentLevels: true,
 		IncludeLocation:   true,
 	}
+}
+
+// Re-interprets strucutred JSON logs as calls against LogSink. To be used with SetupRootLoggers.
+func LogSinkWriter(ctx context.Context, sink LogSink) io.Writer {
+	return &logSinkWriter{
+		ctx:  ctx,
+		sink: sink,
+	}
+}
+
+type logSinkWriter struct {
+	ctx  context.Context
+	sink LogSink
+}
+
+var _ io.Writer = &logSinkWriter{}
+
+func (w *logSinkWriter) Write(p []byte) (n int, err error) {
+	n = len(p)
+	if w.sink == nil {
+		return
+	}
+	var m map[string]interface{}
+	err = json.Unmarshal(p, &m)
+	if err != nil {
+		return
+	}
+	err = w.sink.Log(w.ctx, diag.Error, "", m["@message"].(string))
+	if err != nil {
+		return
+	}
+	return
 }
