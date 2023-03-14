@@ -139,6 +139,7 @@ func newProviderServer(
 	if err != nil {
 		return nil, err
 	}
+	p.(*provider).logSink = logSink
 	return plugin.NewProviderServerWithContext(p), nil
 }
 
