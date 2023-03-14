@@ -44,7 +44,7 @@ func (p *provider) DiffWithContext(
 	allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-	ctx = initLogging(ctx)
+	ctx = initLogging(p.logSink, ctx)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

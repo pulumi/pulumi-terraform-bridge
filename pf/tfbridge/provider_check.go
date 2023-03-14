@@ -32,7 +32,7 @@ func (p *provider) CheckWithContext(
 	randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	ctx = initLogging(ctx)
+	ctx = initLogging(p.logSink, ctx)
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
 	checkedInputs := inputs.Copy()

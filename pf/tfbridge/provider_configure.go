@@ -27,7 +27,7 @@ import (
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
-	ctx = initLogging(ctx)
+	ctx = initLogging(p.logSink, ctx)
 
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
 	if err != nil {

@@ -26,7 +26,7 @@ func (p *provider) DiffConfigWithContext(ctx context.Context,
 	urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
-	ctx = initLogging(ctx)
+	ctx = initLogging(p.logSink, ctx)
 
 	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
 	return plugin.DiffResult{}, nil

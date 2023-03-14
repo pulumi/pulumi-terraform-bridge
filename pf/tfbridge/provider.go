@@ -56,6 +56,7 @@ type provider struct {
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
+	logSink       logSink
 }
 
 var _ plugin.ProviderWithContext = &provider{}
@@ -127,8 +128,12 @@ func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) 
 	}, nil
 }
 
-func newProviderServer(ctx context.Context,
-	info ProviderInfo, meta ProviderMetadata) (pulumirpc.ResourceProviderServer, error) {
+func newProviderServer(
+	ctx context.Context,
+	logSink logSink,
+	info ProviderInfo,
+	meta ProviderMetadata,
+) (pulumirpc.ResourceProviderServer, error) {
 	p, err := NewProvider(ctx, info, meta)
 	if err != nil {
 		return nil, err

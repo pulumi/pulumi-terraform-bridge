@@ -17,10 +17,27 @@ package tfbridge
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
+	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 )
 
-func initLogging(ctx context.Context) context.Context {
+type logSink interface {
+	Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
+	LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
+}
+
+var _ logSink = (*rprovider.HostClient)(nil)
+
+// Route Terraform logs to the Pulumi Engine hosted in the Pulumi CLI process.
+//
+// Terraform provider code as well as Plugin Framework code will emit logging messages into the root loggers found in
+// the nearest Context. Observing these messages requires some setup for the Context.
+//
+// See https://developer.hashicorp.com/terraform/plugin/log/writing
+func initLogging(sink logSink, ctx context.Context) context.Context {
 	ctx = tfsdklog.NewRootProviderLogger(ctx)
 	ctx = tfsdklog.NewRootSDKLogger(ctx)
 	return ctx
