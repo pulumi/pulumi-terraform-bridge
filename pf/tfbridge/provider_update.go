@@ -36,7 +36,7 @@ func (p *provider) UpdateWithContext(
 	ignoreChanges []string,
 	preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
-	ctx = initLogging(p.logSink, ctx)
+	ctx = initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

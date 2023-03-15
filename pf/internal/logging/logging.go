@@ -43,6 +43,7 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 // See InitLogging.
 type LogOptions struct {
 	LogSink LogSink
+	URN     resource.URN
 }
 
 // Abstracts the logging interface to HostClient. This is the interface providers use to report logging information back
