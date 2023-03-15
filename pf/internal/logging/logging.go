@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -39,10 +41,11 @@ var _ LogSink = (*rprovider.HostClient)(nil)
 //
 // See https://developer.hashicorp.com/terraform/plugin/log/writing
 func SetupRootLoggers(ctx context.Context, output io.Writer) context.Context {
-	sdkLoggerOptions := makeLoggerOptions("sdk", hclog.NoLevel, output)
+	desiredLevel := parseTfLogEnvVar()
+	sdkLoggerOptions := makeLoggerOptions("sdk", desiredLevel, output)
 	ctx = context.WithValue(ctx, sdkKey, hclog.New(sdkLoggerOptions))
 	ctx = context.WithValue(ctx, sdkOptionsKey, sdkLoggerOptions)
-	providerLoggerOptions := makeLoggerOptions("provider", hclog.NoLevel, output)
+	providerLoggerOptions := makeLoggerOptions("provider", desiredLevel, output)
 	ctx = context.WithValue(ctx, providerKey, hclog.New(providerLoggerOptions))
 	ctx = context.WithValue(ctx, providerOptionsKey, providerLoggerOptions)
 	return ctx
@@ -64,15 +67,18 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 
 // Re-interprets strucutred JSON logs as calls against LogSink. To be used with SetupRootLoggers.
 func LogSinkWriter(ctx context.Context, sink LogSink) io.Writer {
+	desiredLevel := parseTfLogEnvVar()
 	return &logSinkWriter{
-		ctx:  ctx,
-		sink: sink,
+		desiredLevel: desiredLevel,
+		ctx:          ctx,
+		sink:         sink,
 	}
 }
 
 type logSinkWriter struct {
-	ctx  context.Context
-	sink LogSink
+	desiredLevel hclog.Level
+	ctx          context.Context
+	sink         LogSink
 }
 
 var _ io.Writer = &logSinkWriter{}
@@ -87,9 +93,97 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	if err != nil {
 		return
 	}
-	err = w.sink.Log(w.ctx, diag.Error, "", m["@message"].(string))
+
+	level := hclog.DefaultLevel
+	if levelStr, gotLevel := m["@level"]; gotLevel {
+		if s, ok := levelStr.(string); ok {
+			level = parseLogLevelString(s)
+		}
+	}
+
+	if level < w.desiredLevel {
+		return
+	}
+
+	var msg string
+	if msgObj, gotMessage := m["@message"]; gotMessage {
+		if s, ok := msgObj.(string); ok {
+			msg = s
+		}
+	}
+
+	// Recognizing which URN the message belongs to is not supported yet, but interesting to add via underlying
+	// structured logging.
+	var urn resource.URN
+
+	err = w.sink.Log(w.ctx, logLevelToSeverity(level), urn, msg)
 	if err != nil {
 		return
 	}
 	return
+}
+
+// From https://www.pulumi.com/docs/support/troubleshooting/:
+//
+// Pulumi providers that use a bridged Terraform provider can make use of the TF_LOG environment variable (set to TRACE,
+// DEBUG, INFO, WARN or ERROR) in order to provide additional diagnostic information.
+//
+// The code provides another option, OFF, to remove all Terraform logs.
+func parseTfLogEnvVar() hclog.Level {
+	env := os.Getenv("TF_LOG")
+	if env == "" {
+		return hclog.NoLevel
+	}
+	switch strings.ToUpper(env) {
+	case "ERROR":
+		return hclog.Error
+	case "WARN":
+		return hclog.Warn
+	case "INFO":
+		return hclog.Info
+	case "TRACE":
+		return hclog.Trace
+	case "DEBUG":
+		return hclog.Debug
+	case "OFF":
+		return hclog.Off
+	default:
+		return hclog.NoLevel
+	}
+}
+
+func parseLogLevelString(s string) hclog.Level {
+	switch s {
+	case "error":
+		return hclog.Error
+	case "warn":
+		return hclog.Warn
+	case "info":
+		return hclog.Info
+	case "debug":
+		return hclog.Debug
+	case "trace":
+		return hclog.Trace
+	case "all":
+		return hclog.Info
+	default:
+		return hclog.Info
+	}
+}
+
+func logLevelToSeverity(l hclog.Level) diag.Severity {
+	switch l {
+	case hclog.Error:
+		return diag.Error
+	case hclog.Warn:
+		return diag.Warning
+	case hclog.Info:
+		return diag.Info
+	case hclog.Debug:
+		return diag.Debug
+	case hclog.Trace:
+		return diag.Debug
+	default:
+		return diag.Debug
+	}
 }
