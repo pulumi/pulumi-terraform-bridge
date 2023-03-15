@@ -27,6 +27,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+// Sets up Context-scoped loggers to route Terraform logs to the Pulumi CLI process so they are visible to the user.
+//
+// Log verbosity is controlled by the TF_LOG environment variable (set to TRACE, DEBUG, INFO, WARN, ERROR or OFF). By
+// default, INFO-level logs are emitted.
+//
+// See also:
+//
+// - https://developer.hashicorp.com/terraform/plugin/log/writing
+// - https://www.pulumi.com/docs/support/troubleshooting
+func InitLogging(ctx context.Context, opts LogOptions) context.Context {
+	return setupRootLoggers(ctx, newLogSinkWriter(ctx, opts.LogSink))
+}
+
+// See InitLogging.
+type LogOptions struct {
+	LogSink LogSink
+}
+
 // Abstracts the logging interface to HostClient. This is the interface providers use to report logging information back
 // to the Pulumi CLI over gRPC.
 type LogSink interface {
@@ -36,10 +54,8 @@ type LogSink interface {
 
 var _ LogSink = (*rprovider.HostClient)(nil)
 
-// Directs any logs written using the tflog API in the given Context as JSON messages to the given output.
-//
-// See https://developer.hashicorp.com/terraform/plugin/log/writing
-func SetupRootLoggers(ctx context.Context, output io.Writer) context.Context {
+// Directs any logs written using the tflog API in the given Context to the given output.
+func setupRootLoggers(ctx context.Context, output io.Writer) context.Context {
 	desiredLevel := parseTfLogEnvVar()
 	sdkLoggerOptions := makeLoggerOptions("sdk", desiredLevel, output)
 	ctx = context.WithValue(ctx, sdkKey, hclog.New(sdkLoggerOptions))
@@ -52,7 +68,7 @@ func SetupRootLoggers(ctx context.Context, output io.Writer) context.Context {
 
 func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.LoggerOptions {
 	if level == hclog.NoLevel {
-		level = hclog.Trace
+		level = hclog.Info
 	}
 	return &hclog.LoggerOptions{
 		Name:              name,
@@ -68,7 +84,7 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 }
 
 // Re-interprets strucutred JSON logs as calls against LogSink. To be used with SetupRootLoggers.
-func LogSinkWriter(ctx context.Context, sink LogSink) io.Writer {
+func newLogSinkWriter(ctx context.Context, sink LogSink) io.Writer {
 	desiredLevel := parseTfLogEnvVar()
 	return &logSinkWriter{
 		desiredLevel: desiredLevel,
@@ -104,12 +120,6 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
-// From https://www.pulumi.com/docs/support/troubleshooting/:
-//
-// Pulumi providers that use a bridged Terraform provider can make use of the TF_LOG environment variable (set to TRACE,
-// DEBUG, INFO, WARN or ERROR) in order to provide additional diagnostic information.
-//
-// The code provides another option, OFF, to remove all Terraform logs.
 func parseTfLogEnvVar() hclog.Level {
 	env := os.Getenv("TF_LOG")
 	if env == "" {

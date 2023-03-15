@@ -27,7 +27,7 @@ import (
 
 func TestSetupRootLoggers(t *testing.T) {
 	var buf bytes.Buffer
-	ctx := SetupRootLoggers(context.Background(), &buf)
+	ctx := setupRootLoggers(context.Background(), &buf)
 	tflog.Error(ctx, "Something went wrong")
 	assert.Regexp(t, `\[ERROR\] logging/logging_test.go:\d+: provider: Something went wrong\s*$`, buf.String())
 }

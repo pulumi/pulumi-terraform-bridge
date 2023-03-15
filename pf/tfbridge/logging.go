@@ -20,13 +20,9 @@ import (
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 )
 
-// Route Terraform logs to the Pulumi Engine hosted in the Pulumi CLI process.
-//
-// Terraform provider code as well as Plugin Framework code will emit logging messages into the root loggers found in
-// the nearest Context. Observing these messages requires some setup for the Context.
-//
 // See https://developer.hashicorp.com/terraform/plugin/log/writing
 func initLogging(sink logutils.LogSink, ctx context.Context) context.Context {
-	output := logutils.LogSinkWriter(ctx, sink)
-	return logutils.SetupRootLoggers(ctx, output)
+	return logutils.InitLogging(ctx, logutils.LogOptions{
+		LogSink: sink,
+	})
 }
