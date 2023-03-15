@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -37,20 +38,35 @@ import (
 // - https://developer.hashicorp.com/terraform/plugin/log/writing
 // - https://www.pulumi.com/docs/support/troubleshooting
 func InitLogging(ctx context.Context, opts LogOptions) context.Context {
-	return setupRootLoggers(ctx, newLogSinkWriter(ctx, opts.LogSink))
+	ctx = setupRootLoggers(ctx, newLogSinkWriter(ctx, opts.LogSink))
+
+	if opts.URN != "" {
+		ctx = tflog.SetField(ctx, "urn", string(opts.URN))
+	}
+
+	if opts.ProviderName != "" {
+		ctx = tflog.SetField(ctx, "provider", opts.ProviderName)
+	}
+
+	if opts.ProviderVersion != "" {
+		ctx = tflog.SetField(ctx, "providerVersion", opts.ProviderVersion)
+	}
+
+	return ctx
 }
 
 // See InitLogging.
 type LogOptions struct {
-	LogSink LogSink
-	URN     resource.URN
+	LogSink         LogSink
+	ProviderName    string
+	ProviderVersion string
+	URN             resource.URN
 }
 
 // Abstracts the logging interface to HostClient. This is the interface providers use to report logging information back
 // to the Pulumi CLI over gRPC.
 type LogSink interface {
 	Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
-	LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
 }
 
 var _ LogSink = (*rprovider.HostClient)(nil)
@@ -115,8 +131,9 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
+	urn := parseUrnFromRawString(raw)
 	severity := logLevelToSeverity(level)
-	var urn resource.URN
+
 	err = w.sink.Log(w.ctx, severity, urn, raw)
 	return
 }
@@ -142,6 +159,18 @@ func parseTfLogEnvVar() hclog.Level {
 	default:
 		return hclog.NoLevel
 	}
+}
+
+func parseUrnFromRawString(s string) resource.URN {
+	i := strings.Index(s, `urn="`)
+	if i == -1 {
+		return ""
+	}
+	j := strings.Index(s[i+5:], `"`)
+	if j == -1 {
+		return ""
+	}
+	return resource.URN(s[i+5 : i+5+j])
 }
 
 func parseLevelFromRawString(s string) hclog.Level {
