@@ -88,9 +88,9 @@ func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
 			desc := v.Description(ctx)
 			if m := listSizeRegExp.FindStringSubmatch(desc); m != nil {
 				minElements, err := strconv.Atoi(m[1])
-				contract.AssertNoError(err)
+				contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
 				maxElements, err := strconv.Atoi(m[2])
-				contract.AssertNoError(err)
+				contract.AssertNoErrorf(err, "Atoi failed on %q", m[2])
 				return int64(minElements), int64(maxElements), true
 			}
 		}

@@ -78,7 +78,7 @@ func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.
 			if configValue != nil && !configValue.IsNull() && configValue.IsKnown() {
 				// Here priorStateValue must be unknown. If it was an object, Reconcile would not be
 				// called. If it was null, it got substituted via newObjectWithDefaults.
-				contract.Assert(!priorStateValue.IsKnown())
+				contract.Assertf(!priorStateValue.IsKnown(), "priorStateValue must be known")
 				v, err := rewriteNullComputedAsUnknown(schema, diff.Path, *configValue)
 				return &v, err
 			}
@@ -167,7 +167,7 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	case !attr.IsComputed():
 		return pathToNonComputedAttribute, nil
 	case !attr.IsOptional() && !attr.IsRequired():
-		contract.Assert(attr.IsComputed())
+		contract.Assertf(attr.IsComputed(), "!attr.IsOptional() && !attr.IsRequired() should imply attr.IsComputed()")
 		return pathToReadOnlyAttribute, nil
 	default:
 		contract.Assertf(attr.IsOptional(), "Remaining case should be optional")

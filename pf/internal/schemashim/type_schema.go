@@ -61,10 +61,12 @@ func (s *typeSchema) Elem() interface{} {
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested)
 		return pseudoResource
 	case types.ListType:
-		contract.Assert(s.nested == nil || len(s.nested) == 0)
+		contract.Assertf(s.nested == nil || len(s.nested) == 0,
+			"s.t==ListType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
 	case types.MapType:
-		contract.Assert(s.nested == nil || len(s.nested) == 0)
+		contract.Assertf(s.nested == nil || len(s.nested) == 0,
+			"s.t==MapType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
 	case pfattr.TypeWithElementTypes:
 		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
