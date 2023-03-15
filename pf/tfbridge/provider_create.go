@@ -33,7 +33,7 @@ func (p *provider) CreateWithContext(
 	timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	ctx = initLogging(ctx, p.logSink, urn)
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

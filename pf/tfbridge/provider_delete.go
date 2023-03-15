@@ -29,7 +29,7 @@ func (p *provider) DeleteWithContext(ctx context.Context,
 	urn resource.URN, id resource.ID,
 	props resource.PropertyMap, timeout float64) (resource.Status, error) {
 
-	ctx = initLogging(ctx, p.logSink, urn)
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

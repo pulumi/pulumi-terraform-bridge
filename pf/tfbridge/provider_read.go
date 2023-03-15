@@ -37,7 +37,7 @@ func (p *provider) ReadWithContext(
 	oldInputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
-	ctx = initLogging(ctx, p.logSink, urn)
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	var err error
 

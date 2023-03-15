@@ -34,7 +34,7 @@ func (p *provider) InvokeWithContext(
 	tok tokens.ModuleMember,
 	args resource.PropertyMap,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	ctx = initLogging(ctx, p.logSink, "")
+	ctx = p.initLogging(ctx, p.logSink, "")
 
 	handle, err := p.datasourceHandle(ctx, tok)
 	if err != nil {
