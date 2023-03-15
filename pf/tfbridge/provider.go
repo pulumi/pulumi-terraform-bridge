@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -60,11 +62,11 @@ type provider struct {
 	logSink       logutils.LogSink
 }
 
-var _ plugin.ProviderWithContext = &provider{}
+var _ pl.ProviderWithContext = &provider{}
 
 // Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
-func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.ProviderWithContext, error) {
+func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	p := info.NewProvider()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
@@ -140,7 +142,7 @@ func newProviderServer(
 		return nil, err
 	}
 	p.(*provider).logSink = logSink
-	return plugin.NewProviderServerWithContext(p), nil
+	return pl.NewProviderServerWithContext(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
