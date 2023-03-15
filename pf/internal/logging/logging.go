@@ -16,7 +16,6 @@ package logging
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -59,9 +58,12 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 		Name:              name,
 		Output:            output,
 		Level:             level,
-		JSONFormat:        true,
 		IndependentLevels: true,
 		IncludeLocation:   true,
+
+		// Empirically the value of 1 seems to work in the current Pulumi setup, @caller field now points to the
+		// file where the logging originates.
+		AdditionalLocationOffset: 1,
 	}
 }
 
@@ -88,38 +90,17 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	if w.sink == nil {
 		return
 	}
-	var m map[string]interface{}
-	err = json.Unmarshal(p, &m)
-	if err != nil {
+
+	raw := string(p)
+	level := parseLevelFromRawString(raw)
+
+	if level <= w.desiredLevel {
 		return
 	}
 
-	level := hclog.DefaultLevel
-	if levelStr, gotLevel := m["@level"]; gotLevel {
-		if s, ok := levelStr.(string); ok {
-			level = parseLogLevelString(s)
-		}
-	}
-
-	if level < w.desiredLevel {
-		return
-	}
-
-	var msg string
-	if msgObj, gotMessage := m["@message"]; gotMessage {
-		if s, ok := msgObj.(string); ok {
-			msg = s
-		}
-	}
-
-	// Recognizing which URN the message belongs to is not supported yet, but interesting to add via underlying
-	// structured logging.
+	severity := logLevelToSeverity(level)
 	var urn resource.URN
-
-	err = w.sink.Log(w.ctx, logLevelToSeverity(level), urn, msg)
-	if err != nil {
-		return
-	}
+	err = w.sink.Log(w.ctx, severity, urn, raw)
 	return
 }
 
@@ -152,22 +133,22 @@ func parseTfLogEnvVar() hclog.Level {
 	}
 }
 
-func parseLogLevelString(s string) hclog.Level {
-	switch s {
-	case "error":
+func parseLevelFromRawString(s string) hclog.Level {
+	i := strings.Index(s, "[")
+	j := strings.Index(s[i:], "]")
+	switch s[i : i+j+1] {
+	case "[ERROR]":
 		return hclog.Error
-	case "warn":
+	case "[WARN]":
 		return hclog.Warn
-	case "info":
-		return hclog.Info
-	case "debug":
+	case "[DEBUG]":
 		return hclog.Debug
-	case "trace":
+	case "[INFO]":
+		return hclog.Info
+	case "[TRACE]":
 		return hclog.Trace
-	case "all":
-		return hclog.Info
 	default:
-		return hclog.Info
+		return hclog.Trace
 	}
 }
 

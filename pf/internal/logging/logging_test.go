@@ -17,26 +17,22 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSetupRootLoggers(t *testing.T) {
 	var buf bytes.Buffer
-
 	ctx := SetupRootLoggers(context.Background(), &buf)
-
 	tflog.Error(ctx, "Something went wrong")
+	assert.Regexp(t, `\[ERROR\] logging/logging_test.go:\d+: provider: Something went wrong\s*$`, buf.String())
+}
 
-	var logged map[string]interface{}
-
-	err := json.Unmarshal(buf.Bytes(), &logged)
-	require.NoError(t, err)
-
-	require.Equal(t, "error", logged["@level"])
-	require.Equal(t, "Something went wrong", logged["@message"])
-	require.Equal(t, "provider", logged["@module"])
+func TestParseLevelFromRawString(t *testing.T) {
+	msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b"
+	require.Equal(t, hclog.Error, parseLevelFromRawString(msg))
 }
