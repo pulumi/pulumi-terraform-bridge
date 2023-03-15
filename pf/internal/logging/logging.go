@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -125,13 +126,13 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	}
 
 	raw := string(p)
-	level := parseLevelFromRawString(raw)
+	level, raw := parseLevelFromRawString(raw)
 
 	if level <= w.desiredLevel {
 		return
 	}
 
-	urn := parseUrnFromRawString(raw)
+	urn, raw := parseUrnFromRawString(raw)
 	severity := logLevelToSeverity(level)
 
 	err = w.sink.Log(w.ctx, severity, urn, raw)
@@ -161,34 +162,36 @@ func parseTfLogEnvVar() hclog.Level {
 	}
 }
 
-func parseUrnFromRawString(s string) resource.URN {
-	i := strings.Index(s, `urn="`)
-	if i == -1 {
-		return ""
+var quotedUrnPattern = regexp.MustCompile(`[ ]urn=["]([^"]+)["]`)
+var bareUrnPattern = regexp.MustCompile(`[ ]urn=([^ ]+)`)
+
+func parseUrnFromRawString(s string) (resource.URN, string) {
+	if ok := quotedUrnPattern.FindStringSubmatch(s); len(ok) > 0 {
+		return resource.URN(ok[1]), strings.Replace(s, ok[0], "", 1)
 	}
-	j := strings.Index(s[i+5:], `"`)
-	if j == -1 {
-		return ""
+	if ok := bareUrnPattern.FindStringSubmatch(s); len(ok) > 0 {
+		return resource.URN(ok[1]), strings.Replace(s, ok[0], "", 1)
 	}
-	return resource.URN(s[i+5 : i+5+j])
+	return "", s
 }
 
-func parseLevelFromRawString(s string) hclog.Level {
+func parseLevelFromRawString(s string) (hclog.Level, string) {
 	i := strings.Index(s, "[")
 	j := strings.Index(s[i:], "]")
+	remainder := s[0:i] + s[i+j+2:]
 	switch s[i : i+j+1] {
 	case "[ERROR]":
-		return hclog.Error
+		return hclog.Error, remainder
 	case "[WARN]":
-		return hclog.Warn
+		return hclog.Warn, remainder
 	case "[DEBUG]":
-		return hclog.Debug
+		return hclog.Debug, remainder
 	case "[INFO]":
-		return hclog.Info
+		return hclog.Info, remainder
 	case "[TRACE]":
-		return hclog.Trace
+		return hclog.Trace, remainder
 	default:
-		return hclog.Trace
+		return hclog.Trace, remainder
 	}
 }
 
