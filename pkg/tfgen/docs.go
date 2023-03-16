@@ -1690,7 +1690,7 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 				return open + modname + getname.String() + close
 			case Python:
 				// Use `ec2.get_ami` format
-				return python.PyName(open + modname + getname.String() + close)
+				return open + python.PyName(modname+getname.String()) + close
 			default:
 				// Use `aws.ec2.getAmi` format
 				return open + pkg.String() + "." + modname + getname.String() + close
