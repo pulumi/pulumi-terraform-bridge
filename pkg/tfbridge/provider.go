@@ -998,7 +998,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		inputs, err := extractInputsFromOutputs(oldInputs, props, res.TF.Schema(), res.Schema.Fields, isRefresh)
+		inputs, err := ExtractInputsFromOutputs(oldInputs, props, res.TF.Schema(), res.Schema.Fields, isRefresh)
 		if err != nil {
 			return nil, err
 		}
@@ -1265,7 +1265,9 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 func (p *Provider) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
 
-	if req.Key == "tf" {
+	// The prototype converter used the key "tf", but the new plugin converter uses "terraform". For now
+	// support both, eventually we can remove the "tf" key.
+	if req.Key == "tf" || req.Key == "terraform" {
 		info := MarshalProviderInfo(&p.info)
 		mapping, err := json.Marshal(info)
 		if err != nil {

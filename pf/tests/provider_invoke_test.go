@@ -22,7 +22,7 @@ import (
 )
 
 func TestBasicInvoke(t *testing.T) {
-	server := newProviderServer(t, testprovider.TlsProvider())
+	server := newProviderServer(t, testprovider.TLSProvider())
 
 	testCase := `
         {
@@ -61,7 +61,7 @@ func TestBasicInvoke(t *testing.T) {
 }
 
 func TestInvokeWithInvalidData(t *testing.T) {
-	p := testprovider.TlsProvider()
+	p := testprovider.TLSProvider()
 	server := newProviderServer(t, p)
 
 	testCase := `

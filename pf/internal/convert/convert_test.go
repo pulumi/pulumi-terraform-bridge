@@ -130,7 +130,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/tf2pu", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := decoder.ToPropertyValue(testcase.val)
+			actual, err := decoder.toPropertyValue(testcase.val)
 			require.NoError(t, err)
 
 			assert.Equal(t, testcase.prop, actual)
@@ -139,7 +139,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/pu2tf", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := encoder.FromPropertyValue(testcase.prop)
+			actual, err := encoder.fromPropertyValue(testcase.prop)
 			require.NoError(t, err)
 
 			if testcase.normVal != nil {
@@ -156,7 +156,7 @@ func convertTurnaroundUnknownTestCase(ty tftypes.Type, zeroValue resource.Proper
 		name: ty.String() + "/unknown",
 		ty:   ty,
 		val:  tftypesNewValue(ty, tftypes.UnknownValue),
-		prop: resource.NewComputedProperty(resource.Computed{Element: zeroValue}),
+		prop: unknownProperty(),
 	}
 }
 

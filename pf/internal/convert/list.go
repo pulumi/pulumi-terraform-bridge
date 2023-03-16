@@ -44,7 +44,7 @@ func newListDecoder(elementDecoder Decoder) (Decoder, error) {
 	}, nil
 }
 
-func (enc *listEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	listTy := tftypes.List{ElementType: enc.elementType}
 
 	if propertyValueIsUnkonwn(p) {
@@ -59,7 +59,7 @@ func (enc *listEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Val
 	}
 	var values []tftypes.Value
 	for i, pv := range p.ArrayValue() {
-		v, err := enc.elementEncoder.FromPropertyValue(pv)
+		v, err := enc.elementEncoder.fromPropertyValue(pv)
 		if err != nil {
 			return tftypes.NewValue(listTy, nil),
 				fmt.Errorf("encList failed while encoding element %d (%v): %w",
@@ -70,10 +70,9 @@ func (enc *listEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Val
 	return tftypes.NewValue(listTy, values), nil
 }
 
-func (dec *listDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *listDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		zero := resource.NewArrayProperty([]resource.PropertyValue{})
-		return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
@@ -85,7 +84,7 @@ func (dec *listDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue
 	}
 	values := []resource.PropertyValue{}
 	for _, e := range elements {
-		ev, err := dec.elementDecoder.ToPropertyValue(e)
+		ev, err := dec.elementDecoder.toPropertyValue(e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("decList fails with %s: %w", e.String(), err)

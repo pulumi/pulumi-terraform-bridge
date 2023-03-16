@@ -239,13 +239,13 @@ func (e *testres) Create(ctx context.Context, req resource.CreateRequest, resp *
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resourceId, err := e.freshID(statedir)
+	resourceID, err := e.freshID(statedir)
 	if err != nil {
 		resp.Diagnostics.AddError("testres.freshID", err.Error())
 		return
 	}
 
-	cloudStateFile := e.cloudStateFile(statedir, resourceId)
+	cloudStateFile := e.cloudStateFile(statedir, resourceID)
 	if _, gotState, err := e.readCloudState(ctx, cloudStateFile); gotState && err == nil {
 		resp.Diagnostics.AddError("testbridge_testres.Create found unexpected pseudo-cloud state",
 			cloudStateFile)
@@ -255,7 +255,7 @@ func (e *testres) Create(ctx context.Context, req resource.CreateRequest, resp *
 	resp.State.Raw = req.Plan.Raw.Copy()
 
 	// Set id computed by the provider.
-	diags2 := resp.State.SetAttribute(ctx, path.Root("id"), resourceId)
+	diags2 := resp.State.SetAttribute(ctx, path.Root("id"), resourceID)
 	resp.Diagnostics.Append(diags2...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -393,10 +393,7 @@ func copyData[T any](ctx context.Context, diag *diag.Diagnostics, state *tfsdk.S
 
 	diag3 := state.SetAttribute(ctx, path.Root(outputProp), replacement)
 	diag.Append(diag3...)
-	if diag.HasError() {
-		return false
-	}
-	return true
+	return !diag.HasError()
 }
 
 func (e *testres) refreshComputedFields(ctx context.Context, state *tfsdk.State, diag *diag.Diagnostics) {
@@ -531,22 +528,21 @@ func (e *testres) freshID(statedir string) (string, error) {
 		return "", err
 	}
 	if err == nil {
-		var x []byte = f
-		i, err = strconv.Atoi(string(x))
+		i, err = strconv.Atoi(string(f))
 		if err != nil {
 			return "", err
 		}
 	}
 
-	if err := os.WriteFile(cF, []byte(fmt.Sprintf("%d", i+1)), 0700); err != nil {
+	if err := os.WriteFile(cF, []byte(fmt.Sprintf("%d", i+1)), 0600); err != nil {
 		return "", err
 	}
 
 	return fmt.Sprintf("%d", i), nil
 }
 
-func (e *testres) cloudStateFile(statedir, resourceId string) string {
-	return filepath.Join(statedir, fmt.Sprintf("%s.bin", resourceId))
+func (e *testres) cloudStateFile(statedir, resourceID string) string {
+	return filepath.Join(statedir, fmt.Sprintf("%s.bin", resourceID))
 }
 
 func (e *testres) deleteCloudState(file string) error {

@@ -14,7 +14,7 @@ fmt::
 	@gofmt -w -s .
 
 lint::
-	golangci-lint run
+	go run scripts/build.go lint
 
 test::
 	@mkdir -p bin

@@ -1087,10 +1087,10 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
-		strings.Contains(docs, "```csharp") {
+		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
 		// to reconvert them. But we need to surround them in the examples shortcode for rendering on the registry
-		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% //examples %%}}", docs)
+		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
 	}
 
 	output := &bytes.Buffer{}

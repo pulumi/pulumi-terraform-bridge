@@ -1661,6 +1661,8 @@ github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/prometheus v0.35.0/go.mod h1:7HaLx5kEPKJ0GDgbODG0fZgXbQ8K/XjZNJXQmbmgQlY=
 github.com/prometheus/prometheus v0.37.0/go.mod h1:egARUgz+K93zwqsVIAneFlLZefyGOON44WyAp4Xqbbk=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
+github.com/pulumi/pulumi v3.58.1-0.20230316163234-814883181138+incompatible h1:213g+hQoXQ0nGl2311RUH3fu3ApkK96Io2x04cN8/bw=
+github.com/pulumi/pulumi v3.58.1-0.20230316163234-814883181138+incompatible/go.mod h1:KLCMH19Yqb+b4zdHu402yYLpmjz5AgEdSrF3PqZDYF8=
 github.com/pulumi/pulumi-java/pkg v0.8.0 h1:b81/D/dk5/9OEH1k5BJxhqYiQc7Y4TPDbHVGBvJU1GE=
 github.com/pulumi/pulumi-java/pkg v0.8.0/go.mod h1:x7/J1GCJ+hHFBEgnMr4QpsTfjXUNHccAHJ9gvFfmAFU=
 github.com/pulumi/pulumi-yaml v1.0.4 h1:p+989rW3AqkkxbzxtxccHKAN4xCJi3K2cRpvA2K84tw=

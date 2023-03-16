@@ -96,6 +96,11 @@ type ProviderInfo struct {
 	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 
+	// Information for the embedded metadata file.
+	//
+	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
+	MetadataInfo *MetadataInfo
+
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
 }
 
@@ -111,6 +116,11 @@ func (info ProviderInfo) GetResourcePrefix() string {
 	}
 
 	return info.ResourcePrefix
+}
+
+func (info ProviderInfo) GetMetadata() ProviderMetadata {
+	info.MetadataInfo.assertValid()
+	return info.MetadataInfo.Data
 }
 
 func (info ProviderInfo) GetGitHubOrg() string {
@@ -180,6 +190,9 @@ type ResourceInfo struct {
 	DeprecationMessage  string      // message to use in deprecation warning
 	CSharpName          string      // .NET-specific name
 
+	// Optional hook to run before upgrading the state. TODO[pulumi/pulumi-terraform-bridge#864] this is currently
+	// only supported for Plugin-Framework based providers.
+	PreStateUpgradeHook PreStateUpgradeHook
 }
 
 // GetTok returns a resource type token
@@ -955,4 +968,18 @@ func ConfigBoolValue(vars resource.PropertyMap, prop resource.PropertyKey, envs 
 		}
 	}
 	return false
+}
+
+// If specified, the hook will run just prior to executing Terraform state upgrades to transform the resource state as
+// stored in Pulumi. It can be used to perform idempotent corrections on corrupt state and to compensate for
+// Terraform-level state upgrade not working as expected. Returns the corrected resource state and version. To be used
+// with care.
+//
+// See also: https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework/resource/schema#Schema.Version
+type PreStateUpgradeHook = func(PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error)
+
+type PreStateUpgradeHookArgs struct {
+	PriorState              resource.PropertyMap
+	PriorStateSchemaVersion int64
+	ResourceSchemaVersion   int64
 }

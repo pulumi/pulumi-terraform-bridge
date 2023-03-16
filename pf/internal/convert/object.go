@@ -57,7 +57,7 @@ func newObjectDecoder(objectType tftypes.Object,
 	}, nil
 }
 
-func (enc *objectEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(enc.objectType, tftypes.UnknownValue), nil
 	}
@@ -75,7 +75,7 @@ func (enc *objectEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.V
 		key := enc.propertyNames.PropertyKey(attr, t)
 		pv, gotPV := pulumiMap[key]
 		if gotPV {
-			v, err := attrEncoder.FromPropertyValue(pv)
+			v, err := attrEncoder.fromPropertyValue(pv)
 			if err != nil {
 				return tftypes.NewValue(enc.objectType, nil),
 					fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)
@@ -88,10 +88,9 @@ func (enc *objectEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.V
 	return tftypes.NewValue(enc.objectType, values), nil
 }
 
-func (dec *objectDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *objectDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		zero := resource.NewObjectProperty(make(resource.PropertyMap))
-		return resource.NewComputedProperty(resource.Computed{Element: zero}), nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
@@ -107,7 +106,7 @@ func (dec *objectDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyVal
 		attrValue, gotAttrValue := elements[attr]
 		if gotAttrValue {
 			t := dec.objectType.AttributeTypes[attr]
-			pv, err := decoder.ToPropertyValue(attrValue)
+			pv, err := decoder.toPropertyValue(attrValue)
 			if err != nil {
 				return resource.PropertyValue{},
 					fmt.Errorf("objectDecoder fails on property %q (value %s): %w",

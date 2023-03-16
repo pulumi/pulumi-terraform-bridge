@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestTokensSingleModule(t *testing.T) {
@@ -176,6 +179,68 @@ func TestTokensInferredModules(t *testing.T) {
 		opts            *InferredModulesOpts
 	}{
 		{
+			name: "oci-example",
+			// Motivating example and explanation:
+			//
+			// The algorithm only has the list of token names to work off
+			// of. It doesn't know what modules should exist, so it needs to
+			// figure out.
+			//
+			// Tokens can be cleanly divided into segments at '_'
+			// boundaries. However, its unclear how many segments make up the
+			// module, and how many segments make up the name.
+			//
+			// Giving a concrete example, the algorithm needs to figure out
+			// what Pulumi token to give the Terraform token
+			// oci_apm_apm_domain:
+			//
+			//   Dividing into segments, the algorithm has module [apm apm
+			//   domain] and name [], written [apm apm domain]:[].
+			//
+			//   It starts by considering all token segments as part of the
+			//   module name. Examining the module [apm apm domain], the
+			//   algorithm notices that there are not enough objects in the
+			//   [apm apm domain] module to satisfy MinimumModuleSize. It then
+			//   downshifts the perspective token to [apm apm]:[domain].
+			//
+			//   The algorithm will process all tokens with modules that start
+			//   with [apm apm $NEXT] for all $NEXT before it reconsiders the
+			//   [apm apm] module.
+			//
+			//   Next iteration, the algorithm considers [apm
+			//   apm]:[domain]. Because the [apm apm] module has only 1
+			//   member, the algorithm downshifs [apm apm]:[domain] to
+			//   [apm]:[apm domain].
+			//
+			//   Next iteration, the algorithm sees 2 different tokens within
+			//   the [apm] module: [apm]:[apm domain] and [apm]:[sub
+			//   domain]. Since 2 >= MinimumModuleSize, the algorithm
+			//   finalizes both tokens into apm:ApmDomain and apm:SubDomain
+			//   respectively.
+			//
+			//
+			// The process is unstable for insertion: if the user added
+			// "oci_apm_apm_thingy" resource, then there'd be two entries and
+			// it might decide oci_apm_apm is now a module.
+			resourceMapping: map[string]string{
+				"oci_adm_knowledge_base": "index:AdmKnowledgeBase",
+				"oci_apm_apm_domain":     "apm:ApmDomain",
+				"oci_apm_sub_domain":     "apm:SubDomain",
+
+				"oci_apm_config_config": "apmConfig:Config",
+				"oci_apm_config_user":   "apmConfig:User",
+
+				"oci_apm_synthetics_monitor":                 "apmSynthetics:Monitor",
+				"oci_apm_synthetics_script":                  "apmSynthetics:Script",
+				"oci_apm_synthetics_dedicated_vantage_point": "apmSynthetics:DedicatedVantagePoint",
+			},
+			opts: &InferredModulesOpts{
+				TfPkgPrefix:          "oci_",
+				MinimumModuleSize:    2,
+				MimimumSubmoduleSize: 2,
+			},
+		},
+		{
 			name: "non-overlapping mapping",
 			resourceMapping: map[string]string{
 				"pkg_foo_bar":             "index:FooBar",
@@ -195,7 +260,10 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_hi":            "index:Hi",
 			},
 			opts: &InferredModulesOpts{
-				MinimumModuleSize: 2,
+				// We set MinimumModuleSize down to 3 to so we only need
+				// tree entries prefixed with `pkg_hello` to have a hello
+				// module created.
+				MinimumModuleSize: 3,
 			},
 		},
 		{
@@ -213,9 +281,15 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_not_r2": "mod:NotR2",
 			},
 			opts: &InferredModulesOpts{
-				TfPkgPrefix:          "pkg_",
-				MinimumModuleSize:    3,
-				MimimumSubmoduleSize: 4,
+				TfPkgPrefix: "pkg_",
+				// We set the minimum module size to 4. This ensures that
+				// `pkg_mod` is picked up as a module.
+				MinimumModuleSize: 4,
+				// We set the MimimumSubmoduleSize to 3, ensuring that
+				// `pkg_mod_sub_*` is is given its own `modSub` module (4
+				// elements), while `pkg_mod_not_*` is put in the `mod`
+				// module, since `pkg_mod_not` only has 2 elements.
+				MimimumSubmoduleSize: 3,
 			},
 		},
 		{
@@ -273,6 +347,91 @@ func TestTokensInferredModules(t *testing.T) {
 			assert.Equal(t, tt.resourceMapping, mapping)
 		})
 	}
+}
+
+func TestAliasing(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		return &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]struct{}{
+					"pkg_mod1_r1": {},
+					"pkg_mod1_r2": {},
+					"pkg_mod2_r1": {},
+				},
+			},
+		}
+	}
+	simple := provider()
+
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	err = ComputeDefaults(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+	require.NoError(t, err)
+
+	err = AutoAliasing(simple, metadata)
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
+		"pkg_mod1_r2": {Tok: "pkg:index/mod1R2:Mod1R2"},
+		"pkg_mod2_r1": {Tok: "pkg:index/mod2R1:Mod2R1"},
+	}, simple.Resources)
+
+	modules := provider()
+
+	knownModules := TokensKnownModules("pkg_", "",
+		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
+
+	err = ComputeDefaults(modules, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules, metadata)
+	require.NoError(t, err)
+
+	hist2 := md.Clone(metadata)
+	ref := func(s string) *string { return &s }
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {
+			Tok:     "pkg:mod1/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+		},
+		"pkg_mod1_r1_legacy": {
+			Tok:                "pkg:index/mod1R1:Mod1R1",
+			DeprecationMessage: "pkg.index/mod1r1.Mod1R1 has been deprecated in favor of pkg.mod1/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		},
+		"pkg_mod1_r2": {
+			Tok:     "pkg:mod1/r2:R2",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R2:Mod1R2")}},
+		},
+		"pkg_mod1_r2_legacy": {
+			Tok:                "pkg:index/mod1R2:Mod1R2",
+			DeprecationMessage: "pkg.index/mod1r2.Mod1R2 has been deprecated in favor of pkg.mod1/r2.R2",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r2.html.markdown"},
+		},
+		"pkg_mod2_r1": {
+			Tok:     "pkg:mod2/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
+		},
+		"pkg_mod2_r1_legacy": {
+			Tok:                "pkg:index/mod2R1:Mod2R1",
+			DeprecationMessage: "pkg.index/mod2r1.Mod2R1 has been deprecated in favor of pkg.mod2/r1.R1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
+		},
+	}, modules.Resources)
+
+	modules2 := provider()
+
+	err = ComputeDefaults(modules2, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules2, metadata)
+	require.NoError(t, err)
+
+	hist3 := md.Clone(metadata)
+	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
+	assert.Equal(t, modules, modules2)
 }
 
 type Provider struct {

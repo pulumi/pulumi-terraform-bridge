@@ -14,6 +14,7 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.56.0
 	github.com/pulumi/pulumi/sdk/v3 v3.56.0
 	github.com/stretchr/testify v1.8.2
+	pgregory.net/rapid v0.5.5
 )
 
 require (

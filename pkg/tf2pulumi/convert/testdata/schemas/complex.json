@@ -20,12 +20,7 @@
     "complex:index/data_sourceInnerObject:data_sourceInnerObject": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"
@@ -33,12 +28,7 @@
     "complex:index/resourceInnerObject:resourceInnerObject": {
       "properties": {
         "innerString": {
-          "type": "string",
-          "language": {
-            "python": {
-              "mapCase": false
-            }
-          }
+          "type": "string"
         }
       },
       "type": "object"

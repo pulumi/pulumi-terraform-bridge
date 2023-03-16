@@ -203,7 +203,7 @@ func TestDiffVersionUpgrade(t *testing.T) {
 //
 // See https://github.com/pulumi/pulumi-tls/issues/173 for the details.
 func TestTlsResourceUpgrade(t *testing.T) {
-	server := newProviderServer(t, testprovider.TlsProvider())
+	server := newProviderServer(t, testprovider.TLSProvider())
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Diff",

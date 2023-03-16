@@ -33,7 +33,7 @@ func newBoolDecoder() Decoder {
 	return &boolDecoder{}
 }
 
-func (*boolEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (*boolEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue), nil
 	}
@@ -47,11 +47,9 @@ func (*boolEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, 
 	return tftypes.NewValue(tftypes.Bool, p.BoolValue()), nil
 }
 
-func (*boolDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (*boolDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
-		c := resource.Computed{Element: resource.NewBoolProperty(false)}
-		unknown := resource.NewComputedProperty(c)
-		return unknown, nil
+		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil

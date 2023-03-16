@@ -50,7 +50,7 @@ func tuplePropertyName(i int) string {
 	return fmt.Sprintf("t%d", i)
 }
 
-func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *tupleEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	typ := tftypes.Tuple{ElementTypes: enc.types}
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(typ, tftypes.UnknownValue), nil
@@ -70,7 +70,7 @@ func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Va
 		if err != nil {
 			return tftypes.Value{}, fmt.Errorf("could not parse tuple key as location: %w", err)
 		}
-		values[i], err = enc.encoders[i].FromPropertyValue(pv)
+		values[i], err = enc.encoders[i].fromPropertyValue(pv)
 		if err != nil {
 			return tftypes.NewValue(typ, nil),
 				fmt.Errorf("failed to encode '%v' into tuple[%d] (%v): %w",
@@ -80,7 +80,7 @@ func (enc *tupleEncoder) FromPropertyValue(p resource.PropertyValue) (tftypes.Va
 	return tftypes.NewValue(typ, values), nil
 }
 
-func (dec *tupleDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *tupleDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		zero := resource.NewArrayProperty([]resource.PropertyValue{})
 		return resource.MakeComputed(zero), nil
@@ -97,7 +97,7 @@ func (dec *tupleDecoder) ToPropertyValue(v tftypes.Value) (resource.PropertyValu
 	values := make([]resource.PropertyValue, len(elements))
 	for i, e := range elements {
 		var err error
-		values[i], err = dec.decoders[i].ToPropertyValue(e)
+		values[i], err = dec.decoders[i].toPropertyValue(e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("failed to decode tuple[%d] (%s): %w", i, v, err)

@@ -23,9 +23,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 const (
@@ -456,4 +457,169 @@ func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
 		}
 		return new(tk), nil
 	}
+}
+
+type tokenHistory[T ~string] struct {
+	Current T          `json:"current"`        // the current Pulumi token for the resource
+	Past    []alias[T] `json:"past,omitempty"` // Previous tokens
+}
+
+type alias[T ~string] struct {
+	Name      T    `json:"name"`      // The previous token.
+	InCodegen bool `json:"inCodegen"` // If the alias is a fully generated resource, or just a schema alias.
+}
+
+type aliasHistory struct {
+	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources"`
+	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
+}
+
+func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
+	remaps := &[]func(*b.ProviderInfo){}
+
+	hist, err := getHistory(artifact)
+	if err != nil {
+		return err
+	}
+
+	for tfToken, computed := range providerInfo.Resources {
+		aliasResource(hist.Resources, computed, tfToken, remaps)
+	}
+
+	for tfToken, computed := range providerInfo.DataSources {
+		aliasDataSource(hist.DataSources, computed, tfToken, remaps)
+	}
+
+	for _, r := range *remaps {
+		r(providerInfo)
+	}
+
+	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
+		// Set fails only when `hist` is not serializable. Because `hist` is
+		// composed of marshallable, non-cyclic types, this is impossible.
+		contract.AssertNoErrorf(err, "History failed to serialize")
+	}
+
+	return nil
+}
+
+const aliasMetadataKey = "auto-aliasing"
+
+func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
+	hist, ok, err := md.Get[aliasHistory](artifact, aliasMetadataKey)
+	if err != nil {
+		return aliasHistory{}, err
+	}
+	if !ok {
+		hist = aliasHistory{
+			Resources:   map[string]*tokenHistory[tokens.Type]{},
+			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
+		}
+	}
+	return hist, nil
+}
+
+func aliasResource(
+	hist map[string]*tokenHistory[tokens.Type],
+	computed *b.ResourceInfo,
+	tfToken string,
+	remaps *[]func(*b.ProviderInfo),
+) {
+	prev, hasPrev := hist[tfToken]
+	if !hasPrev {
+		// It's not in the history, so it must be new. Stick it in the history for
+		// next time.
+		*remaps = append(*remaps, func(*b.ProviderInfo) {
+			hist[tfToken] = &tokenHistory[tokens.Type]{
+				Current: computed.Tok,
+			}
+		})
+	} else if prev.Current != computed.Tok {
+		// It's in history, but something has changed. Update the history to reflect
+		// the new reality, then add aliases.
+		*remaps = append(*remaps, func(p *b.ProviderInfo) {
+			aliasOrRenameResource(p, tfToken, prev)
+		})
+
+	}
+}
+
+func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type]) {
+	// re-fetch the resource, to make sure we have the right pointer.
+	res, ok := p.Resources[tfToken]
+	if !ok {
+		// The resource to be remapped has been removed
+		// from the resource map. There is nothing to
+		// alias anymore.
+		return
+	}
+
+	var alreadyPresent bool
+	for _, a := range hist.Past {
+		if a.Name == hist.Current {
+			alreadyPresent = true
+			break
+		}
+	}
+	if !alreadyPresent {
+		hist.Past = append(hist.Past, alias[tokens.Type]{
+			Name:      hist.Current,
+			InCodegen: true,
+		})
+	}
+	for _, a := range hist.Past {
+		legacy := a.Name
+		if a.InCodegen {
+			p.RenameResourceWithAlias(tfToken, legacy,
+				res.Tok, legacy.Module().Name().String(),
+				res.Tok.Module().Name().String(), res)
+		} else {
+			res.Aliases = append(res.Aliases,
+				b.AliasInfo{Type: (*string)(&legacy)})
+		}
+	}
+
+}
+
+func aliasDataSource(
+	hist map[string]*tokenHistory[tokens.ModuleMember],
+	computed *b.DataSourceInfo,
+	tfToken string,
+	remaps *[]func(*b.ProviderInfo),
+) {
+	prev, hasPrev := hist[tfToken]
+	if !hasPrev {
+		// It's not in the history, so it must be new. Stick it in the history for
+		// next time.
+		hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
+			Current: computed.Tok,
+		}
+	} else if prev.Current != computed.Tok {
+		aliasOrRenameDataSource(tfToken, remaps, prev)
+	}
+}
+
+func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember]) {
+	// It's in history, but something has changed. Update the history to reflect
+	// the new reality, then add aliases.
+	*remaps = append(*remaps, func(p *b.ProviderInfo) {
+		// re-fetch the resource, to make sure we have the right pointer.
+		computed, ok := p.DataSources[tfToken]
+		if !ok {
+			// The DataSource to alias has been removed. There
+			// is nothing to alias anymore.
+			return
+		}
+		alias := alias[tokens.ModuleMember]{
+			Name: prev.Current,
+		}
+		prev.Past = append(prev.Past, alias)
+		for _, a := range prev.Past {
+			legacy := a.Name
+			p.RenameDataSource(tfToken, legacy,
+				computed.Tok, legacy.Module().Name().String(),
+				computed.Tok.Module().Name().String(), computed)
+		}
+	})
+
 }
