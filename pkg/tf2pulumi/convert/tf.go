@@ -1355,6 +1355,46 @@ func convertManagedResources(sources map[string][]byte,
 	return leading, block, trailing
 }
 
+func convertModule(
+	sources map[string][]byte,
+	scopes *scopes,
+	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
+	// We translate managedResources into resources
+	pulumiName := scopes.roots["module."+moduleCall.Name]
+	labels := []string{pulumiName, moduleCall.SourceAddrRaw}
+	block := hclwrite.NewBlock("component", labels)
+	blockBody := block.Body()
+
+	// Does this resource have a count? If so set the "range" attribute
+	if moduleCall.Count != nil {
+		options := blockBody.AppendNewBlock("options", nil)
+		countExpr := convertExpression(sources, scopes, "", moduleCall.Count)
+		// Set the count_index scope
+		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
+		options.Body().SetAttributeRaw("range", countExpr)
+	}
+
+	if moduleCall.ForEach != nil {
+		options := blockBody.AppendNewBlock("options", nil)
+		forEachExpr := convertExpression(sources, scopes, "", moduleCall.ForEach)
+		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
+		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
+		options.Body().SetAttributeRaw("range", forEachExpr)
+	}
+
+	moduleArgs := convertBody(sources, scopes, pulumiName, moduleCall.Config)
+	for _, arg := range moduleArgs {
+		blockBody.SetAttributeRaw(arg.Name, arg.Value)
+	}
+
+	// Clear any index we set
+	scopes.countIndex = nil
+	scopes.eachKey = nil
+	scopes.eachValue = nil
+	leading, trailing := getTrivia(sources, moduleCall.DeclRange)
+	return leading, block, trailing
+}
+
 func convertOutput(sources map[string][]byte, scopes *scopes,
 	output *configs.Output) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	labels := []string{scopes.roots["output."+output.Name]}
@@ -1754,14 +1794,9 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
-			leading, trailing := getTrivia(sources, item.DeclRange())
+			leading, block, trailing := convertModule(sources, scopes, item.moduleCall)
 			body.AppendUnstructuredTokens(leading)
-			body.AppendUnstructuredTokens(hclwrite.Tokens{
-				&hclwrite.Token{
-					Type:  hclsyntax.TokenComment,
-					Bytes: []byte("// Modules not yet done\n"),
-				},
-			})
+			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Finally handle any outputs

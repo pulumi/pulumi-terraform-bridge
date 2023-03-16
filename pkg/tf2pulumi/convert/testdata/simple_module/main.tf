@@ -1,7 +1,5 @@
 #if EXPERIMENTAL
 
-/* Not yet working, but coming soon
-
 module "some_module" {
     source = "./mod"
 
@@ -11,7 +9,6 @@ module "some_module" {
 output "some_output" {
     value = module.some_module.output
 }
-*/
 
 #else
 // Modules are not supported
