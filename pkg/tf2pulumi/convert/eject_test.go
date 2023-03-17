@@ -18,13 +18,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/afero"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
 
 	"github.com/blang/semver"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
@@ -272,7 +273,6 @@ func TestEject(t *testing.T) {
 			}
 
 			pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
-			pclMemFs := afero.NewMemMapFs()
 
 			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
@@ -282,10 +282,11 @@ func TestEject(t *testing.T) {
 				require.NoError(t, err, "failed to write program source files")
 			}
 
+			pclMemFs := afero.NewMemMapFs()
 			// Write the program to a memory file system
 			program.WriteSource(pclMemFs)
 
-			// compare the two
+			// compare the generated files with files on disk
 			afero.Walk(pclMemFs, "/", func(path string, info fs.FileInfo, err error) error {
 				if info == nil || info.IsDir() {
 					// ignore directories
@@ -293,7 +294,7 @@ func TestEject(t *testing.T) {
 				}
 
 				sourceOnDisk, err := afero.ReadFile(pclFs, path)
-				assert.NoError(t, err, "Must have seen this file before")
+				assert.NoError(t, err, "generated source file must be on disk")
 				sourceInMemory, err := afero.ReadFile(pclMemFs, path)
 				assert.NoError(t, err, "should be able to read %s", path)
 				expectedPcl := strings.Replace(string(sourceOnDisk), "\r\n", "\n", -1)
@@ -301,6 +302,19 @@ func TestEject(t *testing.T) {
 				assert.Equal(t, expectedPcl, actualPcl)
 				return nil
 			})
+
+			// make sure _all_ files on disk are also generated in the source
+			afero.Walk(pclFs, "/", func(path string, info fs.FileInfo, err error) error {
+				if info == nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".pp") {
+					// ignore directories and non-PCL files
+					return nil
+				}
+
+				_, err = afero.ReadFile(pclMemFs, path)
+				assert.NoError(t, err, "file on disk was not generated in memory: %s", path)
+				return nil
+			})
+
 		})
 	}
 }
