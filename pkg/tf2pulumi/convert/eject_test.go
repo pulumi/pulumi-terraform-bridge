@@ -305,7 +305,7 @@ func TestEject(t *testing.T) {
 
 			// make sure _all_ files on disk are also generated in the source
 			afero.Walk(pclFs, "/", func(path string, info fs.FileInfo, err error) error {
-				if info == nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".pp") {
+				if info == nil || info.IsDir() {
 					// ignore directories and non-PCL files
 					return nil
 				}
