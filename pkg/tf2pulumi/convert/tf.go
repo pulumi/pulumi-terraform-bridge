@@ -1840,9 +1840,82 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 	return convertModuleInternal(source, destination, info, "/")
 }
 
-func componentProgramBinderFromAfero() pcl.ComponentProgramBinder {
+func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	return diagf(hcl.DiagError, subject, f, args...)
+}
+
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	message := fmt.Sprintf(f, args...)
+	return &hcl.Diagnostic{
+		Severity: severity,
+		Summary:  message,
+		Subject:  &subject,
+	}
+}
+
+func componentProgramBinderFromAfero(fs afero.Fs) pcl.ComponentProgramBinder {
 	return func(args pcl.ComponentProgramBinderArgs) (*pcl.Program, hcl.Diagnostics, error) {
-		return nil, nil, fmt.Errorf("to be implemented, needs args to export fields")
+		var diagnostics hcl.Diagnostics
+		binderDirPath := args.BinderDirPath
+		componentSource := args.ComponentSource
+		nodeRange := args.ComponentNodeRange
+		loader := args.BinderLoader
+		// bind the component here as if it was a new program
+		// this becomes the DirPath for the new binder
+		componentSourceDir := filepath.Join(binderDirPath, componentSource)
+
+		parser := syntax.NewParser()
+		// Load all .pp files in the components' directory
+		files, err := afero.ReadDir(fs, componentSourceDir)
+		if err != nil {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, nil
+		}
+
+		if len(files) == 0 {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, nil
+		}
+
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			fileName := file.Name()
+			path := filepath.Join(componentSourceDir, fileName)
+
+			if filepath.Ext(fileName) == ".pp" {
+				file, err := fs.Open(path)
+				if err != nil {
+					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					return nil, diagnostics, err
+				}
+
+				err = parser.ParseFile(file, fileName)
+
+				if err != nil {
+					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					return nil, diagnostics, err
+				}
+
+				diags := parser.Diagnostics
+				if diags.HasErrors() {
+					return nil, diagnostics, err
+				}
+			}
+		}
+
+		if err != nil {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, err
+		}
+
+		componentProgram, programDiags, err := pcl.BindProgram(parser.Files,
+			pcl.Loader(loader),
+			pcl.DirPath(componentSourceDir),
+			pcl.ComponentBinder(componentProgramBinderFromAfero(fs)))
+
+		return componentProgram, programDiags, err
 	}
 }
 
@@ -1869,14 +1942,15 @@ func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diag
 	}
 
 	rootDir := "/"
-
-	pulumiOptions = append(pulumiOptions, pcl.DirPath(rootDir))
-
 	tempDir := afero.NewMemMapFs()
+
 	diagnostics := ConvertModule(opts.Root, tempDir, opts.ProviderInfoSource)
 	if diagnostics.HasErrors() {
 		return nil, nil, diagnostics, diagnostics
 	}
+
+	pulumiOptions = append(pulumiOptions, pcl.DirPath(rootDir))
+	pulumiOptions = append(pulumiOptions, pcl.ComponentBinder(componentProgramBinderFromAfero(tempDir)))
 
 	pulumiParser := syntax.NewParser()
 
