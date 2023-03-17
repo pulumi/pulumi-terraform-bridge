@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -1355,6 +1354,46 @@ func convertManagedResources(sources map[string][]byte,
 	return leading, block, trailing
 }
 
+func convertModuleCall(
+	sources map[string][]byte,
+	scopes *scopes,
+	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
+	// We translate managedResources into resources
+	pulumiName := scopes.roots["module."+moduleCall.Name]
+	labels := []string{pulumiName, moduleCall.SourceAddrRaw}
+	block := hclwrite.NewBlock("component", labels)
+	blockBody := block.Body()
+
+	// Does this resource have a count? If so set the "range" attribute
+	if moduleCall.Count != nil {
+		options := blockBody.AppendNewBlock("options", nil)
+		countExpr := convertExpression(sources, scopes, "", moduleCall.Count)
+		// Set the count_index scope
+		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
+		options.Body().SetAttributeRaw("range", countExpr)
+	}
+
+	if moduleCall.ForEach != nil {
+		options := blockBody.AppendNewBlock("options", nil)
+		forEachExpr := convertExpression(sources, scopes, "", moduleCall.ForEach)
+		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
+		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
+		options.Body().SetAttributeRaw("range", forEachExpr)
+	}
+
+	moduleArgs := convertBody(sources, scopes, pulumiName, moduleCall.Config)
+	for _, arg := range moduleArgs {
+		blockBody.SetAttributeRaw(arg.Name, arg.Value)
+	}
+
+	// Clear any index we set
+	scopes.countIndex = nil
+	scopes.eachKey = nil
+	scopes.eachValue = nil
+	leading, trailing := getTrivia(sources, moduleCall.DeclRange)
+	return leading, block, trailing
+}
+
 func convertOutput(sources map[string][]byte, scopes *scopes,
 	output *configs.Output) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	labels := []string{scopes.roots["output."+output.Name]}
@@ -1635,8 +1674,8 @@ func (items terraformItems) Less(i, j int) bool {
 	}
 }
 
-func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
-	sources, module, moduleDiagnostics := loadConfigDir(source, "/")
+func convertModuleInternal(source afero.Fs, destination afero.Fs, info il.ProviderInfoSource, directory string) hcl.Diagnostics {
+	sources, module, moduleDiagnostics := loadConfigDir(source, directory)
 	if moduleDiagnostics.HasErrors() {
 		// No syntax.Files to return here because we're relying on terraform to load and parse, means no
 		// source context gets printed with warnings/errors here.
@@ -1698,8 +1737,14 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 		if item.moduleCall != nil {
 			moduleCall := item.moduleCall
 			scopes.getOrAddPulumiName("module."+moduleCall.Name, "", "Component")
+			modulePath := filepath.Join(directory, moduleCall.SourceAddrRaw)
+			moduleDiags := convertModuleInternal(source, destination, info, modulePath)
+			if moduleDiags.HasErrors() {
+				return moduleDiags
+			}
 		}
 	}
+
 	for _, item := range items {
 		if item.output != nil {
 			scopes.getOrAddPulumiName("output."+item.output.Name, "", "Output")
@@ -1712,7 +1757,7 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 	for _, item := range items {
 		r := item.DeclRange()
 		path := changeExtension(r.Filename, ".pp")
-		path, err := filepath.Rel("/", path)
+		path, err := filepath.Rel(directory, path)
 		if err != nil {
 			panic("Rel should never fail")
 		}
@@ -1754,14 +1799,9 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
-			leading, trailing := getTrivia(sources, item.DeclRange())
+			leading, block, trailing := convertModuleCall(sources, scopes, item.moduleCall)
 			body.AppendUnstructuredTokens(leading)
-			body.AppendUnstructuredTokens(hclwrite.Tokens{
-				&hclwrite.Token{
-					Type:  hclsyntax.TokenComment,
-					Bytes: []byte("// Modules not yet done\n"),
-				},
-			})
+			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Finally handle any outputs
@@ -1785,7 +1825,7 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 		}
 		// Reformat to canonical style
 		formatted := hclwrite.Format(buffer.Bytes())
-		err = afero.WriteFile(destination, "/"+key, formatted, 0644)
+		err = afero.WriteFile(destination, filepath.Join(directory, key), formatted, 0644)
 		if err != nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -1794,6 +1834,89 @@ func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSo
 		}
 	}
 	return nil
+}
+
+func ConvertModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
+	return convertModuleInternal(source, destination, info, "/")
+}
+
+func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	return diagf(hcl.DiagError, subject, f, args...)
+}
+
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	message := fmt.Sprintf(f, args...)
+	return &hcl.Diagnostic{
+		Severity: severity,
+		Summary:  message,
+		Subject:  &subject,
+	}
+}
+
+func componentProgramBinderFromAfero(fs afero.Fs) pcl.ComponentProgramBinder {
+	return func(args pcl.ComponentProgramBinderArgs) (*pcl.Program, hcl.Diagnostics, error) {
+		var diagnostics hcl.Diagnostics
+		binderDirPath := args.BinderDirPath
+		componentSource := args.ComponentSource
+		nodeRange := args.ComponentNodeRange
+		loader := args.BinderLoader
+		// bind the component here as if it was a new program
+		// this becomes the DirPath for the new binder
+		componentSourceDir := filepath.Join(binderDirPath, componentSource)
+
+		parser := syntax.NewParser()
+		// Load all .pp files in the components' directory
+		files, err := afero.ReadDir(fs, componentSourceDir)
+		if err != nil {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, nil
+		}
+
+		if len(files) == 0 {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, nil
+		}
+
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			fileName := file.Name()
+			path := filepath.Join(componentSourceDir, fileName)
+
+			if filepath.Ext(fileName) == ".pp" {
+				file, err := fs.Open(path)
+				if err != nil {
+					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					return nil, diagnostics, err
+				}
+
+				err = parser.ParseFile(file, fileName)
+
+				if err != nil {
+					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					return nil, diagnostics, err
+				}
+
+				diags := parser.Diagnostics
+				if diags.HasErrors() {
+					return nil, diagnostics, err
+				}
+			}
+		}
+
+		if err != nil {
+			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			return nil, diagnostics, err
+		}
+
+		componentProgram, programDiags, err := pcl.BindProgram(parser.Files,
+			pcl.Loader(loader),
+			pcl.DirPath(componentSourceDir),
+			pcl.ComponentBinder(componentProgramBinderFromAfero(fs)))
+
+		return componentProgram, programDiags, err
+	}
 }
 
 func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
@@ -1818,35 +1941,45 @@ func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diag
 		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
 
+	rootDir := "/"
 	tempDir := afero.NewMemMapFs()
+
 	diagnostics := ConvertModule(opts.Root, tempDir, opts.ProviderInfoSource)
 	if diagnostics.HasErrors() {
 		return nil, nil, diagnostics, diagnostics
 	}
 
-	pulumiParser := syntax.NewParser()
-	err := afero.Walk(tempDir, "/", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// Only read top level .pp files, subdirectories are components that will be read by the binder.
-		if info.IsDir() {
-			return nil
-		}
+	pulumiOptions = append(pulumiOptions, pcl.DirPath(rootDir))
+	pulumiOptions = append(pulumiOptions, pcl.ComponentBinder(componentProgramBinderFromAfero(tempDir)))
 
-		reader, err := tempDir.Open(path)
-		contract.AssertNoError(err)
-		err = pulumiParser.ParseFile(reader, filepath.Base(path))
-		contract.AssertNoError(err)
-		if pulumiParser.Diagnostics.HasErrors() {
-			file, err := afero.ReadFile(tempDir, path)
-			contract.AssertNoError(err)
-			opts.logf("%s", string(file))
-			opts.logf("%v", pulumiParser.Diagnostics)
-			return pulumiParser.Diagnostics
+	pulumiParser := syntax.NewParser()
+
+	files, err := afero.ReadDir(tempDir, rootDir)
+	if err != nil {
+		return nil, nil, diagnostics, fmt.Errorf("could not read files at the root: %v", err)
+	}
+
+	for _, file := range files {
+		fileName := file.Name()
+		path := filepath.Join(rootDir, fileName)
+		if filepath.Ext(path) == ".pp" {
+			reader, err := tempDir.Open(path)
+			if err != nil {
+				return nil, nil, diagnostics, err
+			}
+			contract.AssertNoErrorf(err, "reading file should work")
+			err = pulumiParser.ParseFile(reader, filepath.Base(path))
+			contract.AssertNoErrorf(err, "parsing file should work")
+			if pulumiParser.Diagnostics.HasErrors() {
+				file, err := afero.ReadFile(tempDir, path)
+				contract.AssertNoErrorf(err, "reading file should work")
+				opts.logf("%s", string(file))
+				opts.logf("%v", pulumiParser.Diagnostics)
+				return nil, nil, pulumiParser.Diagnostics, pulumiParser.Diagnostics
+			}
 		}
-		return nil
-	})
+	}
+
 	if err != nil {
 		return pulumiParser.Files, nil, pulumiParser.Diagnostics, err
 	}
