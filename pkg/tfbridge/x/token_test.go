@@ -459,6 +459,17 @@ func TestAliasing(t *testing.T) {
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
 		},
 	}, modules3.Resources)
+
+	// A provider with no version should assume the most recent major
+	// version in history – in this case, all aliases should be kept
+	modules4 := provider()
+
+	err = ComputeDefaults(modules4, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules4, metadata)
+	require.NoError(t, err)
+	assert.Equal(t, modules, modules4)
 }
 
 type Provider struct {

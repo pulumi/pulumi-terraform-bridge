@@ -479,6 +479,11 @@ type aliasHistory struct {
 func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
 	remaps := &[]func(*b.ProviderInfo){}
 
+	hist, err := getHistory(artifact)
+	if err != nil {
+		return err
+	}
+
 	currentVersion := -1
 	if providerInfo.Version != "" {
 		v, err := semver.NewVersion(providerInfo.Version)
@@ -486,11 +491,6 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 			return err
 		}
 		currentVersion = int(v.Major())
-	}
-
-	hist, err := getHistory(artifact)
-	if err != nil {
-		return err
 	}
 
 	for tfToken, computed := range providerInfo.Resources {
@@ -538,6 +538,14 @@ func aliasResource(
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
+	// If version is -1, we assume the most recent major version
+	if version == -1 {
+		for _, p := range prev.Past {
+			if p.MajorVersion > version {
+				version = p.MajorVersion
+			}
+		}
+	}
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
@@ -583,10 +591,8 @@ func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory
 	}
 	for _, a := range hist.Past {
 		legacy := a.Name
-		// A version set as "-1" means the provider did not have a version set
-		// so we refrain from removing aliases
-		fmt.Println(legacy, a.MajorVersion, currentVersion)
-		if a.InCodegen && (a.MajorVersion == currentVersion || currentVersion == -1) {
+		// Only respect hard aliases introduced in the same major version
+		if a.InCodegen && a.MajorVersion == currentVersion {
 			p.RenameResourceWithAlias(tfToken, legacy,
 				res.Tok, legacy.Module().Name().String(),
 				res.Tok.Module().Name().String(), res)
@@ -606,6 +612,13 @@ func aliasDataSource(
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
+	if version == -1 {
+		for _, p := range prev.Past {
+			if p.MajorVersion > version {
+				version = p.MajorVersion
+			}
+		}
+	}
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
@@ -635,9 +648,7 @@ func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), pr
 		}
 		prev.Past = append(prev.Past, alias)
 		for _, a := range prev.Past {
-			// A version set as "-1" means the provider did not have a version set
-			// so we refrain from removing aliases
-			if a.MajorVersion != currentVersion && currentVersion != -1 {
+			if a.MajorVersion != currentVersion {
 				continue
 			}
 			legacy := a.Name
