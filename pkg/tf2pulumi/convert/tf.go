@@ -39,6 +39,37 @@ func convertCtyType(typ cty.Type) string {
 	if typ.Equals(cty.String) {
 		return "string"
 	}
+	if typ.IsListType() {
+		elementType := convertCtyType(typ.ElementType())
+		return fmt.Sprintf("list(%s)", elementType)
+	}
+	if typ.IsMapType() {
+		elementType := convertCtyType(typ.ElementType())
+		return fmt.Sprintf("map(%s)", elementType)
+	}
+	if typ.IsSetType() {
+		// handle sets like lists
+		elementType := convertCtyType(typ.ElementType())
+		return fmt.Sprintf("list(%s)", elementType)
+	}
+	if typ.IsObjectType() {
+		attributes := []string{}
+		for attributeKey, attributeType := range typ.AttributeTypes() {
+			attributes = append(attributes, fmt.Sprintf("%s=%s", attributeKey, convertCtyType(attributeType)))
+		}
+
+		attributePairs := ""
+		length := len(attributes)
+		for i, attribute := range attributes {
+			attributePairs = attributePairs + attribute
+			if i < length-1 {
+				// add a comma to all pairs but the last one
+				attributePairs = attributePairs + ", "
+			}
+		}
+
+		return fmt.Sprintf("object({%s})", attributePairs)
+	}
 
 	// If we got here it's probably the "dynamic type" and we just report back "any"
 	return ""
