@@ -14,8 +14,6 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.14.3
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.34.1-0.20221214173921-8e65b1f9fdd5
-	github.com/pulumi/pulumi/pkg/v3 v3.58.0
-	github.com/pulumi/pulumi/sdk/v3 v3.58.0
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.53.0
 	pgregory.net/rapid v0.5.5
@@ -177,6 +175,8 @@ require (
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.8.0 // indirect
 	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.58.0
+	github.com/pulumi/pulumi/sdk/v3 v3.58.0
 	github.com/pulumi/schema-tools v0.1.2 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
