@@ -140,8 +140,8 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 }
 
 func parseTfLogEnvVar() hclog.Level {
-	env := os.Getenv("TF_LOG")
-	if env == "" {
+	env, present := os.LookupEnv("TF_LOG")
+	if !present {
 		return hclog.NoLevel
 	}
 	switch strings.ToUpper(env) {
