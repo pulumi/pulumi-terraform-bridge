@@ -632,7 +632,7 @@ func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
 ) hclwrite.Tokens {
 	elems := []hclwrite.Tokens{}
 	for _, expr := range expr.Exprs {
-		elems = append(elems, convertExpression(sources, scopes, fullyQualifiedPath, expr))
+		elems = append(elems, convertExpression(sources, scopes, "", expr))
 	}
 	tokens := hclwrite.TokensForTuple(elems)
 	leading, trailing := getTrivia(sources, expr.SrcRange)
@@ -843,15 +843,39 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 				}
 			}
 		} else if maybeFirstAttr != nil {
-			// This is a lookup of a resource etc, we need to rewrite this traversal such that the root is now the
-			// pulumi invoked value instead.
-			suffix := camelCaseName(root.Name)
-			newName := scopes.getOrAddPulumiName(root.Name+"."+maybeFirstAttr.Name, "", suffix)
-			newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-			newTraversal = append(newTraversal, rewriteTraversal(scopes, root.Name, traversal[2:])...)
+			// This is a lookup of a resource or an attribute lookup on a local variable etc, we need to
+			// rewrite this traversal such that the root is now the pulumi invoked value instead.
+
+			// First see if this is a resource
+			newName := scopes.lookup(root.Name + "." + maybeFirstAttr.Name)
+			if newName != "" {
+				// Looks like this is a resource because a local variable would not be recorded in scopes with a "." in it.
+				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
+				newTraversal = append(newTraversal, rewriteTraversal(scopes, root.Name, traversal[2:])...)
+			} else {
+				// This is either a local variable or a resource we haven't seen yet. First check if this is a local variable
+				newName := scopes.lookup(root.Name)
+				if newName != "" {
+					// Looks like this is a local variable, just rewrite the rest of the traversal
+					newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
+					newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+				} else {
+					// We don't know what this is, so lets assume it's an unknown resource (we shouldn't ever have unknown locals)
+					newName = scopes.getOrAddPulumiName(root.Name+"."+maybeFirstAttr.Name, "", camelCaseName(root.Name))
+					newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
+					newTraversal = append(newTraversal, rewriteTraversal(scopes, root.Name, traversal[2:])...)
+				}
+			}
 		} else {
-			// Not sure what this is, just try to return it as is
-			newTraversal = append(newTraversal, traversal...)
+			// This is a lookup of a variable, look it up and use it else just us the name given
+			newName := scopes.lookup(root.Name)
+			if newName != "" {
+				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
+				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+			} else {
+				// This will be an object key or an undeclared variable, just return those as is
+				newTraversal = append(newTraversal, traversal...)
+			}
 		}
 	} else if attr, ok := traversal[0].(hcl.TraverseAttr); ok {
 		// An attribute look up, we need to know the type path of the traversal so far to resolve this correctly
@@ -952,12 +976,23 @@ func convertForExpr(sources map[string][]byte, scopes *scopes,
 		contract.Failf("ForExpr.Group is not handled")
 	}
 
+	// The collection doesn't yet have access to the key/value scopes
+	collTokens := convertExpression(sources, scopes, "", expr.CollExpr)
+
 	// TODO: We should ensure key and value vars are unique
+	locals := map[string]string{
+		expr.ValVar: camelCaseName(expr.ValVar),
+	}
+	if expr.KeyVar != "" {
+		locals[expr.KeyVar] = camelCaseName(expr.KeyVar)
+	}
+	scopes.push(locals)
 
 	keyTokens := convertExpression(sources, scopes, "", expr.KeyExpr)
-	collTokens := convertExpression(sources, scopes, "", expr.CollExpr)
 	valueTokens := convertExpression(sources, scopes, "", expr.ValExpr)
 	condTokens := convertExpression(sources, scopes, "", expr.CondExpr)
+
+	scopes.pop()
 
 	// Translate to either a tuple or object expression
 	// ForExpr = forTupleExpr | forObjectExpr;
@@ -976,11 +1011,11 @@ func convertForExpr(sources map[string][]byte, scopes *scopes,
 
 	// Write the intro
 	tokens = append(tokens, makeToken(hclsyntax.TokenIdent, "for"))
-	if expr.KeyVar != "" {
-		tokens = append(tokens, makeToken(hclsyntax.TokenIdent, expr.KeyVar))
+	if locals[expr.KeyVar] != "" {
+		tokens = append(tokens, makeToken(hclsyntax.TokenIdent, locals[expr.KeyVar]))
 		tokens = append(tokens, makeToken(hclsyntax.TokenComma, ","))
 	}
-	tokens = append(tokens, makeToken(hclsyntax.TokenIdent, expr.ValVar))
+	tokens = append(tokens, makeToken(hclsyntax.TokenIdent, locals[expr.ValVar]))
 	tokens = append(tokens, makeToken(hclsyntax.TokenIdent, "in"))
 	tokens = append(tokens, collTokens...)
 	tokens = append(tokens, makeToken(hclsyntax.TokenColon, ":"))
@@ -1474,13 +1509,36 @@ type scopes struct {
 	info il.ProviderInfoSource
 
 	roots map[string]string
+	// Local variables that are in scope from for expressions
+	locals []map[string]string
 	// Set non-nil if "count.index" can be mapped
 	countIndex hcl.Traversal
 	eachKey    hcl.Traversal
 	eachValue  hcl.Traversal
 }
 
-// isUsed returns if _any_ scope currently uses the name "name"
+// lookup the given name in roots and locals
+func (s *scopes) lookup(name string) string {
+	for i := len(s.locals) - 1; i >= 0; i-- {
+		if s.locals[i][name] != "" {
+			return s.locals[i][name]
+		}
+	}
+	if s.roots[name] != "" {
+		return s.roots[name]
+	}
+	return ""
+}
+
+func (s *scopes) push(locals map[string]string) {
+	s.locals = append(s.locals, locals)
+}
+
+func (s *scopes) pop() {
+	s.locals = s.locals[0 : len(s.locals)-1]
+}
+
+// isUsed returns if _any_ root scope currently uses the name "name"
 func (s *scopes) isUsed(name string) bool {
 	// We don't have many, but there's a few _keywords_ in pcl that are easier if we just never emit them
 	if name == "range" {
@@ -1748,8 +1806,9 @@ func translateModuleInternal(source afero.Fs,
 	}
 
 	scopes := &scopes{
-		info:  info,
-		roots: make(map[string]string),
+		info:   info,
+		roots:  make(map[string]string),
+		locals: make([]map[string]string, 0),
 	}
 
 	// First go through and add everything to the items list so we can sort it by source order

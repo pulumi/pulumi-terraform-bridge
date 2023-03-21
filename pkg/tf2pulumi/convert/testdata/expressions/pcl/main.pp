@@ -71,6 +71,9 @@ output forTuple {
 output forTupleValueOnly {
     value = [for value in ["a", "b"] : "${value}:${aValue}"]
 }
+output forTupleValueOnlyAttr {
+    value = [for x in [{id="i-123",zone="us-west"},{id="i-abc",zone="us-east"}]: x.id if x.zone == "us-east"]
+}
 output forObject {
     value = {for key, value in ["a", "b"] : key => "${value}:${aValue}" if key != 0}
 }

@@ -88,6 +88,10 @@ output "for_tuple_value_only" {
     value = [for value in ["a", "b"] : "${value}:${local.a_value}"]
 }
 
+output "for_tuple_value_only_attr" {
+    value = [for x in [{id="i-123",zone="us-west"},{id="i-abc",zone="us-east"}]: x.id if x.zone == "us-east"]
+}
+
 output "for_object" {
     value = {for key, value in ["a", "b"] : key => "${value}:${local.a_value}" if key != 0}
 }
