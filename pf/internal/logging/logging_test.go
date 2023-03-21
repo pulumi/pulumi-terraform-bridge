@@ -93,7 +93,7 @@ func TestLogging(t *testing.T) {
 
 		t.Run(c.name, func(t *testing.T) {
 			ctx := context.Background()
-			var opts LogOptions = c.opts
+			opts := c.opts
 			s := &testLogSink{}
 			opts.LogSink = s
 			ctx = InitLogging(ctx, opts)
@@ -118,24 +118,30 @@ func TestSetupRootLoggers(t *testing.T) {
 }
 
 func TestParseLevelFromRawString(t *testing.T) {
-	msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b"
+	msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: " +
+		"provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b"
 	lev, rest := parseLevelFromRawString(msg)
 	require.Equal(t, hclog.Error, lev)
-	require.Equal(t, "2023-03-15T10:52:48.612-0500 provider/resource_integer.go:113: provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b", rest)
+	require.Equal(t, "2023-03-15T10:52:48.612-0500 provider/resource_integer.go:113: "+
+		"provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b", rest)
 }
 
 func TestParseUrnFromRawString(t *testing.T) {
 	t.Run("quoted", func(t *testing.T) {
-		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Oops: urn=\"some-urn\" value=2"
+		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: " +
+			"provider: Oops: urn=\"some-urn\" value=2"
 		urn, rest := parseUrnFromRawString(msg)
 		assert.Equal(t, "some-urn", string(urn))
-		assert.Equal(t, "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Oops: value=2", rest)
+		assert.Equal(t, "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: "+
+			"provider: Oops: value=2", rest)
 	})
 	t.Run("bare", func(t *testing.T) {
-		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Oops: urn=some-urn value=2"
+		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: " +
+			"Oops: urn=some-urn value=2"
 		urn, rest := parseUrnFromRawString(msg)
 		assert.Equal(t, "some-urn", string(urn))
-		assert.Equal(t, "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: provider: Oops: value=2", rest)
+		assert.Equal(t, "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: "+
+			"provider: Oops: value=2", rest)
 	})
 }
 

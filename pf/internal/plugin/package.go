@@ -14,7 +14,8 @@
 
 // The code in this package implements Context-preserving provider server and is forked from pulumi/pulumi.
 //
-// When https://github.com/pulumi/pulumi/issues/12010 is complete this may need to be rewritten to the newly introduced APIs.
+// When https://github.com/pulumi/pulumi/issues/12010 is complete this may need to be rewritten to the newly introduced
+// APIs.
 //
 // An attempt to upstream the Context preservation improvement in this code was rejected in
 // https://github.com/pulumi/pulumi/pull/12429.

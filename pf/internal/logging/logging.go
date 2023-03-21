@@ -102,7 +102,7 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 	}
 }
 
-// Re-interprets strucutred JSON logs as calls against LogSink. To be used with SetupRootLoggers.
+// Re-interprets structured JSON logs as calls against LogSink. To be used with SetupRootLoggers.
 func newLogSinkWriter(ctx context.Context, sink LogSink) io.Writer {
 	desiredLevel := parseTfLogEnvVar()
 	return &logSinkWriter{
