@@ -25,19 +25,15 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
-            go.sum
-            pf/go.sum
-            pf/tests/go.sum
-            pf/tests/internal/randomshim/go.sum
-            pf/tests/internal/tlsshim/go.sum
-            pf/tests/testdatagen/genrandom/go.sum
-            pkg/tests/go.sum
-            testing/go.sum
+            **/go.sum
       - name: Build
         run: make build
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
+            skip-cache: true
+            skip-pkg-cache: true
+            skip-build-cache: true
             version: v1.51.2
       - name: Lint
         run: make lint
