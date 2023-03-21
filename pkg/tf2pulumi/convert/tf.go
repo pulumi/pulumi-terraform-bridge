@@ -200,6 +200,41 @@ func getAttributeRange(sources map[string][]byte, r hcl.Range) hcl.Range {
 	}
 }
 
+// Given a HCL range return the tokens for that range
+func getTokensForRange(sources map[string][]byte, r hcl.Range) hclwrite.Tokens {
+	// Load the file referenced in the range
+	src, has := sources[r.Filename]
+	if !has {
+		// This shouldn't ever be hit, "sources" is a list of every file we parsed earlier and ranges should
+		// only come from those.
+		panic(fmt.Sprintf("Could not read '%s' to parse trivia", r.Filename))
+	}
+	tokens, _ := hclsyntax.LexConfig(src, r.Filename, hcl.Pos{Byte: 0, Line: 1, Column: 1})
+	// Ignore the diagnostics, we already know this is parsable because we've got the hcl.Range for it
+
+	// Find the tokens for this range
+	rangeTokens := make(hclwrite.Tokens, 0)
+	foundFirst := false
+	for _, token := range tokens {
+		if token.Range.Start == r.Start {
+			foundFirst = true
+		}
+
+		if foundFirst {
+			rangeTokens = append(rangeTokens, &hclwrite.Token{
+				Type:  token.Type,
+				Bytes: token.Bytes,
+			})
+		}
+
+		if token.Range.End == r.End {
+			break
+		}
+	}
+
+	return rangeTokens
+}
+
 // Functions need to translate in one of four ways
 // 1. The `list` function just gets translated into a tuple
 // 2. Just a simple rename, e.g. "file" => "readFile"
@@ -277,11 +312,21 @@ var tfFunctionStd = map[string]struct {
 		output:    "result",
 		paramArgs: true,
 	},
-	"compact": {
-		token:  "std:index:compact",
-		inputs: []string{"input"},
-		output: "result",
-	},
+	/* Currently failing due to: cannot assign expression of type { input: (string, string, string, null,
+	string) } to location of type { input: list(output(string) | string) | output(list(string)) } | output({
+	input: list(string) }):
+	*/
+	//
+	//	on main.pp line 263:
+	//	264:   value = invoke("std:index:compact", {
+	//	265:     input = ["a", "", "b", null, "c"]
+	//	266:   }).result
+	//
+	//"compact": {
+	//	token:  "std:index:compact",
+	//	inputs: []string{"input"},
+	//	output: "result",
+	//},
 	"cidrhost": {
 		token:  "std:index:cidrhost",
 		inputs: []string{"input", "host"},
@@ -380,11 +425,6 @@ var tfFunctionStd = map[string]struct {
 	"lower": {
 		token:  "std:index:lower",
 		inputs: []string{"input"},
-		output: "result",
-	},
-	"matchkeys": {
-		token:  "std:index:matchkeys",
-		inputs: []string{"searchList", "values"},
 		output: "result",
 	},
 	"max": {
@@ -623,8 +663,12 @@ func convertFunctionCallExpr(sources map[string][]byte,
 		return call
 	}
 
-	// Finally just return it as is
-	return hclwrite.TokensForFunctionCall(call.Name, args...)
+	// Finally just return it as not yet implemented
+	buffer := bytes.NewBufferString("")
+	_, err := getTokensForRange(sources, call.Range()).WriteTo(buffer)
+	contract.AssertNoErrorf(err, "Failed to write tokens for range %v", call.Range())
+	text := cty.StringVal(buffer.String())
+	return hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
 }
 
 func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,

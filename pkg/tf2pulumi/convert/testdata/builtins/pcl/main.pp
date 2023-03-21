@@ -1,9 +1,29 @@
-    # A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of
+    # A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of #
     # the current module, but tf2pulumi doesn't support that so we replace it with local.path_module.
     pathModule = "some/path"
     # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
-    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with local.path_root.
     pathRoot = "root/path"
+    # The `can` examples make use of a local `foo`.
+    foo = { "bar" = "baz" }
+    # The `nonsensitive` examples make use of a local `mixed_content`.
+    # We don't use jsondecode(var.mixed_content_json) here because we don't want to depend on the jsondecode function working.
+    mixedContent = { "password" = "hunter2" }
+# The `nonsensitive` examples make use of a variable `mixed_content_json`.
+config mixedContentJson string {
+}
+# The `format` examples make use of a variable `name`.
+config name string {
+}
+# The `matchkeys` example makes use of a resource with `count`.
+resource aResourceWithCount "simple:index:resource" {
+options {
+    range = 4
+
+}
+    inputOne =  "Hello ${range.value}"
+    inputTwo = true
+}
 # Examples for element
 output funcElement0 {
   value = element(["a", "b", "c"], 1)

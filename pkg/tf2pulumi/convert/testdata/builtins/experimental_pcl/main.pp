@@ -1,9 +1,32 @@
-# A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of
+# A load of the examples in the docs use `path.module` which _should_ resolve to the file system path of #
 # the current module, but tf2pulumi doesn't support that so we replace it with local.path_module.
 pathModule = "some/path"
 # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
-# root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+# root module of the configuration, but tf2pulumi doesn't support that so we replace it with local.path_root.
 pathRoot = "root/path"
+# The `can` examples make use of a local `foo`.
+foo = {
+  "bar" = "baz"
+}
+# The `nonsensitive` examples make use of a local `mixed_content`.
+# We don't use jsondecode(var.mixed_content_json) here because we don't want to depend on the jsondecode function working.
+mixedContent = {
+  "password" = "hunter2"
+}
+# The `nonsensitive` examples make use of a variable `mixed_content_json`.
+config "mixedContentJson" "string" {
+}
+# The `format` examples make use of a variable `name`.
+config "name" "string" {
+}
+# The `matchkeys` example makes use of a resource with `count`.
+resource "aResourceWithCount" "simple:index:resource" {
+  options {
+    range = 4
+  }
+  inputOne = "Hello ${range.value}"
+  inputTwo = true
+}
 # Examples for abs
 output "funcAbs0" {
   value = invoke("std:index:abs", {
@@ -25,6 +48,26 @@ output "funcAbspath" {
   value = invoke("std:index:abspath", {
     input = pathRoot
   }).result
+}
+# Examples for alltrue
+output "funcAlltrue0" {
+  value = notImplemented("alltrue([\"true\",true])")
+}
+output "funcAlltrue1" {
+  value = notImplemented("alltrue([true,false])")
+}
+# Examples for anytrue
+output "funcAnytrue0" {
+  value = notImplemented("anytrue([\"true\"])")
+}
+output "funcAnytrue1" {
+  value = notImplemented("anytrue([true])")
+}
+output "funcAnytrue2" {
+  value = notImplemented("anytrue([true,false])")
+}
+output "funcAnytrue3" {
+  value = notImplemented("anytrue([])")
 }
 # Examples for base64decode
 output "funcBase64decode" {
@@ -68,6 +111,19 @@ output "funcBcrypt" {
     input = "hello world"
   }).result
 }
+# Examples for can
+output "funcCan0" {
+  value = foo
+}
+output "funcCan1" {
+  value = notImplemented("can(local.foo.bar)")
+}
+output "funcCan2" {
+  value = notImplemented("can(local.foo.boop)")
+}
+output "funcCan3" {
+  value = notImplemented("can(local.nonexist)")
+}
 # Examples for ceil
 output "funcCeil0" {
   value = invoke("std:index:ceil", {
@@ -94,6 +150,13 @@ output "funcChomp2" {
   value = invoke("std:index:chomp", {
     input = "hello\n\n"
   }).result
+}
+# Examples for chunklist
+output "funcChunklist0" {
+  value = notImplemented("chunklist([\"a\",\"b\",\"c\",\"d\",\"e\"],2)")
+}
+output "funcChunklist1" {
+  value = notImplemented("chunklist([\"a\",\"b\",\"c\",\"d\",\"e\"],1)")
 }
 # Examples for cidrhost
 output "funcCidrhost0" {
@@ -154,11 +217,64 @@ output "funcCidrsubnet4" {
     host  = 14
   }).result
 }
+# Examples for cidrsubnets
+output "funcCidrsubnets0" {
+  value = notImplemented("cidrsubnets(\"10.1.0.0/16\",4,4,8,4)")
+}
+output "funcCidrsubnets1" {
+  value = notImplemented("cidrsubnets(\"fd00:fd12:3456:7890::/56\",16,16,16,32)")
+}
+output "funcCidrsubnets2" {
+  value = [for cidrBlock in notImplemented("cidrsubnets(\"10.0.0.0/8\",8,8,8,8)") : notImplemented("cidrsubnets(cidr_block,4,4)")]
+}
+# Examples for coalesce
+output "funcCoalesce0" {
+  value = notImplemented("coalesce(\"a\",\"b\")")
+}
+output "funcCoalesce1" {
+  value = notImplemented("coalesce(\"\",\"b\")")
+}
+output "funcCoalesce2" {
+  value = notImplemented("coalesce(1,2)")
+}
+output "funcCoalesce3" {
+  value = notImplemented("coalesce([\"\",\"b\"]...)")
+}
+output "funcCoalesce4" {
+  value = notImplemented("coalesce(1,\"hello\")")
+}
+output "funcCoalesce5" {
+  value = notImplemented("coalesce(true,\"hello\")")
+}
+output "funcCoalesce6" {
+  value = notImplemented("coalesce({},\"hello\")")
+}
+# Examples for coalescelist
+output "funcCoalescelist0" {
+  value = notImplemented("coalescelist([\"a\",\"b\"],[\"c\",\"d\"])")
+}
+output "funcCoalescelist1" {
+  value = notImplemented("coalescelist([],[\"c\",\"d\"])")
+}
+output "funcCoalescelist2" {
+  value = notImplemented("coalescelist([[],[\"c\",\"d\"]]...)")
+}
 # Examples for compact
 output "funcCompact" {
-  value = invoke("std:index:compact", {
-    input = ["a", "", "b", "c"]
+  value = notImplemented("compact([\"a\",\"\",\"b\",null,\"c\"])")
+}
+# Examples for concat
+output "funcConcat" {
+  value = invoke("std:index:concat", {
+    input = [["a", ""], ["b", "c"]]
   }).result
+}
+# Examples for contains
+output "funcContains0" {
+  value = notImplemented("contains([\"a\",\"b\",\"c\"],\"a\")")
+}
+output "funcContains1" {
+  value = notImplemented("contains([\"a\",\"b\",\"c\"],\"d\")")
 }
 # Examples for csvdecode
 output "funcCsvdecode" {
@@ -172,15 +288,19 @@ output "funcDirname" {
     input = "foo/bar/baz.txt"
   }).result
 }
+# Examples for distinct
+output "funcDistinct" {
+  value = notImplemented("distinct([\"a\",\"b\",\"a\",\"c\",\"d\",\"b\"])")
+}
 # Examples for element
 output "funcElement0" {
-  value = element(["a", "b", "c"], 1)
+  value = notImplemented("element([\"a\",\"b\",\"c\"],1)")
 }
 output "funcElement1" {
-  value = element(["a", "b", "c"], 3)
+  value = notImplemented("element([\"a\",\"b\",\"c\"],3)")
 }
 output "funcElement2" {
-  value = element(["a", "b", "c"], length(["a", "b", "c"]) - 1)
+  value = notImplemented("element([\"a\",\"b\",\"c\"],length([\"a\",\"b\",\"c\"])-1)")
 }
 # Examples for endswith
 output "funcEndswith0" {
@@ -231,6 +351,19 @@ output "funcFilemd5" {
     input = "hello.txt"
   }).result
 }
+# Examples for fileset
+output "funcFileset0" {
+  value = notImplemented("fileset(local.path_module,\"files/*.txt\")")
+}
+output "funcFileset1" {
+  value = notImplemented("fileset(local.path_module,\"files/{hello,world}.txt\")")
+}
+output "funcFileset2" {
+  value = notImplemented("fileset(\"$${local.path_module}/files\",\"*\")")
+}
+output "funcFileset3" {
+  value = notImplemented("fileset(\"$${local.path_module}/files\",\"**\")")
+}
 # Examples for filesha1
 output "funcFilesha1" {
   value = invoke("std:index:filesha1", {
@@ -249,6 +382,13 @@ output "funcFilesha512" {
     input = "hello.txt"
   }).result
 }
+# Examples for flatten
+output "funcFlatten0" {
+  value = notImplemented("flatten([[\"a\",\"b\"],[],[\"c\"]])")
+}
+output "funcFlatten1" {
+  value = notImplemented("flatten([[[\"a\",\"b\"],[]],[\"c\"]])")
+}
 # Examples for floor
 output "funcFloor0" {
   value = invoke("std:index:floor", {
@@ -260,6 +400,66 @@ output "funcFloor1" {
     input = 4.9
   }).result
 }
+# Examples for format
+output "funcFormat0" {
+  value = notImplemented("format(\"Hello, %s!\",\"Ander\")")
+}
+output "funcFormat1" {
+  value = notImplemented("format(\"There are %d lights\",4)")
+}
+output "funcFormat2" {
+  value = notImplemented("format(\"Hello, %s!\",var.name)")
+}
+output "funcFormat3" {
+  value = "Hello, ${name}!"
+}
+output "funcFormat4" {
+  value = notImplemented("format(\"%#v\",\"hello\")")
+}
+output "funcFormat5" {
+  value = notImplemented("format(\"%#v\",true)")
+}
+output "funcFormat6" {
+  value = notImplemented("format(\"%#v\",1)")
+}
+output "funcFormat7" {
+  value = notImplemented("format(\"%#v\",{a=1})")
+}
+output "funcFormat8" {
+  value = notImplemented("format(\"%#v\",[true])")
+}
+output "funcFormat9" {
+  value = notImplemented("format(\"%#v\",null)")
+}
+# Examples for formatdate
+output "funcFormatdate0" {
+  value = notImplemented("formatdate(\"DD MMM YYYY hh:mm ZZZ\",\"2018-01-02T23:12:01Z\")")
+}
+output "funcFormatdate1" {
+  value = notImplemented("formatdate(\"EEEE, DD-MMM-YY hh:mm:ss ZZZ\",\"2018-01-02T23:12:01Z\")")
+}
+output "funcFormatdate2" {
+  value = notImplemented("formatdate(\"EEE, DD MMM YYYY hh:mm:ss ZZZ\",\"2018-01-02T23:12:01-08:00\")")
+}
+output "funcFormatdate3" {
+  value = notImplemented("formatdate(\"MMM DD, YYYY\",\"2018-01-02T23:12:01Z\")")
+}
+output "funcFormatdate4" {
+  value = notImplemented("formatdate(\"HH:mmaa\",\"2018-01-02T23:12:01Z\")")
+}
+output "funcFormatdate5" {
+  value = notImplemented("formatdate(\"h'h'mm\",\"2018-01-02T23:12:01-08:00\")")
+}
+output "funcFormatdate6" {
+  value = notImplemented("formatdate(\"H 'o''clock'\",\"2018-01-02T23:12:01-08:00\")")
+}
+# Examples for formatlist
+output "funcFormatlist0" {
+  value = notImplemented("formatlist(\"Hello, %s!\",[\"Valentina\",\"Ander\",\"Olivia\",\"Sam\"])")
+}
+output "funcFormatlist1" {
+  value = notImplemented("formatlist(\"%s, %s!\",\"Salutations\",[\"Valentina\",\"Ander\",\"Olivia\",\"Sam\"])")
+}
 # Examples for indent
 output "funcIndent" {
   value = "  items: ${invoke("std:index:indent", {
@@ -267,18 +467,35 @@ output "funcIndent" {
     input  = "[\n  foo,\n  bar,\n]\n"
   }).result}"
 }
+# Examples for index
+output "funcIndex" {
+  value = notImplemented("index([\"a\",\"b\",\"c\"],\"b\")")
+}
 # Examples for join
 output "funcJoin0" {
   value = invoke("std:index:join", {
-    separator = ", "
+    separator = "-"
     input     = ["foo", "bar", "baz"]
   }).result
 }
 output "funcJoin1" {
   value = invoke("std:index:join", {
     separator = ", "
+    input     = ["foo", "bar", "baz"]
+  }).result
+}
+output "funcJoin2" {
+  value = invoke("std:index:join", {
+    separator = ", "
     input     = ["foo"]
   }).result
+}
+# Examples for jsondecode
+output "funcJsondecode0" {
+  value = notImplemented("jsondecode(\"{\\\"hello\\\": \\\"world\\\"}\")")
+}
+output "funcJsondecode1" {
+  value = notImplemented("jsondecode(\"true\")")
 }
 # Examples for jsonencode
 output "funcJsonencode" {
@@ -286,23 +503,29 @@ output "funcJsonencode" {
     "hello" = "world"
   })
 }
+# Examples for keys
+output "funcKeys" {
+  value = notImplemented("keys({a=1,c=2,d=3})")
+}
 # Examples for length
 output "funcLength0" {
-  value = length([])
+  value = notImplemented("length([])")
 }
 output "funcLength1" {
-  value = length(["a", "b"])
+  value = notImplemented("length([\"a\",\"b\"])")
 }
 output "funcLength2" {
-  value = length({
-    "a" = "b"
-  })
+  value = notImplemented("length({\"a\"=\"b\"})")
 }
 output "funcLength3" {
-  value = length("hello")
+  value = notImplemented("length(\"hello\")")
 }
 output "funcLength4" {
-  value = length("👾🕹️")
+  value = notImplemented("length(\"👾🕹️\")")
+}
+# Examples for list
+output "funcList" {
+  value = [1, 2, 3]
 }
 # Examples for log
 output "funcLog0" {
@@ -343,16 +566,10 @@ output "funcLog4" {
 }
 # Examples for lookup
 output "funcLookup0" {
-  value = lookup({
-    a = "ay"
-    b = "bee"
-  }, "a", "what?")
+  value = notImplemented("lookup({a=\"ay\",b=\"bee\"},\"a\",\"what?\")")
 }
 output "funcLookup1" {
-  value = lookup({
-    a = "ay"
-    b = "bee"
-  }, "c", "what?")
+  value = notImplemented("lookup({a=\"ay\",b=\"bee\"},\"c\",\"what?\")")
 }
 # Examples for lower
 output "funcLower0" {
@@ -364,6 +581,33 @@ output "funcLower1" {
   value = invoke("std:index:lower", {
     input = "АЛЛО!"
   }).result
+}
+# Examples for map
+output "funcMap" {
+  value = notImplemented("map(\"a\",\"b\",\"c\",\"d\")")
+}
+# Examples for matchkeys
+output "funcMatchkeys0" {
+  value = notImplemented("matchkeys([\"i-123\",\"i-abc\",\"i-def\"],[\"us-west\",\"us-east\",\"us-east\"],[\"us-east\"])")
+}
+output "funcMatchkeys1" {
+  value = [for i, z in {
+    "i-123" = "us-west"
+    "i-abc" = "us-east"
+    "i-def" = "us-east"
+  } : i if z == "us-east"]
+}
+output "funcMatchkeys2" {
+  value = [for x in [{
+    id   = "i-123"
+    zone = "us-west"
+    }, {
+    id   = "i-abc"
+    zone = "us-east"
+  }] : x.id if x.zone == "us-east"]
+}
+output "funcMatchkeys3" {
+  value = [for x in aResourceWithCount : x.id if x.inputOne == "us-east-1a"]
 }
 # Examples for max
 output "funcMax0" {
@@ -382,6 +626,16 @@ output "funcMd5" {
     input = "hello world"
   }).result
 }
+# Examples for merge
+output "funcMerge0" {
+  value = notImplemented("merge({a=\"b\",c=\"d\"},{e=\"f\",c=\"z\"})")
+}
+output "funcMerge1" {
+  value = notImplemented("merge({a=\"b\"},{a=[1,2],c=\"z\"},{d=3})")
+}
+output "funcMerge2" {
+  value = notImplemented("merge([{a=\"b\",c=\"d\"},{},{e=\"f\",c=\"z\"}]...)")
+}
 # Examples for min
 output "funcMin0" {
   value = invoke("std:index:min", {
@@ -392,6 +646,50 @@ output "funcMin1" {
   value = invoke("std:index:min", {
     input = [12, 54, 3]
   }).result
+}
+# Examples for nonsensitive
+output "funcNonsensitive0" {
+  value = mixedContentJson
+}
+output "funcNonsensitive1" {
+  value = mixedContent
+}
+output "funcNonsensitive2" {
+  value = mixedContent["password"]
+}
+output "funcNonsensitive3" {
+  value = notImplemented("nonsensitive(local.mixed_content[\"username\"])")
+}
+output "funcNonsensitive4" {
+  value = notImplemented("nonsensitive(\"clear\")")
+}
+output "funcNonsensitive5" {
+  value = notImplemented("nonsensitive(var.mixed_content_json)")
+}
+output "funcNonsensitive6" {
+  value = notImplemented("nonsensitive(local.mixed_content)")
+}
+output "funcNonsensitive7" {
+  value = notImplemented("nonsensitive(local.mixed_content[\"password\"])")
+}
+# Examples for one
+output "funcOne0" {
+  value = notImplemented("one([])")
+}
+output "funcOne1" {
+  value = notImplemented("one([\"hello\"])")
+}
+output "funcOne2" {
+  value = notImplemented("one([\"hello\",\"goodbye\"])")
+}
+output "funcOne3" {
+  value = notImplemented("one(toset([]))")
+}
+output "funcOne4" {
+  value = notImplemented("one(toset([\"hello\"]))")
+}
+output "funcOne5" {
+  value = notImplemented("one(toset([\"hello\",\"goodbye\"]))")
 }
 # Examples for parseint
 output "funcParseint0" {
@@ -493,6 +791,29 @@ output "funcRange5" {
     step  = -2
   }).result
 }
+# Examples for regex
+output "funcRegex0" {
+  value = notImplemented("regex(\"[a-z]+\",\"53453453.345345aaabbbccc23454\")")
+}
+output "funcRegex1" {
+  value = notImplemented("regex(\"(\\\\d\\\\d\\\\d\\\\d)-(\\\\d\\\\d)-(\\\\d\\\\d)\",\"2019-02-01\")")
+}
+output "funcRegex2" {
+  value = notImplemented("regex(\"^(?:(?P<scheme>[^:/?#]+):)?(?://(?P<authority>[^/?#]*))?\",\"https://terraform.io/docs/\")")
+}
+output "funcRegex3" {
+  value = notImplemented("regex(\"[a-z]+\",\"53453453.34534523454\")")
+}
+# Examples for regexall
+output "funcRegexall0" {
+  value = notImplemented("regexall(\"[a-z]+\",\"1234abcd5678efgh9\")")
+}
+output "funcRegexall1" {
+  value = notImplemented("length(regexall(\"[a-z]+\",\"1234abcd5678efgh9\"))")
+}
+output "funcRegexall2" {
+  value = notImplemented("length(regexall(\"[a-z]+\",\"123456789\"))") > 0
+}
 # Examples for replace
 output "funcReplace0" {
   value = invoke("std:index:replace", {
@@ -507,6 +828,10 @@ output "funcReplace1" {
     search  = "/w.*d/"
     text    = "everybody"
   }).result
+}
+# Examples for reverse
+output "funcReverse" {
+  value = notImplemented("reverse([1,2,3])")
 }
 # Examples for rsadecrypt
 output "funcRsadecrypt" {
@@ -528,6 +853,31 @@ output "funcSensitive1" {
 }
 output "funcSensitive2" {
   value = secret([])
+}
+# Examples for setintersection
+output "funcSetintersection" {
+  value = notImplemented("setintersection([\"a\",\"b\"],[\"b\",\"c\"],[\"b\",\"d\"])")
+}
+# Examples for setproduct
+output "funcSetproduct0" {
+  value = notImplemented("setproduct([\"development\",\"staging\",\"production\"],[])")
+}
+output "funcSetproduct1" {
+  value = notImplemented("setproduct([\"a\"],[\"b\"])")
+}
+output "funcSetproduct2" {
+  value = notImplemented("setproduct([\"staging\",\"production\"],[\"a\",2])")
+}
+# Examples for setsubtract
+output "funcSetsubtract0" {
+  value = notImplemented("setsubtract([\"a\",\"b\",\"c\"],[\"a\",\"c\"])")
+}
+output "funcSetsubtract1" {
+  value = notImplemented("setunion(setsubtract([\"a\",\"b\",\"c\"],[\"a\",\"c\",\"d\"]),setsubtract([\"a\",\"c\",\"d\"],[\"a\",\"b\",\"c\"]))")
+}
+# Examples for setunion
+output "funcSetunion" {
+  value = notImplemented("setunion([\"a\",\"b\"],[\"b\",\"c\"],[\"d\"])")
 }
 # Examples for sha1
 output "funcSha1" {
@@ -562,6 +912,10 @@ output "funcSignum2" {
   value = invoke("std:index:signum", {
     input = 344
   }).result
+}
+# Examples for slice
+output "funcSlice" {
+  value = notImplemented("slice([\"a\",\"b\",\"c\",\"d\"],1,3)")
 }
 # Examples for sort
 output "funcSort" {
@@ -647,6 +1001,21 @@ output "funcSum" {
     input = [10, 13, 6, 4.5]
   }).result
 }
+# Examples for templatefile
+output "funcTemplatefile0" {
+  value = notImplemented("templatefile(\"$${path.module}/backends.tftpl\",{port=8080,ip_addrs=[\"10.0.0.1\",\"10.0.0.2\"]})")
+}
+output "funcTemplatefile1" {
+  value = notImplemented("templatefile(\n\"$${path.module}/config.tftpl\",\n{\nconfig={\n\"x\"=\"y\"\n\"foo\"=\"bar\"\n\"key\"=\"value\"\n}\n}\n)")
+}
+# Examples for textdecodebase64
+output "funcTextdecodebase64" {
+  value = notImplemented("textdecodebase64(\"SABlAGwAbABvACAAVwBvAHIAbABkAA==\",\"UTF-16LE\")")
+}
+# Examples for textencodebase64
+output "funcTextencodebase64" {
+  value = notImplemented("textencodebase64(\"Hello World\",\"UTF-16LE\")")
+}
 # Examples for timeadd
 output "funcTimeadd" {
   value = invoke("std:index:timeadd", {
@@ -688,6 +1057,75 @@ output "funcTitle" {
   value = invoke("std:index:title", {
     input = "hello world"
   }).result
+}
+# Examples for tobool
+output "funcTobool0" {
+  value = notImplemented("tobool(true)")
+}
+output "funcTobool1" {
+  value = notImplemented("tobool(\"true\")")
+}
+output "funcTobool2" {
+  value = notImplemented("tobool(null)")
+}
+output "funcTobool3" {
+  value = notImplemented("tobool(\"no\")")
+}
+output "funcTobool4" {
+  value = notImplemented("tobool(1)")
+}
+# Examples for tolist
+output "funcTolist0" {
+  value = notImplemented("tolist([\"a\",\"b\",\"c\"])")
+}
+output "funcTolist1" {
+  value = notImplemented("tolist([\"a\",\"b\",3])")
+}
+# Examples for tomap
+output "funcTomap0" {
+  value = notImplemented("tomap({\"a\"=1,\"b\"=2})")
+}
+output "funcTomap1" {
+  value = notImplemented("tomap({\"a\"=\"foo\",\"b\"=true})")
+}
+# Examples for tonumber
+output "funcTonumber0" {
+  value = notImplemented("tonumber(1)")
+}
+output "funcTonumber1" {
+  value = notImplemented("tonumber(\"1\")")
+}
+output "funcTonumber2" {
+  value = notImplemented("tonumber(null)")
+}
+output "funcTonumber3" {
+  value = notImplemented("tonumber(\"no\")")
+}
+# Examples for toset
+output "funcToset0" {
+  value = notImplemented("toset([\"a\",\"b\",\"c\"])")
+}
+output "funcToset1" {
+  value = notImplemented("toset([\"a\",\"b\",3])")
+}
+output "funcToset2" {
+  value = notImplemented("toset([\"c\",\"b\",\"b\"])")
+}
+# Examples for tostring
+output "funcTostring0" {
+  value = notImplemented("tostring(\"hello\")")
+}
+output "funcTostring1" {
+  value = notImplemented("tostring(1)")
+}
+output "funcTostring2" {
+  value = notImplemented("tostring(true)")
+}
+output "funcTostring3" {
+  value = notImplemented("tostring(null)")
+}
+output "funcTostring4" {
+  value = notImplemented("tostring([])")
 }
 # Examples for transpose
 output "funcTranspose" {
@@ -743,6 +1181,26 @@ output "funcTrimsuffix" {
     suffix = "world"
   }).result
 }
+# Examples for try
+output "funcTry0" {
+  value = foo
+}
+output "funcTry1" {
+  value = notImplemented("try(local.foo.bar,\"fallback\")")
+}
+output "funcTry2" {
+  value = notImplemented("try(local.foo.boop,\"fallback\")")
+}
+output "funcTry3" {
+  value = notImplemented("try(local.nonexist,\"fallback\")")
+}
+# Examples for type
+output "funcType0" {
+  value = notImplemented("type(var.list)")
+}
+output "funcType1" {
+  value = notImplemented("type(local.default_list)")
+}
 # Examples for upper
 output "funcUpper0" {
   value = invoke("std:index:upper", {
@@ -773,4 +1231,57 @@ output "funcUrlencode2" {
 # Examples for uuid
 output "funcUuid" {
   value = invoke("std:index:uuid", {}).result
+}
+# Examples for uuidv5
+output "funcUuidv50" {
+  value = notImplemented("uuidv5(\"dns\",\"www.terraform.io\")")
+}
+output "funcUuidv51" {
+  value = notImplemented("uuidv5(\"url\",\"https://www.terraform.io/\")")
+}
+output "funcUuidv52" {
+  value = notImplemented("uuidv5(\"oid\",\"1.3.6.1.4\")")
+}
+output "funcUuidv53" {
+  value = notImplemented("uuidv5(\"x500\",\"CN=Example,C=GB\")")
+}
+output "funcUuidv54" {
+  value = notImplemented("uuidv5(\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\",\"www.terraform.io\")")
+}
+output "funcUuidv55" {
+  value = notImplemented("uuidv5(\"743ac3c0-3bf7-4a5b-9e6c-59360447c757\",\"LIBS:diskfont.library\")")
+}
+# Examples for values
+output "funcValues" {
+  value = notImplemented("values({a=3,c=2,d=1})")
+}
+# Examples for yamldecode
+output "funcYamldecode0" {
+  value = notImplemented("yamldecode(\"hello: world\")")
+}
+output "funcYamldecode1" {
+  value = notImplemented("yamldecode(\"true\")")
+}
+output "funcYamldecode2" {
+  value = notImplemented("yamldecode(\"{a: &foo [1, 2, 3], b: *foo}\")")
+}
+output "funcYamldecode3" {
+  value = notImplemented("yamldecode(\"{a: &foo [1, *foo, 3]}\")")
+}
+output "funcYamldecode4" {
+  value = notImplemented("yamldecode(\"{a: !not-supported foo}\")")
+}
+# Examples for yamlencode
+output "funcYamlencode0" {
+  value = notImplemented("yamlencode({\"a\":\"b\",\"c\":\"d\"})")
+}
+output "funcYamlencode1" {
+  value = notImplemented("yamlencode({\"foo\":[1,2,3],\"bar\":\"baz\"})")
+}
+output "funcYamlencode2" {
+  value = notImplemented("yamlencode({\"foo\":[1,{\"a\":\"b\",\"c\":\"d\"},3],\"bar\":\"baz\"})")
+}
+# Examples for zipmap
+output "funcZipmap" {
+  value = notImplemented("zipmap([\"a\",\"b\"],[1,2])")
 }
