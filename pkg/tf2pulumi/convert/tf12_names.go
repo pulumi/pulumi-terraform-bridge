@@ -97,7 +97,7 @@ func (nt *nameTable) disambiguate(name string) string {
 // assignOutput assigns an unambiguous name to an output node.
 func (nt *nameTable) assignOutput(n *output) {
 	name := nt.pulumiName(n.name)
-	contract.Assert(!nt.assigned[name])
+	contract.Assertf(!nt.assigned[name], "!nt.assigned[name]")
 
 	n.pulumiName, nt.assigned[name] = name, true
 }

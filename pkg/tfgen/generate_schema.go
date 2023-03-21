@@ -93,7 +93,7 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
 		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false)
 	case *variable:
-		contract.Assert(member.config)
+		contract.Assertf(member.config, `member.config`)
 		p := paths.NewProperyPath(paths.NewConfigPath(), member.propertyName)
 		nt.gatherFromPropertyType(p, member, member.name, "", member.typ, false)
 	}
@@ -193,7 +193,7 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, dec
 
 func rawMessage(v interface{}) pschema.RawMessage {
 	bytes, err := json.Marshal(v)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, `err == nil`)
 	return pschema.RawMessage(bytes)
 }
 
@@ -256,7 +256,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 			case *resourceFunc:
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
 			case *variable:
-				contract.Assert(mod.config())
+				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)
 			}
 		}
@@ -638,7 +638,7 @@ func setEquals(a, b codegen.StringSet) bool {
 
 func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 	typ := typInfo.typ
-	contract.Assert(typ.kind == kindObject)
+	contract.Assertf(typ.kind == kindObject, `typ.kind == kindObject`)
 
 	name := typ.name
 	if typ.nestedType != "" {
@@ -655,7 +655,7 @@ func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 
 func (g *schemaGenerator) genObjectType(typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
 	typ := typInfo.typ
-	contract.Assert(typ.kind == kindObject)
+	contract.Assertf(typ.kind == kindObject, `typ.kind == kindObject`)
 
 	spec := pschema.ObjectTypeSpec{
 		Type: "object",
@@ -783,7 +783,7 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 	switch typ.kind {
 	case kindBool, kindInt, kindFloat, kindString:
 		t := g.schemaPrimitiveType(typ.kind)
-		contract.Assert(t != "")
+		contract.Assertf(t != "", `t != ""`)
 		return pschema.TypeSpec{Type: t}
 	case kindSet, kindList:
 		items := g.schemaType(paths.NewElementPath(path), typ.element, out)

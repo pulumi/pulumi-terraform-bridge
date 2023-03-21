@@ -40,7 +40,7 @@ type propertyBinder struct {
 // rather than the list itself. Note that this implies that the result of this function is not necessarily of
 // type TypeList.
 func (b *propertyBinder) bindListProperty(path string, s reflect.Value, sch Schemas) (BoundNode, error) {
-	contract.Require(s.Kind() == reflect.Slice, "s")
+	contract.Requiref(s.Kind() == reflect.Slice, "s", "s.Kind() == reflect.Slice")
 
 	// Grab the element schemas.
 	elemSchemas := sch.ElemSchemas()
@@ -92,7 +92,7 @@ func (b *propertyBinder) bindListProperty(path string, s reflect.Value, sch Sche
 
 // bindMapProperty binds a map property according to the given schema.
 func (b *propertyBinder) bindMapProperty(path string, m reflect.Value, sch Schemas) (*BoundMapProperty, error) {
-	contract.Require(m.Kind() == reflect.Map, "m")
+	contract.Requiref(m.Kind() == reflect.Map, "m", "m.Kind() == reflect.Map")
 
 	// Grab the key type and ensure it is of type string.
 	if m.Type().Key().Kind() != reflect.String {
@@ -135,7 +135,7 @@ func (b *propertyBinder) bindProperty(path string, p reflect.Value, sch Schemas)
 		if err != nil {
 			return nil, errors.Errorf("%v: could not parse HIL (%v)", path, err)
 		}
-		contract.Assert(rootNode != nil)
+		contract.Assertf(rootNode != nil, "rootNode != nil")
 		n, err := b.bindExpr(rootNode)
 		if err != nil {
 			return nil, errors.Errorf("%v: %v", path, err)

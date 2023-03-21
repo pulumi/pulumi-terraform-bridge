@@ -1601,7 +1601,7 @@ func resourceName(provider string, rawname string,
 
 // withoutPackageName strips off the package prefix from a raw name.
 func withoutPackageName(pkg string, rawname string) string {
-	contract.Assert(strings.HasPrefix(rawname, pkg+"_"))
+	contract.Assertf(strings.HasPrefix(rawname, pkg+"_"), `strings.HasPrefix(rawname, pkg+"_")`)
 	name := rawname[len(pkg)+1:] // strip off the pkg prefix.
 	return name
 }

@@ -541,7 +541,7 @@ func (b *builder) bindProperty(
 		}
 		return n, nil
 	})
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "err == nil")
 
 	return prop, deps, nil
 }
@@ -619,7 +619,7 @@ func (b *builder) buildModule(m *ModuleNode) error {
 		providers = append(providers, p)
 	}
 	allDeps, _, err := b.buildDeps(deps, nil, providers)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "err == nil")
 
 	m.Properties, m.Deps = props, allDeps
 	return nil
@@ -643,7 +643,7 @@ func (b *builder) buildProvider(p *ProviderNode) error {
 		return err
 	}
 	allDeps, _, err := b.buildDeps(deps, nil, nil)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "err == nil")
 
 	p.Properties, p.Deps = props, allDeps
 	return nil
@@ -860,7 +860,7 @@ func (b *builder) buildLocal(l *LocalNode) error {
 		return err
 	}
 	allDeps, _, err := b.buildDeps(deps, nil, nil)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "err == nil")
 
 	// In general, a local should have a single property named "value". If this is the case, promote it to the
 	// local's value.

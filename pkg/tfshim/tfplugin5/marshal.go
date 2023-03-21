@@ -82,7 +82,7 @@ func unmarshalCompositeType(ty cty.Type) (shim.ValueType, interface{}, error) {
 				properties[name] = s
 			} else {
 				r, isResource := property.(*resource)
-				contract.Assert(isResource)
+				contract.Assertf(isResource, "isResource")
 				properties[name] = &attributeSchema{
 					ctyType:   r.ctyType,
 					valueType: shim.TypeMap,

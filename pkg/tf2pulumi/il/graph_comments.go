@@ -392,15 +392,15 @@ func processBlockComment(text string) []string {
 		switch i {
 		case 0:
 			start := blockStartPat.FindString(l)
-			contract.Assert(start != "")
+			contract.Assertf(start != "", "start != \"\"")
 			l = l[len(start):]
 
 			// If this is a single-line block comment, trim the end pattern as well.
 			if len(lines) == 1 {
-				contract.Assert(prefix == "")
+				contract.Assertf(prefix == "", "prefix == \"\"")
 
 				end := blockEndPat.FindString(l)
-				contract.Assert(end != "")
+				contract.Assertf(end != "", "end != \"\"")
 				l = l[:len(l)-len(end)]
 			}
 		case len(lines) - 1:
@@ -411,7 +411,7 @@ func processBlockComment(text string) []string {
 			} else {
 				l = l[len(prefix):]
 				end := blockEndPat.FindString(l)
-				contract.Assert(end != "")
+				contract.Assertf(end != "", "end != \"\"")
 				l = l[:len(l)-len(end)]
 			}
 		default:
