@@ -198,7 +198,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 		&overlaysDir, "overlays", "",
 		"Use the target directory for overlays rather than the default of overlays/ (unsupported)")
 	err := cmd.PersistentFlags().MarkHidden("overlays")
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "err != nil")
 
 	return cmd
 }

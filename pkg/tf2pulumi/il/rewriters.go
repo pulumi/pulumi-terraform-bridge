@@ -49,7 +49,7 @@ func (r *applyRewriter) rewriteBoundVariableAccess(n *BoundVariableAccess) (Boun
 
 // rewriteRoot replaces the root node in a bound expression with a call to the __apply intrinsic if necessary.
 func (r *applyRewriter) rewriteRoot(n BoundExpr) (BoundNode, error) {
-	contract.Require(n == r.root, "n")
+	contract.Requiref(n == r.root, "n", "n == r.root")
 
 	// Clear the root context so that future calls to enterNode recognize new expression roots.
 	r.root = nil
@@ -254,7 +254,7 @@ func MarkPromptDataSources(g *Graph) map[*ResourceNode]bool {
 					containsOutputs = containsOutputs || n.Type().IsOutput()
 					return n, nil
 				})
-				contract.Assert(err == nil)
+				contract.Assertf(err == nil, `err == nil`)
 
 				if !containsOutputs && !promptDataSources[r] {
 					promptDataSources[r] = true
@@ -279,7 +279,7 @@ func MarkPromptDataSources(g *Graph) map[*ResourceNode]bool {
 			}
 			return n, nil
 		})
-		contract.Assert(err == nil)
+		contract.Assertf(err == nil, `err == nil`)
 	}
 
 }

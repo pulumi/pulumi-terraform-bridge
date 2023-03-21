@@ -54,8 +54,8 @@ func ctyToGo(val cty.Value) (interface{}, error) {
 		for iter.Next() {
 			k, v := iter.Element()
 
-			contract.Assert(k.Type() == cty.String)
-			contract.Assert(!k.IsNull())
+			contract.Assertf(k.Type() == cty.String, "k.Type() == cty.String")
+			contract.Assertf(!k.IsNull(), "!k.IsNull()")
 			if !k.IsKnown() {
 				return UnknownVariableValue, nil
 			}

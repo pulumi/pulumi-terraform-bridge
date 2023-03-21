@@ -100,7 +100,7 @@ func (lr *LogRedirector) Write(p []byte) (n int, err error) {
 		if !has || !lr.enabled {
 			// If there was no writer for this label, or logging is disabled, use the debug label.
 			w = lr.writers[tfDebugPrefix]
-			contract.Assert(w != nil)
+			contract.Assertf(w != nil, "w != nil")
 		}
 		if err := w(s); err != nil {
 			return written, err

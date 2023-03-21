@@ -146,7 +146,7 @@ func internalEject(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnos
 		parser := syntax.NewParser()
 		for filename, contents := range generatedFiles {
 			err := parser.ParseFile(bytes.NewReader(contents), filename)
-			contract.Assert(err == nil)
+			contract.Assertf(err == nil, "err != nil")
 		}
 		tf12Files, diagnostics = parser.Files, append(diagnostics, parser.Diagnostics...)
 		if diagnostics.HasErrors() {

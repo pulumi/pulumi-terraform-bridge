@@ -23,7 +23,7 @@ func newConditionalAnalyzer() *conditionalAnalyzer {
 
 func (analyzer *conditionalAnalyzer) isConditionalValue(n model.Expression) bool {
 	_, diags := model.VisitExpression(n, model.IdentityVisitor, analyzer.postVisit)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "len(diags) == 0")
 	return analyzer.booleanValues.Has(n)
 }
 

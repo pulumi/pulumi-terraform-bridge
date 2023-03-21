@@ -192,7 +192,7 @@ func pathString(path *proto.AttributePath) string {
 }
 
 func primitiveString(value cty.Value) string {
-	contract.Assert(value.Type().IsPrimitiveType())
+	contract.Assertf(value.Type().IsPrimitiveType(), "value.Type().IsPrimitiveType()")
 
 	switch {
 	case value.IsNull():
@@ -312,8 +312,8 @@ func (d *differ) addValue(path string, value cty.Value, requiresNew bool) {
 
 		d.addValue(d.extendPath(path, "%"), value.Length(), requiresNew)
 		rangeValue(value, func(key, value cty.Value) {
-			contract.Assert(key.Type() == cty.String)
-			contract.Assert(key.IsKnown())
+			contract.Assertf(key.Type() == cty.String, "key.Type() == cty.String")
+			contract.Assertf(key.IsKnown(), "key.IsKnown()")
 			d.addValue(d.extendPath(path, key.AsString()), value, requiresNew)
 		})
 	case value.Type().IsObjectType():
@@ -363,8 +363,8 @@ func (d *differ) removeValue(path string, value cty.Value, requiresNew bool) {
 	case value.Type().IsMapType():
 		d.removeValue(d.extendPath(path, "%"), value.Length(), requiresNew)
 		rangeValue(value, func(key, value cty.Value) {
-			contract.Assert(key.Type() == cty.String)
-			contract.Assert(key.IsKnown())
+			contract.Assertf(key.Type() == cty.String, "key.Type() == cty.String")
+			contract.Assertf(key.IsKnown(), "key.IsKnown()")
 			d.removeValue(d.extendPath(path, key.AsString()), value, requiresNew)
 		})
 	case value.Type().IsObjectType():

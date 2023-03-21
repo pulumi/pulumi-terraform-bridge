@@ -166,14 +166,14 @@ func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.
 		contents := file.output.String()
 
 		err := pulumiParser.ParseFile(file.output, changeExtension(file.syntax.Name, ".pp"))
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "err != nil")
 		file.output.Reset()
 
 		if pulumiParser.Diagnostics.HasErrors() {
 			opts.logf("%v", contents)
 			opts.logf("%v", diagnostics)
 			opts.logf("%v", pulumiParser.Diagnostics)
-			contract.Fail()
+			contract.Failf("pulumiParser.Diagnostics.HasErrors()")
 		}
 	}
 
@@ -514,7 +514,7 @@ func (b *tf12binder) bindNode(node tf12Node) hcl.Diagnostics {
 		}
 		return nil
 	})
-	contract.Assert(len(diagnostics) == 0)
+	contract.Assertf(len(diagnostics) == 0, "len(diagnostics) == 0")
 
 	sort.Slice(deps, func(i, j int) bool {
 		return model.SourceOrderLess(deps[i].SyntaxNode().Range(), deps[j].SyntaxNode().Range())
@@ -684,11 +684,11 @@ func (b *tf12binder) annotateExpressionsWithSchemas(item model.BodyItem) {
 						}
 						return x, nil
 					})
-				contract.Assert(len(diags) == 0)
+				contract.Assertf(len(diags) == 0, "len(diags) == 0")
 			}
 			return item, nil
 		})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "len(diags) == 0")
 }
 
 func (b *tf12binder) bindBodyItem(item *bodyItem) hcl.Diagnostics {
@@ -1059,7 +1059,7 @@ func (rr *resourceRewriter) push(name string, block bool) *blockInfo {
 }
 
 func (rr *resourceRewriter) pushElem() *blockInfo {
-	contract.Assert(len(rr.stack) > 0)
+	contract.Assertf(len(rr.stack) > 0, "len(rr.stack) > 0")
 	schemas := rr.schemas().ElemSchemas()
 	info := &blockInfo{
 		name:           rr.stack[len(rr.stack)-1].name,
@@ -1194,7 +1194,7 @@ func (rr *resourceRewriter) rewriteBlockAsObjectCons(block *model.Block) *model.
 	objectCons := &model.ObjectConsExpression{Tokens: tokens}
 	for i, item := range block.Body.Items {
 		attr, ok := item.(*model.Attribute)
-		contract.Assert(ok)
+		contract.Assertf(ok, "ok")
 
 		objectCons.Items = append(objectCons.Items, model.ObjectConsItem{
 			Key: &model.LiteralValueExpression{
@@ -1506,7 +1506,7 @@ func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
 	if n.Tokens == nil {
 		n.Tokens = syntax.NewScopeTraversalTokens(n.Traversal)
 	} else {
-		contract.Assert(len(n.Tokens.Traversal) == len(n.Traversal)-1)
+		contract.Assertf(len(n.Tokens.Traversal) == len(n.Traversal)-1, "len(n.Tokens.Traversal) == len(n.Traversal)-1")
 	}
 
 	var newTraverserTokens []syntax.TraverserTokens
@@ -1623,7 +1623,7 @@ func (b *tf12binder) genResource(w io.Writer, r *resource) hcl.Diagnostics {
 		bodyItems := make([]model.BodyItem, 0, len(r.block.Body.Items))
 		for _, item := range r.block.Body.Items {
 			if block, ok := item.(*model.Block); ok {
-				contract.Assert(block.Type == "options")
+				contract.Assertf(block.Type == "options", `block.Type == "options"`)
 				options = block
 				continue
 			}

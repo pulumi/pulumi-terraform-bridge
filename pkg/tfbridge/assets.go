@@ -124,7 +124,7 @@ func (a *AssetTranslation) IsArchive() bool {
 
 // TranslateAsset translates the given asset using the directives provided by the translation info.
 func (a *AssetTranslation) TranslateAsset(asset *resource.Asset) (interface{}, error) {
-	contract.Assert(a.IsAsset())
+	contract.Assertf(a.IsAsset(), "a.IsAsset()")
 
 	// TODO[pulumi/pulumi#153]: support HashField.
 

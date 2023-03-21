@@ -25,8 +25,8 @@ import (
 func SortedKeys(m interface{}) []string {
 	mv := reflect.ValueOf(m)
 
-	contract.Require(mv.Type().Kind() == reflect.Map, "m")
-	contract.Require(mv.Type().Key().Kind() == reflect.String, "m")
+	contract.Requiref(mv.Type().Kind() == reflect.Map, "m", "mv.Type().Kind() == reflect.Map")
+	contract.Requiref(mv.Type().Key().Kind() == reflect.String, "m", "mv.Type().Key().Kind() == reflect.String")
 
 	keys := make([]string, mv.Len())
 	for i, k := range mv.MapKeys() {

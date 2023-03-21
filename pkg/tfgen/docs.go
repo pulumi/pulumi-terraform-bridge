@@ -1308,9 +1308,9 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 	input := afero.NewMemMapFs()
 	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 	f, err := input.Create(fileName)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "err != nil")
 	_, err = f.Write([]byte(hcl))
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "err != nil")
 	contract.IgnoreClose(f)
 
 	files, diags, err := g.convert(input, languageName)
@@ -1338,7 +1338,7 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 		return "", fmt.Errorf(errMsg)
 	}
 
-	contract.Assert(len(files) == 1)
+	contract.Assertf(len(files) == 1, `len(files) == 1`)
 
 	convertedHcl := ""
 	for _, output := range files {

@@ -78,7 +78,7 @@ type Resource struct {
 // with no error should be interpreted by the caller as meaning the resource does not exist,
 // but there were no errors in determining this.
 func (res *Resource) runTerraformImporter(id string, provider *Provider) (shim.InstanceState, error) {
-	contract.Assert(res.TF.Importer() != nil)
+	contract.Assertf(res.TF.Importer() != nil, "res.TF.Importer() != nil")
 
 	// Run the importer defined in the Terraform resource schema
 	states, err := res.TF.Importer()(res.TFName, id, provider.tf.Meta())

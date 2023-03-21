@@ -50,7 +50,7 @@ func NewApplyCall(args []*BoundVariableAccess, then BoundExpr) *BoundCall {
 
 // ParseApplyCall extracts the apply arguments and the continuation from a call to the apply intrinsic.
 func ParseApplyCall(c *BoundCall) (applyArgs []*BoundVariableAccess, then BoundExpr) {
-	contract.Assert(c.Func == IntrinsicApply)
+	contract.Assertf(c.Func == IntrinsicApply, "c.Func == IntrinsicApply")
 
 	args := make([]*BoundVariableAccess, len(c.Args)-1)
 	for i, a := range c.Args[:len(args)] {
@@ -62,7 +62,7 @@ func ParseApplyCall(c *BoundCall) (applyArgs []*BoundVariableAccess, then BoundE
 
 // NewApplyArgCall returns a new IL tree that represents a call to IntrinsicApplyArg.
 func NewApplyArgCall(argIndex int, argType Type) *BoundCall {
-	contract.Assert(!argType.IsOutput())
+	contract.Assertf(!argType.IsOutput(), "!argType.IsOutput()")
 	return &BoundCall{
 		Func:     IntrinsicApplyArg,
 		ExprType: argType,
@@ -72,7 +72,7 @@ func NewApplyArgCall(argIndex int, argType Type) *BoundCall {
 
 // ParseapplyArgCall extracts the argument index from a call to the apply arg intrinsic.
 func ParseApplyArgCall(c *BoundCall) int {
-	contract.Assert(c.Func == IntrinsicApplyArg)
+	contract.Assertf(c.Func == IntrinsicApplyArg, "c.Func == IntrinsicApplyArg")
 	return c.Args[0].(*BoundLiteral).Value.(int)
 }
 
@@ -87,7 +87,7 @@ func NewArchiveCall(arg BoundExpr) *BoundCall {
 
 // ParseArchiveCall extracts the single argument expression from a call to the archive intrinsic.
 func ParseArchiveCall(c *BoundCall) (arg BoundExpr) {
-	contract.Assert(c.Func == IntrinsicArchive)
+	contract.Assertf(c.Func == IntrinsicArchive, "c.Func == IntrinsicArchive")
 	return c.Args[0]
 }
 
@@ -102,7 +102,7 @@ func NewAssetCall(arg BoundExpr) *BoundCall {
 
 // ParseAssetCall extracts the single argument expression from a call to the asset intrinsic.
 func ParseAssetCall(c *BoundCall) (arg BoundExpr) {
-	contract.Assert(c.Func == IntrinsicAsset)
+	contract.Assertf(c.Func == IntrinsicAsset, "c.Func == IntrinsicAsset")
 	return c.Args[0]
 }
 
@@ -119,7 +119,7 @@ func NewCoerceCall(value BoundExpr, toType Type) *BoundCall {
 // ParseCoerceCall extracts the value being coerced and the type to which it is being coerced from a call to the coerce
 // intrinsic.
 func ParseCoerceCall(c *BoundCall) (value BoundExpr, toType Type) {
-	contract.Assert(c.Func == IntrinsicCoerce)
+	contract.Assertf(c.Func == IntrinsicCoerce, "c.Func == IntrinsicCoerce")
 	return c.Args[0], c.ExprType
 }
 

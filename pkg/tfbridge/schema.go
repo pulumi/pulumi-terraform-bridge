@@ -460,7 +460,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 
 		// First translate the Pulumi property name to a Terraform name.
 		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, rawNames)
-		contract.Assert(name != "")
+		contract.Assertf(name != "", `name != ""`)
 		if _, duplicate := result[name]; duplicate {
 			// If multiple Pulumi `key`s map to the same Terraform attribute `name`, then
 			// this function's output is dependent on the iteration order of `news`, and
@@ -850,7 +850,7 @@ func MakeTerraformResult(p shim.Provider, state shim.InstanceState,
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta()) != 0 {
 		metaJSON, err := json.Marshal(state.Meta())
-		contract.Assert(err == nil)
+		contract.Assertf(err == nil, "err == nil")
 		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
 
@@ -867,7 +867,7 @@ func MakeTerraformOutputs(p shim.Provider, outs map[string]interface{},
 	for key, value := range outs {
 		// First do a lookup of the name/info.
 		name, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
-		contract.Assert(name != "")
+		contract.Assertf(name != "", `name != ""`)
 
 		// Next perform a translation of the value accordingly.
 		out := MakeTerraformOutput(p, value, tfi, psi, assets, rawNames, supportsSecrets)
@@ -894,7 +894,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 		if assets != nil && ps != nil && ps.Asset != nil {
 			if asset, has := assets[ps]; has {
 				// if we have the value, it better actually be an asset or an archive.
-				contract.Assert(asset.IsAsset() || asset.IsArchive())
+				contract.Assertf(asset.IsAsset() || asset.IsArchive(), "asset.IsAsset() || asset.IsArchive()")
 				return asset
 			}
 
@@ -976,7 +976,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 		case reflect.Map:
 			outs := map[string]interface{}{}
 			for _, key := range val.MapKeys() {
-				contract.Assert(key.Kind() == reflect.String)
+				contract.Assertf(key.Kind() == reflect.String, "key.Kind() == reflect.String")
 				outs[key.String()] = val.MapIndex(key).Interface()
 			}
 			var tfflds shim.SchemaMap
