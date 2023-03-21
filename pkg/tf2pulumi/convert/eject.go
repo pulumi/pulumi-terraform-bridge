@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
@@ -128,11 +129,25 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 	return project, program, nil
 }
 
+func isTruthy(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
+}
+
 func internalEject(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	// Set default options where appropriate.
 	if opts.ProviderInfoSource == nil {
 		opts.ProviderInfoSource = il.PluginProviderInfoSource
 	}
+
+	// If experimental use the new Terraform-based converter
+	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+		files, program, tfDiagnostics, err := convertTerraform(opts)
+		return files, program, tfDiagnostics, err
+	}
+
+	// Else fallback to the old code that tries to convert TF11 and TF12. We should probably clean all this up
+	// and just support the new way, but until we have comfortable test coverage that the new converter covers
+	// everything, this is a safer approach.
 
 	// Attempt to load the config as TF11 first. If this succeeds, use TF11 semantics unless either the config
 	// or the options specify otherwise.
