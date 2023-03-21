@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/afero"
+
 	"github.com/blang/semver"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -72,10 +74,6 @@ func (l *testLoader) LoadPackageReference(pkg string, version *semver.Version) (
 		return nil, err
 	}
 	return schemaPackage.Reference(), nil
-}
-
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
 }
 
 // applyPragmas parses the text from `src` and writes the resulting text to `dst`. It can exclude blocks of
@@ -267,51 +265,59 @@ func TestEject(t *testing.T) {
 			assert.Equal(t, tokens.PackageName(tt.name), project.Name)
 
 			// Assert every pcl file is seen
-			infos, err := os.ReadDir(pclPath)
+			_, err = os.ReadDir(pclPath)
 			if !os.IsNotExist(err) && !assert.NoError(t, err) {
 				// If the directory was not found then the expected pcl results are the empty set, but if the
 				// directory could not be read because of filesystem issues than just error out.
 				assert.FailNow(t, "Could not read expected pcl results")
 			}
-			pclFiles := make(map[string]interface{})
-			// infos will just be nil if pclPath did not exist
-			for _, info := range infos {
-				if !info.IsDir() {
-					pclFiles[info.Name()] = nil
-				}
-			}
+
+			pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
 
 			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
-				err := os.RemoveAll(pclPath)
-				require.NoError(t, err)
-				err = os.Mkdir(pclPath, 0700)
-				require.NoError(t, err)
-				for filename, source := range program.Source() {
-					// normalize windows newlines to unix ones
-					expectedPcl := []byte(strings.Replace(source, "\r\n", "\n", -1))
-					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0600)
-					require.NoError(t, err)
-				}
+				err := pclFs.RemoveAll(pclPath)
+				require.NoError(t, err, "failed to remove existing files at %s", pclPath)
+				err = program.WriteSource(pclFs)
+				require.NoError(t, err, "failed to write program source files")
 			}
 
-			// Assert the pcl source is as expected
-			for filename, source := range program.Source() {
-				pclBytes, err := os.ReadFile(filepath.Join(pclPath, filename))
-				if assert.NoError(t, err) {
-					// normalize windows newlines
-					expectedPcl := strings.Replace(string(pclBytes), "\r\n", "\n", -1)
-					source = strings.Replace(source, "\r\n", "\n", -1)
-					assert.Equal(t, expectedPcl, source)
-					delete(pclFiles, filename)
-				}
-			}
+			pclMemFs := afero.NewMemMapFs()
+			// Write the program to a memory file system
+			err = program.WriteSource(pclMemFs)
+			require.NoError(t, err, "failed to write program source files")
 
-			unseenPcl := make([]string, 0)
-			for name := range pclFiles {
-				unseenPcl = append(unseenPcl, name)
-			}
-			assert.Empty(t, unseenPcl)
+			// compare the generated files with files on disk
+			err = afero.Walk(pclMemFs, "/", func(path string, info fs.FileInfo, err error) error {
+				if info == nil || info.IsDir() {
+					// ignore directories
+					return nil
+				}
+
+				sourceOnDisk, err := afero.ReadFile(pclFs, path)
+				assert.NoError(t, err, "generated source file must be on disk")
+				sourceInMemory, err := afero.ReadFile(pclMemFs, path)
+				assert.NoError(t, err, "should be able to read %s", path)
+				expectedPcl := strings.Replace(string(sourceOnDisk), "\r\n", "\n", -1)
+				actualPcl := strings.Replace(string(sourceInMemory), "\r\n", "\n", -1)
+				assert.Equal(t, expectedPcl, actualPcl)
+				return nil
+			})
+			require.NoError(t, err, "failed to check source files")
+
+			// make sure _all_ files on disk are also generated in the source
+			err = afero.Walk(pclFs, "/", func(path string, info fs.FileInfo, err error) error {
+				if info == nil || info.IsDir() {
+					// ignore directories and non-PCL files
+					return nil
+				}
+
+				_, err = afero.ReadFile(pclMemFs, path)
+				assert.NoError(t, err, "file on disk was not generated in memory: %s", path)
+				return nil
+			})
+			require.NoError(t, err, "failed to check source files")
+
 		})
 	}
 }

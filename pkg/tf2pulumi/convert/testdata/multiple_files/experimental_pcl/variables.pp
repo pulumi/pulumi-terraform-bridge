@@ -1,0 +1,2 @@
+config "boolIn" "bool" {
+}

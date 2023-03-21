@@ -41,6 +41,10 @@ jobs:
         run: make test
       - name: Test PF
         run: cd pf && make test
+      - name: Test experimental
+        env:
+          PULUMI_EXPERIMENTAL: "1"
+        run: make test
 
   downstream-test:
     name: Test ${{ matrix.provider }} Downstream
