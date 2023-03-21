@@ -98,7 +98,7 @@ func execCommandOrLogFatal(cwd, name string, arg ...string) {
 // Finds directories containing go.mod files in the repository.
 func findGoModuleRoots() (result []string) {
 	var buf bytes.Buffer
-	cmd := exec.Command("git", "ls-files", "-z", "**/go.mod")
+	cmd := exec.Command("git", "ls-files", "-z", "**go.mod")
 	cmd.Dir = "."
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = &buf
