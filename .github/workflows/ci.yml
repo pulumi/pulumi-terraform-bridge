@@ -14,25 +14,26 @@ jobs:
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go-version }}
       - name: Install pulumi
         uses: pulumi/setup-pulumi@v2
         with:
           pulumi-version: ^3.0.0
       - name: Check out source code
         uses: actions/checkout@master
-      - name: Download module dependencies
-        env:
-          GOPROXY: "https://proxy.golang.org"
-        run: go mod download
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: |
+            **/go.sum
       - name: Build
         run: make build
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
+            skip-cache: true
+            skip-pkg-cache: true
+            skip-build-cache: true
             version: v1.51.2
       - name: Lint
         run: make lint
@@ -49,10 +50,6 @@ jobs:
       matrix:
         provider: [ "gcp", "azure", "azuread", "random", ]
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.20.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -70,6 +67,12 @@ jobs:
 
       - name: Check out source code
         uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20.x
+          cache-dependency-path: |
+            **/go.sum
       # Required to pin Gradle < 8.0 until downstram tests upgrade to compatible pulumi-java release.
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2

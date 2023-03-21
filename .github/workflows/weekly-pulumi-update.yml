@@ -21,16 +21,17 @@ jobs:
     - name: Unshallow clone for tags
       run: git fetch --prune --unshallow --tags
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
         go-version: ${{matrix.goversion}}
-    - name: Download module dependencies
-      env:
-        GOPROXY: "https://proxy.golang.org"
-      run: go mod download
+        cache-dependency-path: |
+            **/go.sum
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
+          skip-cache: true
+          skip-pkg-cache: true
+          skip-build-cache: true
           version: v1.51.2
     - name: Update Pulumi/Pulumi
       id: gomod
