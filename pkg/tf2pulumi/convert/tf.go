@@ -1230,6 +1230,15 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	if !variable.Default.IsNull() {
 		blockBody.SetAttributeValue("default", variable.Default)
 	}
+
+	if variable.DescriptionSet {
+		blockBody.SetAttributeValue("description", cty.StringVal(variable.Description))
+	}
+
+	if variable.NullableSet {
+		blockBody.SetAttributeValue("nullable", cty.BoolVal(variable.Nullable))
+	}
+
 	leading, trailing := getTrivia(sources, variable.DeclRange)
 	return leading, block, trailing
 }

@@ -1,5 +1,7 @@
 variable "number_in" {
     type = number
+    description = "This is an example of a variable description"
+    nullable = true
 }
 
 variable "string_in" {
