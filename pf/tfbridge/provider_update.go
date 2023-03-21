@@ -26,7 +26,8 @@ import (
 )
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(
+func (p *provider) UpdateWithContext(
+	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
 	priorStateMap resource.PropertyMap,
@@ -35,7 +36,7 @@ func (p *provider) Update(
 	ignoreChanges []string,
 	preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
-	ctx := context.TODO()
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

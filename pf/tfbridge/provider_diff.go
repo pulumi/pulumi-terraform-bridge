@@ -35,7 +35,8 @@ import (
 //	    proposedNewState = priorState.applyChanges(checkedInputs)
 //	    plannedState = PlanResourceChange(priorState, proposedNewState)
 //	    priorState.Diff(plannedState)
-func (p *provider) Diff(
+func (p *provider) DiffWithContext(
+	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
 	priorStateMap resource.PropertyMap,
@@ -43,8 +44,7 @@ func (p *provider) Diff(
 	allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-
-	ctx := context.TODO()
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {

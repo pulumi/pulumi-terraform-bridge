@@ -15,13 +15,18 @@
 package tfbridge
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *provider) DiffConfigWithContext(ctx context.Context,
+	urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+
+	// ctx = p.initLogging(ctx, p.logSink, urn)
 
 	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
 	return plugin.DiffResult{}, nil

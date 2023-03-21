@@ -12,25 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package tfbridge
 
 import (
 	"context"
-	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	pl "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/plugin"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
-	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
-	require.NoError(t, err)
-	return plugin.NewProviderServer(pl.ToProvider(p))
+// Configures logging. Note that urn is optional but useful to identify logs with resources.
+//
+// See https://developer.hashicorp.com/terraform/plugin/log/writing
+func (p *provider) initLogging(ctx context.Context, sink logutils.LogSink, urn resource.URN) context.Context {
+	return logutils.InitLogging(ctx, logutils.LogOptions{
+		LogSink:         sink,
+		URN:             urn,
+		ProviderName:    p.info.Name,
+		ProviderVersion: p.info.Version,
+	})
 }

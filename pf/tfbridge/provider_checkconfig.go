@@ -15,13 +15,16 @@
 package tfbridge
 
 import (
+	"context"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(urn resource.URN,
+func (p *provider) CheckConfigWithContext(ctx context.Context, urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	// ctx = p.initLogging(ctx, p.logSink, urn)
+
 	// TODO[pulumi/pulumi-terraform-bridge#821] validate provider config
 	return news, []plugin.CheckFailure{}, nil
 }

@@ -12,25 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package logging
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	pl "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/plugin"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
-	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
-	require.NoError(t, err)
-	return plugin.NewProviderServer(pl.ToProvider(p))
+func TestRecoverKeys(t *testing.T) {
+	keys := recoverKeys()
+	t.Logf("provider: %v", keys.provider)
+	require.NotNil(t, keys.provider)
+	t.Logf("providerOptions: %v", keys.providerOptions)
+	require.NotNil(t, keys.providerOptions)
+	t.Logf("sdk: %v", keys.sdk)
+	require.NotNil(t, keys.sdk)
+	t.Logf("sdkOptions: %v", keys.sdkOptions)
+	require.NotNil(t, keys.sdkOptions)
 }

@@ -29,13 +29,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
-	serverutil "github.com/pulumi/pulumi-terraform-bridge/pf/internal/server"
+	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -57,13 +59,14 @@ type provider struct {
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
+	logSink       logutils.LogSink
 }
 
-var _ plugin.Provider = &provider{}
+var _ pl.ProviderWithContext = &provider{}
 
 // Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
-func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
+func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	p := info.NewProvider()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
@@ -128,13 +131,18 @@ func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) 
 	}, nil
 }
 
-func newProviderServer(ctx context.Context,
-	info ProviderInfo, meta ProviderMetadata) (pulumirpc.ResourceProviderServer, error) {
+func newProviderServer(
+	ctx context.Context,
+	logSink logutils.LogSink,
+	info ProviderInfo,
+	meta ProviderMetadata,
+) (pulumirpc.ResourceProviderServer, error) {
 	p, err := NewProvider(ctx, info, meta)
 	if err != nil {
 		return nil, err
 	}
-	return serverutil.NewProviderServer(p), nil
+	p.(*provider).logSink = logSink
+	return pl.NewProviderServerWithContext(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -143,17 +151,17 @@ func (p *provider) Close() error {
 }
 
 // Pkg fetches this provider's package.
-func (p *provider) Pkg() tokens.Package {
+func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 	return tokens.Package(p.packageSpec.Name)
 }
 
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchema(version int) ([]byte, error) {
+func (p *provider) GetSchemaWithContext(_ context.Context, version int) ([]byte, error) {
 	return p.pulumiSchema, nil
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.PluginInfo, error) {
 	info := workspace.PluginInfo{
 		Name:    p.info.Name,
 		Version: &p.version,
@@ -166,7 +174,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // aborted in this way will return an error (e.g., `Update` and `Create` will either a creation error or an
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
-func (p *provider) SignalCancellation() error {
+func (p *provider) SignalCancellationWithContext(_ context.Context) error {
 	// Some improvements are possible here to gracefully shut down.
 	return nil
 }
@@ -190,14 +198,16 @@ func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 }
 
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
-func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+func (p *provider) CallWithContext(_ context.Context,
+	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions) (plugin.CallResult, error) {
 	return plugin.CallResult{},
 		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
-func (p *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *provider) ConstructWithContext(_ context.Context,
+	info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
@@ -217,7 +227,7 @@ func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.P
 	return server6, nil
 }
 
-func (p *provider) GetMapping(key string) ([]byte, string, error) {
+func (p *provider) GetMappingWithContext(_ context.Context, key string) ([]byte, string, error) {
 	return []byte{}, "", nil
 }
 

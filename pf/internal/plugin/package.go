@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
-
-import (
-	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-)
-
-func (p *provider) StreamInvokeWithContext(_ context.Context,
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
-	panic("StreamInvoke() should not be called for bridged providers")
-}
+// The code in this package implements Context-preserving provider server and is forked from pulumi/pulumi.
+//
+// When https://github.com/pulumi/pulumi/issues/12010 is complete this may need to be rewritten to the newly introduced
+// APIs.
+//
+// An attempt to upstream the Context preservation improvement in this code was rejected in
+// https://github.com/pulumi/pulumi/pull/12429.
+package plugin
