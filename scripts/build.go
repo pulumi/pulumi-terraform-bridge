@@ -37,17 +37,17 @@ func updatePulumiDeps() {
 	for _, m := range roots {
 		edited := false
 		if fileContains(filepath.Join(m, "go.mod"), "github.com/pulumi/pulumi/pkg/v3") {
-			execCommand(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/pkg/v3")
-			execCommand(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/pkg/v3@v"+ver)
+			execCommandOrLogFatal(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/pkg/v3")
+			execCommandOrLogFatal(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/pkg/v3@v"+ver)
 			edited = true
 		}
 		if fileContains(filepath.Join(m, "go.mod"), "github.com/pulumi/pulumi/sdk/v3") {
-			execCommand(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/sdk/v3")
-			execCommand(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/sdk/v3@v"+ver)
+			execCommandOrLogFatal(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/sdk/v3")
+			execCommandOrLogFatal(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/sdk/v3@v"+ver)
 			edited = true
 		}
 		if edited {
-			execCommand(m, "go", "mod", "tidy")
+			execCommandOrLogFatal(m, "go", "mod", "tidy")
 		}
 	}
 }
@@ -86,6 +86,13 @@ func execCommand(cwd, name string, arg ...string) error {
 		fmt.Println()
 	}
 	return err
+}
+
+func execCommandOrLogFatal(cwd, name string, arg ...string) {
+	err := execCommand(cwd, name, arg...)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Finds directories containing go.mod files in the repository.
