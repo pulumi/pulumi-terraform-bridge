@@ -1,5 +1,6 @@
 variable "number_in" {
     type = number
+    description = "This is an example of a variable description"
 }
 
 variable "string_in" {

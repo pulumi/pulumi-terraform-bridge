@@ -3,12 +3,12 @@ package convert
 import (
 	"bytes"
 	"fmt"
+	"github.com/hashicorp/hcl/v2"
 	"math"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
@@ -53,8 +53,17 @@ func convertCtyType(typ cty.Type) string {
 		return fmt.Sprintf("list(%s)", elementType)
 	}
 	if typ.IsObjectType() {
+		attributeKeys := []string{}
+		for attributeKey, _ := range typ.AttributeTypes() {
+			attributeKeys = append(attributeKeys, attributeKey)
+		}
+
+		// sort the attribute keys so that the resulting object type (as text) is deterministic
+		sort.Strings(attributeKeys)
+		attributeTypes := typ.AttributeTypes()
 		attributes := []string{}
-		for attributeKey, attributeType := range typ.AttributeTypes() {
+		for _, attributeKey := range attributeKeys {
+			attributeType := attributeTypes[attributeKey]
 			attributes = append(attributes, fmt.Sprintf("%s=%s", attributeKey, convertCtyType(attributeType)))
 		}
 
@@ -1229,6 +1238,12 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	blockBody := block.Body()
 	if !variable.Default.IsNull() {
 		blockBody.SetAttributeValue("default", variable.Default)
+	}
+	if variable.DescriptionSet {
+		blockBody.SetAttributeValue("description", cty.StringVal(variable.Description))
+	}
+	if variable.NullableSet {
+		blockBody.SetAttributeValue("nullable", cty.BoolVal(variable.Nullable))
 	}
 	leading, trailing := getTrivia(sources, variable.DeclRange)
 	return leading, block, trailing
