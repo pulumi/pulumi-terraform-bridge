@@ -29,6 +29,9 @@ jobs:
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
+          skip-cache: true
+          skip-pkg-cache: true
+          skip-build-cache: true
           version: v1.51.2
     - name: Update Pulumi/Pulumi
       id: gomod
