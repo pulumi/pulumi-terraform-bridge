@@ -48,8 +48,8 @@ func TestConvert(t *testing.T) {
 	loader := newLoader(host)
 	loader.emptyPackages["aws"] = true
 
-	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {
-		files, diags, err := convert.Convert(convert.Options{
+	checkErr := func(hcl string) (map[string][]byte, convert.Diagnostics, error) {
+		return convert.Convert(convert.Options{
 			Root:                     hclToInput(t, hcl, "path"),
 			TargetLanguage:           "typescript",
 			AllowMissingProperties:   true,
@@ -58,6 +58,10 @@ func TestConvert(t *testing.T) {
 			Loader:                   loader,
 			SkipResourceTypechecking: true,
 		})
+	}
+
+	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {
+		files, diags, err := checkErr(hcl)
 		require.NoError(t, err)
 		return files, diags
 	}
@@ -90,20 +94,21 @@ const regionNumber = config.getObject("regionNumber") || {
 		// since for some reason including the resource was
 		// needed to reproduce non-nil `err` in the orignal
 		// bug.
-		check(`
-                  variable "region_number" {
-                    default = {
-                      us-east-1 = 1
-                    }
-                  }
+		_, _, err := checkErr(`
+		  variable "region_number" {
+		    default = {
+		      us-east-1 = 1
+		    }
+		  }
 
-                  resource "aws_vpc" "example" {
-                    cidr_block = cidrsubnet("10.0.0.0/8", 4, 2)
-                  }`)
+		  resource "aws_vpc" "example" {
+		    cidr_block = cidrsubnet("10.0.0.0/8", 4, 2)
+		  }`)
+		require.Error(t, err)
 	})
 
 	t.Run("regress no empty resource plugin found", func(t *testing.T) {
-		check(`
+		_, _, err := checkErr(`
                   data "aws_outposts_outpost_instance_type" "example" {
                     arn                      = data.aws_outposts_outpost.example.arn
                     preferred_instance_types = ["m5.large", "m5.4xlarge"]
@@ -114,6 +119,7 @@ const regionNumber = config.getObject("regionNumber") || {
 
                     instance_type = data.aws_outposts_outpost_instance_type.example.instance_type
                   }`)
+		require.Error(t, err)
 	})
 }
 
