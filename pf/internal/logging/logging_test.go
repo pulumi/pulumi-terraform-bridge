@@ -80,11 +80,11 @@ func TestLogging(t *testing.T) {
 		},
 		{
 			name: "ProviderVersion propagates when set",
-			opts: LogOptions{ProviderVersion: "4.12.0"},
+			opts: LogOptions{ProviderName: "random", ProviderVersion: "4.12.0"},
 			emit: func(ctx context.Context) {
 				tflog.Info(ctx, "OK")
 			},
-			logs: []log{{sev: diag.Info, msg: `providerVersion\=4.12.0`}},
+			logs: []log{{sev: diag.Info, msg: `provider\=random@4.12.0`}},
 		},
 	}
 

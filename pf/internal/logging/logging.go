@@ -46,11 +46,11 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 	}
 
 	if opts.ProviderName != "" {
-		ctx = tflog.SetField(ctx, "provider", opts.ProviderName)
-	}
-
-	if opts.ProviderVersion != "" {
-		ctx = tflog.SetField(ctx, "providerVersion", opts.ProviderVersion)
+		p := opts.ProviderName
+		if opts.ProviderVersion != "" {
+			p += "@" + opts.ProviderVersion
+		}
+		ctx = tflog.SetField(ctx, "provider", p)
 	}
 
 	return ctx
