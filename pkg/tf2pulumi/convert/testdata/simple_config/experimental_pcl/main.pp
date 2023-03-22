@@ -1,4 +1,5 @@
 config "numberIn" "number" {
+  description = "This is an example of a variable description"
 }
 config "stringIn" "string" {
 }
