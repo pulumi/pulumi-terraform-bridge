@@ -54,7 +54,7 @@ func convertCtyType(typ cty.Type) string {
 	}
 	if typ.IsObjectType() {
 		attributeKeys := []string{}
-		for attributeKey, _ := range typ.AttributeTypes() {
+		for attributeKey := range typ.AttributeTypes() {
 			attributeKeys = append(attributeKeys, attributeKey)
 		}
 
