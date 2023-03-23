@@ -484,13 +484,30 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 		return err
 	}
 
-	currentVersion := -1
+	var currentVersion int
+	// If version is missing, we assume the most recent major version in history
 	if providerInfo.Version != "" {
 		v, err := semver.NewVersion(providerInfo.Version)
 		if err != nil {
 			return err
 		}
 		currentVersion = int(v.Major())
+	} else {
+		for _, r := range hist.Resources {
+			for _, p := range r.Past {
+				if p.MajorVersion > currentVersion {
+					currentVersion = p.MajorVersion
+				}
+			}
+		}
+		for _, d := range hist.DataSources {
+			for _, p := range d.Past {
+				if p.MajorVersion > currentVersion {
+					currentVersion = p.MajorVersion
+				}
+			}
+		}
+		providerInfo.Version = fmt.Sprintf("%d.0.0", currentVersion)
 	}
 
 	for tfToken, computed := range providerInfo.Resources {
@@ -538,14 +555,6 @@ func aliasResource(
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
-	// If version is -1, we assume the most recent major version
-	if version == -1 {
-		for _, p := range prev.Past {
-			if p.MajorVersion > version {
-				version = p.MajorVersion
-			}
-		}
-	}
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
@@ -612,13 +621,6 @@ func aliasDataSource(
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
-	if version == -1 {
-		for _, p := range prev.Past {
-			if p.MajorVersion > version {
-				version = p.MajorVersion
-			}
-		}
-	}
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
