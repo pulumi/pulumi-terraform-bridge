@@ -13,8 +13,14 @@ type ValidationError struct {
 }
 
 func (e ValidationError) Error() string {
-	if e.Detail != "" {
-		return fmt.Sprintf("%s: %s", e.Summary, e.Detail)
+	msg := e.Summary
+	if len(e.AttributePath) > 0 {
+		msg = fmt.Sprintf("%s %q", msg, formatCtyPath(e.AttributePath))
 	}
-	return e.Summary
+
+	if e.Detail != "" {
+		msg = fmt.Sprintf("%s: %s", msg, e.Detail)
+	}
+
+	return msg
 }
