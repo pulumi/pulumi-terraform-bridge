@@ -46,6 +46,8 @@ overrides = {
 experimental = {
     "abs",
     "abspath",
+    "alltrue",
+    "anytrue",
     "base64decode",
     "base64encode",
     "base64gzip",
@@ -53,103 +55,97 @@ experimental = {
     "base64sha512",
     "basename",
     "bcrypt",
+    "can",
     "ceil",
     "chomp",
+    "chunklist",
     "cidrhost",
     "cidrnetmask",
     "cidrsubnet",
-    "compact",
-    "csvdecode",
-    "dirname",
-    "endswith",
-    "filebase64sha512",
-    "fileexists",
-    "filemd5",
-    "filesha1",
-    "filesha256",
-    "filesha512",
-    "floor",
-    "indent",
-    "join",
-    "log",
-    "lower",
-    "max",
-    "md5",
-    "min",
-    "parseint",
-    "pathexpand",
-    "pow",
-    "range",
-    "replace",
-    "rsadecrypt",
-    "sensitive",
-    "sha256",
-    "sha512",
-    "signum",
-    "sort",
-    "startswith",
-    "strrev",
-    "substr",
-    "sum",
-    "timeadd",
-    "timecmp",
-    "timestamp",
-    "title",
-    "transpose",
-    "trim",
-    "trimprefix",
-    "trimspace",
-    "trimsuffix",
-    "upper",
-    "urlencode",
-    "uuid",
-}
-
-# There's a number of functions we _don't_ support yet, so we exclude emitting these to the file
-unsupported = {
-    "alltrue",
-    "anytrue",
-    "can",
-    "chunklist",
     "cidrsubnets",
     "coalesce",
     "coalescelist",
     "concat",
     "contains",
+    "compact",
+    "csvdecode",
+    "dirname",
     "distinct",
+    "endswith",
+    "filebase64sha512",
+    "fileexists",
+    "filemd5",
     "fileset",
+    "filesha1",
+    "filesha256",
+    "filesha512",
     "flatten",
+    "floor",
     "format",
     "formatdate",
     "formatlist",
+    "indent",
     "index",
+    "join",
     "jsondecode",
     "keys",
     "list",
+    "log",
+    "lower",
     "map",
     "matchkeys",
+    "max",
+    "md5",
     "merge",
+    "min",
     "nonsensitive",
     "one",
+    "parseint",
+    "pathexpand",
+    "pow",
+    "range",
     "regex",
     "regexall",
+    "replace",
     "reverse",
+    "rsadecrypt",
+    "sensitive",
     "setintersection",
     "setproduct",
     "setsubtract",
     "setunion",
+    "sha256",
+    "sha512",
+    "signum",
     "slice",
+    "sort",
+    "startswith",
+    "strrev",
+    "substr",
+    "sum",
     "templatefile",
     "textdecodebase64",
     "textencodebase64",
+    "timeadd",
+    "timecmp",
+    "timestamp",
+    "title",
     "tobool",
     "tolist",
     "tomap",
     "tonumber",
     "toset",
     "tostring",
+    "transpose",
+    "trim",
+    "trimprefix",
+    "trimspace",
+    "trimsuffix",
     "try",
     "type",
+    "upper",
+    "urlencode",
+    "uuid",
     "uuidv5",
     "values",
     "yamldecode",
@@ -170,8 +166,32 @@ locals {
     path_module = "some/path"
 
     # Some of the examples in the docs use `path.root` which _should_ resolve to the file system path of the
-    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with
+    # root module of the configuration, but tf2pulumi doesn't support that so we replace it with local.path_root.
     path_root = "root/path"
+
+    # The `can` examples make use of a local `foo`.
+    foo = { "bar" = "baz" }
+
+    # The `nonsensitive` examples make use of a local `mixed_content`.
+    # We don't use jsondecode(var.mixed_content_json) here because we don't want to depend on the jsondecode function working.
+    mixed_content = { "password" = "hunter2" }
+}
+
+# The `nonsensitive` examples make use of a variable `mixed_content_json`.
+variable "mixed_content_json" {
+    type = string
+}
+
+# The `format` examples make use of a variable `name`.
+variable "name" {
+    type = string
+}
+
+# The `matchkeys` example makes use of a resource with `count`.
+resource "simple_resource" "a_resource_with_count" {
+    count = 4
+    input_one =  "Hello ${count.index}"
+    input_two = true
 }
 """
 
@@ -206,7 +226,13 @@ locals {
 
                     if in_code:
                         if line.startswith("> "):
-                            code = line[1:].strip().replace("path.module", "local.path_module").replace("path.root", "local.path_root")
+                            code = (line[1:].strip()
+                                .replace("path.module", "local.path_module")
+                                .replace("path.root", "local.path_root")
+                                # For the `matchkeys` example
+                                .replace("aws_instance.example", "simple_resource.a_resource_with_count")
+                                .replace("x.availability_zone", "x.input_one")
+                            )
                             example_code.append(code)
 
             if function_name in overrides:
@@ -217,9 +243,6 @@ locals {
                     example_code = [override]
             elif not example_code:
                 raise Exception(f"No examples found for {function_name}")
-
-            if function_name in unsupported:
-                continue
 
             if function_name in experimental:
                 # Write out an #if EXPERIMENTAL if it's "unsupported"
