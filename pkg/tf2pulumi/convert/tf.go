@@ -639,24 +639,36 @@ func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
 	return append(append(leading, tokens...), trailing...)
 }
 
-// getStaticString returns the literal string in a token stream
-func getStaticString(tokens hclwrite.Tokens) (hclwrite.Tokens, string, hclwrite.Tokens) {
-	leading := make(hclwrite.Tokens, 0)
-	trailing := make(hclwrite.Tokens, 0)
-	var value string
-	for _, token := range tokens {
-		if isTrivia(token.Type) {
-			if value == "" {
-				leading = append(leading, token)
-			} else {
-				trailing = append(trailing, token)
-			}
+// appendPath appends a part to a fully quailifed dot-separated path. If the root is "" then append returns
+// "". If the part is "" then append returns root.
+func appendPath(root, part string) string {
+	if root == "" || part == "" {
+		return ""
+	}
+	return root + "." + part
+}
+
+// matchStaticString returns a literal string if the expression is a static string or identifier, else nil
+func matchStaticString(expr hclsyntax.Expression) *string {
+	switch expr := expr.(type) {
+	case *hclsyntax.ObjectConsKeyExpr:
+		return matchStaticString(expr.Wrapped)
+	case *hclsyntax.LiteralValueExpr:
+		if expr.Val.Type() != cty.String {
+			return nil
 		}
-		if token.Type == hclsyntax.TokenIdent {
-			value = string(token.Bytes)
+		s := expr.Val.AsString()
+		return &s
+	case *hclsyntax.ScopeTraversalExpr:
+		if len(expr.Traversal) != 1 {
+			return nil
+		}
+		if root, ok := expr.Traversal[0].(hcl.TraverseRoot); ok {
+			s := root.Name
+			return &s
 		}
 	}
-	return leading, value, trailing
+	return nil
 }
 
 func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
@@ -664,19 +676,24 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 ) hclwrite.Tokens {
 	items := []hclwrite.ObjectAttrTokens{}
 	for _, item := range expr.Items {
-		// Keys _might_ need renaming if we're translating for an object type
-		name := convertExpression(sources, scopes, "", item.KeyExpr)
-		leading, staticName, trailing := getStaticString(name)
-		if staticName != "" && fullyQualifiedPath != "" {
-			fullyQualifiedPath = fullyQualifiedPath + "." + staticName
-			name = append(append(leading, hclwrite.TokensForIdentifier(scopes.pulumiName(fullyQualifiedPath))...), trailing...)
-		} else {
+		// Keys _might_ need renaming if we're translating for an object type, we can do this if it's statically known and we know our current path
+		var nameTokens hclwrite.Tokens
+		if fullyQualifiedPath != "" {
+			name := matchStaticString(item.KeyExpr)
+			if name != nil {
+				fullyQualifiedPath = appendPath(fullyQualifiedPath, *name)
+				nameTokens = hclwrite.TokensForIdentifier(scopes.pulumiName(fullyQualifiedPath))
+			}
+		}
+		// If we can't statically determine the name, we can't rename it, so just convert the expression.
+		if nameTokens == nil {
+			nameTokens = convertExpression(sources, scopes, "", item.KeyExpr)
 			fullyQualifiedPath = ""
 		}
-		value := convertExpression(sources, scopes, fullyQualifiedPath, item.ValueExpr)
+		valueTokens := convertExpression(sources, scopes, fullyQualifiedPath, item.ValueExpr)
 		items = append(items, hclwrite.ObjectAttrTokens{
-			Name:  name,
-			Value: value,
+			Name:  nameTokens,
+			Value: valueTokens,
 		})
 	}
 	return hclwrite.TokensForObject(items)
@@ -840,7 +857,7 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 		// An attribute look up, we need to know the type path of the traversal so far to resolve this correctly
 		var name string
 		if fullyQualifiedPath != "" {
-			fullyQualifiedPath = fullyQualifiedPath + "." + attr.Name
+			fullyQualifiedPath = appendPath(fullyQualifiedPath, attr.Name)
 			name = scopes.pulumiName(fullyQualifiedPath)
 		} else {
 			name = tfbridge.TerraformToPulumiNameV2(attr.Name, nil, nil)
@@ -1154,7 +1171,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	// If we see blocks we turn those into lists (unless maxItems==1)
 	blockLists := make(map[string][]bodyAttrsTokens)
 	for _, block := range content.Blocks {
-		blockPath := fullyQualifiedPath + "." + block.Type
+		blockPath := appendPath(fullyQualifiedPath, block.Type)
 		schema := scopes.getTerraformSchema(blockPath)
 		name := scopes.pulumiName(blockPath)
 
@@ -1201,7 +1218,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	}
 
 	for _, attr := range content.Attributes {
-		attrPath := fullyQualifiedPath + "." + attr.Name
+		attrPath := appendPath(fullyQualifiedPath, attr.Name)
 		name := scopes.pulumiName(attrPath)
 
 		leading, trailing := getTrivia(sources, getAttributeRange(sources, attr.Expr.Range()))
