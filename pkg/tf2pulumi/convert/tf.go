@@ -676,7 +676,8 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 ) hclwrite.Tokens {
 	items := []hclwrite.ObjectAttrTokens{}
 	for _, item := range expr.Items {
-		// Keys _might_ need renaming if we're translating for an object type, we can do this if it's statically known and we know our current path
+		// Keys _might_ need renaming if we're translating for an object type, we can do this if it's
+		// statically known and we know our current path
 		var nameTokens hclwrite.Tokens
 		if fullyQualifiedPath != "" {
 			name := matchStaticString(item.KeyExpr)
