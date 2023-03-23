@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type ComputedMapping struct {
@@ -33,7 +34,7 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 	// now, if different schemas define the same type in different ways, which ever
 	// schema comes first dominates.
 
-	muxedSchema := &schemas[0]
+	muxedSchema := func() *schema.PackageSpec { x := schemas[0]; return &x }()
 	mapping := newMapping()
 
 	// We need to zero these maps out so our normal process can re-add them. This
@@ -41,10 +42,22 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 	muxedSchema.Resources = map[string]schema.ResourceSpec{}
 	muxedSchema.Types = map[string]schema.ComplexTypeSpec{}
 	muxedSchema.Functions = map[string]schema.FunctionSpec{}
+	muxedSchema.Config = schema.ConfigSpec{}
+	muxedSchema.Provider = schema.ResourceSpec{}
 
 	for i, s := range schemas {
 		s := s
 		mapping.layerSchema(muxedSchema, &s, i)
+	}
+
+	if len(muxedSchema.Resources) == 0 {
+		muxedSchema.Resources = nil
+	}
+	if len(muxedSchema.Types) == 0 {
+		muxedSchema.Types = nil
+	}
+	if len(muxedSchema.Functions) == 0 {
+		muxedSchema.Functions = nil
 	}
 
 	return ComputedMapping{mapping}, *muxedSchema, nil
@@ -78,21 +91,96 @@ func (mapping mapping) isEmpty() bool {
 //
 // `srcIndex` is the index of `srcSchema` and thus its server.
 func (mapping mapping) layerSchema(dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
-	m := mappingCtx{
-		mapping:   mapping,
-		dstSchema: dstSchema,
-		srcSchema: srcSchema,
-		srcIndex:  srcIndex,
-	}
+	m := mappingCtx{mapping, dstSchema, srcSchema, srcIndex}
+
 	for tk, r := range m.srcSchema.Resources {
 		m.setResource(tk, r)
 	}
 	for tk, f := range m.srcSchema.Functions {
 		m.setFunction(tk, f)
 	}
-	for v := range m.srcSchema.Config.Variables {
-		m.mapping.Config[v] = append(m.mapping.Config[v], m.srcIndex)
+
+	// Add non-repeating required config keys to the schema
+	if len(srcSchema.Config.Required) > 0 {
+		dstSchema.Config.Required = appendUnique(
+			dstSchema.Config.Required,
+			srcSchema.Config.Required)
 	}
+
+	for k, v := range m.srcSchema.Config.Variables {
+		if m.dstSchema.Config.Variables == nil {
+			m.dstSchema.Config.Variables = map[string]schema.PropertySpec{}
+		}
+		// TODO: Validity check that this value matches any other config value
+		// with the same key
+		m.dstSchema.Config.Variables[k] = v
+		m.mapping.Config[k] = append(m.mapping.Config[k], m.srcIndex)
+		m.addType(v.TypeSpec)
+	}
+
+	// layer in the schema.ProviderSpec
+	m.layerResource(&m.dstSchema.Provider, m.srcSchema.Provider)
+}
+
+func (m *mappingCtx) layerResource(dst *schema.ResourceSpec, src schema.ResourceSpec) {
+	contract.Assert(dst != nil)
+
+	for k, v := range src.InputProperties {
+		if _, has := dst.InputProperties[k]; has {
+			// TODO: Validity check that these match
+			continue
+		}
+		m.addType(v.TypeSpec)
+		if dst.InputProperties == nil {
+			dst.InputProperties = map[string]schema.PropertySpec{}
+		}
+		dst.InputProperties[k] = v
+	}
+	for k, v := range src.Properties {
+		if _, has := dst.Properties[k]; has {
+			// TODO: Validity check that these match
+			continue
+		}
+		m.addType(v.TypeSpec)
+		if dst.Properties == nil {
+			dst.Properties = map[string]schema.PropertySpec{}
+		}
+		dst.Properties[k] = v
+	}
+
+	if src.StateInputs != nil {
+		for k, v := range src.StateInputs.Properties {
+			if dst.StateInputs == nil {
+				dst.StateInputs = &schema.ObjectTypeSpec{}
+			}
+			if dst.StateInputs.Properties == nil {
+				dst.StateInputs.Properties = map[string]schema.PropertySpec{}
+			}
+
+			if _, has := dst.StateInputs.Properties[k]; has {
+				// TODO: Validity check that these match
+				continue
+			}
+			m.addType(v.TypeSpec)
+			dst.StateInputs.Properties[k] = v
+		}
+		dst.Plain = appendUnique(dst.Plain, src.Plain)
+	}
+}
+
+// Append elements from src to dst if they are not already present in dst.
+func appendUnique[T comparable](dst, src []T) []T {
+	set := make(map[T]struct{}, len(dst))
+	for _, v := range dst {
+		set[v] = struct{}{}
+	}
+	for _, v := range src {
+		if _, has := set[v]; has {
+			continue
+		}
+		dst = append(dst, v)
+	}
+	return dst
 }
 
 type mappingCtx struct {
@@ -110,7 +198,9 @@ func (m *mappingCtx) setResource(token string, resource schema.ResourceSpec) {
 	m.dstSchema.Resources[token] = resource
 	m.addProperties(resource.InputProperties)
 	m.addProperties(resource.Properties)
-	m.addProperties(resource.StateInputs.Properties)
+	if resource.StateInputs != nil {
+		m.addProperties(resource.StateInputs.Properties)
+	}
 }
 
 func (m *mappingCtx) setFunction(token string, function schema.FunctionSpec) {
@@ -119,8 +209,9 @@ func (m *mappingCtx) setFunction(token string, function schema.FunctionSpec) {
 		return
 	}
 	m.dstSchema.Functions[token] = function
-	m.addProperties(function.Inputs.Properties)
-	m.addProperties(function.Outputs.Properties)
+
+	m.addObjectType(function.Inputs)
+	m.addObjectType(function.Outputs)
 }
 
 func (m *mappingCtx) addProperties(properties map[string]schema.PropertySpec) {
@@ -130,6 +221,14 @@ func (m *mappingCtx) addProperties(properties map[string]schema.PropertySpec) {
 }
 
 func (m *mappingCtx) addType(t schema.TypeSpec) {
+	if t.Ref != "" {
+		m.addRefType(t.Ref)
+	}
+
+	for _, one := range t.OneOf {
+		m.addType(one)
+	}
+
 	switch t.Type {
 	// We don't need to include primitive types
 	case "bool", "integer", "number", "string":
@@ -145,14 +244,6 @@ func (m *mappingCtx) addType(t schema.TypeSpec) {
 			return
 		}
 	}
-
-	for _, one := range t.OneOf {
-		m.addType(one)
-	}
-
-	if t.Ref != "" {
-		m.addRefType(t.Ref)
-	}
 }
 
 func (m *mappingCtx) addRefType(ref string) {
@@ -161,6 +252,11 @@ func (m *mappingCtx) addRefType(ref string) {
 	//
 	// Resource references don't need to be addressed, since they will be covered by
 	// the resource sweep later.
+	switch {
+	case strings.HasPrefix(ref, "pulumi.json#/"):
+		return
+	}
+
 	prefix := "#/types/"
 	if !strings.HasPrefix(ref, prefix) {
 		return
@@ -180,8 +276,25 @@ func (m *mappingCtx) addRefType(ref string) {
 		return
 	}
 
-	m.dstSchema.Types[token] = typ
 	// We have added a new type to the muxed schema, we now need to make sure that all
 	// referenced types exist in the muxed schema.
+	m.addComplexType(token, typ)
+}
+
+func (m *mappingCtx) addComplexType(token string, typ schema.ComplexTypeSpec) {
+	m.dstSchema.Types[token] = typ
+
+	if typ.Type != "object" {
+		// This was en enum, so we can just do the assignment.
+		return
+	}
+
+	m.addObjectType(&typ.ObjectTypeSpec)
+}
+
+func (m *mappingCtx) addObjectType(typ *schema.ObjectTypeSpec) {
+	if typ == nil {
+		return
+	}
 	m.addProperties(typ.Properties)
 }
