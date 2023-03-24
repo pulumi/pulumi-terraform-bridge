@@ -509,19 +509,21 @@ output "funcKeys" {
 }
 # Examples for length
 output "funcLength0" {
-  value = notImplemented("length([])")
+  value = length([])
 }
 output "funcLength1" {
-  value = notImplemented("length([\"a\",\"b\"])")
+  value = length(["a", "b"])
 }
 output "funcLength2" {
-  value = notImplemented("length({\"a\"=\"b\"})")
+  value = length({
+    "a" = "b"
+  })
 }
 output "funcLength3" {
-  value = notImplemented("length(\"hello\")")
+  value = length("hello")
 }
 output "funcLength4" {
-  value = notImplemented("length(\"👾🕹️\")")
+  value = length("👾🕹️")
 }
 # Examples for list
 output "funcList" {
@@ -809,10 +811,10 @@ output "funcRegexall0" {
   value = notImplemented("regexall(\"[a-z]+\",\"1234abcd5678efgh9\")")
 }
 output "funcRegexall1" {
-  value = notImplemented("length(regexall(\"[a-z]+\",\"1234abcd5678efgh9\"))")
+  value = length(notImplemented("regexall(\"[a-z]+\",\"1234abcd5678efgh9\")"))
 }
 output "funcRegexall2" {
-  value = notImplemented("length(regexall(\"[a-z]+\",\"123456789\"))") > 0
+  value = length(notImplemented("regexall(\"[a-z]+\",\"123456789\")")) > 0
 }
 # Examples for replace
 output "funcReplace0" {

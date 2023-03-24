@@ -243,6 +243,7 @@ func getTokensForRange(sources map[string][]byte, r hcl.Range) hclwrite.Tokens {
 var tfFunctionRenames = map[string]string{
 	"sensitive":  "secret",
 	"jsonencode": "toJSON",
+	"length":     "length",
 }
 
 var tfFunctionStd = map[string]struct {
