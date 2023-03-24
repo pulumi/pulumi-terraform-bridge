@@ -573,8 +573,10 @@ func aliasResource(
 	}
 }
 
-func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type],
-	currentVersion int) {
+func aliasOrRenameResource(
+	p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type],
+	currentVersion int,
+) {
 	// re-fetch the resource, to make sure we have the right pointer.
 	res, ok := p.Resources[tfToken]
 	if !ok {
