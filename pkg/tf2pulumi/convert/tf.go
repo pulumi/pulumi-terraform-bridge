@@ -1141,6 +1141,15 @@ func convertConditionalExpr(sources map[string][]byte, scopes *scopes,
 	return tokens
 }
 
+func convertParenthesesExpr(sources map[string][]byte, scopes *scopes,
+	fullyQualifiedPath string, expr *hclsyntax.ParenthesesExpr,
+) hclwrite.Tokens {
+	tokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOParen, "(")}
+	tokens = append(tokens, convertExpression(sources, scopes, "", expr.Expression)...)
+	tokens = append(tokens, makeToken(hclsyntax.TokenCParen, ")"))
+	return tokens
+}
+
 func convertExpression(sources map[string][]byte, scopes *scopes,
 	fullyQualifiedPath string, expr hcl.Expression,
 ) hclwrite.Tokens {
@@ -1181,6 +1190,8 @@ func convertExpression(sources map[string][]byte, scopes *scopes,
 		return convertTemplateWrapExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ConditionalExpr:
 		return convertConditionalExpr(sources, scopes, fullyQualifiedPath, expr)
+	case *hclsyntax.ParenthesesExpr:
+		return convertParenthesesExpr(sources, scopes, fullyQualifiedPath, expr)
 	}
 	contract.Failf("Couldn't convert expression: %T", expr)
 	return nil

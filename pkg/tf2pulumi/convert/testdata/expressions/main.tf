@@ -18,6 +18,14 @@ output "tuple_out" {
     value = [1, 2, 3]
 }
 
+output "number_operators_out" {
+    value = -(1 + 2) * 3 / 4 % 5
+}
+
+output "bool_operators_out" {
+    value = !(true || false) && true
+}
+
 output "str_object_out" {
     value = {
         hello: "hallo"

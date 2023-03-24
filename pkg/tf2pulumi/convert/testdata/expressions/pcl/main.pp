@@ -13,6 +13,12 @@ output stringOut {
 output tupleOut {
     value = [1, 2, 3]
 }
+output numberOperatorsOut {
+    value = -((1 + 2)) * 3 / 4 % 5
+}
+output boolOperatorsOut {
+    value = !((true || false)) && true
+}
 output strObjectOut {
     value = {
         hello: "hallo"
