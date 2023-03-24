@@ -1231,7 +1231,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	contract.Assertf(fullyQualifiedPath != "", "fullyQualifiedPath should not be empty")
 
 	// We want to exclude any hidden blocks and attributes, and the only way to do that with hcl.Body is to
-	// give it a schema. JustAttributes() will return all non-hidden attributes, but will  error if there's
+	// give it a schema. JustAttributes() will return all non-hidden attributes, but will error if there's
 	// any blocks, and there's no equivalent to get non-hidden attributes and blocks.
 	hclSchema := &hcl.BodySchema{}
 	// The `body` passed in here _should_ be a hclsyntax.Body. That's currently the only way to just iterate
@@ -1239,7 +1239,15 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	synbody, ok := body.(*hclsyntax.Body)
 	contract.Assertf(ok, "%T was not a hclsyntax.Body", body)
 	for _, block := range synbody.Blocks {
-		hclSchema.Blocks = append(hclSchema.Blocks, hcl.BlockHeaderSchema{Type: block.Type})
+		if block.Type != "dynamic" {
+			hclSchema.Blocks = append(hclSchema.Blocks, hcl.BlockHeaderSchema{Type: block.Type})
+		} else {
+			// Dynamic blocks have labels on them, we need to tell the schema that's ok.
+			hclSchema.Blocks = append(hclSchema.Blocks, hcl.BlockHeaderSchema{
+				Type:       block.Type,
+				LabelNames: block.Labels,
+			})
+		}
 	}
 	for _, attr := range synbody.Attributes {
 		hclSchema.Attributes = append(hclSchema.Attributes, hcl.AttributeSchema{Name: attr.Name})
@@ -1252,6 +1260,11 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	// If we see blocks we turn those into lists (unless maxItems==1)
 	blockLists := make(map[string][]bodyAttrsTokens)
 	for _, block := range content.Blocks {
+		// TODO: We need to correctly handle dynamic blocks somehow.
+		if block.Type == "dynamic" {
+			continue
+		}
+
 		blockPath := appendPath(fullyQualifiedPath, block.Type)
 		schema := scopes.getTerraformSchema(blockPath)
 		name := scopes.pulumiName(blockPath)
