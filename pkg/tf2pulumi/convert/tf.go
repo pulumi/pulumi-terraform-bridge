@@ -1993,9 +1993,20 @@ func translateModuleInternal(source afero.Fs,
 				Summary:  fmt.Sprintf("could not write pcl to memory buffer: %s", err),
 			}}
 		}
+
+		fullpath := filepath.Join(directory, key)
+		keyDirectory := filepath.Dir(fullpath)
+		err = destination.MkdirAll(keyDirectory, 0755)
+		if err != nil {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("could not create destination directory for pcl: %s", err),
+			}}
+		}
+
 		// Reformat to canonical style
 		formatted := hclwrite.Format(buffer.Bytes())
-		err = afero.WriteFile(destination, filepath.Join(directory, key), formatted, 0644)
+		err = afero.WriteFile(destination, fullpath, formatted, 0644)
 		if err != nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
