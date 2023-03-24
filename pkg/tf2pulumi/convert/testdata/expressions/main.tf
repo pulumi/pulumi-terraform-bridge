@@ -64,8 +64,8 @@ output "complex_object_out" {
             literal_key: 1
             another_literal_key = 2
             "yet_another_literal_key": local.a_value
-            # This doesn't translate correctly
-            # (local.a_key) = 4
+            // This only translates correctly in the new converter.
+            (local.a_key) = 4
         }
         ambiguous_for: {
             "for" = 1

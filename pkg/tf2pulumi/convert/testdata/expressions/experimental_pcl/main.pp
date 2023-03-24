@@ -50,6 +50,7 @@ output "complexObjectOut" {
       literal_key               = 1
       another_literal_key       = 2
       "yet_another_literal_key" = aValue
+      (aKey)                    = 4
     }
     ambiguous_for = {
       "for" = 1

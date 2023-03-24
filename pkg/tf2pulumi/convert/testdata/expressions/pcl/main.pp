@@ -51,8 +51,7 @@ output complexObjectOut {
             literal_key: 1
             another_literal_key = 2
             "yet_another_literal_key": aValue
-            # This doesn't translate correctly
-            # (local.a_key) = 4
+aKey = 4
         }
         ambiguous_for: {
             "for" = 1

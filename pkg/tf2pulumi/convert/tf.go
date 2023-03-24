@@ -748,9 +748,7 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 func convertObjectConsKeyExpr(sources map[string][]byte,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ObjectConsKeyExpr,
 ) hclwrite.Tokens {
-	if expr.ForceNonLiteral {
-		contract.Failf("ObjectConsKeyExpr.ForceNonLiteral is not handled")
-	}
+	// Seems we can just ignore ForceNonLiteral here
 	return convertExpression(sources, scopes, fullyQualifiedPath, expr.Wrapped)
 }
 
