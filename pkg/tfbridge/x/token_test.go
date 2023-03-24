@@ -469,7 +469,7 @@ func TestAliasing(t *testing.T) {
 
 	err = AutoAliasing(modules4, metadata)
 	require.NoError(t, err)
-	assert.Equal(t, modules, modules4)
+	assert.Equal(t, modules.Resources, modules4.Resources)
 }
 
 type Provider struct {

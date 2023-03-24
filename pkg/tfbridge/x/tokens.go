@@ -507,7 +507,6 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 				}
 			}
 		}
-		providerInfo.Version = fmt.Sprintf("%d.0.0", currentVersion)
 	}
 
 	for tfToken, computed := range providerInfo.Resources {
