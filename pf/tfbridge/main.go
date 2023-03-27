@@ -56,12 +56,12 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 
 	if *dumpInfo {
-		// TODO[pulumi/pulumi-terraform-bridge#819] port MarshalProviderInfo
-		//
-		// if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
-		// 	cmdutil.ExitError(err.Error())
-		// }
-		if err := json.NewEncoder(os.Stdout).Encode([]int{}); err != nil {
+		pp, err := NewProvider(ctx, prov, meta)
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+		info := pp.(*provider).marshalProviderInfo(ctx)
+		if err := json.NewEncoder(os.Stdout).Encode(info); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
 		os.Exit(0)
