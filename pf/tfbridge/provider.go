@@ -227,10 +227,6 @@ func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.P
 	return server6, nil
 }
 
-func (p *provider) GetMappingWithContext(_ context.Context, key string) ([]byte, string, error) {
-	return []byte{}, "", nil
-}
-
 type packageSpec struct {
 	spec *pschema.PackageSpec
 }
