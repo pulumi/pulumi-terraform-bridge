@@ -97,7 +97,6 @@ func TestConvertTurnaround(t *testing.T) {
 	}
 
 	cases = append(cases,
-
 		tupleCase("scalars", []tftypes.Value{
 			tftypes.NewValue(tftypes.Bool, true),
 			tftypes.NewValue(tftypes.String, "foo"),
@@ -119,6 +118,36 @@ func TestConvertTurnaround(t *testing.T) {
 			}),
 			resource.NewStringProperty("top"),
 		), tftypes.List{ElementType: tftypes.Number}, tftypes.String),
+	)
+
+	setCase := func(
+		name string, val tftypes.Type, prop resource.PropertyValue, elements ...any,
+	) convertTurnaroundTestCase {
+		t := tftypes.Set{ElementType: val}
+		return convertTurnaroundTestCase{
+			name: "tftypes.Set/" + name,
+			ty:   t,
+			val:  tftypesNewValue(t, elements),
+			prop: prop,
+		}
+	}
+
+	cases = append(cases,
+		setCase("empty", tftypes.String, resource.NewArrayProperty([]resource.PropertyValue{})),
+		setCase("string-alpha", tftypes.String, resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("hello"),
+			resource.NewStringProperty("world"),
+		}),
+			"hello",
+			"world",
+		),
+		setCase("string-rev-alpha", tftypes.String, resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("world"),
+			resource.NewStringProperty("hello"),
+		}),
+			"world",
+			"hello",
+		),
 	)
 
 	for _, testcase := range cases {
@@ -235,6 +264,17 @@ func tftypesNewValue(t tftypes.Type, val interface{}) tftypes.Value {
 		}
 
 		return tftypes.NewValue(t, elems)
+	case tftypes.Set:
+		var elems []tftypes.Value
+
+		r := reflect.ValueOf(val)
+		for i := 0; i < r.Len(); i++ {
+			elem := tftypesNewValue(tt.ElementType, r.Index(i).Interface())
+			elems = append(elems, elem)
+		}
+
+		return tftypes.NewValue(t, elems)
+
 	case tftypes.Map:
 		elems := map[string]tftypes.Value{}
 		r := reflect.ValueOf(val)
@@ -268,6 +308,21 @@ func byType(typ tftypes.Type) (Encoder, Decoder, error) {
 			return nil, nil, err
 		}
 		dec, err := newListDecoder(elementDecoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		return enc, dec, err
+	case typ.Is(tftypes.Set{}):
+		sT := typ.(tftypes.Set)
+		elementEncoder, elementDecoder, err := byType(sT.ElementType)
+		if err != nil {
+			return nil, nil, err
+		}
+		enc, err := newSetEncoder(sT.ElementType, elementEncoder)
+		if err != nil {
+			return nil, nil, err
+		}
+		dec, err := newSetDecoder(elementDecoder)
 		if err != nil {
 			return nil, nil, err
 		}
