@@ -34,14 +34,14 @@ func TestGetMapping(t *testing.T) {
 	assert.NoError(t, err)
 
 	{
-		m, p, err := p.GetMappingWithContext(ctx, "unknown-key")
+		m, p, err := p.GetMapping("unknown-key")
 		assert.NoError(t, err)
 		assert.Empty(t, m)
 		assert.Empty(t, p)
 	}
 
 	for _, key := range []string{"tf", "terraform"} {
-		m, p, err := p.GetMappingWithContext(ctx, key)
+		m, p, err := p.GetMapping(key)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "random", p)

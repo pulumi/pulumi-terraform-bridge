@@ -66,7 +66,16 @@ var _ pl.ProviderWithContext = &provider{}
 
 // Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
-func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (pl.ProviderWithContext, error) {
+func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
+	pwc, err := newProviderWithContext(ctx, info, meta)
+	if err != nil {
+		return nil, err
+	}
+	return pl.NewProvider(ctx, pwc), nil
+}
+
+func newProviderWithContext(ctx context.Context, info ProviderInfo,
+	meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	p := info.NewProvider()
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
@@ -137,7 +146,7 @@ func newProviderServer(
 	info ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {
-	p, err := NewProvider(ctx, info, meta)
+	p, err := newProviderWithContext(ctx, info, meta)
 	if err != nil {
 		return nil, err
 	}
