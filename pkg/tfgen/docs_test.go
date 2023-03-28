@@ -866,7 +866,7 @@ throw new Exception("!");
 ~~~
 `)
 
-	markdown = bytes.ReplaceAll([]byte(markdown), []byte("~~~"), []byte("```"))
+	markdown = bytes.ReplaceAll(markdown, []byte("~~~"), []byte("```"))
 
 	info.Resources["random_integer"].Docs = &tfbridge.DocInfo{
 		Markdown: markdown,
