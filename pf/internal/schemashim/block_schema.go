@@ -72,8 +72,9 @@ func (s *blockSchema) Elem() interface{} {
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	case types.ListType:
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
+	case types.SetType:
+		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	default:
-		// TODO[pulumi/pulumi-terraform-bridge#731] support Set type
 		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
 	}
 	return schema
