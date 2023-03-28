@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pl "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
@@ -32,5 +31,5 @@ func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.Resou
 	meta := genMetadata(t, info)
 	p, err := tfbridge.NewProvider(ctx, info, meta)
 	require.NoError(t, err)
-	return plugin.NewProviderServer(pl.ToProvider(p))
+	return plugin.NewProviderServer(p)
 }

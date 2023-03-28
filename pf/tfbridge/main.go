@@ -56,7 +56,7 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 
 	if *dumpInfo {
-		pp, err := NewProvider(ctx, prov, meta)
+		pp, err := newProviderWithContext(ctx, prov, meta)
 		if err != nil {
 			cmdutil.ExitError(err.Error())
 		}
