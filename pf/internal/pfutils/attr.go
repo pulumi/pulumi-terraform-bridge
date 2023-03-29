@@ -112,14 +112,22 @@ const (
 	NestingModeMap     NestingMode = 4
 )
 
+// Classifies the results of LookupTerraformPath. The interesting cases:
+//
+// 1. IsAttr=true, and Attr is set; this means an Attribute was found
+// 2. IsBlock=true, and Block is set; this means a Block was found
+// 3. IsNestedObject=true; this means the path is a nested object one level down from Attr or Block
+// 4. IsMisc=true; this groups all other cases, such as resolving to a simple atomic type as String
 type LookupResult struct {
 	IsAttr         bool
 	IsBlock        bool
 	IsNestedObject bool
+	IsMisc         bool
 	Attr           Attr
 	Block          Block
 }
 
+// Drills down a Schema with a given AttributePath to try to find
 func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResult, error) {
 	res, ok, err := tryLookupAttrOrBlock(schema, path)
 	if err != nil {
@@ -129,7 +137,9 @@ func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResu
 		return res, nil
 	}
 
-	// Indirectly for fwschema.NestedBlockObject or fwschema.NestedAttributeObject.
+	// Perhaps our parent path is an Attribute or a Block with a nested object, then path is a path to a nested
+	// object. This is another way to detect, indirectly, if res is a fwschema.NestedBlockObject or
+	// fwschema.NestedAttributeObject, without relying on reflection.
 	if parent := path.WithoutLastStep(); parent != nil {
 		parentRes, parentOk, parentErr := tryLookupAttrOrBlock(schema, parent)
 		if parentErr == nil && parentOk {
@@ -142,7 +152,7 @@ func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResu
 		}
 	}
 
-	return res, fmt.Errorf("LookupTerraformPath failed at path %s, got unexpected %v", path, res)
+	return LookupResult{IsMisc: true}, nil
 }
 
 func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupResult, bool, error) {
@@ -156,6 +166,5 @@ func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupRes
 	case BlockLike:
 		return LookupResult{IsBlock: true, Block: FromBlockLike(res)}, true, nil
 	}
-
 	return LookupResult{}, false, nil
 }

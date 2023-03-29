@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
@@ -1383,6 +1384,21 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			prim(nil),
 
 			unk(),
+		},
+
+		// This test is simple but regresses panis in helper code around sets.
+		"simple set attribute": {
+			FromResourceSchema(rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"set_optional": rschema.SetAttribute{
+						ElementType: basetypes.StringType{},
+						Optional:    true,
+					},
+				},
+			}),
+			obj(field("set_optional", set(prim("input1")))),
+			obj(field("set_optional", set(prim("a"), prim("b"), prim("c")))),
+			obj(field("set_optional", set(prim("a"), prim("b"), prim("c")))),
 		},
 	}
 

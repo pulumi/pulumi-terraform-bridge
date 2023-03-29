@@ -168,7 +168,7 @@ func joinCollections(opts JoinOptions, path *tftypes.AttributePath, x, y tftypes
 		}
 		return &z, nil
 	default:
-		panic("impossible")
+		panic("joinCollections: impossible case")
 	}
 }
 
