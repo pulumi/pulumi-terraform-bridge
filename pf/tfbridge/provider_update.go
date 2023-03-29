@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -37,6 +38,11 @@ func (p *provider) UpdateWithContext(
 	preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
+
+	checkedInputs, err := applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
+	}
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
