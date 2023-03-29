@@ -9,6 +9,14 @@ resources:
         input1
       optionalInputString: |-
         input2
+
+  set:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: |-
+        input1
+      setOptionals: [ a, b ]
 outputs:
 
   testRequiredString__actual: ${r.requiredInputStringCopy}
@@ -18,3 +26,5 @@ outputs:
   testOptionalString__actual: ${r.optionalInputStringCopy}
   testOptionalString__expect: |-
     input2
+  testSetOptionals__actual: ${set.setOptionals}
+  testSetOptionals__expect: [ a, b ]

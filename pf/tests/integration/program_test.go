@@ -57,19 +57,29 @@ func TestUpdateProgram(t *testing.T) {
 	assert.NoError(t, err)
 	bin := filepath.Join(wd, "..", "bin")
 
+	editDirs := func(edits ...integration.EditDir) []integration.EditDir {
+		for i, edit := range edits {
+			edit.Dir = filepath.Join("..", "testdata", fmt.Sprintf("updateprogram-%d", i+2))
+			edit.Additive = true
+			edits[i] = edit
+		}
+		return edits
+	}
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
 		Dir: filepath.Join("..", "testdata", "updateprogram"),
 		PrepareProject: func(info *engine.Projinfo) error {
 			return prepareStateFolder(info.Root)
 		},
-		EditDirs: []integration.EditDir{
-			{
-				Dir:                    filepath.Join("..", "testdata", "updateprogram-2"),
-				Additive:               true,
+		EditDirs: editDirs(
+			integration.EditDir{
 				ExtraRuntimeValidation: validateExpectedVsActual,
 			},
-		},
+			integration.EditDir{
+				ExpectFailure: true,
+			},
+		),
 		ExtraRuntimeValidation: validateExpectedVsActual,
 	})
 }
