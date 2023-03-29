@@ -145,7 +145,7 @@ func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResu
 	if parent := path.WithoutLastStep(); parent != nil {
 		parentRes, parentOk, parentErr := tryLookupAttrOrBlock(schema, parent)
 		if parentErr == nil && parentOk {
-			if parentRes.IsAttr && parentRes.Attr.HasNestedObject() {
+			if parentRes.IsAttr {
 				return LookupResult{IsNestedObject: true}, nil
 			}
 			if parentRes.IsBlock && parentRes.Block.HasNestedObject() {
