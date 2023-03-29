@@ -1,0 +1,29 @@
+name: updateprogram
+runtime: yaml
+resources:
+  r:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: |-
+        input1-updated
+      optionalInputString: |-
+        input2-updated
+  set:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString: |-
+        input1
+      setOptionals: [ a ]
+outputs:
+
+  testRequiredStringAfterUpdate__actual: ${r.requiredInputStringCopy}
+  testRequiredStringAfterUpdate__expect: |-
+    input1-updated
+
+  testOptionalStringAfterUpdate__actual: ${r.optionalInputStringCopy}
+  testOptionalStringAfterUpdate__expect: |-
+    input2-updated
+  testSetOptionals__actual: ${set.setOptionals}
+  testSetOptionals__expect: [ a ]

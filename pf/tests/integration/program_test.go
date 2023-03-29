@@ -79,6 +79,9 @@ func TestUpdateProgram(t *testing.T) {
 			integration.EditDir{
 				ExpectFailure: true,
 			},
+			integration.EditDir{
+				ExtraRuntimeValidation: validateExpectedVsActual,
+			},
 		),
 		ExtraRuntimeValidation: validateExpectedVsActual,
 	})
