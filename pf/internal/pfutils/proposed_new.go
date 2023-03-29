@@ -115,7 +115,7 @@ func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.
 func rewriteNullComputedAsUnknown(schema Schema,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
-		pt, err := getPathType(schema, joinPaths(offset, p))
+		pt, err := getNearestEnclosingPathType(schema, joinPaths(offset, p))
 		if err != nil {
 			return v, err
 		}
