@@ -53,17 +53,21 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	if p.IsNull() {
 		return tftypes.NewValue(setTy, nil), nil
 	}
+
+	retErr := func(msg string, args ...any) error {
+		return fmt.Errorf("set encoder failed: "+msg, args...)
+	}
+
 	if !p.IsArray() {
 		return tftypes.NewValue(setTy, nil),
-			fmt.Errorf("Expected an Array PropertyValue")
+			retErr("expected an Array PropertyValue, got a %T", p)
 	}
 	var values []tftypes.Value
 	for i, pv := range p.ArrayValue() {
 		v, err := enc.elementEncoder.fromPropertyValue(pv)
 		if err != nil {
 			return tftypes.NewValue(setTy, nil),
-				fmt.Errorf("encSet failed while encoding element %d (%v): %w",
-					i, pv, err)
+				retErr("encoding element %d (%v): %w", i, pv, err)
 		}
 		values = append(values, v)
 	}
@@ -77,17 +81,22 @@ func (dec *setDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue,
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
 	}
+
+	retErr := func(msg string, args ...any) error {
+		return fmt.Errorf("set decoder failed: "+msg, args...)
+	}
+
 	var elements []tftypes.Value
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
-			fmt.Errorf("decSet fails with %s: %w", v.String(), err)
+			retErr("could not convert %s to an []Value: %w", v.String(), err)
 	}
 	values := []resource.PropertyValue{}
-	for _, e := range elements {
+	for i, e := range elements {
 		ev, err := dec.elementDecoder.toPropertyValue(e)
 		if err != nil {
 			return resource.PropertyValue{},
-				fmt.Errorf("decSet fails with %s: %w", e.String(), err)
+				retErr("could not decode element %d (%v): %w", i, ev, err)
 		}
 		values = append(values, ev)
 	}
