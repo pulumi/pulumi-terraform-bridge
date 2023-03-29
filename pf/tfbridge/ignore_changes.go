@@ -265,15 +265,23 @@ func (*matchingContext) fail() *matchingContext {
 	}
 }
 
-func (mc *matchingContext) pulumiNameMatches(pattern interface{}, puName resource.PropertyKey) bool {
-	return mc.rawNameMatches(pattern, string(puName))
+func (*matchingContext) pulumiNameMatches(pattern interface{}, puName resource.PropertyKey) bool {
+	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
+		if p == string(puName) {
+			return true
+		}
+	}
+	return false
 }
 
-func (mc *matchingContext) rawNameMatches(pattern interface{}, rawName string) bool {
-	if mc.globMatches(pattern) {
-		return true
-	}
+func (*matchingContext) rawNameMatches(pattern interface{}, rawName string) bool {
 	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
 		if p == rawName {
 			return true
 		}
@@ -281,14 +289,11 @@ func (mc *matchingContext) rawNameMatches(pattern interface{}, rawName string) b
 	return false
 }
 
-func (*matchingContext) globMatches(pattern any) bool {
-	p, _ := pattern.(string)
-	return p == "*"
-}
-
-func (mc *matchingContext) intMatches(pattern interface{}, n int64) bool {
-	if mc.globMatches(pattern) {
-		return true
+func (*matchingContext) intMatches(pattern interface{}, n int64) bool {
+	if p, ok := pattern.(string); ok {
+		if p == "*" {
+			return true
+		}
 	}
 	if p, ok := pattern.(int); ok {
 		if int64(p) == n {
@@ -362,26 +367,6 @@ func (mc *matchingContext) ApplyTerraform5AttributePathStep(step tftypes.Attribu
 			remainingPattern: mc.remainingPattern[1:],
 		}, nil
 	case tftypes.ElementKeyValue:
-		// This could represent an arbitrary value in a set.
-		//
-		// Because sets are not present in Pulumi's type system, it isn't clear
-		// how a general entry should be interpreted at this level.
-		//
-		// Globs do make sense to apply.
-		if len(mc.remainingPattern) == 0 {
-			return mc.terminate(), nil
-		}
-		if mc.globMatches(mc.remainingPattern[0]) {
-			down := mc.schemaStepper.Element()
-			if down == nil {
-				return maxItems1Workaround()
-			}
-
-			return &matchingContext{
-				schemaStepper:    down,
-				remainingPattern: mc.remainingPattern[1:],
-			}, nil
-		}
 		// ignoreChanges not supported yet for set elements
 		// TODO[pulumi/pulumi-terraform-bridge#731] Set support
 		return mc.fail(), nil
