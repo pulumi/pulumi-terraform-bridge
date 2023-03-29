@@ -281,7 +281,7 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 			}
 			return newSetEncoder(t.ElementType, elementEncoder)
 		default:
-			return nil, fmt.Errorf("expected a List, got %s", t.String())
+			return nil, fmt.Errorf("expected a List or Set, got %s", t.String())
 		}
 	case "object":
 		// Ensure Map[string,X] type case
