@@ -127,7 +127,7 @@ type LookupResult struct {
 	Block          Block
 }
 
-// Drills down a Schema with a given AttributePath to try to find
+// Drills down a Schema with a given AttributePath to classify what is found at that path, see LookupResult.
 func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResult, error) {
 	res, ok, err := tryLookupAttrOrBlock(schema, path)
 	if err != nil {
