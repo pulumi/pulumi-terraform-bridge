@@ -246,6 +246,6 @@ func (r renamesBuilder) normalizeProviderStateToProviderInputs(p paths.TypePath)
 	case *paths.PropertyPath:
 		return paths.NewProperyPath(r.normalizeProviderStateToProviderInputs(pp.Parent()), pp.PropertyName)
 	default:
-		panic("impossible")
+		panic("normalizeProviderStateToProviderInputs: impossible case")
 	}
 }
