@@ -112,12 +112,14 @@ const (
 	NestingModeMap     NestingMode = 4
 )
 
-// Classifies the results of LookupTerraformPath. The interesting cases:
+// Classifies the results of LookupTerraformPath. The only valid cases are:
 //
 // 1. IsAttr=true, and Attr is set; this means an Attribute was found
 // 2. IsBlock=true, and Block is set; this means a Block was found
 // 3. IsNestedObject=true; this means the path is a nested object one level down from Attr or Block
 // 4. IsMisc=true; this groups all other cases, such as resolving to a simple atomic type as String
+//
+// All other combinations should not be valid.
 type LookupResult struct {
 	IsAttr         bool
 	IsBlock        bool
