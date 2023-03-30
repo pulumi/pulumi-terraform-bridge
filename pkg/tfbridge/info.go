@@ -179,9 +179,13 @@ type ResourceOrDataSourceInfo interface {
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
 // given; this is used when Terraform needs more than just the ID to uniquely identify and query for a resource.
 type ResourceInfo struct {
-	Tok      tokens.Type            // a type token to override the default; "" uses the default.
-	Fields   map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
-	IDFields []string               // an optional list of ID alias fields.
+	Tok    tokens.Type            // a type token to override the default; "" uses the default.
+	Fields map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
+
+	// Deprecated: IDFields is not currently used and will be removed in the next major version of
+	// pulumi-terraform-bridge.
+	IDFields []string
+
 	// list of parameters that we can trust that any change will allow a createBeforeDelete
 	UniqueNameFields    []string
 	Docs                *DocInfo    // overrides for finding and mapping TF docs.
@@ -705,9 +709,12 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 
 // MarshallableResourceInfo is the JSON-marshallable form of a Pulumi ResourceInfo value.
 type MarshallableResourceInfo struct {
-	Tok      tokens.Type                        `json:"tok"`
-	Fields   map[string]*MarshallableSchemaInfo `json:"fields"`
-	IDFields []string                           `json:"idFields"`
+	Tok    tokens.Type                        `json:"tok"`
+	Fields map[string]*MarshallableSchemaInfo `json:"fields"`
+
+	// Deprecated: IDFields is not currently used and will be deprecated in the next major version of
+	// pulumi-terraform-bridge.
+	IDFields []string `json:"idFields"`
 }
 
 // MarshalResourceInfo converts a Pulumi ResourceInfo value into a MarshallableResourceInfo value.
