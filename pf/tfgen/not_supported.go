@@ -97,7 +97,6 @@ func (u *notSupportedUtil) datasource(path string, ds *tfbridge.DataSourceInfo) 
 
 func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
 	u.fields(path, res.Fields)
-	u.assertNotZero(path+".IDFields", res.IDFields)
 	u.assertNotZero(path+".UniqueNameFields", res.UniqueNameFields)
 	u.assertNotZero(path+".Docs", res.Docs)
 	u.assertNotZero(path+".DeleteBeforeReplace", res.DeleteBeforeReplace)
