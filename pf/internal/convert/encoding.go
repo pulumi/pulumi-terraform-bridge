@@ -267,15 +267,22 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 	case "string":
 		return newStringEncoder(), nil
 	case "array":
-		lt, ok := t.(tftypes.List)
-		if !ok {
-			return nil, fmt.Errorf("expected a List, got %s", t.String())
+		switch t := t.(type) {
+		case tftypes.List:
+			elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newListEncoder(t.ElementType, elementEncoder)
+		case tftypes.Set:
+			elementEncoder, err := e.deriveEncoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newSetEncoder(t.ElementType, elementEncoder)
+		default:
+			return nil, fmt.Errorf("expected a List or Set, got %s", t.String())
 		}
-		elementEncoder, err := e.deriveEncoder(typeSpec.Items, lt.ElementType)
-		if err != nil {
-			return nil, err
-		}
-		return newListEncoder(lt.ElementType, elementEncoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
@@ -333,15 +340,22 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 	case "string":
 		return newStringDecoder(), nil
 	case "array":
-		lt, ok := t.(tftypes.List)
-		if !ok {
-			return nil, fmt.Errorf("expected a List, got %s", t.String())
+		switch t := t.(type) {
+		case tftypes.List:
+			elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newListDecoder(elementDecoder)
+		case tftypes.Set:
+			elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newSetDecoder(elementDecoder)
+		default:
+			return nil, fmt.Errorf("expected a List or Set, got %s", t.String())
 		}
-		elementDecoder, err := e.deriveDecoder(typeSpec.Items, lt.ElementType)
-		if err != nil {
-			return nil, err
-		}
-		return newListDecoder(elementDecoder)
 	case "object":
 		// Ensure Map[string,X] type case
 		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {

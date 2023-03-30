@@ -22,6 +22,7 @@
       "requiredInputString": "required_input_string",
       "requiredInputStringCopy": "required_input_string_copy",
       "servicesJsonCopy": "services_json_copy",
+      "setOptionals": "set_optional",
       "singleNestedAttr": "single_nested_attr",
       "singleNestedAttrJsonCopy": "single_nested_attr_json_copy",
       "tuplesOptionals": "tuples_optional"

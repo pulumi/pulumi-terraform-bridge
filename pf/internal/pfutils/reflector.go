@@ -24,7 +24,7 @@ func extractNestedAttributes(attrLike AttrLike) (map[string]Attr, NestingMode) {
 	obj := reflect.ValueOf(attrLike)
 	// Check if attrLike implements fwschema.NestedAttribute. Use reflection because linkage is impossible.
 	if !hasMethod(obj, "GetNestedObject") {
-		return nil, 0
+		return nil, NestingModeUnknown
 	}
 	nestedAttributeObject := callGetter(obj, "GetNestedObject")                // fwschema.NestedAttributeObject
 	underlyingAttributes := callGetter(nestedAttributeObject, "GetAttributes") // fwschema.UnderlyingAttributes
