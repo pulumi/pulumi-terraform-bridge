@@ -44,7 +44,15 @@ func (p *provider) plan(
 	priorState *upgradedResourceState,
 	checkedInputs tftypes.Value,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {
-	proposedNewState, err := pfutils.ProposedNew(ctx, schema, priorState.state.Value, checkedInputs)
+
+	resSchema, ok := p.schemaResponse.ResourceSchemas[typeName]
+	if !ok {
+		return nil, fmt.Errorf("Unknown typeName: %q", typeName)
+	}
+
+	schemaBlock := resSchema.Block
+
+	proposedNewState, err := pfutils.ProposedNew(ctx, schemaBlock, priorState.state.Value, checkedInputs)
 	if err != nil {
 		return nil, err
 	}

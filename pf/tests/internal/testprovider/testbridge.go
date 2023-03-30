@@ -66,7 +66,9 @@ func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataReque
 func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
-			"string_config_prop": pschema.StringAttribute{},
+			"string_config_prop": pschema.StringAttribute{
+				Optional: true,
+			},
 		},
 	}
 }

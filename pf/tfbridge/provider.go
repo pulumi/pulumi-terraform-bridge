@@ -46,20 +46,21 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
-	tfProvider    pfprovider.Provider
-	tfServer      tfprotov6.ProviderServer
-	info          ProviderInfo
-	resources     pfutils.Resources
-	datasources   pfutils.DataSources
-	pulumiSchema  []byte
-	packageSpec   pschema.PackageSpec
-	encoding      convert.Encoding
-	propertyNames convert.PropertyNames
-	diagSink      diag.Sink
-	configEncoder convert.Encoder
-	configType    tftypes.Object
-	version       semver.Version
-	logSink       logutils.LogSink
+	tfProvider     pfprovider.Provider
+	tfServer       tfprotov6.ProviderServer
+	info           ProviderInfo
+	resources      pfutils.Resources
+	datasources    pfutils.DataSources
+	pulumiSchema   []byte
+	packageSpec    pschema.PackageSpec
+	encoding       convert.Encoding
+	propertyNames  convert.PropertyNames
+	diagSink       diag.Sink
+	configEncoder  convert.Encoder
+	configType     tftypes.Object
+	version        semver.Version
+	logSink        logutils.LogSink
+	schemaResponse *tfprotov6.GetProviderSchemaResponse
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -76,11 +77,21 @@ func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) 
 
 func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	meta ProviderMetadata) (pl.ProviderWithContext, error) {
+
 	p := info.NewProvider()
-	server6, err := newProviderServer6(ctx, p)
+
+	server6 := providerserver.NewProtocol6(p)()
+
+	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
+	// tfServer, to init it properly to remember provider name and compute correct resource names like
+	// random_integer instead of _integer (unknown provider name).
+	getProviderSchemaResp, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
+		return nil, err
 	}
+
+	// TODO handle diagnostics from getProviderSchemaResp, they are actually quite important.
+
 	resources, err := pfutils.GatherResources(ctx, p)
 	if err != nil {
 		return nil, fmt.Errorf("Fatal failure gathering resource metadata: %w", err)
@@ -125,18 +136,19 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	}
 
 	return &provider{
-		tfProvider:    p,
-		tfServer:      server6,
-		info:          info,
-		resources:     resources,
-		datasources:   datasources,
-		pulumiSchema:  meta.PackageSchema,
-		packageSpec:   thePackageSpec,
-		propertyNames: propertyNames,
-		encoding:      enc,
-		configEncoder: configEncoder,
-		configType:    providerConfigType,
-		version:       semverVersion,
+		tfProvider:     p,
+		tfServer:       server6,
+		info:           info,
+		resources:      resources,
+		datasources:    datasources,
+		pulumiSchema:   meta.PackageSchema,
+		packageSpec:    thePackageSpec,
+		propertyNames:  propertyNames,
+		encoding:       enc,
+		configEncoder:  configEncoder,
+		configType:     providerConfigType,
+		version:        semverVersion,
+		schemaResponse: getProviderSchemaResp,
 	}, nil
 }
 
@@ -220,20 +232,6 @@ func (p *provider) ConstructWithContext(_ context.Context,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
-}
-
-func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.ProviderServer, error) {
-	newServer6 := providerserver.NewProtocol6(p)
-	server6 := newServer6()
-
-	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
-	// tfServer, to init it properly to remember provider name and compute correct resource names like
-	// random_integer instead of _integer (unknown provider name).
-	if _, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); err != nil {
-		return nil, err
-	}
-
-	return server6, nil
 }
 
 type packageSpec struct {
