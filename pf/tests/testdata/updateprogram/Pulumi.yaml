@@ -27,4 +27,4 @@ outputs:
   testOptionalString__expect: |-
     input2
   testSetOptionals__actual: ${set.setOptionals}
-  testSetOptionals__expect: [ "${r.requiredInputStringCopy}", a, b ]
+  testSetOptionals__expect: [ a, b, "${r.requiredInputStringCopy}" ]
