@@ -16,7 +16,6 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.34.1-0.20221214173921-8e65b1f9fdd5
 	github.com/pulumi/terraform v1.4.0
 	github.com/stretchr/testify v1.8.2
-	github.com/t0yv0/terraform-proposed-new v1.4.0
 	google.golang.org/grpc v1.54.0
 	pgregory.net/rapid v0.5.5
 )
