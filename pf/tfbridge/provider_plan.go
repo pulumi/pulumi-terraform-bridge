@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/objchange"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 )
 
@@ -52,7 +53,7 @@ func (p *provider) plan(
 
 	schemaBlock := resSchema.Block
 
-	proposedNewState, err := pfutils.ProposedNew(ctx, schemaBlock, priorState.state.Value, checkedInputs)
+	proposedNewState, err := objchange.ProposedNew6(ctx, schemaBlock, priorState.state.Value, checkedInputs)
 	if err != nil {
 		return nil, err
 	}
