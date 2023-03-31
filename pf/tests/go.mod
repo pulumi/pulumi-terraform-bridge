@@ -18,7 +18,7 @@ require (
 	github.com/bmatcuk/doublestar v1.1.5 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
-	github.com/pulumi/terraform v1.4.0 // indirect
+	github.com/pulumi/terraform v0.12.1-0.20230331223004-cfb38bf42386 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.0.3 // indirect
