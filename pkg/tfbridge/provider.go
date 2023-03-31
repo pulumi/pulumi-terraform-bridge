@@ -1386,6 +1386,13 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 // those that already have a name mapping entry, since those may have custom overrides set in the resource
 // declaration (e.g., for length).
 func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
+	if p.P == nil {
+		// TODO[pulumi/pulumi-terraform-bridge#917]
+		glog.Warningln("SetAutonaming call is currently ignored for bridged providers built with the " +
+			"Plugin Framework. Supporting this feature is tracked in pulumi/pulumi-terraform-bridge#917")
+		return
+	}
+
 	const nameProperty = "name"
 	for resname, res := range p.Resources {
 		if schema := p.P.ResourcesMap().Get(resname); schema != nil {
