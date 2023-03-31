@@ -57,10 +57,6 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 		}
 	}
 
-	u.assertNotZero("ExtraConfig", prov.ExtraConfig)
-	u.assertNotZero("ExtraTypes", prov.ExtraTypes)
-	u.assertNotZero("ExtraResources", prov.ExtraResources)
-	u.assertNotZero("ExtraFunctions", prov.ExtraFunctions)
 	u.assertNotZero("PreConfigureCallback", prov.PreConfigureCallback)
 	u.assertNotZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
 
