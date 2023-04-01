@@ -35,7 +35,7 @@ import (
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
-	handleFlags(prov.Version)
+	handleFlags(ctx, prov, meta, prov.Version)
 	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()
 
@@ -44,7 +44,7 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 }
 
-func handleFlags(version string) {
+func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, version string) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 
@@ -105,21 +105,21 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 		Schema:          schema,
 	}
 
-	for _, info := range infos {
-		// Add PF based servers to the runtime.
-		if info.PF != nil {
+	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+		for _, info := range infos {
+			// Add PF based servers to the runtime.
+			if info.PF != nil {
+				m.Servers = append(m.Servers, muxer.Endpoint{
+					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+						return newProviderServer(ctx, host, *info.PF, meta)
+					}})
+				continue
+			}
 			m.Servers = append(m.Servers, muxer.Endpoint{
 				Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-					return newProviderServer(ctx, *info.PF, meta)
+					return tfbridge.NewProvider(ctx, host, pkg, version, info.SDK.P, *info.SDK, meta.PackageSchema), nil
 				}})
-			continue
 		}
-		m.Servers = append(m.Servers, muxer.Endpoint{
-			Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-				return tfbridge.NewProvider(ctx, host, pkg, version, info.SDK.P, *info.SDK, meta.PackageSchema), nil
-			}})
-	}
-	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return m.Server(host, pkg, version)
 	})
 	if err != nil {

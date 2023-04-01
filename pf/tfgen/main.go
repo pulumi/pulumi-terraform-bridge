@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
@@ -118,7 +117,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 					continue
 				}
 
-				shimInfo := schemashim.ShimSchemaOnlyProviderInfo(ctx, *pfInfo)
+				shimInfo := shimSchemaOnlyProviderInfo(ctx, *pfInfo)
 				info = &shimInfo
 			}
 
