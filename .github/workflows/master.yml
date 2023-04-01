@@ -28,7 +28,7 @@ jobs:
           cache-dependency-path: |
             **/go.sum
       - name: Install pulumi
-        uses: pulumi/setup-pulumi@v2
+        uses: pulumi/actions@v4
         with:
           pulumi-version: ^3.0.0
       - name: Build

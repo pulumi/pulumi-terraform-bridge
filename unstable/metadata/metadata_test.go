@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package metadata
 
 import (
-	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
-	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
+func TestMarshal(t *testing.T) {
+	data, err := New(nil)
 	require.NoError(t, err)
-	return plugin.NewProviderServer(p)
+
+	err = Set(data, "hi", []string{"hello", "world"})
+	assert.NoError(t, err)
+
+	assert.Equal(t, `{
+    "hi": [
+        "hello",
+        "world"
+    ]
+}`, string(data.Marshal()))
 }

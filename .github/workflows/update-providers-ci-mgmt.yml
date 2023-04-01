@@ -1,4 +1,11 @@
 name: Update Providers with new bridge version via ci-mgmt
 on:
   workflow_dispatch:
-    
+jobs:
+  update-providers:
+    name: update-providers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@master
+    # TBD

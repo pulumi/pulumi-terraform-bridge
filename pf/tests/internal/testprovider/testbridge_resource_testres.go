@@ -220,6 +220,11 @@ removes the cloud state, and Read copies it.
 				Optional:    true,
 				Description: "A list that takes a tuple",
 			},
+			"set_optional": schema.SetAttribute{
+				ElementType: basetypes.StringType{},
+				Optional:    true,
+				Description: "A set",
+			},
 		},
 	}
 }

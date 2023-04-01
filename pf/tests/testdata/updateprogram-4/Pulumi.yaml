@@ -15,7 +15,7 @@ resources:
       statedir: state
       requiredInputString: |-
         input1
-      setOptionals: [ a, b, c ]
+      setOptionals: [ "${r.requiredInputStringCopy}" ]
 outputs:
 
   testRequiredStringAfterUpdate__actual: ${r.requiredInputStringCopy}
@@ -26,4 +26,4 @@ outputs:
   testOptionalStringAfterUpdate__expect: |-
     input2-updated
   testSetOptionals__actual: ${set.setOptionals}
-  testSetOptionals__expect: [ a, b, c ]
+  testSetOptionals__expect: [ "input1-updated" ]

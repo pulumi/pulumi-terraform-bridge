@@ -168,7 +168,8 @@ func joinCollections(opts JoinOptions, path *tftypes.AttributePath, x, y tftypes
 		}
 		return &z, nil
 	default:
-		panic("impossible")
+		// We exhaustively cover all existing TF PF types. This should be impossible.
+		panic(fmt.Sprintf("unhandled case: %#v (%[1]T)", ty))
 	}
 }
 

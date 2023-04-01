@@ -57,10 +57,6 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 		}
 	}
 
-	u.assertNotZero("ExtraConfig", prov.ExtraConfig)
-	u.assertNotZero("ExtraTypes", prov.ExtraTypes)
-	u.assertNotZero("ExtraResources", prov.ExtraResources)
-	u.assertNotZero("ExtraFunctions", prov.ExtraFunctions)
 	u.assertNotZero("PreConfigureCallback", prov.PreConfigureCallback)
 	u.assertNotZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
 
@@ -97,10 +93,8 @@ func (u *notSupportedUtil) datasource(path string, ds *tfbridge.DataSourceInfo) 
 
 func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
 	u.fields(path, res.Fields)
-	u.assertNotZero(path+".IDFields", res.IDFields)
 	u.assertNotZero(path+".UniqueNameFields", res.UniqueNameFields)
 	u.assertNotZero(path+".Docs", res.Docs)
-	u.assertNotZero(path+".DeleteBeforeReplace", res.DeleteBeforeReplace)
 	u.assertNotZero(path+".Aliases", res.Aliases)
 }
 
@@ -115,9 +109,6 @@ func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
 	u.assertNotZero(path+".Default", schema.Default)
 	u.assertNotZero(path+".Stable", schema.Stable)
 	u.assertNotZero(path+".SuppressEmptyMapElements", schema.SuppressEmptyMapElements)
-	u.assertNotZero(path+".MarkAsComputedOnly", schema.MarkAsComputedOnly)
-	u.assertNotZero(path+".MarkAsOptional", schema.MarkAsOptional)
 	u.assertNotZero(path+".ForceNew", schema.ForceNew)
 	u.assertNotZero(path+".Removed", schema.Removed)
-	u.assertNotZero(path+".Secret", schema.Secret)
 }

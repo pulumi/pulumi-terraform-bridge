@@ -20,13 +20,14 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/Masterminds/semver"
+
+	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 const (
@@ -465,8 +466,9 @@ type tokenHistory[T ~string] struct {
 }
 
 type alias[T ~string] struct {
-	Name      T    `json:"name"`      // The previous token.
-	InCodegen bool `json:"inCodegen"` // If the alias is a fully generated resource, or just a schema alias.
+	Name         T    `json:"name"`         // The previous token.
+	InCodegen    bool `json:"inCodegen"`    // If the alias is a fully generated resource, or just a schema alias.
+	MajorVersion int  `json:"majorVersion"` // The provider's major version when Name was introduced.
 }
 
 type aliasHistory struct {
@@ -482,12 +484,37 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 		return err
 	}
 
+	var currentVersion int
+	// If version is missing, we assume the most recent major version in history
+	if providerInfo.Version != "" {
+		v, err := semver.NewVersion(providerInfo.Version)
+		if err != nil {
+			return err
+		}
+		currentVersion = int(v.Major())
+	} else {
+		for _, r := range hist.Resources {
+			for _, p := range r.Past {
+				if p.MajorVersion > currentVersion {
+					currentVersion = p.MajorVersion
+				}
+			}
+		}
+		for _, d := range hist.DataSources {
+			for _, p := range d.Past {
+				if p.MajorVersion > currentVersion {
+					currentVersion = p.MajorVersion
+				}
+			}
+		}
+	}
+
 	for tfToken, computed := range providerInfo.Resources {
-		aliasResource(hist.Resources, computed, tfToken, remaps)
+		aliasResource(hist.Resources, computed, tfToken, remaps, currentVersion)
 	}
 
 	for tfToken, computed := range providerInfo.DataSources {
-		aliasDataSource(hist.DataSources, computed, tfToken, remaps)
+		aliasDataSource(hist.DataSources, computed, tfToken, remaps, currentVersion)
 	}
 
 	for _, r := range *remaps {
@@ -524,6 +551,7 @@ func aliasResource(
 	computed *b.ResourceInfo,
 	tfToken string,
 	remaps *[]func(*b.ProviderInfo),
+	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
@@ -538,13 +566,16 @@ func aliasResource(
 		// It's in history, but something has changed. Update the history to reflect
 		// the new reality, then add aliases.
 		*remaps = append(*remaps, func(p *b.ProviderInfo) {
-			aliasOrRenameResource(p, tfToken, prev)
+			aliasOrRenameResource(p, tfToken, prev, version)
 		})
 
 	}
 }
 
-func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type]) {
+func aliasOrRenameResource(
+	p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type],
+	currentVersion int,
+) {
 	// re-fetch the resource, to make sure we have the right pointer.
 	res, ok := p.Resources[tfToken]
 	if !ok {
@@ -563,13 +594,15 @@ func aliasOrRenameResource(p *b.ProviderInfo, tfToken string, hist *tokenHistory
 	}
 	if !alreadyPresent {
 		hist.Past = append(hist.Past, alias[tokens.Type]{
-			Name:      hist.Current,
-			InCodegen: true,
+			Name:         hist.Current,
+			InCodegen:    true,
+			MajorVersion: currentVersion,
 		})
 	}
 	for _, a := range hist.Past {
 		legacy := a.Name
-		if a.InCodegen {
+		// Only respect hard aliases introduced in the same major version
+		if a.InCodegen && a.MajorVersion == currentVersion {
 			p.RenameResourceWithAlias(tfToken, legacy,
 				res.Tok, legacy.Module().Name().String(),
 				res.Tok.Module().Name().String(), res)
@@ -586,6 +619,7 @@ func aliasDataSource(
 	computed *b.DataSourceInfo,
 	tfToken string,
 	remaps *[]func(*b.ProviderInfo),
+	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
@@ -595,11 +629,12 @@ func aliasDataSource(
 			Current: computed.Tok,
 		}
 	} else if prev.Current != computed.Tok {
-		aliasOrRenameDataSource(tfToken, remaps, prev)
+		aliasOrRenameDataSource(tfToken, remaps, prev, version)
 	}
 }
 
-func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember]) {
+func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember],
+	currentVersion int) {
 	// It's in history, but something has changed. Update the history to reflect
 	// the new reality, then add aliases.
 	*remaps = append(*remaps, func(p *b.ProviderInfo) {
@@ -611,10 +646,14 @@ func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), pr
 			return
 		}
 		alias := alias[tokens.ModuleMember]{
-			Name: prev.Current,
+			Name:         prev.Current,
+			MajorVersion: currentVersion,
 		}
 		prev.Past = append(prev.Past, alias)
 		for _, a := range prev.Past {
+			if a.MajorVersion != currentVersion {
+				continue
+			}
 			legacy := a.Name
 			p.RenameDataSource(tfToken, legacy,
 				computed.Tok, legacy.Module().Name().String(),

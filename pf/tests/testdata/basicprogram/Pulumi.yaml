@@ -94,6 +94,22 @@ resources:
       tuplesOptionals:
         - { t0: false, t1: "no" }
         - { t0: true, t1: "yes"}
+  setElementAttrRes:
+    type: testbridge:index:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      setOptionals:
+        - "hi"
+        - "bye"
+  setElementRevAttrRes:
+    type: testbridge:index:Testres
+    properties:
+      statedir: state
+      requiredInputString: "x"
+      setOptionals:
+        - "bye"
+        - "hi"
 
 outputs:
 
@@ -159,3 +175,7 @@ outputs:
   tupleElementAttrRes__expected:
     - { t0: false, t1: "no" }
     - { t0: true, t1: "yes"}
+  setElementAttrRes__actual: ${setElementAttrRes.setOptionals}
+  setElementAttrRes__expected: [ "hi", "bye" ]
+  setElementRevAttrRes__actual: ${setElementRevAttrRes.setOptionals}
+  setElementRevAttrRes__expected: [ "bye", "hi" ]

@@ -98,7 +98,7 @@ func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.
 			}
 			return priorStateValue, nil
 		default:
-			return nil, fmt.Errorf("impossible")
+			return nil, fmt.Errorf("joinOpts.Reconcile: impossible pathType case %v on diff=%v", pathType, diff)
 		}
 	}
 
@@ -148,6 +148,7 @@ const (
 	pathToReadOnlyAttribute         pathType = 4
 	pathToComputedOptionalAttribute pathType = 5
 	pathToNestedObject              pathType = 6
+	pathToMisc                      pathType = 7
 )
 
 func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
@@ -157,6 +158,9 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	lookupResult, err := LookupTerraformPath(schema, path)
 	if err != nil {
 		return pathUnknown, err
+	}
+	if lookupResult.IsMisc {
+		return pathToMisc, nil
 	}
 	attr := lookupResult.Attr
 	switch {
@@ -177,16 +181,25 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	}
 }
 
-// Searches for non-erroring getPathType starting from path and upward (..).
+// An example use case for this utlility is given a path pointing to a Set element, find the Attr or Block that
+// corresponds to the Set collection itself, so that ProposedNew may pick the appropriate merge strategy.
+//
+// It starts from path and proceeds upward (path.WithoutLastStep()) to try to find the nearest enclosing Attr or Block.
+// It skips over pathToMisc and pathToNestedObject. May return pathToRoot.
 func getNearestEnclosingPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 	for {
 		ty, err := getPathType(schema, path)
 		if err != nil {
 			return pathUnknown, err
 		}
+
 		switch {
-		case ty == pathToNestedObject:
-			path = path.WithoutLastStep()
+		case ty == pathToNestedObject, ty == pathToMisc:
+			parentPath := path.WithoutLastStep()
+			if parentPath == nil {
+				return pathUnknown, fmt.Errorf("unexpected parentPath==nil with ty==%v", ty)
+			}
+			path = parentPath
 		default:
 			return ty, nil
 		}

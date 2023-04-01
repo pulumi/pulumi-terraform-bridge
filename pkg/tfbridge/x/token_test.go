@@ -379,6 +379,7 @@ func TestAliasing(t *testing.T) {
 	}, simple.Resources)
 
 	modules := provider()
+	modules.Version = "1.0.0"
 
 	knownModules := TokensKnownModules("pkg_", "",
 		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
@@ -422,6 +423,7 @@ func TestAliasing(t *testing.T) {
 	}, modules.Resources)
 
 	modules2 := provider()
+	modules2.Version = "1.0.0"
 
 	err = ComputeDefaults(modules2, knownModules)
 	require.NoError(t, err)
@@ -432,6 +434,42 @@ func TestAliasing(t *testing.T) {
 	hist3 := md.Clone(metadata)
 	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
+
+	modules3 := provider()
+	modules3.Version = "100.0.0"
+
+	err = ComputeDefaults(modules3, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules3, metadata)
+	require.NoError(t, err)
+
+	// All hard aliases should be removed on a major version upgrade
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_mod1_r1": {
+			Tok:     "pkg:mod1/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+		},
+		"pkg_mod1_r2": {
+			Tok:     "pkg:mod1/r2:R2",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R2:Mod1R2")}},
+		},
+		"pkg_mod2_r1": {
+			Tok:     "pkg:mod2/r1:R1",
+			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
+		},
+	}, modules3.Resources)
+
+	// A provider with no version should assume the most recent major
+	// version in history – in this case, all aliases should be kept
+	modules4 := provider()
+
+	err = ComputeDefaults(modules4, knownModules)
+	require.NoError(t, err)
+
+	err = AutoAliasing(modules4, metadata)
+	require.NoError(t, err)
+	assert.Equal(t, modules.Resources, modules4.Resources)
 }
 
 type Provider struct {

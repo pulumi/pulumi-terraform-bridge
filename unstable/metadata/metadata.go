@@ -21,12 +21,10 @@ import (
 )
 
 // The underlying value of a metadata blob.
-type Data struct {
-	m map[string]json.RawMessage
-}
+type Data struct{ m map[string]*json.RawMessage }
 
 func New(data []byte) (*Data, error) {
-	m := map[string]json.RawMessage{}
+	m := map[string]*json.RawMessage{}
 	if len(data) > 0 {
 		err := json.Unmarshal(data, &m)
 		if err != nil {
@@ -38,7 +36,7 @@ func New(data []byte) (*Data, error) {
 
 func (d *Data) Marshal() []byte {
 	if d == nil {
-		d = &Data{m: make(map[string]json.RawMessage)}
+		d = &Data{m: make(map[string]*json.RawMessage)}
 	}
 	bytes, err := json.MarshalIndent(d.m, "", "    ")
 	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
@@ -60,7 +58,8 @@ func Set(d *Data, key string, value any) error {
 	if err != nil {
 		return err
 	}
-	d.m[key] = data
+	msg := json.RawMessage(data)
+	d.m[key] = &msg
 	return nil
 }
 
@@ -70,7 +69,7 @@ func Get[T any](d *Data, key string) (T, bool, error) {
 	if !ok {
 		return t, false, nil
 	}
-	err := json.Unmarshal(data, &t)
+	err := json.Unmarshal(*data, &t)
 	return t, true, err
 }
 
@@ -78,10 +77,10 @@ func Clone(data *Data) *Data {
 	if data == nil {
 		return nil
 	}
-	m := make(map[string]json.RawMessage, len(data.m))
+	m := make(map[string]*json.RawMessage, len(data.m))
 	for k, v := range data.m {
-		dst := make(json.RawMessage, len(v))
-		n := copy(dst, v)
+		dst := make(json.RawMessage, len(*v))
+		n := copy(dst, *v)
 		// According to the documentation for `copy`:
 		//
 		//   Copy returns the number of elements copied, which will be the minimum
@@ -89,8 +88,8 @@ func Clone(data *Data) *Data {
 		//
 		// Since `len(src)` is `len(dst)`, and `copy` cannot copy more bytes the
 		// its source, we know that `n == len(v)`.
-		contract.Assertf(n == len(v), "failed to perform full copy")
-		m[k] = dst
+		contract.Assertf(n == len(*v), "failed to perform full copy")
+		m[k] = &dst
 	}
 	return &Data{m}
 

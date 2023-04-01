@@ -12,24 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridgetests
+package tfbridge
 
 import (
-	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
-	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
-	require.NoError(t, err)
-	return plugin.NewProviderServer(p)
+func TestSetAutoNamingDoesNotPanic(t *testing.T) {
+	prov := tfbridge.ProviderInfo{
+		P: nil,
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"x": {},
+		},
+	}
+	prov.SetAutonaming(255, "-")
 }
