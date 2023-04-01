@@ -55,7 +55,7 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 				servers = append(servers, muxer.Endpoint{Server: f})
 			}
 
-			muxer.Main{
+			return muxer.Main{
 				Schema:          string(pulumiSchema),
 				ComputedMapping: mapping,
 				Servers:         servers,
