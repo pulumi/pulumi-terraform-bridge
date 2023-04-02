@@ -529,10 +529,10 @@ func (m *MarshallableElem) Unmarshal() interface{} {
 		return nil
 	case m.Schema != nil:
 		return m.Schema.Unmarshal()
-	case m.Resource != nil:
-		return m.Resource.Unmarshal()
 	default:
-		return nil
+		// m.Resource might be nil in which case it was empty when marshalled. But Unmarshal can be called on
+		// nil and returns something sensible.
+		return m.Resource.Unmarshal()
 	}
 }
 
