@@ -15,26 +15,25 @@
 package tfbridge
 
 import (
+	"errors"
 	"fmt"
-
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func applyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
 	var paths []resource.PropertyPath
-	var errs multierror.Error
+	var errs []error
 	for i, p := range ignoreChanges {
 		pp, err := resource.ParsePropertyPath(p)
 		if err != nil {
-			errs.Errors = append(errs.Errors,
+			errs = append(errs,
 				fmt.Errorf("failed to parse property path %d: %s", i, p))
 			continue
 		}
 		paths = append(paths, pp)
 	}
-	if err := errs.ErrorOrNil(); err != nil {
+	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
 
@@ -81,13 +80,21 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 							p[1:]...), src, dst)
 				}
 			case src.IsObject() && dst.IsObject():
+				keys := map[string]struct{}{}
 				for k := range src.ObjectValue() {
+					keys[string(k)] = struct{}{}
+				}
+				for k := range dst.ObjectValue() {
+					keys[string(k)] = struct{}{}
+				}
+
+				for k := range keys {
 					if k == "*" {
 						objectHasGlobKey = true
 						continue
 					}
 					dst = applyIgnorePath(
-						append(resource.PropertyPath{string(k)},
+						append(resource.PropertyPath{k},
 							p[1:]...), src, dst)
 				}
 			}

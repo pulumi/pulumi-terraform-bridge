@@ -146,3 +146,26 @@ func TestIgnoreChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestIgnoreChangesCopiesEntries(t *testing.T) {
+	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+		"b": resource.NewStringProperty("B"),
+	})}
+	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+	})}
+	news2, err := applyIgnoreChanges(olds, news, []string{"k[*]"})
+	assert.NoError(t, err)
+	assert.Equal(t, olds, news2)
+}
+
+func TestIgnoreChangesRemovesEntries(t *testing.T) {
+	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{})}
+	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+	})}
+	news2, err := applyIgnoreChanges(olds, news, []string{"k.a"})
+	assert.NoError(t, err)
+	assert.Equal(t, olds, news2)
+}
