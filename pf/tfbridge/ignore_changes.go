@@ -100,6 +100,9 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 			return dst
 		}
 
+		vSrc, okSrc := src.ObjectValue()[resource.PropertyKey(part)]
+		vDst, okDst := dst.ObjectValue()[resource.PropertyKey(part)]
+
 		// If we are able to access the element in the destination path, but not
 		// the source path and this is the last element in the chain, this
 		// operates as a delete.
@@ -112,12 +115,9 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 		//
 		// Here we would delete "path" from `new`, propagating the absence from
 		// `old`.
-		if _, ok := dst.ObjectValue()[resource.PropertyKey(part)]; ok && len(p) == 1 {
-			_, ok := src.ObjectValue()[resource.PropertyKey(part)]
-			if !ok {
-				delete(dst.ObjectValue(), resource.PropertyKey(part))
-				return dst
-			}
+		if okDst && len(p) == 1 && !okSrc {
+			delete(dst.ObjectValue(), resource.PropertyKey(part))
+			return dst
 		}
 
 		// We need to handle the inverse of the above case, preserving old
@@ -128,23 +128,15 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 		//   new: { "other": 0 }
 		//
 		// Again we would need to add the `old["path"]` segment to `new`.
-		if vSrc, ok := src.ObjectValue()[resource.PropertyKey(part)]; ok && len(p) == 1 {
-			_, ok := dst.ObjectValue()[resource.PropertyKey(part)]
-			if !ok {
-				dst.ObjectValue()[resource.PropertyKey(part)] = vSrc
-				return dst
-			}
-		}
-
-		// If we are not able to access the relevant element in both maps, then
-		// the path is invalid and we don't apply it.
-		vSrc, ok := src.ObjectValue()[resource.PropertyKey(part)]
-		if !ok {
+		if okSrc && len(p) == 1 && !okDst {
+			dst.ObjectValue()[resource.PropertyKey(part)] = vSrc
 			return dst
 		}
 
-		vDst, ok := dst.ObjectValue()[resource.PropertyKey(part)]
-		if !ok {
+		// If we are not able to access the relevant element in both map, and we
+		// didn't hit any of the above special cases, then the path is invalid and
+		// we don't apply it.
+		if !okSrc || !okDst {
 			return dst
 		}
 
