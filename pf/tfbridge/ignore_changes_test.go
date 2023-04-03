@@ -117,6 +117,11 @@ func TestIgnoreChanges(t *testing.T) {
 			ignoreChanges: []string{"new"},
 			path:          "new",
 		},
+		{
+			notes:         "old elements are preserved if ignored",
+			ignoreChanges: []string{"old"},
+			path:          "old",
+		},
 	}
 
 	for _, c := range cases {

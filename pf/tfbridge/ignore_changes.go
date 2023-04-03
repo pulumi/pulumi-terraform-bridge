@@ -120,6 +120,22 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 			}
 		}
 
+		// We need to handle the inverse of the above case, preserving old
+		// elements when the new element is dropped. The example here would be
+		//
+		//   ignoreChanges: [ "path" ]
+		//   old: { "other": 0, "path": 42 }
+		//   new: { "other": 0 }
+		//
+		// Again we would need to add the `old["path"]` segment to `new`.
+		if vSrc, ok := src.ObjectValue()[resource.PropertyKey(part)]; ok && len(p) == 1 {
+			_, ok := dst.ObjectValue()[resource.PropertyKey(part)]
+			if !ok {
+				dst.ObjectValue()[resource.PropertyKey(part)] = vSrc
+				return dst
+			}
+		}
+
 		// If we are not able to access the relevant element in both maps, then
 		// the path is invalid and we don't apply it.
 		vSrc, ok := src.ObjectValue()[resource.PropertyKey(part)]
