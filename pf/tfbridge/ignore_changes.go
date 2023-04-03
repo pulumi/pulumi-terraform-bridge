@@ -100,6 +100,26 @@ func applyIgnorePath(p resource.PropertyPath, src, dst resource.PropertyValue) r
 			return dst
 		}
 
+		// If we are able to access the element in the destination path, but not
+		// the source path and this is the last element in the chain, this
+		// operates as a delete.
+		//
+		// Consider the example:
+		//
+		//   ignoreChanges: [ "path" ]
+		//   old: { "other": 0 }
+		//   new: { "other": 0, "path": 42 }
+		//
+		// Here we would delete "path" from `new`, propagating the absence from
+		// `old`.
+		if _, ok := dst.ObjectValue()[resource.PropertyKey(part)]; ok && len(p) == 1 {
+			_, ok := src.ObjectValue()[resource.PropertyKey(part)]
+			if !ok {
+				delete(dst.ObjectValue(), resource.PropertyKey(part))
+				return dst
+			}
+		}
+
 		// If we are not able to access the relevant element in both maps, then
 		// the path is invalid and we don't apply it.
 		vSrc, ok := src.ObjectValue()[resource.PropertyKey(part)]

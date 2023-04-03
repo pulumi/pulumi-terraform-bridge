@@ -36,7 +36,8 @@ func TestIgnoreChanges(t *testing.T) {
 				"foo": resource.NewStringProperty("0"),
 				"bar": resource.NewStringProperty("1"),
 			}),
-			"*": resource.NewNumberProperty(3.0),
+			"*":   resource.NewNumberProperty(3.0),
+			"old": resource.NewStringProperty("321"),
 		}
 	}
 
@@ -52,7 +53,8 @@ func TestIgnoreChanges(t *testing.T) {
 				"foo": resource.NewStringProperty("-0"),
 				"bar": resource.NewStringProperty("-1"),
 			}),
-			"*": resource.NewNumberProperty(-3.0),
+			"*":   resource.NewNumberProperty(-3.0),
+			"new": resource.NewStringProperty("123"),
 		}
 	}
 
@@ -110,6 +112,11 @@ func TestIgnoreChanges(t *testing.T) {
 			ignoreChanges: []string{"mapProp[*]"},
 			path:          "mapProp.foo",
 		},
+		{
+			notes:         "new elements are removed if ignored",
+			ignoreChanges: []string{"new"},
+			path:          "new",
+		},
 	}
 
 	for _, c := range cases {
@@ -122,11 +129,8 @@ func TestIgnoreChanges(t *testing.T) {
 			new, err = applyIgnoreChanges(old, new, c.ignoreChanges)
 			require.NoError(t, err)
 
-			prev, found := path.Get(resource.NewObjectProperty(old))
-			require.True(t, found)
-
-			value, found := path.Get(resource.NewObjectProperty(new))
-			require.True(t, found)
+			prev, _ := path.Get(resource.NewObjectProperty(old))
+			value, _ := path.Get(resource.NewObjectProperty(new))
 
 			if c.expectChange {
 				assert.NotEqual(t, prev, value)
