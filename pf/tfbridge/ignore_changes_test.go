@@ -17,205 +17,277 @@ package tfbridge
 import (
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestIgnoreChanges(t *testing.T) {
-	token := "my:res:Res"   //nolint:gosec
-	token2 := "my:res:Res2" //nolint:gosec
-
-	schema := &schema.PackageSpec{
-		Resources: map[string]schema.ResourceSpec{
-			token: {
-				InputProperties: map[string]schema.PropertySpec{
-					"topProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
-						},
-					},
-					"listProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "array",
-							Items: &schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-					"mapProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "object",
-							AdditionalProperties: &schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-					"refProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "object",
-							Ref:  "#/types/my:t:Typ",
-						},
-					},
-					"resourceProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "resource",
-							Ref:  "#/resources/" + token2,
-						},
-					},
-					// Emulate MaxItems=1 flattening problems.
-					"flatListProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "object",
-							Ref:  "#/types/my:t:Typ",
-						},
-					},
-				},
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Properties: map[string]schema.PropertySpec{
-						"outProp": {
-							TypeSpec: schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-				},
-			},
-			token2: {
-				InputProperties: map[string]schema.PropertySpec{
-					"fooProp": {
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
-						},
-					},
-				},
-			},
-		},
-		Types: map[string]schema.ComplexTypeSpec{
-			"my:t:Typ": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Properties: map[string]schema.PropertySpec{
-						"objProp": {
-							TypeSpec: schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-				},
-			},
-		},
+	old := func() resource.PropertyMap {
+		return resource.PropertyMap{
+			"topProp": resource.NewStringProperty("hi"),
+			"listProp": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("1"),
+				resource.NewStringProperty("10"),
+				resource.NewStringProperty("11"),
+			}),
+			"mapProp": resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("0"),
+				"bar": resource.NewStringProperty("1"),
+			}),
+			"*":   resource.NewNumberProperty(3.0),
+			"old": resource.NewStringProperty("321"),
+		}
 	}
 
-	cases := []ignoreChangesTestCase{
+	new := func() resource.PropertyMap {
+		return resource.PropertyMap{
+			"topProp": resource.NewStringProperty("bye"),
+			"listProp": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("-1"),
+				resource.NewStringProperty("-10"),
+				resource.NewStringProperty("-11"),
+			}),
+			"mapProp": resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("-0"),
+				"bar": resource.NewStringProperty("-1"),
+			}),
+			"*":   resource.NewNumberProperty(-3.0),
+			"new": resource.NewStringProperty("123"),
+		}
+	}
+
+	cases := []struct {
+		ignoreChanges []string
+		path          string
+		expectChange  bool
+		notes         string
+	}{
 		{
-			notes:           "no ignoreChanges means nothing is ignored",
-			ignoreChanges:   []string{},
-			path:            tftypes.NewAttributePath().WithAttributeName("top_prop"),
-			shouldNotIgnore: true,
-		},
-		{
-			notes:         "property is ignored recognizing TF/PU name style differences",
-			ignoreChanges: []string{"topProp"},
-			path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
+			notes:         "no ignoreChanges means nothing is ignored",
+			ignoreChanges: []string{},
+			path:          "topProp",
+			expectChange:  true,
 		},
 		{
 			notes:         "wildcard ignores everything",
 			ignoreChanges: []string{"*"},
-			path:          tftypes.NewAttributePath().WithAttributeName("top_prop"),
+			path:          "topProp",
 		},
 		{
 			notes:         "ignores work even if they only match a prefix of the path",
 			ignoreChanges: []string{"listProp"},
-			path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+			path:          "listProp[1]",
 		},
 		{
 			notes:         "known list element is ignored",
 			ignoreChanges: []string{"listProp[1]"},
-			path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+			path:          "listProp[1]",
 		},
 		{
-			notes:           "known list element is not ignored",
-			ignoreChanges:   []string{"listProp[2]"},
-			path:            tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
-			shouldNotIgnore: true,
+			notes:         "known list element is not ignored",
+			ignoreChanges: []string{"listProp[2]"},
+			path:          "listProp[1]",
+			expectChange:  true,
 		},
 		{
 			notes:         "any list element is ignored",
 			ignoreChanges: []string{"listProp[*]"},
-			path:          tftypes.NewAttributePath().WithAttributeName("list_prop").WithElementKeyInt(1),
+			path:          "listProp[1]",
 		},
 		{
 			notes:         "known map element is ignored",
 			ignoreChanges: []string{"mapProp.foo"},
-			path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+			path:          "mapProp.foo",
 		},
 		{
-			notes:           "known map element is not ignored",
-			ignoreChanges:   []string{"mapProp.bar"},
-			path:            tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
-			shouldNotIgnore: true,
+			notes:         "known map element is not ignored",
+			ignoreChanges: []string{"mapProp.bar"},
+			path:          "mapProp.foo",
+			expectChange:  true,
 		},
 		{
 			notes:         "any map element is ignored",
 			ignoreChanges: []string{"mapProp[*]"},
-			path:          tftypes.NewAttributePath().WithAttributeName("map_prop").WithElementKeyString("foo"),
+			path:          "mapProp.foo",
 		},
 		{
-			notes:           "output-only properties are not ignored",
-			ignoreChanges:   []string{"outProp"},
-			path:            tftypes.NewAttributePath().WithAttributeName("out_prop"),
-			shouldNotIgnore: true,
+			notes:         "new elements are removed if ignored",
+			ignoreChanges: []string{"new"},
+			path:          "new",
 		},
 		{
-			notes:         "named object properties are ignored",
-			ignoreChanges: []string{"refProp.objProp"},
-			path:          tftypes.NewAttributePath().WithAttributeName("ref_prop").WithAttributeName("obj_prop"),
-		},
-		{
-			notes:         "resource refs can be ignored (without recurring into the properties)",
-			ignoreChanges: []string{"resourceProp"},
-			path:          tftypes.NewAttributePath().WithAttributeName("resourceProp"),
-		},
-		{
-			notes:         "flattened maxitems=1 list paths can be ignored",
-			ignoreChanges: []string{"flatListProp.objProp"},
-			path: tftypes.NewAttributePath().WithAttributeName("flat_list_prop").
-				WithElementKeyInt(1).WithAttributeName("obj_prop"),
+			notes:         "old elements are preserved if ignored",
+			ignoreChanges: []string{"old"},
+			path:          "old",
 		},
 	}
 
 	for _, c := range cases {
-		ic, err := newIgnoreChanges(schema, tokens.Token(token), &testRenames{}, c.ignoreChanges)
-		require.NoError(t, err)
-		actual := ic.IsIgnored(c.path)
-		assert.Equalf(t, !c.shouldNotIgnore, actual, c.notes)
+		c := c
+		t.Run(c.path+":"+c.notes, func(t *testing.T) {
+			old, new := old(), new()
+			path, err := resource.ParsePropertyPath(c.path)
+			require.NoError(t, err)
+
+			new, err = applyIgnoreChanges(old, new, c.ignoreChanges)
+			require.NoError(t, err)
+
+			prev, _ := path.Get(resource.NewObjectProperty(old))
+			value, _ := path.Get(resource.NewObjectProperty(new))
+
+			if c.expectChange {
+				assert.NotEqual(t, prev, value)
+			} else {
+				assert.Equal(t, prev, value)
+
+			}
+		})
 	}
 }
 
-type ignoreChangesTestCase struct {
-	ignoreChanges   []string
-	path            *tftypes.AttributePath
-	shouldNotIgnore bool
-	notes           string
+func TestIgnoreChangesCopiesEntries(t *testing.T) {
+	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+		"b": resource.NewStringProperty("B"),
+	})}
+	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+	})}
+	news2, err := applyIgnoreChanges(olds, news, []string{"k[*]"})
+	assert.NoError(t, err)
+	assert.Equal(t, olds, news2)
 }
 
-// Use default name manglers.
-type testRenames struct{}
-
-func (*testRenames) PropertyKey(_ tokens.Token,
-	property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
-	return resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(property, nil, nil))
+func TestIgnoreChangesRemovesEntries(t *testing.T) {
+	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{})}
+	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
+		"a": resource.NewStringProperty("A"),
+	})}
+	news2, err := applyIgnoreChanges(olds, news, []string{"k.a"})
+	assert.NoError(t, err)
+	assert.Equal(t, olds, news2)
 }
 
-func (*testRenames) ConfigPropertyKey(property convert.TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(property, nil, nil))
-}
+func TestIgnoreChangesNestedGlob(t *testing.T) {
+	olds := resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v1"),
+					"m2": resource.NewStringProperty("v2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("v3"),
+					"m4": resource.NewStringProperty("v4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v5"),
+					"m5": resource.NewStringProperty("v6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v7"),
+					"m2": resource.NewStringProperty("v8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("v9"),
+					"m4": resource.NewStringProperty("v10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v11"),
+					"m5": resource.NewStringProperty("v12"),
+				}),
+			}),
+		}),
+	}
+	news := resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i1"),
+					"m2": resource.NewStringProperty("i2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i3"),
+					"m4": resource.NewStringProperty("i4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i5"),
+					"m5": resource.NewStringProperty("i6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i7"),
+					"m2": resource.NewStringProperty("i8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i9"),
+					"m4": resource.NewStringProperty("i10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i11"),
+					"m5": resource.NewStringProperty("i12"),
+				}),
+			}),
+		}),
+	}
 
-var _ convert.PropertyNames = (*testRenames)(nil)
+	path := `["*"]["not-glob"][1].m5`
+
+	news, err := applyIgnoreChanges(olds, news, []string{path})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i1"),
+					"m2": resource.NewStringProperty("i2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i3"),
+					"m4": resource.NewStringProperty("i4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i5"),
+					"m5": resource.NewStringProperty("v6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i7"),
+					"m2": resource.NewStringProperty("i8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i9"),
+					"m4": resource.NewStringProperty("i10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i11"),
+					"m5": resource.NewStringProperty("v12"),
+				}),
+			}),
+		}),
+	}, news)
+}
