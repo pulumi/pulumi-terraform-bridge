@@ -169,3 +169,125 @@ func TestIgnoreChangesRemovesEntries(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, olds, news2)
 }
+
+func TestIgnoreChangesNestedGlob(t *testing.T) {
+	olds := resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v1"),
+					"m2": resource.NewStringProperty("v2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("v3"),
+					"m4": resource.NewStringProperty("v4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v5"),
+					"m5": resource.NewStringProperty("v6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v7"),
+					"m2": resource.NewStringProperty("v8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("v9"),
+					"m4": resource.NewStringProperty("v10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("v11"),
+					"m5": resource.NewStringProperty("v12"),
+				}),
+			}),
+		}),
+	}
+	news := resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i1"),
+					"m2": resource.NewStringProperty("i2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i3"),
+					"m4": resource.NewStringProperty("i4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i5"),
+					"m5": resource.NewStringProperty("i6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i7"),
+					"m2": resource.NewStringProperty("i8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i9"),
+					"m4": resource.NewStringProperty("i10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i11"),
+					"m5": resource.NewStringProperty("i12"),
+				}),
+			}),
+		}),
+	}
+
+	path := `["*"]["not-glob"][1].m5`
+
+	news, err := applyIgnoreChanges(olds, news, []string{path})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"k1": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i1"),
+					"m2": resource.NewStringProperty("i2"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i3"),
+					"m4": resource.NewStringProperty("i4"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i5"),
+					"m5": resource.NewStringProperty("v6"),
+				}),
+			}),
+		}),
+		"k2": resource.NewObjectProperty(resource.PropertyMap{
+			"*": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i7"),
+					"m2": resource.NewStringProperty("i8"),
+				}),
+			}),
+			"not-glob": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m3": resource.NewStringProperty("i9"),
+					"m4": resource.NewStringProperty("i10"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"*":  resource.NewStringProperty("i11"),
+					"m5": resource.NewStringProperty("v12"),
+				}),
+			}),
+		}),
+	}, news)
+}
