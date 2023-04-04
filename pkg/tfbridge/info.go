@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -487,6 +488,9 @@ type MarshallableResource map[string]*MarshallableSchema
 // MarshalResource converts a Terraform resource schema into a MarshallableResource.
 func MarshalResource(r shim.Resource) MarshallableResource {
 	m := make(MarshallableResource)
+	if r.Schema() == nil {
+		return m
+	}
 	r.Schema().Range(func(k string, v shim.Schema) bool {
 		m[k] = MarshalSchema(v)
 		return true
@@ -507,6 +511,38 @@ func (m MarshallableResource) Unmarshal() shim.Resource {
 type MarshallableElem struct {
 	Schema   *MarshallableSchema  `json:"schema,omitempty"`
 	Resource MarshallableResource `json:"resource,omitempty"`
+}
+
+func (elem *MarshallableElem) UnmarshalJSON(data []byte) error {
+	var isNull bool
+	{
+		var x interface{}
+		if err := json.Unmarshal(data, &x); err != nil {
+			return err
+		}
+		if x == nil {
+			isNull = true
+		}
+	}
+	if isNull {
+		elem = nil
+		return nil
+	}
+	type t struct {
+		Schema   *MarshallableSchema   `json:"schema,omitempty"`
+		Resource *MarshallableResource `json:"resource"`
+	}
+	var tv t
+	if err := json.Unmarshal(data, &tv); err != nil {
+		return err
+	}
+	elem.Schema = tv.Schema
+	if tv.Resource == nil {
+		elem.Resource = make(MarshallableResource)
+	} else {
+		elem.Resource = *tv.Resource
+	}
+	return nil
 }
 
 // MarshalElem converts a Terraform schema's element field into a MarshallableElem.
