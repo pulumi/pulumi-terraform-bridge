@@ -487,6 +487,9 @@ type MarshallableResource map[string]*MarshallableSchema
 // MarshalResource converts a Terraform resource schema into a MarshallableResource.
 func MarshalResource(r shim.Resource) MarshallableResource {
 	m := make(MarshallableResource)
+	if r.Schema() == nil {
+		return m
+	}
 	r.Schema().Range(func(k string, v shim.Schema) bool {
 		m[k] = MarshalSchema(v)
 		return true
@@ -529,10 +532,10 @@ func (m *MarshallableElem) Unmarshal() interface{} {
 		return nil
 	case m.Schema != nil:
 		return m.Schema.Unmarshal()
-	case m.Resource != nil:
-		return m.Resource.Unmarshal()
 	default:
-		return nil
+		// m.Resource might be nil in which case it was empty when marshalled. But Unmarshal can be called on
+		// nil and returns something sensible.
+		return m.Resource.Unmarshal()
 	}
 }
 
