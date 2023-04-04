@@ -80,6 +80,7 @@ type opts struct {
 	muxWith []func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error)
 }
 
+// This is an experimental API.
 func MuxWith(s func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error)) Option {
 	return func(opts *opts) {
 		opts.muxWith = append(opts.muxWith, s)

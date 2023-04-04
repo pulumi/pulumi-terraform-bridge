@@ -81,9 +81,10 @@ import (
 //     `Mux` is replaced. If subsidiary servers where constructed with the same `host` as
 //     passed to `Mux`, then they will observe the new `host` spurred by `Attach`.
 //
-//   - GetMapping: TODO. GetMapping returns an opaque blob. It's not clear how to merge
-//     blobs. We might require that only one provider responds with a mapping, and just
-//     forward the first provider that responds.
+//   - GetMapping: TODO (https://github.com/pulumi/pulumi-terraform-bridge/issues/946)
+//     GetMapping returns an opaque blob. It's not clear how to merge blobs. We might
+//     require that only one provider responds with a mapping, and just forward the first
+//     provider that responds.
 type Main struct {
 	Servers []Endpoint
 
