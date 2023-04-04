@@ -109,6 +109,8 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 
 	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		for _, info := range infos {
+			info := info // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
+
 			// Add PF based servers to the runtime.
 			if info.PF != nil {
 				m.Servers = append(m.Servers, muxer.Endpoint{
