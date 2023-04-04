@@ -141,7 +141,7 @@ func TestMarshalElem(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		return meBack.Elem.Unmarshal()
+		return meBack.Unmarshal().Elem()
 	}
 
 	t.Run("nil", func(t *testing.T) {
