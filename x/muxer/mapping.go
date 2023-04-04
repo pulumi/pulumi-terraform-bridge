@@ -30,7 +30,8 @@ type ComputedMapping struct {
 }
 
 func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec, error) {
-	// TODO Insert sanity checks and return an error on conflicts.  For example right
+	// TODO Insert sanity checks and return an error on conflicts:
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/949 For example right
 	// now, if different schemas define the same type in different ways, which ever
 	// schema comes first dominates.
 

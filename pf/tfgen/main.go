@@ -77,6 +77,8 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
 //
+// This is an experimental API.
+//
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	ctx := context.Background()

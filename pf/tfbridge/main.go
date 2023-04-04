@@ -89,6 +89,8 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 }
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
+//
+// This is an experimental API.
 func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed) {
 	version := infos[0].GetInfo().Version
 	schema := string(meta.PackageSchema)
@@ -128,8 +130,9 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 }
 
 // A union of pf and sdk based ProviderInfo for use in MainWithMuxer.
-//
 // Exactly 1 field of this struct should hold a value
+//
+// This is an experimental API.
 type Muxed struct {
 	PF  *ProviderInfo
 	SDK *sdkBridge.ProviderInfo
