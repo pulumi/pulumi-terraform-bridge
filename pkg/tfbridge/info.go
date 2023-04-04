@@ -487,6 +487,9 @@ type MarshallableResource map[string]*MarshallableSchema
 // MarshalResource converts a Terraform resource schema into a MarshallableResource.
 func MarshalResource(r shim.Resource) MarshallableResource {
 	m := make(MarshallableResource)
+	if r.Schema() == nil {
+		return m
+	}
 	r.Schema().Range(func(k string, v shim.Schema) bool {
 		m[k] = MarshalSchema(v)
 		return true
