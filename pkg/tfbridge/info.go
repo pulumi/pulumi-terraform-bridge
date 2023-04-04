@@ -513,7 +513,7 @@ type MarshallableElem struct {
 	Resource MarshallableResource `json:"resource,omitempty"`
 }
 
-func (elem *MarshallableElem) UnmarshalJSON(data []byte) error {
+func (m *MarshallableElem) UnmarshalJSON(data []byte) error {
 	var isNull bool
 	{
 		var x interface{}
@@ -525,7 +525,7 @@ func (elem *MarshallableElem) UnmarshalJSON(data []byte) error {
 		}
 	}
 	if isNull {
-		elem = nil
+		m = nil
 		return nil
 	}
 	type t struct {
@@ -536,11 +536,11 @@ func (elem *MarshallableElem) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &tv); err != nil {
 		return err
 	}
-	elem.Schema = tv.Schema
+	m.Schema = tv.Schema
 	if tv.Resource == nil {
-		elem.Resource = make(MarshallableResource)
+		m.Resource = make(MarshallableResource)
 	} else {
-		elem.Resource = *tv.Resource
+		m.Resource = *tv.Resource
 	}
 	return nil
 }
