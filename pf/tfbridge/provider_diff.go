@@ -46,6 +46,11 @@ func (p *provider) DiffWithContext(
 ) (plugin.DiffResult, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
+	checkedInputs, err := applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	if err != nil {
+		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
+	}
+
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return plugin.DiffResult{}, err
@@ -96,17 +101,12 @@ func (p *provider) DiffWithContext(
 
 	renames := convert.NewTypeLocalPropertyNames(p.propertyNames, tokens.Token(rh.token))
 
-	ignores, err := newIgnoreChanges(&p.packageSpec, tokens.Token(rh.token), p.propertyNames, ignoreChanges)
+	replaceKeys, err := diffPathsToPropertyKeySet(renames, planResp.RequiresReplace)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	replaceKeys, err := diffPathsToPropertyKeySet(ignores, renames, planResp.RequiresReplace)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	changedKeys, err := diffChangedKeys(ignores, renames, tfDiff)
+	changedKeys, err := diffChangedKeys(renames, tfDiff)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -140,18 +140,14 @@ func (p *provider) DiffWithContext(
 
 // Every entry in tfDiff has an AttributePath; extract the set of paths and find their roots.
 func diffChangedKeys(
-	ignores *ignoreChanges,
 	renames convert.LocalPropertyNames,
 	tfDiff []tftypes.ValueDiff,
 ) ([]resource.PropertyKey, error) {
 	paths := []*tftypes.AttributePath{}
 	for _, diff := range tfDiff {
-		if ignores.IsIgnored(diff.Path) {
-			continue
-		}
 		paths = append(paths, diff.Path)
 	}
-	return diffPathsToPropertyKeySet(ignores, renames, paths)
+	return diffPathsToPropertyKeySet(renames, paths)
 }
 
 // Convert AttributeName to PropertyKey. Currently assume property names are identical in Pulumi and TF worlds.
@@ -182,15 +178,11 @@ func diffPathToPropertyKey(
 
 // Computes diffPathToPropertyKey for every path and gathers root property keys into a set.
 func diffPathsToPropertyKeySet(
-	ignores *ignoreChanges,
 	renames convert.LocalPropertyNames,
 	paths []*tftypes.AttributePath,
 ) ([]resource.PropertyKey, error) {
 	keySet := map[resource.PropertyKey]struct{}{}
 	for _, path := range paths {
-		if ignores.IsIgnored(path) {
-			continue
-		}
 		key, err := diffPathToPropertyKey(renames, path)
 		if err != nil {
 			return nil, err
