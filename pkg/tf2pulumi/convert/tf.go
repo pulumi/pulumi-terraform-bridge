@@ -2,15 +2,19 @@ package convert
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	version "github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/hashicorp/terraform-svchost/disco"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -18,7 +22,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/terraform/pkg/addrs"
 	"github.com/pulumi/terraform/pkg/configs"
+	"github.com/pulumi/terraform/pkg/getmodules"
+	"github.com/pulumi/terraform/pkg/registry"
+	"github.com/pulumi/terraform/pkg/registry/regsrc"
 	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -64,6 +72,8 @@ func convertCtyType(typ cty.Type) string {
 		attributes := []string{}
 		for _, attributeKey := range attributeKeys {
 			attributeType := attributeTypes[attributeKey]
+			// rename the attribute keys to match pulumi style (camelCase)
+			attributeKey = camelCaseName(attributeKey)
 			attributes = append(attributes, fmt.Sprintf("%s=%s", attributeKey, convertCtyType(attributeType)))
 		}
 
@@ -917,8 +927,10 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
 				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
 			} else {
-				// This will be an object key or an undeclared variable, just return those as is
-				newTraversal = append(newTraversal, traversal...)
+				// This will be an object key or an undeclared variable, try our best to rename those to match
+				// pulumi style (i.e. camelCase)
+				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: camelCaseName(root.Name)})
+				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
 			}
 		}
 	} else if attr, ok := traversal[0].(hcl.TraverseAttr); ok {
@@ -1565,10 +1577,18 @@ func convertManagedResources(sources map[string][]byte,
 func convertModuleCall(
 	sources map[string][]byte,
 	scopes *scopes,
+	modules map[addrs.ModuleSource]string,
 	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
-	// We translate managedResources into resources
+	// We translate module calls into components
 	pulumiName := scopes.roots["module."+moduleCall.Name]
-	labels := []string{pulumiName, moduleCall.SourceAddrRaw}
+
+	// Get the local component path from the module source
+	modulePath, has := modules[moduleCall.SourceAddr]
+	if !has {
+		// This is a genuine system panic, we shoudn't ever hit this.
+		panic("module not found")
+	}
+	labels := []string{pulumiName, modulePath}
 	block := hclwrite.NewBlock("component", labels)
 	blockBody := block.Body()
 
@@ -1905,10 +1925,68 @@ func (items terraformItems) Less(i, j int) bool {
 	}
 }
 
-func translateModuleInternal(source afero.Fs,
-	destination afero.Fs, info il.ProviderInfoSource, directory string) hcl.Diagnostics {
+func translateRemoteModule(
+	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
+	packageAddr string, // The address of the remote terraform module to translate.
+	packageSubdir string,
+	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
+	destinationDirectory string, // A path in destination to write the translated code to.
+	info il.ProviderInfoSource) hcl.Diagnostics {
 
-	sources, module, moduleDiagnostics := loadConfigDir(source, directory)
+	fetcher := getmodules.NewPackageFetcher()
+	tempPath, err := os.MkdirTemp("", "pulumi-tf-registry")
+	if err != nil {
+		return hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Failed to create temporary directory",
+				Detail:   fmt.Sprintf("Failed to create temporary directory to download module: %v", err),
+			},
+		}
+	}
+	instPath := filepath.Join(tempPath, "src")
+
+	err = fetcher.FetchPackage(context.TODO(), instPath, packageAddr)
+	if err != nil {
+		return hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Failed to download module",
+				Detail:   fmt.Sprintf("Failed to download module: %v", err),
+			},
+		}
+	}
+
+	modDir, err := getmodules.ExpandSubdirGlobs(instPath, packageSubdir)
+	if err != nil {
+		return hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Failed to expand module subdirectory",
+				Detail:   fmt.Sprintf("Failed to expand module subdirectory: %v", err),
+			},
+		}
+	}
+
+	sourceRoot := afero.NewBasePathFs(afero.NewOsFs(), modDir)
+
+	return translateModuleSourceCode(
+		modules,
+		sourceRoot, "/",
+		destinationRoot, destinationDirectory,
+		info,
+	)
+}
+
+func translateModuleSourceCode(
+	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
+	sourceRoot afero.Fs, // The root of the source terraform package.
+	sourceDirectory string, // The path in sourceRoot to the source terraform module.
+	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
+	destinationDirectory string, // A path in destination to write the translated code to.
+	info il.ProviderInfoSource) hcl.Diagnostics {
+
+	sources, module, moduleDiagnostics := loadConfigDir(sourceRoot, sourceDirectory)
 	if moduleDiagnostics.HasErrors() {
 		// No syntax.Files to return here because we're relying on terraform to load and parse, means no
 		// source context gets printed with warnings/errors here.
@@ -1971,10 +2049,181 @@ func translateModuleInternal(source afero.Fs,
 		if item.moduleCall != nil {
 			moduleCall := item.moduleCall
 			scopes.getOrAddPulumiName("module."+moduleCall.Name, "", "Component")
-			modulePath := filepath.Join(directory, moduleCall.SourceAddrRaw)
-			moduleDiags := translateModuleInternal(source, destination, info, modulePath)
-			if moduleDiags.HasErrors() {
-				return moduleDiags
+
+			// First things first, check if this module has been seen before. If it has, we don't need to translate it again.
+			if _, has := modules[moduleCall.SourceAddr]; !has {
+				// We need the source code for this module. But it might be a reference to a module from the
+				// registry (e.g. "terraform-aws-modules/s3-bucket/aws")
+
+				addr := moduleCall.SourceAddr
+				switch addr := addr.(type) {
+				case addrs.ModuleSourceLocal:
+					// Local modules are the simplest case, the module is in the same package just at a
+					// different path.
+					sourcePath := addr.String()
+					destinationPath := filepath.Join(destinationDirectory, sourcePath)
+					// Check that this path isn't already taken
+					for _, path := range modules {
+						if path == destinationPath {
+							// We ought to do better than this, and try and find a uniuqe path but just
+							// erroring for now is fine.
+							return hcl.Diagnostics{
+								&hcl.Diagnostic{
+									Severity: hcl.DiagError,
+									Summary:  "Duplicate module path",
+									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+								},
+							}
+						}
+					}
+					// destinationPath will always be rooted, but we want these paths to show as relative in the .pp files
+					modules[addr] = "." + destinationPath
+
+					diags := translateModuleSourceCode(
+						modules,
+						sourceRoot,
+						sourcePath,
+						destinationRoot,
+						destinationPath,
+						info)
+					if diags.HasErrors() {
+						return diags
+					}
+
+				case addrs.ModuleSourceRemote:
+					// Get the _name_ of this module, which is the last part of the path
+					moduleName := filepath.Base(addr.String())
+					destinationPath := filepath.Join(destinationDirectory, moduleName)
+					// Check that this path isn't already taken
+					for _, path := range modules {
+						if path == destinationPath {
+							// We ought to do better than this, and try and find a uniuqe path but just
+							// erroring for now is fine.
+							return hcl.Diagnostics{
+								&hcl.Diagnostic{
+									Severity: hcl.DiagError,
+									Summary:  "Duplicate module path",
+									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+								},
+							}
+						}
+					}
+					modules[addr] = "." + destinationPath
+
+					diags := translateRemoteModule(
+						modules,
+						addr.Package.String(),
+						addr.Subdir,
+						destinationRoot,
+						destinationPath,
+						info)
+					if diags.HasErrors() {
+						return diags
+					}
+
+				case addrs.ModuleSourceRegistry:
+					// Similar to ModuleSourceRemote but we have to use the registry client to get the go-getter address.
+					services := disco.NewWithCredentialsSource(nil)
+					reg := registry.NewClient(services, nil)
+					regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(addr.Package)
+					resp, err := reg.ModuleVersions(context.TODO(), regsrcAddr)
+					if err != nil {
+						return hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Error accessing remote module registry",
+								Detail:   fmt.Sprintf("Failed to retrieve available versions for %s: %s", addr, err),
+							},
+						}
+					}
+					modMeta := resp.Modules[0]
+					var latestVersion *version.Version
+					for _, mv := range modMeta.Versions {
+						v, err := version.NewVersion(mv.Version)
+						if err != nil {
+							return hcl.Diagnostics{
+								&hcl.Diagnostic{
+									Severity: hcl.DiagError,
+									Summary:  "Error accessing remote module registry",
+									Detail:   fmt.Sprintf("Failed to parse version %q for %s: %s", mv.Version, addr, err),
+								},
+							}
+						}
+						if v.Prerelease() != "" {
+							continue
+						}
+						if latestVersion == nil || v.GreaterThan(latestVersion) {
+							latestVersion = v
+						}
+					}
+
+					realAddrRaw, err := reg.ModuleLocation(context.TODO(), regsrcAddr, latestVersion.String())
+					if err != nil {
+						return hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Error accessing remote module registry",
+								Detail:   fmt.Sprintf("Failed to retrieve a download URL for %s %s: %s", addr, latestVersion, err),
+							},
+						}
+					}
+					realAddr, err := addrs.ParseModuleSource(realAddrRaw)
+					if err != nil {
+						return hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Invalid package location from module registry",
+								Detail:   fmt.Sprintf("Module registry returned invalid source location %q for %s %s: %s.", realAddrRaw, addr, latestVersion, err),
+							},
+						}
+					}
+					var remoteAddr addrs.ModuleSourceRemote
+					switch realAddr := realAddr.(type) {
+					// Only a remote source address is allowed here: a registry isn't
+					// allowed to return a local path (because it doesn't know what
+					// its being called from) and we also don't allow recursively pointing
+					// at another registry source for simplicity's sake.
+					case addrs.ModuleSourceRemote:
+						remoteAddr = realAddr
+					default:
+						return hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Invalid package location from module registry",
+								Detail:   fmt.Sprintf("Module registry returned invalid source location %q for %s %s: must be a direct remote package address.", realAddrRaw, addr, latestVersion),
+							},
+						}
+					}
+
+					destinationPath := filepath.Join(destinationDirectory, addr.Package.Name)
+					// Check that this path isn't already taken
+					for _, path := range modules {
+						if path == destinationPath {
+							// We ought to do better than this, and try and find a uniuqe path but just
+							// erroring for now is fine.
+							return hcl.Diagnostics{
+								&hcl.Diagnostic{
+									Severity: hcl.DiagError,
+									Summary:  "Duplicate module path",
+									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+								},
+							}
+						}
+					}
+					modules[addr] = "." + destinationPath
+
+					diags := translateRemoteModule(
+						modules,
+						remoteAddr.Package.String(),
+						remoteAddr.Subdir,
+						destinationRoot,
+						destinationPath,
+						info)
+
+					if diags.HasErrors() {
+						return diags
+					}
+				}
 			}
 		}
 	}
@@ -1991,7 +2240,7 @@ func translateModuleInternal(source afero.Fs,
 	for _, item := range items {
 		r := item.DeclRange()
 		path := changeExtension(r.Filename, ".pp")
-		path, err := filepath.Rel(directory, path)
+		path, err := filepath.Rel(sourceDirectory, path)
 		if err != nil {
 			panic("Rel should never fail")
 		}
@@ -2033,7 +2282,7 @@ func translateModuleInternal(source afero.Fs,
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
-			leading, block, trailing := convertModuleCall(sources, scopes, item.moduleCall)
+			leading, block, trailing := convertModuleCall(sources, scopes, modules, item.moduleCall)
 			body.AppendUnstructuredTokens(leading)
 			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
@@ -2058,9 +2307,9 @@ func translateModuleInternal(source afero.Fs,
 			}}
 		}
 
-		fullpath := filepath.Join(directory, key)
+		fullpath := filepath.Join(destinationDirectory, key)
 		keyDirectory := filepath.Dir(fullpath)
-		err = destination.MkdirAll(keyDirectory, 0755)
+		err = destinationRoot.MkdirAll(keyDirectory, 0755)
 		if err != nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -2070,7 +2319,7 @@ func translateModuleInternal(source afero.Fs,
 
 		// Reformat to canonical style
 		formatted := hclwrite.Format(buffer.Bytes())
-		err = afero.WriteFile(destination, fullpath, formatted, 0644)
+		err = afero.WriteFile(destinationRoot, fullpath, formatted, 0644)
 		if err != nil {
 			return hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -2082,7 +2331,8 @@ func translateModuleInternal(source afero.Fs,
 }
 
 func TranslateModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
-	return translateModuleInternal(source, destination, info, "/")
+	modules := make(map[addrs.ModuleSource]string)
+	return translateModuleSourceCode(modules, source, "/", destination, "/", info)
 }
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {

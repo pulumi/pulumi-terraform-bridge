@@ -1,8 +1,11 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"testing"
 
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -121,4 +124,68 @@ func TestConfigArrayValue(t *testing.T) {
 	assert.Equal(t, []string{"tangerine", "quince", "peach"}, ConfigArrayValue(testConf, "FRUIT_SALAD", testEnvs))
 	assert.Equal(t, []string(nil), ConfigArrayValue(testConf, "FRUIT_SALAD", emptyEnvs))
 	assert.Equal(t, []string(nil), ConfigArrayValue(testConf, "idontlikefruitsalad", emptyEnvs))
+}
+
+func TestMarshalElem(t *testing.T) {
+	turnaround := func(elem interface{}) interface{} {
+		me := MarshallableSchema{Elem: MarshalElem(elem)}
+		bytes, err := json.Marshal(me)
+		if err != nil {
+			panic(err)
+		}
+		t.Logf("me: %#v", me.Elem)
+		t.Logf("bytes: %s", string(bytes))
+		var meBack MarshallableSchema
+		err = json.Unmarshal(bytes, &meBack)
+		t.Logf("meBack: %#v", meBack.Elem)
+		if err != nil {
+			panic(err)
+		}
+		return meBack.Unmarshal().Elem()
+	}
+
+	t.Run("nil", func(t *testing.T) {
+		assert.Nil(t, turnaround(nil))
+	})
+
+	t.Run("emptySchema", func(t *testing.T) {
+		var emptySchema shim.Schema = (&shimschema.Schema{}).Shim()
+		actual := turnaround(emptySchema)
+		s, ok := actual.(shim.Schema)
+		assert.True(t, ok)
+		assert.Equal(t, emptySchema, s)
+	})
+
+	t.Run("simpleSchema", func(t *testing.T) {
+		var simpleSchema shim.Schema = (&shimschema.Schema{
+			Type: shim.TypeInt,
+		}).Shim()
+		actual := turnaround(simpleSchema)
+		s, ok := actual.(shim.Schema)
+		assert.True(t, ok)
+		assert.Equal(t, simpleSchema, s)
+	})
+
+	t.Run("emptyResource", func(t *testing.T) {
+		var emptyResource shim.Resource = (&shimschema.Resource{}).Shim()
+		actual := turnaround(emptyResource)
+		r, ok := actual.(shim.Resource)
+		assert.True(t, ok)
+		assert.Equal(t, 0, r.Schema().Len())
+	})
+
+	t.Run("simpleResource", func(t *testing.T) {
+		var simpleResource shim.Resource = (&shimschema.Resource{
+			SchemaVersion: 1,
+			Schema: (&shimschema.SchemaMap{
+				"k": (&shimschema.Schema{
+					Type: shim.TypeInt,
+				}).Shim(),
+			}),
+		}).Shim()
+		actual := turnaround(simpleResource)
+		r, ok := actual.(shim.Resource)
+		assert.True(t, ok)
+		assert.Equal(t, shim.TypeInt, r.Schema().Get("k").Type())
+	})
 }
