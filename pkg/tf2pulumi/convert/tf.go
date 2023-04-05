@@ -1576,6 +1576,7 @@ func convertModuleCall(
 	sources map[string][]byte,
 	scopes *scopes,
 	modules map[addrs.ModuleSource]string,
+	destinationDirectory string,
 	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	// We translate module calls into components
 	pulumiName := scopes.roots["module."+moduleCall.Name]
@@ -1586,7 +1587,20 @@ func convertModuleCall(
 		// This is a genuine system panic, we shoudn't ever hit this.
 		panic("module not found")
 	}
-	labels := []string{pulumiName, modulePath}
+	// modulePath will always be rooted, but we want these paths to show as relative in the .pp files so we
+	// need the relative path from the current destination directory
+	relPath, err := filepath.Rel(destinationDirectory, modulePath)
+	if err != nil {
+		// This is a genuine system panic, we shoudn't ever hit this because we made the modulePaths relative
+		// to destinationDirectory earlier.
+		panic(fmt.Sprintf("failed to get relative path from %s to %s: %v", destinationDirectory, modulePath, err))
+	}
+
+	// Rel will have cleaned the path, but we want to preserve the ./ prefix (unless it's already got a ../ prefix)
+	if !strings.HasPrefix(relPath, "../") {
+		relPath = "./" + relPath
+	}
+	labels := []string{pulumiName, relPath}
 	block := hclwrite.NewBlock("component", labels)
 	blockBody := block.Body()
 
@@ -2058,8 +2072,8 @@ func translateModuleSourceCode(
 				case addrs.ModuleSourceLocal:
 					// Local modules are the simplest case, the module is in the same package just at a
 					// different path.
-					sourcePath := addr.String()
-					destinationPath := filepath.Join(destinationDirectory, sourcePath)
+					sourcePath := filepath.Join(sourceDirectory, addr.String())
+					destinationPath := filepath.Join(destinationDirectory, addr.String())
 					// Check that this path isn't already taken
 					for _, path := range modules {
 						if path == destinationPath {
@@ -2074,8 +2088,7 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					// destinationPath will always be rooted, but we want these paths to show as relative in the .pp files
-					modules[addr] = "." + destinationPath
+					modules[addr] = destinationPath
 
 					diags := translateModuleSourceCode(
 						modules,
@@ -2106,7 +2119,7 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					modules[addr] = "." + destinationPath
+					modules[addr] = destinationPath
 
 					diags := translateRemoteModule(
 						modules,
@@ -2171,11 +2184,9 @@ func translateModuleSourceCode(
 							&hcl.Diagnostic{
 								Severity: hcl.DiagError,
 								Summary:  "Invalid package location from module registry",
-								Detail: fmt.Sprintf("Module registry returned invalid source location %q for %s %s: %s.",
-									realAddrRaw,
-									addr,
-									latestVersion,
-									err),
+								Detail: fmt.Sprintf(
+									"Module registry returned invalid source location %q for %s %s: %s.",
+									realAddrRaw, addr, latestVersion, err),
 							},
 						}
 					}
@@ -2192,11 +2203,10 @@ func translateModuleSourceCode(
 							&hcl.Diagnostic{
 								Severity: hcl.DiagError,
 								Summary:  "Invalid package location from module registry",
-								Detail: fmt.Sprintf("Module registry returned invalid source location %q for %s %s: "+
-									"must be a direct remote package address.",
-									realAddrRaw,
-									addr,
-									latestVersion),
+								Detail: fmt.Sprintf(
+									"Module registry returned invalid source location %q for %s %s: "+
+										"must be a direct remote package address.",
+									realAddrRaw, addr, latestVersion),
 							},
 						}
 					}
@@ -2216,7 +2226,7 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					modules[addr] = "." + destinationPath
+					modules[addr] = destinationPath
 
 					diags := translateRemoteModule(
 						modules,
@@ -2288,7 +2298,7 @@ func translateModuleSourceCode(
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
-			leading, block, trailing := convertModuleCall(sources, scopes, modules, item.moduleCall)
+			leading, block, trailing := convertModuleCall(sources, scopes, modules, destinationDirectory, item.moduleCall)
 			body.AppendUnstructuredTokens(leading)
 			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
