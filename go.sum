@@ -1674,10 +1674,10 @@ github.com/pulumi/pulumi-java/pkg v0.9.0 h1:8KQG7AJVtVBoPE3+Psmhv/lvGHI8RL3/E5uT
 github.com/pulumi/pulumi-java/pkg v0.9.0/go.mod h1:eHpNTbf4n5X3YvqoDI/+cbVIkQaycBFdsvQb/24ykpc=
 github.com/pulumi/pulumi-yaml v1.0.4 h1:p+989rW3AqkkxbzxtxccHKAN4xCJi3K2cRpvA2K84tw=
 github.com/pulumi/pulumi-yaml v1.0.4/go.mod h1:Szj8ud4Vqyq3oO1n3kzIUfaP3AiCjYZM4FYjOVWwJn8=
-github.com/pulumi/pulumi/pkg/v3 v3.61.0 h1:lMXIwEvJydRwjz/iONi/+dLhaPSJNumIzF2E0BtqCpE=
-github.com/pulumi/pulumi/pkg/v3 v3.61.0/go.mod h1:c60kwAAaxCz/1bmJyzkuuNjc31ME/ESaJ41hNhbVhr8=
-github.com/pulumi/pulumi/sdk/v3 v3.61.0 h1:9TyuMU8IdJiVwtsoMP4U8BqKEArGLKfvC72VEwG3XZ0=
-github.com/pulumi/pulumi/sdk/v3 v3.61.0/go.mod h1:Pb5H3OaRZg0n4TRIfY0pagR/NBIEvjp3lZe2Spr6Umc=
+github.com/pulumi/pulumi/pkg/v3 v3.61.1-0.20230405145130-eb6063360025 h1:T5SjBSoTav1c93UVq28ywNldKD87pNDH3k+ha1U6aZM=
+github.com/pulumi/pulumi/pkg/v3 v3.61.1-0.20230405145130-eb6063360025/go.mod h1:tAK3JYYTeoTq/KcDKwAF344TJh9rzikd2ZXJaivDLyo=
+github.com/pulumi/pulumi/sdk/v3 v3.61.1-0.20230405145130-eb6063360025 h1:tlknhg5ZMD+IbrCQwoFe3Klw9GnzLlahjJ40Nd4YVd4=
+github.com/pulumi/pulumi/sdk/v3 v3.61.1-0.20230405145130-eb6063360025/go.mod h1:Pb5H3OaRZg0n4TRIfY0pagR/NBIEvjp3lZe2Spr6Umc=
 github.com/pulumi/schema-tools v0.1.2 h1:Fd9xvUjgck4NA+7/jSk7InqCUT4Kj940+EcnbQKpfZo=
 github.com/pulumi/schema-tools v0.1.2/go.mod h1:62lgj52Tzq11eqWTIaKd+EVyYAu5dEcDJxMhTjvMO/k=
 github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9 h1:VHeasqoSdMgpxw8Rx46TybHixfnBlCk0i0JLDusNn4Y=
