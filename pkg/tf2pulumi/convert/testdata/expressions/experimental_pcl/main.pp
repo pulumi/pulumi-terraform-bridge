@@ -45,14 +45,14 @@ output "dynamicIndexOut" {
 }
 output "complexObjectOut" {
   value = {
-    a_tuple = ["a", "b", "c"]
-    an_object = {
-      literal_key               = 1
-      another_literal_key       = 2
+    aTuple = ["a", "b", "c"]
+    anObject = {
+      literalKey                = 1
+      anotherLiteralKey         = 2
       "yet_another_literal_key" = aValue
       (aKey)                    = 4
     }
-    ambiguous_for = {
+    ambiguousFor = {
       "for" = 1
     }
   }

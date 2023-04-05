@@ -917,8 +917,10 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
 				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
 			} else {
-				// This will be an object key or an undeclared variable, just return those as is
-				newTraversal = append(newTraversal, traversal...)
+				// This will be an object key or an undeclared variable, try our best to rename those to match
+				// pulumi style (i.e. camelCase)
+				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: camelCaseName(root.Name)})
+				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
 			}
 		}
 	} else if attr, ok := traversal[0].(hcl.TraverseAttr); ok {
