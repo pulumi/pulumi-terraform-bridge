@@ -1269,8 +1269,50 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	// If we see blocks we turn those into lists (unless maxItems==1)
 	blockLists := make(map[string][]bodyAttrsTokens)
 	for _, block := range content.Blocks {
-		// TODO: We need to correctly handle dynamic blocks somehow.
 		if block.Type == "dynamic" {
+			eachVar := scopes.generateUniqueName("entry", "", "")
+			dynamicTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOBrack, "[")}
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "for"))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, eachVar))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "in"))
+			dynamicBody, ok := block.Body.(*hclsyntax.Body)
+			if !ok {
+				continue
+			}
+
+			forEachAttr, hasForEachAttr := dynamicBody.Attributes["for_each"]
+			if !hasForEachAttr {
+				continue
+			}
+
+			// wrap the collection expression into `entries(collection)` so that each entry has key and value
+			forEachExprTokens := convertExpression(sources, scopes, fullyQualifiedPath, forEachAttr.Expr)
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "entries"))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenOParen, "("))
+			dynamicTokens = append(dynamicTokens, forEachExprTokens...)
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCParen, ")"))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenColon, ":"))
+
+			bodyTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenIdent, "{}")}
+			attributeName := scopes.pulumiName(block.Labels[0])
+			for _, innerBlock := range dynamicBody.Blocks {
+				if innerBlock.Type == "content" {
+					scopes.push(map[string]string{
+						block.Labels[0]: eachVar,
+					})
+					contentBody := convertBody(sources, scopes, fullyQualifiedPath+"."+attributeName, innerBlock.Body)
+					bodyTokens = tokensForObject(contentBody)
+					scopes.pop()
+				}
+			}
+
+			dynamicTokens = append(dynamicTokens, bodyTokens...)
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCBrack, "]"))
+
+			newAttributes = append(newAttributes, bodyAttrTokens{
+				Name:  attributeName,
+				Value: dynamicTokens,
+			})
 			continue
 		}
 
