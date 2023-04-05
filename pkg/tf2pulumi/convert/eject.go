@@ -116,10 +116,10 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 		}
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load Terraform configuration, %v", err)
+		return nil, nil, fmt.Errorf("failed to convert Terraform configuration, %v", err)
 	}
 	if diags.HasErrors() {
-		return nil, nil, fmt.Errorf("failed to load Terraform configuration, %v", diags)
+		return nil, nil, fmt.Errorf("failed to convert Terraform configuration, %v", diags)
 	}
 
 	project := &workspace.Project{
