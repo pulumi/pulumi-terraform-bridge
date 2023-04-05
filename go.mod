@@ -3,23 +3,24 @@ module github.com/pulumi/pulumi-terraform-bridge/v3
 go 1.18
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/go-test/deep v1.0.3
 	github.com/golang/glog v1.0.0
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
-	github.com/hashicorp/go-getter v1.7.0
+	github.com/hashicorp/go-getter v1.7.1
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.6
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/hcl/v2 v2.16.1
+	github.com/hashicorp/hcl/v2 v2.16.2
 	github.com/hashicorp/hil v0.0.0-20190212132231-97b3a9cdfa93
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
@@ -33,7 +34,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi-java/pkg v0.8.0
+	github.com/pulumi/pulumi-java/pkg v0.9.0
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9
@@ -42,13 +43,13 @@ require (
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
-	github.com/zclconf/go-cty v1.12.1
+	github.com/zclconf/go-cty v1.13.1
 	golang.org/x/crypto v0.3.0
 	golang.org/x/mod v0.6.0
 	golang.org/x/net v0.7.0
 	golang.org/x/text v0.7.0
 	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.29.1
 )
 
 require (
@@ -59,6 +60,8 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 )
 
 require (
@@ -194,8 +197,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.59.0
-	github.com/pulumi/pulumi/sdk/v3 v3.59.0
+	github.com/pulumi/pulumi/pkg/v3 v3.61.1-0.20230405115251-80bc7fa662ee
+	github.com/pulumi/pulumi/sdk/v3 v3.61.1-0.20230405115251-80bc7fa662ee
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
