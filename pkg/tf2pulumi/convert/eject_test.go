@@ -155,7 +155,7 @@ func applyPragmas(src io.Reader, dst io.Writer, isExperimental bool) error {
 // It will use schemas from the testdata/schemas folder, and mappings from the testdata/mappings folder. The
 // resulting PCL will be checked against PCL written to a subfolder inside each test folder called "pcl".
 //
-// The .tf code for each test can also contain pragma comments, see the "applyPramgas" function for
+// The .tf code for each test can also contain pragma comments, see the "applyPragmas" function for
 // information about pragmas.
 //
 // These tests can also be run with PULUMI_EXPERIMENTAL=1, in which case the resulting pcl is checked against
