@@ -70,7 +70,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.61.1-0.20230405115251-80bc7fa662ee // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.61.0 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.61.1-0.20230405115251-80bc7fa662ee // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
