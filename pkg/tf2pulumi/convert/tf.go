@@ -1288,9 +1288,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, eachVar))
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "in"))
 			dynamicBody, ok := block.Body.(*hclsyntax.Body)
-			if !ok {
-				continue
-			}
+			contract.Assertf(ok, "%T was not a hclsyntax.Body", dynamicBody)
 
 			forEachAttr, hasForEachAttr := dynamicBody.Attributes["for_each"]
 			if !hasForEachAttr {
@@ -2173,7 +2171,11 @@ func translateModuleSourceCode(
 							&hcl.Diagnostic{
 								Severity: hcl.DiagError,
 								Summary:  "Invalid package location from module registry",
-								Detail:   fmt.Sprintf("Module registry returned invalid source location %q for %s %s: %s.", realAddrRaw, addr, latestVersion, err),
+								Detail: fmt.Sprintf("Module registry returned invalid source location %q for %s %s: %s.",
+									realAddrRaw,
+									addr,
+									latestVersion,
+									err),
 							},
 						}
 					}
@@ -2190,7 +2192,11 @@ func translateModuleSourceCode(
 							&hcl.Diagnostic{
 								Severity: hcl.DiagError,
 								Summary:  "Invalid package location from module registry",
-								Detail:   fmt.Sprintf("Module registry returned invalid source location %q for %s %s: must be a direct remote package address.", realAddrRaw, addr, latestVersion),
+								Detail: fmt.Sprintf("Module registry returned invalid source location %q for %s %s: "+
+									"must be a direct remote package address.",
+									realAddrRaw,
+									addr,
+									latestVersion),
 							},
 						}
 					}
