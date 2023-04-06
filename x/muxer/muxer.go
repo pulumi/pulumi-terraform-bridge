@@ -175,8 +175,32 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 	return &rpc.CheckResponse{
 		Inputs:   inputs,
 		Failures: failures,
-	}, errs.ErrorOrNil()
+	}, m.muxedErrors(&errs)
+}
 
+// Mux multiple error responces into a single error, preserving meaningful gRPC status
+// information embedded into the errors.
+func (m *muxer) muxedErrors(errs *multierror.Error) error {
+	unimplementedCount := 0
+	validErrors := multierror.Error{}
+
+	for _, err := range errs.Errors {
+		if status.Code(err) == codes.Unimplemented {
+			unimplementedCount++
+		} else {
+			validErrors.Errors = append(validErrors.Errors, err)
+		}
+	}
+	// If every server returned unimplemented, we need to return unimplemented
+	// too. This way actually unimplemeted calls won't error when the reach the
+	// engine.
+	if unimplementedCount == len(m.servers) {
+		return status.Error(codes.Unimplemented, errs.Error())
+	}
+
+	// Its OK for muxed calls to have some servers return unimplmeneted. We filter
+	// those errors out.
+	return validErrors.ErrorOrNil()
 }
 
 func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
@@ -250,7 +274,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 
 		HasDetailedDiff: hasDetailedDiff,
 		DetailedDiff:    detailedDiff,
-	}, errs.ErrorOrNil()
+	}, m.muxedErrors(errs)
 }
 
 func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
@@ -273,7 +297,7 @@ func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.
 		AcceptResources: true,
 		AcceptOutputs:   true,
 	}
-	errs := multierror.Error{}
+	errs := new(multierror.Error)
 	for _, r := range asyncJoin(subs) {
 		if r.B != nil {
 			errs.Errors = append(errs.Errors, r.B)
@@ -284,7 +308,7 @@ func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.
 		response.AcceptSecrets = response.AcceptSecrets && r.A.GetAcceptSecrets()
 		response.SupportsPreview = response.SupportsPreview && r.A.GetSupportsPreview()
 	}
-	return response, errs.ErrorOrNil()
+	return response, m.muxedErrors(errs)
 }
 
 type resourceRequest interface {
@@ -377,13 +401,13 @@ func (m *muxer) Cancel(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, e
 		s := s
 		subs[i] = func() error { _, err := s.Cancel(ctx, e); return err }
 	}
-	var errs multierror.Error
+	errs := new(multierror.Error)
 	for _, err := range asyncJoin(subs) {
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
 		}
 	}
-	return e, errs.ErrorOrNil()
+	return e, m.muxedErrors(errs)
 
 }
 
