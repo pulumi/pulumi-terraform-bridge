@@ -223,21 +223,24 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 			"Must provide a metadata store when muxing providers. See ProviderInfo.MetadataInfo")
 		err = metadata.Set(muxedInfo.GetMetadata(), "mux", mapping)
 		if err != nil {
-			return fmt.Errorf("Failed to save metadata: %w", err)
+			return fmt.Errorf("[pf/tfgen] Failed to set mux data in MetadataInfo: %w", err)
+		}
+
+		// In the muxing case precompute renames by merging them and set them to MetadataInfo, this will avoid
+		// recomputing the renames in GenerateFromSchema, it will write out the mergedRenames as-is.
+		mergedRenames := mergeRenames(pfRenames)
+		if err := metadata.Set(muxedInfo.GetMetadata(), "renames", mergedRenames); err != nil {
+			return fmt.Errorf("[pf/tfgen]: Failed to set renames data in MetadataInfo: %w", err)
 		}
 
 		// Having computed the schema, we now want to complete the tfgen process,
 		// reusing as much of the standard process as possible.
-
 		opts.ProviderInfo = muxedInfo
+
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}
-
-		// if err := writeRenames(mergeRenames(pfRenames), opts); err != nil {
-		// 	return err
-		// }
 
 		return g.GenerateFromSchema(schema)
 	}

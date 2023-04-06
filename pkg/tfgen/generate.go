@@ -1809,13 +1809,26 @@ func addRenamesToMetadataInfo(g *Generator) error {
 		return nil
 	}
 
-	renames, err := g.Renames()
+	var renames Renames
+
+	_, renamesAlreadySet, err := metadata.Get[Renames](g.info.MetadataInfo.Data, "renames")
+	if err != nil {
+		return fmt.Errorf("[pkg/tfgen] failed to retrieve renames from MetadataInfo: %w", err)
+	}
+
+	// Skip setting renames, for scenarios such as muxed providers that have them precomputed.
+	if renamesAlreadySet {
+		return nil
+	}
+
+	renames, err = g.Renames()
 	if err != nil {
 		return err
 	}
 
+	// Otherwise propagate renames computed in the generator to the metadata.
 	if err := metadata.Set(g.info.MetadataInfo.Data, "renames", renames); err != nil {
-		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
+		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo: %w", err)
 	}
 
 	return nil
