@@ -902,6 +902,9 @@ func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) er
 		}
 
 		if meta := g.info.MetadataInfo; meta != nil {
+			if err := addRenamesToMetadataInfo(g); err != nil {
+				return err
+			}
 			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
 		}
 	case PCL:
@@ -1799,4 +1802,21 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func addRenamesToMetadataInfo(g *Generator) error {
+	if g.info.MetadataInfo == nil {
+		return nil
+	}
+
+	renames, err := g.Renames()
+	if err != nil {
+		return err
+	}
+
+	if err := metadata.Set(g.info.MetadataInfo.Data, "renames", renames); err != nil {
+		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
+	}
+
+	return nil
 }

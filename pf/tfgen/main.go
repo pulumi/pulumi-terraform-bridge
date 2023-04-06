@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
@@ -46,6 +45,10 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 
 	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
 
+		if info.MetadataInfo == nil {
+			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
+		}
+
 		if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
 			return err
 		}
@@ -57,12 +60,6 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 
 		if err := g.Generate(); err != nil {
 			return err
-		}
-
-		if opts.Language == tfgen.Schema {
-			if err := addRenamesToMetadataInfo(g, info.ProviderInfo, opts); err != nil {
-				return err
-			}
 		}
 
 		return nil
@@ -231,29 +228,9 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 		if err := g.GenerateFromSchema(schema); err != nil {
 			return err
 		}
-		if err := addRenamesToMetadataInfo(g, muxedInfo, opts); err != nil {
-			return err
-		}
 
 		return nil
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
-}
-
-func addRenamesToMetadataInfo(g *tfgen.Generator, info tfbridge0.ProviderInfo, opts tfgen.GeneratorOptions) error {
-	renames, err := g.Renames()
-	if err != nil {
-		return err
-	}
-
-	if info.MetadataInfo == nil {
-		info.MetadataInfo = tfbridge0.NewProviderMetadata([]byte{})
-	}
-
-	if err := metadata.Set(info.MetadataInfo.Data, "renames", renames); err != nil {
-		return fmt.Errorf("[pf/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
-	}
-
-	return nil
 }

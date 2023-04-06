@@ -15,6 +15,7 @@
 package testprovider
 
 import (
+	_ "embed"
 	"fmt"
 	"path/filepath"
 	"unicode"
@@ -26,6 +27,9 @@ import (
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
+
+//go:embed cmd/pulumi-resource-random/bridge-metadata.json
+var randomProviderBridgeMetadata []byte
 
 // Adapts Random provider to tfbridge for testing tfbridge against a
 // realistic provider.
@@ -97,6 +101,8 @@ func RandomProvider() tfpf.ProviderInfo {
 				"random": "Random",
 			},
 		},
+
+		MetadataInfo: tfbridge.NewProviderMetadata(randomProviderBridgeMetadata),
 	}
 
 	return tfpf.ProviderInfo{
