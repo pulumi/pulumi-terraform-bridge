@@ -16,6 +16,7 @@ package testprovider
 
 import (
 	"context"
+	_ "embed"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -26,6 +27,9 @@ import (
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
+
+//go:embed cmd/pulumi-resource-testbridge/bridge-metadata.json
+var testBridgeMetadata []byte
 
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
@@ -46,6 +50,7 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 		},
+		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 	return tfpf.ProviderInfo{
 		ProviderInfo: info,

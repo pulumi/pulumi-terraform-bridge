@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ package tfgen
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -37,6 +37,10 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 
 	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
 
+		if info.MetadataInfo == nil {
+			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
+		}
+
 		if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
 			return err
 		}
@@ -50,39 +54,6 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 			return err
 		}
 
-		if opts.Language == tfgen.Schema {
-			if err := writeRenames(g, opts); err != nil {
-				return err
-			}
-		}
-
 		return nil
 	})
-}
-
-func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
-	renames, err := g.Renames()
-	if err != nil {
-		return err
-	}
-
-	renamesFile, err := opts.Root.Create("bridge-metadata.json")
-	if err != nil {
-		return err
-	}
-
-	renamesBytes, err := json.MarshalIndent(renames, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if _, err := renamesFile.Write(renamesBytes); err != nil {
-		return err
-	}
-
-	if err := renamesFile.Close(); err != nil {
-		return err
-	}
-
-	return nil
 }

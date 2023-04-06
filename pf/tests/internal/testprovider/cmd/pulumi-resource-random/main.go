@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	_ "embed"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
@@ -25,10 +26,7 @@ import (
 //go:embed schema.json
 var schema []byte
 
-//go:embed bridge-metadata.json
-var bridgeMetadata []byte
-
 func main() {
-	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
-	tfbridge.Main(context.Background(), "tls", testprovider.TLSProvider(), meta)
+	meta := tfbridge.ProviderMetadata{PackageSchema: schema}
+	tfbridge.Main(context.Background(), "random", testprovider.RandomProvider(), meta)
 }
