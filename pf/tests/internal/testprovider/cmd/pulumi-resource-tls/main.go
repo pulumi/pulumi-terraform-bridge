@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+// Implements a Pulumi provider for testing the functionality of bridging Terraform Plugin Framework based providers.
+package main
 
-// Defines bridged provider metadata that is pre-computed at build time with tfgen (tfgen
-// ("github.com/pulumi/pulumi-terraform-bridge/pf/tfgen") and typically made available to the provider
-// binary at runtime with [embed].
-//
-// [embed]: https://pkg.go.dev/embed
-type ProviderMetadata struct {
-	// JSON-serialzed Pulumi Package Schema.
-	PackageSchema []byte
+import (
+	"context"
+	_ "embed"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+)
 
-	// Deprecated. This field is no longer in use and will be removed in future versions.
-	BridgeMetadata []byte
+//go:embed schema.json
+var schema []byte
+
+func main() {
+	meta := tfbridge.ProviderMetadata{PackageSchema: schema}
+	tfbridge.Main(context.Background(), "tls", testprovider.TLSProvider(), meta)
 }

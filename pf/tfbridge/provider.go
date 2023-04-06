@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -96,9 +97,16 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
 	}
 
-	var renames tfgen.Renames
-	if err := json.Unmarshal(meta.BridgeMetadata, &renames); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal BridgeMetadata: %w", err)
+	if info.MetadataInfo == nil {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
+	}
+	renames, ok, err := metadata.Get[tfgen.Renames](info.MetadataInfo.Data, "renames")
+	if !ok {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata has no required 'renames' value")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata failed to unmarshal "+
+			"a 'renames' value: %w", err)
 	}
 
 	propertyNames := newPrecisePropertyNames(renames)
