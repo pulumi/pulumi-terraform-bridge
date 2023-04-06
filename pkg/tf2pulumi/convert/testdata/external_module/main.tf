@@ -1,24 +1,13 @@
 #if EXPERIMENTAL
 
-module "cidrs" {
-  source = "hashicorp/subnets/cidr"
-  version = "1.0.0"
+module "some_module" {
+    source = "../modules/simple"
 
-  base_cidr_block = "10.0.0.0/8"
-  networks = [
-    {
-      name     = "foo"
-      new_bits = 8
-    },
-    {
-      name     = "bar"
-      new_bits = 8
-    },
-  ]
+    input = "hello"
 }
 
-output "blocks" {
-    value = module.cidrs.network_cidr_blocks
+output "some_output" {
+    value = module.some_module.output
 }
 
 #else

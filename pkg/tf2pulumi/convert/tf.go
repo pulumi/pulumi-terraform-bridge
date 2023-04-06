@@ -2346,7 +2346,9 @@ func translateModuleSourceCode(
 	return nil
 }
 
-func TranslateModule(source afero.Fs, sourceDirectory string, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
+func TranslateModule(
+	source afero.Fs, sourceDirectory string,
+	destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
 	modules := make(map[addrs.ModuleSource]string)
 	return translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
 }
@@ -2430,7 +2432,7 @@ func componentProgramBinderFromAfero(fs afero.Fs) pcl.ComponentProgramBinder {
 	}
 }
 
-func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
+func convertTerraform(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	var pulumiOptions []pcl.BindOption
 	if opts.AllowMissingProperties {
 		pulumiOptions = append(pulumiOptions, pcl.AllowMissingProperties)
@@ -2452,37 +2454,36 @@ func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diag
 		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
 
-	rootDir := "/"
 	tempDir := afero.NewMemMapFs()
 
-	diagnostics := TranslateModule(opts.Root, "/", tempDir, opts.ProviderInfoSource)
+	diagnostics := TranslateModule(opts.Root, dir, tempDir, opts.ProviderInfoSource)
 	if diagnostics.HasErrors() {
 		return nil, nil, diagnostics, diagnostics
 	}
 
-	pulumiOptions = append(pulumiOptions, pcl.DirPath(rootDir))
+	pulumiOptions = append(pulumiOptions, pcl.DirPath("/"))
 	pulumiOptions = append(pulumiOptions, pcl.ComponentBinder(componentProgramBinderFromAfero(tempDir)))
 
 	pulumiParser := syntax.NewParser()
 
-	files, err := afero.ReadDir(tempDir, rootDir)
+	files, err := afero.ReadDir(tempDir, "/")
 	if err != nil {
 		return nil, nil, diagnostics, fmt.Errorf("could not read files at the root: %v", err)
 	}
 
 	for _, file := range files {
-		fileName := file.Name()
-		path := filepath.Join(rootDir, fileName)
-		if filepath.Ext(path) == ".pp" {
-			reader, err := tempDir.Open(path)
+		// These are all in the root folder, and Open needs the full filename.
+		fileName := "/" + file.Name()
+		if filepath.Ext(fileName) == ".pp" {
+			reader, err := tempDir.Open(fileName)
 			if err != nil {
 				return nil, nil, diagnostics, err
 			}
 			contract.AssertNoErrorf(err, "reading file should work")
-			err = pulumiParser.ParseFile(reader, filepath.Base(path))
+			err = pulumiParser.ParseFile(reader, filepath.Base(fileName))
 			contract.AssertNoErrorf(err, "parsing file should work")
 			if pulumiParser.Diagnostics.HasErrors() {
-				file, err := afero.ReadFile(tempDir, path)
+				file, err := afero.ReadFile(tempDir, fileName)
 				contract.AssertNoErrorf(err, "reading file should work")
 				opts.logf("%s", string(file))
 				opts.logf("%v", pulumiParser.Diagnostics)

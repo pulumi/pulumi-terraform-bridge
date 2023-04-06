@@ -97,15 +97,31 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 	}
 
 	opts := EjectOptions{
-		Root:               afero.NewBasePathFs(afero.NewOsFs(), dir),
 		Loader:             loader,
 		ProviderInfoSource: il.NewMapperProviderInfoSource(mapper),
 	}
+
 	if setOpts != nil {
 		setOpts(&opts)
 	}
 
-	tfFiles, program, diags, err := internalEject(opts)
+	// The new converter understands Root as the root of the file system, the old converter understands Root
+	// as the root of the terraform module. We need to handle that correctly here based on if the user set Root or not.
+	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+		if opts.Root != nil {
+			// The user overrode Root, assume the old semantics of this being the root of the terraform module.
+			dir = "/"
+		} else {
+			opts.Root = afero.NewOsFs()
+		}
+	} else {
+		if opts.Root == nil {
+			// Set the default root to the directory containing the Terraform module.
+			opts.Root = afero.NewBasePathFs(afero.NewOsFs(), dir)
+		}
+	}
+
+	tfFiles, program, diags, err := internalEject(dir, opts)
 
 	d := Diagnostics{All: diags, files: tfFiles}
 	diagWriter := d.NewDiagnosticWriter(os.Stderr, 0, true)
@@ -133,7 +149,7 @@ func isTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
-func internalEject(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
+func internalEject(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	// Set default options where appropriate.
 	if opts.ProviderInfoSource == nil {
 		opts.ProviderInfoSource = il.PluginProviderInfoSource
@@ -141,7 +157,7 @@ func internalEject(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnos
 
 	// If experimental use the new Terraform-based converter
 	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
-		files, program, tfDiagnostics, err := convertTerraform(opts)
+		files, program, tfDiagnostics, err := convertTerraform(dir, opts)
 		return files, program, tfDiagnostics, err
 	}
 
