@@ -17,6 +17,7 @@ package muxer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
@@ -127,7 +128,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 		}
 	}
 
-	inputs := &structpb.Struct{}
+	inputs := &structpb.Struct{Fields: map[string]*structpb.Value{}}
 	failures := []*rpc.CheckFailure{}
 	uniqueFailures := map[string]struct{}{}
 	var errs multierror.Error
@@ -165,9 +166,14 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 
 	for k := range req.GetNews().GetFields() {
 		if len(m.mapping.Config[k]) == 0 {
+			valid := []string{}
+			for real := range m.mapping.Config {
+				valid = append(valid, `"`+real+`"`)
+			}
 			failures = append(failures, &rpc.CheckFailure{
 				Property: k,
-				Reason:   "Unrecognized config key",
+				Reason: "Unrecognized config key. Existing keys include " +
+					strings.Join(valid, ", "),
 			})
 		}
 	}
