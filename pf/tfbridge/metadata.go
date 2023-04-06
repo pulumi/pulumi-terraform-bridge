@@ -23,7 +23,6 @@ type ProviderMetadata struct {
 	// JSON-serialzed Pulumi Package Schema.
 	PackageSchema []byte
 
-	// Additional metadata used by the bridge. This metadata is subject to change and should be treated as opaque by
-	// consuming code.
+	// Deprecated. This field is no longer in use and will be removed in future versions.
 	BridgeMetadata []byte
 }
