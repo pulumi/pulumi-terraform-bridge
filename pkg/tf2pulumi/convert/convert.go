@@ -92,7 +92,7 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		TerraformVersion:           opts.TerraformVersion,
 	}
 
-	tfFiles, program, diagnostics, err := internalEject(ejectOpts)
+	tfFiles, program, diagnostics, err := internalEject("/", ejectOpts)
 
 	if err != nil {
 		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err

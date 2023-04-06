@@ -175,7 +175,7 @@ func TestEject(t *testing.T) {
 	}, 0)
 	for _, info := range infos {
 		// Skip the "schemas" directory, that's for test schemas not for tests themselves
-		if info.IsDir() && info.Name() != "schemas" && info.Name() != "mappings" {
+		if info.IsDir() && info.Name() != "schemas" && info.Name() != "mappings" && info.Name() != "modules" {
 			tests = append(tests, struct {
 				name string
 				path string
@@ -204,49 +204,54 @@ func TestEject(t *testing.T) {
 			}
 
 			// Copy the .tf files to a new directory and fix up any "#if EXPERIMENTAL/#else/#endif" sections
-			hclPath := filepath.Join(t.TempDir(), tt.name)
-			err := os.MkdirAll(hclPath, 0750)
-			require.NoError(t, err)
+			tempDir := t.TempDir()
+			hclPath := filepath.Join(tempDir, tt.name)
+			modulePath := filepath.Join(tempDir, "modules")
 
-			err = filepath.WalkDir(tt.path, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-
-				if strings.HasSuffix(d.Name(), ".tf") {
-					src, err := os.Open(path)
-					if err != nil {
-						return fmt.Errorf("could not open src: %w", err)
-					}
-					defer src.Close()
-
-					relativePath, err := filepath.Rel(tt.path, path)
+			copy := func(srcDirectory, dstDirectory string) {
+				err = filepath.WalkDir(srcDirectory, func(path string, d fs.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
 
-					dstPath := filepath.Join(hclPath, relativePath)
-					dstDir := filepath.Dir(dstPath)
-					err = os.MkdirAll(dstDir, 0750)
-					if err != nil {
-						return fmt.Errorf("could not create dst dir: %w", err)
+					if strings.HasSuffix(d.Name(), ".tf") {
+						src, err := os.Open(path)
+						if err != nil {
+							return fmt.Errorf("could not open src: %w", err)
+						}
+						defer src.Close()
+
+						relativePath, err := filepath.Rel(srcDirectory, path)
+						if err != nil {
+							return err
+						}
+
+						dstPath := filepath.Join(dstDirectory, relativePath)
+						dstDir := filepath.Dir(dstPath)
+						err = os.MkdirAll(dstDir, 0750)
+						if err != nil {
+							return fmt.Errorf("could not create dst dir: %w", err)
+						}
+
+						dst, err := os.Create(dstPath)
+						if err != nil {
+							return fmt.Errorf("could not open dst: %w", err)
+						}
+						defer dst.Close()
+
+						err = applyPragmas(src, dst, isExperimental)
+						if err != nil {
+							return err
+						}
 					}
 
-					dst, err := os.Create(dstPath)
-					if err != nil {
-						return fmt.Errorf("could not open dst: %w", err)
-					}
-					defer dst.Close()
+					return nil
+				})
+				require.NoError(t, err)
+			}
 
-					err = applyPragmas(src, dst, isExperimental)
-					if err != nil {
-						return err
-					}
-				}
-
-				return nil
-			})
-			require.NoError(t, err)
+			copy(tt.path, hclPath)
+			copy(filepath.Join(testDir, "modules"), modulePath)
 
 			// If this is a partial test turn on the options to allow missing bits
 			partial := strings.HasPrefix(tt.name, "partial_")

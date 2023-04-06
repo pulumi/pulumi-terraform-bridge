@@ -1,15 +1,6 @@
-component "cidrs" "./subnets" {
-  baseCidrBlock = "10.0.0.0/8"
-  networks = [{
-    name    = "foo"
-    newBits = 8
-    }, {
-    name    = "bar"
-    newBits = 8
-  }]
-
-
+component "someModule" "./modules/simple" {
+  input = "hello"
 }
-output "blocks" {
-  value = cidrs.networkCidrBlocks
+output "someOutput" {
+  value = someModule.output
 }
