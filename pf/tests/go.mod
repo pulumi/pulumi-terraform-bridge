@@ -196,9 +196,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.9.0 // indirect
-	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.61.1-0.20230405145130-eb6063360025
-	github.com/pulumi/pulumi/sdk/v3 v3.61.1-0.20230405145130-eb6063360025
+	github.com/pulumi/pulumi-yaml v1.1.0 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.61.2-0.20230406201520-f744d375535c
+	github.com/pulumi/pulumi/sdk/v3 v3.61.2-0.20230406201520-f744d375535c
 	github.com/pulumi/schema-tools v0.1.2 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect

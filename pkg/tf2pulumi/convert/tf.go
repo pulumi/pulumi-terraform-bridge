@@ -91,7 +91,7 @@ func convertCtyType(typ cty.Type) string {
 	}
 
 	// If we got here it's probably the "dynamic type" and we just report back "any"
-	return ""
+	return "any"
 }
 
 // Returns true if the token type is trivia (a comment or new line)
@@ -1429,14 +1429,14 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	labels := []string{pulumiName}
 
 	pulumiType := convertCtyType(variable.Type)
-	if pulumiType != "" {
-		labels = append(labels, pulumiType)
-	} else if !variable.Default.IsNull() {
+	if !variable.Default.IsNull() && variable.Type == cty.DynamicPseudoType {
 		// If we don't have an explicit type but we do have a default value, use it's type
 		pulumiType = convertCtyType(variable.Default.Type())
-		if pulumiType != "" {
-			labels = append(labels, pulumiType)
-		}
+	}
+
+	// Don't add the "any" type explicitly, it's the default
+	if pulumiType != "any" {
+		labels = append(labels, pulumiType)
 	}
 
 	block := hclwrite.NewBlock("config", labels)

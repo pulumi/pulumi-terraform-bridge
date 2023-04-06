@@ -19,6 +19,12 @@ variable "string_map_in" {
     type = map(string)
 }
 
+#if EXPERIMENTAL
+variable "string_map_any_in" {
+    type = map(any)
+}
+#endif
+
 variable "object_in" {
     type = object({
        first = number,
