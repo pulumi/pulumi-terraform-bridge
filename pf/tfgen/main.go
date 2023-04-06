@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package tfgen
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -25,11 +24,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
 // Implements main() logic for a provider build-time helper utility. By convention these utilities are named
@@ -61,7 +60,7 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 		}
 
 		if opts.Language == tfgen.Schema {
-			if err := writeRenames(g, opts); err != nil {
+			if err := addRenamesToMetadataInfo(g, info.ProviderInfo, opts); err != nil {
 				return err
 			}
 		}
@@ -229,34 +228,31 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 		if err != nil {
 			return err
 		}
-		return g.GenerateFromSchema(schema)
+		if err := g.GenerateFromSchema(schema); err != nil {
+			return err
+		}
+		if err := addRenamesToMetadataInfo(g, muxedInfo, opts); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
 }
 
-func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
+func addRenamesToMetadataInfo(g *tfgen.Generator, info tfbridge0.ProviderInfo, opts tfgen.GeneratorOptions) error {
 	renames, err := g.Renames()
 	if err != nil {
 		return err
 	}
 
-	renamesFile, err := opts.Root.Create("bridge-metadata.json")
-	if err != nil {
-		return err
+	if info.MetadataInfo == nil {
+		info.MetadataInfo = tfbridge0.NewProviderMetadata([]byte{})
 	}
 
-	renamesBytes, err := json.MarshalIndent(renames, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if _, err := renamesFile.Write(renamesBytes); err != nil {
-		return err
-	}
-
-	if err := renamesFile.Close(); err != nil {
-		return err
+	if err := metadata.Set(info.MetadataInfo.Data, "renames", renames); err != nil {
+		return fmt.Errorf("[pf/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
 	}
 
 	return nil
