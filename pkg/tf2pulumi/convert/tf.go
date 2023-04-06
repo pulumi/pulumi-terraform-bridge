@@ -2346,9 +2346,9 @@ func translateModuleSourceCode(
 	return nil
 }
 
-func TranslateModule(source afero.Fs, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
+func TranslateModule(source afero.Fs, sourceDirectory string, destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
 	modules := make(map[addrs.ModuleSource]string)
-	return translateModuleSourceCode(modules, source, "/", destination, "/", info)
+	return translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
 }
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
@@ -2455,7 +2455,7 @@ func convertTerraform(opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diag
 	rootDir := "/"
 	tempDir := afero.NewMemMapFs()
 
-	diagnostics := TranslateModule(opts.Root, tempDir, opts.ProviderInfoSource)
+	diagnostics := TranslateModule(opts.Root, "/", tempDir, opts.ProviderInfoSource)
 	if diagnostics.HasErrors() {
 		return nil, nil, diagnostics, diagnostics
 	}
