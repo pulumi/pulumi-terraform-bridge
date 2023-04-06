@@ -26,10 +26,7 @@ import (
 //go:embed schema.json
 var schema []byte
 
-//go:embed bridge-metadata.json
-var bridgeMetadata []byte
-
 func main() {
-	meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
+	meta := tfbridge.ProviderMetadata{PackageSchema: schema}
 	tfbridge.Main(context.Background(), "random", testprovider.RandomProvider(), meta)
 }
