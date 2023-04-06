@@ -662,15 +662,15 @@ func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
-func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
+func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, Renames, error) {
 	res, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: sink,
 	})
 	if err != nil {
-		return pschema.PackageSpec{}, err
+		return pschema.PackageSpec{}, res.Renames, err
 	}
-	return res.PackageSpec, nil
+	return res.PackageSpec, res.Renames, nil
 }
 
 type GenerateSchemaOptions struct {
