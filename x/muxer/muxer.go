@@ -116,8 +116,7 @@ func (m *muxer) filterConfigArgs(i int, args *structpb.Struct) {
 func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	subs := make([]func() tuple[*rpc.CheckResponse, error], len(m.servers))
 	for i, s := range m.servers {
-		s := s
-		i := i
+		i, s := i, s
 		subs[i] = func() tuple[*rpc.CheckResponse, error] {
 			req := proto.Clone(req).(*rpc.CheckRequest)
 			m.filterConfigArgs(i, req.Olds)
@@ -189,6 +188,9 @@ func (m *muxer) muxedErrors(errs *multierror.Error) error {
 		return status.Error(codes.Unimplemented, errs.Error())
 	}
 
+	if len(validErrors.Errors) == 1 {
+		return validErrors.Errors[0]
+	}
 	// Its OK for muxed calls to have some servers return unimplmeneted. We filter
 	// those errors out.
 	return validErrors.ErrorOrNil()
@@ -197,8 +199,7 @@ func (m *muxer) muxedErrors(errs *multierror.Error) error {
 func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	subs := make([]func() tuple[*rpc.DiffResponse, error], len(m.servers))
 	for i, s := range m.servers {
-		s := s
-		i := i
+		i, s := i, s
 		subs[i] = func() tuple[*rpc.DiffResponse, error] {
 			req := proto.Clone(req).(*rpc.DiffRequest)
 			m.filterConfigArgs(i, req.Olds)
@@ -273,7 +274,7 @@ func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.
 	// `and` of configure values.
 	subs := make([]func() tuple[*rpc.ConfigureResponse, error], len(m.servers))
 	for i, s := range m.servers {
-		s := s
+		i, s := i, s
 		subs[i] = func() tuple[*rpc.ConfigureResponse, error] {
 			req := proto.Clone(req).(*rpc.ConfigureRequest)
 			m.filterConfigVariables(i, req.Variables)
