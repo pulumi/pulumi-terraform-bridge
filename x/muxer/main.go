@@ -16,8 +16,6 @@ package muxer
 
 import (
 	"context"
-	"encoding"
-	"encoding/base64"
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -96,29 +94,6 @@ type Main struct {
 	//
 	// If set, ComputedMapping must also be set.
 	Schema string
-}
-
-// We want to control the serialization of this type, since we don't want to implicitly
-// expose its internals via serialization.
-var (
-	_ encoding.TextMarshaler   = ((*ComputedMapping)(nil))
-	_ encoding.TextUnmarshaler = ((*ComputedMapping)(nil))
-)
-
-func (m ComputedMapping) MarshalText() ([]byte, error) {
-	bytes, err := json.Marshal(m.mapping)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(base64.StdEncoding.EncodeToString(bytes)), nil
-}
-
-func (m *ComputedMapping) UnmarshalText(text []byte) error {
-	bytes, err := base64.StdEncoding.DecodeString(string(text))
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(bytes, &m.mapping)
 }
 
 func (m Main) Server(host *provider.HostClient, module, version string) (pulumirpc.ResourceProviderServer, error) {
