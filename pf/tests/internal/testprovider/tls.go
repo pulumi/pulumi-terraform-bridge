@@ -15,6 +15,7 @@
 package testprovider
 
 import (
+	_ "embed"
 	"fmt"
 	"path/filepath"
 	"unicode"
@@ -24,6 +25,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
+
+//go:embed cmd/pulumi-resource-tls/bridge-metadata.json
+var tlsProviderBridgeMetadata []byte
 
 // Adapts tls provider to tfbridge for testing tfbridge against another realistic provider.
 func TLSProvider() tfpf.ProviderInfo {
@@ -96,7 +100,8 @@ func TLSProvider() tfpf.ProviderInfo {
 				"tls": "Tls",
 			},
 		},
-		Version: tlsVersion,
+		Version:      tlsVersion,
+		MetadataInfo: tfbridge.NewProviderMetadata(tlsProviderBridgeMetadata),
 	}
 
 	return tfpf.ProviderInfo{

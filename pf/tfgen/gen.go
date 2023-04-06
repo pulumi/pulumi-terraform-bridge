@@ -67,15 +67,9 @@ func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateS
 		return nil, err
 	}
 
-	meta, err := json.Marshal(generated.Renames)
-	if err != nil {
-		return nil, err
-	}
-
 	return &GenerateSchemaResult{
 		ProviderMetadata: tfbridge.ProviderMetadata{
-			PackageSchema:  schema,
-			BridgeMetadata: meta,
+			PackageSchema: schema,
 		},
 	}, nil
 }
