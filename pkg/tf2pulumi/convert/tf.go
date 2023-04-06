@@ -722,6 +722,17 @@ func matchStaticString(expr hclsyntax.Expression) *string {
 			s := root.Name
 			return &s
 		}
+	case *hclsyntax.TemplateExpr:
+		if len(expr.Parts) != 1 {
+			return nil
+		}
+		if lit, ok := expr.Parts[0].(*hclsyntax.LiteralValueExpr); ok {
+			if lit.Val.Type() != cty.String {
+				return nil
+			}
+			s := lit.Val.AsString()
+			return &s
+		}
 	}
 	return nil
 }
@@ -879,21 +890,28 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 				contract.Failf("count.index seen during expression conversion, but index scope not set")
 			}
 		} else if root.Name == "each" && maybeFirstAttr != nil {
-			if maybeFirstAttr.Name == "key" {
-				if scopes.eachKey != nil {
-					newTraversal = append(newTraversal, scopes.eachKey...)
-					newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
-				} else {
-					contract.Failf("each.key seen during expression conversion, but each scope not set")
+			// This _might_ be the special "each" value or it might just be a local, check the latter first
+			localName := scopes.lookup("each")
+			if localName != "" {
+				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: localName})
+				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+			} else {
+				if maybeFirstAttr.Name == "key" {
+					if scopes.eachKey != nil {
+						newTraversal = append(newTraversal, scopes.eachKey...)
+						newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+					} else {
+						contract.Failf("each.key seen during expression conversion, but each scope not set")
+					}
 				}
-			}
 
-			if maybeFirstAttr.Name == "value" {
-				if scopes.eachValue != nil {
-					newTraversal = append(newTraversal, scopes.eachValue...)
-					newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
-				} else {
-					contract.Failf("each.value seen during expression conversion, but each scope not set")
+				if maybeFirstAttr.Name == "value" {
+					if scopes.eachValue != nil {
+						newTraversal = append(newTraversal, scopes.eachValue...)
+						newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+					} else {
+						contract.Failf("each.value seen during expression conversion, but each scope not set")
+					}
 				}
 			}
 		} else if maybeFirstAttr != nil {
@@ -1282,13 +1300,28 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	blockLists := make(map[string][]bodyAttrsTokens)
 	for _, block := range content.Blocks {
 		if block.Type == "dynamic" {
-			eachVar := scopes.generateUniqueName("entry", "", "")
-			dynamicTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOBrack, "[")}
-			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "for"))
-			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, eachVar))
-			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "in"))
 			dynamicBody, ok := block.Body.(*hclsyntax.Body)
 			contract.Assertf(ok, "%T was not a hclsyntax.Body", dynamicBody)
+
+			// This block _might_ have an "iterator" entry to set the variable name
+			var tfEachVar string
+			iteratorAttr, has := dynamicBody.Attributes["iterator"]
+			if has {
+				str := matchStaticString(iteratorAttr.Expr)
+				if str == nil {
+					panic("iterator must be a static string")
+				}
+				tfEachVar = *str
+			} else {
+				tfEachVar = block.Labels[0]
+			}
+
+			pulumiEachVar := scopes.generateUniqueName("entry", "", "")
+
+			dynamicTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOBrack, "[")}
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "for"))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, pulumiEachVar))
+			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "in"))
 
 			forEachAttr, hasForEachAttr := dynamicBody.Attributes["for_each"]
 			if !hasForEachAttr {
@@ -1308,7 +1341,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			for _, innerBlock := range dynamicBody.Blocks {
 				if innerBlock.Type == "content" {
 					scopes.push(map[string]string{
-						block.Labels[0]: eachVar,
+						tfEachVar: pulumiEachVar,
 					})
 					contentBody := convertBody(sources, scopes, fullyQualifiedPath+"."+attributeName, innerBlock.Body)
 					bodyTokens = tokensForObject(contentBody)
