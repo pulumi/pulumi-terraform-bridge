@@ -1595,6 +1595,8 @@ func convertModuleCall(
 		// to destinationDirectory earlier.
 		panic(fmt.Sprintf("failed to get relative path from %s to %s: %v", destinationDirectory, modulePath, err))
 	}
+	// relPath will be an OS path, but we want to consistently write out unix style paths
+	relPath = filepath.ToSlash(relPath)
 
 	// Rel will have cleaned the path, but we want to preserve the ./ prefix (unless it's already got a ../ prefix)
 	if !strings.HasPrefix(relPath, "../") {
