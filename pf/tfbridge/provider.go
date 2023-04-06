@@ -98,14 +98,14 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	}
 
 	if info.MetadataInfo == nil {
-		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.MetadataInfo is required but is nil")
 	}
 	renames, ok, err := metadata.Get[tfgen.Renames](info.MetadataInfo.Data, "renames")
 	if !ok {
-		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata has no required 'renames' value")
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.MetadataInfo has no required 'renames' value")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata failed to unmarshal "+
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.MetadataInfo failed to unmarshal "+
 			"a 'renames' value: %w", err)
 	}
 
