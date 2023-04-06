@@ -61,7 +61,11 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 		}
 
 		if opts.Language == tfgen.Schema {
-			if err := writeRenames(g, opts); err != nil {
+			renames, err := g.Renames()
+			if err != nil {
+				return err
+			}
+			if err := writeRenames(renames, opts); err != nil {
 				return err
 			}
 		}
@@ -101,6 +105,8 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 		muxedInfo := infos[0].GetInfo()
 		schemas := []schema.PackageSpec{}
 		var errs multierror.Error
+
+		var pfRenames []tfgen.Renames
 
 		for i, union := range infos {
 			// Concurrency safety
@@ -197,10 +203,15 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 				}
 			}
 
-			s, err := tfgen.GenerateSchema(*info, opts.Sink)
+			s, renames, err := tfgen.GenerateSchema(*info, opts.Sink)
 			if anErr(err) {
 				continue
 			}
+
+			if union.PF != nil {
+				pfRenames = append(pfRenames, renames)
+			}
+
 			schemas = append(schemas, s)
 		}
 
@@ -231,18 +242,56 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 		if err != nil {
 			return err
 		}
+
+		if err := writeRenames(mergeRenames(pfRenames), opts); err != nil {
+			return err
+		}
+
 		return g.GenerateFromSchema(schema)
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
 }
 
-func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
-	renames, err := g.Renames()
-	if err != nil {
-		return err
-	}
+func mergeRenames(renames []tfgen.Renames) tfgen.Renames {
+	main := renames[0]
+	for _, rename := range renames[1:] {
+		for k, v := range rename.Resources {
+			_, exists := main.Resources[k]
+			if !exists {
+				main.Resources[k] = v
+			}
+		}
 
+		for k, v := range rename.Functions {
+			_, exists := main.Functions[k]
+			if !exists {
+				main.Functions[k] = v
+			}
+		}
+		for k, v := range rename.RenamedProperties {
+			_, exists := main.RenamedProperties[k]
+			if !exists {
+				main.RenamedProperties[k] = v
+			}
+		}
+		for k, v := range rename.RenamedConfigProperties {
+			_, exists := main.RenamedConfigProperties[k]
+			if !exists {
+				main.RenamedConfigProperties[k] = v
+			}
+		}
+		for k, v := range rename.Resources {
+			_, exists := main.Resources[k]
+			if !exists {
+				main.Resources[k] = v
+			}
+		}
+	}
+	return main
+}
+
+func writeRenames(renames tfgen.Renames, opts tfgen.GeneratorOptions) error {
 	renamesFile, err := opts.Root.Create("bridge-metadata.json")
 	if err != nil {
 		return err
