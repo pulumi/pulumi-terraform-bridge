@@ -1453,6 +1453,15 @@ func convertDataResource(sources map[string][]byte,
 	// We translate dataResources into invokes
 	pulumiName := scopes.roots["data."+dataResource.Type+"."+dataResource.Name]
 
+	// We special case the old template_file data resource to just return not implemented for now, eventually
+	// we want to map this to a templating function in std.
+	if dataResource.Type == "template_file" {
+		text := cty.StringVal("The template_file data resource is not yet supported.")
+		dataResourceExpression := hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
+		leading, trailing := getTrivia(sources, dataResource.DeclRange)
+		return leading, pulumiName, dataResourceExpression, trailing
+	}
+
 	invokeToken := cty.StringVal(impliedToken(dataResource.Type))
 	provider := impliedProvider(dataResource.Type)
 	providerInfo, err := info.GetProviderInfo("", "", provider, "")
