@@ -91,7 +91,7 @@ func (s *attrSchema) Elem() interface{} {
 	// Elem() needes to return a Resource value.
 	//
 	// See also: documentation on shim.Schema.Elem().
-	if tt, ok := t.(types.ObjectType); ok {
+	if tt, ok := isObject(t); ok {
 		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
 		return res
 	}

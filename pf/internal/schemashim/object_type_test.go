@@ -27,35 +27,17 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// This example is taken from aws:resourceexplorer/index:Index "timeouts" property.
-func TestCustomTypeEmbeddingObjectType(t *testing.T) {
-	type timeoutsType struct {
-		types.ObjectType
-	}
-
-	raw := schema.SingleNestedBlock{
-		Attributes: map[string]schema.Attribute{
-			"create": schema.StringAttribute{},
-			"read":   schema.StringAttribute{},
-			"update": schema.StringAttribute{},
-		},
-		CustomType: timeoutsType{
-			ObjectType: types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"create": types.StringType,
-					"read":   types.StringType,
-					"update": types.StringType,
-				},
-			},
+func TestObjectAttribute(t *testing.T) {
+	objectAttr := schema.ObjectAttribute{
+		AttributeTypes: map[string]attr.Type{
+			"s": types.StringType,
 		},
 	}
-
-	shimmed := &blockSchema{"key", pfutils.FromBlockLike(raw)}
+	shimmed := &attrSchema{"key", pfutils.FromAttrLike(objectAttr)}
 	assert.Equal(t, shim.TypeMap, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
 	_, isPseudoResource := shimmed.Elem().(shim.Resource)
 	assert.Truef(t, isPseudoResource, "expected shim.Elem() to be of type shim.Resource, encoding an object type")
-
-	create := shimmed.Elem().(shim.Resource).Schema().Get("create")
-	assert.Equal(t, shim.TypeString, create.Type())
+	s := shimmed.Elem().(shim.Resource).Schema().Get("s")
+	assert.Equal(t, shim.TypeString, s.Type())
 }
