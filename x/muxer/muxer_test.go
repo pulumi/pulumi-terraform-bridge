@@ -47,7 +47,7 @@ func TestSimpleDispatch(t *testing.T) {
             "properties": {
               "ecdsacurve": "P384"
             },
-            "preview": false
+            "preview": true
           }`, `{
             "id": "r1",
             "properties": {
@@ -58,8 +58,7 @@ func TestSimpleDispatch(t *testing.T) {
             "urn": "urn:pulumi:test-stack::basicprogram::test:mod:B::r1",
             "properties": {
               "ecdsacurve": "P384"
-            },
-            "preview": false
+            }
           }`, `{
             "id": "r1",
             "properties": {
@@ -149,11 +148,20 @@ func handleCall[T proto.Message, R proto.Message](m *server, req T) (R, error) {
 	next := m.calls[0]
 	m.calls = m.calls[1:]
 
+	// This is actually a *T where *T implements proto.Message. To create the
+	// settable value, we need to hydrate the underlying pointer.
 	var r R
 	reflect.ValueOf(&r).Elem().Set(reflect.New(reflect.TypeOf(r).Elem()))
-	marshalled, err := protojson.Marshal(req)
+
+	marshalled, err := protojson.MarshalOptions{Multiline: true}.Marshal(req)
 	require.NoError(m.t, err)
+
+	failed := m.t.Failed()
 	testutils.AssertJSONMatchesPattern(m.t, json.RawMessage(next.incoming), json.RawMessage(marshalled))
+	if !failed && m.t.Failed() {
+		m.t.Logf("Unexpected semantic diff:\nexpected: <-JSON\n%s\nJSON\nactual: <-JSON\n%s\nJSON\n",
+			next.incoming, string(marshalled))
+	}
 	err = protojson.Unmarshal([]byte(next.response), r)
 	return r, err
 }
