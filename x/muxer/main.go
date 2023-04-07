@@ -106,15 +106,15 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		}
 	}
 
-	req := &rpc.GetSchemaRequest{Version: SchemaVersion}
-	primary, err := servers[0].GetSchema(context.Background(), req)
-	contract.AssertNoErrorf(err, "Muxing requires GetSchema for dispatch")
-	muxedSchema := new(schema.PackageSpec)
-	err = json.Unmarshal([]byte(primary.Schema), muxedSchema)
-	contract.AssertNoErrorf(err, "primary schema failed to parse")
-
 	mapping, pulumiSchema := m.ComputedMapping.mapping, m.Schema
 	if mapping.isEmpty() || pulumiSchema == "" {
+		req := &rpc.GetSchemaRequest{Version: SchemaVersion}
+		primary, err := servers[0].GetSchema(context.Background(), req)
+		contract.AssertNoErrorf(err, "Muxing requires GetSchema for dispatch")
+		targetSchema := new(schema.PackageSpec)
+		err = json.Unmarshal([]byte(primary.Schema), targetSchema)
+		contract.AssertNoErrorf(err, "primary schema failed to parse")
+
 		schemas := make([]schema.PackageSpec, len(servers))
 		for i, s := range servers {
 			resp, err := s.GetSchema(context.Background(), req)
