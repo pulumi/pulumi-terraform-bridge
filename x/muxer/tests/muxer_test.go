@@ -71,9 +71,9 @@ func TestSimpleDispatch(t *testing.T) {
 func TestConfigure(t *testing.T) {
 	var m muxer.ComputedMapping
 	m.Config = map[string][]int{
-		"a": []int{0},
-		"b": []int{0, 1},
-		"c": []int{1},
+		"a": {0},
+		"b": {0, 1},
+		"c": {1},
 	}
 
 	replayMux(t, m,
@@ -116,8 +116,8 @@ func replayMux(t *testing.T, mapping muxer.ComputedMapping, exchanges ...Exchang
 			}
 			serverBehavior[part.Provider] = append(serverBehavior[part.Provider],
 				call{
-					incoming: string(part.Request),
-					response: string(part.Response),
+					incoming: part.Request,
+					response: part.Response,
 				})
 		}
 	}
