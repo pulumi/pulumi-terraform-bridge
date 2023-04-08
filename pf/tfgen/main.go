@@ -207,7 +207,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 				}
 			}
 
-			s, renames, err := tfgen.GenerateSchema(*info, opts.Sink)
+			s, renames, err := tfgen.GenerateSchemaAndRenames(*info, opts.Sink)
 			if anErr(err) {
 				continue
 			}

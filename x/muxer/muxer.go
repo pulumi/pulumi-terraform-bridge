@@ -168,8 +168,8 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 	}, m.muxedErrors(&errs)
 }
 
-// Mux multiple error responces into a single error, preserving meaningful gRPC status
-// information embedded into the errors.
+// Mux multiple errors into a single error, preserving meaningful gRPC status information
+// embedded into the errors.
 func (m *muxer) muxedErrors(errs *multierror.Error) error {
 	unimplementedCount := 0
 	validErrors := multierror.Error{}
