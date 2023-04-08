@@ -42,7 +42,7 @@ func TestSimpleDispatch(t *testing.T) {
 	}
 
 	replayMux(t, m,
-		exchange(0, "/pulumirpc.ResourceProvider/Create", `{
+		simpleExchange(0, "/pulumirpc.ResourceProvider/Create", `{
             "urn": "urn:pulumi:test-stack::basicprogram::test:mod:A::r1",
             "properties": {
               "ecdsacurve": "P384"
@@ -54,7 +54,7 @@ func TestSimpleDispatch(t *testing.T) {
               "id": "rA"
             }
           }`),
-		exchange(1, "/pulumirpc.ResourceProvider/Create", `{
+		simpleExchange(1, "/pulumirpc.ResourceProvider/Create", `{
             "urn": "urn:pulumi:test-stack::basicprogram::test:mod:B::r1",
             "properties": {
               "ecdsacurve": "P384"
@@ -68,17 +68,58 @@ func TestSimpleDispatch(t *testing.T) {
 	)
 }
 
+func TestConfigure(t *testing.T) {
+	var m muxer.ComputedMapping
+	m.Config = map[string][]int{
+		"a": []int{0},
+		"b": []int{0, 1},
+		"c": []int{1},
+	}
+
+	replayMux(t, m,
+		exchange("/pulumirpc.ResourceProvider/Configure", `{
+      "args": {
+        "a": "1",
+        "b": "2",
+        "c": "3"
+      }
+    }`, `{
+      "supportsPreview": true
+  }`,
+			part(0, `{
+  "args": {
+    "a": "1",
+    "b": "2"
+  }
+}`, `{
+  "acceptSecrets": true,
+  "supportsPreview": true
+}`),
+			part(1, `{
+  "args": {
+    "b": "2",
+    "c": "3"
+  }
+}`, `{
+  "supportsPreview": true,
+  "acceptResources": true
+}`),
+		))
+}
+
 func replayMux(t *testing.T, mapping muxer.ComputedMapping, exchanges ...Exchange) {
 	serverBehavior := [][]call{}
 	for _, ex := range exchanges {
-		for ex.Provider >= len(serverBehavior) {
-			serverBehavior = append(serverBehavior, nil)
+		for _, part := range ex.Parts {
+			for part.Provider >= len(serverBehavior) {
+				serverBehavior = append(serverBehavior, nil)
+			}
+			serverBehavior[part.Provider] = append(serverBehavior[part.Provider],
+				call{
+					incoming: string(part.Request),
+					response: string(part.Response),
+				})
 		}
-		serverBehavior[ex.Provider] = append(serverBehavior[ex.Provider],
-			call{
-				incoming: string(ex.Request),
-				response: string(ex.Response),
-			})
 	}
 	servers := make([]rpc.ResourceProviderServer, len(serverBehavior))
 	for i, s := range serverBehavior {
@@ -95,15 +136,45 @@ type Exchange struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request"`
 	Response json.RawMessage `json:"response"`
-	Provider int             `json:"-"`
+	Parts    []ExchangePart  `json:"-"`
 }
 
-func exchange(provider int, method, request, response string) Exchange {
+type ExchangePart struct {
+	Provider int
+	Request  string `json:"request"`
+	Response string `json:"response"`
+}
+
+// A simple exchange is one where only one sub-server is used
+func simpleExchange(provider int, method, request, response string) Exchange {
 	return Exchange{
-		Provider: provider,
 		Method:   method,
 		Request:  json.RawMessage(request),
 		Response: json.RawMessage(response),
+		Parts: []ExchangePart{
+			{
+				Provider: provider,
+				Request:  request,
+				Response: response,
+			},
+		},
+	}
+}
+
+func exchange(method, request, response string, parts ...ExchangePart) Exchange {
+	return Exchange{
+		Method:   method,
+		Request:  json.RawMessage(request),
+		Response: json.RawMessage(response),
+		Parts:    parts,
+	}
+}
+
+func part(provider int, request, response string) ExchangePart {
+	return ExchangePart{
+		provider,
+		request,
+		response,
 	}
 }
 
