@@ -215,12 +215,14 @@ type call struct {
 	response string
 }
 
-func handleCall[T proto.Message, R proto.Message](m *server, req T) (R, error) {
+// Assert that a gRPC call matches the next expected call, then rehydrate and return the
+// next scheduled response.
+func handleMethod[T proto.Message, R proto.Message](m *server, req T) (R, error) {
 	next := m.calls[0]
 	m.calls = m.calls[1:]
 
-	// This is actually a *T where *T implements proto.Message. To create the
-	// settable value, we need to hydrate the underlying pointer.
+	// R is actually a *T where *T implements proto.Message. To create the settable
+	// value, we need to hydrate the underlying pointer.
 	var r R
 	reflect.ValueOf(&r).Elem().Set(reflect.New(reflect.TypeOf(r).Elem()))
 
@@ -238,23 +240,23 @@ func handleCall[T proto.Message, R proto.Message](m *server, req T) (R, error) {
 }
 
 func (m *server) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
-	return handleCall[*rpc.GetSchemaRequest, *rpc.GetSchemaResponse](m, req)
+	return handleMethod[*rpc.GetSchemaRequest, *rpc.GetSchemaResponse](m, req)
 }
 
 func (m *server) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return handleCall[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
+	return handleMethod[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
 }
 
 func (m *server) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return handleCall[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
+	return handleMethod[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
 }
 
 func (m *server) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
-	return handleCall[*rpc.ConfigureRequest, *rpc.ConfigureResponse](m, req)
+	return handleMethod[*rpc.ConfigureRequest, *rpc.ConfigureResponse](m, req)
 }
 
 func (m *server) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
-	return handleCall[*rpc.InvokeRequest, *rpc.InvokeResponse](m, req)
+	return handleMethod[*rpc.InvokeRequest, *rpc.InvokeResponse](m, req)
 }
 
 func (m *server) StreamInvoke(req *rpc.InvokeRequest, s rpc.ResourceProvider_StreamInvokeServer) error {
@@ -263,49 +265,49 @@ func (m *server) StreamInvoke(req *rpc.InvokeRequest, s rpc.ResourceProvider_Str
 }
 
 func (m *server) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
-	return handleCall[*rpc.CallRequest, *rpc.CallResponse](m, req)
+	return handleMethod[*rpc.CallRequest, *rpc.CallResponse](m, req)
 }
 
 func (m *server) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return handleCall[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
+	return handleMethod[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
 }
 
 func (m *server) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return handleCall[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
+	return handleMethod[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
 }
 
 func (m *server) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
-	return handleCall[*rpc.CreateRequest, *rpc.CreateResponse](m, req)
+	return handleMethod[*rpc.CreateRequest, *rpc.CreateResponse](m, req)
 }
 
 func (m *server) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return handleCall[*rpc.ReadRequest, *rpc.ReadResponse](m, req)
+	return handleMethod[*rpc.ReadRequest, *rpc.ReadResponse](m, req)
 }
 
 func (m *server) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
-	return handleCall[*rpc.UpdateRequest, *rpc.UpdateResponse](m, req)
+	return handleMethod[*rpc.UpdateRequest, *rpc.UpdateResponse](m, req)
 }
 
 func (m *server) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
-	return handleCall[*rpc.DeleteRequest, *emptypb.Empty](m, req)
+	return handleMethod[*rpc.DeleteRequest, *emptypb.Empty](m, req)
 }
 
 func (m *server) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
-	return handleCall[*rpc.ConstructRequest, *rpc.ConstructResponse](m, req)
+	return handleMethod[*rpc.ConstructRequest, *rpc.ConstructResponse](m, req)
 }
 
 func (m *server) Cancel(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, error) {
-	return handleCall[*emptypb.Empty, *emptypb.Empty](m, e)
+	return handleMethod[*emptypb.Empty, *emptypb.Empty](m, e)
 }
 
 func (m *server) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.PluginInfo, error) {
-	return handleCall[*emptypb.Empty, *rpc.PluginInfo](m, e)
+	return handleMethod[*emptypb.Empty, *rpc.PluginInfo](m, e)
 }
 
 func (m *server) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
-	return handleCall[*rpc.PluginAttach, *emptypb.Empty](m, req)
+	return handleMethod[*rpc.PluginAttach, *emptypb.Empty](m, req)
 }
 
 func (m *server) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
-	return handleCall[*rpc.GetMappingRequest, *rpc.GetMappingResponse](m, req)
+	return handleMethod[*rpc.GetMappingRequest, *rpc.GetMappingResponse](m, req)
 }
