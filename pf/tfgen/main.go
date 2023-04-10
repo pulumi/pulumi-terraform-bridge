@@ -195,14 +195,17 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 				}
 			}
 
-			s, renamesPart, err := tfgen.GenerateSchemaAndRenames(*info, opts.Sink)
+			genResult, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+				ProviderInfo:    *info,
+				DiagnosticsSink: opts.Sink,
+			})
+
 			if anErr(err) {
 				continue
 			}
 
-			renames = append(renames, renamesPart)
-
-			schemas = append(schemas, s)
+			renames = append(renames, genResult.Renames)
+			schemas = append(schemas, genResult.PackageSpec)
 		}
 
 		if err := errs.ErrorOrNil(); err != nil {
