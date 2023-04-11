@@ -71,7 +71,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.0-00010101000000-000000000000 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.1 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.59.0 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.59.0 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
