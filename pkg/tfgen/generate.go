@@ -662,20 +662,15 @@ func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
-func GenerateSchemaAndRenames(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, Renames, error) {
+func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
 	res, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: sink,
 	})
 	if err != nil {
-		return pschema.PackageSpec{}, res.Renames, err
+		return pschema.PackageSpec{}, err
 	}
-	return res.PackageSpec, res.Renames, nil
-}
-
-func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
-	p, _, err := GenerateSchemaAndRenames(info, sink)
-	return p, err
+	return res.PackageSpec, nil
 }
 
 type GenerateSchemaOptions struct {
@@ -703,6 +698,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
+	// NOTE: sequence identical to(*Generator).Generate().
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to gather package metadata")
@@ -716,6 +712,10 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	r, err := g.Renames()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, s, g.renamesBuilder, g.sink); err != nil {
+		return nil, err
 	}
 
 	return &GenerateSchemaResult{
@@ -842,8 +842,9 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-	// First gather up the entire package contents.  This structure is complete and sufficient to hand off
-	// to the language-specific generators to create the full output.
+
+	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
+	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return errors.Wrapf(err, "failed to gather package metadata")
@@ -855,14 +856,36 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	// As a side-effect genPulumiSchema also populated rename tables.
+	renames, err := g.Renames()
+	if err != nil {
+		return errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
+		return err
+	}
+
+	genSchemaResult := &GenerateSchemaResult{
+		PackageSpec: pulumiPackageSpec,
+		Renames:     renames,
+	}
+
 	// Now push the schema through the rest of the generator.
-	return g.GenerateFromSchema(pulumiPackageSpec)
+	return g.GenerateFromSchema(genSchemaResult)
 }
 
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
 // generator was initialized with.
-func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) error {
+func (g *Generator) GenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
+	// MetadataInfo gets stored on disk from previous versions of the provider. Renames do not need to be
+	// history-aware and they are simply re-computed from scratch as part of generating the schema. Clear any prior
+	// copy here at start so it does not interfere.
+	if err := clearRenamesFromMetadataInfo(g.info.MetadataInfo); err != nil {
+		return nil
+	}
 
+	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
@@ -902,12 +925,8 @@ func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) er
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
-		if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
-			return err
-		}
-
 		if meta := g.info.MetadataInfo; meta != nil {
-			if err := addRenamesToMetadataInfo(g); err != nil {
+			if err := addRenamesToMetadataInfo(g.info.MetadataInfo, genSchemaResult.Renames); err != nil {
 				return err
 			}
 			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
@@ -1809,17 +1828,28 @@ func ignoreMappingError(s []string, str string) bool {
 	return false
 }
 
-func addRenamesToMetadataInfo(g *Generator) error {
-	if g.info.MetadataInfo == nil {
+func clearRenamesFromMetadataInfo(info *tfbridge.MetadataInfo) error {
+	if err := metadata.Set(info.Data, "renames", nil); err != nil {
+		return fmt.Errorf("[pkg/tfgen] failed to clear renames from MetadataInfo: %w", err)
+	}
+	return nil
+}
+
+func addRenamesToMetadataInfo(info *tfbridge.MetadataInfo, renames Renames) error {
+	if info == nil {
 		return nil
 	}
 
-	renames, err := g.Renames()
+	_, renamesAlreadySet, err := metadata.Get[Renames](info.Data, "renames")
 	if err != nil {
-		return err
+		return fmt.Errorf("[pkg/tfgen] failed to retrieve renames from MetadataInfo: %w", err)
 	}
 
-	if err := metadata.Set(g.info.MetadataInfo.Data, "renames", renames); err != nil {
+	if renamesAlreadySet {
+		return fmt.Errorf("[pkg/tfgen] renames already set in MetadataInfo, refusing to overwrite")
+	}
+
+	if err := metadata.Set(info.Data, "renames", renames); err != nil {
 		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
 	}
 

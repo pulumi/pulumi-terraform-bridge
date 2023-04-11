@@ -16,7 +16,6 @@ package tfgen
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -25,11 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
 // Implements main() logic for a provider build-time helper utility. By convention these utilities are named
@@ -62,16 +60,6 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 
 		if err := g.Generate(); err != nil {
 			return err
-		}
-
-		if opts.Language == tfgen.Schema {
-			renames, err := g.Renames()
-			if err != nil {
-				return err
-			}
-			if err := writeRenames(renames, opts); err != nil {
-				return err
-			}
 		}
 
 		return nil
@@ -110,7 +98,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 		schemas := []schema.PackageSpec{}
 		var errs multierror.Error
 
-		var pfRenames []tfgen.Renames
+		var renames []tfgen.Renames
 
 		for i, union := range infos {
 			// Concurrency safety
@@ -207,16 +195,17 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 				}
 			}
 
-			s, renames, err := tfgen.GenerateSchemaAndRenames(*info, opts.Sink)
+			genResult, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+				ProviderInfo:    *info,
+				DiagnosticsSink: opts.Sink,
+			})
+
 			if anErr(err) {
 				continue
 			}
 
-			if union.PF != nil {
-				pfRenames = append(pfRenames, renames)
-			}
-
-			schemas = append(schemas, s)
+			renames = append(renames, genResult.Renames)
+			schemas = append(schemas, genResult.PackageSpec)
 		}
 
 		if err := errs.ErrorOrNil(); err != nil {
@@ -235,23 +224,28 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 			"Must provide a metadata store when muxing providers. See ProviderInfo.MetadataInfo")
 		err = metadata.Set(muxedInfo.GetMetadata(), "mux", mapping)
 		if err != nil {
-			return fmt.Errorf("Failed to save metadata: %w", err)
+			return fmt.Errorf("[pf/tfgen] Failed to set mux data in MetadataInfo: %w", err)
+		}
+
+		// In the muxing case precompute renames by merging them and set them to MetadataInfo, this will avoid
+		// recomputing the renames in GenerateFromSchema, it will write out the mergedRenames as-is.
+		mergedRenames := mergeRenames(renames)
+		if err := metadata.Set(muxedInfo.GetMetadata(), "renames", mergedRenames); err != nil {
+			return fmt.Errorf("[pf/tfgen]: Failed to set renames data in MetadataInfo: %w", err)
 		}
 
 		// Having computed the schema, we now want to complete the tfgen process,
 		// reusing as much of the standard process as possible.
-
 		opts.ProviderInfo = muxedInfo
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}
 
-		if err := writeRenames(mergeRenames(pfRenames), opts); err != nil {
-			return err
-		}
-
-		return g.GenerateFromSchema(schema)
+		return g.GenerateFromSchema(&tfgen.GenerateSchemaResult{
+			PackageSpec: schema,
+			Renames:     mergedRenames,
+		})
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
@@ -293,26 +287,4 @@ func mergeRenames(renames []tfgen.Renames) tfgen.Renames {
 		}
 	}
 	return main
-}
-
-func writeRenames(renames tfgen.Renames, opts tfgen.GeneratorOptions) error {
-	renamesFile, err := opts.Root.Create("bridge-metadata.json")
-	if err != nil {
-		return err
-	}
-
-	renamesBytes, err := json.MarshalIndent(renames, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if _, err := renamesFile.Write(renamesBytes); err != nil {
-		return err
-	}
-
-	if err := renamesFile.Close(); err != nil {
-		return err
-	}
-
-	return nil
 }
