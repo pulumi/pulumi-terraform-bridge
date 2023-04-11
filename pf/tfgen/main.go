@@ -242,7 +242,10 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 			return err
 		}
 
-		return g.GenerateFromSchema(schema)
+		return g.GenerateFromSchema(&tfgen.GenerateSchemaResult{
+			PackageSpec: schema,
+			Renames:     mergedRenames,
+		})
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)

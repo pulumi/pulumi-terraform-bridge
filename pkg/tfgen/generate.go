@@ -698,6 +698,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
+	// NOTE: sequence identical to(*Generator).Generate().
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to gather package metadata")
@@ -711,6 +712,10 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	r, err := g.Renames()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, s, g.renamesBuilder, g.sink); err != nil {
+		return nil, err
 	}
 
 	return &GenerateSchemaResult{
@@ -837,8 +842,9 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-	// First gather up the entire package contents.  This structure is complete and sufficient to hand off
-	// to the language-specific generators to create the full output.
+
+	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
+	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return errors.Wrapf(err, "failed to gather package metadata")
@@ -850,14 +856,30 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	// As a side-effect genPulumiSchema also populated rename tables.
+	renames, err := g.Renames()
+	if err != nil {
+		return errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
+		return err
+	}
+
+	genSchemaResult := &GenerateSchemaResult{
+		PackageSpec: pulumiPackageSpec,
+		Renames:     renames,
+	}
+
 	// Now push the schema through the rest of the generator.
-	return g.GenerateFromSchema(pulumiPackageSpec)
+	return g.GenerateFromSchema(genSchemaResult)
 }
 
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
 // generator was initialized with.
-func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) error {
+func (g *Generator) GenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
 
+	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
@@ -897,12 +919,8 @@ func (g *Generator) GenerateFromSchema(pulumiPackageSpec pschema.PackageSpec) er
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
-		if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
-			return err
-		}
-
 		if meta := g.info.MetadataInfo; meta != nil {
-			if err := addRenamesToMetadataInfo(g); err != nil {
+			if err := addRenamesToMetadataInfo(g.info.MetadataInfo, genSchemaResult.Renames); err != nil {
 				return err
 			}
 			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
@@ -1804,30 +1822,21 @@ func ignoreMappingError(s []string, str string) bool {
 	return false
 }
 
-func addRenamesToMetadataInfo(g *Generator) error {
-	if g.info.MetadataInfo == nil {
+func addRenamesToMetadataInfo(info *tfbridge.MetadataInfo, renames Renames) error {
+	if info == nil {
 		return nil
 	}
 
-	var renames Renames
-
-	_, renamesAlreadySet, err := metadata.Get[Renames](g.info.MetadataInfo.Data, "renames")
+	_, renamesAlreadySet, err := metadata.Get[Renames](info.Data, "renames")
 	if err != nil {
 		return fmt.Errorf("[pkg/tfgen] failed to retrieve renames from MetadataInfo: %w", err)
 	}
 
-	// Skip setting renames, for scenarios such as muxed providers that have them precomputed.
 	if renamesAlreadySet {
-		return nil
+		return fmt.Errorf("[pkg/tfgen] renames already set in MetadataInfo, refusing to overwrite")
 	}
 
-	// Otherwise propagate renames computed in the generator to the metadata.
-	renames, err = g.Renames()
-	if err != nil {
-		return err
-	}
-
-	if err := metadata.Set(g.info.MetadataInfo.Data, "renames", renames); err != nil {
+	if err := metadata.Set(info.Data, "renames", renames); err != nil {
 		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
 	}
 
