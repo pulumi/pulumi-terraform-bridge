@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"unicode"
@@ -57,21 +58,22 @@ const (
 )
 
 type Generator struct {
-	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
-	version          string                // the package version.
-	language         Language              // the language runtime to generate.
-	info             tfbridge.ProviderInfo // the provider info for customizing code generation
-	root             afero.Fs              // the output virtual filesystem.
-	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
-	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
-	packageCache     *pcl.PackageCache     // the package cache for tf2pulumi.
-	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
-	terraformVersion string                // the Terraform version to target for example codegen, if any
-	sink             diag.Sink
-	skipDocs         bool
-	skipExamples     bool
-	coverageTracker  *CoverageTracker
-	renamesBuilder   *renamesBuilder
+	pkg                   tokens.Package        // the Pulum package name (e.g. `gcp`)
+	version               string                // the package version.
+	language              Language              // the language runtime to generate.
+	info                  tfbridge.ProviderInfo // the provider info for customizing code generation
+	root                  afero.Fs              // the output virtual filesystem.
+	providerShim          *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
+	pluginHost            plugin.Host           // the plugin host for tf2pulumi.
+	packageCache          *pcl.PackageCache     // the package cache for tf2pulumi.
+	infoSource            il.ProviderInfoSource // the provider info source for tf2pulumi.
+	terraformVersion      string                // the Terraform version to target for example codegen, if any
+	sink                  diag.Sink
+	skipDocs              bool
+	skipExamples          bool
+	coverageTracker       *CoverageTracker
+	renamesBuilder        *renamesBuilder
+	expectExistingRenames bool
 
 	convertedCode map[string][]byte
 }
@@ -720,19 +722,20 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 }
 
 type GeneratorOptions struct {
-	Package            string
-	Version            string
-	Language           Language
-	ProviderInfo       tfbridge.ProviderInfo
-	Root               afero.Fs
-	ProviderInfoSource il.ProviderInfoSource
-	PluginHost         plugin.Host
-	TerraformVersion   string
-	Sink               diag.Sink
-	Debug              bool
-	SkipDocs           bool
-	SkipExamples       bool
-	CoverageTracker    *CoverageTracker
+	Package               string
+	Version               string
+	Language              Language
+	ProviderInfo          tfbridge.ProviderInfo
+	Root                  afero.Fs
+	ProviderInfoSource    il.ProviderInfoSource
+	PluginHost            plugin.Host
+	TerraformVersion      string
+	Sink                  diag.Sink
+	Debug                 bool
+	SkipDocs              bool
+	SkipExamples          bool
+	CoverageTracker       *CoverageTracker
+	ExpectExistingRenames bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -797,21 +800,22 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:              pkg,
-		version:          version,
-		language:         lang,
-		info:             info,
-		root:             root,
-		providerShim:     providerShim,
-		pluginHost:       newCachingProviderHost(host),
-		packageCache:     pcl.NewPackageCache(),
-		infoSource:       host,
-		terraformVersion: opts.TerraformVersion,
-		sink:             sink,
-		skipDocs:         opts.SkipDocs,
-		skipExamples:     opts.SkipExamples,
-		coverageTracker:  opts.CoverageTracker,
-		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
+		pkg:                   pkg,
+		version:               version,
+		language:              lang,
+		info:                  info,
+		root:                  root,
+		providerShim:          providerShim,
+		pluginHost:            newCachingProviderHost(host),
+		packageCache:          pcl.NewPackageCache(),
+		infoSource:            host,
+		terraformVersion:      opts.TerraformVersion,
+		sink:                  sink,
+		skipDocs:              opts.SkipDocs,
+		skipExamples:          opts.SkipExamples,
+		coverageTracker:       opts.CoverageTracker,
+		renamesBuilder:        newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
+		expectExistingRenames: opts.ExpectExistingRenames,
 	}, nil
 }
 
@@ -1811,20 +1815,31 @@ func addRenamesToMetadataInfo(g *Generator) error {
 
 	var renames Renames
 
-	_, renamesAlreadySet, err := metadata.Get[Renames](g.info.MetadataInfo.Data, "renames")
+	existingRenames, renamesAlreadySet, err := metadata.Get[Renames](g.info.MetadataInfo.Data, "renames")
 	if err != nil {
 		return fmt.Errorf("[pkg/tfgen] failed to retrieve renames from MetadataInfo: %w", err)
-	}
-
-	// Skip setting renames, for scenarios such as muxed providers that have them precomputed.
-	if renamesAlreadySet {
-		return nil
 	}
 
 	// Otherwise propagate renames computed in the generator to the metadata.
 	renames, err = g.Renames()
 	if err != nil {
 		return err
+	}
+
+	// Skip setting renames, instead assert that we have successfully precomputed a matching rename set.
+	if renamesAlreadySet && g.expectExistingRenames && !reflect.DeepEqual(renames, existingRenames) {
+		errMsg := "expected existing renames; found mismatch"
+		var newRenames []byte
+		existingRenames, err := json.MarshalIndent(existingRenames, "", "  ")
+
+		if err == nil {
+			newRenames, err = json.MarshalIndent(renames, "", "  ")
+		}
+		if err == nil {
+			errMsg += "Existing:\n" + string(existingRenames) + "\n"
+			errMsg += "New:\n" + string(newRenames) + "\n"
+		}
+		return fmt.Errorf(errMsg)
 	}
 
 	if err := metadata.Set(g.info.MetadataInfo.Data, "renames", renames); err != nil {

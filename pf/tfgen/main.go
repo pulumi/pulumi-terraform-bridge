@@ -229,10 +229,11 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 
 		// In the muxing case precompute renames by merging them and set them to MetadataInfo, this will avoid
 		// recomputing the renames in GenerateFromSchema, it will write out the mergedRenames as-is.
-		mergedRenames := mergeRenames(renames)
+		mergedRenames := tfgen.MergeRenames(renames)
 		if err := metadata.Set(muxedInfo.GetMetadata(), "renames", mergedRenames); err != nil {
 			return fmt.Errorf("[pf/tfgen]: Failed to set renames data in MetadataInfo: %w", err)
 		}
+		opts.ExpectExistingRenames = true
 
 		// Having computed the schema, we now want to complete the tfgen process,
 		// reusing as much of the standard process as possible.
@@ -246,42 +247,4 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	}
 
 	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
-}
-
-func mergeRenames(renames []tfgen.Renames) tfgen.Renames {
-	main := renames[0]
-	for _, rename := range renames[1:] {
-		for k, v := range rename.Resources {
-			_, exists := main.Resources[k]
-			if !exists {
-				main.Resources[k] = v
-			}
-		}
-
-		for k, v := range rename.Functions {
-			_, exists := main.Functions[k]
-			if !exists {
-				main.Functions[k] = v
-			}
-		}
-		for k, v := range rename.RenamedProperties {
-			_, exists := main.RenamedProperties[k]
-			if !exists {
-				main.RenamedProperties[k] = v
-			}
-		}
-		for k, v := range rename.RenamedConfigProperties {
-			_, exists := main.RenamedConfigProperties[k]
-			if !exists {
-				main.RenamedConfigProperties[k] = v
-			}
-		}
-		for k, v := range rename.Resources {
-			_, exists := main.Resources[k]
-			if !exists {
-				main.Resources[k] = v
-			}
-		}
-	}
-	return main
 }

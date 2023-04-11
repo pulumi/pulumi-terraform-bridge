@@ -49,6 +49,38 @@ func newRenames() Renames {
 	}
 }
 
+func MergeRenames(renames []Renames) Renames {
+	result := newRenames()
+	for _, rename := range renames {
+		for k, v := range rename.Resources {
+			_, exists := result.Resources[k]
+			if !exists {
+				result.Resources[k] = v
+			}
+		}
+
+		for k, v := range rename.Functions {
+			_, exists := result.Functions[k]
+			if !exists {
+				result.Functions[k] = v
+			}
+		}
+		for k, v := range rename.RenamedProperties {
+			_, exists := result.RenamedProperties[k]
+			if !exists {
+				result.RenamedProperties[k] = v
+			}
+		}
+		for k, v := range rename.RenamedConfigProperties {
+			_, exists := result.RenamedConfigProperties[k]
+			if !exists {
+				result.RenamedConfigProperties[k] = v
+			}
+		}
+	}
+	return result
+}
+
 func (r Renames) renamedProps(tok tokens.Token) map[tokens.Name]string {
 	props, ok := r.RenamedProperties[tok]
 	if ok {
