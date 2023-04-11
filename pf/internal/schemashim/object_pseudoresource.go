@@ -15,16 +15,19 @@
 package schemashim
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // An Object type that masquerades as a Resource. This is a workaround to reusing tfgen code for generating schemas,
@@ -32,15 +35,27 @@ import (
 // an types schema through a pseudo-Resource.
 type objectPseudoResource struct {
 	schemaOnly
-	obj types.ObjectType
-
-	attrs map[string]pfutils.Attr
+	obj          basetypes.ObjectTypable
+	nestedAttrs  map[string]pfutils.Attr
+	allAttrNames []string
 }
 
-func newObjectPseudoResource(t types.ObjectType, attrs map[string]pfutils.Attr) *objectPseudoResource {
+func newObjectPseudoResource(t basetypes.ObjectTypable, nestedAttrs map[string]pfutils.Attr) *objectPseudoResource {
+	lowerType := t.TerraformType(context.Background())
+	objType, ok := lowerType.(tftypes.Object)
+	contract.Assertf(ok, "t basetypes.ObjectTypable should produce a tftypes.Object "+
+		"in t.TerraformType(): found %T", lowerType)
+	var attrs []string
+	for k := range objType.AttributeTypes {
+		attrs = append(attrs, k)
+	}
+	sort.Strings(attrs)
 	return &objectPseudoResource{
-		schemaOnly: schemaOnly{"objectPseudoResource"},
-		obj:        t, attrs: attrs}
+		schemaOnly:   schemaOnly{"objectPseudoResource"},
+		obj:          t,
+		nestedAttrs:  nestedAttrs,
+		allAttrNames: attrs,
+	}
 }
 
 var _ shim.Resource = (*objectPseudoResource)(nil)
@@ -82,7 +97,9 @@ func (*objectPseudoResource) DecodeTimeouts(
 }
 
 func (r *objectPseudoResource) Len() int {
-	return len(r.obj.AttrTypes)
+	lowerType := r.obj.TerraformType(context.Background())
+	objType := lowerType.(tftypes.Object)
+	return len(objType.AttributeTypes)
 }
 
 func (r *objectPseudoResource) Get(key string) shim.Schema {
@@ -94,24 +111,37 @@ func (r *objectPseudoResource) Get(key string) shim.Schema {
 }
 
 func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
-	if attr, ok := r.attrs[key]; ok {
+	// There is something here that possibly could be done better.
+	//
+	// When moving down a property identified by key, we are interested in keeping track of Attr for that property,
+	// and recurse using attrSchema. This information may be coming out of band from the ObjectTypeable value itself
+	// when using blocks, see TestCustomTypeEmbeddingObjectType.
+	if attr, ok := r.nestedAttrs[key]; ok {
 		return &attrSchema{key, attr}, true
 	}
 
-	if t, ok := r.obj.AttrTypes[key]; ok {
-		return newTypeSchema(t, nil), true
+	// If there fail to find an Attr, perhaps we have a simple ObjectType then we can look up the property's
+	// AttrType and go with that.
+	if objType, ok := r.obj.(types.ObjectType); ok {
+		if t, ok := objType.AttrTypes[key]; ok {
+			return newTypeSchema(t, nil), true
+		}
+	}
+
+	for _, a := range r.allAttrNames {
+		if key == a {
+			contract.Failf("[pf/internal/schemashim] Failing to translate schema "+
+				"for attribute %q of object type %#v. "+
+				"This should never happen, please report an issue.",
+				key, r.obj)
+		}
 	}
 
 	return nil, false
 }
 
 func (r *objectPseudoResource) Range(each func(key string, value shim.Schema) bool) {
-	var attrs []string
-	for attr := range r.obj.AttrTypes {
-		attrs = append(attrs, attr)
-	}
-	sort.Strings(attrs)
-	for _, attr := range attrs {
+	for _, attr := range r.allAttrNames {
 		if !each(attr, r.Get(attr)) {
 			return
 		}
@@ -129,10 +159,10 @@ func (*objectPseudoResource) Delete(key string) {
 type tuplePseudoResource struct {
 	schemaOnly
 	attrs map[string]pfutils.Attr
-	tuple pfattr.TypeWithElementTypes
+	tuple attr.TypeWithElementTypes
 }
 
-type tupElementAttr struct{ e pfattr.Type }
+type tupElementAttr struct{ e attr.Type }
 
 func (tupElementAttr) GetDeprecationMessage() string  { return "" }
 func (tupElementAttr) GetDescription() string         { return "" }
@@ -144,7 +174,7 @@ func (tupElementAttr) IsComputed() bool               { return false }
 
 func (t tupElementAttr) GetType() attr.Type { return t.e }
 
-func newTuplePseudoResource(t pfattr.TypeWithElementTypes) shim.Resource {
+func newTuplePseudoResource(t attr.TypeWithElementTypes) shim.Resource {
 	attrs := make(map[string]pfutils.Attr, len(t.ElementTypes()))
 	for i, e := range t.ElementTypes() {
 		k := fmt.Sprintf("t%d", i)
