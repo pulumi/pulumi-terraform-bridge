@@ -878,6 +878,12 @@ func (g *Generator) Generate() error {
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
 // generator was initialized with.
 func (g *Generator) GenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
+	// MetadataInfo gets stored on disk from previous versions of the provider. Renames do not need to be
+	// history-aware and they are simply re-computed from scratch as part of generating the schema. Clear any prior
+	// copy here at start so it does not interfere.
+	if err := clearRenamesFromMetadataInfo(g.info.MetadataInfo); err != nil {
+		return nil
+	}
 
 	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
@@ -1820,6 +1826,13 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func clearRenamesFromMetadataInfo(info *tfbridge.MetadataInfo) error {
+	if err := metadata.Set(info.Data, "renames", nil); err != nil {
+		return fmt.Errorf("[pkg/tfgen] failed to clear renames from MetadataInfo: %w", err)
+	}
+	return nil
 }
 
 func addRenamesToMetadataInfo(info *tfbridge.MetadataInfo, renames Renames) error {
