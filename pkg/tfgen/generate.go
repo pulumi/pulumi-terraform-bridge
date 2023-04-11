@@ -872,17 +872,24 @@ func (g *Generator) Generate() error {
 	}
 
 	// Now push the schema through the rest of the generator.
-	return g.GenerateFromSchema(genSchemaResult)
+	return g.UnstableGenerateFromSchema(genSchemaResult)
 }
 
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
 // generator was initialized with.
-func (g *Generator) GenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
+//
+// This is an unstable API. We have exposed it so other packages within
+// pulumi-terraform-bridge can consume it. We do not recommend other packages consume this
+// API.
+func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
 	// MetadataInfo gets stored on disk from previous versions of the provider. Renames do not need to be
-	// history-aware and they are simply re-computed from scratch as part of generating the schema. Clear any prior
-	// copy here at start so it does not interfere.
-	if err := clearRenamesFromMetadataInfo(g.info.MetadataInfo); err != nil {
-		return nil
+	// history-aware and they are simply re-computed from scratch as part of generating the schema.
+	// If we are storing such metadata, override the previous Renames with the new Renames.
+	if info := g.info.MetadataInfo; info != nil {
+		err := metadata.Set(info.Data, "renames", genSchemaResult.Renames)
+		if err != nil {
+			return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
+		}
 	}
 
 	pulumiPackageSpec := genSchemaResult.PackageSpec
@@ -925,11 +932,8 @@ func (g *Generator) GenerateFromSchema(genSchemaResult *GenerateSchemaResult) er
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
-		if meta := g.info.MetadataInfo; meta != nil {
-			if err := addRenamesToMetadataInfo(g.info.MetadataInfo, genSchemaResult.Renames); err != nil {
-				return err
-			}
-			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
+		if info := g.info.MetadataInfo; info != nil {
+			files[info.Path] = (*metadata.Data)(info.Data).Marshal()
 		}
 	case PCL:
 		if g.skipExamples {
@@ -1826,32 +1830,4 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
-}
-
-func clearRenamesFromMetadataInfo(info *tfbridge.MetadataInfo) error {
-	if err := metadata.Set(info.Data, "renames", nil); err != nil {
-		return fmt.Errorf("[pkg/tfgen] failed to clear renames from MetadataInfo: %w", err)
-	}
-	return nil
-}
-
-func addRenamesToMetadataInfo(info *tfbridge.MetadataInfo, renames Renames) error {
-	if info == nil {
-		return nil
-	}
-
-	_, renamesAlreadySet, err := metadata.Get[Renames](info.Data, "renames")
-	if err != nil {
-		return fmt.Errorf("[pkg/tfgen] failed to retrieve renames from MetadataInfo: %w", err)
-	}
-
-	if renamesAlreadySet {
-		return fmt.Errorf("[pkg/tfgen] renames already set in MetadataInfo, refusing to overwrite")
-	}
-
-	if err := metadata.Set(info.Data, "renames", renames); err != nil {
-		return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
-	}
-
-	return nil
 }

@@ -242,7 +242,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 			return err
 		}
 
-		return g.GenerateFromSchema(&tfgen.GenerateSchemaResult{
+		return g.UnstableGenerateFromSchema(&tfgen.GenerateSchemaResult{
 			PackageSpec: schema,
 			Renames:     mergedRenames,
 		})
