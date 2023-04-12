@@ -172,3 +172,28 @@ func TestMapping(t *testing.T) {
 		},
 	}, computedMapping.mapping)
 }
+
+// In case of AWS there are extra types that should not be dropped by the muxer.
+func TestMappingPreservesExtraTypes(t *testing.T) {
+	s1 := schema.PackageSpec{
+		Types: map[string]schema.ComplexTypeSpec{
+			"aws:iam/ManagedPolicy:ManagedPolicy": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+				Enum: []schema.EnumValueSpec{
+					{
+						Name:  "APIGatewayServiceRolePolicy",
+						Value: "arn:aws:iam::aws:policy/aws-service-role/APIGatewayServiceRolePolicy",
+					},
+				},
+			},
+		},
+	}
+
+	s2 := schema.PackageSpec{}
+
+	_, spec, err := Mapping([]schema.PackageSpec{
+		s1, s2,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, s1.Types, spec.Types)
+}
