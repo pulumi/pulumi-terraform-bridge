@@ -17,6 +17,22 @@ resources:
         input1
       setOptionals: [ a, b, c, b ]
 
+  randomNumber:
+    type: muxedrandom:RandomInteger
+    properties:
+      min: 2
+      max: 2
+
+  pseudoRandomNumber:
+    type: muxedrandom:RandomHumanNumber
+    properties:
+      suggestion: ${randomNumber.result}
+
+  unfairRandomNumber:
+    type: muxedrandom:RandomHumanNumber
+    properties:
+      suggestion: ${randomNumber.result}
+      
 outputs:
 
   testRequiredStringAfterUpdate__actual: ${r.requiredInputStringCopy}
@@ -29,3 +45,18 @@ outputs:
 
   testSetOptionals__actual: ${set.setOptionals}
   testSetOptionals__expect: [ a, b, c, b ]
+
+  randomNumber__actual: ${randomNumber.result}
+  randomNumber__expect: 2
+
+  pseudoRandomNumber__actual: ${pseudoRandomNumber.number}
+  pseudoRandomNumber__expect: 4
+
+  pseudoRandomNumberFair__actual: ${pseudoRandomNumber.fair}
+  pseudoRandomNumberFair__expect: true
+
+  pseudoRandomNumberUpdated__actual: ${pseudoRandomNumber.suggestionUpdated}
+  pseudoRandomNumberUpdated__expect: true
+
+  unfairRandomNumberFair__actual: ${unfairoRandomNumber.fair}
+  unfairRandomNumberFair__expect: false
