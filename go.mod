@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi-terraform-bridge/v3
 
 go 1.18
 
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
+
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -34,6 +36,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-java/pkg v0.8.0
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.1
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
@@ -42,7 +45,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
 	github.com/zclconf/go-cty v1.12.1
-	golang.org/x/crypto v0.3.0
+	golang.org/x/crypto v0.5.0
 	golang.org/x/mod v0.6.0
 	golang.org/x/net v0.7.0
 	golang.org/x/text v0.7.0
@@ -77,7 +80,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.4.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect

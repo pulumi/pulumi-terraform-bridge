@@ -26,7 +26,8 @@ build::
 build.testproviders:: \
 	tests/bin/pulumi-resource-testbridge \
 	tests/bin/pulumi-resource-random \
-	tests/bin/pulumi-resource-tls
+	tests/bin/pulumi-resource-tls \
+	tests/bin/pulumi-resource-muxedrandom
 
 tests/bin/pulumi-resource-random:: tests/bin/pulumi-tfgen-random
 	./tests/bin/pulumi-tfgen-random schema --out tests/internal/testprovider/cmd/pulumi-resource-random/
@@ -57,6 +58,16 @@ tests/bin/pulumi-tfgen-testbridge::
 	mkdir -p tests/bin
 	echo '{}' > tests/internal/testprovider/cmd/pulumi-resource-testbridge/bridge-metadata.json
 	(cd tests/internal/testprovider/cmd/pulumi-tfgen-testbridge && go build -o ../../../../bin/)
+
+tests/bin/pulumi-resource-muxedrandom:: tests/bin/pulumi-tfgen-muxedrandom
+	./tests/bin/pulumi-tfgen-muxedrandom schema --out tests/internal/testprovider/cmd/pulumi-resource-muxedrandom/
+	rm tests/internal/testprovider/cmd/pulumi-resource-muxedrandom/Pulumi.yaml
+	(cd tests/internal/testprovider/cmd/pulumi-resource-muxedrandom && go build -o ../../../../bin/)
+
+tests/bin/pulumi-tfgen-muxedrandom::
+	mkdir -p tests/bin
+	echo '{}' > tests/internal/testprovider/cmd/pulumi-resource-muxedrandom/bridge-metadata.json
+	(cd tests/internal/testprovider/cmd/pulumi-tfgen-muxedrandom && go build -o ../../../../bin/)
 
 gen.testdata::
 	(cd tests/testdatagen/genrandom && ./generate.sh)

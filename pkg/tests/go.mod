@@ -6,6 +6,7 @@ replace (
 	github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20220725190814-23001ad6ec03
 	github.com/pulumi/pulumi-terraform-bridge/testing => ../../testing
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
 )
 
 require (
@@ -70,6 +71,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.1 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.59.0 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.59.0 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
@@ -94,7 +96,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zclconf/go-cty v1.12.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect

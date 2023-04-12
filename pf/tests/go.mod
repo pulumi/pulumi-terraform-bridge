@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.1.1
 	github.com/hashicorp/terraform-plugin-go v0.14.3
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-00010101000000-000000000000
@@ -13,12 +14,20 @@ require (
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
 )
 
+require (
+	github.com/hashicorp/logutils v1.0.0 // indirect
+	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
+)
+
 replace (
+	github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20221122203342-430f685de305
 	github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 	github.com/hashicorp/terraform-provider-tls/shim => ./internal/tlsshim
 	github.com/pulumi/pulumi-terraform-bridge/pf => ../
 	github.com/pulumi/pulumi-terraform-bridge/testing => ../../testing
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
 	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20230117062402-cab81572f740
 	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/randomshim
 )
@@ -187,6 +196,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.8.0 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.1 // indirect
 	github.com/pulumi/pulumi-yaml v1.0.4 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.59.0
 	github.com/pulumi/pulumi/sdk/v3 v3.59.0

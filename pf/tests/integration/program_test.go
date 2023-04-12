@@ -96,12 +96,18 @@ func prepareStateFolder(root string) error {
 }
 
 func ensureTestBridgeProviderCompiled(wd string) error {
-	exe := "pulumi-resource-testbridge"
-	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "..", "bin", exe)) //nolint:gosec
-	cmd.Dir = filepath.Join(wd, "..", "internal", "testprovider", "cmd", exe)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	ensure := func(exe string) error {
+		cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "..", "bin", exe)) //nolint:gosec
+		cmd.Dir = filepath.Join(wd, "..", "internal", "testprovider", "cmd", exe)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+	if err := ensure("pulumi-resource-testbridge"); err != nil {
+		return err
+	}
+	return ensure("pulumi-resource-muxedrandom")
+
 }
 
 // Stacks may define tests inline by a simple convention of providing

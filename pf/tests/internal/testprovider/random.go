@@ -18,18 +18,24 @@ import (
 	_ "embed"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"unicode"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider/sdkv2randomprovider"
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 //go:embed cmd/pulumi-resource-random/bridge-metadata.json
 var randomProviderBridgeMetadata []byte
+
+//go:embed cmd/pulumi-resource-muxedrandom/bridge-metadata.json
+var muxedRandomProviderBridgeMetadata []byte
 
 // Adapts Random provider to tfbridge for testing tfbridge against a
 // realistic provider.
@@ -108,5 +114,51 @@ func RandomProvider() tfpf.ProviderInfo {
 	return tfpf.ProviderInfo{
 		ProviderInfo: info,
 		NewProvider:  randomshim.NewProvider,
+	}
+}
+
+func RandomSDKProvider() tfbridge.ProviderInfo {
+	randomPkg := "muxedrandom"
+	randomMod := "index"
+
+	// randomMember manufactures a type token for the random package and the given module and type.
+	randomMember := func(mod string, mem string) tokens.ModuleMember {
+		return tokens.ModuleMember(randomPkg + ":" + mod + ":" + mem)
+	}
+
+	// randomType manufactures a type token for the random package and the given module and type.
+	randomType := func(mod string, typ string) tokens.Type {
+		return tokens.Type(randomMember(mod, typ))
+	}
+
+	// randomResource manufactures a standard resource token given a module and resource name.  It automatically uses the
+	// random package and names the file by simply lower casing the resource's first character.
+	randomResource := func(mod string, res string) tokens.Type {
+		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+		return randomType(mod+"/"+fn, res)
+	}
+
+	info := tfbridge.ProviderInfo{
+		Name: "muxedrandom",
+		P:    sdkv2.NewProvider(sdkv2randomprovider.New()),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"random_human_number": {Tok: randomResource(randomMod, "RandomHumanNumber")},
+		},
+		MetadataInfo: tfbridge.NewProviderMetadata(muxedRandomProviderBridgeMetadata),
+	}
+
+	return info
+}
+
+func MuxedRandomProvider() []tfpf.Muxed {
+	sdk := RandomSDKProvider()
+	pf := RandomProvider()
+	for _, r := range pf.Resources {
+		r.Tok = tokens.Type("muxedrandom:" + strings.TrimPrefix(string(r.Tok), "random:"))
+	}
+	pf.Name = sdk.Name
+	return []tfpf.Muxed{
+		{SDK: &sdk},
+		{PF: &pf},
 	}
 }
