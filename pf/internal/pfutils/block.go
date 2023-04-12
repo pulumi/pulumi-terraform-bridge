@@ -76,7 +76,10 @@ type hasListValidators interface {
 	ListValidators() []validator.List
 }
 
-var listSizeRegExp = regexp.MustCompile(`^list must contain at least (\d+) elements and at most (\d+) elements$`)
+var listSizeRegExpAtLeastAtMost = regexp.MustCompile(
+	`^list must contain at least (\d+) elements and at most (\d+) elements$`)
+
+var listSizeRegExpAtMost = regexp.MustCompile(`^list must contain at most (\d+) elements$`)
 
 func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
 	ctx := context.Background()
@@ -86,12 +89,17 @@ func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
 	if listBlock, isList := x.(hasListValidators); isList {
 		for _, v := range listBlock.ListValidators() {
 			desc := v.Description(ctx)
-			if m := listSizeRegExp.FindStringSubmatch(desc); m != nil {
+			if m := listSizeRegExpAtLeastAtMost.FindStringSubmatch(desc); m != nil {
 				minElements, err := strconv.Atoi(m[1])
 				contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
 				maxElements, err := strconv.Atoi(m[2])
 				contract.AssertNoErrorf(err, "Atoi failed on %q", m[2])
 				return int64(minElements), int64(maxElements), true
+			}
+			if m := listSizeRegExpAtMost.FindStringSubmatch(desc); m != nil {
+				maxElements, err := strconv.Atoi(m[1])
+				contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
+				return int64(0), int64(maxElements), true
 			}
 		}
 	}
