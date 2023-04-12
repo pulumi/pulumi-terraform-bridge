@@ -79,10 +79,9 @@ import (
 //     `Mux` is replaced. If subsidiary servers where constructed with the same `host` as
 //     passed to `Mux`, then they will observe the new `host` spurred by `Attach`.
 //
-//   - GetMapping: TODO (https://github.com/pulumi/pulumi-terraform-bridge/issues/946)
-//     GetMapping returns an opaque blob. It's not clear how to merge blobs. We might
-//     require that only one provider responds with a mapping, and just forward the first
-//     provider that responds.
+//   - GetMapping: `GetMapping` dispatches on all underlerver Servers. If zero or 1 server
+//     responds with a non-empty data section, we call GetMappingHandler[Key] to merge the
+//     data sections, where Key is the key given in the GetMappingRequest.
 type Main struct {
 	Servers []Endpoint
 
@@ -94,6 +93,8 @@ type Main struct {
 	//
 	// If set, ComputedMapping must also be set.
 	Schema string
+
+	GetMappingHandler map[string]MultiMappingHandler
 }
 
 func (m Main) Server(host *provider.HostClient, module, version string) (pulumirpc.ResourceProviderServer, error) {
@@ -133,7 +134,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		mapping = mComputed.mapping
 	}
 
-	server := mux(host, mapping, pulumiSchema, servers...)
+	server := mux(host, mapping, pulumiSchema, m.GetMappingHandler, servers...)
 
 	return server, nil
 }

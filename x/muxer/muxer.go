@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	urn "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -36,14 +37,16 @@ const SchemaVersion int32 = 0
 
 func mux(
 	host *provider.HostClient, mapping mapping, pulumiSchema string,
+	getMappingHandlers getMappingHandler,
 	servers ...rpc.ResourceProviderServer,
 ) *muxer {
 	contract.Assertf(len(servers) > 0, "Cannot instantiate an empty muxer")
 	return &muxer{
-		host:    host,
-		servers: servers,
-		schema:  pulumiSchema,
-		mapping: mapping,
+		host:            host,
+		servers:         servers,
+		schema:          pulumiSchema,
+		mapping:         mapping,
+		getMappingByKey: getMappingHandlers,
 	}
 }
 
@@ -61,7 +64,12 @@ type muxer struct {
 	schema string
 
 	servers []server
+
+	getMappingByKey map[string]MultiMappingHandler
 }
+
+type getMappingHandler = map[string]MultiMappingHandler
+type MultiMappingHandler = func(provider string, data [][]byte) ([]byte, error)
 
 func (m *muxer) getFunction(token string) server {
 	i, ok := m.mapping.Functions[token]
@@ -121,8 +129,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 			req := proto.Clone(req).(*rpc.CheckRequest)
 			m.filterConfigArgs(i, req.Olds)
 			m.filterConfigArgs(i, req.News)
-			r, err := s.CheckConfig(ctx, req)
-			return newTuple(r, err)
+			return newTuple(s.CheckConfig(ctx, req))
 		}
 	}
 
@@ -423,8 +430,77 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
-func (m *muxer) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "UNIMPLEMENTED")
+func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+	subs := make([]func() tuple[*rpc.GetMappingResponse, error], len(m.servers))
+	for i, s := range m.servers {
+		i, s := i, s
+		subs[i] = func() tuple[*rpc.GetMappingResponse, error] {
+			return newTuple(s.GetMapping(ctx, proto.Clone(req).(*rpc.GetMappingRequest)))
+		}
+	}
+	errs := new(multierror.Error)
+	results := [][]byte{}
+	var providerName string
+	for i, v := range asyncJoin(subs) {
+		if err := v.B; err != nil {
+			errs.Errors = append(errs.Errors, err)
+			continue
+		}
+		response := v.A
+		if len(response.Data) == 0 {
+			continue
+		}
+		if response.GetProvider() == "" {
+			errs = multierror.Append(errs,
+				m.Warnf(ctx, "GetMapping", "Missing provider name for subprovider %d", i))
+			// TODO: Do we want to `continue` here, or is this OK with a warning?
+		} else if providerName == "" {
+			providerName = response.GetProvider()
+		} else if providerName != response.GetProvider() {
+			errs = multierror.Append(errs,
+				m.Warnf(ctx, "GetMapping",
+					"Ignoring Mapping data due to provider name mismatch: %s != %s",
+					providerName, response.GetProvider()))
+			continue
+		}
+		results = append(results, response.Data)
+	}
+
+	if err := m.muxedErrors(errs); err != nil {
+		return nil, err
+	}
+
+	switch len(results) {
+	case 0:
+		return m.UnimplementedResourceProviderServer.GetMapping(ctx, req)
+	case 1:
+		// We don't need to worry about merging GetMapping data if there is only one
+		// server with valid data.
+		return &rpc.GetMappingResponse{
+			Provider: providerName,
+			Data:     results[0],
+		}, nil
+	}
+
+	// We need to merge multiple mappings
+	combineMapping, found := m.getMappingByKey[req.Key]
+	if !found {
+		return nil, fmt.Errorf("No multi-mapping handler for GetMapping key '%s'", req.Key)
+	}
+
+	data, err := combineMapping(providerName, results)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to combine '%s' multi-mapping for '%s': %w", req.Key, providerName, err)
+	}
+
+	return &rpc.GetMappingResponse{
+		Provider: providerName,
+		Data:     data,
+	}, nil
+}
+
+func (m *muxer) Warnf(ctx context.Context, method, msg string, a ...any) error {
+	return m.host.Log(ctx, diag.Warning, "", fmt.Sprintf("[muxer/"+method+"] "+msg, a...))
 }
 
 // `mergeDetailedDiff` copies values from `src` to  `dst`.

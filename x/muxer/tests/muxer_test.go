@@ -41,7 +41,7 @@ func TestSimpleDispatch(t *testing.T) {
 		"test:mod:B": 1,
 	}
 
-	replayMux(t, m,
+	mux(t, m).replay(
 		simpleExchange(0, "/pulumirpc.ResourceProvider/Create", `{
             "urn": "urn:pulumi:test-stack::basicprogram::test:mod:A::r1",
             "properties": {
@@ -70,13 +70,17 @@ func TestSimpleDispatch(t *testing.T) {
 
 func TestConfigure(t *testing.T) {
 	var m muxer.ComputedMapping
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+		"test:mod:B": 1,
+	}
 	m.Config = map[string][]int{
 		"a": {0},
 		"b": {0, 1},
 		"c": {1},
 	}
 
-	replayMux(t, m,
+	mux(t, m).replay(
 		exchange("/pulumirpc.ResourceProvider/Configure", `{
       "args": {
         "a": "1",
@@ -107,7 +111,86 @@ func TestConfigure(t *testing.T) {
 		))
 }
 
-func replayMux(t *testing.T, mapping muxer.ComputedMapping, exchanges ...Exchange) {
+func TestGetMapping(t *testing.T) {
+	t.Run("single-responding-server", func(t *testing.T) {
+		var m muxer.ComputedMapping
+		m.Resources = map[string]int{
+			"test:mod:A": 0,
+			"test:mod:B": 1,
+		}
+
+		mux(t, m).replay(
+			exchange("/pulumirpc.ResourceProvider/GetMapping", `{
+  "key": "k1"
+}`, `{
+  "provider": "p1",
+  "data": "dw=="`+ /* the base64 encoding of d1 */ `
+}`, part(0, `{
+  "key": "k1"
+}`, `{
+  "provider": "p1",
+  "data": "d1"
+}`), part(1, `{
+  "key": "k1"
+}`, `{
+  "provider": "",
+  "data": ""
+}`)))
+	})
+	t.Run("merged-responding-server", func(t *testing.T) {
+		var m muxer.ComputedMapping
+		m.Resources = map[string]int{
+			"test:mod:A": 0,
+			"test:mod:B": 1,
+		}
+
+		combine := func(provider string, data [][]byte) ([]byte, error) {
+			assert.Equal(t, "p1", provider)
+			assert.Len(t, data, 2)
+			assert.Equalf(t, "d1", string(data[0]), "first sub-server")
+			assert.Equalf(t, "d2", string(data[1]), "second sub-server")
+			return []byte("r1"), nil
+		}
+
+		mux(t, m).getMappingHandler("k", combine).replay(
+			exchange("/pulumirpc.ResourceProvider/GetMapping", `{
+  "key": "k"
+}`, `{
+  "provider": "p1",
+  "data": "cjE="`+ /* the base64 encoding of r1 */ `
+}`, part(0, `{
+  "key": "k"
+}`, `{
+  "provider": "p1",
+  "data": "ZDE="`+ /* the base64 encoding of d1*/ `
+}`), part(1, `{
+  "key": "k"
+}`, `{
+  "provider": "p1",
+  "data": "ZDI="`+ /* the base64 encoding of d2*/ `
+}`)))
+	})
+}
+
+type testMuxer struct {
+	t                  *testing.T
+	mapping            muxer.ComputedMapping
+	getMappingHandlers map[string]muxer.MultiMappingHandler
+}
+
+func mux(t *testing.T, mapping muxer.ComputedMapping) testMuxer {
+	return testMuxer{t, mapping, nil}
+}
+
+func (m testMuxer) getMappingHandler(key string, f muxer.MultiMappingHandler) testMuxer {
+	if m.getMappingHandlers == nil {
+		m.getMappingHandlers = map[string]muxer.MultiMappingHandler{}
+	}
+	m.getMappingHandlers[key] = f
+	return m
+}
+
+func (m testMuxer) replay(exchanges ...Exchange) {
 	serverBehavior := [][]call{}
 	for _, ex := range exchanges {
 		for _, part := range ex.Parts {
@@ -123,13 +206,13 @@ func replayMux(t *testing.T, mapping muxer.ComputedMapping, exchanges ...Exchang
 	}
 	servers := make([]rpc.ResourceProviderServer, len(serverBehavior))
 	for i, s := range serverBehavior {
-		servers[i] = &server{t: t, calls: s}
+		servers[i] = &server{t: m.t, calls: s}
 	}
-	muxedServer := buildMux(t, mapping, servers...)
+	muxedServer := buildMux(m.t, m.mapping, m.getMappingHandlers, servers...)
 
 	bytes, err := json.Marshal(exchanges)
-	require.NoError(t, err)
-	testutils.ReplaySequence(t, muxedServer, string(bytes))
+	require.NoError(m.t, err)
+	testutils.ReplaySequence(m.t, muxedServer, string(bytes))
 }
 
 type Exchange struct {
@@ -179,7 +262,9 @@ func part(provider int, request, response string) ExchangePart {
 }
 
 func buildMux(
-	t *testing.T, mapping muxer.ComputedMapping, servers ...rpc.ResourceProviderServer,
+	t *testing.T, mapping muxer.ComputedMapping,
+	getMappings map[string]muxer.MultiMappingHandler,
+	servers ...rpc.ResourceProviderServer,
 ) rpc.ResourceProviderServer {
 	endpoints := make([]muxer.Endpoint, len(servers))
 	for i, s := range servers {
@@ -192,9 +277,10 @@ func buildMux(
 
 	}
 	s, err := muxer.Main{
-		Servers:         endpoints,
-		ComputedMapping: mapping,
-		Schema:          "some-schema",
+		Servers:           endpoints,
+		ComputedMapping:   mapping,
+		Schema:            "some-schema",
+		GetMappingHandler: getMappings,
 	}.Server(nil, "test", "0.0.0")
 	require.NoError(t, err)
 	return s
