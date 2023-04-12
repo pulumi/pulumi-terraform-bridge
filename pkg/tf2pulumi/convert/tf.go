@@ -1423,6 +1423,43 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	return newAttributes
 }
 
+// camelCaseObjectAttributes rewrites the attributes of objects to camelCase and returns the modified value.
+// when the input is a list of objects or map of objects, those are modified recursively.
+func camelCaseObjectAttributes(value cty.Value, valueType cty.Type) cty.Value {
+	// handle type object({...})
+	if valueType.IsObjectType() {
+		modifiedAttributes := map[string]cty.Value{}
+		for propertyKey, propertyValue := range value.AsValueMap() {
+			modifiedValue := camelCaseObjectAttributes(propertyValue, propertyValue.Type())
+			modifiedAttributes[camelCaseName(propertyKey)] = modifiedValue
+		}
+		return cty.ObjectVal(modifiedAttributes)
+	}
+
+	// handle type list(object({...}))
+	if valueType.IsListType() && valueType.ElementType().IsObjectType() {
+		modifiedValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSlice() {
+			modifiedValues[index] = camelCaseObjectAttributes(element, valueType.ElementType())
+		}
+
+		return cty.ListVal(modifiedValues)
+	}
+
+	// handle type map(object({...}))
+	if valueType.IsMapType() && valueType.ElementType().IsObjectType() {
+		modifiedAttributes := map[string]cty.Value{}
+		for propertyKey, propertyValue := range value.AsValueMap() {
+			modifiedValue := camelCaseObjectAttributes(propertyValue, propertyValue.Type())
+			modifiedAttributes[propertyKey] = modifiedValue
+		}
+		return cty.MapVal(modifiedAttributes)
+	}
+
+	// anything else, return as is
+	return value
+}
+
 func convertVariable(sources map[string][]byte, scopes *scopes,
 	variable *configs.Variable) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	pulumiName := scopes.roots["var."+variable.Name]
@@ -1442,7 +1479,12 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	block := hclwrite.NewBlock("config", labels)
 	blockBody := block.Body()
 	if !variable.Default.IsNull() {
-		blockBody.SetAttributeValue("default", variable.Default)
+		// object-typed config variables rewrite their object members from snake_case to camelCase
+		// for example object({ first_key = string }) becomes object({ firstKey = string })
+		// so here we also rewrite the attributes of the default value to camelCase
+		// i.e. { first_key = "hello" } becomes { firstKey = "hello" }
+		modifiedDefault := camelCaseObjectAttributes(variable.Default, variable.Type)
+		blockBody.SetAttributeValue("default", modifiedDefault)
 	}
 	if variable.DescriptionSet {
 		blockBody.SetAttributeValue("description", cty.StringVal(variable.Description))
