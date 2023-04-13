@@ -2045,9 +2045,9 @@ func (items terraformItems) Less(i, j int) bool {
 
 func translateRemoteModule(
 	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
-	packageAddr string,                    // The address of the remote terraform module to translate.
+	packageAddr string, // The address of the remote terraform module to translate.
 	packageSubdir string,
-	destinationRoot afero.Fs,    // The root of the destination filesystem to write PCL to.
+	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
 	destinationDirectory string, // A path in destination to write the translated code to.
 	info il.ProviderInfoSource) hcl.Diagnostics {
 
@@ -2098,10 +2098,10 @@ func translateRemoteModule(
 
 func translateModuleSourceCode(
 	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
-	sourceRoot afero.Fs,                   // The root of the source terraform package.
-	sourceDirectory string,                // The path in sourceRoot to the source terraform module.
-	destinationRoot afero.Fs,              // The root of the destination filesystem to write PCL to.
-	destinationDirectory string,           // A path in destination to write the translated code to.
+	sourceRoot afero.Fs, // The root of the source terraform package.
+	sourceDirectory string, // The path in sourceRoot to the source terraform module.
+	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
+	destinationDirectory string, // A path in destination to write the translated code to.
 	info il.ProviderInfoSource) hcl.Diagnostics {
 
 	sources, module, moduleDiagnostics := loadConfigDir(sourceRoot, sourceDirectory)
