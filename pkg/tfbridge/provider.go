@@ -331,44 +331,54 @@ func (p *Provider) GetSchema(ctx context.Context,
 
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+	urn := resource.URN(req.GetUrn())
+	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	glog.V(9).Infof("%s executing", label)
 
-	// TO_DO - revert this comment!!
-	//urn := resource.URN(req.GetUrn())
-	//label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
-	//glog.V(9).Infof("%s executing", label)
-	//
-	//news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-	//	Label:        fmt.Sprintf("%s.news", label),
-	//	KeepUnknowns: true,
-	//	SkipNulls:    true,
-	//	RejectAssets: true,
-	//})
-	//if validationErrors != nil {
-	//	return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
-	//}
-	//
-	//config, validationErrors := buildTerraformConfig(p, news)
-	//if validationErrors != nil {
-	//	return nil, errors.Wrap(validationErrors, "could not marshal config state")
-	//}
-	//
-	//if p.info.PreConfigureCallback != nil {
-	//	if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
-	//		return nil, validationErrors
-	//	}
-	//}
-	//
-	//// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
-	//missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	//if len(missingKeys) > 0 {
-	//	return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
-	//}
-	//if validationErrors != nil {
-	//	return nil, validationErrors
-	//}
-	//
-	//return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+	marshalOptions := plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+	}
+	news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), marshalOptions)
+	if validationErrors != nil {
+		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
+	}
+
+	config, validationErrors := buildTerraformConfig(p, news)
+	if validationErrors != nil {
+		return nil, errors.Wrap(validationErrors, "could not marshal config state")
+	}
+
+	if p.info.PreConfigureCallback != nil {
+		if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
+			return nil, validationErrors
+		}
+	}
+
+	if p.info.PreConfigureCallbackWithLogger != nil {
+		if validationErrors = p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config); validationErrors != nil {
+			return nil, validationErrors
+		}
+	}
+
+	// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
+	/*missingKeys, */
+	_, validationErrors = validateProviderConfig(ctx, p, config)
+	// if len(missingKeys) > 0 {
+	// 	return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
+	// }
+	if validationErrors != nil {
+		return nil, validationErrors
+	}
+
+	modifiedNews, err := plugin.MarshalProperties(news, marshalOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: modifiedNews}, nil
 }
 
 func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
