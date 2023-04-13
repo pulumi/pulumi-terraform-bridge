@@ -1425,32 +1425,52 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 
 // camelCaseObjectAttributes rewrites the attributes of objects to camelCase and returns the modified value.
 // when the input is a list of objects or map of objects, those are modified recursively.
-func camelCaseObjectAttributes(value cty.Value, valueType cty.Type) cty.Value {
+func camelCaseObjectAttributes(value cty.Value) cty.Value {
 	// handle type object({...})
-	if valueType.IsObjectType() {
+	if value.Type().IsObjectType() {
 		modifiedAttributes := map[string]cty.Value{}
 		for propertyKey, propertyValue := range value.AsValueMap() {
-			modifiedValue := camelCaseObjectAttributes(propertyValue, propertyValue.Type())
+			modifiedValue := camelCaseObjectAttributes(propertyValue)
 			modifiedAttributes[camelCaseName(propertyKey)] = modifiedValue
 		}
 		return cty.ObjectVal(modifiedAttributes)
 	}
 
-	// handle type list(object({...}))
-	if valueType.IsListType() && valueType.ElementType().IsObjectType() {
+	// handle type list(...)
+	if value.Type().IsListType() {
 		modifiedValues := make([]cty.Value, value.LengthInt())
 		for index, element := range value.AsValueSlice() {
-			modifiedValues[index] = camelCaseObjectAttributes(element, valueType.ElementType())
+			modifiedValues[index] = camelCaseObjectAttributes(element)
 		}
 
 		return cty.ListVal(modifiedValues)
 	}
 
+	// handle set(...) and convert it to list(...)
+	// because we simplify sets to lists
+	if value.Type().IsSetType() {
+		modifiedValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSet().Values() {
+			modifiedValues[index] = camelCaseObjectAttributes(element)
+		}
+
+		return cty.ListVal(modifiedValues)
+	}
+
+	if value.Type().IsTupleType() {
+		tupleValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSlice() {
+			tupleValues[index] = camelCaseObjectAttributes(element)
+		}
+
+		return cty.TupleVal(tupleValues)
+	}
+
 	// handle type map(object({...}))
-	if valueType.IsMapType() && valueType.ElementType().IsObjectType() {
+	if value.Type().IsMapType() {
 		modifiedAttributes := map[string]cty.Value{}
 		for propertyKey, propertyValue := range value.AsValueMap() {
-			modifiedValue := camelCaseObjectAttributes(propertyValue, propertyValue.Type())
+			modifiedValue := camelCaseObjectAttributes(propertyValue)
 			modifiedAttributes[propertyKey] = modifiedValue
 		}
 		return cty.MapVal(modifiedAttributes)
@@ -1483,7 +1503,7 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 		// for example object({ first_key = string }) becomes object({ firstKey = string })
 		// so here we also rewrite the attributes of the default value to camelCase
 		// i.e. { first_key = "hello" } becomes { firstKey = "hello" }
-		modifiedDefault := camelCaseObjectAttributes(variable.Default, variable.Type)
+		modifiedDefault := camelCaseObjectAttributes(variable.Default)
 		blockBody.SetAttributeValue("default", modifiedDefault)
 	}
 	if variable.DescriptionSet {
@@ -2025,9 +2045,9 @@ func (items terraformItems) Less(i, j int) bool {
 
 func translateRemoteModule(
 	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
-	packageAddr string, // The address of the remote terraform module to translate.
+	packageAddr string,                    // The address of the remote terraform module to translate.
 	packageSubdir string,
-	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
+	destinationRoot afero.Fs,    // The root of the destination filesystem to write PCL to.
 	destinationDirectory string, // A path in destination to write the translated code to.
 	info il.ProviderInfoSource) hcl.Diagnostics {
 
@@ -2078,10 +2098,10 @@ func translateRemoteModule(
 
 func translateModuleSourceCode(
 	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
-	sourceRoot afero.Fs, // The root of the source terraform package.
-	sourceDirectory string, // The path in sourceRoot to the source terraform module.
-	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
-	destinationDirectory string, // A path in destination to write the translated code to.
+	sourceRoot afero.Fs,                   // The root of the source terraform package.
+	sourceDirectory string,                // The path in sourceRoot to the source terraform module.
+	destinationRoot afero.Fs,              // The root of the destination filesystem to write PCL to.
+	destinationDirectory string,           // A path in destination to write the translated code to.
 	info il.ProviderInfoSource) hcl.Diagnostics {
 
 	sources, module, moduleDiagnostics := loadConfigDir(sourceRoot, sourceDirectory)
