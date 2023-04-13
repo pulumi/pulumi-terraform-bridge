@@ -16,6 +16,8 @@ package muxer
 
 // Serializable dispatch table maps TF resource, function and config tokens to numbers 0..(N-1) identifying which of N
 // muxed providers defines the resource, function or config value.
+//
+// Keys are tokens from Pulumi Package schema, or in case of Config, Pulumi property names.
 type DispatchTable struct {
 	// Resources and functions can only map to a single provider
 	Resources        map[string]int `json:"resources"`
@@ -49,7 +51,7 @@ func (m *DispatchTable) DispatchFunction(token string) (int, bool) {
 
 func (m *DispatchTable) DispatchResource(token string) (int, bool) {
 	i, ok := m.Resources[token]
-	if !ok {
+	if ok {
 		return i, true
 	}
 	if m.ResourcesDefault != nil {
@@ -60,7 +62,7 @@ func (m *DispatchTable) DispatchResource(token string) (int, bool) {
 
 func (m *DispatchTable) DispatchConfig(key string) ([]int, bool) {
 	i, ok := m.Config[key]
-	if !ok {
+	if ok {
 		return i, true
 	}
 	if m.ConfigDefault != nil {

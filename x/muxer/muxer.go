@@ -318,11 +318,7 @@ func resourceMethod[T resourceRequest, R any](m *muxer, req T, f func(m server) 
 	if !urn.IsValid() {
 		return zero[R](), fmt.Errorf("URN '%s' is not valid", string(urn))
 	}
-	token := string(urn.Type())
-	var server rpc.ResourceProviderServer
-	if i, ok := m.mapping.DispatchResource(token); ok {
-		server = m.servers[i]
-	}
+	server := m.getResource(string(urn.Type()))
 	if server == nil {
 		return zero[R](), status.Errorf(codes.NotFound, "Resource type '%s' not found.", urn.Type())
 	}
@@ -330,11 +326,7 @@ func resourceMethod[T resourceRequest, R any](m *muxer, req T, f func(m server) 
 }
 
 func (m *muxer) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
-	token := req.GetTok()
-	var server rpc.ResourceProviderServer
-	if i, ok := m.mapping.DispatchFunction(token); ok {
-		server = m.servers[i]
-	}
+	server := m.getFunction(req.GetTok())
 	if server == nil {
 		return nil, status.Errorf(codes.NotFound, "Invoke '%s' not found.", req.GetTok())
 	}

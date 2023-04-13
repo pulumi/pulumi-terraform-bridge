@@ -158,7 +158,7 @@ func TestMapping(t *testing.T) {
 		},
 	}, sMuxed)
 
-	assert.Equal(t, mapping{
+	assert.Equal(t, &DispatchTable{
 		Resources: map[string]int{
 			"pkg:mod:ResA": 0,
 			"pkg:mod:ResB": 1,
@@ -170,7 +170,7 @@ func TestMapping(t *testing.T) {
 			"var2": {0, 1},
 			"var3": {1},
 		},
-	}, computedMapping.mapping)
+	}, computedMapping)
 }
 
 // In case of AWS there are extra types that should not be dropped by the muxer.
