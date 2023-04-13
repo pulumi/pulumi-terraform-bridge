@@ -1423,6 +1423,63 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	return newAttributes
 }
 
+// camelCaseObjectAttributes rewrites the attributes of objects to camelCase and returns the modified value.
+// when the input is a list of objects or map of objects, those are modified recursively.
+func camelCaseObjectAttributes(value cty.Value) cty.Value {
+	// handle type object({...})
+	if value.Type().IsObjectType() {
+		modifiedAttributes := map[string]cty.Value{}
+		for propertyKey, propertyValue := range value.AsValueMap() {
+			modifiedValue := camelCaseObjectAttributes(propertyValue)
+			modifiedAttributes[camelCaseName(propertyKey)] = modifiedValue
+		}
+		return cty.ObjectVal(modifiedAttributes)
+	}
+
+	// handle type list(...)
+	if value.Type().IsListType() {
+		modifiedValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSlice() {
+			modifiedValues[index] = camelCaseObjectAttributes(element)
+		}
+
+		return cty.ListVal(modifiedValues)
+	}
+
+	// handle set(...) and convert it to list(...)
+	// because we simplify sets to lists
+	if value.Type().IsSetType() {
+		modifiedValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSet().Values() {
+			modifiedValues[index] = camelCaseObjectAttributes(element)
+		}
+
+		return cty.ListVal(modifiedValues)
+	}
+
+	if value.Type().IsTupleType() {
+		tupleValues := make([]cty.Value, value.LengthInt())
+		for index, element := range value.AsValueSlice() {
+			tupleValues[index] = camelCaseObjectAttributes(element)
+		}
+
+		return cty.TupleVal(tupleValues)
+	}
+
+	// handle type map(object({...}))
+	if value.Type().IsMapType() {
+		modifiedAttributes := map[string]cty.Value{}
+		for propertyKey, propertyValue := range value.AsValueMap() {
+			modifiedValue := camelCaseObjectAttributes(propertyValue)
+			modifiedAttributes[propertyKey] = modifiedValue
+		}
+		return cty.MapVal(modifiedAttributes)
+	}
+
+	// anything else, return as is
+	return value
+}
+
 func convertVariable(sources map[string][]byte, scopes *scopes,
 	variable *configs.Variable) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	pulumiName := scopes.roots["var."+variable.Name]
@@ -1442,7 +1499,12 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	block := hclwrite.NewBlock("config", labels)
 	blockBody := block.Body()
 	if !variable.Default.IsNull() {
-		blockBody.SetAttributeValue("default", variable.Default)
+		// object-typed config variables rewrite their object members from snake_case to camelCase
+		// for example object({ first_key = string }) becomes object({ firstKey = string })
+		// so here we also rewrite the attributes of the default value to camelCase
+		// i.e. { first_key = "hello" } becomes { firstKey = "hello" }
+		modifiedDefault := camelCaseObjectAttributes(variable.Default)
+		blockBody.SetAttributeValue("default", modifiedDefault)
 	}
 	if variable.DescriptionSet {
 		blockBody.SetAttributeValue("description", cty.StringVal(variable.Description))
