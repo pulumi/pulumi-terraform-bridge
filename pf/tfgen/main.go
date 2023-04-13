@@ -84,137 +84,8 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	// only used when passed to GenerateOptions.
 
 	gen := func(opts tfgen.GeneratorOptions) error {
-		// To avoid double-initializing the sink (and thus panicking), we eagerly
-		// initialize here.
-		if opts.Sink == nil {
-			diagOpts := diag.FormatOptions{
-				Color: cmdutil.GetGlobalColorization(),
-				Debug: opts.Debug,
-			}
-			cmdutil.InitDiag(diagOpts)
-			opts.Sink = cmdutil.Diag()
-		}
-
-		muxedInfo := infos[0].GetInfo()
-		schemas := []schema.PackageSpec{}
-		var errs multierror.Error
-
-		var renames []tfgen.Renames
-
-		for i, union := range infos {
-			// Concurrency safety
-			i := i
-			union := union
-
-			anErr := func(err error) bool {
-				if err == nil {
-					return false
-				}
-				errs.Errors = append(errs.Errors, fmt.Errorf("Muxed proider[%d]: %w", i, err))
-				return true
-			}
-
-			info := union.SDK
-			if pfInfo := union.PF; pfInfo != nil {
-				if err := notSupported(opts.Sink, pfInfo.ProviderInfo); anErr(err) {
-					continue
-				}
-
-				shimInfo := shimSchemaOnlyProviderInfo(ctx, *pfInfo)
-				info = &shimInfo
-			}
-
-			// Initially, muxedInfo **is** infos[0]. We don't want to perform
-			// any destructive edits on already defined functions.
-			if i != 0 {
-				// Now we purge already defined resources from the next schema,
-				// marking the all remaining resources as defined for future
-				// schemas.
-				muxedInfo.IgnoreMappings = append(muxedInfo.IgnoreMappings,
-					info.IgnoreMappings...)
-
-				rDefined := func(k string) bool {
-					_, defined := muxedInfo.Resources[k]
-					if defined {
-						return true
-					}
-					_, defined = muxedInfo.ExtraResources[k]
-					return defined
-				}
-
-				fDefined := func(k string) bool {
-					_, defined := muxedInfo.DataSources[k]
-					if defined {
-						return true
-					}
-					_, defined = muxedInfo.ExtraFunctions[k]
-					return defined
-				}
-
-				for k, v := range info.Resources {
-					// This resource was not already defined. Mark it as
-					// defined then leave it alone.
-					if !rDefined(k) {
-						muxedInfo.Resources[k] = v
-						continue
-					}
-
-					// This resource was already defined in a previous
-					// provider, so it needs to be purged from this provider.
-					delete(info.Resources, k)
-					info.IgnoreMappings = append(info.IgnoreMappings, k)
-				}
-				for k, v := range info.ExtraResources {
-					if !rDefined(k) {
-						muxedInfo.ExtraResources[k] = v
-						continue
-					}
-
-					// This resource was already defined in a previous
-					// provider, so it needs to be purged from this provider.
-					delete(info.ExtraResources, k)
-					info.IgnoreMappings = append(info.IgnoreMappings, k)
-				}
-
-				// We now do the same thing for data sources.
-
-				for k, v := range info.DataSources {
-					if !fDefined(k) {
-						muxedInfo.DataSources[k] = v
-						continue
-					}
-					delete(info.DataSources, k)
-					info.IgnoreMappings = append(info.IgnoreMappings, k)
-				}
-				for k, v := range info.ExtraFunctions {
-					if !fDefined(k) {
-						muxedInfo.ExtraFunctions[k] = v
-						continue
-					}
-					delete(info.ExtraFunctions, k)
-					info.IgnoreMappings = append(info.IgnoreMappings, k)
-				}
-			}
-
-			genResult, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
-				ProviderInfo:    *info,
-				DiagnosticsSink: opts.Sink,
-			})
-
-			if anErr(err) {
-				continue
-			}
-
-			renames = append(renames, genResult.Renames)
-			schemas = append(schemas, genResult.PackageSpec)
-		}
-
-		if err := errs.ErrorOrNil(); err != nil {
-			return err
-		}
-
-		dispatchTable, schema, err := muxer.Mapping(schemas)
-
+		muxedInfo, dispatchTable, schema, mergedRenames, err :=
+			UnstableMuxProviderInfo(ctx, opts, provider, infos...)
 		if err != nil {
 			return err
 		}
@@ -259,7 +130,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 func UnstableMuxProviderInfo(
 	ctx context.Context, opts tfgen.GeneratorOptions,
 	provider string, infos ...tfbridge.Muxed,
-) (sdkBridge.ProviderInfo, muxer.ComputedMapping, schema.PackageSpec, tfgen.Renames, error) {
+) (sdkBridge.ProviderInfo, *muxer.DispatchTable, schema.PackageSpec, tfgen.Renames, error) {
 	// To avoid double-initializing the sink (and thus panicking), we eagerly
 	// initialize here.
 	if opts.Sink == nil {
@@ -386,7 +257,7 @@ func UnstableMuxProviderInfo(
 	}
 
 	if err := errs.ErrorOrNil(); err != nil {
-		return sdkBridge.ProviderInfo{}, muxer.ComputedMapping{},
+		return sdkBridge.ProviderInfo{}, nil,
 			schema.PackageSpec{}, tfgen.Renames{}, err
 	}
 
