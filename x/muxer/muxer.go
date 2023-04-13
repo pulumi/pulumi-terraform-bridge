@@ -450,17 +450,17 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 		if len(response.Data) == 0 {
 			continue
 		}
-		if response.GetProvider() == "" {
+		if response.Provider == "" {
 			errs.Errors = append(errs.Errors,
 				fmt.Errorf("Missing provider name for subprovider %d", i))
 			continue
 		} else if providerName == "" {
-			providerName = response.GetProvider()
-		} else if providerName != response.GetProvider() {
+			providerName = response.Provider
+		} else if providerName != response.Provider {
 			errs = multierror.Append(errs,
 				m.Warnf(ctx, "GetMapping",
 					"Ignoring Mapping data due to provider name mismatch: %s != %s",
-					providerName, response.GetProvider()))
+					providerName, response.Provider))
 			continue
 		}
 		results = append(results, response.Data)
@@ -472,7 +472,10 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 
 	switch len(results) {
 	case 0:
-		return m.UnimplementedResourceProviderServer.GetMapping(ctx, req)
+		// There are no results and some sub-providers implemented the
+		// method. This means that no provider responded to this key. We return an
+		// empty response.
+		return &rpc.GetMappingResponse{}, nil
 	case 1:
 		// We don't need to worry about merging GetMapping data if there is only one
 		// server with valid data.

@@ -92,6 +92,21 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 //
 // This is an experimental API.
 func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed) {
+	f := MakeMuxedServer(ctx, pkg, meta, infos...)
+
+	err := rprovider.Main(pkg, f)
+	if err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+}
+
+// Create a function to produce a Muxed provider.
+//
+// This function exposes implementation details for testing. It should not be used outside
+// of pulumi-terraform-bridge.  This is an experimental API.
+func MakeMuxedServer(
+	ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed,
+) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	version := infos[0].GetInfo().Version
 	schema := string(meta.PackageSchema)
 	mapping, found, err := metadata.Get[muxer.ComputedMapping](infos[0].GetInfo().GetMetadata(), "mux")
@@ -110,8 +125,7 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 			"terraform": combineTFGetMappingKey,
 		},
 	}
-
-	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	return func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		for _, info := range infos {
 			info := info // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
 
@@ -129,9 +143,6 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 				}})
 		}
 		return m.Server(host, pkg, version)
-	})
-	if err != nil {
-		cmdutil.ExitError(err.Error())
 	}
 }
 
