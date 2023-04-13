@@ -451,9 +451,9 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 			continue
 		}
 		if response.GetProvider() == "" {
-			errs = multierror.Append(errs,
-				m.Warnf(ctx, "GetMapping", "Missing provider name for subprovider %d", i))
-			// TODO: Do we want to `continue` here, or is this OK with a warning?
+			errs.Errors = append(errs.Errors,
+				fmt.Errorf("Missing provider name for subprovider %d", i))
+			continue
 		} else if providerName == "" {
 			providerName = response.GetProvider()
 		} else if providerName != response.GetProvider() {
