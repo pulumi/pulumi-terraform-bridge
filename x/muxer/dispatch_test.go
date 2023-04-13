@@ -28,9 +28,9 @@ func TestDispatch(t *testing.T) {
 			"aws:auditmanager/getControl:getControl": 1,
 		},
 		Config: map[string][]int{
-			"both": []int{0, 1},
-			"zero": []int{0},
-			"one":  []int{1},
+			"both": {0, 1},
+			"zero": {0},
+			"one":  {1},
 		},
 	}
 
@@ -63,7 +63,7 @@ func TestDispatch(t *testing.T) {
 	_, found = dt.DispatchConfig("two")
 	require.False(t, found)
 
-	var defaultIndex int = 2
+	defaultIndex := 2
 	dt.ResourcesDefault = &defaultIndex
 	dt.FunctionsDefault = &defaultIndex
 	dt.ConfigDefault = []int{defaultIndex}

@@ -81,10 +81,11 @@ type trivialPropertyNames struct{}
 
 var _ PropertyNames = (*trivialPropertyNames)(nil)
 
-func (*trivialPropertyNames) PropertyKey(typeToken tokens.Token, property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
+func (*trivialPropertyNames) PropertyKey(typeToken tokens.Token, property TerraformPropertyName,
+	t tftypes.Type) resource.PropertyKey {
 	return resource.PropertyKey(string(typeToken))
 }
 
 func (*trivialPropertyNames) ConfigPropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return resource.PropertyKey(string(property))
+	return resource.PropertyKey(property)
 }

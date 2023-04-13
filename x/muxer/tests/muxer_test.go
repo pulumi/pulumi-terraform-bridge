@@ -35,7 +35,7 @@ import (
 )
 
 func TestSimpleDispatch(t *testing.T) {
-	var m muxer.ComputedMapping
+	m := muxer.NewDispatchTable()
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
 		"test:mod:B": 1,
@@ -69,7 +69,7 @@ func TestSimpleDispatch(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
-	var m muxer.ComputedMapping
+	m := muxer.NewDispatchTable()
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
 		"test:mod:B": 1,
@@ -113,7 +113,7 @@ func TestConfigure(t *testing.T) {
 
 func TestGetMapping(t *testing.T) {
 	t.Run("single-responding-server", func(t *testing.T) {
-		var m muxer.ComputedMapping
+		m := muxer.NewDispatchTable()
 		m.Resources = map[string]int{
 			"test:mod:A": 0,
 			"test:mod:B": 1,
@@ -138,7 +138,7 @@ func TestGetMapping(t *testing.T) {
 }`)))
 	})
 	t.Run("merged-responding-server", func(t *testing.T) {
-		var m muxer.ComputedMapping
+		m := muxer.NewDispatchTable()
 		m.Resources = map[string]int{
 			"test:mod:A": 0,
 			"test:mod:B": 1,
@@ -174,11 +174,11 @@ func TestGetMapping(t *testing.T) {
 
 type testMuxer struct {
 	t                  *testing.T
-	mapping            muxer.ComputedMapping
+	mapping            *muxer.DispatchTable
 	getMappingHandlers map[string]muxer.MultiMappingHandler
 }
 
-func mux(t *testing.T, mapping muxer.ComputedMapping) testMuxer {
+func mux(t *testing.T, mapping *muxer.DispatchTable) testMuxer {
 	return testMuxer{t, mapping, nil}
 }
 
@@ -262,7 +262,7 @@ func part(provider int, request, response string) ExchangePart {
 }
 
 func buildMux(
-	t *testing.T, mapping muxer.ComputedMapping,
+	t *testing.T, dispatchTable *muxer.DispatchTable,
 	getMappings map[string]muxer.MultiMappingHandler,
 	servers ...rpc.ResourceProviderServer,
 ) rpc.ResourceProviderServer {
@@ -278,7 +278,7 @@ func buildMux(
 	}
 	s, err := muxer.Main{
 		Servers:           endpoints,
-		ComputedMapping:   mapping,
+		DispatchTable:     dispatchTable,
 		Schema:            "some-schema",
 		GetMappingHandler: getMappings,
 	}.Server(nil, "test", "0.0.0")
