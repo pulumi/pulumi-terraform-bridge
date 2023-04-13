@@ -253,7 +253,17 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 		case tftypes.Tuple:
 			return e.deriveTupleEncoder(typeSpec.Ref, t)
 		default:
-			return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
+			// Workaround dangling local references.
+			dangling := false
+			if strings.HasPrefix(typeSpec.Ref, "#/types/") {
+				token := strings.TrimPrefix(typeSpec.Ref, "#/types/")
+				if e.spec.Type(tokens.Type(token)) == nil {
+					dangling = true
+				}
+			}
+			if !dangling {
+				return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
+			}
 		}
 	}
 
