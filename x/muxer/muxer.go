@@ -36,7 +36,7 @@ import (
 const SchemaVersion int32 = 0
 
 func mux(
-	host *provider.HostClient, mapping mapping, pulumiSchema string,
+	host *provider.HostClient, mapping *DispatchTable, pulumiSchema string,
 	getMappingHandlers getMappingHandler,
 	servers ...rpc.ResourceProviderServer,
 ) *muxer {
@@ -59,7 +59,7 @@ type muxer struct {
 
 	host *provider.HostClient
 
-	mapping mapping
+	mapping *DispatchTable
 
 	schema string
 
@@ -71,20 +71,18 @@ type muxer struct {
 type getMappingHandler = map[string]MultiMappingHandler
 type MultiMappingHandler = func(provider string, data [][]byte) ([]byte, error)
 
-func (m *muxer) getFunction(token string) server {
-	i, ok := m.mapping.Functions[token]
-	if !ok {
-		return nil
+func (m *muxer) getFunction(token string) (s server) {
+	if i, ok := m.mapping.DispatchFunction(token); ok {
+		s = m.servers[i]
 	}
-	return m.servers[i]
+	return
 }
 
-func (m *muxer) getResource(token string) server {
-	i, ok := m.mapping.Resources[token]
-	if !ok {
-		return nil
+func (m *muxer) getResource(token string) (s server) {
+	if i, ok := m.mapping.DispatchResource(token); ok {
+		s = m.servers[i]
 	}
-	return m.servers[i]
+	return
 }
 
 func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
@@ -98,7 +96,8 @@ func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.
 func filterConfig[T any](m *muxer, i int, vars map[string]T) {
 	for v := range vars {
 		var has bool
-		for _, j := range m.mapping.Config[v] {
+		js, _ := m.mapping.DispatchConfig(v)
+		for _, j := range js {
 			if j == i {
 				has = true
 				break
@@ -319,7 +318,11 @@ func resourceMethod[T resourceRequest, R any](m *muxer, req T, f func(m server) 
 	if !urn.IsValid() {
 		return zero[R](), fmt.Errorf("URN '%s' is not valid", string(urn))
 	}
-	server := m.getResource(string(urn.Type()))
+	token := string(urn.Type())
+	var server rpc.ResourceProviderServer
+	if i, ok := m.mapping.DispatchResource(token); ok {
+		server = m.servers[i]
+	}
 	if server == nil {
 		return zero[R](), status.Errorf(codes.NotFound, "Resource type '%s' not found.", urn.Type())
 	}
@@ -327,7 +330,11 @@ func resourceMethod[T resourceRequest, R any](m *muxer, req T, f func(m server) 
 }
 
 func (m *muxer) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
-	server := m.getFunction(req.GetTok())
+	token := req.GetTok()
+	var server rpc.ResourceProviderServer
+	if i, ok := m.mapping.DispatchFunction(token); ok {
+		server = m.servers[i]
+	}
 	if server == nil {
 		return nil, status.Errorf(codes.NotFound, "Invoke '%s' not found.", req.GetTok())
 	}

@@ -21,22 +21,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ComputedMapping struct {
-	// mapping is an implementation detail.
-	//
-	// Right now, we want to expose the same information to the user, but that doesn't
-	// need to be true forever.
-	mapping
-}
-
-func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec, error) {
+func Mapping(schemas []schema.PackageSpec) (*DispatchTable, schema.PackageSpec, error) {
 	// TODO Insert sanity checks and return an error on conflicts:
 	// https://github.com/pulumi/pulumi-terraform-bridge/issues/949 For example right
 	// now, if different schemas define the same type in different ways, which ever
 	// schema comes first dominates.
 
 	muxedSchema := func() *schema.PackageSpec { x := schemas[0]; return &x }()
-	mapping := newMapping()
+	mapping := NewDispatchTable()
 
 	// We need to zero these maps out so our normal process can re-add them. This
 	// maintains consistency.
@@ -48,7 +40,7 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 
 	for i, s := range schemas {
 		s := s
-		mapping.layerSchema(muxedSchema, &s, i)
+		layerSchema(mapping, muxedSchema, &s, i)
 	}
 
 	if len(muxedSchema.Resources) == 0 {
@@ -61,37 +53,14 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 		muxedSchema.Functions = nil
 	}
 
-	return ComputedMapping{mapping}, *muxedSchema, nil
-}
-
-type mapping struct {
-	// Resources and functions can only map to a single provider
-	Resources map[string]int `json:"resources"`
-	Functions map[string]int `json:"functions"`
-
-	// Config values can map to multiple providers
-	Config map[string][]int `json:"config"`
-}
-
-func newMapping() mapping {
-	return mapping{
-		Resources: make(map[string]int),
-		Functions: make(map[string]int),
-		Config:    make(map[string][]int),
-	}
-}
-
-func (mapping mapping) isEmpty() bool {
-	return mapping.Resources == nil &&
-		mapping.Functions == nil &&
-		mapping.Config == nil
+	return mapping, *muxedSchema, nil
 }
 
 // Layer `srcSchema` under `dstSchema`, keeping track of where resources and functions
 // were mapped from.
 //
 // `srcIndex` is the index of `srcSchema` and thus its server.
-func (mapping mapping) layerSchema(dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
+func layerSchema(mapping *DispatchTable, dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
 	m := mappingCtx{mapping, dstSchema, srcSchema, srcIndex}
 
 	for tk, r := range m.srcSchema.Resources {
@@ -185,7 +154,7 @@ func appendUnique[T comparable](dst, src []T) []T {
 }
 
 type mappingCtx struct {
-	mapping              mapping
+	mapping              *DispatchTable
 	dstSchema, srcSchema *schema.PackageSpec
 	srcIndex             int
 }

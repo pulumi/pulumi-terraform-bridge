@@ -37,8 +37,8 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 		if len(opts.muxWith) > 0 {
 			// If we have multiple providers to serve, Mux them together.
 
-			var mapping muxer.ComputedMapping
-			if m, found, err := metadata.Get[muxer.ComputedMapping](info.GetMetadata(), "muxer"); err != nil {
+			var mapping *muxer.DispatchTable
+			if m, found, err := metadata.Get[*muxer.DispatchTable](info.GetMetadata(), "muxer"); err != nil {
 				return nil, err
 			} else if found {
 				mapping = m
@@ -56,9 +56,9 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 			}
 
 			return muxer.Main{
-				Schema:          string(pulumiSchema),
-				ComputedMapping: mapping,
-				Servers:         servers,
+				Schema:        string(pulumiSchema),
+				DispatchTable: mapping,
+				Servers:       servers,
 			}.Server(host, module, version)
 		}
 
