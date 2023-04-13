@@ -73,7 +73,7 @@ func (u *notSupportedUtil) warn(format string, arg ...interface{}) {
 
 func (u *notSupportedUtil) assertNotZero(path string, shouldBeZero interface{}) {
 	va := reflect.ValueOf(shouldBeZero)
-	if va.IsZero() || va.IsNil() {
+	if va.IsZero() {
 		return
 	}
 	u.warn("%s received a non-zero custom value %v that is being ignored."+
