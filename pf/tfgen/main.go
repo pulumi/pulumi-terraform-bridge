@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -84,14 +83,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	// only used when passed to GenerateOptions.
 
 	gen := func(opts tfgen.GeneratorOptions) error {
-		// To avoid double-initializing the sink (and thus panicking), we eagerly
-		// initialize here.
 		if opts.Sink == nil {
-			diagOpts := diag.FormatOptions{
-				Color: cmdutil.GetGlobalColorization(),
-				Debug: opts.Debug,
-			}
-			cmdutil.InitDiag(diagOpts)
 			opts.Sink = cmdutil.Diag()
 		}
 		muxedInfo, mapping, schema, mergedRenames, err :=
@@ -141,6 +133,9 @@ func UnstableMuxProviderInfo(
 	ctx context.Context, opts tfgen.GeneratorOptions,
 	provider string, infos ...tfbridge.Muxed,
 ) (sdkBridge.ProviderInfo, muxer.ComputedMapping, schema.PackageSpec, tfgen.Renames, error) {
+	if opts.Sink == nil {
+		opts.Sink = cmdutil.Diag()
+	}
 	muxedInfo := infos[0].GetInfo()
 	schemas := []schema.PackageSpec{}
 	var errs multierror.Error
