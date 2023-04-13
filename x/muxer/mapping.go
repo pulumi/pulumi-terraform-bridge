@@ -47,7 +47,7 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 	muxedSchema.Provider = schema.ResourceSpec{}
 
 	for i, s := range schemas {
-		s := s
+		i, s := i, s
 		mapping.layerSchema(muxedSchema, &s, i)
 	}
 
@@ -108,65 +108,54 @@ func (mapping mapping) layerSchema(dstSchema, srcSchema *schema.PackageSpec, src
 			srcSchema.Config.Required)
 	}
 
-	for k, v := range m.srcSchema.Config.Variables {
-		if m.dstSchema.Config.Variables == nil {
-			m.dstSchema.Config.Variables = map[string]schema.PropertySpec{}
-		}
-		// TODO: Validity check that this value matches any other config value
-		// with the same key
-		m.dstSchema.Config.Variables[k] = v
+	for k := range m.srcSchema.Config.Variables {
 		m.mapping.Config[k] = append(m.mapping.Config[k], m.srcIndex)
-		m.addType(v.TypeSpec)
 	}
+	layerMap(&m.dstSchema.Config.Variables, m.srcSchema.Config.Variables,
+		func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) })
 
 	// layer in the schema.ProviderSpec
-	m.layerResource(&m.dstSchema.Provider, m.srcSchema.Provider)
+	m.layerProvider(&m.dstSchema.Provider, m.srcSchema.Provider)
 }
 
-func (m *mappingCtx) layerResource(dst *schema.ResourceSpec, src schema.ResourceSpec) {
+// A helper function to merge two maps together, accounting for the maps being nil.
+func layerMap[K comparable, V any](dst *map[K]V, src map[K]V, finalize func(k K, v V)) {
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = map[K]V{}
+	}
+	for k, v := range src {
+		_, skip := (*dst)[k]
+		if !skip {
+			(*dst)[k] = v
+			finalize(k, v)
+		}
+	}
+}
+
+// Layer a provider resource onto another resource.
+func (m *mappingCtx) layerProvider(dst *schema.ResourceSpec, src schema.ResourceSpec) {
+	// As implemented, this could layer an arbitrary resource onto another arbitrary
+	// resource. The only resource where we want to "merge" instead "pick one" is the
+	// provider resource.
 	contract.Assert(dst != nil)
 
-	for k, v := range src.InputProperties {
-		if _, has := dst.InputProperties[k]; has {
-			// TODO: Validity check that these match
-			continue
-		}
-		m.addType(v.TypeSpec)
-		if dst.InputProperties == nil {
-			dst.InputProperties = map[string]schema.PropertySpec{}
-		}
-		dst.InputProperties[k] = v
+	addType := func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) }
+
+	layerMap(&dst.InputProperties, src.InputProperties, addType)
+	layerMap(&dst.Properties, src.Properties, addType)
+	if src.StateInputs == nil {
+		return
 	}
-	for k, v := range src.Properties {
-		if _, has := dst.Properties[k]; has {
-			// TODO: Validity check that these match
-			continue
-		}
-		m.addType(v.TypeSpec)
-		if dst.Properties == nil {
-			dst.Properties = map[string]schema.PropertySpec{}
-		}
-		dst.Properties[k] = v
+	dst.Plain = appendUnique(dst.Plain, src.Plain)
+
+	if dst.StateInputs == nil {
+		dst.StateInputs = &schema.ObjectTypeSpec{}
 	}
 
-	if src.StateInputs != nil {
-		for k, v := range src.StateInputs.Properties {
-			if dst.StateInputs == nil {
-				dst.StateInputs = &schema.ObjectTypeSpec{}
-			}
-			if dst.StateInputs.Properties == nil {
-				dst.StateInputs.Properties = map[string]schema.PropertySpec{}
-			}
-
-			if _, has := dst.StateInputs.Properties[k]; has {
-				// TODO: Validity check that these match
-				continue
-			}
-			m.addType(v.TypeSpec)
-			dst.StateInputs.Properties[k] = v
-		}
-		dst.Plain = appendUnique(dst.Plain, src.Plain)
-	}
+	layerMap(&dst.StateInputs.Properties, src.StateInputs.Properties, addType)
 }
 
 // Append elements from src to dst if they are not already present in dst.
