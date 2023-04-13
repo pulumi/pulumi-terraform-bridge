@@ -25,11 +25,14 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 // Supports extending schema generation with resources and functions build against another framework.
 type Extension interface {
 	Extend(*tfbridge.ProviderInfo) (*tfbridge.ProviderInfo, error)
+	NewDataSources() []string
+	NewResources() []string
 }
 
 func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Provider) shim.Provider {
@@ -46,6 +49,27 @@ func Extend(info *tfbridge.ProviderInfo, extensions ...Extension) (*tfbridge.Pro
 		copy = *extended
 	}
 	return &copy, nil
+}
+
+type ExtensionWithIndex struct {
+	Extension     Extension
+	ProviderIndex int
+}
+
+func ComputeExtendedDispatchTable(baselineProviderIndex int, extensions ...ExtensionWithIndex) *muxer.DispatchTable {
+	dt := muxer.NewDispatchTable()
+	dt.ConfigDefault = []int{baselineProviderIndex}
+	dt.FunctionsDefault = &baselineProviderIndex
+	dt.ResourcesDefault = &baselineProviderIndex
+	for _, e := range extensions {
+		for _, ds := range e.Extension.NewDataSources() {
+			dt.Functions[ds] = e.ProviderIndex
+		}
+		for _, ds := range e.Extension.NewResources() {
+			dt.Resources[ds] = e.ProviderIndex
+		}
+	}
+	return dt
 }
 
 func NewResourceExtension(provider shim.Provider, resources map[string]*tfbridge.ResourceInfo) Extension {
@@ -108,6 +132,22 @@ func (ext *extension) Extend(info *tfbridge.ProviderInfo) (*tfbridge.ProviderInf
 	}
 
 	return &copy, nil
+}
+
+func (ext *extension) NewDataSources() (ds []string) {
+	for k := range ext.dataSources {
+		ds = append(ds, k)
+	}
+	sort.Strings(ds)
+	return
+}
+
+func (ext *extension) NewResources() (rs []string) {
+	for k := range ext.resources {
+		rs = append(rs, k)
+	}
+	sort.Strings(rs)
+	return
 }
 
 type simpleSchemaProvider struct {
