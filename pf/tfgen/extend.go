@@ -26,13 +26,14 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Supports extending schema generation with resources and functions build against another framework.
 type Extension interface {
 	Extend(*tfbridge.ProviderInfo) (*tfbridge.ProviderInfo, error)
-	NewDataSources() []string
-	NewResources() []string
+	NewDataSources() []tokens.ModuleMember
+	NewResources() []tokens.Type
 }
 
 func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Provider) shim.Provider {
@@ -63,10 +64,10 @@ func ComputeExtendedDispatchTable(baselineProviderIndex int, extensions ...Exten
 	dt.ResourcesDefault = &baselineProviderIndex
 	for _, e := range extensions {
 		for _, ds := range e.Extension.NewDataSources() {
-			dt.Functions[ds] = e.ProviderIndex
+			dt.Functions[string(ds)] = e.ProviderIndex
 		}
-		for _, ds := range e.Extension.NewResources() {
-			dt.Resources[ds] = e.ProviderIndex
+		for _, res := range e.Extension.NewResources() {
+			dt.Resources[string(res)] = e.ProviderIndex
 		}
 	}
 	return dt
@@ -134,19 +135,23 @@ func (ext *extension) Extend(info *tfbridge.ProviderInfo) (*tfbridge.ProviderInf
 	return &copy, nil
 }
 
-func (ext *extension) NewDataSources() (ds []string) {
-	for k := range ext.dataSources {
-		ds = append(ds, k)
+func (ext *extension) NewDataSources() (ds []tokens.ModuleMember) {
+	for _, d := range ext.dataSources {
+		ds = append(ds, d.Tok)
 	}
-	sort.Strings(ds)
+	sort.SliceStable(ds, func(i, j int) bool {
+		return string(ds[i]) < string(ds[j])
+	})
 	return
 }
 
-func (ext *extension) NewResources() (rs []string) {
-	for k := range ext.resources {
-		rs = append(rs, k)
+func (ext *extension) NewResources() (rs []tokens.Type) {
+	for _, r := range ext.resources {
+		rs = append(rs, r.Tok)
 	}
-	sort.Strings(rs)
+	sort.SliceStable(rs, func(i, j int) bool {
+		return string(rs[i]) < string(rs[j])
+	})
 	return
 }
 
