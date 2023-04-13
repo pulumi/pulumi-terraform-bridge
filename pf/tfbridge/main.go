@@ -92,6 +92,21 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 //
 // This is an experimental API.
 func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed) {
+	f := MakeMuxedServer(ctx, pkg, meta, infos...)
+
+	err := rprovider.Main(pkg, f)
+	if err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+}
+
+// Create a function to produce a Muxed provider.
+//
+// This function exposes implementation details for testing. It should not be used outside
+// of pulumi-terraform-bridge.  This is an experimental API.
+func MakeMuxedServer(
+	ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed,
+) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	version := infos[0].GetInfo().Version
 	schema := string(meta.PackageSchema)
 	mapping, found, err := metadata.Get[muxer.ComputedMapping](infos[0].GetInfo().GetMetadata(), "mux")
@@ -105,9 +120,12 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 	m := muxer.Main{
 		ComputedMapping: mapping,
 		Schema:          schema,
+		GetMappingHandler: map[string]muxer.MultiMappingHandler{
+			"tf":        combineTFGetMappingKey,
+			"terraform": combineTFGetMappingKey,
+		},
 	}
-
-	err = rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	return func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		for _, info := range infos {
 			info := info // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
 
@@ -125,9 +143,73 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 				}})
 		}
 		return m.Server(host, pkg, version)
-	})
-	if err != nil {
-		cmdutil.ExitError(err.Error())
+	}
+}
+
+func combineTFGetMappingKey(_ string, infos [][]byte) ([]byte, error) {
+	var target *tfbridge.MarshallableProviderInfo
+	for i, info := range infos {
+		var src tfbridge.MarshallableProviderInfo
+		err := json.Unmarshal(info, &src)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal info %d: %w", i, err)
+		}
+		if i == 0 {
+			target = &src
+			continue
+		}
+
+		mergeProviderInfo(target, src)
+	}
+	return json.Marshal(target)
+}
+
+// Merge two tfbridge.MarshallableProviderInfo structs into one-another.
+//
+// Fields from src are merged into dst, prioritizing data in dst.
+//
+// The fields Name, Version and TFProviderVersion are not merged.
+func mergeProviderInfo(dst *tfbridge.MarshallableProviderInfo, src tfbridge.MarshallableProviderInfo) {
+	contract.Assertf(dst != nil, "cannot copy into nil pointer")
+	mergeUnder(&dst.Provider, src.Provider, mergeProvider)
+	mergeMapUnder(&dst.Config, src.Config)
+	mergeMapUnder(&dst.Resources, src.Resources)
+	mergeMapUnder(&dst.DataSources, src.DataSources)
+}
+
+// Merge two tfbridge.MarshallableProvider structs into one-another.
+//
+// Fields from src are merged into dst, prioritizing data from dst.
+func mergeProvider(dst *tfbridge.MarshallableProvider, src tfbridge.MarshallableProvider) {
+	mergeMapUnder(&dst.Schema, src.Schema)
+	mergeMapUnder(&dst.Resources, src.Resources)
+	mergeMapUnder(&dst.DataSources, src.DataSources)
+}
+
+// A helper function to merge two structs together, accounting for the structs being nil.
+func mergeUnder[T any](dst **T, src *T, merge func(*T, T)) {
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = src
+	}
+	merge(*dst, *src)
+}
+
+// A helper function to merge two maps together, accounting for the maps being nil.
+func mergeMapUnder[K comparable, V any](dst *map[K]V, src map[K]V) {
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = src
+	}
+	for k, v := range src {
+		_, skip := (*dst)[k]
+		if !skip {
+			(*dst)[k] = v
+		}
 	}
 }
 
