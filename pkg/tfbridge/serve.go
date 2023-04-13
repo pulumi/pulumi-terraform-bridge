@@ -37,13 +37,9 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 		if len(opts.muxWith) > 0 {
 			// If we have multiple providers to serve, Mux them together.
 
-			var mapping *muxer.DispatchTable
-			if m, found, err := metadata.Get[*muxer.DispatchTable](info.GetMetadata(), "muxer"); err != nil {
-				return nil, err
-			} else if found {
-				mapping = m
-			} else {
-				return nil, fmt.Errorf("missing pre-computed muxer mapping")
+			dispatchTable, err := metadata.RequireDispatchTable(info.GetMetadata())
+			if err != nil {
+				return nil, fmt.Errorf("[tfbridge]: %w", err)
 			}
 
 			servers := []muxer.Endpoint{{
@@ -57,7 +53,7 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 
 			return muxer.Main{
 				Schema:        string(pulumiSchema),
-				DispatchTable: mapping,
+				DispatchTable: dispatchTable,
 				Servers:       servers,
 			}.Server(host, module, version)
 		}

@@ -109,17 +109,17 @@ func MakeMuxedServer(
 ) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	version := infos[0].GetInfo().Version
 	schema := string(meta.PackageSchema)
-	mapping, found, err := metadata.Get[muxer.ComputedMapping](infos[0].GetInfo().GetMetadata(), "mux")
+	dispatchTable, err := metadata.LoadDispatchTable(infos[0].GetInfo().GetMetadata())
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
-	if !found {
-		fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
+	if dispatchTable == nil {
+		fmt.Printf("Muxed provider is missing a precomputed dispatch table. Did you run `make tfgen`?")
 		os.Exit(1)
 	}
 	m := muxer.Main{
-		ComputedMapping: mapping,
-		Schema:          schema,
+		DispatchTable: dispatchTable,
+		Schema:        schema,
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
 			"tf":        combineTFGetMappingKey,
 			"terraform": combineTFGetMappingKey,
