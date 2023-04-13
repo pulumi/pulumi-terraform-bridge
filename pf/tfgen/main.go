@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -84,6 +83,9 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	// only used when passed to GenerateOptions.
 
 	gen := func(opts tfgen.GeneratorOptions) error {
+		if opts.Sink == nil {
+			opts.Sink = cmdutil.Diag()
+		}
 		muxedInfo, mapping, schema, mergedRenames, err :=
 			UnstableMuxProviderInfo(ctx, opts, provider, infos...)
 		if err != nil {
@@ -131,17 +133,9 @@ func UnstableMuxProviderInfo(
 	ctx context.Context, opts tfgen.GeneratorOptions,
 	provider string, infos ...tfbridge.Muxed,
 ) (sdkBridge.ProviderInfo, muxer.ComputedMapping, schema.PackageSpec, tfgen.Renames, error) {
-	// To avoid double-initializing the sink (and thus panicking), we eagerly
-	// initialize here.
 	if opts.Sink == nil {
-		diagOpts := diag.FormatOptions{
-			Color: cmdutil.GetGlobalColorization(),
-			Debug: opts.Debug,
-		}
-		cmdutil.InitDiag(diagOpts)
 		opts.Sink = cmdutil.Diag()
 	}
-
 	muxedInfo := infos[0].GetInfo()
 	schemas := []schema.PackageSpec{}
 	var errs multierror.Error
@@ -149,9 +143,7 @@ func UnstableMuxProviderInfo(
 	var renames []tfgen.Renames
 
 	for i, union := range infos {
-		// Concurrency safety
-		i := i
-		union := union
+		i, union := i, union
 
 		anErr := func(err error) bool {
 			if err == nil {
@@ -174,73 +166,42 @@ func UnstableMuxProviderInfo(
 		// Initially, muxedInfo **is** infos[0]. We don't want to perform
 		// any destructive edits on already defined functions.
 		if i != 0 {
-			// Now we purge already defined resources from the next schema,
-			// marking the all remaining resources as defined for future
-			// schemas.
+			// Now we purge already defined items from the next schema,
+			// marking the all remaining items as defined for future schemas.
+
 			muxedInfo.IgnoreMappings = append(muxedInfo.IgnoreMappings,
 				info.IgnoreMappings...)
 
-			rDefined := func(k string) bool {
-				_, defined := muxedInfo.Resources[k]
-				if defined {
-					return true
-				}
-				_, defined = muxedInfo.ExtraResources[k]
-				return defined
-			}
+			// Resources
+			layerUnder(&muxedInfo.Resources, info.Resources, muxedInfo.ExtraResources,
+				func(k string) {
+					delete(info.Resources, k)
+					info.IgnoreMappings = append(info.IgnoreMappings, k)
+				})
 
-			fDefined := func(k string) bool {
-				_, defined := muxedInfo.DataSources[k]
-				if defined {
-					return true
-				}
-				_, defined = muxedInfo.ExtraFunctions[k]
-				return defined
-			}
+			layerUnder(&muxedInfo.ExtraResources, info.ExtraResources, muxedInfo.Resources,
+				func(k string) {
+					delete(info.ExtraResources, k)
+					info.IgnoreMappings = append(info.IgnoreMappings, k)
+				})
 
-			for k, v := range info.Resources {
-				// This resource was not already defined. Mark it as
-				// defined then leave it alone.
-				if !rDefined(k) {
-					muxedInfo.Resources[k] = v
-					continue
-				}
+			// Datasources/functions
+			layerUnder(&muxedInfo.DataSources, info.DataSources, muxedInfo.ExtraFunctions,
+				func(k string) {
+					delete(info.DataSources, k)
+					info.IgnoreMappings = append(info.IgnoreMappings, k)
+				})
+			layerUnder(&muxedInfo.ExtraFunctions, info.ExtraFunctions, muxedInfo.DataSources,
+				func(k string) {
+					delete(info.ExtraFunctions, k)
+					info.IgnoreMappings = append(info.IgnoreMappings, k)
+				})
 
-				// This resource was already defined in a previous
-				// provider, so it needs to be purged from this provider.
-				delete(info.Resources, k)
-				info.IgnoreMappings = append(info.IgnoreMappings, k)
-			}
-			for k, v := range info.ExtraResources {
-				if !rDefined(k) {
-					muxedInfo.ExtraResources[k] = v
-					continue
-				}
-
-				// This resource was already defined in a previous
-				// provider, so it needs to be purged from this provider.
-				delete(info.ExtraResources, k)
-				info.IgnoreMappings = append(info.IgnoreMappings, k)
-			}
-
-			// We now do the same thing for data sources.
-
-			for k, v := range info.DataSources {
-				if !fDefined(k) {
-					muxedInfo.DataSources[k] = v
-					continue
-				}
-				delete(info.DataSources, k)
-				info.IgnoreMappings = append(info.IgnoreMappings, k)
-			}
-			for k, v := range info.ExtraFunctions {
-				if !fDefined(k) {
-					muxedInfo.ExtraFunctions[k] = v
-					continue
-				}
-				delete(info.ExtraFunctions, k)
-				info.IgnoreMappings = append(info.IgnoreMappings, k)
-			}
+			// Config
+			layerUnder(&muxedInfo.Config, info.Config, muxedInfo.ExtraConfig,
+				func(k string) { delete(info.Config, k) })
+			layerUnder(&muxedInfo.ExtraConfig, info.ExtraConfig, muxedInfo.Config,
+				func(k string) { delete(info.Config, k) })
 		}
 
 		genResult, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
@@ -301,4 +262,28 @@ func mergeRenames(renames []tfgen.Renames) tfgen.Renames {
 		}
 	}
 	return main
+}
+
+func layerUnder[T any, O any](
+	dst *map[string]T, src map[string]T, alternativeDst map[string]O,
+	afterAdd func(k string),
+) {
+	contract.Assertf(dst != nil, "Cannot assign to a nil destination")
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = map[string]T{}
+	}
+	for k, v := range src {
+		_, ok := (*dst)[k]
+		if alternativeDst != nil && !ok {
+			_, ok = alternativeDst[k]
+		}
+		if ok {
+			continue
+		}
+		(*dst)[k] = v
+		afterAdd(k)
+	}
 }
