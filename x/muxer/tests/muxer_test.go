@@ -74,11 +74,6 @@ func TestConfigure(t *testing.T) {
 		"test:mod:A": 0,
 		"test:mod:B": 1,
 	}
-	m.Config = map[string][]int{
-		"a": {0},
-		"b": {0, 1},
-		"c": {1},
-	}
 
 	mux(t, m).replay(
 		exchange("/pulumirpc.ResourceProvider/Configure", `{
@@ -93,7 +88,8 @@ func TestConfigure(t *testing.T) {
 			part(0, `{
   "args": {
     "a": "1",
-    "b": "2"
+    "b": "2",
+    "c": "3"
   }
 }`, `{
   "acceptSecrets": true,
@@ -101,6 +97,7 @@ func TestConfigure(t *testing.T) {
 }`),
 			part(1, `{
   "args": {
+    "a": "1",
     "b": "2",
     "c": "3"
   }

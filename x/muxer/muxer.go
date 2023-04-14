@@ -95,40 +95,12 @@ func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.
 	return &rpc.GetSchemaResponse{Schema: m.schema}, nil
 }
 
-func filterConfig[T any](m *muxer, i int, vars map[string]T) {
-	for v := range vars {
-		var has bool
-		for _, j := range m.dispatchTable.Config[v] {
-			if j == i {
-				has = true
-				break
-			}
-		}
-		if !has {
-			delete(vars, v)
-		}
-	}
-}
-
-// Destructively filter `vars`, removing variables that are not known to apply to server
-// `i`.
-func (m *muxer) filterConfigVariables(i int, vars map[string]string) {
-	filterConfig(m, i, vars)
-}
-
-// Destructively filter `args`, removing values that are not known to apply to server `i`.
-func (m *muxer) filterConfigArgs(i int, args *structpb.Struct) {
-	filterConfig(m, i, args.Fields)
-}
-
 func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	subs := make([]func() tuple[*rpc.CheckResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.CheckResponse, error] {
 			req := proto.Clone(req).(*rpc.CheckRequest)
-			m.filterConfigArgs(i, req.Olds)
-			m.filterConfigArgs(i, req.News)
 			return newTuple(s.CheckConfig(ctx, req))
 		}
 	}
@@ -209,10 +181,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.DiffResponse, error] {
 			req := proto.Clone(req).(*rpc.DiffRequest)
-			m.filterConfigArgs(i, req.Olds)
-			m.filterConfigArgs(i, req.News)
-			r, err := s.DiffConfig(ctx, req)
-			return newTuple(r, err)
+			return newTuple(s.DiffConfig(ctx, req))
 		}
 	}
 
@@ -284,10 +253,7 @@ func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.ConfigureResponse, error] {
 			req := proto.Clone(req).(*rpc.ConfigureRequest)
-			m.filterConfigVariables(i, req.Variables)
-			m.filterConfigArgs(i, req.Args)
-			r, err := s.Configure(ctx, req)
-			return newTuple(r, err)
+			return newTuple(s.Configure(ctx, req))
 		}
 	}
 	response := &rpc.ConfigureResponse{

@@ -164,11 +164,5 @@ func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
 			"pkg:mod:ResB": 1,
 		},
 		Functions: map[string]int{},
-
-		Config: map[string][]int{
-			"var1": {0},
-			"var2": {0, 1},
-			"var3": {1},
-		},
 	}, computedDT.dispatchTable)
 }
