@@ -818,18 +818,10 @@ output "funcRegexall2" {
 }
 # Examples for replace
 output "funcReplace0" {
-  value = invoke("std:index:replace", {
-    replace = "1 + 2 + 3"
-    search  = "+"
-    text    = "-"
-  }).result
+  value = notImplemented("replace(\"1 + 2 + 3\",\"+\",\"-\")")
 }
 output "funcReplace1" {
-  value = invoke("std:index:replace", {
-    replace = "hello world"
-    search  = "/w.*d/"
-    text    = "everybody"
-  }).result
+  value = notImplemented("replace(\"hello world\",\"/w.*d/\",\"everybody\")")
 }
 # Examples for reverse
 output "funcReverse" {

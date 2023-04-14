@@ -1,7 +1,7 @@
 {
   "name": "std",
   "displayName": "StandardLibrary",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Standard library functions",
   "homepage": "https://github.com/pulumi/pulumi-std",
   "repository": "https://github.com/pulumi/pulumi-std",
@@ -22,9 +22,7 @@
       "respectSchemaVersion": true
     }
   },
-  "config": {
-
-  },
+  "config": {},
   "provider": {
     "type": "object"
   },
