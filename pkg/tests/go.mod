@@ -11,7 +11,7 @@ replace (
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
-	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.41.0
 )
 

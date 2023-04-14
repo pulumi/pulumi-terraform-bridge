@@ -706,8 +706,8 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 
 func TestCheckConfig(t *testing.T) {
 	t.Run("minimal", func(t *testing.T) {
-		// Ensure the method is minimally implemented. Pulumi will be passing a provider verison. Make sure it
-		// is mirrorred back.
+		// Ensure the method is minimally implemented. Pulumi will be passing a provider version. Make sure it
+		// is mirrored back.
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
