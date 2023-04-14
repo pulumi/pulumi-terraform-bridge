@@ -2008,13 +2008,9 @@ func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 
 		// We want the name of this part
 		if len(parts) == 1 {
-			if curInfo != nil && curSch != nil {
-				maxItemsOne := false
-				if curInfo.MaxItemsOne != nil {
-					maxItemsOne = *curInfo.MaxItemsOne
-				}
-
-				return curSch.MaxItems() == 1 && maxItemsOne
+			if curInfo != nil && curInfo.MaxItemsOne != nil {
+				// use the overridden value
+				return *curInfo.MaxItemsOne
 			} else if curSch != nil {
 				return curSch.MaxItems() == 1
 			} else {
