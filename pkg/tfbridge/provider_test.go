@@ -12,6 +12,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -755,4 +756,81 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 	}
 
 	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
+}
+
+func TestProviderCheckConfig(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+
+	t.Run("minimal", func(t *testing.T) {
+		// Ensure the method is minimally implemented. Pulumi will be passing a provider verison. Make sure it
+		// is mirrorred back.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("config_value", func(t *testing.T) {
+		// Ensure Pulumi can configure config_value in the testprovider.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("config_changed", func(t *testing.T) {
+		// In this scenario Pulumi plans an update plan when a config has changed on an existing stack.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+                    },
+		    "news": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	// TODO[pulumi/pulumi-terraform-bridge#244] check validation scenarios once CheckConfig re-enables validation.
 }
