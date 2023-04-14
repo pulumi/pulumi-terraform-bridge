@@ -1,6 +1,27 @@
 {
   "name": "maxItemsOne",
   "provider": {
+    "dataSources": {
+      "maxItemsOne_datasource": {
+        "aliases": {
+          "type": 5,
+          "optional": true,
+          "maxItems": 1,
+          "element": {
+            "resource": {
+              "ensureHealth": {
+                "type": 1,
+                "optional": true
+              }
+            }
+          }
+        },
+        "result": {
+          "type": 4,
+          "computed": true
+        }
+      }
+    },
     "resources": {
       "maxItemsOne_resource": {
         "aliases": {
@@ -21,6 +42,11 @@
           "computed": true
         }
       }
+    }
+  },
+  "dataSources": {
+    "maxItemsOne_datasource": {
+      "tok": "maxItemsOne:index/index:datasource"
     }
   },
   "resources": {

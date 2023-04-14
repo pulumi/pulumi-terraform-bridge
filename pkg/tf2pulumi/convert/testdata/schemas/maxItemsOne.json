@@ -17,6 +17,14 @@
   },
   "config": {},
   "types": {
+    "maxItemsOne:index/datasourceAliases:datasourceAliases": {
+      "properties": {
+        "ensureHealth": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "maxItemsOne:index/resourceAlias:resourceAlias": {
       "properties": {
         "ensureHealth": {
@@ -67,6 +75,39 @@
           }
         },
         "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "maxItemsOne:index/index:datasource": {
+      "inputs": {
+        "description": "A collection of arguments for invoking datasource.\n",
+        "properties": {
+          "aliases": {
+            "$ref": "#/types/maxItemsOne:index/datasourceAliases:datasourceAliases"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by datasource.\n",
+        "properties": {
+          "aliases": {
+            "$ref": "#/types/maxItemsOne:index/datasourceAliases:datasourceAliases"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "id"
+        ]
       }
     }
   }

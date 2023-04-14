@@ -3,3 +3,8 @@ resource main "maxItemsOne:index/index:resource" {
         ensureHealth = true
     }]
 }
+someDatasource = invoke("maxItemsOne:index/index:datasource", {
+    aliases = {
+        ensureHealth = true
+    }
+})

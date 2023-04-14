@@ -3,3 +3,9 @@ resource "maxItemsOne_resource" "main" {
         ensureHealth = true
     }
 }
+
+data "maxItemsOne_datasource" "some_datasource" {
+  aliases {
+    ensureHealth = true
+  }
+}
