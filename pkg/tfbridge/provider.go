@@ -341,6 +341,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		SkipNulls:    true,
 		RejectAssets: true,
 	}
+
 	news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), marshalOptions)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
@@ -352,33 +353,40 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	if p.info.PreConfigureCallback != nil {
+		// NOTE: the user code may modify news in-place.
 		if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
 			return nil, validationErrors
 		}
 	}
 
 	if p.info.PreConfigureCallbackWithLogger != nil {
-		if validationErrors = p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config); validationErrors != nil {
+		// NOTE: the user code may modify news in-place.
+		validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
+		if validationErrors != nil {
 			return nil, validationErrors
 		}
 	}
 
-	// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
-	/*missingKeys, */
-	_, validationErrors = validateProviderConfig(ctx, p, config)
-	// if len(missingKeys) > 0 {
-	// 	return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
-	// }
+	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
+	if len(missingKeys) > 0 {
+		err := rpcerror.WithDetails(
+			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
+			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
+		return nil, err
+	}
 	if validationErrors != nil {
 		return nil, validationErrors
 	}
 
-	modifiedNews, err := plugin.MarshalProperties(news, marshalOptions)
+	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
+	newsStruct, err := plugin.MarshalProperties(news, marshalOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: modifiedNews}, nil
+	return &pulumirpc.CheckResponse{
+		Inputs: newsStruct,
+	}, nil
 }
 
 func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
@@ -526,6 +534,9 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.
+//
+// NOTE that validation and calling PreConfigureCallbacks are not called here but are called in CheckConfig. Pulumi will
+// always call CheckConfig first and call Configure with validated (or extended) results of CheckConfig.
 func (p *Provider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 
@@ -534,6 +545,7 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	p.setLoggingContext(ctx)
+
 	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
 	// we will need to translate into simply the configuration variable names.
 	vars := make(resource.PropertyMap)
@@ -565,29 +577,6 @@ func (p *Provider) Configure(ctx context.Context,
 	config, err := buildTerraformConfig(p, vars)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
-	}
-
-	if p.info.PreConfigureCallback != nil {
-		if err = p.info.PreConfigureCallback(vars, config); err != nil {
-			return nil, err
-		}
-	}
-
-	if p.info.PreConfigureCallbackWithLogger != nil {
-		if err = p.info.PreConfigureCallbackWithLogger(ctx, p.host, vars, config); err != nil {
-			return nil, err
-		}
-	}
-
-	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	if len(missingKeys) > 0 {
-		err = rpcerror.WithDetails(
-			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
-		return nil, err
-	}
-	if validationErrors != nil {
-		return nil, validationErrors
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
