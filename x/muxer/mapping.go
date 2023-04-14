@@ -21,22 +21,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ComputedMapping struct {
+type DispatchTable struct {
 	// mapping is an implementation detail.
 	//
 	// Right now, we want to expose the same information to the user, but that doesn't
 	// need to be true forever.
-	mapping
+	dispatchTable
 }
 
-func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec, error) {
+func MergeSchemasAndComputeDispatchTable(schemas []schema.PackageSpec) (DispatchTable, schema.PackageSpec, error) {
 	// TODO Insert sanity checks and return an error on conflicts:
 	// https://github.com/pulumi/pulumi-terraform-bridge/issues/949 For example right
 	// now, if different schemas define the same type in different ways, which ever
 	// schema comes first dominates.
 
 	muxedSchema := func() *schema.PackageSpec { x := schemas[0]; return &x }()
-	mapping := newMapping()
+	dispatchTable := newDispatchTable()
 
 	// We need to zero these maps out so our normal process can re-add them. This
 	// maintains consistency.
@@ -48,7 +48,7 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 
 	for i, s := range schemas {
 		i, s := i, s
-		mapping.layerSchema(muxedSchema, &s, i)
+		dispatchTable.layerSchema(muxedSchema, &s, i)
 	}
 
 	if len(muxedSchema.Resources) == 0 {
@@ -61,10 +61,10 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 		muxedSchema.Functions = nil
 	}
 
-	return ComputedMapping{mapping}, *muxedSchema, nil
+	return DispatchTable{dispatchTable: dispatchTable}, *muxedSchema, nil
 }
 
-type mapping struct {
+type dispatchTable struct {
 	// Resources and functions can only map to a single provider
 	Resources map[string]int `json:"resources"`
 	Functions map[string]int `json:"functions"`
@@ -73,26 +73,26 @@ type mapping struct {
 	Config map[string][]int `json:"config"`
 }
 
-func newMapping() mapping {
-	return mapping{
+func newDispatchTable() dispatchTable {
+	return dispatchTable{
 		Resources: make(map[string]int),
 		Functions: make(map[string]int),
 		Config:    make(map[string][]int),
 	}
 }
 
-func (mapping mapping) isEmpty() bool {
-	return mapping.Resources == nil &&
-		mapping.Functions == nil &&
-		mapping.Config == nil
+func (dispatchTable dispatchTable) isEmpty() bool {
+	return dispatchTable.Resources == nil &&
+		dispatchTable.Functions == nil &&
+		dispatchTable.Config == nil
 }
 
 // Layer `srcSchema` under `dstSchema`, keeping track of where resources and functions
 // were mapped from.
 //
 // `srcIndex` is the index of `srcSchema` and thus its server.
-func (mapping mapping) layerSchema(dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
-	m := mappingCtx{mapping, dstSchema, srcSchema, srcIndex}
+func (dispatchTable dispatchTable) layerSchema(dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
+	m := dispatchTableCtx{dispatchTable, dstSchema, srcSchema, srcIndex}
 
 	for tk, r := range m.srcSchema.Resources {
 		m.setResource(tk, r)
@@ -109,7 +109,7 @@ func (mapping mapping) layerSchema(dstSchema, srcSchema *schema.PackageSpec, src
 	}
 
 	for k := range m.srcSchema.Config.Variables {
-		m.mapping.Config[k] = append(m.mapping.Config[k], m.srcIndex)
+		m.dispatchTable.Config[k] = append(m.dispatchTable.Config[k], m.srcIndex)
 	}
 	layerMap(&m.dstSchema.Config.Variables, m.srcSchema.Config.Variables,
 		func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) })
@@ -136,7 +136,7 @@ func layerMap[K comparable, V any](dst *map[K]V, src map[K]V, finalize func(k K,
 }
 
 // Layer a provider resource onto another resource.
-func (m *mappingCtx) layerProvider(dst *schema.ResourceSpec, src schema.ResourceSpec) {
+func (m *dispatchTableCtx) layerProvider(dst *schema.ResourceSpec, src schema.ResourceSpec) {
 	// As implemented, this could layer an arbitrary resource onto another arbitrary
 	// resource. The only resource where we want to "merge" instead "pick one" is the
 	// provider resource.
@@ -173,18 +173,18 @@ func appendUnique[T comparable](dst, src []T) []T {
 	return dst
 }
 
-type mappingCtx struct {
-	mapping              mapping
+type dispatchTableCtx struct {
+	dispatchTable        dispatchTable
 	dstSchema, srcSchema *schema.PackageSpec
 	srcIndex             int
 }
 
-func (m *mappingCtx) setResource(token string, resource schema.ResourceSpec) {
-	_, ok := m.mapping.Resources[token]
+func (m *dispatchTableCtx) setResource(token string, resource schema.ResourceSpec) {
+	_, ok := m.dispatchTable.Resources[token]
 	if ok {
 		return
 	}
-	m.mapping.Resources[token] = m.srcIndex
+	m.dispatchTable.Resources[token] = m.srcIndex
 	m.dstSchema.Resources[token] = resource
 	m.addProperties(resource.InputProperties)
 	m.addProperties(resource.Properties)
@@ -193,8 +193,8 @@ func (m *mappingCtx) setResource(token string, resource schema.ResourceSpec) {
 	}
 }
 
-func (m *mappingCtx) setFunction(token string, function schema.FunctionSpec) {
-	_, ok := m.mapping.Functions[token]
+func (m *dispatchTableCtx) setFunction(token string, function schema.FunctionSpec) {
+	_, ok := m.dispatchTable.Functions[token]
 	if ok {
 		return
 	}
@@ -204,13 +204,13 @@ func (m *mappingCtx) setFunction(token string, function schema.FunctionSpec) {
 	m.addObjectType(function.Outputs)
 }
 
-func (m *mappingCtx) addProperties(properties map[string]schema.PropertySpec) {
+func (m *dispatchTableCtx) addProperties(properties map[string]schema.PropertySpec) {
 	for _, t := range properties {
 		m.addType(t.TypeSpec)
 	}
 }
 
-func (m *mappingCtx) addType(t schema.TypeSpec) {
+func (m *dispatchTableCtx) addType(t schema.TypeSpec) {
 	if t.Ref != "" {
 		m.addRefType(t.Ref)
 	}
@@ -236,7 +236,7 @@ func (m *mappingCtx) addType(t schema.TypeSpec) {
 	}
 }
 
-func (m *mappingCtx) addRefType(ref string) {
+func (m *dispatchTableCtx) addRefType(ref string) {
 	// External references don't need to be addressed, since there isn't any
 	// associated data in this schema.
 	//
@@ -271,7 +271,7 @@ func (m *mappingCtx) addRefType(ref string) {
 	m.addComplexType(token, typ)
 }
 
-func (m *mappingCtx) addComplexType(token string, typ schema.ComplexTypeSpec) {
+func (m *dispatchTableCtx) addComplexType(token string, typ schema.ComplexTypeSpec) {
 	m.dstSchema.Types[token] = typ
 
 	if typ.Type != "object" {
@@ -282,7 +282,7 @@ func (m *mappingCtx) addComplexType(token string, typ schema.ComplexTypeSpec) {
 	m.addObjectType(&typ.ObjectTypeSpec)
 }
 
-func (m *mappingCtx) addObjectType(typ *schema.ObjectTypeSpec) {
+func (m *dispatchTableCtx) addObjectType(typ *schema.ObjectTypeSpec) {
 	if typ == nil {
 		return
 	}

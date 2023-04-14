@@ -36,7 +36,7 @@ import (
 const SchemaVersion int32 = 0
 
 func mux(
-	host *provider.HostClient, mapping mapping, pulumiSchema string,
+	host *provider.HostClient, dispatchTable dispatchTable, pulumiSchema string,
 	getMappingHandlers getMappingHandler,
 	servers ...rpc.ResourceProviderServer,
 ) *muxer {
@@ -45,7 +45,7 @@ func mux(
 		host:            host,
 		servers:         servers,
 		schema:          pulumiSchema,
-		mapping:         mapping,
+		dispatchTable:   dispatchTable,
 		getMappingByKey: getMappingHandlers,
 	}
 }
@@ -59,7 +59,7 @@ type muxer struct {
 
 	host *provider.HostClient
 
-	mapping mapping
+	dispatchTable dispatchTable
 
 	schema string
 
@@ -72,7 +72,7 @@ type getMappingHandler = map[string]MultiMappingHandler
 type MultiMappingHandler = func(provider string, data [][]byte) ([]byte, error)
 
 func (m *muxer) getFunction(token string) server {
-	i, ok := m.mapping.Functions[token]
+	i, ok := m.dispatchTable.Functions[token]
 	if !ok {
 		return nil
 	}
@@ -80,7 +80,7 @@ func (m *muxer) getFunction(token string) server {
 }
 
 func (m *muxer) getResource(token string) server {
-	i, ok := m.mapping.Resources[token]
+	i, ok := m.dispatchTable.Resources[token]
 	if !ok {
 		return nil
 	}
@@ -98,7 +98,7 @@ func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.
 func filterConfig[T any](m *muxer, i int, vars map[string]T) {
 	for v := range vars {
 		var has bool
-		for _, j := range m.mapping.Config[v] {
+		for _, j := range m.dispatchTable.Config[v] {
 			if j == i {
 				has = true
 				break

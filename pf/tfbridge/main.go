@@ -109,7 +109,7 @@ func MakeMuxedServer(
 ) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	version := infos[0].GetInfo().Version
 	schema := string(meta.PackageSchema)
-	mapping, found, err := metadata.Get[muxer.ComputedMapping](infos[0].GetInfo().GetMetadata(), "mux")
+	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](infos[0].GetInfo().GetMetadata(), "mux")
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
@@ -118,8 +118,8 @@ func MakeMuxedServer(
 		os.Exit(1)
 	}
 	m := muxer.Main{
-		ComputedMapping: mapping,
-		Schema:          schema,
+		DispatchTable: dispatchTable,
+		Schema:        schema,
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
 			"tf":        combineTFGetMappingKey,
 			"terraform": combineTFGetMappingKey,

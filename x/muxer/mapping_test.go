@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func TestMapping(t *testing.T) {
+func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
 	s1 := schema.PackageSpec{
 		Name: "pkg",
 		Resources: map[string]schema.ResourceSpec{
@@ -97,7 +97,7 @@ func TestMapping(t *testing.T) {
 		},
 	}
 
-	computedMapping, sMuxed, err := Mapping([]schema.PackageSpec{s1, s2})
+	computedDT, sMuxed, err := MergeSchemasAndComputeDispatchTable([]schema.PackageSpec{s1, s2})
 	require.NoError(t, err)
 
 	assert.Equal(t, schema.PackageSpec{
@@ -158,7 +158,7 @@ func TestMapping(t *testing.T) {
 		},
 	}, sMuxed)
 
-	assert.Equal(t, mapping{
+	assert.Equal(t, dispatchTable{
 		Resources: map[string]int{
 			"pkg:mod:ResA": 0,
 			"pkg:mod:ResB": 1,
@@ -170,5 +170,5 @@ func TestMapping(t *testing.T) {
 			"var2": {0, 1},
 			"var3": {1},
 		},
-	}, computedMapping.mapping)
+	}, computedDT.dispatchTable)
 }
