@@ -86,7 +86,7 @@ type Main struct {
 	Servers []Endpoint
 
 	// An optional pre-computed mapping of functions/resources to servers.
-	ComputedMapping ComputedMapping
+	DispatchTable DispatchTable
 
 	// An optional pre-computed schema. If not provided, then the schema will be
 	// derived from layering underlying server schemas.
@@ -107,7 +107,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		}
 	}
 
-	mapping, pulumiSchema := m.ComputedMapping.mapping, m.Schema
+	mapping, pulumiSchema := m.DispatchTable.mapping, m.Schema
 	if mapping.isEmpty() || pulumiSchema == "" {
 		req := &rpc.GetSchemaRequest{Version: SchemaVersion}
 		primary, err := servers[0].GetSchema(context.Background(), req)

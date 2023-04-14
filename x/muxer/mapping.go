@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ComputedMapping struct {
+type DispatchTable struct {
 	// mapping is an implementation detail.
 	//
 	// Right now, we want to expose the same information to the user, but that doesn't
@@ -29,7 +29,7 @@ type ComputedMapping struct {
 	mapping
 }
 
-func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec, error) {
+func Mapping(schemas []schema.PackageSpec) (DispatchTable, schema.PackageSpec, error) {
 	// TODO Insert sanity checks and return an error on conflicts:
 	// https://github.com/pulumi/pulumi-terraform-bridge/issues/949 For example right
 	// now, if different schemas define the same type in different ways, which ever
@@ -61,7 +61,7 @@ func Mapping(schemas []schema.PackageSpec) (ComputedMapping, schema.PackageSpec,
 		muxedSchema.Functions = nil
 	}
 
-	return ComputedMapping{mapping}, *muxedSchema, nil
+	return DispatchTable{mapping}, *muxedSchema, nil
 }
 
 type mapping struct {

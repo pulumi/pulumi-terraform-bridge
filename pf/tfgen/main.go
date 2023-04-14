@@ -132,7 +132,7 @@ func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 func UnstableMuxProviderInfo(
 	ctx context.Context, opts tfgen.GeneratorOptions,
 	provider string, infos ...tfbridge.Muxed,
-) (sdkBridge.ProviderInfo, muxer.ComputedMapping, schema.PackageSpec, tfgen.Renames, error) {
+) (sdkBridge.ProviderInfo, muxer.DispatchTable, schema.PackageSpec, tfgen.Renames, error) {
 	if opts.Sink == nil {
 		opts.Sink = cmdutil.Diag()
 	}
@@ -218,7 +218,7 @@ func UnstableMuxProviderInfo(
 	}
 
 	if err := errs.ErrorOrNil(); err != nil {
-		return sdkBridge.ProviderInfo{}, muxer.ComputedMapping{},
+		return sdkBridge.ProviderInfo{}, muxer.DispatchTable{},
 			schema.PackageSpec{}, tfgen.Renames{}, err
 	}
 
