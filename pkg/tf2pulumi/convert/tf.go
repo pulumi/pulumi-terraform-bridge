@@ -1360,14 +1360,9 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		}
 
 		blockPath := appendPath(fullyQualifiedPath, block.Type)
-		schema := scopes.getTerraformSchema(blockPath)
 		name := scopes.pulumiName(blockPath)
 
-		isList := false
-		if s, ok := schema.(shim.Schema); ok {
-			isList = s.MaxItems() != 1
-		}
-
+		isList := !scopes.maxItemsOne(blockPath)
 		if !isList {
 			// This is a block attribute, not a list
 			newAttributes = append(newAttributes, bodyAttrTokens{
@@ -1840,73 +1835,6 @@ func (s *scopes) getOrAddPulumiName(name, prefix, suffix string) string {
 	return pulumiName
 }
 
-// Given a fully qualified and absolute terraform path (e.g. data.simple_data_source.a_field) returns the
-// terraform schema for that variable This will return either a shim.Resource or shim.Schema (Wouldn't DUs be
-// nice)
-func (s *scopes) getTerraformSchema(fullyQualifiedPath string) interface{} {
-	parts := strings.Split(fullyQualifiedPath, ".")
-	contract.Assertf(len(parts) != 0, "empty path passed into pulumiName")
-	var getInner func(sch shim.SchemaMap, parts []string) shim.Schema
-	getInner = func(sch shim.SchemaMap, parts []string) shim.Schema {
-		// Lookup the info for each part
-		if sch == nil {
-			return nil
-		}
-
-		curSch := sch.Get(parts[0])
-		// We want the schema of this part
-		if len(parts) == 1 {
-			return curSch
-		}
-		// Else recurse into the next part of the type
-		var nextSchema shim.SchemaMap
-		if curSch != nil {
-			if sch, ok := curSch.Elem().(shim.Resource); ok {
-				nextSchema = sch.Schema()
-			}
-		}
-		return getInner(nextSchema, parts[1:])
-	}
-
-	if parts[0] == "data" {
-		typ := parts[1]
-		contract.Assertf(typ != "", "empty data type passed into pulumiName")
-
-		provider := impliedProvider(typ)
-		providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
-		var currentSchema shim.SchemaMap
-		if err == nil {
-			sch := providerInfo.P.DataSourcesMap().Get(typ)
-			if sch != nil {
-				currentSchema = sch.Schema()
-			}
-		}
-
-		if len(parts) == 2 {
-			return currentSchema
-		}
-		return getInner(currentSchema, parts[2:])
-	}
-
-	// This is only for looking up types so this must be a resource
-	typ := parts[0]
-
-	provider := impliedProvider(typ)
-	providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
-	var currentSchema shim.SchemaMap
-	if err == nil {
-		sch := providerInfo.P.ResourcesMap().Get(typ)
-		if sch != nil {
-			currentSchema = sch.Schema()
-		}
-	}
-
-	if len(parts) == 1 {
-		return currentSchema
-	}
-	return getInner(currentSchema, parts[1:])
-}
-
 // Given a fully typed path (e.g. data.simple_data_source.a_field) returns the pulumi name for that variable
 func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	parts := strings.Split(fullyQualifiedPath, ".")
@@ -1991,6 +1919,90 @@ func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	if len(parts) == 1 {
 		return camelCaseName(typ)
 	}
+	return getInner(currentSchema, currentInfo, parts[1:])
+}
+
+// Given a fully typed path (e.g. data.simple_data_source.a_field) returns whether a_field has max items equals one
+func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
+	parts := strings.Split(fullyQualifiedPath, ".")
+	contract.Assertf(len(parts) != 0, "empty path passed into pulumiName")
+	contract.Assertf(parts[0] != "", "empty path part passed into pulumiName")
+
+	var getInner func(sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo, parts []string) bool
+	getInner = func(sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo, parts []string) bool {
+		contract.Assertf(parts[0] != "", "empty path part passed into pulumiName")
+
+		// Lookup the info for this part
+		var curSch shim.Schema
+		if sch != nil {
+			curSch = sch.Get(parts[0])
+		}
+		curInfo := info[parts[0]]
+
+		// We want the name of this part
+		if len(parts) == 1 {
+			if curInfo != nil && curInfo.MaxItemsOne != nil {
+				// use the overridden value
+				return *curInfo.MaxItemsOne
+			} else if curSch != nil {
+				return curSch.MaxItems() == 1
+			} else {
+				return true
+			}
+		}
+
+		// Else recurse into the next part of the type
+		var nextSchema shim.SchemaMap
+		var nextInfo map[string]*tfbridge.SchemaInfo
+		if curSch != nil {
+			if sch, ok := curSch.Elem().(shim.Resource); ok {
+				nextSchema = sch.Schema()
+			}
+		}
+		if curInfo != nil {
+			nextInfo = curInfo.Fields
+		}
+		return getInner(nextSchema, nextInfo, parts[1:])
+	}
+
+	if parts[0] == "data" {
+		typ := parts[1]
+		contract.Assertf(typ != "", "empty data type passed into maxItemsOne")
+
+		provider := impliedProvider(typ)
+		providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
+		var currentSchema shim.SchemaMap
+		var currentInfo map[string]*tfbridge.SchemaInfo
+		if err == nil {
+			sch := providerInfo.P.DataSourcesMap().Get(typ)
+			if sch != nil {
+				currentSchema = sch.Schema()
+			}
+			if dataSource, has := providerInfo.DataSources[typ]; has {
+				currentInfo = dataSource.Fields
+			}
+		}
+
+		return getInner(currentSchema, currentInfo, parts[2:])
+	}
+
+	// This is only for looking up types so this must be a resource
+	typ := parts[0]
+
+	provider := impliedProvider(typ)
+	providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
+	var currentSchema shim.SchemaMap
+	var currentInfo map[string]*tfbridge.SchemaInfo
+	if err == nil {
+		sch := providerInfo.P.ResourcesMap().Get(typ)
+		if sch != nil {
+			currentSchema = sch.Schema()
+		}
+		if resource, has := providerInfo.Resources[typ]; has {
+			currentInfo = resource.Fields
+		}
+	}
+
 	return getInner(currentSchema, currentInfo, parts[1:])
 }
 
