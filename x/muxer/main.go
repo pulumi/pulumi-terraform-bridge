@@ -91,7 +91,7 @@ type Main struct {
 	// An optional pre-computed schema. If not provided, then the schema will be
 	// derived from layering underlying server schemas.
 	//
-	// If set, ComputedMapping must also be set.
+	// If set, DispatchTable must also be set.
 	Schema string
 
 	GetMappingHandler map[string]MultiMappingHandler
@@ -107,8 +107,8 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		}
 	}
 
-	mapping, pulumiSchema := m.DispatchTable.mapping, m.Schema
-	if mapping.isEmpty() || pulumiSchema == "" {
+	dispatchTable, pulumiSchema := m.DispatchTable.dispatchTable, m.Schema
+	if dispatchTable.isEmpty() || pulumiSchema == "" {
 		req := &rpc.GetSchemaRequest{Version: SchemaVersion}
 		primary, err := servers[0].GetSchema(context.Background(), req)
 		contract.AssertNoErrorf(err, "Muxing requires GetSchema for dispatch")
@@ -126,15 +126,15 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 			schemas[i] = o
 		}
 
-		mComputed, muxedSchema, err := Mapping(schemas)
+		mComputed, muxedSchema, err := MergeSchemasAndComputeDispatchTable(schemas)
 		contract.AssertNoErrorf(err, "Failed to compute a muxer mapping")
 		schemaBytes, err := json.Marshal(muxedSchema)
 		contract.AssertNoErrorf(err, "Failed to marshal muxed schema")
 		pulumiSchema = string(schemaBytes)
-		mapping = mComputed.mapping
+		dispatchTable = mComputed.dispatchTable
 	}
 
-	server := mux(host, mapping, pulumiSchema, m.GetMappingHandler, servers...)
+	server := mux(host, dispatchTable, pulumiSchema, m.GetMappingHandler, servers...)
 
 	return server, nil
 }

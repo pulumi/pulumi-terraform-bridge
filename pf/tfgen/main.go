@@ -222,7 +222,7 @@ func UnstableMuxProviderInfo(
 			schema.PackageSpec{}, tfgen.Renames{}, err
 	}
 
-	m, s, err := muxer.Mapping(schemas)
+	m, s, err := muxer.MergeSchemasAndComputeDispatchTable(schemas)
 	return muxedInfo, m, s, mergeRenames(renames), err
 }
 
