@@ -22,7 +22,7 @@ import (
 )
 
 func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
-	return &schemaOnlyProvider{
+	return &SchemaOnlyProvider{
 		ctx: ctx,
 		tf:  provider,
 	}

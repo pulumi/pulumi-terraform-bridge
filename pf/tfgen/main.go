@@ -79,50 +79,62 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 func MainWithMuxer(provider string, infos ...tfbridge.Muxed) {
 	ctx := context.Background()
 
-	// It is safe to pass infos[0].GetInfo() to MainWithCusomGenerate because it is
-	// only used when passed to GenerateOptions.
+	contract.Assertf(len(infos) == 2,
+		"We expect to see a SDKv2 and then a provider info for a muxed provider")
+	sdkV2 := infos[0].SDK
+	pf := *infos[1].PF
 
-	gen := func(opts tfgen.GeneratorOptions) error {
-		if opts.Sink == nil {
-			opts.Sink = cmdutil.Diag()
+	shim := AugmentShimWithPF(ctx, sdkV2.P, pf.NewProvider()).(*mergedProviderShim)
+
+	version := sdkV2.Version
+	sdkV2.P = shim
+
+	mergeDisjoint(&sdkV2.Resources, pf.Resources)
+	mergeDisjoint(&sdkV2.DataSources, pf.DataSources)
+
+	tfgen.MainWithCustomGenerate(provider, version, *sdkV2, func(opts tfgen.GeneratorOptions) error {
+
+		if sdkV2.MetadataInfo == nil {
+			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
-		muxedInfo, mapping, schema, mergedRenames, err :=
-			UnstableMuxProviderInfo(ctx, opts, provider, infos...)
+
+		err := metadata.Set(sdkV2.GetMetadata(), "mux", shim.resolveDispatch(sdkV2))
 		if err != nil {
 			return err
 		}
 
-		// TODO Be more careful when assembling the final metadata
-		// Right now, only the top layer will be persisted.
-		muxedInfo.MetadataInfo = infos[0].GetInfo().MetadataInfo
-		contract.Assertf(muxedInfo.MetadataInfo != nil,
-			"Must provide a metadata store when muxing providers. See ProviderInfo.MetadataInfo")
-		err = metadata.Set(muxedInfo.GetMetadata(), "mux", mapping)
-		if err != nil {
-			return fmt.Errorf("[pf/tfgen] Failed to set mux data in MetadataInfo: %w", err)
-		}
+		// TODO: Fine grain notSupported check for PF derived elements
+		//
+		// if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
+		// 	return err
+		// }
 
-		// In the muxing case precompute renames by merging them and set them to MetadataInfo, this will avoid
-		// recomputing the renames in GenerateFromSchema, it will write out the mergedRenames as-is.
-		if err := metadata.Set(muxedInfo.GetMetadata(), "renames", mergedRenames); err != nil {
-			return fmt.Errorf("[pf/tfgen]: Failed to set renames data in MetadataInfo: %w", err)
-		}
-
-		// Having computed the schema, we now want to complete the tfgen process,
-		// reusing as much of the standard process as possible.
-		opts.ProviderInfo = muxedInfo
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}
 
-		return g.UnstableGenerateFromSchema(&tfgen.GenerateSchemaResult{
-			PackageSpec: schema,
-			Renames:     mergedRenames,
-		})
-	}
+		if err := g.Generate(); err != nil {
+			return err
+		}
 
-	tfgen.MainWithCustomGenerate(provider, infos[0].GetInfo().Version, infos[0].GetInfo(), gen)
+		return nil
+	})
+}
+
+func mergeDisjoint[T any](dst *map[string]T, src map[string]T) {
+	contract.Assertf(dst != nil, "Cannot assign to a nil destination")
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = map[string]T{}
+	}
+	for k, v := range src {
+		_, ok := (*dst)[k]
+		contract.Assertf(!ok, "Map was not disjoint on key %s", k)
+		(*dst)[k] = v
+	}
 }
 
 // Mux multiple infos into a unified representation.
