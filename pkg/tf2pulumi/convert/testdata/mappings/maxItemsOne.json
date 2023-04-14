@@ -1,0 +1,36 @@
+{
+  "name": "maxItemsOne",
+  "provider": {
+    "resources": {
+      "maxItemsOne_resource": {
+        "aliases": {
+          "type": 5,
+          "optional": true,
+          "maxItems": 1,
+          "element": {
+            "resource": {
+              "ensureHealth": {
+                "type": 1,
+                "optional": true
+              }
+            }
+          }
+        },
+        "result": {
+          "type": 4,
+          "computed": true
+        }
+      }
+    }
+  },
+  "resources": {
+    "maxItemsOne_resource": {
+      "tok": "maxItemsOne:index/index:resource",
+      "fields": {
+        "aliases": {
+          "maxItemsOne": false
+        }
+      }
+    }
+  }
+}

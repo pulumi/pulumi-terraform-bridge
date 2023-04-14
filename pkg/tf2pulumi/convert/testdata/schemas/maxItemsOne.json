@@ -1,0 +1,73 @@
+{
+  "name": "maxItemsOne",
+  "attribution": "This Pulumi package is based on the [`maxItemsOne` Terraform Provider](https://github.com/terraform-providers/terraform-provider-maxItemsOne).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-maxItemsOne)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-maxItemsOne` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-maxItemsOne` repo](https://github.com/terraform-providers/terraform-provider-maxItemsOne/issues)."
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-maxItemsOne)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-maxItemsOne` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-maxItemsOne` repo](https://github.com/terraform-providers/terraform-provider-maxItemsOne/issues)."
+    }
+  },
+  "config": {},
+  "types": {
+    "maxItemsOne:index/resourceAlias:resourceAlias": {
+      "properties": {
+        "ensureHealth": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "description": "The provider type for the maxItemsOne package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "maxItemsOne:index/index:resource": {
+      "properties": {
+        "aliases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
+          }
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "inputProperties": {
+        "aliases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
+          }
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering resource resources.\n",
+        "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
+            }
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}
