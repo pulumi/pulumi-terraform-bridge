@@ -27,6 +27,10 @@ type SchemaOnlyProvider struct {
 	tf  pfprovider.Provider
 }
 
+func (p *SchemaOnlyProvider) PfProvider() pfprovider.Provider {
+	return p.tf
+}
+
 var _ shim.Provider = (*SchemaOnlyProvider)(nil)
 
 func (p *SchemaOnlyProvider) Schema() shim.SchemaMap {

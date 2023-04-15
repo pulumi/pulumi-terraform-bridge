@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+package muxer
 
 import (
 	"fmt"
@@ -35,10 +35,10 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Pr
 }
 
 // AugmentShimWithPF augments an existing shim with a PF provider.Provider.
-func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) shim.Provider {
+func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
 
-	var p mergedProviderShim
-	if alreadyMerged, ok := shim.(*mergedProviderShim); ok {
+	var p ProviderShim
+	if alreadyMerged, ok := shim.(*ProviderShim); ok {
 		p = *alreadyMerged
 	} else {
 		p = newMergedProviderShim(shim)
@@ -50,47 +50,47 @@ func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Prov
 }
 
 // A merged `shim.Provider` that remembers which `shim.Provider`s it is composed of.
-type mergedProviderShim struct {
+type ProviderShim struct {
 	simpleSchemaProvider
 
-	providers []shim.Provider
+	MuxedProviders []shim.Provider
 }
 
-func (m *mergedProviderShim) extend(provider shim.Provider) error {
+func (m *ProviderShim) extend(provider shim.Provider) error {
 	res, err := disjointUnion(m.resources, provider.ResourcesMap())
 	if err != nil {
-		return err
+		return fmt.Errorf("ResourcesMap is not disjoint: %w", err)
 	}
 
 	data, err := disjointUnion(m.dataSources, provider.DataSourcesMap())
 	if err != nil {
-		return err
+		return fmt.Errorf("DataSourcesMap is not disjoint: %w", err)
 	}
 
 	m.resources = res
 	m.dataSources = data
-	m.providers = append(m.providers, provider)
+	m.MuxedProviders = append(m.MuxedProviders, provider)
 	return nil
 }
 
-func newMergedProviderShim(provider shim.Provider) mergedProviderShim {
-	return mergedProviderShim{
+func newMergedProviderShim(provider shim.Provider) ProviderShim {
+	return ProviderShim{
 		simpleSchemaProvider: simpleSchemaProvider{
 			schema:      provider.Schema(),
 			resources:   provider.ResourcesMap(),
 			dataSources: provider.DataSourcesMap(),
 		},
-		providers: []shim.Provider{provider},
+		MuxedProviders: []shim.Provider{provider},
 	}
 }
 
-func (m *mergedProviderShim) resolveDispatch(info *tfbridge.ProviderInfo) muxer.DispatchTable {
+func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) muxer.DispatchTable {
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
 	dispatch.Functions = map[string]int{}
 
 	for tfToken, res := range info.Resources {
-		for i, p := range m.providers {
+		for i, p := range m.MuxedProviders {
 			_, ok := p.ResourcesMap().GetOk(tfToken)
 			if ok {
 				dispatch.Resources[string(res.GetTok())] = i
@@ -99,7 +99,7 @@ func (m *mergedProviderShim) resolveDispatch(info *tfbridge.ProviderInfo) muxer.
 		}
 	}
 	for tfToken, data := range info.DataSources {
-		for i, p := range m.providers {
+		for i, p := range m.MuxedProviders {
 			_, ok := p.DataSourcesMap().GetOk(tfToken)
 			if ok {
 				dispatch.Functions[string(data.GetTok())] = i

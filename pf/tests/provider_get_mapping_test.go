@@ -25,9 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	tfgen0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 func TestGetMapping(t *testing.T) {
@@ -64,17 +62,9 @@ func TestGetMapping(t *testing.T) {
 func TestMuxedGetMapping(t *testing.T) {
 	ctx := context.Background()
 
-	servers := testprovider.MuxedRandomProvider()
+	info := testprovider.MuxedRandomProvider()
 
-	_, _, schema, _, err := tfgen.UnstableMuxProviderInfo(ctx,
-		tfgen0.GeneratorOptions{}, "muxedrandom", servers...)
-	require.NoError(t, err)
-
-	schemaBytes, err := json.Marshal(schema)
-	require.NoError(t, err)
-
-	server, err := tfbridge.MakeMuxedServer(ctx, "random",
-		tfbridge.ProviderMetadata{PackageSchema: schemaBytes}, servers...)(nil)
+	server, err := tfbridge.MakeMuxedServer(ctx, genSDKSchema(t, info), info)(nil)
 	require.NoError(t, err)
 
 	req := func(key string) (context.Context, *pulumirpc.GetMappingRequest) {

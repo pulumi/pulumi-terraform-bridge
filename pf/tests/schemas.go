@@ -17,6 +17,7 @@ package tfbridgetests
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,8 @@ import (
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	tfgen0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 func genMetadata(t *testing.T, info tfpf.ProviderInfo) tfpf.ProviderMetadata {
@@ -50,4 +53,12 @@ func testSink(t *testing.T) diag.Sink {
 	})
 
 	return testSink
+}
+
+func genSDKSchema(t *testing.T, info tfbridge0.ProviderInfo) []byte {
+	pkg, err := tfgen0.GenerateSchema(info, testSink(t))
+	require.NoError(t, err)
+	bytes, err := json.MarshalIndent(pkg, "", "  ")
+	require.NoError(t, err)
+	return bytes
 }

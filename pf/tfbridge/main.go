@@ -27,8 +27,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
@@ -91,10 +92,10 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
 // This is an experimental API.
-func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed) {
-	f := MakeMuxedServer(ctx, pkg, meta, infos...)
+func MainWithMuxer(ctx context.Context, schema []byte, info tfbridge.ProviderInfo) {
+	f := MakeMuxedServer(ctx, schema, info)
 
-	err := rprovider.Main(pkg, f)
+	err := rprovider.Main(info.Name, f)
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
@@ -105,11 +106,13 @@ func MainWithMuxer(ctx context.Context, pkg string, meta ProviderMetadata, infos
 // This function exposes implementation details for testing. It should not be used outside
 // of pulumi-terraform-bridge.  This is an experimental API.
 func MakeMuxedServer(
-	ctx context.Context, pkg string, meta ProviderMetadata, infos ...Muxed,
+	ctx context.Context, schema []byte, info tfbridge.ProviderInfo,
 ) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	version := infos[0].GetInfo().Version
-	schema := string(meta.PackageSchema)
-	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](infos[0].GetInfo().GetMetadata(), "mux")
+
+	shim, ok := info.P.(*pfmuxer.ProviderShim)
+	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
+	version := info.Version
+	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux")
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
@@ -119,30 +122,33 @@ func MakeMuxedServer(
 	}
 	m := muxer.Main{
 		DispatchTable: dispatchTable,
-		Schema:        schema,
+		Schema:        string(schema),
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
 			"tf":        combineTFGetMappingKey,
 			"terraform": combineTFGetMappingKey,
 		},
 	}
 	return func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		for _, info := range infos {
-			info := info // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
+		for _, prov := range shim.MuxedProviders {
+			prov := prov // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
 
-			// Add PF based servers to the runtime.
-			if info.PF != nil {
+			switch prov := prov.(type) {
+			case *schemashim.SchemaOnlyProvider:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-						return newProviderServer(ctx, host, *info.PF, meta)
+						return newProviderServer(ctx, host, ProviderInfo{
+							ProviderInfo: info,
+							NewProvider:  prov.PfProvider,
+						}, ProviderMetadata{PackageSchema: schema})
 					}})
-				continue
+			default:
+				m.Servers = append(m.Servers, muxer.Endpoint{
+					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+						return tfbridge.NewProvider(ctx, host, info.Name, version, prov, info, schema), nil
+					}})
 			}
-			m.Servers = append(m.Servers, muxer.Endpoint{
-				Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-					return tfbridge.NewProvider(ctx, host, pkg, version, info.SDK.P, *info.SDK, meta.PackageSchema), nil
-				}})
 		}
-		return m.Server(host, pkg, version)
+		return m.Server(host, info.Name, version)
 	}
 }
 
@@ -211,20 +217,4 @@ func mergeMapUnder[K comparable, V any](dst *map[K]V, src map[K]V) {
 			(*dst)[k] = v
 		}
 	}
-}
-
-// A union of pf and sdk based ProviderInfo for use in MainWithMuxer.
-// Exactly 1 field of this struct should hold a value
-//
-// This is an experimental API.
-type Muxed struct {
-	PF  *ProviderInfo
-	SDK *sdkBridge.ProviderInfo
-}
-
-func (m Muxed) GetInfo() sdkBridge.ProviderInfo {
-	if m.PF == nil {
-		return *m.SDK
-	}
-	return m.PF.ProviderInfo
 }
