@@ -42,8 +42,14 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 	skipDataSource := func(tfToken string) bool { return false }
 	muxedProvider := false
 	if mixed, ok := prov.P.(*muxer.ProviderShim); ok {
-		skipResource = mixed.ResourceIsPF
-		skipDataSource = mixed.DataSourceIsPF
+		not := func(f func(string) bool) func(string) bool {
+			return func(s string) bool {
+				return !f(s)
+			}
+		}
+
+		skipResource = not(mixed.ResourceIsPF)
+		skipDataSource = not(mixed.DataSourceIsPF)
 		muxedProvider = true
 	} else if prov.P != nil {
 		u.warn("ProviderInfo.P should be nil for Plugin Framework based providers, populate NewProvider instead")
