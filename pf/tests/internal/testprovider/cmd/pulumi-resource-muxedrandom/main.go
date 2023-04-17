@@ -27,8 +27,6 @@ import (
 var schema []byte
 
 func main() {
-	meta := tfbridge.ProviderMetadata{PackageSchema: schema}
-	tfbridge.MainWithMuxer(context.Background(), "random", meta,
-		testprovider.MuxedRandomProvider()...,
-	)
+	tfbridge.MainWithMuxer(context.Background(), schema,
+		testprovider.MuxedRandomProvider())
 }

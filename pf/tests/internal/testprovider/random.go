@@ -15,6 +15,7 @@
 package testprovider
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"path/filepath"
@@ -139,8 +140,14 @@ func RandomSDKProvider() tfbridge.ProviderInfo {
 	}
 
 	info := tfbridge.ProviderInfo{
-		Name: "muxedrandom",
-		P:    sdkv2.NewProvider(sdkv2randomprovider.New()),
+		Name:        "muxedrandom",
+		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
+		Keywords:    []string{"pulumi", "random"},
+		License:     "Apache-2.0",
+		Homepage:    "https://pulumi.io",
+		Repository:  "https://github.com/pulumi/pulumi-random",
+		Version:     "4.8.2",
+		P:           sdkv2.NewProvider(sdkv2randomprovider.New()),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"random_human_number": {Tok: randomResource(randomMod, "RandomHumanNumber")},
 		},
@@ -150,15 +157,13 @@ func RandomSDKProvider() tfbridge.ProviderInfo {
 	return info
 }
 
-func MuxedRandomProvider() []tfpf.Muxed {
+func MuxedRandomProvider() tfbridge.ProviderInfo {
 	sdk := RandomSDKProvider()
 	pf := RandomProvider()
-	for _, r := range pf.Resources {
+	for tf, r := range pf.Resources {
 		r.Tok = tokens.Type("muxedrandom:" + strings.TrimPrefix(string(r.Tok), "random:"))
+		sdk.Resources[tf] = r
 	}
-	pf.Name = sdk.Name
-	return []tfpf.Muxed{
-		{SDK: &sdk},
-		{PF: &pf},
-	}
+	sdk.P = tfpf.AugmentShimWithPF(context.Background(), sdk.P, pf.NewProvider())
+	return sdk
 }
