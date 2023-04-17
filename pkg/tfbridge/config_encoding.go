@@ -127,7 +127,7 @@ func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
 	return result, nil
 }
 
-// Invesrse of UnmarshalProperties.
+// Inverse of UnmarshalProperties.
 func (enc *configEncoding) MarshalProperties(props resource.PropertyMap,
 	opts plugin.MarshalOptions) (*structpb.Struct, error) {
 	copy := make(resource.PropertyMap)
