@@ -202,7 +202,7 @@ func (e *encoding) resolveRef(ref string) (tokens.Token, *pschema.ComplexTypeSpe
 	refSpec := e.spec.Type(tok)
 	if refSpec == nil {
 		return "", nil, fmt.Errorf(
-			"unexpected TokenType with Ref=%q but no matching definition in the types section.",
+			"unexpected TokenType with Ref=%q but no matching definition in the types section",
 			ref)
 	}
 	return tokens.Token(tok), refSpec, nil
