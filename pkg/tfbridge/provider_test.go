@@ -2,16 +2,26 @@ package tfbridge
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"testing"
 
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
 
+	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -121,7 +131,8 @@ func TestConvertStringToPropertyValue(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		v, err := convertStringToPropertyValue(c.str, c.typ)
+		enc := &configEncoding{}
+		v, err := enc.convertStringToPropertyValue(c.str, c.typ)
 		assert.Equal(t, resource.NewPropertyValue(c.expected), v)
 		if c.expected == nil {
 			assert.Error(t, err)
@@ -525,61 +536,6 @@ func TestProviderCheckV2(t *testing.T) {
 	assert.Equal(t, "", failures[2].Property)
 }
 
-func testProviderPreConfigureCallback(t *testing.T, provider *Provider) {
-	expectedErr := errors.New("failedToPreConfigure")
-	provider.info = ProviderInfo{
-		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
-			return expectedErr
-		},
-	}
-	_, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
-		Variables: map[string]string{
-			"foo:config:bar": "invalid",
-		},
-	})
-	assert.Equal(t, expectedErr, err)
-}
-
-func testProviderPreConfigureCallbackWithLogger(t *testing.T, provider *Provider) {
-	expectedErr := errors.New("failedToPreConfigureWithLogger")
-	provider.info = ProviderInfo{
-		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
-			return expectedErr
-		},
-	}
-	_, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
-		Variables: map[string]string{
-			"foo:config:bar": "invalid",
-		},
-	})
-	assert.Equal(t, expectedErr, err)
-}
-
-func TestProviderPreConfigureCallbackV1(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
-	}
-	testProviderPreConfigureCallback(t, provider)
-
-}
-
-func TestProviderPreConfigureCallbackV2(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	testProviderPreConfigureCallback(t, provider)
-}
-
-func TestProviderPreconfigureCallbackWithLogger(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	testProviderPreConfigureCallbackWithLogger(t, provider)
-}
-
 func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 	urn := resource.NewURN("stack", "project", "", typeName, "name")
 	readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
@@ -755,4 +711,346 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 	}
 
 	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
+}
+
+func TestCheckConfig(t *testing.T) {
+	t.Run("minimal", func(t *testing.T) {
+		// Ensure the method is minimally implemented. Pulumi will be passing a provider version. Make sure it
+		// is mirrored back.
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("config_value", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		// Ensure Pulumi can configure config_value in the testprovider.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("config_changed", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		// In this scenario Pulumi plans an update plan when a config has changed on an existing stack.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {
+                      "config_value": "foo",
+		      "version": "6.54.0"
+                    },
+		    "news": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("invalid_config_value", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.Schema["propwithvalidator"] = &schema.Schema{
+			Type:     schema.TypeString,
+			Optional: true,
+			ValidateDiagFunc: func(v interface{}, atpath cty.Path) (ret diag.Diagnostics) {
+				if v.(string) != "baz" {
+					return diag.Errorf("requiredprop should equal 'baz'")
+				}
+				return
+			},
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"requiredprop": "baz",
+		})
+		require.NoError(t, err)
+		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			News: args,
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not validate provider configuration")
+		require.Contains(t, err.Error(), "1 error occurred")
+		require.Contains(t, err.Error(), "Invalid or unknown key")
+	})
+
+	t.Run("missing_required_config_value", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.Schema["reqprop"] = &schema.Schema{
+			Type:     schema.TypeString,
+			Required: true,
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"version": "6.54.0",
+		})
+		require.NoError(t, err)
+		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			News: args,
+		})
+		status, ok := status.FromError(err)
+		require.Error(t, err)
+		require.True(t, ok)
+		require.Equal(t, codes.InvalidArgument, status.Code())
+		require.Equal(t, "required configuration keys were missing", status.Message())
+		require.Equal(t, 1, len(status.Details()))
+		missingKeys := status.Details()[0].(*pulumirpc.ConfigureErrorMissingKeys)
+		require.Equal(t, 1, len(missingKeys.MissingKeys))
+		missingKey := missingKeys.MissingKeys[0]
+		require.Equal(t, "_:reqprop", missingKey.Name)
+	})
+
+	t.Run("flattened_compound_values", func(t *testing.T) {
+		// Providers may have nested objects or arrays in their configuration space. As of Pulumi v3.63.0 these
+		// may be coming over the wire under a flattened JSON-in-protobuf encoding. This test makes sure they
+		// are recognized correctly.
+
+		p := testprovider.ProviderV2()
+
+		// Examples here are taken from pulumi-gcp, scopes is a list and batching is a nested object.
+		p.Schema["scopes"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+		}
+
+		p.Schema["batching"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"send_after": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"enable_batching": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+		    "olds": {},
+		    "news": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+                    "inputs": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+                    }
+                  }
+		}`)
+	})
+}
+
+func TestPreConfigureCallback(t *testing.T) {
+	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
+		callCounter := 0
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					require.Equal(t, "bar", vars["config_value"].StringValue())
+					require.Truef(t, config.IsSet("config_value"), "config_value should be set")
+					require.Falsef(t, config.IsSet("unknown_prop"), "unknown_prop should not be set")
+					callCounter++
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+		require.Equalf(t, 1, callCounter, "PreConfigureCallback should be called once")
+	})
+	t.Run("PreConfigureCallbackWithLoggger called by CheckConfig", func(t *testing.T) {
+		callCounter := 0
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *hostclient.HostClient,
+					vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					require.Equal(t, "bar", vars["config_value"].StringValue())
+					require.Truef(t, config.IsSet("config_value"), "config_value should be set")
+					require.Falsef(t, config.IsSet("unknown_prop"), "unknown_prop should not be set")
+					callCounter++
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "bar",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+		require.Equalf(t, 1, callCounter, "PreConfigureCallbackWithLogger should be called once")
+	})
+	t.Run("PreConfigureCallback can modify config values", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					vars["config_value"] = resource.NewStringProperty("updated")
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "updated",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+	t.Run("PreConfigureCallbackWithLogger can modify config values", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *hostclient.HostClient,
+					vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					vars["config_value"] = resource.NewStringProperty("updated")
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": "updated",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
 }

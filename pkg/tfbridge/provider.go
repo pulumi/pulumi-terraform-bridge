@@ -173,14 +173,8 @@ func (p *Provider) pkg() tokens.Package {
 	return tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(p.module)))
 }
 
-func (p *Provider) baseConfigMod() tokens.Module {
-	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config"))
-}
 func (p *Provider) baseDataMod() tokens.Module {
 	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("data"))
-}
-func (p *Provider) configMod() tokens.Module {
-	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config/vars"))
 }
 
 func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
@@ -289,34 +283,6 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 
 }
 
-func convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
-	// If the schema expects a string, we can just return this as-is.
-	if typ == shim.TypeString {
-		return resource.NewStringProperty(s), nil
-	}
-
-	// Otherwise, we will attempt to deserialize the input string as JSON and convert the result into a Pulumi
-	// property. If the input string is empty, we will return an appropriate zero value.
-	if s == "" {
-		switch typ {
-		case shim.TypeBool:
-			return resource.NewPropertyValue(false), nil
-		case shim.TypeInt, shim.TypeFloat:
-			return resource.NewPropertyValue(0), nil
-		case shim.TypeList, shim.TypeSet:
-			return resource.NewPropertyValue([]interface{}{}), nil
-		default:
-			return resource.NewPropertyValue(map[string]interface{}{}), nil
-		}
-	}
-
-	var jsonValue interface{}
-	if err := json.Unmarshal([]byte(s), &jsonValue); err != nil {
-		return resource.PropertyValue{}, err
-	}
-	return resource.NewPropertyValue(jsonValue), nil
-}
-
 // GetSchema returns the JSON-encoded schema for this provider's package.
 func (p *Provider) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
@@ -331,44 +297,64 @@ func (p *Provider) GetSchema(ctx context.Context,
 
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+	urn := resource.URN(req.GetUrn())
+	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	glog.V(9).Infof("%s executing", label)
 
-	// TO_DO - revert this comment!!
-	//urn := resource.URN(req.GetUrn())
-	//label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
-	//glog.V(9).Infof("%s executing", label)
-	//
-	//news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-	//	Label:        fmt.Sprintf("%s.news", label),
-	//	KeepUnknowns: true,
-	//	SkipNulls:    true,
-	//	RejectAssets: true,
-	//})
-	//if validationErrors != nil {
-	//	return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
-	//}
-	//
-	//config, validationErrors := buildTerraformConfig(p, news)
-	//if validationErrors != nil {
-	//	return nil, errors.Wrap(validationErrors, "could not marshal config state")
-	//}
-	//
-	//if p.info.PreConfigureCallback != nil {
-	//	if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
-	//		return nil, validationErrors
-	//	}
-	//}
-	//
-	//// This replicates the flow in the validateProviderConfig func where we check for missingKeys first
-	//missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	//if len(missingKeys) > 0 {
-	//	return &pulumirpc.CheckResponse{Inputs: req.GetNews(), Failures: missingKeys}, nil
-	//}
-	//if validationErrors != nil {
-	//	return nil, validationErrors
-	//}
-	//
-	//return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+	marshalOptions := plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+	}
+
+	configEnc := newConfigEncoding(p.config, p.info.Config)
+
+	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews(), marshalOptions)
+	if validationErrors != nil {
+		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
+	}
+
+	config, validationErrors := buildTerraformConfig(p, news)
+	if validationErrors != nil {
+		return nil, errors.Wrap(validationErrors, "could not marshal config state")
+	}
+
+	if p.info.PreConfigureCallback != nil {
+		// NOTE: the user code may modify news in-place.
+		if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
+			return nil, validationErrors
+		}
+	}
+
+	if p.info.PreConfigureCallbackWithLogger != nil {
+		// NOTE: the user code may modify news in-place.
+		validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
+		if validationErrors != nil {
+			return nil, validationErrors
+		}
+	}
+
+	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
+	if len(missingKeys) > 0 {
+		err := rpcerror.WithDetails(
+			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
+			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
+		return nil, err
+	}
+	if validationErrors != nil {
+		return nil, validationErrors
+	}
+
+	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
+	newsStruct, err := configEnc.MarshalProperties(news, marshalOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CheckResponse{
+		Inputs: newsStruct,
+	}, nil
 }
 
 func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
@@ -516,6 +502,9 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.
+//
+// NOTE that validation and calling PreConfigureCallbacks are not called here but are called in CheckConfig. Pulumi will
+// always call CheckConfig first and call Configure with validated (or extended) results of CheckConfig.
 func (p *Provider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 
@@ -524,60 +513,30 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	p.setLoggingContext(ctx)
-	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
-	// we will need to translate into simply the configuration variable names.
-	vars := make(resource.PropertyMap)
-	for k, v := range req.GetVariables() {
-		mm, err := tokens.ParseModuleMember(k)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration token '%v'", k)
-		}
-		if mm.Module() != p.baseConfigMod() && mm.Module() != p.configMod() {
-			continue
-		}
 
-		typ := shim.TypeString
-		_, sch, _ := getInfoFromPulumiName(resource.PropertyKey(mm.Name()), p.config, p.info.Config, false)
-		if sch != nil {
-			typ = sch.Type()
-		}
-		pv, err := convertStringToPropertyValue(v, typ)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration value '%v'", v)
-		}
-		vars[resource.PropertyKey(mm.Name())] = pv
+	label := fmt.Sprintf("%s.Configure()", p.label())
+
+	marshalOptions := plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.args", label),
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+	}
+
+	configEnc := newConfigEncoding(p.config, p.info.Config)
+
+	configMap, err := configEnc.UnmarshalProperties(req.GetArgs(), marshalOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
 	// them later on for purposes of (e.g.) config-based defaults.
-	p.configValues = vars
+	p.configValues = configMap
 
-	config, err := buildTerraformConfig(p, vars)
+	config, err := buildTerraformConfig(p, configMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
-	}
-
-	if p.info.PreConfigureCallback != nil {
-		if err = p.info.PreConfigureCallback(vars, config); err != nil {
-			return nil, err
-		}
-	}
-
-	if p.info.PreConfigureCallbackWithLogger != nil {
-		if err = p.info.PreConfigureCallbackWithLogger(ctx, p.host, vars, config); err != nil {
-			return nil, err
-		}
-	}
-
-	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	if len(missingKeys) > 0 {
-		err = rpcerror.WithDetails(
-			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
-		return nil, err
-	}
-	if validationErrors != nil {
-		return nil, validationErrors
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
