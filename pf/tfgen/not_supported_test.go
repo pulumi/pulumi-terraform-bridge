@@ -31,6 +31,6 @@ func TestZeroRecognizer(t *testing.T) {
 		sink: diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never}),
 	}
 
-	u.assertNotZero("key", "value")
+	u.assertIsZero("key", "value")
 	require.Contains(t, stderr.String(), "key received a non-zero custom value")
 }

@@ -56,6 +56,36 @@ type ProviderShim struct {
 	MuxedProviders []shim.Provider
 }
 
+// Check if a resource is from the PF.
+func (m *ProviderShim) ResourceIsPF(token string) bool {
+	// In an augmented shim.Provider, underlying providers are PF providers iff they
+	// are implemented as SchemaOnlyProviders.
+	for _, p := range m.MuxedProviders {
+		if _, ok := p.ResourcesMap().GetOk(token); !ok {
+			continue
+		}
+		_, ok := p.(*schemashim.SchemaOnlyProvider)
+		return ok
+
+	}
+	return false
+}
+
+// Check if a resource is from the PF.
+func (m *ProviderShim) DataSourceIsPF(token string) bool {
+	// In an augmented shim.Provider, underlying providers are PF providers iff they
+	// are implemented as SchemaOnlyProviders.
+	for _, p := range m.MuxedProviders {
+		if _, ok := p.DataSourcesMap().GetOk(token); !ok {
+			continue
+		}
+		_, ok := p.(*schemashim.SchemaOnlyProvider)
+		return ok
+
+	}
+	return false
+}
+
 func (m *ProviderShim) extend(provider shim.Provider) error {
 	res, err := disjointUnion(m.resources, provider.ResourcesMap())
 	if err != nil {
