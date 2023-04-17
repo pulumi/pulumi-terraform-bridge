@@ -120,12 +120,22 @@ func MakeMuxedServer(
 		fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
 		os.Exit(1)
 	}
+
+	getTFMapping := func(muxer.GetMappingArgs) (muxer.GetMappingResponse, error) {
+		info := info
+		marshalled := tfbridge.MarshalProviderInfo(&info)
+		data, err := json.Marshal(marshalled)
+		return muxer.GetMappingResponse{
+			Provider: info.Name,
+			Data:     data,
+		}, err
+	}
 	m := muxer.Main{
 		DispatchTable: dispatchTable,
 		Schema:        string(schema),
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
-			"tf":        combineTFGetMappingKey,
-			"terraform": combineTFGetMappingKey,
+			"tf":        getTFMapping,
+			"terraform": getTFMapping,
 		},
 	}
 	return func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -149,72 +159,5 @@ func MakeMuxedServer(
 			}
 		}
 		return m.Server(host, info.Name, version)
-	}
-}
-
-func combineTFGetMappingKey(_ string, infos [][]byte) ([]byte, error) {
-	var target *tfbridge.MarshallableProviderInfo
-	for i, info := range infos {
-		var src tfbridge.MarshallableProviderInfo
-		err := json.Unmarshal(info, &src)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal info %d: %w", i, err)
-		}
-		if i == 0 {
-			target = &src
-			continue
-		}
-
-		mergeProviderInfo(target, src)
-	}
-	return json.Marshal(target)
-}
-
-// Merge two tfbridge.MarshallableProviderInfo structs into one-another.
-//
-// Fields from src are merged into dst, prioritizing data in dst.
-//
-// The fields Name, Version and TFProviderVersion are not merged.
-func mergeProviderInfo(dst *tfbridge.MarshallableProviderInfo, src tfbridge.MarshallableProviderInfo) {
-	contract.Assertf(dst != nil, "cannot copy into nil pointer")
-	mergeUnder(&dst.Provider, src.Provider, mergeProvider)
-	mergeMapUnder(&dst.Config, src.Config)
-	mergeMapUnder(&dst.Resources, src.Resources)
-	mergeMapUnder(&dst.DataSources, src.DataSources)
-}
-
-// Merge two tfbridge.MarshallableProvider structs into one-another.
-//
-// Fields from src are merged into dst, prioritizing data from dst.
-func mergeProvider(dst *tfbridge.MarshallableProvider, src tfbridge.MarshallableProvider) {
-	mergeMapUnder(&dst.Schema, src.Schema)
-	mergeMapUnder(&dst.Resources, src.Resources)
-	mergeMapUnder(&dst.DataSources, src.DataSources)
-}
-
-// A helper function to merge two structs together, accounting for the structs being nil.
-func mergeUnder[T any](dst **T, src *T, merge func(*T, T)) {
-	if src == nil {
-		return
-	}
-	if *dst == nil {
-		*dst = src
-	}
-	merge(*dst, *src)
-}
-
-// A helper function to merge two maps together, accounting for the maps being nil.
-func mergeMapUnder[K comparable, V any](dst *map[K]V, src map[K]V) {
-	if src == nil {
-		return
-	}
-	if *dst == nil {
-		*dst = src
-	}
-	for k, v := range src {
-		_, skip := (*dst)[k]
-		if !skip {
-			(*dst)[k] = v
-		}
 	}
 }
