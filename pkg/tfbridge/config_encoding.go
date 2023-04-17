@@ -73,7 +73,7 @@ func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType
 	return resource.NewPropertyValue(jsonValue), nil
 }
 
-// Like plugin.UnmarhsalPropertyValue but overrides string parsing with convertStringToPropertyValue.
+// Like plugin.UnmarshalPropertyValue but overrides string parsing with convertStringToPropertyValue.
 func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 	opts plugin.MarshalOptions) (*resource.PropertyValue, error) {
 
