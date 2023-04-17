@@ -27,7 +27,9 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provide
 	return schemashim.ShimSchemaOnlyProvider(ctx, p)
 }
 
-// AugmentShimWithPF augments an existing shim with a PF provider.Provider.
-func AugmentShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
+// MuxShimWithPF initializes a shim.Provider that will server resources from both shim and p.
+//
+// To create a muxed provider, ProviderInfo.P must be the result of this function.
+func MuxShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
 	return muxer.AugmentShimWithPF(ctx, shim, p)
 }

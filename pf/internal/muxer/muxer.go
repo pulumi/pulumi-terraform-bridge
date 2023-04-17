@@ -41,7 +41,7 @@ func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Prov
 	if alreadyMerged, ok := shim.(*ProviderShim); ok {
 		p = *alreadyMerged
 	} else {
-		p = newMergedProviderShim(shim)
+		p = newProviderShim(shim)
 	}
 
 	err := p.extend(schemashim.ShimSchemaOnlyProvider(ctx, pf))
@@ -56,7 +56,7 @@ type ProviderShim struct {
 	MuxedProviders []shim.Provider
 }
 
-// Check if a resource is from the PF.
+// Check if a Resource is served via in the Plugin Framework.
 func (m *ProviderShim) ResourceIsPF(token string) bool {
 	// In an augmented shim.Provider, underlying providers are PF providers iff they
 	// are implemented as SchemaOnlyProviders.
@@ -71,7 +71,7 @@ func (m *ProviderShim) ResourceIsPF(token string) bool {
 	return false
 }
 
-// Check if a resource is from the PF.
+// Check if a DataSource is served via the Plugin Framework.
 func (m *ProviderShim) DataSourceIsPF(token string) bool {
 	// In an augmented shim.Provider, underlying providers are PF providers iff they
 	// are implemented as SchemaOnlyProviders.
@@ -86,6 +86,9 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 	return false
 }
 
+// Extend the `ProviderShim` with another `shim.Provider`.
+//
+// `provider` will be the `len(m.MuxedProviders)` when mappings are computed.
 func (m *ProviderShim) extend(provider shim.Provider) error {
 	res, err := disjointUnion(m.resources, provider.ResourcesMap())
 	if err != nil {
@@ -103,7 +106,7 @@ func (m *ProviderShim) extend(provider shim.Provider) error {
 	return nil
 }
 
-func newMergedProviderShim(provider shim.Provider) ProviderShim {
+func newProviderShim(provider shim.Provider) ProviderShim {
 	return ProviderShim{
 		simpleSchemaProvider: simpleSchemaProvider{
 			schema:      provider.Schema(),
@@ -114,6 +117,8 @@ func newMergedProviderShim(provider shim.Provider) ProviderShim {
 	}
 }
 
+// Assign each Resource and DataSource mapped in `info` whichever runtime provider defines
+// it.
 func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) muxer.DispatchTable {
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
