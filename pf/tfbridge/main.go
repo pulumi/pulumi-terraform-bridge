@@ -36,7 +36,14 @@ import (
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
-	handleFlags(ctx, prov, meta, prov.Version)
+	handleFlags(ctx, prov.Version,
+		func() (*tfbridge.MarshallableProviderInfo, error) {
+			pp, err := newProviderWithContext(ctx, prov, meta)
+			if err != nil {
+				return nil, err
+			}
+			return pp.(*provider).marshalProviderInfo(ctx), nil
+		})
 	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()
 
@@ -45,7 +52,10 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 }
 
-func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, version string) {
+func handleFlags(
+	ctx context.Context, version string,
+	getProviderInfo func() (*tfbridge.MarshallableProviderInfo, error),
+) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 
@@ -72,11 +82,10 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 	}
 
 	if *dumpInfo {
-		pp, err := newProviderWithContext(ctx, prov, meta)
+		info, err := getProviderInfo()
 		if err != nil {
 			cmdutil.ExitError(err.Error())
 		}
-		info := pp.(*provider).marshalProviderInfo(ctx)
 		if err := json.NewEncoder(os.Stdout).Encode(info); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
@@ -93,6 +102,11 @@ func handleFlags(ctx context.Context, prov ProviderInfo, meta ProviderMetadata, 
 //
 // This is an experimental API.
 func MainWithMuxer(ctx context.Context, schema []byte, info tfbridge.ProviderInfo) {
+	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
+		info := info
+		return tfbridge.MarshalProviderInfo(&info), nil
+	})
+
 	f := MakeMuxedServer(ctx, schema, info)
 
 	err := rprovider.Main(info.Name, f)
