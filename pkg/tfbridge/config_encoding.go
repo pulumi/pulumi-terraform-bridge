@@ -91,7 +91,7 @@ func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *s
 	return plugin.UnmarshalPropertyValue(key, v, opts)
 }
 
-// Inline from plugin.UnmarhsalProperties substituting plugin.UnmarshalPropertyValue.
+// Inline from plugin.UnmarshalProperties substituting plugin.UnmarshalPropertyValue.
 func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
 	opts plugin.MarshalOptions) (resource.PropertyMap, error) {
 
