@@ -110,7 +110,7 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	}
 
 	propertyNames := newPrecisePropertyNames(renames)
-	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
+	enc := convert.NewEncoding(convert.PrecomputedPackageSpec(&thePackageSpec), propertyNames)
 
 	schemaResponse := &pfprovider.SchemaResponse{}
 	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
@@ -242,38 +242,4 @@ func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.P
 	}
 
 	return server6, nil
-}
-
-type packageSpec struct {
-	spec *pschema.PackageSpec
-}
-
-var _ convert.PackageSpec = (*packageSpec)(nil)
-
-func (p packageSpec) Config() *pschema.ConfigSpec {
-	return &p.spec.Config
-}
-
-func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
-	res, ok := p.spec.Resources[string(tok)]
-	if ok {
-		return &res
-	}
-	return nil
-}
-
-func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
-	typ, ok := p.spec.Types[string(tok)]
-	if ok {
-		return &typ
-	}
-	return nil
-}
-
-func (p packageSpec) Function(tok tokens.ModuleMember) *pschema.FunctionSpec {
-	res, ok := p.spec.Functions[string(tok)]
-	if ok {
-		return &res
-	}
-	return nil
 }
