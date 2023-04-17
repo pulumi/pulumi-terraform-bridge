@@ -187,42 +187,49 @@ func (e *encoding) newPropertyDecoder(name string, propSpec pschema.PropertySpec
 }
 
 func (e *encoding) resolveRef(ref string) (tokens.Token, *pschema.ComplexTypeSpec, error) {
-	tok := tokens.Type(strings.TrimPrefix(ref, "#/types/"))
+	if ref == "" {
+		return "", nil, fmt.Errorf(
+			"expecting a non-empty Ref in a Package Schema type")
+	}
+	const typesPrefix = "#/types/"
+	if !strings.HasPrefix(ref, typesPrefix) {
+		return "", nil, fmt.Errorf(
+			"expecting a Ref starting with %q in a Package Schema type, got %s. "+
+				"Cross-provider references are not yet supported.",
+			typesPrefix, ref)
+	}
+	tok := tokens.Type(strings.TrimPrefix(ref, typesPrefix))
 	refSpec := e.spec.Type(tok)
 	if refSpec == nil {
-		return "", nil, fmt.Errorf("dangling schema ref: %q", ref)
+		return "", nil, fmt.Errorf(
+			"unexpected TokenType with Ref=%q but no matching definition in the types section.",
+			ref)
 	}
 	return tokens.Token(tok), refSpec, nil
 }
 
-func (e *encoding) deriveEncoderForNamedObjectType(ref string, t tftypes.Object) (Encoder, error) {
-	tok, refSpec, err := e.resolveRef(ref)
-	if err != nil {
-		return nil, err
-	}
+func (e *encoding) deriveEncoderForNamedObjectType(tok tokens.Token, refSpec *pschema.ComplexTypeSpec,
+	t tftypes.Object) (Encoder, error) {
 	if refSpec.Enum != nil {
-		return nil, fmt.Errorf("enums are not supported: %q", ref)
+		return nil, fmt.Errorf("enums are not supported: %q", tok)
 	}
 	propNames := NewTypeLocalPropertyNames(e.propertyNames, tok)
 	propertyEncoders, err := e.buildPropertyEncoders(propNames, specFinder(refSpec.Properties), t)
 	if err != nil {
-		return nil, fmt.Errorf("issue deriving an encoder for %q: %w", ref, err)
+		return nil, fmt.Errorf("issue deriving an encoder for %q: %w", tok, err)
 	}
 	return newObjectEncoder(t, propertyEncoders, propNames)
 }
 
-func (e *encoding) deriveDecoderForNamedObjectType(ref string, t tftypes.Object) (Decoder, error) {
-	tok, refSpec, err := e.resolveRef(ref)
-	if err != nil {
-		return nil, err
-	}
+func (e *encoding) deriveDecoderForNamedObjectType(tok tokens.Token, refSpec *pschema.ComplexTypeSpec,
+	t tftypes.Object) (Decoder, error) {
 	if refSpec.Enum != nil {
-		return nil, fmt.Errorf("enums are not supported: %q", ref)
+		return nil, fmt.Errorf("enums are not supported: %q", tok)
 	}
 	propNames := NewTypeLocalPropertyNames(e.propertyNames, tok)
 	propertyDecoders, err := e.buildPropertyDecoders(propNames, specFinder(refSpec.Properties), t)
 	if err != nil {
-		return nil, fmt.Errorf("issue deriving an decoder for %q: %w", ref, err)
+		return nil, fmt.Errorf("issue deriving an decoder for %q: %w", tok, err)
 	}
 	return newObjectDecoder(t, propertyDecoders, propNames)
 }
@@ -246,25 +253,19 @@ func (e *encoding) deriveEncoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (En
 		}, nil
 	}
 
-	if typeSpec.Ref != "" {
-		switch t := t.(type) {
-		case tftypes.Object:
-			return e.deriveEncoderForNamedObjectType(typeSpec.Ref, t)
-		case tftypes.Tuple:
-			return e.deriveTupleEncoder(typeSpec.Ref, t)
-		default:
-			// Workaround dangling local references.
-			dangling := false
-			if strings.HasPrefix(typeSpec.Ref, "#/types/") {
-				token := strings.TrimPrefix(typeSpec.Ref, "#/types/")
-				if e.spec.Type(tokens.Type(token)) == nil {
-					dangling = true
-				}
-			}
-			if !dangling {
-				return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
-			}
+	switch t := t.(type) {
+	case tftypes.Object:
+		tok, referredType, err := e.resolveRef(typeSpec.Ref)
+		if err != nil {
+			return nil, fmt.Errorf("expected an Object type: %w", err)
 		}
+		return e.deriveEncoderForNamedObjectType(tok, referredType, t)
+	case tftypes.Tuple:
+		tok, referredType, err := e.resolveRef(typeSpec.Ref)
+		if err != nil {
+			return nil, fmt.Errorf("expected a Tuple type: %w", err)
+		}
+		return e.deriveTupleEncoder(tokens.Type(tok), referredType, t)
 	}
 
 	switch typeSpec.Type {
@@ -330,16 +331,21 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 		}, nil
 	}
 
-	if typeSpec.Ref != "" {
-		switch t := t.(type) {
-		case tftypes.Object:
-			return e.deriveDecoderForNamedObjectType(typeSpec.Ref, t)
-		case tftypes.Tuple:
-			return e.deriveTupleDecoder(typeSpec.Ref, t)
-		default:
-			return nil, fmt.Errorf("expected Object or Tuple type but got %s", t.String())
+	switch t := t.(type) {
+	case tftypes.Object:
+		ref, referredType, err := e.resolveRef(typeSpec.Ref)
+		if err != nil {
+			return nil, fmt.Errorf("expected an Object type: %w", err)
 		}
+		return e.deriveDecoderForNamedObjectType(ref, referredType, t)
+	case tftypes.Tuple:
+		ref, referredType, err := e.resolveRef(typeSpec.Ref)
+		if err != nil {
+			return nil, fmt.Errorf("expected a Tuple type: %w", err)
+		}
+		return e.deriveTupleDecoder(tokens.Type(ref), referredType, t)
 	}
+
 	switch typeSpec.Type {
 	case "boolean":
 		return newBoolDecoder(), nil
@@ -389,24 +395,18 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 //
 // It handles reference validation and property discovery.
 func deriveTupleBase[T any](
-	e *encoding, f func(*pschema.TypeSpec, tftypes.Type) (T, error), ref string, t tftypes.Tuple,
+	f func(*pschema.TypeSpec, tftypes.Type) (T, error),
+	tok tokens.Type,
+	typ *pschema.ComplexTypeSpec,
+	t tftypes.Tuple,
 ) ([]T, error) {
-	const typPrefix = "#/types/"
-	if !strings.HasPrefix(ref, typPrefix) {
-		return nil, fmt.Errorf("expected '%s' prefix, found '%s'", typPrefix, ref)
-	}
-	ref = strings.TrimPrefix(ref, typPrefix)
-	typ := e.spec.Type(tokens.Type(ref))
-	if typ == nil {
-		return nil, fmt.Errorf("dangling ref: '%s'", ref)
-	}
 	elements := make([]T, len(t.ElementTypes))
 	for i := range t.ElementTypes {
 		propName := tuplePropertyName(i)
 		prop, ok := typ.Properties[propName]
 		if !ok {
-			return nil, fmt.Errorf("could not find expected property '%s' on typ '%s'",
-				propName, ref)
+			return nil, fmt.Errorf("could not find expected property '%s' on type '%s'",
+				propName, tok)
 		}
 		var err error
 		elements[i], err = f(&prop.TypeSpec, t.ElementTypes[i])
@@ -417,16 +417,18 @@ func deriveTupleBase[T any](
 	return elements, nil
 }
 
-func (e *encoding) deriveTupleEncoder(ref string, t tftypes.Tuple) (*tupleEncoder, error) {
-	encoders, err := deriveTupleBase(e, e.deriveEncoder, ref, t)
+func (e *encoding) deriveTupleEncoder(tok tokens.Type, typeSpec *pschema.ComplexTypeSpec,
+	t tftypes.Tuple) (*tupleEncoder, error) {
+	encoders, err := deriveTupleBase(e.deriveEncoder, tok, typeSpec, t)
 	if err != nil {
 		return nil, fmt.Errorf("could not build tuple encoder: %w", err)
 	}
 	return &tupleEncoder{t.ElementTypes, encoders}, nil
 }
 
-func (e *encoding) deriveTupleDecoder(ref string, t tftypes.Tuple) (*tupleDecoder, error) {
-	decoders, err := deriveTupleBase(e, e.deriveDecoder, ref, t)
+func (e *encoding) deriveTupleDecoder(tok tokens.Type, typeSpec *pschema.ComplexTypeSpec,
+	t tftypes.Tuple) (*tupleDecoder, error) {
+	decoders, err := deriveTupleBase(e.deriveDecoder, tok, typeSpec, t)
 	if err != nil {
 		return nil, fmt.Errorf("could not build tuple decoder: %w", err)
 	}
