@@ -12,7 +12,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -123,7 +125,8 @@ func TestConvertStringToPropertyValue(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		v, err := convertStringToPropertyValue(c.str, c.typ)
+		enc := &configEncoding{}
+		v, err := enc.convertStringToPropertyValue(c.str, c.typ)
 		assert.Equal(t, resource.NewPropertyValue(c.expected), v)
 		if c.expected == nil {
 			assert.Error(t, err)
@@ -786,6 +789,66 @@ func TestCheckConfig(t *testing.T) {
 	})
 
 	// TODO[pulumi/pulumi-terraform-bridge#244] check validation scenarios once CheckConfig re-enables validation.
+
+	t.Run("flattened_compound_values", func(t *testing.T) {
+		// Providers may have nested objects or arrays in their configuration space. As of Pulumi v3.63.0 these
+		// may be coming over the wire under a flattened JSON-in-protobuf encoding. This test makes sure they
+		// are recognized correctly.
+
+		p := testprovider.ProviderV2()
+
+		// Examples here are taken from pulumi-gcp, scopes is a list and batching is a nested object.
+		p.Schema["scopes"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+		}
+
+		p.Schema["batching"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"send_after": {
+						Type:     schema.TypeString,
+						Optional: true,
+						//ValidateFunc: validateNonNegativeDuration(),
+					},
+					"enable_batching": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+		    "olds": {},
+		    "news": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+                    "inputs": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+                    }
+                  }
+		}`)
+	})
 }
 
 func TestPreConfigureCallback(t *testing.T) {

@@ -289,34 +289,6 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 
 }
 
-func convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
-	// If the schema expects a string, we can just return this as-is.
-	if typ == shim.TypeString {
-		return resource.NewStringProperty(s), nil
-	}
-
-	// Otherwise, we will attempt to deserialize the input string as JSON and convert the result into a Pulumi
-	// property. If the input string is empty, we will return an appropriate zero value.
-	if s == "" {
-		switch typ {
-		case shim.TypeBool:
-			return resource.NewPropertyValue(false), nil
-		case shim.TypeInt, shim.TypeFloat:
-			return resource.NewPropertyValue(0), nil
-		case shim.TypeList, shim.TypeSet:
-			return resource.NewPropertyValue([]interface{}{}), nil
-		default:
-			return resource.NewPropertyValue(map[string]interface{}{}), nil
-		}
-	}
-
-	var jsonValue interface{}
-	if err := json.Unmarshal([]byte(s), &jsonValue); err != nil {
-		return resource.PropertyValue{}, err
-	}
-	return resource.NewPropertyValue(jsonValue), nil
-}
-
 // GetSchema returns the JSON-encoded schema for this provider's package.
 func (p *Provider) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
@@ -342,7 +314,9 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		RejectAssets: true,
 	}
 
-	news, validationErrors := plugin.UnmarshalProperties(req.GetNews(), marshalOptions)
+	configEnc := newConfigEncoding(p.config, p.info.Config)
+
+	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews(), marshalOptions)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
@@ -379,7 +353,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
-	newsStruct, err := plugin.MarshalProperties(news, marshalOptions)
+	newsStruct, err := configEnc.MarshalProperties(news, marshalOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -546,35 +520,27 @@ func (p *Provider) Configure(ctx context.Context,
 
 	p.setLoggingContext(ctx)
 
-	// Fetch the map of tokens to values.  It will be in the form of fully qualified tokens, so
-	// we will need to translate into simply the configuration variable names.
-	vars := make(resource.PropertyMap)
-	for k, v := range req.GetVariables() {
-		mm, err := tokens.ParseModuleMember(k)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration token '%v'", k)
-		}
-		if mm.Module() != p.baseConfigMod() && mm.Module() != p.configMod() {
-			continue
-		}
+	label := fmt.Sprintf("%s.Configure()", p.label())
 
-		typ := shim.TypeString
-		_, sch, _ := getInfoFromPulumiName(resource.PropertyKey(mm.Name()), p.config, p.info.Config, false)
-		if sch != nil {
-			typ = sch.Type()
-		}
-		pv, err := convertStringToPropertyValue(v, typ)
-		if err != nil {
-			return nil, errors.Wrapf(err, "malformed configuration value '%v'", v)
-		}
-		vars[resource.PropertyKey(mm.Name())] = pv
+	marshalOptions := plugin.MarshalOptions{
+		Label:        fmt.Sprintf("%s.args", label),
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+	}
+
+	configEnc := newConfigEncoding(p.config, p.info.Config)
+
+	configMap, err := configEnc.UnmarshalProperties(req.GetArgs(), marshalOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
 	// them later on for purposes of (e.g.) config-based defaults.
-	p.configValues = vars
+	p.configValues = configMap
 
-	config, err := buildTerraformConfig(p, vars)
+	config, err := buildTerraformConfig(p, configMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
