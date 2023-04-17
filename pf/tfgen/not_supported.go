@@ -90,7 +90,10 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 		sort.Strings(u.autoNamedResources)
 		u.warn("SetAutonaming call is currently ignored for bridged resources built with the "+
 			"Plugin Framework. Supporting this feature is tracked in pulumi/pulumi-terraform-bridge#917.\n"+
-			"These resources employ autonaming:\n- %s", strings.Join(u.autoNamedResources, "\n- "))
+			"These resources employ autonaming:\n- %s\n"+
+			"To avoid this warning, exclude these resources from auto naming, for example by adding them"+
+			" to ProviderInfo.Resources after the SetAutonaming call.",
+			strings.Join(u.autoNamedResources, "\n- "))
 	}
 
 	return nil
