@@ -130,7 +130,9 @@ func layerMap[K comparable, V any](dst *map[K]V, src map[K]V, finalize func(k K,
 		_, skip := (*dst)[k]
 		if !skip {
 			(*dst)[k] = v
-			finalize(k, v)
+			if finalize != nil {
+				finalize(k, v)
+			}
 		}
 	}
 }
@@ -143,18 +145,35 @@ func (m *dispatchTableCtx) layerProvider(dst *schema.ResourceSpec, src schema.Re
 	contract.Assert(dst != nil)
 
 	addType := func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) }
+	layerString := func(dst *string, src string) {
+		if *dst == "" {
+			*dst = src
+		}
+	}
 
-	layerMap(&dst.InputProperties, src.InputProperties, addType)
+	// Layer ObjectTypeSpec properties
+	layerString(&dst.Description, src.Description)
 	layerMap(&dst.Properties, src.Properties, addType)
+	layerString(&dst.Type, src.Type)
+	dst.Required = appendUnique(dst.Required, src.Required)
+	dst.Plain = appendUnique(dst.Plain, src.Plain)
+	layerMap(&dst.Language, src.Language, nil)
+
+	// Layer Resource properties
+	layerMap(&dst.InputProperties, src.InputProperties, addType)
+	dst.RequiredInputs = appendUnique(dst.RequiredInputs, src.RequiredInputs)
+	dst.PlainInputs = appendUnique(dst.PlainInputs, src.PlainInputs)
+	dst.Aliases = appendUnique(dst.Aliases, src.Aliases)
+	layerString(&dst.DeprecationMessage, src.DeprecationMessage)
+	layerMap(&dst.Methods, src.Methods, nil)
+
+	// Layer state inputs if non-nil
 	if src.StateInputs == nil {
 		return
 	}
-	dst.Plain = appendUnique(dst.Plain, src.Plain)
-
 	if dst.StateInputs == nil {
 		dst.StateInputs = &schema.ObjectTypeSpec{}
 	}
-
 	layerMap(&dst.StateInputs.Properties, src.StateInputs.Properties, addType)
 }
 
