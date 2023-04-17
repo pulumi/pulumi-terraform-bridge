@@ -141,12 +141,16 @@ func TestGetMapping(t *testing.T) {
 			"test:mod:B": 1,
 		}
 
-		combine := func(provider string, data [][]byte) ([]byte, error) {
-			assert.Equal(t, "p1", provider)
-			assert.Len(t, data, 2)
-			assert.Equalf(t, "d1", string(data[0]), "first sub-server")
-			assert.Equalf(t, "d2", string(data[1]), "second sub-server")
-			return []byte("r1"), nil
+		combine := func(args muxer.GetMappingArgs) (muxer.GetMappingResponse, error) {
+			result := args.Fetch()
+			assert.Equal(t, "p1", result[0].Provider)
+			assert.Len(t, result, 2)
+			assert.Equalf(t, "d1", string(result[0].Data), "first sub-server")
+			assert.Equalf(t, "d2", string(result[1].Data), "second sub-server")
+			return muxer.GetMappingResponse{
+				Provider: "p1",
+				Data:     []byte("r1"),
+			}, nil
 		}
 
 		mux(t, m).getMappingHandler("k", combine).replay(
