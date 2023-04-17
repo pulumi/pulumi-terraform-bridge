@@ -5,20 +5,26 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/stretchr/testify/require"
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
@@ -788,7 +794,65 @@ func TestCheckConfig(t *testing.T) {
 		}`)
 	})
 
-	// TODO[pulumi/pulumi-terraform-bridge#244] check validation scenarios once CheckConfig re-enables validation.
+	t.Run("invalid_config_value", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.Schema["propwithvalidator"] = &schema.Schema{
+			Type:     schema.TypeString,
+			Optional: true,
+			ValidateDiagFunc: func(v interface{}, atpath cty.Path) (ret diag.Diagnostics) {
+				if v.(string) != "baz" {
+					return diag.Errorf("requiredprop should equal 'baz'")
+				}
+				return
+			},
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"requiredprop": "baz",
+		})
+		require.NoError(t, err)
+		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			News: args,
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not validate provider configuration")
+		require.Contains(t, err.Error(), "1 error occurred")
+		require.Contains(t, err.Error(), "Invalid or unknown key")
+	})
+
+	t.Run("missing_required_config_value", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.Schema["reqprop"] = &schema.Schema{
+			Type:     schema.TypeString,
+			Required: true,
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"version": "6.54.0",
+		})
+		require.NoError(t, err)
+		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			News: args,
+		})
+		status, ok := status.FromError(err)
+		require.Error(t, err)
+		require.True(t, ok)
+		require.Equal(t, codes.InvalidArgument, status.Code())
+		require.Equal(t, "required configuration keys were missing", status.Message())
+		require.Equal(t, 1, len(status.Details()))
+		missingKeys := status.Details()[0].(*pulumirpc.ConfigureErrorMissingKeys)
+		require.Equal(t, 1, len(missingKeys.MissingKeys))
+		missingKey := missingKeys.MissingKeys[0]
+		require.Equal(t, "_:reqprop", missingKey.Name)
+	})
 
 	t.Run("flattened_compound_values", func(t *testing.T) {
 		// Providers may have nested objects or arrays in their configuration space. As of Pulumi v3.63.0 these
@@ -813,7 +877,6 @@ func TestCheckConfig(t *testing.T) {
 					"send_after": {
 						Type:     schema.TypeString,
 						Optional: true,
-						//ValidateFunc: validateNonNegativeDuration(),
 					},
 					"enable_batching": {
 						Type:     schema.TypeBool,
