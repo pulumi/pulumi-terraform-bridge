@@ -59,12 +59,12 @@ type ProviderShim struct {
 func (m *ProviderShim) extend(provider shim.Provider) error {
 	res, err := disjointUnion(m.resources, provider.ResourcesMap())
 	if err != nil {
-		return err
+		return fmt.Errorf("ResourcesMap is not disjoint: %w", err)
 	}
 
 	data, err := disjointUnion(m.dataSources, provider.DataSourcesMap())
 	if err != nil {
-		return err
+		return fmt.Errorf("DataSourcesMap is not disjoint: %w", err)
 	}
 
 	m.resources = res
