@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
-	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -40,14 +39,6 @@ type Encoding interface {
 	NewResourceEncoder(tokens.Type, tftypes.Object) (Encoder, error)
 	NewDataSourceDecoder(tokens.ModuleMember, tftypes.Object) (Decoder, error)
 	NewDataSourceEncoder(tokens.ModuleMember, tftypes.Object) (Encoder, error)
-}
-
-// Subset of pschema.PackageSpec required for conversion.
-type PackageSpec interface {
-	Config() *pschema.ConfigSpec
-	Function(tok tokens.ModuleMember) *pschema.FunctionSpec
-	Resource(tok tokens.Type) *pschema.ResourceSpec
-	Type(tok tokens.Type) *pschema.ComplexTypeSpec
 }
 
 type PropertyNames interface {
