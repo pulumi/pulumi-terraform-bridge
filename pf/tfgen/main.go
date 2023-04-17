@@ -88,11 +88,9 @@ func MainWithMuxer(info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		// TODO: Fine grain notSupported check for PF derived elements
-		//
-		// if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
-		// 	return err
-		// }
+		if err := notSupported(opts.Sink, info); err != nil {
+			return err
+		}
 
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {

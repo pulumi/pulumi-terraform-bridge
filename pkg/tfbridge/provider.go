@@ -1346,9 +1346,7 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 // declaration (e.g., for length).
 func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 	if p.P == nil {
-		// TODO[pulumi/pulumi-terraform-bridge#917]
-		glog.Warningln("SetAutonaming call is currently ignored for bridged providers built with the " +
-			"Plugin Framework. Supporting this feature is tracked in pulumi/pulumi-terraform-bridge#917")
+		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
 		return
 	}
 
