@@ -38,16 +38,20 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 
 	u := &notSupportedUtil{sink: sink}
 
-	skip := func(tfToken string) bool { return false }
+	skipResource := func(tfToken string) bool { return false }
+	skipDataSource := func(tfToken string) bool { return false }
+	muxedProvider := false
 	if mixed, ok := prov.P.(*muxer.ProviderShim); ok {
-		skip = mixed.ResourceIsPF
+		skipResource = mixed.ResourceIsPF
+		skipDataSource = mixed.DataSourceIsPF
+		muxedProvider = true
 	} else if prov.P != nil {
 		u.warn("ProviderInfo.P should be nil for Plugin Framework based providers, populate NewProvider instead")
 	}
 
 	if prov.Resources != nil {
 		for path, res := range prov.Resources {
-			if skip(path) {
+			if skipResource(path) {
 				continue
 			}
 			u.resource("resource:"+path, res)
@@ -56,18 +60,25 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 
 	if prov.DataSources != nil {
 		for path, ds := range prov.DataSources {
+			if skipDataSource(path) {
+				continue
+			}
 			u.datasource("datasource:"+path, ds)
 		}
 	}
 
-	if prov.Config != nil {
-		for path, ds := range prov.Config {
-			u.schema("config:"+path, ds)
+	// It might be reasonable to set global values that PF will ignore if this is a
+	// muxed provider, and the SDK side will pick it up.
+	if !muxedProvider {
+		if prov.Config != nil {
+			for path, ds := range prov.Config {
+				u.schema("config:"+path, ds)
+			}
 		}
-	}
 
-	u.assertIsZero("PreConfigureCallback", prov.PreConfigureCallback)
-	u.assertIsZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
+		u.assertIsZero("PreConfigureCallback", prov.PreConfigureCallback)
+		u.assertIsZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
+	}
 
 	if len(u.autoNamedResources) > 0 {
 		sort.Strings(u.autoNamedResources)
