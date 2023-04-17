@@ -173,14 +173,8 @@ func (p *Provider) pkg() tokens.Package {
 	return tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(p.module)))
 }
 
-func (p *Provider) baseConfigMod() tokens.Module {
-	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config"))
-}
 func (p *Provider) baseDataMod() tokens.Module {
 	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("data"))
-}
-func (p *Provider) configMod() tokens.Module {
-	return tokens.NewModuleToken(p.pkg(), tokens.ModuleName("config/vars"))
 }
 
 func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
