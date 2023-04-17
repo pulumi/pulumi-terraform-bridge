@@ -164,6 +164,6 @@ func MuxedRandomProvider() tfbridge.ProviderInfo {
 		r.Tok = tokens.Type("muxedrandom:" + strings.TrimPrefix(string(r.Tok), "random:"))
 		sdk.Resources[tf] = r
 	}
-	sdk.P = tfpf.AugmentShimWithPF(context.Background(), sdk.P, pf.NewProvider())
+	sdk.P = tfpf.MuxShimWithPF(context.Background(), sdk.P, pf.NewProvider())
 	return sdk
 }
