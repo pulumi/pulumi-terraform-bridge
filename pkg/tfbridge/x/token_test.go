@@ -31,14 +31,14 @@ import (
 func TestTokensSingleModule(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: Provider{
-			resources: map[string]struct{}{
-				"foo_fizz_buzz":       {},
-				"foo_bar_hello_world": {},
-				"foo_bar":             {},
+			resources: map[string]shim.SchemaMap{
+				"foo_fizz_buzz":       nil,
+				"foo_bar_hello_world": nil,
+				"foo_bar":             nil,
 			},
-			datasources: map[string]struct{}{
-				"foo_source1":             {},
-				"foo_very_special_source": {},
+			datasources: map[string]shim.SchemaMap{
+				"foo_source1":             nil,
+				"foo_very_special_source": nil,
 			},
 		},
 	}
@@ -82,13 +82,13 @@ func TestTokensSingleModule(t *testing.T) {
 func TestTokensKnownModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_fizz_buzz_one_five": {},
-				"cs101_fizz_three":         {},
-				"cs101_fizz_three_six":     {},
-				"cs101_buzz_five":          {},
-				"cs101_buzz_ten":           {},
-				"cs101_game":               {},
+			resources: map[string]shim.SchemaMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
 			},
 		},
 	}
@@ -115,13 +115,13 @@ func TestTokensKnownModules(t *testing.T) {
 func TestUnmappable(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_fizz_buzz_one_five": {},
-				"cs101_fizz_three":         {},
-				"cs101_fizz_three_six":     {},
-				"cs101_buzz_five":          {},
-				"cs101_buzz_ten":           {},
-				"cs101_game":               {},
+			resources: map[string]shim.SchemaMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
 			},
 		},
 	}
@@ -156,10 +156,10 @@ func TestUnmappable(t *testing.T) {
 func TestIgnored(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_one_five":  {},
-				"cs101_three":     {},
-				"cs101_three_six": {},
+			resources: map[string]shim.SchemaMap{
+				"cs101_one_five":  nil,
+				"cs101_three":     nil,
+				"cs101_three_six": nil,
 			},
 		},
 		IgnoreMappings: []string{"cs101_three"},
@@ -323,9 +323,9 @@ func TestTokensInferredModules(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			resources := map[string]struct{}{}
+			resources := map[string]shim.SchemaMap{}
 			for k := range tt.resourceMapping {
-				resources[k] = struct{}{}
+				resources[k] = nil
 			}
 			info := &tfbridge.ProviderInfo{
 				P: Provider{
@@ -349,14 +349,14 @@ func TestTokensInferredModules(t *testing.T) {
 	}
 }
 
-func TestAliasing(t *testing.T) {
+func TestTokenAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: Provider{
-				resources: map[string]struct{}{
-					"pkg_mod1_r1": {},
-					"pkg_mod1_r2": {},
-					"pkg_mod2_r1": {},
+				resources: map[string]shim.SchemaMap{
+					"pkg_mod1_r1": nil,
+					"pkg_mod1_r2": nil,
+					"pkg_mod2_r1": nil,
 				},
 			},
 		}
@@ -432,7 +432,8 @@ func TestAliasing(t *testing.T) {
 	require.NoError(t, err)
 
 	hist3 := md.Clone(metadata)
-	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
+	assert.Equal(t, string(hist2.Marshal()), string(hist3.Marshal()),
+		"No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
 
 	modules3 := provider()
@@ -472,46 +473,333 @@ func TestAliasing(t *testing.T) {
 	assert.Equal(t, modules.Resources, modules4.Resources)
 }
 
+func TestMaxItemsOneAliasing(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]shim.SchemaMap{
+					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+						"f1": Schema{MaxItemsOne: f1},
+						"f2": Schema{MaxItemsOne: f2},
+					}),
+				},
+			},
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemOne": true
+                    },
+                    "f2": {
+                        "maxItemOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	info = provider(false, true)
+
+	// Apply metadata back into the provider
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, expected, string(metadata.Marshal()))
+
+	// Apply metadata back into the provider again, making sure there isn't a diff
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, expected, string(metadata.Marshal()))
+
+	// Validate that overrides work
+
+	info = provider(true, false)
+	info.Resources["pkg_r1"].Fields = map[string]*tfbridge.SchemaInfo{
+		"f1": {MaxItemsOne: tfbridge.False()},
+	}
+
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemOne": false
+                    },
+                    "f2": {
+                        "maxItemOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`, string(metadata.Marshal()))
+}
+
+func TestMaxItemsOneAliasingExpiring(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]shim.SchemaMap{
+					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+						"f1": Schema{MaxItemsOne: f1},
+						"f2": Schema{MaxItemsOne: f2},
+					}),
+				},
+			},
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemOne": true
+                    },
+                    "f2": {
+                        "maxItemOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	info = provider(false, true)
+
+	// Apply metadata back into the provider
+	info.Version = "1.0.0" // New major version
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "majorVersion": 1,
+                "fields": {
+                    "f1": {
+                        "maxItemOne": false
+                    },
+                    "f2": {
+                        "maxItemOne": true
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`, string(metadata.Marshal()))
+
+}
+
+func TestMaxItemsOneAliasingNested(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: Provider{
+				resources: map[string]shim.SchemaMap{
+					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+						"f1": Schema{},
+						"f2": Schema{elem: &Resource{
+							schema: newSchemaMap(map[string]shim.Schema{
+								"n1": Schema{MaxItemsOne: f1},
+								"n2": Schema{MaxItemsOne: f2},
+							}),
+						}},
+					}),
+				},
+			},
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemOne": false
+                    },
+                    "f2": {
+                        "maxItemOne": false,
+                        "fields": {
+                            "n1": {
+                                "maxItemOne": true
+                            },
+                            "n2": {
+                                "maxItemOne": false
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	// Apply the saved metadata to a new provider
+	info = provider(false, true)
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n2"].MaxItemsOne)
+}
+
 type Provider struct {
 	util.UnimplementedProvider
 
 	// We are only concerned with tokens, so that's all we support
-	datasources map[string]struct{}
-	resources   map[string]struct{}
+	datasources map[string]shim.SchemaMap
+	resources   map[string]shim.SchemaMap
 }
 
-func (p Provider) ResourcesMap() shim.ResourceMap   { return ResourceMap{p.resources} }
-func (p Provider) DataSourcesMap() shim.ResourceMap { return ResourceMap{p.datasources} }
+func (p Provider) ResourcesMap() shim.ResourceMap   { return newResourceMap(p.resources) }
+func (p Provider) DataSourcesMap() shim.ResourceMap { return newResourceMap(p.datasources) }
 
-type ResourceMap struct{ m map[string]struct{} }
-type Resource struct{ t string }
+type Schema struct {
+	shim.Schema
+	MaxItemsOne bool
+	elem        any
+}
 
-func (m ResourceMap) Len() int                     { return len(m.m) }
-func (m ResourceMap) Get(key string) shim.Resource { return Resource{key} }
-func (m ResourceMap) GetOk(key string) (shim.Resource, bool) {
-	_, ok := m.m[key]
+func (s Schema) MaxItems() int {
+	if s.MaxItemsOne {
+		return 1
+	}
+	return 0
+}
+
+func (s Schema) Type() shim.ValueType {
+	return shim.TypeList
+}
+
+func (s Schema) Elem() any { return s.elem }
+
+// type ResourceMap struct{ m map[string]shim.SchemaMap }
+type Resource struct {
+	shim.Resource
+	t      string
+	schema shim.SchemaMap
+}
+
+func newResourceMap(m map[string]shim.SchemaMap) shim.ResourceMap {
+	return &mapKind[shim.Resource, shim.SchemaMap]{
+		m: m,
+		getTransform: func(k string, v shim.SchemaMap) shim.Resource {
+			return Resource{nil, k, v}
+		},
+		setTransform: func(r shim.Resource) shim.SchemaMap {
+			return r.Schema()
+		},
+	}
+}
+
+func (r Resource) Schema() shim.SchemaMap {
+	return r.schema
+}
+
+func newSchemaMap(m map[string]shim.Schema) shim.SchemaMap {
+	return &mapKind[shim.Schema, shim.Schema]{
+		m:            m,
+		getTransform: func(k string, v shim.Schema) shim.Schema { return v },
+		setTransform: func(v shim.Schema) shim.Schema { return v },
+	}
+}
+
+type mapKind[T, V any] struct {
+	m            map[string]V
+	getTransform func(string, V) T
+	setTransform func(T) V
+}
+
+func (m *mapKind[T, V]) Len() int { return len(m.m) }
+func (m *mapKind[T, V]) Get(key string) T {
+	v, _ := m.GetOk(key)
+	return v
+}
+func (m *mapKind[T, V]) GetOk(key string) (T, bool) {
+	v, ok := m.m[key]
 	if !ok {
-		return nil, false
+		var t T
+		return t, false
 	}
-	return Resource{key}, true
+	return m.getTransform(key, v), ok
 }
-func (m ResourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for k := range m.m {
-		each(k, Resource{k})
+func (m *mapKind[T, V]) Range(each func(key string, value T) bool) {
+	for k, v := range m.m {
+		if !each(k, m.getTransform(k, v)) {
+			break
+		}
 	}
 }
-func (m ResourceMap) Set(key string, value shim.Resource) {
-	m.m[key] = struct{}{}
+func (m *mapKind[T, V]) Set(key string, value T) {
+	m.m[key] = m.setTransform(value)
 }
 
-func (r Resource) Schema() shim.SchemaMap          { panic("unimplemented") }
-func (r Resource) SchemaVersion() int              { panic("unimplemented") }
-func (r Resource) Importer() shim.ImportFunc       { panic("unimplemented") }
-func (r Resource) DeprecationMessage() string      { panic("unimplemented") }
-func (r Resource) Timeouts() *shim.ResourceTimeout { panic("unimplemented") }
-func (r Resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
-	panic("unimplemented")
-}
-func (r Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	panic("unimplemented")
-}
+func (m *mapKind[T, V]) Delete(key string) { delete(m.m, key) }

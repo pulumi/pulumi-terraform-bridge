@@ -472,20 +472,33 @@ type alias[T ~string] struct {
 }
 
 type aliasHistory struct {
-	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources"`
+	Resources   map[string]*resourceHistory                   `json:"resources"`
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
-func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
-	remaps := &[]func(*b.ProviderInfo){}
+type resourceHistory struct {
+	tokenHistory[tokens.Type]
 
+	MajorVersion int                      `json:"majorVersion,omitempty"`
+	Fields       map[string]*fieldHistory `json:"fields,omitempty"`
+}
+
+type fieldHistory struct {
+	MaxItemOne *bool `json:"maxItemOne,omitempty"`
+
+	Fields map[string]*fieldHistory `json:"fields,omitempty"`
+	Elem   *fieldHistory            `json:"elem,omitempty"`
+}
+
+func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
 	hist, err := getHistory(artifact)
 	if err != nil {
 		return err
 	}
 
 	var currentVersion int
-	// If version is missing, we assume the most recent major version in history
+	// If version is missing, we assume the current version is the most recent major
+	// version in mentioned in history.
 	if providerInfo.Version != "" {
 		v, err := semver.NewVersion(providerInfo.Version)
 		if err != nil {
@@ -509,16 +522,24 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 		}
 	}
 
+	rMap := providerInfo.P.ResourcesMap()
+
+	// Applying resource aliases adds new resources to providerInfo.Resources. To keep
+	// this process deterministic, we don't apply resource aliases until all resources
+	// have been examined.
+	applyResourceAliases := []func(){}
+
 	for tfToken, computed := range providerInfo.Resources {
-		aliasResource(hist.Resources, computed, tfToken, remaps, currentVersion)
+		r, _ := rMap.GetOk(tfToken)
+		aliasResource(providerInfo, r, &applyResourceAliases, hist.Resources,
+			computed, tfToken, currentVersion)
+	}
+	for _, f := range applyResourceAliases {
+		f()
 	}
 
 	for tfToken, computed := range providerInfo.DataSources {
-		aliasDataSource(hist.DataSources, computed, tfToken, remaps, currentVersion)
-	}
-
-	for _, r := range *remaps {
-		r(providerInfo)
+		aliasDataSource(providerInfo, hist.DataSources, computed, tfToken, currentVersion)
 	}
 
 	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
@@ -539,7 +560,7 @@ func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 	}
 	if !ok {
 		hist = aliasHistory{
-			Resources:   map[string]*tokenHistory[tokens.Type]{},
+			Resources:   map[string]*resourceHistory{},
 			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
 		}
 	}
@@ -547,44 +568,122 @@ func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 }
 
 func aliasResource(
-	hist map[string]*tokenHistory[tokens.Type],
-	computed *b.ResourceInfo,
-	tfToken string,
-	remaps *[]func(*b.ProviderInfo),
-	version int,
+	p *b.ProviderInfo, res shim.Resource,
+	applyResourceAliases *[]func(),
+	hist map[string]*resourceHistory, computed *b.ResourceInfo,
+	tfToken string, version int,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
-		*remaps = append(*remaps, func(*b.ProviderInfo) {
-			hist[tfToken] = &tokenHistory[tokens.Type]{
+		hist[tfToken] = &resourceHistory{
+			tokenHistory: tokenHistory[tokens.Type]{
 				Current: computed.Tok,
-			}
-		})
+			},
+		}
 	} else if prev.Current != computed.Tok {
 		// It's in history, but something has changed. Update the history to reflect
 		// the new reality, then add aliases.
-		*remaps = append(*remaps, func(p *b.ProviderInfo) {
-			aliasOrRenameResource(p, tfToken, prev, version)
-		})
 
+		// We don't do this eagerly because aliasResource is called while
+		// iterating over p.Resources which aliasOrRenameResource mutates.
+		*applyResourceAliases = append(*applyResourceAliases,
+			func() { aliasOrRenameResource(p, computed, tfToken, &prev.tokenHistory, version) })
 	}
-}
 
-func aliasOrRenameResource(
-	p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type],
-	currentVersion int,
-) {
-	// re-fetch the resource, to make sure we have the right pointer.
-	res, ok := p.Resources[tfToken]
-	if !ok {
-		// The resource to be remapped has been removed
-		// from the resource map. There is nothing to
-		// alias anymore.
+	// Apply Aliasing to MaxItemOne by traversing the field tree and applying the
+	// stored value.
+	//
+	// Note: If the user explicitly sets a MaxItemOne value, that value is respected
+	// and overwrites the current history.'
+
+	if res == nil {
 		return
 	}
 
+	safeRange := func(r shim.Resource, f func(string, shim.Schema)) {
+		if r == nil {
+			return
+		}
+		m := r.Schema()
+		if m == nil {
+			return
+		}
+		m.Range(func(k string, v shim.Schema) bool {
+			f(k, v)
+			return true
+		})
+	}
+
+	var walk func(*fieldHistory, *b.SchemaInfo, shim.Schema)
+	walk = func(h *fieldHistory, info *b.SchemaInfo, schema shim.Schema) {
+		if info.MaxItemsOne != nil {
+			// The user has overwritten the value, so we will just record that.
+			h.MaxItemOne = info.MaxItemsOne
+		} else if h.MaxItemOne != nil {
+			// If we have a previous value here, we bake it back into `info`.
+			info.MaxItemsOne = h.MaxItemOne
+		} else {
+			// There is no history for this value, so we bake it into the
+			// alias history.
+			h.MaxItemOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
+		}
+		e := schema.Elem()
+		switch e := e.(type) {
+		case shim.Schema:
+			if h.Elem == nil {
+				h.Elem = &fieldHistory{}
+			}
+			if info.Elem == nil {
+				info.Elem = &b.SchemaInfo{}
+			}
+			walk(h.Elem, info.Elem, e)
+		case shim.Resource:
+			safeRange(e, func(k string, v shim.Schema) {
+				walk(
+					getNonNil(&h.Fields, k),
+					getNonNil(&info.Fields, k),
+					v,
+				)
+			})
+		}
+	}
+
+	// If we are behind the major version, reset the fields and the major version.
+	if hist[tfToken].MajorVersion < version {
+		hist[tfToken].MajorVersion = version
+		hist[tfToken].Fields = nil
+	}
+
+	safeRange(res, func(k string, v shim.Schema) {
+		walk(
+			getNonNil(&hist[tfToken].Fields, k),
+			getNonNil(&computed.Fields, k),
+			v,
+		)
+	})
+}
+
+func getNonNil[K comparable, V any](m *map[K]*V, key K) *V {
+	contract.Assertf(m != nil, "Cannot restore map if ptr is nil")
+	if *m == nil {
+		*m = map[K]*V{}
+	}
+	v := (*m)[key]
+	if v == nil {
+		var new V
+		v = &new
+		(*m)[key] = v
+	}
+	return v
+}
+
+func aliasOrRenameResource(
+	p *b.ProviderInfo,
+	res *b.ResourceInfo, tfToken string,
+	hist *tokenHistory[tokens.Type], currentVersion int,
+) {
 	var alreadyPresent bool
 	for _, a := range hist.Past {
 		if a.Name == hist.Current {
@@ -615,10 +714,10 @@ func aliasOrRenameResource(
 }
 
 func aliasDataSource(
+	p *b.ProviderInfo,
 	hist map[string]*tokenHistory[tokens.ModuleMember],
 	computed *b.DataSourceInfo,
 	tfToken string,
-	remaps *[]func(*b.ProviderInfo),
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
@@ -629,36 +728,35 @@ func aliasDataSource(
 			Current: computed.Tok,
 		}
 	} else if prev.Current != computed.Tok {
-		aliasOrRenameDataSource(tfToken, remaps, prev, version)
+		aliasOrRenameDataSource(p, tfToken, prev, version)
 	}
 }
 
-func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember],
-	currentVersion int) {
-	// It's in history, but something has changed. Update the history to reflect
-	// the new reality, then add aliases.
-	*remaps = append(*remaps, func(p *b.ProviderInfo) {
-		// re-fetch the resource, to make sure we have the right pointer.
-		computed, ok := p.DataSources[tfToken]
-		if !ok {
-			// The DataSource to alias has been removed. There
-			// is nothing to alias anymore.
-			return
+func aliasOrRenameDataSource(
+	p *b.ProviderInfo, tfToken string,
+	prev *tokenHistory[tokens.ModuleMember],
+	currentVersion int,
+) {
+	// re-fetch the resource, to make sure we have the right pointer.
+	computed, ok := p.DataSources[tfToken]
+	if !ok {
+		// The DataSource to alias has been removed. There
+		// is nothing to alias anymore.
+		return
+	}
+	alias := alias[tokens.ModuleMember]{
+		Name:         prev.Current,
+		MajorVersion: currentVersion,
+	}
+	prev.Past = append(prev.Past, alias)
+	for _, a := range prev.Past {
+		if a.MajorVersion != currentVersion {
+			continue
 		}
-		alias := alias[tokens.ModuleMember]{
-			Name:         prev.Current,
-			MajorVersion: currentVersion,
-		}
-		prev.Past = append(prev.Past, alias)
-		for _, a := range prev.Past {
-			if a.MajorVersion != currentVersion {
-				continue
-			}
-			legacy := a.Name
-			p.RenameDataSource(tfToken, legacy,
-				computed.Tok, legacy.Module().Name().String(),
-				computed.Tok.Module().Name().String(), computed)
-		}
-	})
+		legacy := a.Name
+		p.RenameDataSource(tfToken, legacy,
+			computed.Tok, legacy.Module().Name().String(),
+			computed.Tok.Module().Name().String(), computed)
+	}
 
 }
