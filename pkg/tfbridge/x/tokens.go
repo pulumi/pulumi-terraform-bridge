@@ -58,7 +58,9 @@ func TokensSingleModule(
 }
 
 func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
-	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
+	prefix, defaultModule string, modules []string,
+	new func(string, string) (*T, error),
+	moduleTransform func(string) string,
 ) Strategy[T] {
 	return func(tfToken string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
@@ -75,7 +77,7 @@ func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
 		if mod == "" {
 			return nil, fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
 		}
-		return new(camelCase(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
+		return new(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
 	}
 }
 
@@ -98,7 +100,7 @@ func TokensKnownModules(
 					return nil, err
 				}
 				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
-			}),
+			}, camelCase),
 		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
 			func(mod, tk string) (*b.DataSourceInfo, error) {
 				tk, err := finalize(mod, "get"+tk)
@@ -106,7 +108,53 @@ func TokensKnownModules(
 					return nil, err
 				}
 				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
-			}),
+			}, camelCase),
+	}
+}
+
+// A strategy for assigning tokens to a hand generated set of modules with an arbitrary
+// mapping from TF modules to Pulumi modules.
+//
+// If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+func TokensMappedModules(
+	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
+) DefaultStrategy {
+
+	mods := make([]string, 0, len(modules))
+	for k := range modules {
+		mods = append(mods, k)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(mods)))
+
+	transform := func(tf string) string {
+		s, ok := modules[tf]
+		if !ok && tf == defaultModule {
+			// We pass through the default module as is, so it might not be in
+			// `modules`. We need to catch that and return as is.
+			return tf
+		}
+		assert := "Because any mod selected must be from mods, it is guaranteed to be in modules, got %#v"
+		contract.Assertf(ok, assert, tf)
+		return s
+	}
+
+	return DefaultStrategy{
+		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
+			func(mod, tk string) (*b.ResourceInfo, error) {
+				tk, err := finalize(mod, tk)
+				if err != nil {
+					return nil, err
+				}
+				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+			}, transform),
+		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
+			func(mod, tk string) (*b.DataSourceInfo, error) {
+				tk, err := finalize(mod, "get"+tk)
+				if err != nil {
+					return nil, err
+				}
+				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+			}, transform),
 	}
 }
 

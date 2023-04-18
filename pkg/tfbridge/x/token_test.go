@@ -112,6 +112,39 @@ func TestTokensKnownModules(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensMappedModules(t *testing.T) {
+	info := tfbridge.ProviderInfo{
+		P: Provider{
+			resources: map[string]struct{}{
+				"cs101_fizz_buzz_one_five": {},
+				"cs101_fizz_three":         {},
+				"cs101_fizz_three_six":     {},
+				"cs101_buzz_five":          {},
+				"cs101_buzz_ten":           {},
+				"cs101_game":               {},
+			},
+		},
+	}
+	err := ComputeDefaults(&info, DefaultStrategy{
+		Resource: TokensMappedModules("cs101_", "idx", map[string]string{
+			"fizz_":      "fIzZ",
+			"buzz_":      "buZZ",
+			"fizz_buzz_": "fizZBuzz",
+		}, func(module, name string) (string, error) {
+			return fmt.Sprintf("cs101:%s:%s", module, name), nil
+		}).Resource,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizZBuzz:OneFive"},
+		"cs101_fizz_three":         {Tok: "cs101:fIzZ:Three"},
+		"cs101_fizz_three_six":     {Tok: "cs101:fIzZ:ThreeSix"},
+		"cs101_buzz_five":          {Tok: "cs101:buZZ:Five"},
+		"cs101_buzz_ten":           {Tok: "cs101:buZZ:Ten"},
+		"cs101_game":               {Tok: "cs101:idx:Game"},
+	}, info.Resources)
+}
+
 func TestUnmappable(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: Provider{
