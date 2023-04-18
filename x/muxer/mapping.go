@@ -68,23 +68,18 @@ type dispatchTable struct {
 	// Resources and functions can only map to a single provider
 	Resources map[string]int `json:"resources"`
 	Functions map[string]int `json:"functions"`
-
-	// Config values can map to multiple providers
-	Config map[string][]int `json:"config"`
 }
 
 func newDispatchTable() dispatchTable {
 	return dispatchTable{
 		Resources: make(map[string]int),
 		Functions: make(map[string]int),
-		Config:    make(map[string][]int),
 	}
 }
 
 func (dispatchTable dispatchTable) isEmpty() bool {
 	return dispatchTable.Resources == nil &&
-		dispatchTable.Functions == nil &&
-		dispatchTable.Config == nil
+		dispatchTable.Functions == nil
 }
 
 // Layer `srcSchema` under `dstSchema`, keeping track of where resources and functions
@@ -108,9 +103,6 @@ func (dispatchTable dispatchTable) layerSchema(dstSchema, srcSchema *schema.Pack
 			srcSchema.Config.Required)
 	}
 
-	for k := range m.srcSchema.Config.Variables {
-		m.dispatchTable.Config[k] = append(m.dispatchTable.Config[k], m.srcIndex)
-	}
 	layerMap(&m.dstSchema.Config.Variables, m.srcSchema.Config.Variables,
 		func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) })
 

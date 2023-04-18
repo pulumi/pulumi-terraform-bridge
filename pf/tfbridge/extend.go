@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schemashim
+package tfbridge
 
 import (
 	"context"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
-	return &SchemaOnlyProvider{
-		ctx: ctx,
-		tf:  provider,
-	}
+func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provider) shim.Provider {
+	return schemashim.ShimSchemaOnlyProvider(ctx, p)
+}
+
+// MuxShimWithPF initializes a shim.Provider that will server resources from both shim and p.
+//
+// To create a muxed provider, ProviderInfo.P must be the result of this function.
+func MuxShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
+	return muxer.AugmentShimWithPF(ctx, shim, p)
 }

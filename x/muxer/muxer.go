@@ -68,8 +68,17 @@ type muxer struct {
 	getMappingByKey map[string]MultiMappingHandler
 }
 
+type GetMappingArgs interface {
+	Fetch() []GetMappingResponse
+}
+
+type GetMappingResponse struct {
+	Provider string
+	Data     []byte
+}
+
 type getMappingHandler = map[string]MultiMappingHandler
-type MultiMappingHandler = func(provider string, data [][]byte) ([]byte, error)
+type MultiMappingHandler = func(GetMappingArgs) (GetMappingResponse, error)
 
 func (m *muxer) getFunction(token string) server {
 	i, ok := m.dispatchTable.Functions[token]
@@ -95,40 +104,12 @@ func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.
 	return &rpc.GetSchemaResponse{Schema: m.schema}, nil
 }
 
-func filterConfig[T any](m *muxer, i int, vars map[string]T) {
-	for v := range vars {
-		var has bool
-		for _, j := range m.dispatchTable.Config[v] {
-			if j == i {
-				has = true
-				break
-			}
-		}
-		if !has {
-			delete(vars, v)
-		}
-	}
-}
-
-// Destructively filter `vars`, removing variables that are not known to apply to server
-// `i`.
-func (m *muxer) filterConfigVariables(i int, vars map[string]string) {
-	filterConfig(m, i, vars)
-}
-
-// Destructively filter `args`, removing values that are not known to apply to server `i`.
-func (m *muxer) filterConfigArgs(i int, args *structpb.Struct) {
-	filterConfig(m, i, args.Fields)
-}
-
 func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	subs := make([]func() tuple[*rpc.CheckResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.CheckResponse, error] {
 			req := proto.Clone(req).(*rpc.CheckRequest)
-			m.filterConfigArgs(i, req.Olds)
-			m.filterConfigArgs(i, req.News)
 			return newTuple(s.CheckConfig(ctx, req))
 		}
 	}
@@ -209,10 +190,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.DiffResponse, error] {
 			req := proto.Clone(req).(*rpc.DiffRequest)
-			m.filterConfigArgs(i, req.Olds)
-			m.filterConfigArgs(i, req.News)
-			r, err := s.DiffConfig(ctx, req)
-			return newTuple(r, err)
+			return newTuple(s.DiffConfig(ctx, req))
 		}
 	}
 
@@ -284,10 +262,7 @@ func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.
 		i, s := i, s
 		subs[i] = func() tuple[*rpc.ConfigureResponse, error] {
 			req := proto.Clone(req).(*rpc.ConfigureRequest)
-			m.filterConfigVariables(i, req.Variables)
-			m.filterConfigArgs(i, req.Args)
-			r, err := s.Configure(ctx, req)
-			return newTuple(r, err)
+			return newTuple(s.Configure(ctx, req))
 		}
 	}
 	response := &rpc.ConfigureResponse{
@@ -430,7 +405,64 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
+type getMappingArgs struct {
+	m   *muxer
+	req *rpc.GetMappingRequest
+	ctx context.Context
+
+	err error
+}
+
+func (a *getMappingArgs) Fetch() []GetMappingResponse {
+	resp, err := a.m.getMappingRaw(a.ctx, a.req, false)
+	a.err = err
+	return resp
+}
+
 func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+
+	// We need to merge multiple mappings
+	combineMapping, found := m.getMappingByKey[req.Key]
+	if !found {
+		results, err := m.getMappingRaw(ctx, req, true)
+		if err != nil {
+			return nil, err
+		}
+
+		switch len(results) {
+		case 0:
+			// There are no results and some sub-providers implemented the
+			// method. This means that no provider responded to this key. We return an
+			// empty response.
+			return &rpc.GetMappingResponse{}, nil
+		case 1:
+			// We don't need to worry about merging GetMapping data if there is only one
+			// server with valid data.
+			return &rpc.GetMappingResponse{
+				Provider: results[0].Provider,
+				Data:     results[0].Data,
+			}, nil
+		}
+		return nil, fmt.Errorf("No multi-mapping handler for GetMapping key '%s'", req.Key)
+	}
+
+	args := getMappingArgs{m, req, ctx, nil}
+	result, err := combineMapping(&args)
+	if err != nil {
+		if args.err != nil {
+			return nil, fmt.Errorf("%w (sub-provider GetMapping call failed: %w)", err, args.err)
+		}
+		return nil, err
+	}
+	return &rpc.GetMappingResponse{
+		Provider: result.Provider,
+		Data:     result.Data,
+	}, nil
+}
+
+func (m *muxer) getMappingRaw(
+	ctx context.Context, req *rpc.GetMappingRequest, strict bool,
+) ([]GetMappingResponse, error) {
 	subs := make([]func() tuple[*rpc.GetMappingResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
@@ -439,7 +471,7 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 		}
 	}
 	errs := new(multierror.Error)
-	results := [][]byte{}
+	results := []GetMappingResponse{}
 	var providerName string
 	for i, v := range asyncJoin(subs) {
 		if err := v.B; err != nil {
@@ -450,56 +482,30 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 		if len(response.Data) == 0 {
 			continue
 		}
-		if response.Provider == "" {
+		if response.Provider == "" && strict {
 			errs.Errors = append(errs.Errors,
 				fmt.Errorf("Missing provider name for subprovider %d", i))
 			continue
 		} else if providerName == "" {
 			providerName = response.Provider
-		} else if providerName != response.Provider {
+		} else if providerName != response.Provider && strict {
 			errs = multierror.Append(errs,
 				m.Warnf(ctx, "GetMapping",
 					"Ignoring Mapping data due to provider name mismatch: %s != %s",
 					providerName, response.Provider))
 			continue
 		}
-		results = append(results, response.Data)
+		results = append(results, GetMappingResponse{
+			Provider: response.Provider,
+			Data:     response.Data,
+		})
 	}
 
 	if err := m.muxedErrors(errs); err != nil {
 		return nil, err
 	}
 
-	switch len(results) {
-	case 0:
-		// There are no results and some sub-providers implemented the
-		// method. This means that no provider responded to this key. We return an
-		// empty response.
-		return &rpc.GetMappingResponse{}, nil
-	case 1:
-		// We don't need to worry about merging GetMapping data if there is only one
-		// server with valid data.
-		return &rpc.GetMappingResponse{
-			Provider: providerName,
-			Data:     results[0],
-		}, nil
-	}
-
-	// We need to merge multiple mappings
-	combineMapping, found := m.getMappingByKey[req.Key]
-	if !found {
-		return nil, fmt.Errorf("No multi-mapping handler for GetMapping key '%s'", req.Key)
-	}
-
-	data, err := combineMapping(providerName, results)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to combine '%s' multi-mapping for '%s': %w", req.Key, providerName, err)
-	}
-
-	return &rpc.GetMappingResponse{
-		Provider: providerName,
-		Data:     data,
-	}, nil
+	return results, nil
 }
 
 func (m *muxer) Warnf(ctx context.Context, method, msg string, a ...any) error {
