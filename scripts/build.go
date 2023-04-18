@@ -33,6 +33,7 @@ func usage() {
 
 func updatePulumiDeps() {
 	ver := os.Args[2]
+	ver = strings.TrimPrefix(ver, "v")
 	roots := findGoModuleRoots()
 	for _, m := range roots {
 		edited := false
