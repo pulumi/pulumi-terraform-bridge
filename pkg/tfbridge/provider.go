@@ -310,6 +310,8 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 
 	configEnc := newConfigEncoding(p.config, p.info.Config)
 
+	secrets := configEnc.ComputeSecrets(req.GetNews(), marshalOptions)
+
 	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews(), marshalOptions)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
@@ -347,7 +349,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
-	newsStruct, err := configEnc.MarshalProperties(news, marshalOptions)
+	newsStruct, err := configEnc.MarshalProperties(configEnc.MarkSecrets(secrets, news), marshalOptions)
 	if err != nil {
 		return nil, err
 	}

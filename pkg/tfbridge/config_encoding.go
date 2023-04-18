@@ -28,7 +28,8 @@ import (
 )
 
 type configEncoding struct {
-	fieldTypes map[resource.PropertyKey]shim.ValueType
+	fieldTypes      map[resource.PropertyKey]shim.ValueType
+	sensitiveFields map[resource.PropertyKey]struct{}
 }
 
 func newConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo) *configEncoding {
@@ -38,11 +39,21 @@ func newConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo
 		return true
 	})
 	fieldTypes := make(map[resource.PropertyKey]shim.ValueType)
+	sensitiveFields := make(map[resource.PropertyKey]struct{})
+
 	for _, tfKey := range tfKeys {
 		pulumiKey := resource.PropertyKey(TerraformToPulumiNameV2(tfKey, config, configInfos))
-		fieldTypes[pulumiKey] = config.Get(tfKey).Type()
+		schema := config.Get(tfKey)
+		fieldTypes[pulumiKey] = schema.Type()
+		if containsSensitiveElements(schema) {
+			sensitiveFields[pulumiKey] = struct{}{}
+		}
+
 	}
-	return &configEncoding{fieldTypes: fieldTypes}
+	return &configEncoding{
+		fieldTypes:      fieldTypes,
+		sensitiveFields: sensitiveFields,
+	}
 }
 
 func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
@@ -71,6 +82,45 @@ func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType
 		return resource.PropertyValue{}, err
 	}
 	return resource.NewPropertyValue(jsonValue), nil
+}
+
+// Compute an approximation of which properties should be secret. A property should be secret if it is statically marked
+// as secret in the schema, or has nested sub-properties marked in this way. A property should also be secret if the
+// dynamic value sent from the program is marked as secret.
+func (enc *configEncoding) ComputeSecrets(props *structpb.Struct,
+	opts plugin.MarshalOptions) map[resource.PropertyKey]struct{} {
+	opts.KeepSecrets = true
+
+	secrets := make(map[resource.PropertyKey]struct{})
+
+	for k := range enc.sensitiveFields {
+		secrets[k] = struct{}{}
+	}
+
+	pm, err := enc.UnmarshalProperties(props, opts)
+	if err == nil {
+		for k, v := range pm {
+			if v.ContainsSecrets() {
+				secrets[k] = struct{}{}
+			}
+		}
+	}
+	return secrets
+}
+
+// Ensure that the sensitive top-level properties are marked as secret.
+func (enc *configEncoding) MarkSecrets(secrets map[resource.PropertyKey]struct{},
+	pm resource.PropertyMap) resource.PropertyMap {
+	copy := make(resource.PropertyMap)
+	for k, v := range pm {
+		_, secret := secrets[k]
+		if secret {
+			copy[k] = resource.MakeSecret(v)
+		} else {
+			copy[k] = v
+		}
+	}
+	return copy
 }
 
 // Like plugin.UnmarshalPropertyValue but overrides string parsing with convertStringToPropertyValue.
@@ -127,24 +177,63 @@ func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
 	return result, nil
 }
 
-// Inverse of UnmarshalProperties.
+// Inverse of UnmarshalProperties, with additional support for top-level (but not nested) secrets.
 func (enc *configEncoding) MarshalProperties(props resource.PropertyMap,
 	opts plugin.MarshalOptions) (*structpb.Struct, error) {
+	opts.KeepSecrets = true
 	copy := make(resource.PropertyMap)
 	for k, v := range props {
-		_, knownKey := enc.fieldTypes[k]
-		switch {
-		case knownKey && v.IsNull():
-			copy[k] = resource.NewStringProperty("")
-		case knownKey && !v.IsNull() && !v.IsString():
-			encoded, err := json.Marshal(v.Mappable())
-			if err != nil {
-				return nil, fmt.Errorf("JSON encoding error while marshalling property %q: %w", k, err)
-			}
-			copy[k] = resource.NewStringProperty(string(encoded))
-		default:
-			copy[k] = v
+		var err error
+		copy[k], err = enc.jsonEncodePropertyValue(k, v)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return plugin.MarshalProperties(copy, opts)
+}
+
+func (enc *configEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
+	v resource.PropertyValue) (resource.PropertyValue, error) {
+	if v.IsSecret() {
+		encoded, err := enc.jsonEncodePropertyValue(k, v.SecretValue().Element)
+		if err != nil {
+			return v, err
+		}
+		return resource.NewSecretProperty(&resource.Secret{Element: encoded}), err
+	}
+	_, knownKey := enc.fieldTypes[k]
+	switch {
+	case knownKey && v.IsNull():
+		return resource.NewStringProperty(""), nil
+	case knownKey && !v.IsNull() && !v.IsString():
+		encoded, err := json.Marshal(v.Mappable())
+		if err != nil {
+			return v, fmt.Errorf("JSON encoding error while marshalling property %q: %w", k, err)
+		}
+		return resource.NewStringProperty(string(encoded)), nil
+	default:
+		return v, nil
+	}
+}
+
+func containsSensitiveElements(x shim.Schema) bool {
+	if x.Sensitive() {
+		return true
+	}
+	switch elem := x.Elem().(type) {
+	case shim.Schema:
+		return containsSensitiveElements(elem)
+	case shim.Resource:
+		sensitive := false
+		s := elem.Schema()
+		s.Range(func(key string, value shim.Schema) bool {
+			if containsSensitiveElements(value) {
+				sensitive = true
+			}
+			return true
+		})
+		return sensitive
+	default:
+		return false
+	}
 }
