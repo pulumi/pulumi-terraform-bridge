@@ -134,7 +134,7 @@ func (m *dispatchTableCtx) layerProvider(dst *schema.ResourceSpec, src schema.Re
 	// As implemented, this could layer an arbitrary resource onto another arbitrary
 	// resource. The only resource where we want to "merge" instead "pick one" is the
 	// provider resource.
-	contract.Assert(dst != nil)
+	contract.Assertf(dst != nil, "dst != nil")
 
 	addType := func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) }
 	layerString := func(dst *string, src string) {
