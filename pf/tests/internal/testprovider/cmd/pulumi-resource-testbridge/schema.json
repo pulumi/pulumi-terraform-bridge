@@ -508,12 +508,17 @@
                     },
                     "output": {
                         "type": "string"
+                    },
+                    "sensitive": {
+                        "type": "string",
+                        "secret": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "input",
                     "output",
+                    "sensitive",
                     "id"
                 ]
             }

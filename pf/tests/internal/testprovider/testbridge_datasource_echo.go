@@ -36,8 +36,9 @@ func (*echoDataSource) Metadata(ctx context.Context, req datasource.MetadataRequ
 func (*echoDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"input":  schema.StringAttribute{Required: true},
-			"output": schema.StringAttribute{Computed: true},
+			"input":     schema.StringAttribute{Required: true},
+			"output":    schema.StringAttribute{Computed: true},
+			"sensitive": schema.StringAttribute{Computed: true, Sensitive: true},
 		},
 	}
 }
@@ -50,4 +51,8 @@ func (*echoDataSource) Read(ctx context.Context, req datasource.ReadRequest, res
 	output := input
 	diags2 := resp.State.SetAttribute(ctx, path.Root("output"), output)
 	resp.Diagnostics.Append(diags2...)
+
+	sensitive := input
+	diags3 := resp.State.SetAttribute(ctx, path.Root("sensitive"), sensitive)
+	resp.Diagnostics.Append(diags3...)
 }

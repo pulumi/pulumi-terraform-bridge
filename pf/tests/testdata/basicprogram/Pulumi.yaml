@@ -173,7 +173,6 @@ outputs:
         protocol: ssh
 
   # TODO this is currently failing.
-  #
   # tupleElementAttrRes__actual: ${tupleElementAttrRes.tuplesOptionals}
   # tupleElementAttrRes__expect:
   #   - { t0: false, t1: "no" }
@@ -194,4 +193,6 @@ outputs:
     input:
       "Hello"
     output:
+      "Hello"
+    sensitive:
       "Hello"
