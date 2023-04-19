@@ -11,7 +11,17 @@ type Provider struct {
 }
 
 func (p *Provider) Shim() shim.Provider {
-	return ProviderShim{p}
+	c := p
+	if c.Schema == nil {
+		c.Schema = SchemaMap{}
+	}
+	if c.ResourcesMap == nil {
+		c.ResourcesMap = ResourceMap{}
+	}
+	if c.DataSourcesMap == nil {
+		c.DataSourcesMap = ResourceMap{}
+	}
+	return ProviderShim{c}
 }
 
 type ProviderShim struct {

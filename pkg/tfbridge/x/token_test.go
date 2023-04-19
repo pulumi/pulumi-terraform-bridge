@@ -23,24 +23,24 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestTokensSingleModule(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]shim.SchemaMap{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
 				"foo_fizz_buzz":       nil,
 				"foo_bar_hello_world": nil,
 				"foo_bar":             nil,
 			},
-			datasources: map[string]shim.SchemaMap{
+			DataSourcesMap: schema.ResourceMap{
 				"foo_source1":             nil,
 				"foo_very_special_source": nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	makeToken := func(module, name string) (string, error) {
@@ -81,8 +81,8 @@ func TestTokensSingleModule(t *testing.T) {
 
 func TestTokensKnownModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]shim.SchemaMap{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
 				"cs101_fizz_buzz_one_five": nil,
 				"cs101_fizz_three":         nil,
 				"cs101_fizz_three_six":     nil,
@@ -90,7 +90,7 @@ func TestTokensKnownModules(t *testing.T) {
 				"cs101_buzz_ten":           nil,
 				"cs101_game":               nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	err := ComputeDefaults(&info, DefaultStrategy{
@@ -114,8 +114,8 @@ func TestTokensKnownModules(t *testing.T) {
 
 func TestUnmappable(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]shim.SchemaMap{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
 				"cs101_fizz_buzz_one_five": nil,
 				"cs101_fizz_three":         nil,
 				"cs101_fizz_three_six":     nil,
@@ -123,7 +123,7 @@ func TestUnmappable(t *testing.T) {
 				"cs101_buzz_ten":           nil,
 				"cs101_game":               nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	strategy := TokensKnownModules("cs101_", "index", []string{
@@ -155,13 +155,13 @@ func TestUnmappable(t *testing.T) {
 
 func TestIgnored(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]shim.SchemaMap{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
 				"cs101_one_five":  nil,
 				"cs101_three":     nil,
 				"cs101_three_six": nil,
 			},
-		},
+		}).Shim(),
 		IgnoreMappings: []string{"cs101_three"},
 	}
 	err := ComputeDefaults(&info, TokensSingleModule("cs101_", "index_", MakeStandardToken("cs101")))
@@ -323,14 +323,14 @@ func TestTokensInferredModules(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			resources := map[string]shim.SchemaMap{}
+			resources := schema.ResourceMap{}
 			for k := range tt.resourceMapping {
 				resources[k] = nil
 			}
 			info := &tfbridge.ProviderInfo{
-				P: Provider{
-					resources: resources,
-				},
+				P: (&schema.Provider{
+					ResourcesMap: resources,
+				}).Shim(),
 			}
 
 			strategy, err := TokensInferredModules(info,
@@ -352,13 +352,13 @@ func TestTokensInferredModules(t *testing.T) {
 func TestTokenAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
-			P: Provider{
-				resources: map[string]shim.SchemaMap{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
 					"pkg_mod1_r1": nil,
 					"pkg_mod1_r2": nil,
 					"pkg_mod2_r1": nil,
 				},
-			},
+			}).Shim(),
 		}
 	}
 	simple := provider()
@@ -476,14 +476,14 @@ func TestTokenAliasing(t *testing.T) {
 func TestMaxItemsOneAliasing(t *testing.T) {
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
-			P: Provider{
-				resources: map[string]shim.SchemaMap{
-					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
 						"f1": Schema{MaxItemsOne: f1},
 						"f2": Schema{MaxItemsOne: f2},
-					}),
+					}}).Shim(),
 				},
-			},
+			}).Shim(),
 		}
 		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
@@ -570,14 +570,14 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
-			P: Provider{
-				resources: map[string]shim.SchemaMap{
-					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
 						"f1": Schema{MaxItemsOne: f1},
 						"f2": Schema{MaxItemsOne: f2},
-					}),
+					}}).Shim(),
 				},
-			},
+			}).Shim(),
 		}
 		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
@@ -646,19 +646,19 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 func TestMaxItemsOneAliasingNested(t *testing.T) {
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
-			P: Provider{
-				resources: map[string]shim.SchemaMap{
-					"pkg_r1": newSchemaMap(map[string]shim.Schema{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
 						"f1": Schema{},
-						"f2": Schema{elem: &Resource{
-							schema: newSchemaMap(map[string]shim.Schema{
+						"f2": Schema{elem: (&schema.Resource{
+							Schema: schema.SchemaMap{
 								"n1": Schema{MaxItemsOne: f1},
 								"n2": Schema{MaxItemsOne: f2},
-							}),
-						}},
-					}),
+							},
+						}).Shim()},
+					}}).Shim(),
 				},
-			},
+			}).Shim(),
 		}
 		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
@@ -711,17 +711,6 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n2"].MaxItemsOne)
 }
 
-type Provider struct {
-	util.UnimplementedProvider
-
-	// We are only concerned with tokens, so that's all we support
-	datasources map[string]shim.SchemaMap
-	resources   map[string]shim.SchemaMap
-}
-
-func (p Provider) ResourcesMap() shim.ResourceMap   { return newResourceMap(p.resources) }
-func (p Provider) DataSourcesMap() shim.ResourceMap { return newResourceMap(p.datasources) }
-
 type Schema struct {
 	shim.Schema
 	MaxItemsOne bool
@@ -740,66 +729,3 @@ func (s Schema) Type() shim.ValueType {
 }
 
 func (s Schema) Elem() any { return s.elem }
-
-// type ResourceMap struct{ m map[string]shim.SchemaMap }
-type Resource struct {
-	shim.Resource
-	t      string
-	schema shim.SchemaMap
-}
-
-func newResourceMap(m map[string]shim.SchemaMap) shim.ResourceMap {
-	return &mapKind[shim.Resource, shim.SchemaMap]{
-		m: m,
-		getTransform: func(k string, v shim.SchemaMap) shim.Resource {
-			return Resource{nil, k, v}
-		},
-		setTransform: func(r shim.Resource) shim.SchemaMap {
-			return r.Schema()
-		},
-	}
-}
-
-func (r Resource) Schema() shim.SchemaMap {
-	return r.schema
-}
-
-func newSchemaMap(m map[string]shim.Schema) shim.SchemaMap {
-	return &mapKind[shim.Schema, shim.Schema]{
-		m:            m,
-		getTransform: func(k string, v shim.Schema) shim.Schema { return v },
-		setTransform: func(v shim.Schema) shim.Schema { return v },
-	}
-}
-
-type mapKind[T, V any] struct {
-	m            map[string]V
-	getTransform func(string, V) T
-	setTransform func(T) V
-}
-
-func (m *mapKind[T, V]) Len() int { return len(m.m) }
-func (m *mapKind[T, V]) Get(key string) T {
-	v, _ := m.GetOk(key)
-	return v
-}
-func (m *mapKind[T, V]) GetOk(key string) (T, bool) {
-	v, ok := m.m[key]
-	if !ok {
-		var t T
-		return t, false
-	}
-	return m.getTransform(key, v), ok
-}
-func (m *mapKind[T, V]) Range(each func(key string, value T) bool) {
-	for k, v := range m.m {
-		if !each(k, m.getTransform(k, v)) {
-			break
-		}
-	}
-}
-func (m *mapKind[T, V]) Set(key string, value T) {
-	m.m[key] = m.setTransform(value)
-}
-
-func (m *mapKind[T, V]) Delete(key string) { delete(m.m, key) }
