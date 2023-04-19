@@ -7,8 +7,6 @@ replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../
 require (
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.3
-	github.com/pulumi/pulumi/pkg/v3 v3.62.0
-	github.com/pulumi/pulumi/sdk/v3 v3.62.0
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.30.0
 )
@@ -53,6 +51,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.62.0
+	github.com/pulumi/pulumi/sdk/v3 v3.62.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
