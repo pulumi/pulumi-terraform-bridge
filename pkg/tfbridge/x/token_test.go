@@ -114,16 +114,16 @@ func TestTokensKnownModules(t *testing.T) {
 
 func TestTokensMappedModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_fizz_buzz_one_five": {},
-				"cs101_fizz_three":         {},
-				"cs101_fizz_three_six":     {},
-				"cs101_buzz_five":          {},
-				"cs101_buzz_ten":           {},
-				"cs101_game":               {},
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
 			},
-		},
+		}).Shim(),
 	}
 	err := ComputeDefaults(&info, DefaultStrategy{
 		Resource: TokensMappedModules("cs101_", "idx", map[string]string{
