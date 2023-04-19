@@ -912,6 +912,141 @@ func TestCheckConfig(t *testing.T) {
                   }
 		}`)
 	})
+
+	// Secrets: it is important to handle secrets correctly since the results of CheckConfig are stored in the
+	// state. If secrets are not marked as such, they are stored as plaintext in the state.
+	t.Run("preserve_program_secrets", func(t *testing.T) {
+		// If the program passed a secret-marked value to a non-secret-marked property, preserve the secret bit.
+		// Trust the program that the value is secret.
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "config_value": {
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "foo"
+                      },
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "config_value": {
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "foo"
+                      },
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("enforce_schema_secrets", func(t *testing.T) {
+		// If the schema marks a config property as sensitive, enforce the secret bit on that property.
+		p := testprovider.ProviderV2()
+
+		p.Schema["mysecret"] = &schema.Schema{
+			Type:      schema.TypeString,
+			Optional:  true,
+			Sensitive: true,
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "mysecret": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "mysecret": {
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "foo"
+                      },
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("enforce_schema_nested_secrets", func(t *testing.T) {
+		// Flattened compound values may encode that some nested properties are sensitive. There is currently no
+		// way to preserve the secret-ness accurately in the JSON-in-proto encoding. Instead of this, bridged
+		// providers approximate and mark the entire property as secret when any of the components are
+		// sensitive.
+		p := testprovider.ProviderV2()
+
+		p.Schema["scopes"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+		}
+
+		p.Schema["batching"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"send_after": {
+						Type:      schema.TypeString,
+						Sensitive: true,
+						Optional:  true,
+					},
+					"enable_batching": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		testutils.Replay(t, provider, `
+                {
+                  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+                  "request": {
+                    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+                    "olds": {},
+                    "news": {
+                      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+                      "scopes": "[\"a\",\"b\"]",
+                      "version": "6.54.0"
+                    }
+                  },
+                  "response": {
+                    "inputs": {
+                      "batching": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
+                      },
+                      "scopes": "[\"a\",\"b\"]",
+                      "version": "6.54.0"
+                    }
+                  }
+                }`)
+	})
 }
 
 func TestPreConfigureCallback(t *testing.T) {
