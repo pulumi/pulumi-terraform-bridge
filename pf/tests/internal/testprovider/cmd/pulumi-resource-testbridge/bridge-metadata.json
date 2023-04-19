@@ -6,6 +6,9 @@
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
+        "functions": {
+            "testbridge:index/echo:Echo": "testbridge_echo"
+        },
         "renamedProperties": {
             "testbridge:index/TestnestRule:TestnestRule": {
                 "actionParameters": "action_parameters"
