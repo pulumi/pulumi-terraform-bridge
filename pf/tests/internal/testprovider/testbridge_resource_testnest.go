@@ -17,9 +17,6 @@ package testprovider
 import (
 	"context"
 
-	// "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	// "github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -54,9 +51,6 @@ func (*testnest) schema() rschema.Schema {
 									},
 								},
 							},
-							// Validators: []validator.List{
-							// 	listvalidator.SizeAtMost(1),
-							// },
 						},
 					},
 				},
