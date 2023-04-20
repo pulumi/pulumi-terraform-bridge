@@ -118,7 +118,7 @@ func RandomProvider() tfpf.ProviderInfo {
 	}
 }
 
-func RandomSDKProvider() tfbridge.ProviderInfo {
+func MuxedRandomProvider() tfbridge.ProviderInfo {
 	randomPkg := "muxedrandom"
 	randomMod := "index"
 
@@ -134,10 +134,12 @@ func RandomSDKProvider() tfbridge.ProviderInfo {
 
 	// randomResource manufactures a standard resource token given a module and resource name.  It automatically uses the
 	// random package and names the file by simply lower casing the resource's first character.
-	randomResource := func(mod string, res string) tokens.Type {
+	randomResource := func(res string) tokens.Type {
 		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
-		return randomType(mod+"/"+fn, res)
+		return randomType(randomMod+"/"+fn, res)
 	}
+
+	pf := RandomProvider()
 
 	info := tfbridge.ProviderInfo{
 		Name:        "muxedrandom",
@@ -147,23 +149,23 @@ func RandomSDKProvider() tfbridge.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-random",
 		Version:     "4.8.2",
-		P:           sdkv2.NewProvider(sdkv2randomprovider.New()),
+		P: tfpf.MuxShimWithPF(context.Background(),
+			sdkv2.NewProvider(sdkv2randomprovider.New()),
+			pf.NewProvider()),
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"random_human_number": {Tok: randomResource(randomMod, "RandomHumanNumber")},
+			// "random_human_number": {Tok: randomResource("RandomHumanNumber")},
 		},
 		MetadataInfo: tfbridge.NewProviderMetadata(muxedRandomProviderBridgeMetadata),
 	}
 
-	return info
-}
-
-func MuxedRandomProvider() tfbridge.ProviderInfo {
-	sdk := RandomSDKProvider()
-	pf := RandomProvider()
 	for tf, r := range pf.Resources {
 		r.Tok = tokens.Type("muxedrandom:" + strings.TrimPrefix(string(r.Tok), "random:"))
-		sdk.Resources[tf] = r
+		info.Resources[tf] = r
 	}
-	sdk.P = tfpf.MuxShimWithPF(context.Background(), sdk.P, pf.NewProvider())
-	return sdk
+
+	info.RenameResourceWithAlias("random_human_number",
+		randomResource("MyNumber"), randomResource("RandomHumanNumber"),
+		"index", "index", nil)
+
+	return info
 }

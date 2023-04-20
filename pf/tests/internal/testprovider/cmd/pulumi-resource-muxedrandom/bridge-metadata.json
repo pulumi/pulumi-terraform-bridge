@@ -1,6 +1,7 @@
 {
     "mux": {
         "resources": {
+            "muxedrandom:index/myNumber:MyNumber": 0,
             "muxedrandom:index/randomHumanNumber:RandomHumanNumber": 0,
             "muxedrandom:index/randomId:RandomId": 1,
             "muxedrandom:index/randomInteger:RandomInteger": 1,
@@ -10,11 +11,11 @@
             "muxedrandom:index/randomString:RandomString": 1,
             "muxedrandom:index/randomUuid:RandomUuid": 1
         },
-        "functions": {},
-        "config": {}
+        "functions": {}
     },
     "renames": {
         "resources": {
+            "muxedrandom:index/myNumber:MyNumber": "random_human_number_legacy",
             "muxedrandom:index/randomHumanNumber:RandomHumanNumber": "random_human_number",
             "muxedrandom:index/randomId:RandomId": "random_id",
             "muxedrandom:index/randomInteger:RandomInteger": "random_integer",
@@ -25,6 +26,9 @@
             "muxedrandom:index/randomUuid:RandomUuid": "random_uuid"
         },
         "renamedProperties": {
+            "muxedrandom:index/myNumber:MyNumber": {
+                "suggestionUpdated": "suggestion_updated"
+            },
             "muxedrandom:index/randomHumanNumber:RandomHumanNumber": {
                 "suggestionUpdated": "suggestion_updated"
             },
