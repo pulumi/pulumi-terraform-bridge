@@ -33,10 +33,7 @@
         "testbridge:index/TestnestRule:TestnestRule": {
             "properties": {
                 "actionParameters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/types/testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter"
-                    }
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
                 }
             },
             "type": "object",
@@ -44,7 +41,7 @@
                 "actionParameters"
             ]
         },
-        "testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter": {
+        "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
             "properties": {
                 "automaticHttpsRewrites": {
                     "type": "boolean"

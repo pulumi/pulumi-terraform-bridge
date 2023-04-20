@@ -10,7 +10,7 @@
             "testbridge:index/TestnestRule:TestnestRule": {
                 "actionParameters": "action_parameters"
             },
-            "testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter": {
+            "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
                 "automaticHttpsRewrites": "automatic_https_rewrites"
             },
             "testbridge:index/testres:TestConfigRes": {
