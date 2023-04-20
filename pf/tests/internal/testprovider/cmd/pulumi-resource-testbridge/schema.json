@@ -30,6 +30,35 @@
         ]
     },
     "types": {
+        "testbridge:index/TestnestRule:TestnestRule": {
+            "properties": {
+                "actionParameters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter"
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "actionParameters"
+            ]
+        },
+        "testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter": {
+            "properties": {
+                "automaticHttpsRewrites": {
+                    "type": "boolean"
+                },
+                "bic": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object",
+            "required": [
+                "automaticHttpsRewrites",
+                "bic"
+            ]
+        },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
                 "intport": {
@@ -100,6 +129,39 @@
         "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
     },
     "resources": {
+        "testbridge:index/testnest:Testnest": {
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                }
+            },
+            "inputProperties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testnest resources.\n",
+                "properties": {
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                        },
+                        "description": "List of rules to apply to the ruleset.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:TestConfigRes": {
             "properties": {
                 "configCopy": {

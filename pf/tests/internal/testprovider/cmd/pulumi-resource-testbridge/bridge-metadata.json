@@ -1,11 +1,18 @@
 {
     "renames": {
         "resources": {
+            "testbridge:index/testnest:Testnest": "testbridge_testnest",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
         "renamedProperties": {
+            "testbridge:index/TestnestRule:TestnestRule": {
+                "actionParameters": "action_parameters"
+            },
+            "testbridge:index/TestnestRuleActionParameter:TestnestRuleActionParameter": {
+                "automaticHttpsRewrites": "automatic_https_rewrites"
+            },
             "testbridge:index/testres:TestConfigRes": {
                 "configCopy": "config_copy"
             },
