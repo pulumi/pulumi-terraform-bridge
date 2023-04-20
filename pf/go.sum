@@ -1618,10 +1618,10 @@ github.com/pulumi/pulumi-java/pkg v0.9.0/go.mod h1:eHpNTbf4n5X3YvqoDI/+cbVIkQayc
 github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1 h1:SCg1gjfY9N4yn8U8peIUYATifjoDABkyR7H9lmefsfc=
 github.com/pulumi/pulumi-yaml v1.1.0 h1:Rm2TOS8/ZLRsgx1IOkiId7bwimbxcfPpAzSH0Tp7ePQ=
 github.com/pulumi/pulumi-yaml v1.1.0/go.mod h1:SIu26o/xRupOoZgrPjgmbUn6dS7FT74pTions9CSSfU=
-github.com/pulumi/pulumi/pkg/v3 v3.62.0 h1:eEb2y6S0xcYa0MNOfa51AFvHbOmHwiraa1Uu+NVzyuI=
-github.com/pulumi/pulumi/pkg/v3 v3.62.0/go.mod h1:7Imggo8uoYBewCdZC9LoEkPxnC7Wmn6TrAU0ouHV+kY=
-github.com/pulumi/pulumi/sdk/v3 v3.62.0 h1:j0n83nwCvnBakw0QHYRTNPnYr0hKs21tJervE+LrjCY=
-github.com/pulumi/pulumi/sdk/v3 v3.62.0/go.mod h1:Pb5H3OaRZg0n4TRIfY0pagR/NBIEvjp3lZe2Spr6Umc=
+github.com/pulumi/pulumi/pkg/v3 v3.63.0 h1:N7kKL+42abk1T8JjZ70oZb3Y0MJX4KNXE3r/Z+5RRVU=
+github.com/pulumi/pulumi/pkg/v3 v3.63.0/go.mod h1:VYy99tfLwhYsMUxMk27gTxBYh9fN1fYD/dUJGkSrK6Y=
+github.com/pulumi/pulumi/sdk/v3 v3.63.0 h1:XSoAON9YfjYzJz2fSjXtD0PF5rbWrATPaQ9fetx2YxY=
+github.com/pulumi/pulumi/sdk/v3 v3.63.0/go.mod h1:Pb5H3OaRZg0n4TRIfY0pagR/NBIEvjp3lZe2Spr6Umc=
 github.com/pulumi/schema-tools v0.1.2 h1:Fd9xvUjgck4NA+7/jSk7InqCUT4Kj940+EcnbQKpfZo=
 github.com/pulumi/schema-tools v0.1.2/go.mod h1:62lgj52Tzq11eqWTIaKd+EVyYAu5dEcDJxMhTjvMO/k=
 github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e h1:Dik4Qe/+xguB8JagPyXNlbOnRiXGmq/PSPQTGunYnTk=
