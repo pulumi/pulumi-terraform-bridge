@@ -83,7 +83,11 @@ func MainWithMuxer(info sdkBridge.ProviderInfo) {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
 
-		err := metadata.Set(info.GetMetadata(), "mux", shim.ResolveDispatch(&info))
+		dispatch, err := shim.ResolveDispatch(&info)
+		if err != nil {
+			return fmt.Errorf("failed to compute dispatch for muxed provider: %w", err)
+		}
+		err = metadata.Set(info.GetMetadata(), "mux", dispatch)
 		if err != nil {
 			return err
 		}

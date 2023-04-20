@@ -21,12 +21,14 @@ import (
 
 	"context"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -119,31 +121,88 @@ func newProviderShim(provider shim.Provider) ProviderShim {
 
 // Assign each Resource and DataSource mapped in `info` whichever runtime provider defines
 // it.
-func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) muxer.DispatchTable {
+func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.DispatchTable, error) {
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
 	dispatch.Functions = map[string]int{}
 
-	for tfToken, res := range info.Resources {
-		for i, p := range m.MuxedProviders {
-			_, ok := p.ResourcesMap().GetOk(tfToken)
-			if ok {
-				dispatch.Resources[string(res.GetTok())] = i
-				break
-			}
-		}
-	}
-	for tfToken, data := range info.DataSources {
-		for i, p := range m.MuxedProviders {
-			_, ok := p.DataSourcesMap().GetOk(tfToken)
-			if ok {
-				dispatch.Functions[string(data.GetTok())] = i
-				break
-			}
-		}
+	unbackedResources := resolveDispatchMap(m, dispatch.Resources, info.Resources,
+		func(p shim.Provider) shim.ResourceMap { return p.ResourcesMap() })
+	unbackedDatasources := resolveDispatchMap(m, dispatch.Functions, info.DataSources,
+		func(p shim.Provider) shim.ResourceMap { return p.DataSourcesMap() })
+	joinErr := func(label string, tks []string) error {
+		return fmt.Errorf("%s without backing provider:\n- %s",
+			label, strings.Join(tks, "\n- "))
 	}
 
-	return dispatch
+	switch {
+	case len(unbackedResources) == 0 && len(unbackedDatasources) == 0:
+		return dispatch, nil
+	case len(unbackedResources) == 0:
+		return dispatch, joinErr("DataSources", unbackedDatasources)
+	case len(unbackedDatasources) == 0:
+		return dispatch, joinErr("Resources", unbackedResources)
+	default:
+		return dispatch, multierror.Append(
+			joinErr("Resources", unbackedResources),
+			joinErr("DataSources", unbackedDatasources),
+		)
+	}
+}
+
+// Resolve either resources or datasoruces into their originating providers.
+//
+// A resource/datasource is considered "from" a provider if the provider serves a
+// resource/datasource for the token or if the provider serves a resource that matches the
+// resource inserted into the global map of m. The latter logic is used to handle aliases
+// which are inserted via:
+//
+//	p.P.ResourcesMap().Set(legacyResourceName, p.P.ResourcesMap().Get(resourceName))
+func resolveDispatchMap[T interface{ GetTok() tokens.Token }](
+	m *ProviderShim, dispatch map[string]int, info map[string]T,
+	mapKind func(shim.Provider) shim.ResourceMap,
+) (unbacked []string) {
+	var reverseLookupMap map[shim.Resource]int
+	for tfToken, res := range info {
+		r, ok := mapKind(m).GetOk(tfToken)
+		if !ok {
+			// This resource/datasource is not in any sub-provider nor was it
+			// set after the fact. The bridge will error later, so we can
+			// safely ignore now.
+			continue
+		}
+
+		var found bool
+		for i, p := range m.MuxedProviders {
+			_, ok := mapKind(p).GetOk(tfToken)
+			if ok {
+				dispatch[string(res.GetTok())] = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			if reverseLookupMap == nil {
+				reverseLookupMap = map[shim.Resource]int{}
+				for i, p := range m.MuxedProviders {
+					mapKind(p).Range(func(_ string, r shim.Resource) bool {
+						reverseLookupMap[r] = i
+						return true
+					})
+				}
+			}
+			i, ok := reverseLookupMap[r]
+			if ok {
+				dispatch[string(res.GetTok())] = i
+				found = true
+			}
+		}
+
+		if !found {
+			unbacked = append(unbacked, tfToken)
+		}
+	}
+	return unbacked
 }
 
 type simpleSchemaProvider struct {
