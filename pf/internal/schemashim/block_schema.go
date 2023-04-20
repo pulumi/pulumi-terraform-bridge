@@ -57,9 +57,16 @@ func (s *blockSchema) Elem() interface{} {
 	// Elem() needes to return a Resource value.
 	//
 	// See also: documentation on shim.Schema.Elem().
-	if tt, ok := t.(basetypes.ObjectTypable); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs())
-		return res
+	retObj := func(t any) (shim.Resource, bool) {
+		if tt, ok := t.(basetypes.ObjectTypable); ok {
+			var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs())
+			return res, true
+		}
+		return nil, false
+	}
+
+	if r, ok := retObj(t); ok {
+		return r
 	}
 
 	// Anything else that does not have an ElementType can be skipped.
@@ -70,10 +77,19 @@ func (s *blockSchema) Elem() interface{} {
 	var schema shim.Schema
 	switch tt := t.(type) {
 	case types.MapType:
+		if r, ok := retObj(tt.ElemType); ok {
+			return r
+		}
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	case types.ListType:
+		if r, ok := retObj(tt.ElemType); ok {
+			return r
+		}
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	case types.SetType:
+		if r, ok := retObj(tt.ElemType); ok {
+			return r
+		}
 		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
 	default:
 		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
