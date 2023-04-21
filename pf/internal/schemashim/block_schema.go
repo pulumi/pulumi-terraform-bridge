@@ -60,7 +60,7 @@ func (s *blockSchema) Elem() interface{} {
 
 	t := s.block.Type()
 
-	// Single-nested blocks are will have block.Type() be an ObjectTypeable directly.
+	// Single-nested blocks have a block.Type() that is an ObjectTypeable directly.
 	if r, ok := asObjectType(t); ok {
 		return r
 	}
