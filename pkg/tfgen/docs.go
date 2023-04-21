@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"crypto/md5"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -1115,7 +1115,7 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
 			fmt.Fprintf(&buf, "stripSubsectionsWithErrors=%v%s", stripSubsectionsWithErrors, sep)
 
-			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
+			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
 
 			filePath := filepath.Join(dir, hash)
 
@@ -1123,16 +1123,18 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 			if err == nil {
 				// cache hit
 				return string(bytes)
-			} else {
-				// ignore the error, assume cache miss or file not found
-				defer func() {
-					// only write the cache for sizable results, >0.5kb
-					if len(result) > 512 {
-						// try to write to the cache, ignore the error
-						os.WriteFile(filePath, []byte(result), 0755)
-					}
-				}()
 			}
+			// ignore the error, assume cache miss or file not found
+			defer func() {
+				// only write the cache for sizable results, >0.5kb
+				if len(result) > 512 {
+					// try to write to the cache
+					err := os.WriteFile(filePath, []byte(result), 0600)
+					if err != nil {
+						panic(fmt.Errorf("failed to write examples-cache: %w", err))
+					}
+				}
+			}()
 		}
 	}
 
