@@ -801,28 +801,28 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 	}
 }
 
-func (g *Generator) convertExamplesInPropertySpec(path string, spec pschema.PropertySpec) pschema.PropertySpec {
+func (g *Generator) convertExamplesInPropertySpec(path examplePath, spec pschema.PropertySpec) pschema.PropertySpec {
 	spec.Description = g.convertExamples(spec.Description, path, false)
 	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path, false)
 	return spec
 }
 
-func (g *Generator) convertExamplesInObjectSpec(path string, spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
+func (g *Generator) convertExamplesInObjectSpec(path examplePath, spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
 	spec.Description = g.convertExamples(spec.Description, path, false)
 	for name, prop := range spec.Properties {
-		spec.Properties[name] = g.convertExamplesInPropertySpec(fmt.Sprintf("%s/%s", path, name), prop)
+		spec.Properties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
 	return spec
 }
 
-func (g *Generator) convertExamplesInResourceSpec(path string, spec pschema.ResourceSpec) pschema.ResourceSpec {
+func (g *Generator) convertExamplesInResourceSpec(path examplePath, spec pschema.ResourceSpec) pschema.ResourceSpec {
 	spec.Description = g.convertExamples(spec.Description, path, true)
 	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path, false)
 	for name, prop := range spec.Properties {
-		spec.Properties[name] = g.convertExamplesInPropertySpec(fmt.Sprintf("%s/%s", path, name), prop)
+		spec.Properties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
 	for name, prop := range spec.InputProperties {
-		spec.InputProperties[name] = g.convertExamplesInPropertySpec(fmt.Sprintf("%s/%s", path, name), prop)
+		spec.InputProperties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
 	if spec.StateInputs != nil {
 		stateInputs := g.convertExamplesInObjectSpec(path+"/stateInputs", *spec.StateInputs)
@@ -831,14 +831,14 @@ func (g *Generator) convertExamplesInResourceSpec(path string, spec pschema.Reso
 	return spec
 }
 
-func (g *Generator) convertExamplesInFunctionSpec(path string, spec pschema.FunctionSpec) pschema.FunctionSpec {
+func (g *Generator) convertExamplesInFunctionSpec(path examplePath, spec pschema.FunctionSpec) pschema.FunctionSpec {
 	spec.Description = g.convertExamples(spec.Description, path, true)
 	if spec.Inputs != nil {
-		inputs := g.convertExamplesInObjectSpec(path+"/inputs", *spec.Inputs)
+		inputs := g.convertExamplesInObjectSpec(path.Inputs(), *spec.Inputs)
 		spec.Inputs = &inputs
 	}
 	if spec.Outputs != nil {
-		outputs := g.convertExamplesInObjectSpec(path+"/outputs", *spec.Outputs)
+		outputs := g.convertExamplesInObjectSpec(path.Outputs(), *spec.Outputs)
 		spec.Outputs = &outputs
 	}
 	return spec
@@ -846,18 +846,22 @@ func (g *Generator) convertExamplesInFunctionSpec(path string, spec pschema.Func
 
 func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.PackageSpec {
 	for name, variable := range spec.Config.Variables {
-		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(name, variable)
+		path := newExamplePathForProviderConfigVariable(name)
+		spec.Config.Variables[name] = g.convertExamplesInPropertySpec(path, variable)
 	}
 	for token, object := range spec.Types {
-		object.ObjectTypeSpec = g.convertExamplesInObjectSpec("#/types/"+token, object.ObjectTypeSpec)
+		path := newExamplePathForNamedType(token)
+		object.ObjectTypeSpec = g.convertExamplesInObjectSpec(path, object.ObjectTypeSpec)
 		spec.Types[token] = object
 	}
-	spec.Provider = g.convertExamplesInResourceSpec("#/provider", spec.Provider)
+	spec.Provider = g.convertExamplesInResourceSpec(newExamplePathForProvider(), spec.Provider)
 	for token, resource := range spec.Resources {
-		spec.Resources[token] = g.convertExamplesInResourceSpec("#/resources/"+token, resource)
+		path := newExamplePathForResource(token)
+		spec.Resources[token] = g.convertExamplesInResourceSpec(path, resource)
 	}
 	for token, function := range spec.Functions {
-		spec.Functions[token] = g.convertExamplesInFunctionSpec("#/functions/"+token, function)
+		path := newExamplePathForFunction(token)
+		spec.Functions[token] = g.convertExamplesInFunctionSpec(path, function)
 	}
 	return spec
 }
