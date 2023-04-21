@@ -46,7 +46,21 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"testbridge_testres":       {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testnest": {
+				Tok: "testbridge:index/testnest:Testnest",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"rules": {
+						Elem: &tfbridge.SchemaInfo{
+							Fields: map[string]*tfbridge.SchemaInfo{
+								"action_parameters": {
+									MaxItemsOne: tfbridge.True(),
+								},
+							},
+						},
+					},
+				},
+			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 		},
@@ -92,6 +106,7 @@ func (p *syntheticProvider) DataSources(context.Context) []func() datasource.Dat
 func (p *syntheticProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newTestres,
+		newTestnest,
 		newTestCompRes,
 		newTestConfigRes,
 	}

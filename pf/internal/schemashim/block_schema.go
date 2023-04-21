@@ -17,7 +17,6 @@ package schemashim
 import (
 	"fmt"
 
-	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
@@ -48,37 +47,42 @@ func (s *blockSchema) Description() string {
 	return s.block.GetDescription()
 }
 
-// Needs to return a shim.Schema, a shim.Resource, or nil.
+// Needs to return a shim.Schema, a shim.Resource, or nil. See docstring on shim.Schema.Elem().
 func (s *blockSchema) Elem() interface{} {
+
+	asObjectType := func(typ any) (shim.Resource, bool) {
+		if tt, ok := typ.(basetypes.ObjectTypable); ok {
+			var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs())
+			return res, true
+		}
+		return nil, false
+	}
+
 	t := s.block.Type()
 
-	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
-	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,
-	// Elem() needes to return a Resource value.
-	//
-	// See also: documentation on shim.Schema.Elem().
-	if tt, ok := t.(basetypes.ObjectTypable); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs())
-		return res
+	// Single-nested blocks have a block.Type() that is an ObjectTypeable directly.
+	if r, ok := asObjectType(t); ok {
+		return r
 	}
 
-	// Anything else that does not have an ElementType can be skipped.
-	if _, ok := t.(pfattr.TypeWithElementType); !ok {
-		return nil
-	}
-
-	var schema shim.Schema
-	switch tt := t.(type) {
-	case types.MapType:
-		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
+	switch tt := s.block.Type().(type) {
 	case types.ListType:
-		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
+		r, ok := asObjectType(tt.ElemType)
+		if !ok {
+			panic(fmt.Errorf("List-nested block expect an ObjectTypeable "+
+				"block.Type().ElemType, but got %v", tt.ElemType))
+		}
+		return r
 	case types.SetType:
-		schema = newTypeSchema(tt.ElemType, s.block.NestedAttrs())
+		r, ok := asObjectType(tt.ElemType)
+		if !ok {
+			panic(fmt.Errorf("Set-nested block expect an ObjectTypeable "+
+				"block.Type().ElemType, but got %v", tt.ElemType))
+		}
+		return r
 	default:
-		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
+		panic(fmt.Errorf("block.Type()==%v is not supported for blocks", t))
 	}
-	return schema
 }
 
 func (s *blockSchema) Optional() bool {
