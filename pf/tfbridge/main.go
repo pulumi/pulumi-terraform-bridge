@@ -125,6 +125,8 @@ func MakeMuxedServer(
 
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
+	_, err := shim.ResolveDispatch(&info)
+	contract.AssertNoErrorf(err, "Failed to re-apply alias mappings")
 	version := info.Version
 	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux")
 	if err != nil {

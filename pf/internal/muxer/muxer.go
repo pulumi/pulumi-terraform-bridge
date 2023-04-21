@@ -121,6 +121,9 @@ func newProviderShim(provider shim.Provider) ProviderShim {
 
 // Assign each Resource and DataSource mapped in `info` whichever runtime provider defines
 // it.
+//
+// For alias based mappings to work correctly at runtime, it is necessary to call
+// `ResolveDispatch` before running the provider.
 func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.DispatchTable, error) {
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
@@ -194,6 +197,7 @@ func resolveDispatchMap[T interface{ GetTok() tokens.Token }](
 			i, ok := reverseLookupMap[r]
 			if ok {
 				dispatch[string(res.GetTok())] = i
+				mapKind(m.MuxedProviders[i]).Set(tfToken, r)
 				found = true
 			}
 		}
