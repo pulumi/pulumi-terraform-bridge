@@ -825,7 +825,7 @@ func (g *Generator) convertExamplesInResourceSpec(path examplePath, spec pschema
 		spec.InputProperties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
 	if spec.StateInputs != nil {
-		stateInputs := g.convertExamplesInObjectSpec(path+"/stateInputs", *spec.StateInputs)
+		stateInputs := g.convertExamplesInObjectSpec(path.StateInputs(), *spec.StateInputs)
 		spec.StateInputs = &stateInputs
 	}
 	return spec

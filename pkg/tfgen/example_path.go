@@ -21,41 +21,73 @@ import (
 // examplePath explains where in Pulumi Schema the example is found. For instance,
 // "#/resources/aws:acm/certificate:Certificate/arn" would encode that the example pertains to the arn property of the
 // Certificate resource.
-type examplePath string
+type examplePath struct {
+	token    string
+	fullPath string
+}
+
+func (path examplePath) Token() string {
+	return path.token
+}
 
 func (path examplePath) String() string {
-	return string(path)
+	return string(path.fullPath)
 }
 
 func (path examplePath) Property(pulumiName string) examplePath {
-	return examplePath(fmt.Sprintf("%s/%s", string(path), pulumiName))
+	return examplePath{
+		fullPath: fmt.Sprintf("%s/%s", path.String(), pulumiName),
+		token:    path.token,
+	}
 }
 
 func (path examplePath) Inputs() examplePath {
-	return examplePath(fmt.Sprintf("%s/inputs", string(path)))
+	return examplePath{
+		token:    path.token,
+		fullPath: fmt.Sprintf("%s/inputs", path.String()),
+	}
+}
+
+func (path examplePath) StateInputs() examplePath {
+	return examplePath{
+		token:    path.token,
+		fullPath: fmt.Sprintf("%s/stateInputs", path.String()),
+	}
 }
 
 func (path examplePath) Outputs() examplePath {
-	return examplePath(fmt.Sprintf("%s/outputs", string(path)))
+	return examplePath{
+		token:    path.token,
+		fullPath: fmt.Sprintf("%s/outputs", path.String()),
+	}
 }
 
 func newExamplePathForResource(pulumiResourceToken string) examplePath {
-	return examplePath(fmt.Sprintf("#/resources/" + pulumiResourceToken))
+	return examplePath{
+		token:    pulumiResourceToken,
+		fullPath: fmt.Sprintf("#/resources/" + pulumiResourceToken),
+	}
 }
 
 func newExamplePathForFunction(pulumiFuncToken string) examplePath {
-	return examplePath(fmt.Sprintf("#/functions/" + pulumiFuncToken))
+	return examplePath{
+		token:    pulumiFuncToken,
+		fullPath: fmt.Sprintf("#/functions/" + pulumiFuncToken),
+	}
 }
 
 func newExamplePathForProvider() examplePath {
-	return examplePath("#/provider")
+	return examplePath{fullPath: "#/provider"}
 }
 
 func newExamplePathForNamedType(pulumiTypeToken string) examplePath {
-	return examplePath("#/types/" + pulumiTypeToken)
+	return examplePath{
+		token:    pulumiTypeToken,
+		fullPath: "#/types/" + pulumiTypeToken,
+	}
 }
 
 func newExamplePathForProviderConfigVariable(pulumiConfigVariableName string) examplePath {
 	// This is a bit odd that it is unprefixed; preserving for backwards compatibility.
-	return examplePath(pulumiConfigVariableName)
+	return examplePath{fullPath: pulumiConfigVariableName}
 }

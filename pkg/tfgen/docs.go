@@ -1085,6 +1085,12 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return ""
 	}
 
+	if g.info.SkipExamples != nil {
+		if g.info.SkipExamples(path.Token(), path.String()) {
+			return ""
+		}
+	}
+
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
