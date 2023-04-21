@@ -168,3 +168,85 @@ func (m SchemaMap) Set(key string, value shim.Schema) {
 func (m SchemaMap) Delete(key string) {
 	delete(m, key)
 }
+
+func FromSchema(s shim.Schema) *Schema {
+	if s == nil {
+		return nil
+	}
+	var elem interface{}
+	switch tt := s.Elem().(type) {
+	case nil:
+		elem = nil
+	case shim.Resource:
+		elem = FromResource(tt).Shim()
+	case shim.Schema:
+		elem = FromSchema(tt).Shim()
+	}
+	return &Schema{
+		Type:          s.Type(),
+		Optional:      s.Optional(),
+		Required:      s.Required(),
+		Default:       s.Default(),
+		DefaultFunc:   s.DefaultFunc(),
+		Description:   s.Description(),
+		Computed:      s.Computed(),
+		ForceNew:      s.ForceNew(),
+		StateFunc:     s.StateFunc(),
+		Elem:          elem,
+		MaxItems:      s.MaxItems(),
+		MinItems:      s.MinItems(),
+		ConflictsWith: s.ConflictsWith(),
+		ExactlyOneOf:  s.ExactlyOneOf(),
+		Removed:       s.Removed(),
+		Deprecated:    s.Deprecated(),
+		Sensitive:     s.Sensitive(),
+	}
+}
+
+func FromSchemaMap(s shim.SchemaMap) SchemaMap {
+	if s == nil {
+		return nil
+	}
+	m := make(SchemaMap)
+	s.Range(func(key string, value shim.Schema) bool {
+		m[key] = FromSchema(value).Shim()
+		return true
+	})
+	return m
+}
+
+func FromResourceMap(r shim.ResourceMap) ResourceMap {
+	if r == nil {
+		return nil
+	}
+	m := make(ResourceMap)
+	r.Range(func(key string, value shim.Resource) bool {
+		m[key] = FromResource(value).Shim()
+		return true
+	})
+	return m
+}
+
+func FromResource(r shim.Resource) *Resource {
+	if r == nil {
+		return nil
+	}
+	return &Resource{
+		Schema:             FromSchemaMap(r.Schema()),
+		SchemaVersion:      r.SchemaVersion(),
+		Importer:           r.Importer(),
+		DeprecationMessage: r.DeprecationMessage(),
+		Timeouts:           r.Timeouts(),
+	}
+}
+
+func FromProvider(p shim.Provider) *Provider {
+	if p == nil {
+		return nil
+	}
+	return &Provider{
+		Schema:         FromSchemaMap(p.Schema()),
+		ResourcesMap:   FromResourceMap(p.ResourcesMap()),
+		DataSourcesMap: FromResourceMap(p.DataSourcesMap()),
+	}
+}
