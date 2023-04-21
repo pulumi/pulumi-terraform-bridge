@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"crypto/md5"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -1080,7 +1081,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) string {
+func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) (result string) {
 	if docs == "" {
 		return ""
 	}
@@ -1098,6 +1099,41 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		// The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
+	}
+
+	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
+	// specifies the PULUMI_CONVERT_EXAMPES_CACHE_DIR environment variable, pointing to a folder for the cache.
+	{
+		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPES_CACHE_DIR")
+		if enableCache && dir != "" {
+			path := path.String()
+			sep := string(rune(0))
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
+			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
+			fmt.Fprintf(&buf, "path=%v%s", path, sep)
+			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
+			fmt.Fprintf(&buf, "stripSubsectionsWithErrors=%v%s", stripSubsectionsWithErrors, sep)
+
+			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
+
+			filePath := filepath.Join(dir, hash)
+
+			bytes, err := os.ReadFile(filePath)
+			if err == nil {
+				// cache hit
+				return string(bytes)
+			} else {
+				// ignore the error, assume cache miss or file not found
+				defer func() {
+					// only write the cache for sizable results, >0.5kb
+					if len(result) > 512 {
+						// try to write to the cache, ignore the error
+						os.WriteFile(filePath, []byte(result), 0755)
+					}
+				}()
+			}
+		}
 	}
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
