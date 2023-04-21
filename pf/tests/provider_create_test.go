@@ -111,6 +111,44 @@ func TestPreviewCreate(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
+func TestMuxedAliasCreate(t *testing.T) {
+	server := newMuxedProviderServer(t, testprovider.MuxedRandomProvider())
+
+	testCase := func(typ string) string {
+		return `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::repro::` + typ + `::k"
+	  },
+	  "response": {
+	    "id": "4",
+	    "properties": {
+	      "id": "4",
+	      "fair": true,
+	      "number": 4,
+	      "suggestionUpdated": false
+	    }
+	  },
+	  "metadata": {
+	    "kind": "resource",
+	    "mode": "client",
+	    "name": "muxedrandom"
+	  }
+	}
+`
+	}
+
+	t.Run("new-token", func(t *testing.T) {
+		testutils.Replay(t, server,
+			testCase("muxedrandom:index/randomHumanNumber:RandomHumanNumber"))
+	})
+	t.Run("legacy-token", func(t *testing.T) {
+		testutils.Replay(t, server,
+			testCase("muxedrandom:index/myNumber:MyNumber"))
+	})
+}
+
 func TestCreateWithFirstClassSecrets(t *testing.T) {
 	server := newProviderServer(t, testprovider.RandomProvider())
 	testCase := `

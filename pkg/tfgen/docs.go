@@ -1091,6 +1091,12 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		}
 	}
 
+	if strings.Contains(docs, "{{% examples %}}") {
+		// The provider author has explicitly written an entire markdown document including examples.
+		// We'll just return it as is.
+		return docs
+	}
+
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
