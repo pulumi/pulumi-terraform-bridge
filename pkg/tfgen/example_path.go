@@ -31,7 +31,7 @@ func (path examplePath) Token() string {
 }
 
 func (path examplePath) String() string {
-	return string(path.fullPath)
+	return path.fullPath
 }
 
 func (path examplePath) Property(pulumiName string) examplePath {
