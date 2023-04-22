@@ -40,6 +40,22 @@ func (*testnest) schema() rschema.Schema {
 						"action_parameters": schema.ListNestedBlock{
 							MarkdownDescription: "List of parameters that configure the behavior of the ruleset rule action.",
 							NestedObject: schema.NestedBlockObject{
+								Blocks: map[string]schema.Block{
+									"phases": schema.ListNestedBlock{
+										NestedObject: schema.NestedBlockObject{
+											Attributes: map[string]schema.Attribute{
+												"p1": schema.BoolAttribute{
+													Optional:            true,
+													MarkdownDescription: "The first phase.",
+												},
+												"p2": schema.BoolAttribute{
+													Optional:            true,
+													MarkdownDescription: "The second phase.",
+												},
+											},
+										},
+									},
+								},
 								Attributes: map[string]schema.Attribute{
 									"automatic_https_rewrites": schema.BoolAttribute{
 										Optional:            true,

@@ -47,5 +47,15 @@ func TestSchemaGen(t *testing.T) {
 			"#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters",
 			rule.Properties["actionParameters"].Ref)
 		assert.Equal(t, "", rule.Properties["actionParameters"].Type)
+
+		actionParameters := spec.Types["testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"]
+		assert.Equal(t, "", actionParameters.Properties["phases"].Type)
+		assert.Equal(t,
+			"#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases",
+			actionParameters.Properties["phases"].Ref)
+
+		actionParameterPhases := spec.Types["testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"]
+		assert.Equal(t, "object", actionParameterPhases.Type)
+		assert.Equal(t, "boolean", actionParameterPhases.Properties["p2"].Type)
 	})
 }
