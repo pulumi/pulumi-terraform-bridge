@@ -538,10 +538,10 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -587,10 +587,10 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -632,10 +632,10 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -662,10 +662,10 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 "majorVersion": 1,
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     }
                 }
             }
@@ -713,16 +713,16 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": false,
+                        "maxItemsOne": false,
                         "fields": {
                             "n1": {
-                                "maxItemOne": true
+                                "maxItemsOne": true
                             },
                             "n2": {
-                                "maxItemOne": false
+                                "maxItemsOne": false
                             }
                         }
                     }
