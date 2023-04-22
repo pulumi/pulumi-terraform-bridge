@@ -17,6 +17,7 @@ package schemashim
 import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -56,19 +57,36 @@ func (*typeSchema) Required() bool  { return false }
 func (*typeSchema) Sensitive() bool { return false }
 
 func (s *typeSchema) Elem() interface{} {
+	asObjectType := func(typ any) (shim.Resource, bool) {
+		if tt, ok := typ.(basetypes.ObjectTypable); ok {
+			var res shim.Resource = newObjectPseudoResource(tt, s.nested)
+			return res, true
+		}
+		return nil, false
+	}
+
 	switch tt := s.t.(type) {
 	case types.ObjectType:
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested)
 		return pseudoResource
 	case types.ListType:
+		if r, ok := asObjectType(tt.ElemType); ok {
+			return r
+		}
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==ListType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
 	case types.MapType:
+		if r, ok := asObjectType(tt.ElemType); ok {
+			return r
+		}
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==MapType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
 	case types.SetType:
+		if r, ok := asObjectType(tt.ElemType); ok {
+			return r
+		}
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==SetType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
