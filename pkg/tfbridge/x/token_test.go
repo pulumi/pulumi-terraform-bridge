@@ -717,12 +717,14 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
                     },
                     "f2": {
                         "maxItemsOne": false,
-                        "fields": {
-                            "n1": {
-                                "maxItemsOne": true
-                            },
-                            "n2": {
-                                "maxItemsOne": false
+                        "elem": {
+                            "fields": {
+                                "n1": {
+                                    "maxItemsOne": true
+                                },
+                                "n2": {
+                                    "maxItemsOne": false
+                                }
                             }
                         }
                     }
@@ -740,8 +742,8 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, string(metadata.Marshal()))
-	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n1"].MaxItemsOne)
-	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n2"].MaxItemsOne)
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
 
 type Schema struct {
