@@ -36,10 +36,7 @@
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
                 }
             },
-            "type": "object",
-            "required": [
-                "actionParameters"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
             "properties": {
@@ -53,12 +50,7 @@
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"
                 }
             },
-            "type": "object",
-            "required": [
-                "automaticHttpsRewrites",
-                "bic",
-                "phases"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases": {
             "properties": {
@@ -69,11 +61,7 @@
                     "type": "boolean"
                 }
             },
-            "type": "object",
-            "required": [
-                "p1",
-                "p2"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
