@@ -115,7 +115,8 @@ func TestDeeplyNestedBlock(t *testing.T) {
 	}
 	shimmed := newBlockSchema("key", pfutils.FromResourceBlock(b))
 	phasesType := "list[obj[p1=bool,p2=bool]]"
-	topType := fmt.Sprintf("list[obj[action_parameters=list[obj[automatic_https_rewrites=bool,bic=bool,phases=%s]]]]", phasesType)
+	topType := fmt.Sprintf("list[obj[action_parameters="+
+		"list[obj[automatic_https_rewrites=bool,bic=bool,phases=%s]]]]", phasesType)
 	assert.Equal(t, topType, schemaLogicalType(shimmed).String())
 }
 
