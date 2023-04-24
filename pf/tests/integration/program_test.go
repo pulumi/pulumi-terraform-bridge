@@ -121,9 +121,7 @@ func ensureTestBridgeProviderCompiled(wd string) error {
 func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	expects := map[string]interface{}{}
 	actuals := map[string]interface{}{}
-	all := []string{}
 	for n, output := range stack.Outputs {
-		all = append(all, n)
 		if strings.HasSuffix(n, "__actual") {
 			actuals[strings.TrimSuffix(n, "__actual")] = output
 		}
