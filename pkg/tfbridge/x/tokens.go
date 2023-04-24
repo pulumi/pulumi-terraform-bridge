@@ -532,7 +532,7 @@ type resourceHistory struct {
 }
 
 type fieldHistory struct {
-	MaxItemOne *bool `json:"maxItemOne,omitempty"`
+	MaxItemsOne *bool `json:"maxItemsOne,omitempty"`
 
 	Fields map[string]*fieldHistory `json:"fields,omitempty"`
 	Elem   *fieldHistory            `json:"elem,omitempty"`
@@ -666,19 +666,36 @@ func aliasResource(
 
 	var walk func(*fieldHistory, *b.SchemaInfo, shim.Schema)
 	walk = func(h *fieldHistory, info *b.SchemaInfo, schema shim.Schema) {
-		if info.MaxItemsOne != nil {
+		if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
+			// MaxItemsOne does not apply, so do nothing
+		} else if info.MaxItemsOne != nil {
 			// The user has overwritten the value, so we will just record that.
-			h.MaxItemOne = info.MaxItemsOne
-		} else if h.MaxItemOne != nil {
-			// If we have a previous value here, we bake it back into `info`.
-			info.MaxItemsOne = h.MaxItemOne
+			h.MaxItemsOne = info.MaxItemsOne
+		} else if h.MaxItemsOne != nil {
+			// If we have a previous value in the history, we keep it as is.
+			info.MaxItemsOne = h.MaxItemsOne
 		} else {
 			// There is no history for this value, so we bake it into the
 			// alias history.
-			h.MaxItemOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
+			h.MaxItemsOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
 		}
 		e := schema.Elem()
 		switch e := e.(type) {
+		case shim.Resource:
+			if h.Elem == nil {
+				h.Elem = &fieldHistory{}
+			}
+			if info.Elem == nil {
+				info.Elem = &b.SchemaInfo{}
+			}
+
+			safeRange(e, func(k string, v shim.Schema) {
+				walk(
+					getNonNil(&h.Elem.Fields, k),
+					getNonNil(&info.Elem.Fields, k),
+					v,
+				)
+			})
 		case shim.Schema:
 			if h.Elem == nil {
 				h.Elem = &fieldHistory{}
@@ -687,14 +704,6 @@ func aliasResource(
 				info.Elem = &b.SchemaInfo{}
 			}
 			walk(h.Elem, info.Elem, e)
-		case shim.Resource:
-			safeRange(e, func(k string, v shim.Schema) {
-				walk(
-					getNonNil(&h.Fields, k),
-					getNonNil(&info.Fields, k),
-					v,
-				)
-			})
 		}
 	}
 

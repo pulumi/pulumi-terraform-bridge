@@ -538,10 +538,10 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -587,10 +587,10 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -632,10 +632,10 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     },
                     "f2": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     }
                 }
             }
@@ -662,10 +662,10 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 "majorVersion": 1,
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": true
+                        "maxItemsOne": true
                     }
                 }
             }
@@ -713,16 +713,18 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
                 "current": "pkg:index/r1:R1",
                 "fields": {
                     "f1": {
-                        "maxItemOne": false
+                        "maxItemsOne": false
                     },
                     "f2": {
-                        "maxItemOne": false,
-                        "fields": {
-                            "n1": {
-                                "maxItemOne": true
-                            },
-                            "n2": {
-                                "maxItemOne": false
+                        "maxItemsOne": false,
+                        "elem": {
+                            "fields": {
+                                "n1": {
+                                    "maxItemsOne": true
+                                },
+                                "n2": {
+                                    "maxItemsOne": false
+                                }
                             }
                         }
                     }
@@ -740,8 +742,8 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, string(metadata.Marshal()))
-	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n1"].MaxItemsOne)
-	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Fields["n2"].MaxItemsOne)
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
 
 type Schema struct {
