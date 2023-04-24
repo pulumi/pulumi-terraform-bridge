@@ -21,8 +21,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -94,6 +96,21 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot decode state from a call to ReadDataSource for %q: %w",
 			handle.terraformDataSourceName, err)
+	}
+
+	// TODO[pulumi/pulumi#12710] consuming programs (at lest in Go and YAML) are unable to accept secrets from an
+	// Invoke response at the moment. Replace secrets with underlying plain values.
+	for k, v := range propertyMap {
+		if v.ContainsSecrets() {
+			tflog.Debug(ctx, "[pf/tfbridge] Ignoring secret in Invoke result due to pulumi/pulumi#12710",
+				map[string]any{
+					"property": k,
+					"token":    handle.token,
+				})
+			propertyMap[k] = propertyvalue.RemoveSecrets(v)
+		} else {
+			propertyMap[k] = v
+		}
 	}
 
 	return propertyMap, nil, nil

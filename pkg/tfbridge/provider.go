@@ -1144,7 +1144,11 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// First, create the inputs.
 	tfname := ds.TFName
 	inputs, _, err := MakeTerraformInputs(
-		&PulumiResource{Properties: args}, p.configValues, nil, args, ds.TF.Schema(), ds.Schema.Fields)
+		&PulumiResource{Properties: args},
+		p.configValues,
+		nil, args,
+		ds.TF.Schema(),
+		ds.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}

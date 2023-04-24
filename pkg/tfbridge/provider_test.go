@@ -1189,3 +1189,69 @@ func TestPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 }
+
+func TestInvoke(t *testing.T) {
+
+	t.Run("preserve_program_secrets", func(t *testing.T) {
+		// Currently the provider is unable to preserve secret-ness of values marked as secrets. Returning
+		// secrets makes SDKs unable to consume the provider. Therefore currently the secrets are stripped.
+		//
+		// See also https://github.com/pulumi/pulumi/issues/12710
+
+		p := testprovider.ProviderV2()
+
+		dsName := "example_resource"
+		ds := p.DataSourcesMap[dsName]
+
+		prop := ds.Schema["string_property_value"]
+		prop.Sensitive = true
+		prop.Computed = true
+		prop.Optional = true
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+
+			dataSources: map[tokens.ModuleMember]DataSource{
+				"tprov:index/ExampleFn:ExampleFn": {
+					TF:     shimv2.NewResource(ds),
+					TFName: dsName,
+					Schema: &DataSourceInfo{
+						Tok: "tprov:index/ExampleFn:ExampleFn",
+					},
+				},
+			},
+		}
+
+		// Note that Invoke receives a secret "foo" but returns an un-secret "foo".
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Invoke",
+		  "request": {
+		    "tok": "tprov:index/ExampleFn:ExampleFn",
+		    "args": {
+                      "string_property_value": {
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "foo"
+                      },
+		      "array_property_value": []
+		    }
+		  },
+		  "response": {
+		    "return": {
+		      "stringPropertyValue": "foo",
+		      "__meta": "*",
+		      "arrayPropertyValues": "*",
+		      "boolPropertyValue": "*",
+		      "floatPropertyValue": "*",
+		      "id": "*",
+		      "nestedResources": "*",
+		      "numberPropertyValue": "*",
+		      "objectPropertyValue": "*",
+		      "setPropertyValues": "*",
+		      "stringWithBadInterpolation": "*"
+		    }
+		  }
+		}`)
+	})
+}

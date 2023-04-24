@@ -481,5 +481,47 @@
                 "type": "object"
             }
         }
+    },
+    "functions": {
+        "testbridge:index/echo:Echo": {
+            "inputs": {
+                "description": "A collection of arguments for invoking Echo.\n",
+                "properties": {
+                    "input": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by Echo.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string"
+                    },
+                    "output": {
+                        "type": "string"
+                    },
+                    "sensitive": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
+                    "sensitive",
+                    "id"
+                ]
+            }
+        }
     }
 }
