@@ -1080,9 +1080,18 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithErrors bool) string {
+func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) string {
 	if docs == "" {
 		return ""
+	}
+
+	if g.info.SkipExamples != nil {
+		if g.info.SkipExamples(tfbridge.SkipExamplesArgs{
+			Token:       path.Token(),
+			ExamplePath: path.String(),
+		}) {
+			return ""
+		}
 	}
 
 	if strings.Contains(docs, "{{% examples %}}") {
@@ -1153,7 +1162,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
 						// We've got some code -- assume it's HCL and try to convert it.
-						g.coverageTracker.foundExample(name, hcl)
+						g.coverageTracker.foundExample(path.String(), hcl)
 
 						exampleTitle := ""
 						if strings.Contains(subsection[0], "###") {
@@ -1161,7 +1170,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						}
 
 						langs := genLanguageToSlice(g.language)
-						codeBlock, err := g.convertHCL(hcl, name, exampleTitle, langs)
+						codeBlock, err := g.convertHCL(hcl, path.String(), exampleTitle, langs)
 
 						if err != nil {
 							skippedExamples = true
