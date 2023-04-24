@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"sort"
 )
 
 func TestBasicProgram(t *testing.T) {
@@ -133,6 +134,7 @@ func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationS
 	for k := range expects {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	for _, k := range keys {
 		k := k
 		t.Run(k, func(t *testing.T) {
