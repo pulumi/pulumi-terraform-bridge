@@ -80,6 +80,46 @@ func TestSetNestedBlock(t *testing.T) {
 	assertHasSimpleObjectAttributes(t, r)
 }
 
+func TestDeeplyNestedBlock(t *testing.T) {
+	b := schema.ListNestedBlock{
+		NestedObject: schema.NestedBlockObject{
+			Blocks: map[string]schema.Block{
+				"action_parameters": schema.ListNestedBlock{
+					NestedObject: schema.NestedBlockObject{
+						Blocks: map[string]schema.Block{
+							"phases": schema.ListNestedBlock{
+								NestedObject: schema.NestedBlockObject{
+									Attributes: map[string]schema.Attribute{
+										"p1": schema.BoolAttribute{
+											Optional: true,
+										},
+										"p2": schema.BoolAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+						Attributes: map[string]schema.Attribute{
+							"automatic_https_rewrites": schema.BoolAttribute{
+								Optional: true,
+							},
+							"bic": schema.BoolAttribute{
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimmed := newBlockSchema("key", pfutils.FromResourceBlock(b))
+	phasesType := "list[obj[p1=bool,p2=bool]]"
+	topType := fmt.Sprintf("list[obj[action_parameters="+
+		"list[obj[automatic_https_rewrites=bool,bic=bool,phases=%s]]]]", phasesType)
+	assert.Equal(t, topType, schemaLogicalType(shimmed).String())
+}
+
 func simpleObjectAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"o": schema.StringAttribute{

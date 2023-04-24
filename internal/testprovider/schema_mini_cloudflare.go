@@ -78,10 +78,12 @@ func resourceCloudflareRulesetSchema() map[string]*schema.Schema {
 									Description: "Identifier of the action parameter to modify.",
 								},
 								"phases": {
-									Type:     schema.TypeSet,
+									Type:     schema.TypeList,
 									Optional: true,
-									Elem: &schema.Schema{
-										Type: schema.TypeString,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"phase1": {Type: schema.TypeString},
+										},
 									},
 								},
 							},

@@ -53,13 +53,21 @@
           "type": "string"
         },
         "phases": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "$ref": "#/types/cloudflare:index/RulesetRuleActionParametersPhases:RulesetRuleActionParametersPhases"
         }
       },
       "type": "object"
+    },
+    "cloudflare:index/RulesetRuleActionParametersPhases:RulesetRuleActionParametersPhases": {
+      "properties": {
+        "phase1": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "phase1"
+      ]
     }
   },
   "provider": {

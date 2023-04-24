@@ -63,7 +63,7 @@ func (m *schemaMap) GetOk(key string) (shim.Schema, bool) {
 		if !ok {
 			return nil, false
 		}
-		return &blockSchema{key: key, block: block}, true
+		return newBlockSchema(key, block), true
 	}
 	return &attrSchema{key: key, attr: attr}, true
 }
