@@ -1086,7 +1086,10 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 	}
 
 	if g.info.SkipExamples != nil {
-		if g.info.SkipExamples(path.Token(), path.String()) {
+		if g.info.SkipExamples(tfbridge.SkipExamplesArgs{
+			Token:       path.Token(),
+			ExamplePath: path.String(),
+		}) {
 			return ""
 		}
 	}
