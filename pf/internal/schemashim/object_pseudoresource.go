@@ -37,10 +37,13 @@ type objectPseudoResource struct {
 	schemaOnly
 	obj          basetypes.ObjectTypable
 	nestedAttrs  map[string]pfutils.Attr
+	nestedBlocks map[string]pfutils.Block // should have disjoint keys from nestedAttrs
 	allAttrNames []string
 }
 
-func newObjectPseudoResource(t basetypes.ObjectTypable, nestedAttrs map[string]pfutils.Attr) *objectPseudoResource {
+func newObjectPseudoResource(t basetypes.ObjectTypable,
+	nestedAttrs map[string]pfutils.Attr,
+	nestedBlocks map[string]pfutils.Block) *objectPseudoResource {
 	lowerType := t.TerraformType(context.Background())
 	objType, ok := lowerType.(tftypes.Object)
 	contract.Assertf(ok, "t basetypes.ObjectTypable should produce a tftypes.Object "+
@@ -54,6 +57,7 @@ func newObjectPseudoResource(t basetypes.ObjectTypable, nestedAttrs map[string]p
 		schemaOnly:   schemaOnly{"objectPseudoResource"},
 		obj:          t,
 		nestedAttrs:  nestedAttrs,
+		nestedBlocks: nestedBlocks,
 		allAttrNames: attrs,
 	}
 }
@@ -118,6 +122,11 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 	// when using blocks, see TestCustomTypeEmbeddingObjectType.
 	if attr, ok := r.nestedAttrs[key]; ok {
 		return &attrSchema{key, attr}, true
+	}
+
+	// Nested blocks are similar to attributes:
+	if block, ok := r.nestedBlocks[key]; ok {
+		return newBlockSchema(key, block), true
 	}
 
 	// If there fail to find an Attr, perhaps we have a simple ObjectType then we can look up the property's

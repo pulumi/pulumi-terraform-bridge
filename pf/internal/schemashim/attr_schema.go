@@ -93,7 +93,7 @@ func (s *attrSchema) Elem() interface{} {
 	//
 	// See also: documentation on shim.Schema.Elem().
 	if tt, ok := t.(basetypes.ObjectTypable); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
+		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested(), nil)
 		return res
 	}
 	if tt, ok := t.(pfattr.TypeWithElementTypes); ok {

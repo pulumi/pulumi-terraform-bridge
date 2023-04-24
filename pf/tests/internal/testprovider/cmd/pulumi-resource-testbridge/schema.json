@@ -36,10 +36,7 @@
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
                 }
             },
-            "type": "object",
-            "required": [
-                "actionParameters"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
             "properties": {
@@ -50,11 +47,7 @@
                     "type": "boolean"
                 }
             },
-            "type": "object",
-            "required": [
-                "automaticHttpsRewrites",
-                "bic"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
