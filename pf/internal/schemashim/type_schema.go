@@ -58,7 +58,7 @@ func (*typeSchema) Sensitive() bool { return false }
 func (s *typeSchema) Elem() interface{} {
 	switch tt := s.t.(type) {
 	case types.ObjectType:
-		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested)
+		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested, nil)
 		return pseudoResource
 	case types.ListType:
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,

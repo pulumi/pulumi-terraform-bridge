@@ -29,6 +29,11 @@ type blockSchema struct {
 	block pfutils.Block
 }
 
+func newBlockSchema(key string, block pfutils.Block) *blockSchema {
+	fmt.Println("newBlockSchema", key, block)
+	return &blockSchema{key, block}
+}
+
 var _ shim.Schema = (*blockSchema)(nil)
 
 func (s *blockSchema) Type() shim.ValueType {
@@ -52,7 +57,9 @@ func (s *blockSchema) Elem() interface{} {
 
 	asObjectType := func(typ any) (shim.Resource, bool) {
 		if tt, ok := typ.(basetypes.ObjectTypable); ok {
-			var res shim.Resource = newObjectPseudoResource(tt, s.block.NestedAttrs())
+			var res shim.Resource = newObjectPseudoResource(tt,
+				s.block.NestedAttrs(),
+				s.block.NestedBlocks())
 			return res, true
 		}
 		return nil, false

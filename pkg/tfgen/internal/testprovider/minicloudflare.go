@@ -56,6 +56,11 @@ func ProviderMiniCloudflare() tfbridge.ProviderInfo {
 							Fields: map[string]*tfbridge.SchemaInfo{
 								"action_parameters": {
 									MaxItemsOne: tfbridge.True(),
+									Elem: &tfbridge.SchemaInfo{
+										Fields: map[string]*tfbridge.SchemaInfo{
+											"phases": {MaxItemsOne: tfbridge.True()},
+										},
+									},
 								},
 							},
 						},
