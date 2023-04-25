@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -242,4 +243,68 @@ func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.P
 	}
 
 	return server6, nil
+}
+
+func findSecretPaths(prop resource.PropertyMap) []resource.PropertyPath {
+	var find func(resource.PropertyPath, resource.PropertyValue) []resource.PropertyPath
+	find = func(path resource.PropertyPath, prop resource.PropertyValue) []resource.PropertyPath {
+		paths := []resource.PropertyPath{}
+		switch {
+		case prop.IsSecret():
+			paths = []resource.PropertyPath{path}
+		case prop.IsOutput():
+			output := prop.OutputValue()
+			if output.Secret {
+				paths = []resource.PropertyPath{path}
+			} else if output.Known {
+				paths = find(path, output.Element)
+			}
+		case prop.IsObject():
+			obj := prop.ObjectValue()
+			for _, key := range obj.StableKeys() {
+				k, v := string(key), obj[key]
+				paths = append(paths, find(append(path, k), v)...)
+			}
+		case prop.IsArray():
+			arr := prop.ArrayValue()
+			for i, v := range arr {
+				paths = append(paths, find(append(path, i), v)...)
+			}
+
+		}
+		return paths
+	}
+
+	return find(nil, resource.NewObjectProperty(prop))
+}
+
+func applySecretPaths(prop resource.PropertyMap, paths []resource.PropertyPath) resource.PropertyMap {
+	m := resource.NewObjectProperty(prop)
+	for _, p := range paths {
+		v, ok := p.Get(m)
+		if !ok || v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
+
+			// If !ok
+			//
+			// The value from a secret path is not available. An absent value
+			// won't leak its secret, so this is fine.
+
+			// If v.IsSecret()
+			//
+			// The is already secret. We don't need to do anything to make it
+			// secret, so we can move on early.
+
+			// If v.IsOutput() && v.OutputValue().Secret
+			//
+			// Likewise, the value is secret already so we don't need to make
+			// it more secret.
+			continue
+		}
+
+		didSet := p.Set(m, resource.MakeSecret(v))
+		contract.Assertf(didSet, "Failing to set implies that we were unable to access the full path. "+
+			"We just got the value from that path, so we know the full path exists.")
+	}
+
+	return m.ObjectValue()
 }
