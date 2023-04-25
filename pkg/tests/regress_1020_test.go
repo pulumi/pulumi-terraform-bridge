@@ -168,24 +168,34 @@ func TestRegress1020(t *testing.T) {
 	)
 
 	testCase := `
-{
-  "method": "/pulumirpc.ResourceProvider/Create",
-  "request": {
-    "urn": "urn:pulumi:dev::repro-1020::aws:wafv2/ipSet:IpSet::ip6_sample",
-    "properties": {
-      "__defaults": [
-        "name"
-      ],
-      "addresses": [
-        "2001:0db8:85a3:0000:0000:8a2e:0370:7334/32"
-      ],
-      "ipAddressVersion": "IPV6",
-      "name": "ip6_sample-e8442ad",
-      "scope": "CLOUDFRONT"
-    },
-    "preview": true
-  },
-  "response": {}
-}`
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::repro-1020::aws:wafv2/ipSet:IpSet::ip6_sample",
+	    "properties": {
+	      "__defaults": [
+		"name"
+	      ],
+	      "addresses": [
+		"2001:0db8:85a3:0000:0000:8a2e:0370:7334/32"
+	      ],
+	      "ipAddressVersion": "IPV6",
+	      "name": "ip6_sample-e8442ad",
+	      "scope": "CLOUDFRONT"
+	    },
+	    "preview": true
+	  },
+	  "response": {
+	    "properties": {
+	      "addresses": [
+		"2001:0db8:85a3:0000:0000:8a2e:0370:7334/32"
+	       ],
+	       "id": "",
+	       "ipAddressVersion": "IPV6",
+	       "name": "ip6_sample-e8442ad",
+	       "scope": "CLOUDFRONT"
+	    }
+	  }
+	}`
 	testutils.Replay(t, server, testCase)
 }

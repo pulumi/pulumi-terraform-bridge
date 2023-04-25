@@ -43,14 +43,27 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 
 	config, state := configFromShim(c), stateFromShim(s)
 	rawConfig := makeResourceRawConfig(opts.diffStrategy, config, r)
-	if state != nil {
+
+	if state == nil {
+		// When handling Create Pulumi passes nil for state, but this diverges from how Terraform does things,
+		// see: https://github.com/pulumi/pulumi-terraform-bridge/issues/911 and can lead to panics. Compensate
+		// by constructing an InstanceState.
+
+		state = &terraform.InstanceState{
+			RawState:  r.CoreConfigSchema().EmptyValue(),
+			RawConfig: rawConfig,
+			RawPlan:   rawConfig,
+		}
+	} else {
 		state.RawConfig = rawConfig
+
+		// Upgrades are needed only if we have non-empty prior state.
+		state, err = upgradeResourceState(p.tf, r, state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
+		}
 	}
 
-	state, err = upgradeResourceState(p.tf, r, state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
-	}
 	diff, err := p.simpleDiff(opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
 	if diff != nil {
 		diff.RawConfig = rawConfig
@@ -127,6 +140,7 @@ func simpleDiffViaPlanState(
 	if err != nil {
 		return nil, err
 	}
+
 	planned := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
 	return res.SimpleDiff(ctx, s, planned, meta)
 }
