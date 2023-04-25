@@ -51,6 +51,8 @@ func (p *provider) ReadWithContext(
 		return plugin.ReadResult{}, 0, err
 	}
 
+	inputSecrets := findSecretPaths(oldInputs)
+
 	// Both "get" and "refresh" scenarios call Read. Detect and dispatch.
 	isRefresh := len(currentStateMap) != 0
 
@@ -62,6 +64,7 @@ func (p *provider) ReadWithContext(
 		result, err = p.readViaImportResourceState(ctx, &rh, id)
 	}
 	if err != nil {
+		result.Outputs = applySecretPaths(result.Outputs, inputSecrets)
 		return result, ignoredStatus, err
 	}
 
@@ -79,7 +82,7 @@ func (p *provider) ReadWithContext(
 		// __defaults is not needed for Plugin Framework bridged providers
 		delete(result.Inputs, "__defaults")
 	}
-
+	result.Outputs = applySecretPaths(result.Outputs, inputSecrets)
 	return result, ignoredStatus, err
 }
 

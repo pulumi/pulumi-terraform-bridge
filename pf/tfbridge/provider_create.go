@@ -40,6 +40,8 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
+	inputSecrets := findSecretPaths(checkedInputs)
+
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	priorState := newResourceState(ctx, &rh)
@@ -68,7 +70,7 @@ func (p *provider) CreateWithContext(
 		if err != nil {
 			return "", nil, 0, err
 		}
-		return "", plannedStatePropertyMap, resource.StatusOK, nil
+		return "", applySecretPaths(plannedStatePropertyMap, inputSecrets), resource.StatusOK, nil
 	}
 
 	priorStateValue, configValue, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
@@ -114,5 +116,5 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	return createdID, createdStateMap, resource.StatusOK, nil
+	return createdID, applySecretPaths(createdStateMap, inputSecrets), resource.StatusOK, nil
 }

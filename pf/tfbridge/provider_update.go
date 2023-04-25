@@ -39,6 +39,7 @@ func (p *provider) UpdateWithContext(
 ) (resource.PropertyMap, resource.Status, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
+	inputSecrets := findSecretPaths(checkedInputs)
 	checkedInputs, err := applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
@@ -77,6 +78,7 @@ func (p *provider) UpdateWithContext(
 		if err != nil {
 			return nil, 0, err
 		}
+		plannedStatePropertyMap = applySecretPaths(plannedStatePropertyMap, inputSecrets)
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
@@ -111,6 +113,6 @@ func (p *provider) UpdateWithContext(
 	if err != nil {
 		return nil, 0, err
 	}
-
+	updatedStateMap = applySecretPaths(updatedStateMap, inputSecrets)
 	return updatedStateMap, resource.StatusOK, nil
 }
