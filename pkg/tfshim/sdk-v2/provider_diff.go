@@ -154,7 +154,7 @@ func simpleDiffViaPlanState(
 	}
 
 	planned := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-	return res.SimpleDiff(ctx, s, planned, meta)
+	return res.SimpleDiff(ctx, instanceStateWithUpdatedRawPlan(s, proposedNewStateVal), planned, meta)
 }
 
 func showDiffChangeType(b byte) string {
