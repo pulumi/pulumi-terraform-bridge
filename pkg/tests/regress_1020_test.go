@@ -16,7 +16,6 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -63,9 +62,6 @@ func TestRegress1020(t *testing.T) {
 				MaxItems: 10000,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if d.GetRawPlan().IsNull() {
-						panic(fmt.Sprintf("%s", "NULL GetRawPlan"))
-					}
 					if d.GetRawPlan().GetAttr("addresses").IsWhollyKnown() {
 						o, n := d.GetChange("addresses")
 						oldAddresses := o.(*schema.Set).List()
@@ -213,15 +209,10 @@ func TestRegress1020(t *testing.T) {
 			"1.2.3.4/32",
 			"5.6.7.8/32"
 		      ],
-		      "arn": "arn:aws:wafv2:us-west-2:616138583583:regional/ipset/ip6_sample-6d6da96/f25bceeb-022a-4330-95d2-b76c7729ed61",
-		      "description": "Step to reproduce issue",
 		      "id": "f25bceeb-022a-4330-95d2-b76c7729ed61",
 		      "ipAddressVersion": "IPV4",
-		      "lockToken": "d282421a-16a6-48b7-a27e-20731d445ab2",
 		      "name": "ip6_sample-6d6da96",
-		      "scope": "REGIONAL",
-		      "tags": {},
-		      "tagsAll": {}
+		      "scope": "REGIONAL"
 		    },
 		    "news": {
 		      "__defaults": [
@@ -231,13 +222,20 @@ func TestRegress1020(t *testing.T) {
 			"1.2.3.4/32",
 			"5.6.7.9/32"
 		      ],
-		      "description": "Step to reproduce issue",
 		      "ipAddressVersion": "IPV4",
 		      "name": "ip6_sample-6d6da96",
 		      "scope": "REGIONAL"
 		    }
 		  },
-		  "response": {}
+		  "response": {
+                    "changes": "DIFF_SOME",
+                    "stables": ["name", "scope", "ipAddressVersion"],
+                    "hasDetailedDiff": true,
+                    "diffs": ["addresses"],
+                    "detailedDiff": {
+                       "addresses[1]": {"kind": "UPDATE"}
+                    }
+                  }
 		}`
 		testutils.Replay(t, server, testCase)
 	})

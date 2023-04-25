@@ -52,11 +52,8 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 		state = &terraform.InstanceState{
 			RawState:  r.CoreConfigSchema().EmptyValue(),
 			RawConfig: rawConfig,
-			RawPlan:   rawConfig,
 		}
 	} else {
-		state.RawConfig = rawConfig
-
 		// Upgrades are needed only if we have non-empty prior state.
 		state, err = upgradeResourceState(p.tf, r, state)
 		if err != nil {
@@ -83,6 +80,11 @@ func (p v2Provider) simpleDiff(
 
 	switch diffStrat {
 	case ClassicDiff:
+		if s.RawPlan.IsNull() {
+			sCopy := s.DeepCopy()
+			sCopy.RawPlan = rawConfigVal
+			return res.SimpleDiff(ctx, sCopy, c, meta)
+		}
 		return res.SimpleDiff(ctx, s, c, meta)
 	case PlanState:
 		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
