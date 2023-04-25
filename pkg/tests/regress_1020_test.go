@@ -229,7 +229,7 @@ func TestRegress1020(t *testing.T) {
 		  },
 		  "response": {
                     "changes": "DIFF_SOME",
-                    "stables": ["name", "scope", "ipAddressVersion"],
+                    "stables": "*",
                     "hasDetailedDiff": true,
                     "diffs": ["addresses"],
                     "detailedDiff": {
