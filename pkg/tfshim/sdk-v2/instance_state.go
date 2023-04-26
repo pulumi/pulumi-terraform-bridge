@@ -1,10 +1,28 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sdkv2
 
 import (
 	"strings"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 )
@@ -12,12 +30,19 @@ import (
 var _ = shim.InstanceState(v2InstanceState{})
 
 type v2InstanceState struct {
-	tf   *terraform.InstanceState
-	diff *terraform.InstanceDiff
+	resource *schema.Resource
+	tf       *terraform.InstanceState
+	diff     *terraform.InstanceDiff
 }
 
-func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
-	return v2InstanceState{s, nil}
+func NewInstanceState(resource *schema.Resource, s *terraform.InstanceState) shim.InstanceState {
+	st := v2InstanceState{
+		resource: resource,
+		tf:       s,
+		diff:     nil,
+	}
+	contract.Assertf(st.resource != nil, "v2InstanceState.resource != nil")
+	return st
 }
 
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {
@@ -36,6 +61,48 @@ func (s v2InstanceState) ID() string {
 }
 
 func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
+	strat := GetInstanceStateStrategy(v2Resource{s.resource})
+	if strat == CtyInstanceState {
+		return s.objectViaCty(sch)
+	}
+	return s.objectV1(sch)
+}
+
+// This version of Object uses TF built-ins AttrsAsObjectValue and schema.ApplyDiff with cty.Value intermediate form.
+func (s v2InstanceState) objectViaCty(sch shim.SchemaMap) (map[string]interface{}, error) {
+	rSchema := s.resource.CoreConfigSchema()
+	ty := rSchema.ImpliedType()
+
+	// Read InstanceState as a cty.Value.
+	v, err := s.tf.AttrsAsObjectValue(ty)
+	contract.AssertNoErrorf(err, "AttrsAsObjectValue failed")
+
+	// If there is a diff, apply it.
+	if s.diff != nil {
+		v, err = schema.ApplyDiff(v, s.diff, rSchema)
+		contract.AssertNoErrorf(err, "schema.ApplyDiff failed")
+	}
+
+	// Now we need to translate cty.Value to a JSON-like form. This could have been avoided if surrounding Pulumi
+	// code accepted a cty.Value and translated that to resource.PropertyValue, but that is currently not the case.
+	//
+	// An additional complication is that unkown values cannot serialize, so first replace them with sentinels.
+	v, err = cty.Transform(v, func(_ cty.Path, v cty.Value) (cty.Value, error) {
+		if !v.IsKnown() {
+			return cty.StringVal(UnknownVariableValue), nil
+		}
+		return v, nil
+	})
+	contract.AssertNoErrorf(err, "Failed to encode unknowns with UnknownVariableValue")
+
+	obj, err := schema.StateValueToJSONMap(v, v.Type())
+	contract.AssertNoErrorf(err, "schema.StateValueToJSONMap failed")
+
+	return obj, nil
+}
+
+// The legacy version of Object used custom Pulumi code forked from TF sources.
+func (s v2InstanceState) objectV1(sch shim.SchemaMap) (map[string]interface{}, error) {
 	obj := make(map[string]interface{})
 
 	schemaMap := map[string]*schema.Schema(sch.(v2SchemaMap))
@@ -59,8 +126,8 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	// Read each top-level field out of the attributes.
 	keys := make(map[string]bool)
 	readAttributeField := func(key string) error {
-		// Pull the top-level field out of this attribute key. If we've already read the top-level field, skip this
-		// key.
+		// Pull the top-level field out of this attribute key. If we've already read the top-level field, skip
+		// this key.
 		dot := strings.Index(key, ".")
 		if dot != -1 {
 			key = key[:dot]

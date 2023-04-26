@@ -144,8 +144,8 @@ github.com/nightlyone/lockfile v1.0.0/go.mod h1:rywoIealpdNse2r832aiD9jRk8ErCatR
 github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e/go.mod h1:WGwlmuPAiQTGQUjxyAfP7j4JgbgiFvFpI/qRtsQtS/4=
 github.com/pgavlin/text v0.0.0-20230428184845-84c285f11d2f/go.mod h1:fk4+YyTLi0Ap0CsL1HA70/tAs6evqw3hbPGdR8rD/3E=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
-github.com/pulumi/terraform-diff-reader v0.0.1 h1:d42TUgaQewDVt9bG3GksVZMoUlEEqF171ak66OZVMjE=
-github.com/pulumi/terraform-diff-reader v0.0.1/go.mod h1:sZ9FUzGO+yM41hsQHs/yIcj/Y993qMdBxBU5mpDmAfQ=
+github.com/pulumi/terraform-diff-reader v0.0.2 h1:kTE4nEXU3/SYXESvAIem+wyHMI3abqkI3OhJ0G04LLI=
+github.com/pulumi/terraform-diff-reader v0.0.2/go.mod h1:sZ9FUzGO+yM41hsQHs/yIcj/Y993qMdBxBU5mpDmAfQ=
 github.com/russross/blackfriday v1.6.0 h1:KqfZb0pUVN2lYqZUYRddxF4OR8ZMURnJIG5Y3VRLtww=
 github.com/russross/blackfriday v1.6.0/go.mod h1:ti0ldHuxg49ri4ksnFxlkCfN+hvslNlmVHqNRXXJNAY=
 github.com/shirou/gopsutil/v3 v3.22.3/go.mod h1:D01hZJ4pVHPpCTZ3m3T2+wDF2YAGfd+H4ifUguaQzHM=
