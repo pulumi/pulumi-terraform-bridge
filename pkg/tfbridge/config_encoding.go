@@ -127,22 +127,43 @@ func (enc *configEncoding) MarkSecrets(secrets map[resource.PropertyKey]struct{}
 func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 	opts plugin.MarshalOptions) (*resource.PropertyValue, error) {
 
-	opts.KeepSecrets = false
-
 	pv, err := plugin.UnmarshalPropertyValue(key, v, opts)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
 	}
 	shimType, gotShimType := enc.fieldTypes[key]
 
-	if pv.IsString() && gotShimType {
-		s := pv.StringValue()
-		v, err := enc.convertStringToPropertyValue(s, shimType)
+	// Only apply JSON-encoded recognition for known fields.
+	if !gotShimType {
+		return pv, nil
+	}
+
+	var jsonString string
+	var jsonStringDetected, jsonStringSecret bool
+
+	if pv.IsString() {
+		jsonString = pv.StringValue()
+		jsonStringDetected = true
+	}
+
+	if opts.KeepSecrets && pv.IsSecret() && pv.SecretValue().Element.IsString() {
+		jsonString = pv.SecretValue().Element.StringValue()
+		jsonStringDetected = true
+		jsonStringSecret = true
+	}
+
+	if jsonStringDetected {
+		v, err := enc.convertStringToPropertyValue(jsonString, shimType)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
 		}
+		if jsonStringSecret {
+			s := resource.MakeSecret(v)
+			return &s, nil
+		}
 		return &v, nil
 	}
+
 	return pv, nil
 }
 

@@ -1047,6 +1047,58 @@ func TestCheckConfig(t *testing.T) {
                   }
                 }`)
 	})
+
+	t.Run("preserve_program_nested_secrets", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+
+		p.Schema["batching"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"send_after": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"enable_batching": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		testutils.Replay(t, provider, `
+                {
+                  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+                  "request": {
+                    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+                    "olds": {},
+                    "news": {
+                      "batching": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
+                      },
+                      "version": "6.54.0"
+                    }
+                  },
+                  "response": {
+                    "inputs": {
+                      "batching": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
+                      },
+                      "version": "6.54.0"
+                    }
+                  }
+                }`)
+	})
 }
 
 func TestConfigure(t *testing.T) {
