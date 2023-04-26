@@ -39,3 +39,78 @@ func TestTerraformResourceName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, name, "random_integer")
 }
+
+func TestApplySecrets(t *testing.T) {
+	t.Parallel()
+
+	input1 := func() resource.PropertyMap {
+		return resource.PropertyMap{
+			"field1": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewNullProperty(),
+				resource.MakeSecret(resource.NewStringProperty("f1")),
+			}),
+			"field2": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewNullProperty(),
+				resource.NewStringProperty("f2"),
+			})),
+		}
+	}
+
+	tests := []struct {
+		input    resource.PropertyMap
+		output   resource.PropertyMap
+		expected resource.PropertyMap
+	}{
+		{ // Empty outputs
+			input: input1(),
+		},
+		{ // No secrets on output but output is the same shape
+			input: input1(),
+			output: resource.PropertyMap{
+				"field1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewNullProperty(),
+					resource.NewStringProperty("f1"),
+				}),
+				"field2": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewNullProperty(),
+					resource.NewStringProperty("f2"),
+				}),
+			},
+			expected: input1(),
+		},
+		{ // Output has changed shape above where a secret was
+			input: input1(),
+			output: resource.PropertyMap{
+				"field1": resource.NewStringProperty("combined"),
+			},
+			expected: resource.PropertyMap{
+				"field1": resource.MakeSecret(resource.NewStringProperty("combined")),
+			},
+		},
+		{ // Output has changes shape where the secret was
+			input: input1(),
+			output: resource.PropertyMap{
+				"field2": resource.NewObjectProperty(resource.PropertyMap{
+					"new": resource.NewStringProperty("shape"),
+				}),
+			},
+			expected: resource.PropertyMap{
+				"field2": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+					"new": resource.NewStringProperty("shape"),
+				})),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			secrets := findSecretPaths(tt.input)
+
+			actual := applySecretPaths(tt.output, secrets)
+
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

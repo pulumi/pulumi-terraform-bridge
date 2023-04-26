@@ -295,7 +295,7 @@ func applySecretPaths(prop resource.PropertyMap, paths []resource.PropertyPath) 
 		// &foo[3].fizz.buzz; *v = secret(*v)`. If we that path no longer exists,
 		// we try again with `foo[3].fizz`, etc. This will continue until we
 		// perform `foo = secret(foo)`.
-		for !ok && len(p) > 0 {
+		for !ok && len(p) > 1 {
 			p = p[:len(p)-1]
 			v, ok = p.Get(m)
 		}
