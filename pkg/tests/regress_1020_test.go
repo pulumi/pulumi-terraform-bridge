@@ -20,10 +20,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	"net"
+
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"net"
 )
 
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1020
@@ -138,33 +140,31 @@ func TestRegress1020(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider) // , shimv2.WithDiffStrategy(shimv2.PlanState))
-
-	info := tfbridge.ProviderInfo{
-		P:           p,
-		Name:        "aws",
-		Description: "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
-		Keywords:    []string{"pulumi", "aws"},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-aws",
-		Version:     "0.0.2",
-		Resources: map[string]*tfbridge.ResourceInfo{
-			"aws_wafv2_ip_set": {Tok: "aws:wafv2/ipSet:IpSet"},
-		},
+	server := func(p shim.Provider) *tfbridge.Provider {
+		info := tfbridge.ProviderInfo{
+			P:           p,
+			Name:        "aws",
+			Description: "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
+			Keywords:    []string{"pulumi", "aws"},
+			License:     "Apache-2.0",
+			Homepage:    "https://pulumi.io",
+			Repository:  "https://github.com/pulumi/pulumi-aws",
+			Version:     "0.0.2",
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"aws_wafv2_ip_set": {Tok: "aws:wafv2/ipSet:IpSet"},
+			},
+		}
+		return tfbridge.NewProvider(ctx,
+			nil,      /* hostClient */
+			"aws",    /* module */
+			"",       /* version */
+			p,        /* tf */
+			info,     /* info */
+			[]byte{}, /* pulumiSchema */
+		)
 	}
 
-	server := tfbridge.NewProvider(ctx,
-		nil,      /* hostClient */
-		"aws",    /* module */
-		"",       /* version */
-		p,        /* tf */
-		info,     /* info */
-		[]byte{}, /* pulumiSchema */
-	)
-
-	t.Run("can preview Create", func(t *testing.T) {
-		testCase := `
+	createTestCase := `
 		{
 		  "method": "/pulumirpc.ResourceProvider/Create",
 		  "request": {
@@ -194,11 +194,18 @@ func TestRegress1020(t *testing.T) {
 		    }
 		  }
 		}`
-		testutils.Replay(t, server, testCase)
+
+	t.Run("can preview Create", func(t *testing.T) {
+		p := shimv2.NewProvider(tfProvider)
+		testutils.Replay(t, server(p), createTestCase)
 	})
 
-	t.Run("can compute an Update plan in Diff", func(t *testing.T) {
-		testCase := `
+	t.Run("can preview Create when using PlanState", func(t *testing.T) {
+		p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
+		testutils.Replay(t, server(p), createTestCase)
+	})
+
+	diffTestCase := `
 		{
 		  "method": "/pulumirpc.ResourceProvider/Diff",
 		  "request": {
@@ -237,6 +244,14 @@ func TestRegress1020(t *testing.T) {
                     }
                   }
 		}`
-		testutils.Replay(t, server, testCase)
+
+	t.Run("can compute an Update plan in Diff", func(t *testing.T) {
+		p := shimv2.NewProvider(tfProvider)
+		testutils.Replay(t, server(p), diffTestCase)
+	})
+
+	t.Run("can compute an Update plan in Diff when using PlanState", func(t *testing.T) {
+		p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
+		testutils.Replay(t, server(p), diffTestCase)
 	})
 }
