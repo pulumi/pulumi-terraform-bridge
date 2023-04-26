@@ -20,6 +20,17 @@
                         }
                     }
                 },
+                "a_list": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_number": {
+                                "type": 2
+                            }
+                        }
+                    }
+                },
                 "result": {
                     "type": 4,
                     "computed": true
@@ -41,6 +52,17 @@
                             "inner_string": {
                                 "type": 4,
                                 "optional": true
+                            }
+                        }
+                    }
+                },
+                "a_list": {
+                    "type": 5,
+                    "optional": true,
+                    "element": {
+                        "resource": {
+                            "inner_number": {
+                                "type": 2
                             }
                         }
                     }
@@ -67,6 +89,16 @@
                         }
                     }
                 },
+                "a_list": {
+                    "name": "theList",
+                    "element": {
+                        "fields": {
+                            "inner_number": {
+                                "name": "number"
+                            }
+                        }
+                    }
+                },
                 "result": {
                     "name": "myResult"
                 }
@@ -85,6 +117,16 @@
                     "fields": {
                         "inner_string": {
                             "name": "theInnerString"
+                        }
+                    }
+                },
+                "a_list": {
+                    "name": "theList",
+                    "element": {
+                        "fields": {
+                            "inner_number": {
+                                "name": "number"
+                            }
                         }
                     }
                 },

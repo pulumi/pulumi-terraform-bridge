@@ -17,6 +17,17 @@
   },
   "config": {},
   "types": {
+    "renames:index/data_sourceTheList:data_sourceTheList": {
+      "properties": {
+        "number": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "number"
+      ]
+    },
     "renames:index/data_sourceTheResource:data_sourceTheResource": {
       "properties": {
         "innerString": {
@@ -24,6 +35,17 @@
         }
       },
       "type": "object"
+    },
+    "renames:index/resourceTheList:resourceTheList": {
+      "properties": {
+        "number": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "number"
+      ]
     },
     "renames:index/resourceTheResource:resourceTheResource": {
       "properties": {
@@ -43,6 +65,12 @@
         "myResult": {
           "type": "string"
         },
+        "theList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/renames:index/resourceTheList:resourceTheList"
+          }
+        },
         "theNumber": {
           "type": "number"
         },
@@ -54,6 +82,12 @@
         "myResult"
       ],
       "inputProperties": {
+        "theList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/renames:index/resourceTheList:resourceTheList"
+          }
+        },
         "theNumber": {
           "type": "number"
         },
@@ -66,6 +100,12 @@
         "properties": {
           "myResult": {
             "type": "string"
+          },
+          "theList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/renames:index/resourceTheList:resourceTheList"
+            }
           },
           "theNumber": {
             "type": "number"
@@ -83,6 +123,12 @@
       "inputs": {
         "description": "A collection of arguments for invoking data_source.\n",
         "properties": {
+          "theList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/renames:index/data_sourceTheList:data_sourceTheList"
+            }
+          },
           "theNumber": {
             "type": "number"
           },
@@ -101,6 +147,12 @@
           },
           "myResult": {
             "type": "string"
+          },
+          "theList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/renames:index/data_sourceTheList:data_sourceTheList"
+            }
           },
           "theNumber": {
             "type": "number"

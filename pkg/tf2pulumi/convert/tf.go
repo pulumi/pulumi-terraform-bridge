@@ -688,7 +688,7 @@ func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
 ) hclwrite.Tokens {
 	elems := []hclwrite.Tokens{}
 	for _, expr := range expr.Exprs {
-		elems = append(elems, convertExpression(sources, scopes, "", expr))
+		elems = append(elems, convertExpression(sources, scopes, fullyQualifiedPath+"[]", expr))
 	}
 	tokens := hclwrite.TokensForTuple(elems)
 	leading, trailing := getTrivia(sources, expr.SrcRange)
@@ -1337,14 +1337,16 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCParen, ")"))
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenColon, ":"))
 
+			blockPath := appendPath(fullyQualifiedPath, block.Labels[0])
+			name := scopes.pulumiName(blockPath)
+
 			bodyTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenIdent, "{}")}
-			attributeName := scopes.pulumiName(block.Labels[0])
 			for _, innerBlock := range dynamicBody.Blocks {
 				if innerBlock.Type == "content" {
 					scopes.push(map[string]string{
 						tfEachVar: pulumiEachVar,
 					})
-					contentBody := convertBody(sources, scopes, fullyQualifiedPath+"."+attributeName, innerBlock.Body)
+					contentBody := convertBody(sources, scopes, blockPath+"[]", innerBlock.Body)
 					bodyTokens = tokensForObject(contentBody)
 					scopes.pop()
 				}
@@ -1354,7 +1356,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCBrack, "]"))
 
 			newAttributes = append(newAttributes, bodyAttrTokens{
-				Name:  attributeName,
+				Name:  name,
 				Value: dynamicTokens,
 			})
 			continue
@@ -1373,7 +1375,8 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			})
 		} else {
 			list := blockLists[name]
-			list = append(list, convertBody(sources, scopes, blockPath, block.Body))
+			// This is a list so add [] to the path
+			list = append(list, convertBody(sources, scopes, blockPath+"[]", block.Body))
 			blockLists[name] = list
 		}
 	}
@@ -1865,33 +1868,77 @@ func (s *scopes) getInfo(fullyQualifiedPath string) PathInfo {
 	getInner = func(sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo, parts []string) PathInfo {
 		contract.Assertf(parts[0] != "", "empty path part passed into pulumiName")
 
+		// At this point parts[0] may be an property + indexer or just a property. Work that out first.
+		part, rest, indexer := strings.Cut(parts[0], "[]")
+
 		// Lookup the info for this part
 		var curSch shim.Schema
 		if sch != nil {
-			curSch = sch.Get(parts[0])
+			curSch = sch.Get(part)
 		}
-		curInfo := info[parts[0]]
+		curInfo := info[part]
 
 		// We want this part
-		if len(parts) == 1 {
+		if len(parts) == 1 && !indexer {
 			return PathInfo{
-				Name:       parts[0],
+				Name:       part,
 				Schema:     curSch,
 				SchemaInfo: curInfo,
 			}
 		}
-		// Else recurse into the next part of the type
-		var nextSchema shim.SchemaMap
-		var nextInfo map[string]*tfbridge.SchemaInfo
-		if curSch != nil {
-			if sch, ok := curSch.Elem().(shim.Resource); ok {
-				nextSchema = sch.Schema()
+
+		// Else recurse into the next part of the type, how we do this depends on if this was indexed or not
+		if !indexer {
+			// No indexers, simple recurse on fields
+			var nextSchema shim.SchemaMap
+			var nextInfo map[string]*tfbridge.SchemaInfo
+			if curSch != nil {
+				if sch, ok := curSch.Elem().(shim.Resource); ok {
+					nextSchema = sch.Schema()
+				}
 			}
+			if curInfo != nil {
+				nextInfo = curInfo.Fields
+			}
+			return getInner(nextSchema, nextInfo, parts[1:])
 		}
-		if curInfo != nil {
-			nextInfo = curInfo.Fields
+
+		// part was indexed (i.e. something like "part[]" or part[]foo[][]bar), so rather than looking at the
+		// fields we need to look at the elements.
+		for {
+			var resourceOrSchema interface{}
+			if curSch != nil {
+				resourceOrSchema = curSch.Elem()
+			}
+			if curInfo != nil {
+				curInfo = curInfo.Elem
+			}
+
+			if rest == "" && len(parts) == 1 {
+				// This element is what we we're looking for
+				res, _ := resourceOrSchema.(shim.Resource)
+				sch, _ := resourceOrSchema.(shim.Schema)
+				return PathInfo{
+					Name:       part,
+					Resource:   res,
+					Schema:     sch,
+					SchemaInfo: curInfo,
+				}
+			} else if rest == "" {
+				// Can recurse into the next set of fields
+				var nextSchema shim.SchemaMap
+				var nextInfo map[string]*tfbridge.SchemaInfo
+				if sch, ok := resourceOrSchema.(shim.Resource); ok {
+					nextSchema = sch.Schema()
+				}
+				if curInfo != nil {
+					nextInfo = curInfo.Fields
+				}
+				return getInner(nextSchema, nextInfo, parts[1:])
+			}
+
+			panic(fmt.Sprintf("complex indexerParts not implemented: %v", rest))
 		}
-		return getInner(nextSchema, nextInfo, parts[1:])
 	}
 
 	if parts[0] == "data" {
