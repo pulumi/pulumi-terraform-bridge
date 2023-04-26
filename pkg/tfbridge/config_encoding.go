@@ -127,18 +127,23 @@ func (enc *configEncoding) MarkSecrets(secrets map[resource.PropertyKey]struct{}
 func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 	opts plugin.MarshalOptions) (*resource.PropertyValue, error) {
 
-	shimType, gotShimType := enc.fieldTypes[key]
-	_, vIsString := v.GetKind().(*structpb.Value_StringValue)
+	opts.KeepSecrets = false
 
-	if vIsString && gotShimType {
-		v, err := enc.convertStringToPropertyValue(v.GetStringValue(), shimType)
+	pv, err := plugin.UnmarshalPropertyValue(key, v, opts)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
+	}
+	shimType, gotShimType := enc.fieldTypes[key]
+
+	if pv.IsString() && gotShimType {
+		s := pv.StringValue()
+		v, err := enc.convertStringToPropertyValue(s, shimType)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
 		}
 		return &v, nil
 	}
-
-	return plugin.UnmarshalPropertyValue(key, v, opts)
+	return pv, nil
 }
 
 // Inline from plugin.UnmarshalProperties substituting plugin.UnmarshalPropertyValue.
