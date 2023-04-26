@@ -174,3 +174,59 @@ func TestCreateWithFirstClassSecrets(t *testing.T) {
 	}`
 	testutils.Replay(t, server, testCase)
 }
+
+func TestCreateWithSecrets(t *testing.T) {
+	server := newProviderServer(t, testprovider.RandomProvider())
+	// We need to configure the client to return secrets before we can return
+	// them. Otherwise our provider will strip out secrets.
+	testCase := `
+[
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {},
+      "acceptSecrets": true,
+      "acceptResources": true
+    },
+    "response": {
+      "acceptSecrets": true,
+      "supportsPreview": true,
+      "acceptResources": true
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Create",
+    "request": {
+      "urn": "urn:pulumi:test::secret-random-yaml::random:index/randomPet:RandomPet::param",
+      "properties": {
+        "length": {
+          "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+          "value": 3
+        }
+      }
+    },
+    "response": {
+      "id": "*",
+      "properties": {
+        "id": "*",
+        "length": {
+          "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+          "value": 3
+        },
+        "separator": "-"
+      }
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  }
+]`
+	testutils.ReplaySequence(t, server, testCase)
+}

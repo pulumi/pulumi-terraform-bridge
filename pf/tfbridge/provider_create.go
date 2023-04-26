@@ -116,5 +116,7 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	return createdID, applySecretPaths(createdStateMap, inputSecrets), resource.StatusOK, nil
+	createdStateMap = applySecretPaths(createdStateMap, inputSecrets)
+
+	return createdID, createdStateMap, resource.StatusOK, nil
 }

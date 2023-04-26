@@ -282,12 +282,29 @@ func applySecretPaths(prop resource.PropertyMap, paths []resource.PropertyPath) 
 	m := resource.NewObjectProperty(prop)
 	for _, p := range paths {
 		v, ok := p.Get(m)
-		if !ok || v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
 
+		// If we didn't find the property, the path did not exist. We walk up the
+		// property path, applying secretness increasingly broadly to make sure
+		// secret values are covered.
+		//
+		// To illustrate, consider the following path:
+		//
+		//     foo[3].fizz.buzz
+		//
+		// If we find a value at the full path, we mark it as secret: `v :=
+		// &foo[3].fizz.buzz; *v = secret(*v)`. If we that path no longer exists,
+		// we try again with `foo[3].fizz`, etc. This will continue until we
+		// perform `foo = secret(foo)`.
+		for !ok && len(p) > 0 {
+			p = p[:len(p)-1]
+			v, ok = p.Get(m)
+		}
+
+		if !ok || v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
 			// If !ok
 			//
-			// The value from a secret path is not available. An absent value
-			// won't leak its secret, so this is fine.
+			// Property that contained the secret is not present on the
+			// resource.
 
 			// If v.IsSecret()
 			//
