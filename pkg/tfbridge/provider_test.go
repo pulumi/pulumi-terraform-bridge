@@ -1378,3 +1378,56 @@ func TestInvoke(t *testing.T) {
 		}`)
 	})
 }
+
+func TestSecretPreservationInCreate(t *testing.T) {
+	p := testprovider.ProviderV2()
+
+	for k, v := range p.ResourcesMap {
+		delete(p.ResourcesMap, k)
+		p.ResourcesMap["test_"+k] = v
+	}
+
+	p.DataSourcesMap = nil
+
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p),
+		config: shimv2.NewSchemaMap(p.Schema),
+	}
+
+	provider.info.ResourcePrefix = "test"
+	provider.info.Resources = make(map[string]*ResourceInfo)
+	provider.info.Resources["test_example_resource"] = &ResourceInfo{}
+	provider.initResourceMaps()
+
+	// Note that Invoke receives a secret "foo" but returns an un-secret "foo".
+	testutils.Replay(t, provider, `
+        {
+          "method": "/pulumirpc.ResourceProvider/Create",
+          "request": {
+            "urn": "urn:pulumi:test-stack::basicprogram::_:exampleResource:ExampleResource::r1",
+            "properties": {
+              "stringPropertyValue": {
+                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                "value": "foo"
+              }
+            },
+            "preview": false
+          },
+          "response": {
+            "id": "0",
+            "properties": {
+              "__meta": "*",
+              "stringPropertyValue": "foo",
+              "boolPropertyValue": "*",
+              "floatPropertyValue": "*",
+              "numberPropertyValue": "*",
+              "nestedResources": "*",
+              "arrayPropertyValues": ["an array"],
+              "objectPropertyValue": "*",
+              "setPropertyValues": "*",
+              "stringWithBadInterpolation": "*",
+              "id": "0"
+            }
+          }
+        }`)
+}
