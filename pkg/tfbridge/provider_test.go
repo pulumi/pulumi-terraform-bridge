@@ -765,6 +765,50 @@ func TestCheckConfig(t *testing.T) {
 		}`)
 	})
 
+	t.Run("unknown_config_value", func(t *testing.T) {
+		// Currently if a top-level config property is a Computed value, or it's a composite value with any
+		// Computed values inside, the engine sends a sentinel string. Ensure that CheckConfig propagates the
+		// same sentinel string back to the engine.
+
+		p := testprovider.ProviderV2()
+
+		p.Schema["scopes"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Required: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		}
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+
+		assert.Equal(t, "04da6b54-80e4-46f7-96ec-b56ff0331ba9", plugin.UnknownStringValue)
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                      "scopes": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                      "scopes": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
 	t.Run("config_changed", func(t *testing.T) {
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
