@@ -220,6 +220,9 @@ func (enc *configEncoding) MarshalProperties(props resource.PropertyMap,
 
 func (enc *configEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
 	v resource.PropertyValue) (resource.PropertyValue, error) {
+	if v.ContainsUnknowns() {
+		return resource.NewStringProperty(plugin.UnknownStringValue), nil
+	}
 	if v.IsSecret() {
 		encoded, err := enc.jsonEncodePropertyValue(k, v.SecretValue().Element)
 		if err != nil {
