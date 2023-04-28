@@ -189,11 +189,7 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	      "acceptSecrets": true,
 	      "acceptResources": true
 	    },
-	    "response": {
-	      "acceptSecrets": true,
-	      "supportsPreview": true,
-	      "acceptResources": true
-	    }
+	    "response": "*"
 	  },
 	  {
 	    "method": "/pulumirpc.ResourceProvider/Create",
