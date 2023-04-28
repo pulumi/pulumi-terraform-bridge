@@ -46,8 +46,12 @@ func (p *providerServer) unmarshalOptions(label string) pl.MarshalOptions {
 	return pl.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
-		KeepSecrets:   true,
 		KeepResources: true,
+
+		// When Configure is called, we pass ConfigureResponse{AcceptSecrets:
+		// false}. Since we do not expect to be robust to incoming secrets, we can
+		// simplify internal logic by removing them.
+		KeepSecrets: false,
 	}
 }
 
@@ -253,7 +257,16 @@ func (p *providerServer) Configure(ctx context.Context,
 
 	p.keepSecrets = req.GetAcceptSecrets()
 	p.keepResources = req.GetAcceptResources()
-	return &pulumirpc.ConfigureResponse{AcceptSecrets: true, SupportsPreview: true, AcceptResources: true}, nil
+	return &pulumirpc.ConfigureResponse{
+		SupportsPreview: true,
+		AcceptResources: true,
+
+		// We don't accept secrets, indicating that the engine should apply a
+		// default heuristic to secret outputs based on inputs. Because we can't
+		// reason about data flow within the underlying provider (TF), we allow
+		// the engine to apply its own heuristics.
+		AcceptSecrets: false,
+	}, nil
 }
 
 func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {

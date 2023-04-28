@@ -111,6 +111,13 @@ resources:
         - "bye"
         - "hi"
 
+  secretRes:
+    type: testbridge:index/testres:Testres
+    properties:
+      statedir: state
+      requiredInputString:
+        fn::secret: "secretInput"
+
 outputs:
 
   testMinimal__actual: ${minimalRes.requiredInputStringCopy}
@@ -196,3 +203,5 @@ outputs:
       "Hello"
     sensitive:
       "Hello"
+
+  testSecret__secret: ${secretRes.requiredInputString}
