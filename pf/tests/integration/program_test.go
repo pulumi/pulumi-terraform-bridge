@@ -123,11 +123,20 @@ func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationS
 	expects := map[string]interface{}{}
 	actuals := map[string]interface{}{}
 	for n, output := range stack.Outputs {
-		if strings.HasSuffix(n, "__actual") {
+		switch {
+		case strings.HasSuffix(n, "__actual"):
 			actuals[strings.TrimSuffix(n, "__actual")] = output
-		}
-		if strings.HasSuffix(n, "__expect") {
+		case strings.HasSuffix(n, "__expect"):
 			expects[strings.TrimSuffix(n, "__expect")] = output
+		case strings.HasSuffix(n, "__secret"):
+			n, output := n, output
+			t.Run(n, func(t *testing.T) {
+				o, ok := output.(map[string]interface{})
+				if assert.Truef(t, ok, "Expected Secret (map[string]any), found %T", output) {
+					assert.Equal(t, "1b47061264138c4ac30d75fd1eb44270",
+						o["4dabf18193072939515e22adb298388d"])
+				}
+			})
 		}
 	}
 	keys := []string{}
