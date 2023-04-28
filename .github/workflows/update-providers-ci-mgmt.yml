@@ -1,11 +1,19 @@
 name: Update Providers with new bridge version via ci-mgmt
 on:
   workflow_dispatch:
+  release:
+    types: [published]
+env:
+  GH_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
-  update-providers:
-    name: update-providers
+  upgrade_provider:
+    name: upgrade-provider
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source code
-        uses: actions/checkout@master
-    # TBD
+    - name: Call upgrade provider action
+      uses: pulumi/pulumi-upgrade-provider-action@v0.0.4
+      with:
+        slack-channel: provider-upgrade-status
+        slack-webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+        kind: "bridge"
