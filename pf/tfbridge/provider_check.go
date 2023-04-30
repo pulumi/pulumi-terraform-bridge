@@ -44,11 +44,15 @@ func (p *provider) CheckWithContext(
 		return checkedInputs, checkFailures, err
 	}
 
-	internal.SetDefaultValues(&tfbridge.PulumiResource{
+	err = internal.SetDefaultValues(&tfbridge.PulumiResource{
 		URN:        urn,
 		Properties: checkedInputs,
 		Seed:       randomSeed,
 	}, rh.pulumiResourceInfo.Fields)
+
+	if err != nil {
+		return checkedInputs, checkFailures, err
+	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
 
