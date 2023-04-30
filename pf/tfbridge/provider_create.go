@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
@@ -44,23 +43,6 @@ func (p *provider) CreateWithContext(
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	priorState := newResourceState(ctx, &rh)
-
-	for key, fld := range rh.pulumiResourceInfo.Fields {
-		if _, ok := checkedInputs[resource.PropertyKey(key)]; !ok && fld.Default != nil {
-			// using default value for empty property
-			v, err := convert.GetDefaultValue(fld.Default, &tfbridge.PulumiResource{
-				URN:        urn,
-				Properties: checkedInputs,
-				Seed:       make([]byte, 0),
-			})
-			if err != nil {
-				return "", nil, 0, err
-			}
-			checkedInputs[resource.PropertyKey(key)] = resource.PropertyValue{
-				V: v,
-			}
-		}
-	}
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
