@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -61,6 +62,8 @@ type provider struct {
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logutils.LogSink
+
+	schemaOnlyShimProvider shim.Provider
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -145,6 +148,8 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
 		version:       semverVersion,
+
+		schemaOnlyShimProvider: SchemaOnlyPluginFrameworkProvider(ctx, p),
 	}, nil
 }
 
