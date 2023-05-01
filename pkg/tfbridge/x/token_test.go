@@ -514,6 +514,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
 						"f1": Schema{MaxItemsOne: f1},
 						"f2": Schema{MaxItemsOne: f2},
+						"f3": Schema{typ: shim.TypeString},
 					}}).Shim(),
 				},
 			}).Shim(),
@@ -652,8 +653,8 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 	err = AutoAliasing(info, metadata)
 	require.NoError(t, err)
 
-	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
-	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"])
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"])
 	assert.Equal(t, `{
     "auto-aliasing": {
         "resources": {
@@ -746,9 +747,98 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
 
+// (*ProviderInfo).SetAutonaming skips fields that have a SchemaInfo already defined in
+// their resource's ResourceInfo.Fields. We need to make sure that unless we mark a field
+// as `MaxItemsOne: nonNil` for some non-nil value, we don't leave that field entry behind
+// since that will disable SetAutonaming.
+func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"name":      Schema{typ: shim.TypeString},
+						"nest_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"nest_flat": Schema{
+							elem:        Schema{typ: shim.TypeBool},
+							MaxItemsOne: true,
+						},
+						"override_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"override_flat": Schema{
+							elem:        Schema{typ: shim.TypeInt},
+							MaxItemsOne: true,
+						},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+
+	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo, hist *metadata.Data) {
+		r := p.Resources["pkg_r1"]
+		assert.True(t, r.Fields["name"].Default.AutoNamed)
+
+		assert.Nil(t, r.Fields["nest_list"])
+		assert.Nil(t, r.Fields["override_list"])
+
+		t.Log(string(hist.Marshal()))
+		assert.JSONEq(t, `{
+                "auto-aliasing": {
+                    "resources": {
+                        "pkg_r1": {
+                            "current": "pkg:index/r1:R1",
+                            "fields": {
+                                "nest_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "nest_list": {
+                                    "maxItemsOne": false
+                                },
+                                "override_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "override_list": {
+                                    "maxItemsOne": false
+                                }
+                            }
+                        }
+                    },
+                    "datasources": {}
+                }
+            }`, string(hist.Marshal()))
+	}
+
+	t.Run("auto-named-then-aliased", func(t *testing.T) {
+		p := provider()
+
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+
+		assertExpected(t, p, info)
+	})
+
+	t.Run("auto-aliased-then-named", func(t *testing.T) {
+		p := provider()
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+
+		assertExpected(t, p, info)
+	})
+}
+
 type Schema struct {
 	shim.Schema
 	MaxItemsOne bool
+	typ         shim.ValueType
 	elem        any
 }
 
@@ -760,7 +850,13 @@ func (s Schema) MaxItems() int {
 }
 
 func (s Schema) Type() shim.ValueType {
-	return shim.TypeList
+	if s.typ == shim.TypeInvalid {
+		return shim.TypeList
+	}
+	return s.typ
 }
+
+func (s Schema) Optional() bool { return true }
+func (s Schema) Required() bool { return false }
 
 func (s Schema) Elem() any { return s.elem }
