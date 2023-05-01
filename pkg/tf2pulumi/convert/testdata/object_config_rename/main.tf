@@ -24,6 +24,15 @@ variable "object_list_config" {
     }]
 }
 
+variable "object_list_config_empty" {
+    type = list(object({
+        first_member = number,
+        second_member = string
+    }))
+
+    default = []
+}
+
 variable "object_map_config" {
     type = map(object({
         first_member = number,
@@ -36,6 +45,15 @@ variable "object_map_config" {
              second_member = "hello"
         }
     }
+}
+
+variable "object_map_config_empty" {
+    type = map(object({
+        first_member = number,
+        second_member = string
+    }))
+
+    default = {}
 }
 
 resource "simple_resource" "using_simple_object_config" {
