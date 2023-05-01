@@ -15,6 +15,7 @@
 package muxer
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -37,8 +38,14 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Pr
 }
 
 // AugmentShimWithPF augments an existing shim with a PF provider.Provider.
+//
+// If there is overlap between shim and pf, shim will dominate.
 func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
+	p, _, _ := augmentShimWithPF(ctx, shim, pf)
+	return p
+}
 
+func augmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) (*ProviderShim, []string, []string) {
 	var p ProviderShim
 	if alreadyMerged, ok := shim.(*ProviderShim); ok {
 		p = *alreadyMerged
@@ -46,9 +53,26 @@ func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Prov
 		p = newProviderShim(shim)
 	}
 
-	err := p.extend(schemashim.ShimSchemaOnlyProvider(ctx, pf))
-	contract.AssertNoErrorf(err, "shim and pf provider are not disjoint")
-	return &p
+	r, d := p.extend(schemashim.ShimSchemaOnlyProvider(ctx, pf))
+	return &p, r, d
+}
+
+// AugmentShimWithDisjointPF augments an existing shim with a PF provider.Provider.
+//
+// This function asserts that there is no overlap between providers.
+func AugmentShimWithDisjointPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
+	p, resources, datasources := augmentShimWithPF(ctx, shim, pf)
+
+	var rErr, dErr error
+	if len(datasources) > 0 {
+		dErr = fmt.Errorf("DataSourceMap is not disjoint: conflicting keys: %s", strings.Join(datasources, ", "))
+	}
+	if len(resources) > 0 {
+		rErr = fmt.Errorf("ResourcesMap is not disjoint: conflicting keys: %s", strings.Join(resources, ", "))
+	}
+	contract.AssertNoErrorf(errors.Join(rErr, dErr), "providers are not disjoint")
+
+	return p
 }
 
 // A merged `shim.Provider` that remembers which `shim.Provider`s it is composed of.
@@ -91,21 +115,15 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 // Extend the `ProviderShim` with another `shim.Provider`.
 //
 // `provider` will be the `len(m.MuxedProviders)` when mappings are computed.
-func (m *ProviderShim) extend(provider shim.Provider) error {
-	res, err := disjointUnion(m.resources, provider.ResourcesMap())
-	if err != nil {
-		return fmt.Errorf("ResourcesMap is not disjoint: %w", err)
-	}
+func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
+	res, conflictingResources := union(m.resources, provider.ResourcesMap())
 
-	data, err := disjointUnion(m.dataSources, provider.DataSourcesMap())
-	if err != nil {
-		return fmt.Errorf("DataSourcesMap is not disjoint: %w", err)
-	}
+	data, conflictingDataSources := union(m.dataSources, provider.DataSourcesMap())
 
 	m.resources = res
 	m.dataSources = data
 	m.MuxedProviders = append(m.MuxedProviders, provider)
-	return nil
+	return conflictingResources, conflictingDataSources
 }
 
 func newProviderShim(provider shim.Provider) ProviderShim {
@@ -230,12 +248,9 @@ func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 
 var _ shim.Provider = (*simpleSchemaProvider)(nil)
 
-func disjointUnion(baseline, extension shim.ResourceMap) (shim.ResourceMap, error) {
-	union, err := disjointMapUnion(toResourceMap(baseline), toResourceMap(extension))
-	if err != nil {
-		return nil, err
-	}
-	return shimSchema.ResourceMap(union), nil
+func union(baseline, extension shim.ResourceMap) (shim.ResourceMap, []string) {
+	union, conflictingKeys := mapUnion(toResourceMap(baseline), toResourceMap(extension))
+	return shimSchema.ResourceMap(union), conflictingKeys
 }
 
 func toResourceMap(rmap shim.ResourceMap) shimSchema.ResourceMap {
@@ -247,7 +262,7 @@ func toResourceMap(rmap shim.ResourceMap) shimSchema.ResourceMap {
 	return m
 }
 
-func disjointMapUnion[T any](baseline, extension map[string]T) (map[string]T, error) {
+func mapUnion[T any](baseline, extension map[string]T) (map[string]T, []string) {
 	u := copyMap(baseline)
 
 	var conflictingKeys []string
@@ -260,12 +275,9 @@ func disjointMapUnion[T any](baseline, extension map[string]T) (map[string]T, er
 		u[k] = v
 	}
 
-	if len(conflictingKeys) > 0 {
-		sort.Strings(conflictingKeys)
-		return nil, fmt.Errorf("conflicting keys: %s", strings.Join(conflictingKeys, ", "))
-	}
+	sort.Strings(conflictingKeys)
 
-	return u, nil
+	return u, conflictingKeys
 }
 
 func copyMap[K comparable, V any](m map[K]V) map[K]V {
