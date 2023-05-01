@@ -38,7 +38,7 @@ func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.Resou
 func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
 	ctx := context.Background()
 	meta := genSDKSchema(t, info)
-	p, err := tfbridge.MakeMuxedServer(ctx, meta, info)(nil)
+	p, err := tfbridge.MakeMuxedServer(ctx, info.Name, info, meta)(nil)
 	require.NoError(t, err)
 	return p
 }

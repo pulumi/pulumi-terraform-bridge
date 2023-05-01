@@ -22,5 +22,5 @@ import (
 )
 
 func main() {
-	tfgen.MainWithMuxer(testprovider.MuxedRandomProvider())
+	tfgen.MainWithMuxer("muxedrandom", testprovider.MuxedRandomProvider())
 }

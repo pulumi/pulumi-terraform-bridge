@@ -73,11 +73,11 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 // This is an experimental API.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
-func MainWithMuxer(info sdkBridge.ProviderInfo) {
+func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
-	tfgen.MainWithCustomGenerate(info.Name, info.Version, info, func(opts tfgen.GeneratorOptions) error {
+	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
 
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")

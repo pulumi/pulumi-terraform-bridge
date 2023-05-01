@@ -101,15 +101,15 @@ func handleFlags(
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
 // This is an experimental API.
-func MainWithMuxer(ctx context.Context, schema []byte, info tfbridge.ProviderInfo) {
+func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte) {
 	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
 		info := info
 		return tfbridge.MarshalProviderInfo(&info), nil
 	})
 
-	f := MakeMuxedServer(ctx, schema, info)
+	f := MakeMuxedServer(ctx, pkg, info, schema)
 
-	err := rprovider.Main(info.Name, f)
+	err := rprovider.Main(pkg, f)
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
@@ -120,7 +120,7 @@ func MainWithMuxer(ctx context.Context, schema []byte, info tfbridge.ProviderInf
 // This function exposes implementation details for testing. It should not be used outside
 // of pulumi-terraform-bridge.  This is an experimental API.
 func MakeMuxedServer(
-	ctx context.Context, schema []byte, info tfbridge.ProviderInfo,
+	ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte,
 ) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
@@ -142,7 +142,7 @@ func MakeMuxedServer(
 		marshalled := tfbridge.MarshalProviderInfo(&info)
 		data, err := json.Marshal(marshalled)
 		return muxer.GetMappingResponse{
-			Provider: info.Name,
+			Provider: pkg,
 			Data:     data,
 		}, err
 	}
@@ -170,10 +170,10 @@ func MakeMuxedServer(
 			default:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-						return tfbridge.NewProvider(ctx, host, info.Name, version, prov, info, schema), nil
+						return tfbridge.NewProvider(ctx, host, pkg, version, prov, info, schema), nil
 					}})
 			}
 		}
-		return m.Server(host, info.Name, version)
+		return m.Server(host, pkg, version)
 	}
 }
