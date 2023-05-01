@@ -649,8 +649,8 @@ func aliasResource(
 	if res == nil {
 		return
 	}
-
-	safeRange := func(r shim.Resource, f func(string, shim.Schema)) {
+	var walk func(*fieldHistory, *b.SchemaInfo, shim.Schema)
+	walkResource := func(r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo) {
 		if r == nil {
 			return
 		}
@@ -659,12 +659,15 @@ func aliasResource(
 			return
 		}
 		m.Range(func(k string, v shim.Schema) bool {
-			f(k, v)
+			walk(
+				getNonNil(hist, k),
+				getNonNil(info, k),
+				v,
+			)
 			return true
 		})
 	}
 
-	var walk func(*fieldHistory, *b.SchemaInfo, shim.Schema)
 	walk = func(h *fieldHistory, info *b.SchemaInfo, schema shim.Schema) {
 		if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
 			// MaxItemsOne does not apply, so do nothing
@@ -689,13 +692,7 @@ func aliasResource(
 				info.Elem = &b.SchemaInfo{}
 			}
 
-			safeRange(e, func(k string, v shim.Schema) {
-				walk(
-					getNonNil(&h.Elem.Fields, k),
-					getNonNil(&info.Elem.Fields, k),
-					v,
-				)
-			})
+			walkResource(e, &h.Elem.Fields, &info.Elem.Fields)
 		case shim.Schema:
 			if h.Elem == nil {
 				h.Elem = &fieldHistory{}
@@ -713,13 +710,7 @@ func aliasResource(
 		hist[tfToken].Fields = nil
 	}
 
-	safeRange(res, func(k string, v shim.Schema) {
-		walk(
-			getNonNil(&hist[tfToken].Fields, k),
-			getNonNil(&computed.Fields, k),
-			v,
-		)
-	})
+	walkResource(res, &hist[tfToken].Fields, &computed.Fields)
 }
 
 func getNonNil[K comparable, V any](m *map[K]*V, key K) *V {
