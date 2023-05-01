@@ -10,6 +10,9 @@ config "objectListConfig" "list(object({firstMember=number, secondMember=string}
     secondMember = "hello"
   }]
 }
+config "objectListConfigEmpty" "list(object({firstMember=number, secondMember=string}))" {
+  default = []
+}
 config "objectMapConfig" "map(object({firstMember=number, secondMember=string}))" {
   default = {
     hello = {
@@ -17,6 +20,9 @@ config "objectMapConfig" "map(object({firstMember=number, secondMember=string}))
       secondMember = "hello"
     }
   }
+}
+config "objectMapConfigEmpty" "map(object({firstMember=number, secondMember=string}))" {
+  default = {}
 }
 resource "usingSimpleObjectConfig" "simple:index:resource" {
   inputOne = simpleObjectConfig.firstMember

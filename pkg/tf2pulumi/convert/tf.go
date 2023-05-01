@@ -1425,8 +1425,13 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 // camelCaseObjectAttributes rewrites the attributes of objects to camelCase and returns the modified value.
 // when the input is a list of objects or map of objects, those are modified recursively.
 func camelCaseObjectAttributes(value cty.Value) cty.Value {
+	// if the value is null, return as is
+	if value.IsNull() {
+		return value
+	}
+
 	// handle type object({...})
-	if value.Type().IsObjectType() {
+	if value.Type().IsObjectType() && value.LengthInt() > 0 {
 		modifiedAttributes := map[string]cty.Value{}
 		for propertyKey, propertyValue := range value.AsValueMap() {
 			modifiedValue := camelCaseObjectAttributes(propertyValue)
@@ -1436,7 +1441,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 	}
 
 	// handle type list(...)
-	if value.Type().IsListType() {
+	if value.Type().IsListType() && value.LengthInt() > 0 {
 		modifiedValues := make([]cty.Value, value.LengthInt())
 		for index, element := range value.AsValueSlice() {
 			modifiedValues[index] = camelCaseObjectAttributes(element)
@@ -1447,7 +1452,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 
 	// handle set(...) and convert it to list(...)
 	// because we simplify sets to lists
-	if value.Type().IsSetType() {
+	if value.Type().IsSetType() && value.LengthInt() > 0 {
 		modifiedValues := make([]cty.Value, value.LengthInt())
 		for index, element := range value.AsValueSet().Values() {
 			modifiedValues[index] = camelCaseObjectAttributes(element)
@@ -1456,7 +1461,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 		return cty.ListVal(modifiedValues)
 	}
 
-	if value.Type().IsTupleType() {
+	if value.Type().IsTupleType() && value.LengthInt() > 0 {
 		tupleValues := make([]cty.Value, value.LengthInt())
 		for index, element := range value.AsValueSlice() {
 			tupleValues[index] = camelCaseObjectAttributes(element)
@@ -1466,7 +1471,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 	}
 
 	// handle type map(object({...}))
-	if value.Type().IsMapType() {
+	if value.Type().IsMapType() && value.LengthInt() > 0 {
 		modifiedAttributes := map[string]cty.Value{}
 		for propertyKey, propertyValue := range value.AsValueMap() {
 			modifiedValue := camelCaseObjectAttributes(propertyValue)
