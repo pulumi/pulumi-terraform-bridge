@@ -45,7 +45,9 @@ func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Prov
 	return p
 }
 
-func augmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) (*ProviderShim, []string, []string) {
+func augmentShimWithPF(
+	ctx context.Context, shim shim.Provider, pf provider.Provider,
+) (*ProviderShim, []string, []string) {
 	var p ProviderShim
 	if alreadyMerged, ok := shim.(*ProviderShim); ok {
 		p = *alreadyMerged
