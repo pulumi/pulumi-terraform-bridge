@@ -29,7 +29,18 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provide
 
 // MuxShimWithPF initializes a shim.Provider that will server resources from both shim and p.
 //
+// If shim and p both define the same token, then the value from shim will be used.
+//
 // To create a muxed provider, ProviderInfo.P must be the result of this function.
 func MuxShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
 	return muxer.AugmentShimWithPF(ctx, shim, p)
+}
+
+// MuxShimWithDisjointgPF initializes a shim.Provider that will server resources from both shim and p.
+//
+// This function will panic if shim and p both define the same token.
+//
+// To create a muxed provider, ProviderInfo.P must be the result of this function.
+func MuxShimWithDisjointgPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
+	return muxer.AugmentShimWithDisjointPF(ctx, shim, p)
 }
