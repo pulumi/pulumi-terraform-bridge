@@ -30,7 +30,6 @@ type blockSchema struct {
 }
 
 func newBlockSchema(key string, block pfutils.Block) *blockSchema {
-	fmt.Println("newBlockSchema", key, block)
 	return &blockSchema{key, block}
 }
 
