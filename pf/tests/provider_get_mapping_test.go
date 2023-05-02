@@ -64,7 +64,7 @@ func TestMuxedGetMapping(t *testing.T) {
 
 	info := testprovider.MuxedRandomProvider()
 
-	server, err := tfbridge.MakeMuxedServer(ctx, genSDKSchema(t, info), info)(nil)
+	server, err := tfbridge.MakeMuxedServer(ctx, "muxedrandom", info, genSDKSchema(t, info))(nil)
 	require.NoError(t, err)
 
 	req := func(key string) (context.Context, *pulumirpc.GetMappingRequest) {
