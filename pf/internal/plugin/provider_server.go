@@ -28,6 +28,8 @@ import (
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 type providerServer struct {
@@ -36,10 +38,18 @@ type providerServer struct {
 	provider      ProviderWithContext
 	keepSecrets   bool
 	keepResources bool
+
+	configEncoding tfbridge.ConfigEncoding
 }
 
-func NewProviderServerWithContext(provider ProviderWithContext) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+func NewProviderServerWithContext(
+	provider ProviderWithContext,
+	configEncoding *tfbridge.ConfigEncoding,
+) pulumirpc.ResourceProviderServer {
+	return &providerServer{
+		provider:       provider,
+		configEncoding: *configEncoding,
+	}
 }
 
 func (p *providerServer) unmarshalOptions(label string) pl.MarshalOptions {
@@ -175,14 +185,14 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 ) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
-	state, err := pl.UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("olds"))
+	state, err := p.configEncoding.UnmarshalProperties(req.GetOlds())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CheckConfig failed to unmarshal olds: %w", err)
 	}
 
-	inputs, err := pl.UnmarshalProperties(req.GetNews(), p.unmarshalOptions("news"))
+	inputs, err := p.configEncoding.UnmarshalProperties(req.GetNews())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CheckConfig failed to unmarshal news: %w", err)
 	}
 
 	newInputs, failures, err := p.provider.CheckConfigWithContext(ctx, urn, state, inputs, true)
@@ -190,9 +200,9 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, p.checkNYI("CheckConfig", err)
 	}
 
-	rpcInputs, err := pl.MarshalProperties(newInputs, p.marshalOptions("inputs"))
+	rpcInputs, err := p.configEncoding.MarshalProperties(newInputs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CheckConfig failed to marshal updated news: %w", err)
 	}
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
@@ -206,14 +216,14 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
-	state, err := pl.UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("state"))
+	state, err := p.configEncoding.UnmarshalProperties(req.GetOlds())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DiffConfig failed to unmarshal olds: %w", err)
 	}
 
-	inputs, err := pl.UnmarshalProperties(req.GetNews(), p.unmarshalOptions("inputs"))
+	inputs, err := p.configEncoding.UnmarshalProperties(req.GetNews())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DiffConfig failed to unmarshal news: %w", err)
 	}
 
 	diff, err := p.provider.DiffConfigWithContext(ctx, urn, state, inputs, true, req.GetIgnoreChanges())
@@ -228,9 +238,9 @@ func (p *providerServer) Configure(ctx context.Context,
 ) (*pulumirpc.ConfigureResponse, error) {
 	var inputs resource.PropertyMap
 	if req.GetArgs() != nil {
-		args, err := pl.UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
+		args, err := p.configEncoding.UnmarshalProperties(req.GetArgs())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Configure failed to unmarshal args: %w", err)
 		}
 		inputs = args
 	} else {

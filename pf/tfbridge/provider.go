@@ -38,7 +38,10 @@ import (
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -159,8 +162,11 @@ func NewProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	p.(*provider).logSink = logSink
-	return pl.NewProviderServerWithContext(p), nil
+	pp := p.(*provider)
+
+	pp.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyShimProvider.Schema(), pp.info.ProviderInfo.Config)
+	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
