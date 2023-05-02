@@ -650,61 +650,147 @@ func aliasResource(
 		return
 	}
 
-	safeRange := func(r shim.Resource, f func(string, shim.Schema)) {
+	// When walking the schema tree for a resource, we create mirroring trees in
+	// *fieldHistory and *b.SchemaInfo. To avoid polluting either tree (and
+	// interfering with other actions such as SetAutonaming), we clean up the paths
+	// that we created but did not store any information into.
+	//
+	// For example, consider the schema for a field of type `Object{ Key1:
+	// List[String] }`.  The schema tree for this field looks like this:
+	//
+	//     Object:
+	//       Fields:
+	//         Key1:
+	//           List:
+	//             Elem:
+	//               String
+	//
+	// When we walk the tree, we create an almost identical history tree:
+	//
+	//     Object:
+	//       Fields:
+	//         Key1:
+	//           List:
+	//             MaxItemsOne: false
+	//             Elem:
+	//               String
+	//
+	// We stored the additional piece of information `MaxItemsOne: false`. We need to
+	// keep enough of the tree to maintain that information, but no more. We can
+	// discard the unnecessary `Elem: String`.
+	//
+	// This keeps the tree as clean as possible for other processes which expect a
+	// `nil` element when making changes. Since other processes (like SetAutonaming)
+	// act on edge nodes (like our String), this allows us to inter-operate with them
+	// without interference.
+
+	// walk traverses a generic shim.Schema recursively, applying fieldHistory to
+	// SchemaInfo and vise versa as necessary to avoid breaking changes in the
+	// resulting sdk.
+	//
+	// We declare walk ahead of its implementation so that (1) walkResource and walk
+	// can be mutually recursive and (2) walk can be self-recursive.
+	var walk func(shim.Schema, *fieldHistory, *b.SchemaInfo) (bool, bool)
+
+	// walkResource traverses a shim.Resource, applying walk to each field in the resource.
+	walkResource := func(r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo) (bool, bool) {
 		if r == nil {
-			return
+			return hist != nil, info != nil
 		}
 		m := r.Schema()
 		if m == nil {
-			return
+			return hist != nil, info != nil
 		}
+
+		var rHasH, rHasI bool
+
 		m.Range(func(k string, v shim.Schema) bool {
-			f(k, v)
+			h, hasH := getNonNil(hist, k)
+			i, hasI := getNonNil(info, k)
+			fieldHasHist, fieldHasInfo := walk(v, h, i)
+
+			hasH = hasH || fieldHasHist
+			hasI = hasI || fieldHasInfo
+
+			if !hasH {
+				delete(*hist, k)
+			}
+			if !hasI {
+				delete(*info, k)
+			}
+
+			rHasH = rHasH || hasH
+			rHasI = rHasI || hasI
+
 			return true
 		})
+
+		return rHasH, rHasI
 	}
 
-	var walk func(*fieldHistory, *b.SchemaInfo, shim.Schema)
-	walk = func(h *fieldHistory, info *b.SchemaInfo, schema shim.Schema) {
+	walk = func(schema shim.Schema, h *fieldHistory, info *b.SchemaInfo) (hasH bool, hasI bool) {
 		if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
 			// MaxItemsOne does not apply, so do nothing
 		} else if info.MaxItemsOne != nil {
 			// The user has overwritten the value, so we will just record that.
 			h.MaxItemsOne = info.MaxItemsOne
+			hasH = true
 		} else if h.MaxItemsOne != nil {
 			// If we have a previous value in the history, we keep it as is.
 			info.MaxItemsOne = h.MaxItemsOne
+			hasI = true
 		} else {
 			// There is no history for this value, so we bake it into the
 			// alias history.
 			h.MaxItemsOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
+			hasH = true
 		}
+
+		// Ensure that the h.Elem and info.Elem fields are non-nil so they can be
+		// safely recursed on.
+		//
+		// If the .Elem existed before this function, we mark it as unsafe to cleanup.
+		var hasElemH, hasElemI bool
+		populateElem := func() {
+			if h.Elem == nil {
+				h.Elem = &fieldHistory{}
+			} else {
+				hasElemH = true
+			}
+			if info.Elem == nil {
+				info.Elem = &b.SchemaInfo{}
+			} else {
+				hasElemI = true
+			}
+		}
+		// Cleanup after we have walked a .Elem value.
+		//
+		// If the .Elem field was created in populateElem and the field was not
+		// changed, we then delete the field.
+		cleanupElem := func(elemHist, elemInfo bool) {
+			hasElemH = hasElemH || elemHist
+			hasElemI = hasElemI || elemInfo
+			if !hasElemH {
+				h.Elem = nil
+			}
+			if !hasElemI {
+				info.Elem = nil
+			}
+		}
+
 		e := schema.Elem()
 		switch e := e.(type) {
 		case shim.Resource:
-			if h.Elem == nil {
-				h.Elem = &fieldHistory{}
-			}
-			if info.Elem == nil {
-				info.Elem = &b.SchemaInfo{}
-			}
-
-			safeRange(e, func(k string, v shim.Schema) {
-				walk(
-					getNonNil(&h.Elem.Fields, k),
-					getNonNil(&info.Elem.Fields, k),
-					v,
-				)
-			})
+			populateElem()
+			eHasH, eHasI := walkResource(e, &h.Elem.Fields, &info.Elem.Fields)
+			cleanupElem(eHasH, eHasI)
 		case shim.Schema:
-			if h.Elem == nil {
-				h.Elem = &fieldHistory{}
-			}
-			if info.Elem == nil {
-				info.Elem = &b.SchemaInfo{}
-			}
-			walk(h.Elem, info.Elem, e)
+			populateElem()
+			eHasH, eHasI := walk(e, h.Elem, info.Elem)
+			cleanupElem(eHasH, eHasI)
 		}
+
+		return hasH || hasElemH, hasI || hasElemI
 	}
 
 	// If we are behind the major version, reset the fields and the major version.
@@ -713,27 +799,24 @@ func aliasResource(
 		hist[tfToken].Fields = nil
 	}
 
-	safeRange(res, func(k string, v shim.Schema) {
-		walk(
-			getNonNil(&hist[tfToken].Fields, k),
-			getNonNil(&computed.Fields, k),
-			v,
-		)
-	})
+	walkResource(res, &hist[tfToken].Fields, &computed.Fields)
 }
 
-func getNonNil[K comparable, V any](m *map[K]*V, key K) *V {
+func getNonNil[K comparable, V any](m *map[K]*V, key K) (_ *V, alreadyThere bool) {
 	contract.Assertf(m != nil, "Cannot restore map if ptr is nil")
 	if *m == nil {
 		*m = map[K]*V{}
 	}
 	v := (*m)[key]
+
 	if v == nil {
 		var new V
 		v = &new
 		(*m)[key] = v
+	} else {
+		alreadyThere = true
 	}
-	return v
+	return v, alreadyThere
 }
 
 func aliasOrRenameResource(
