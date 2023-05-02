@@ -33,7 +33,6 @@ func TestConfigure(t *testing.T) {
       }
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     }

@@ -44,7 +44,6 @@ func TestReadFromRefresh(t *testing.T) {
 	    "acceptResources": true
 	  },
 	  "response": {
-	    "acceptSecrets": true,
 	    "supportsPreview": true,
 	    "acceptResources": true
 	  },

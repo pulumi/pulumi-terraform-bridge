@@ -148,7 +148,7 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	}, nil
 }
 
-func newProviderServer(
+func NewProviderServer(
 	ctx context.Context,
 	logSink logutils.LogSink,
 	info ProviderInfo,
