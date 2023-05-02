@@ -162,7 +162,7 @@ func MakeMuxedServer(
 			case *schemashim.SchemaOnlyProvider:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-						return newProviderServer(ctx, host, ProviderInfo{
+						return NewProviderServer(ctx, host, ProviderInfo{
 							ProviderInfo: info,
 							NewProvider:  prov.PfProvider,
 						}, ProviderMetadata{PackageSchema: schema})

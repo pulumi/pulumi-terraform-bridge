@@ -148,7 +148,8 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 	}, nil
 }
 
-func newProviderServer(
+// Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
+func NewProviderServer(
 	ctx context.Context,
 	logSink logutils.LogSink,
 	info ProviderInfo,

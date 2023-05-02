@@ -120,7 +120,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -370,7 +369,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -553,7 +551,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -834,11 +831,9 @@
     "method": "/pulumirpc.ResourceProvider/Configure",
     "request": {
       "args": {},
-      "acceptSecrets": true,
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -1091,7 +1086,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -1193,7 +1187,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -1518,7 +1511,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
@@ -1810,7 +1802,6 @@
       "acceptResources": true
     },
     "response": {
-      "acceptSecrets": true,
       "supportsPreview": true,
       "acceptResources": true
     },
