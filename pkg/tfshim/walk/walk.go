@@ -112,7 +112,7 @@ func (step GetAttrStep) GoString() string {
 }
 
 func (step GetAttrStep) Lookup(s shim.Schema) (shim.Schema, error) {
-	if sm, ok := UnwrapSchemaMap(s); ok {
+	if sm, ok := unwrapSchemaMap(s); ok {
 		s, found := sm.GetOk(step.Name)
 		if !found {
 			return nil, fmt.Errorf("%s not found", step.GoString())
@@ -157,7 +157,7 @@ func wrapSchemaMap(sm shim.SchemaMap) shim.Schema {
 }
 
 // Utility function to recognize nested object field type schemas encoded in shim.Schema.
-func UnwrapSchemaMap(s shim.Schema) (shim.SchemaMap, bool) {
+func unwrapSchemaMap(s shim.Schema) (shim.SchemaMap, bool) {
 	switch elem := s.Elem().(type) {
 	case shim.Resource:
 		return elem.Schema(), true
