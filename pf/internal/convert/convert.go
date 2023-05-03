@@ -41,44 +41,9 @@ type Encoding interface {
 	NewDataSourceEncoder(tokens.ModuleMember, tftypes.Object) (Encoder, error)
 }
 
-type PropertyNames interface {
-	// Translates a Terraform property name for a given type to a Pulumi PropertyKey.
-	//
-	// typeToken identifies the resource, data source, or named object type.
-	PropertyKey(typeToken tokens.Token, property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-
-	// Same as PropertyKey but for provider-level configuration properties.
-	ConfigPropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-}
-
 // Like PropertyNames but specialized to either a type by token or config property.
 type LocalPropertyNames interface {
 	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-}
-
-type typeLocalPropertyNames struct {
-	propertyNames PropertyNames
-	typeToken     tokens.Token
-}
-
-func (l *typeLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return l.propertyNames.PropertyKey(l.typeToken, property, t)
-}
-
-func NewTypeLocalPropertyNames(pn PropertyNames, tok tokens.Token) LocalPropertyNames {
-	return &typeLocalPropertyNames{pn, tok}
-}
-
-type configLocalPropertyNames struct {
-	propertyNames PropertyNames
-}
-
-func (l *configLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return l.propertyNames.ConfigPropertyKey(property, t)
-}
-
-func NewConfigPropertyNames(pn PropertyNames) LocalPropertyNames {
-	return &configLocalPropertyNames{pn}
 }
 
 type Encoder interface {
