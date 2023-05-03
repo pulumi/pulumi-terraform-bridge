@@ -94,6 +94,8 @@ func LookupSchemaMapPath(path SchemaPath, schemaMap shim.SchemaMap) (shim.Schema
 //
 // This interface is closed, the only the implementations given in the current package are allowed.
 type SchemaPathStep interface {
+	isSchemaPathStep()
+
 	GoString() string
 	Lookup(shim.Schema) (shim.Schema, error)
 }
@@ -102,6 +104,8 @@ type SchemaPathStep interface {
 type GetAttrStep struct {
 	Name string
 }
+
+func (GetAttrStep) isSchemaPathStep() {}
 
 func (step GetAttrStep) GoString() string {
 	return fmt.Sprintf("walk.GetAttrStep{%q}", step.Name)
@@ -120,6 +124,8 @@ func (step GetAttrStep) Lookup(s shim.Schema) (shim.Schema, error) {
 
 // Drill down into a Map, Set or List element schema.
 type ElementStep struct{}
+
+func (ElementStep) isSchemaPathStep() {}
 
 func (step ElementStep) GoString() string {
 	return "walk.ElementStep{}"
