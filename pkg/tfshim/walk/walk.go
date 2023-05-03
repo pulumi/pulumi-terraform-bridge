@@ -29,7 +29,7 @@ import (
 // Values of this type are immutable by convention, use Copy as necessary for local mutations.
 type SchemaPath []SchemaPathStep
 
-func (p SchemaPath) String() string {
+func (p SchemaPath) GoString() string {
 	parts := []string{"walk", "NewSchemaPath()"}
 	for _, e := range p {
 		switch ee := e.(type) {
@@ -79,7 +79,7 @@ func LookupSchemaPath(path SchemaPath, schema shim.Schema) (shim.Schema, error) 
 		}
 		nextResult, err := p[0].Lookup(result)
 		if err != nil {
-			return nil, fmt.Errorf("LookupSchemaPath failed at %s: %w", current, err)
+			return nil, fmt.Errorf("LookupSchemaPath failed at %s: %w", current.GoString(), err)
 		}
 		result, p, current = nextResult, p[1:], current.WithStep(p[0])
 	}
@@ -94,7 +94,7 @@ func LookupSchemaMapPath(path SchemaPath, schemaMap shim.SchemaMap) (shim.Schema
 //
 // This interface is closed, the only the implementations given in the current package are allowed.
 type SchemaPathStep interface {
-	String() string
+	GoString() string
 	Lookup(shim.Schema) (shim.Schema, error)
 }
 
@@ -103,7 +103,7 @@ type GetAttrStep struct {
 	Name string
 }
 
-func (step GetAttrStep) String() string {
+func (step GetAttrStep) GoString() string {
 	return fmt.Sprintf("walk.GetAttrStep{%q}", step.Name)
 }
 
@@ -111,17 +111,17 @@ func (step GetAttrStep) Lookup(s shim.Schema) (shim.Schema, error) {
 	if sm, ok := UnwrapSchemaMap(s); ok {
 		s, found := sm.GetOk(step.Name)
 		if !found {
-			return nil, fmt.Errorf("%s not found", step.String())
+			return nil, fmt.Errorf("%s not found", step.GoString())
 		}
 		return s, nil
 	}
-	return nil, fmt.Errorf("%s is not applicable", step.String())
+	return nil, fmt.Errorf("%s is not applicable", step.GoString())
 }
 
 // Drill down into a Map, Set or List element schema.
 type ElementStep struct{}
 
-func (step ElementStep) String() string {
+func (step ElementStep) GoString() string {
 	return "walk.ElementStep{}"
 }
 
@@ -130,16 +130,16 @@ func (step ElementStep) Lookup(s shim.Schema) (shim.Schema, error) {
 	case shim.Resource:
 		switch s.Type() {
 		case shim.TypeMap:
-			return nil, fmt.Errorf("%s is not applicable to object types", step.String())
+			return nil, fmt.Errorf("%s is not applicable to object types", step.GoString())
 		case shim.TypeList, shim.TypeSet:
 			return wrapSchemaMap(elem.Schema()), nil
 		default:
-			return nil, fmt.Errorf("%s is not applicable", step.String())
+			return nil, fmt.Errorf("%s is not applicable", step.GoString())
 		}
 	case shim.Schema:
 		return elem, nil
 	default:
-		return nil, fmt.Errorf("%s is not applicable", step.String())
+		return nil, fmt.Errorf("%s is not applicable", step.GoString())
 	}
 }
 
