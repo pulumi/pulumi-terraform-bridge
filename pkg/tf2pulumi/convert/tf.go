@@ -1516,6 +1516,16 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 		modifiedDefault := camelCaseObjectAttributes(variable.Default)
 		blockBody.SetAttributeValue("default", modifiedDefault)
 	}
+
+	if variable.Default.IsNull() && variable.Default.Type() != cty.NilType {
+		// default is null can mean two things:
+		//  - the default attribute is not set
+		//  - it is set explicitly to null
+		// Here we check whether default is set to null by checking that it has a type
+		// We write it out as such
+		blockBody.SetAttributeValue("default", cty.NilVal)
+	}
+
 	if variable.DescriptionSet {
 		blockBody.SetAttributeValue("description", cty.StringVal(variable.Description))
 	}
