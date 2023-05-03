@@ -34,12 +34,12 @@ type SchemaPath []SchemaPathStep
 
 func (p SchemaPath) GoString() string {
 	parts := []string{"walk", "NewSchemaPath()"}
-	for _, e := range p {
-		switch ee := e.(type) {
+	for _, step := range p {
+		switch s := step.(type) {
 		case ElementStep:
 			parts = append(parts, "Element()")
 		case GetAttrStep:
-			parts = append(parts, fmt.Sprintf("GetAttr(%q)", ee.Name))
+			parts = append(parts, fmt.Sprintf("GetAttr(%q)", s.Name))
 		}
 	}
 	return strings.Join(parts, ".")
@@ -206,8 +206,8 @@ func visitSchemaMapInner(path SchemaPath, schemaMap shim.SchemaMap, visitor Sche
 	})
 }
 
-// Converts a value path to a Schema Path (hashicorp/go-cty representation).
-func FromHCtyPath(path cty.Path) SchemaPath {
+// Converts a value path to a Schema Path (zclconf package representation).
+func FromCtyPath(path cty.Path) SchemaPath {
 	p := NewSchemaPath()
 	for _, subPath := range path {
 		switch s := subPath.(type) {
@@ -220,8 +220,8 @@ func FromHCtyPath(path cty.Path) SchemaPath {
 	return p
 }
 
-// Converts a value path to a Schema Path (zclconf package representation).
-func FromCtyPath(path hcty.Path) SchemaPath {
+// Converts a value path to a Schema Path (hashicorp/go-cty representation).
+func FromHCtyPath(path hcty.Path) SchemaPath {
 	p := NewSchemaPath()
 	for _, subPath := range path {
 		switch s := subPath.(type) {
