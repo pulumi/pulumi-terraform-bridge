@@ -1300,6 +1300,11 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 	// If we see blocks we turn those into lists (unless maxItems==1)
 	blockLists := make(map[string][]bodyAttrsTokens)
 	for _, block := range content.Blocks {
+		if block.Type == "timeouts" {
+			// Timeouts are a special resource option block, we can't currently convert that PCL so just skip
+			continue
+		}
+
 		if block.Type == "dynamic" {
 			dynamicBody, ok := block.Body.(*hclsyntax.Body)
 			contract.Assertf(ok, "%T was not a hclsyntax.Body", dynamicBody)
