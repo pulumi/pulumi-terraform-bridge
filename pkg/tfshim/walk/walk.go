@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	hcty "github.com/hashicorp/go-cty/cty"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -201,4 +204,32 @@ func visitSchemaMapInner(path SchemaPath, schemaMap shim.SchemaMap, visitor Sche
 		visitSchemaInner(path.GetAttr(key), schema, visitor)
 		return true
 	})
+}
+
+// Converts a value path to a Schema Path (hashicorp/go-cty representation).
+func FromHCtyPath(path cty.Path) SchemaPath {
+	p := NewSchemaPath()
+	for _, subPath := range path {
+		switch s := subPath.(type) {
+		case cty.IndexStep:
+			p = p.Element()
+		case cty.GetAttrStep:
+			p = p.GetAttr(s.Name)
+		}
+	}
+	return p
+}
+
+// Converts a value path to a Schema Path (zclconf package representation).
+func FromCtyPath(path hcty.Path) SchemaPath {
+	p := NewSchemaPath()
+	for _, subPath := range path {
+		switch s := subPath.(type) {
+		case hcty.IndexStep:
+			p = p.Element()
+		case hcty.GetAttrStep:
+			p = p.GetAttr(s.Name)
+		}
+	}
+	return p
 }
