@@ -2242,7 +2242,8 @@ func translateModuleSourceCode(
 			moduleCall := item.moduleCall
 			scopes.getOrAddPulumiName("module."+moduleCall.Name, "", "Component")
 
-			// First things first, check if this module has been seen before. If it has, we don't need to translate it again.
+			// First things first, check if this module has been seen before. If it has, we don't need to
+			// translate it again.
 			if _, has := modules[moduleCall.SourceAddr]; !has {
 				// We need the source code for this module. But it might be a reference to a module from the
 				// registry (e.g. "terraform-aws-modules/s3-bucket/aws")
@@ -2251,7 +2252,18 @@ func translateModuleSourceCode(
 				switch addr := addr.(type) {
 				case addrs.ModuleSourceLocal:
 					// Local modules are the simplest case, the module is in the same package just at a
-					// different path.
+					// different path. We need to do another check for uniquness here though as multiple
+					// terraform modules may refer to the same destination module but via different relative
+					// paths. When we store the module in the modules map we'll store the relative path, but
+					// also the absolute path to allow this lookup to hit later.
+					absoluteAddr := addrs.ModuleSourceLocal(
+						filepath.Clean(filepath.Join(sourceDirectory, string(addr))))
+					if destinationPath, has := modules[absoluteAddr]; has {
+						// We've already seen this module, just save this new relative address
+						modules[addr] = destinationPath
+						continue
+					}
+
 					sourcePath := filepath.Join(sourceDirectory, addr.String())
 					destinationPath := filepath.Join(destinationDirectory, addr.String())
 					// Check that this path isn't already taken
@@ -2269,6 +2281,7 @@ func translateModuleSourceCode(
 						}
 					}
 					modules[addr] = destinationPath
+					modules[absoluteAddr] = destinationPath
 
 					diags := translateModuleSourceCode(
 						modules,
