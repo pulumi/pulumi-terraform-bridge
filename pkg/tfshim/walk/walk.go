@@ -170,15 +170,15 @@ type SchemaVisitor = func(SchemaPath, shim.Schema)
 
 // Visit all nested schemas, including the current one.
 func VisitSchema(schema shim.Schema, visitor SchemaVisitor) {
-	walkSchemaInner(NewSchemaPath(), schema, visitor)
+	visitSchemaInner(NewSchemaPath(), schema, visitor)
 }
 
 // Visit all nested schemas in a SchemaMap, keeping track of SchemaPath location.
 func VisitSchemaMap(schemaMap shim.SchemaMap, visitor SchemaVisitor) {
-	walkSchemaMapInner(NewSchemaPath(), schemaMap, visitor)
+	visitSchemaMapInner(NewSchemaPath(), schemaMap, visitor)
 }
 
-func walkSchemaInner(path SchemaPath, schema shim.Schema, visitor SchemaVisitor) {
+func visitSchemaInner(path SchemaPath, schema shim.Schema, visitor SchemaVisitor) {
 	visitor(path, schema)
 	switch elem := schema.Elem().(type) {
 	case shim.Resource:
@@ -190,15 +190,15 @@ func walkSchemaInner(path SchemaPath, schema shim.Schema, visitor SchemaVisitor)
 		} else {
 			nestedPath = path.Element()
 		}
-		walkSchemaMapInner(nestedPath, elem.Schema(), visitor)
+		visitSchemaMapInner(nestedPath, elem.Schema(), visitor)
 	case shim.Schema:
-		walkSchemaInner(path.Element(), elem, visitor)
+		visitSchemaInner(path.Element(), elem, visitor)
 	}
 }
 
-func walkSchemaMapInner(path SchemaPath, schemaMap shim.SchemaMap, visitor SchemaVisitor) {
+func visitSchemaMapInner(path SchemaPath, schemaMap shim.SchemaMap, visitor SchemaVisitor) {
 	schemaMap.Range(func(key string, schema shim.Schema) bool {
-		walkSchemaInner(path.GetAttr(key), schema, visitor)
+		visitSchemaInner(path.GetAttr(key), schema, visitor)
 		return true
 	})
 }
