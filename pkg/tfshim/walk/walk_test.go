@@ -15,11 +15,11 @@
 package walk
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"fmt"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -63,8 +63,6 @@ func TestLookupSchemaPath(t *testing.T) {
 		path   SchemaPath
 		expect any
 	}
-
-	/* this is still confusing */
 
 	testCases := []testCase{
 		{
