@@ -104,6 +104,10 @@ output "for_object" {
     value = {for key, value in ["a", "b"] : key => "${value}:${local.a_value}" if key != 0}
 }
 
+output "for_object_grouping" {
+    value = {for key, value in ["a", "a", "b"] : key => value... if key > 0}
+}
+
 output "relative_traversal_attr" {
     value = local.a_list_of_maps[0].x
 }

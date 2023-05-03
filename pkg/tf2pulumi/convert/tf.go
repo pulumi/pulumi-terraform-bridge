@@ -1047,10 +1047,6 @@ func convertUnaryOpExpr(sources map[string][]byte, scopes *scopes,
 func convertForExpr(sources map[string][]byte, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ForExpr,
 ) hclwrite.Tokens {
-	if expr.Group {
-		contract.Failf("ForExpr.Group is not handled")
-	}
-
 	// The collection doesn't yet have access to the key/value scopes
 	collTokens := convertExpression(sources, scopes, "", expr.CollExpr)
 
@@ -1103,6 +1099,11 @@ func convertForExpr(sources map[string][]byte, scopes *scopes,
 
 	// Write the value part
 	tokens = append(tokens, valueTokens...)
+
+	// Write the ellipsis part (if present)
+	if expr.Group {
+		tokens = append(tokens, makeToken(hclsyntax.TokenEllipsis, "..."))
+	}
 
 	// Write the conditional part (if present)
 	if condTokens != nil {
