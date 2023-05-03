@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-// Represents locations in a Schema value as a sequence of steps to locate it.
+// Represents locations in a tfshim.Schema value as a sequence of steps to locate it.
 //
 // An empty SchemaPath represents the current location.
 //
