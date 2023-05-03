@@ -84,6 +84,9 @@ output "forTupleValueOnlyAttr" {
 output "forObject" {
   value = { for key, value in ["a", "b"] : key => "${value}:${aValue}" if key != 0 }
 }
+output "forObjectGrouping" {
+  value = { for key, value in ["a", "a", "b"] : key => value... if key > 0 }
+}
 output "relativeTraversalAttr" {
   value = aListOfMaps[0].x
 }
