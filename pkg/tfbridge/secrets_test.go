@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package tfbridge
 
 import (
 	"context"
@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -62,7 +61,7 @@ func TestMarkSchemaSecrets(t *testing.T) {
 
 	yes, no := true, false
 
-	configInfos := map[string]*tfbridge.SchemaInfo{
+	configInfos := map[string]*SchemaInfo{
 		"simple_string_prop": {
 			Secret: &yes,
 		},

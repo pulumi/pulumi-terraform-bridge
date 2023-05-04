@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"

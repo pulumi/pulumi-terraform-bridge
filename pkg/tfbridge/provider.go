@@ -301,18 +301,9 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
 	glog.V(9).Infof("%s executing", label)
 
-	marshalOptions := plugin.MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: true,
-		SkipNulls:    true,
-		RejectAssets: true,
-	}
+	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
-	configEnc := newConfigEncoding(p.config, p.info.Config)
-
-	secrets := configEnc.ComputeSecrets(req.GetNews(), marshalOptions)
-
-	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews(), marshalOptions)
+	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews())
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
@@ -356,8 +347,11 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, validationErrors
 	}
 
+	// Ensure propreties marked secret in the schema have secret values.
+	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
+
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
-	newsStruct, err := configEnc.MarshalProperties(configEnc.MarkSecrets(secrets, news), marshalOptions)
+	newsStruct, err := configEnc.MarshalProperties(secretNews)
 	if err != nil {
 		return nil, err
 	}
@@ -524,18 +518,9 @@ func (p *Provider) Configure(ctx context.Context,
 
 	p.setLoggingContext(ctx)
 
-	label := fmt.Sprintf("%s.Configure()", p.label())
+	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
-	marshalOptions := plugin.MarshalOptions{
-		Label:        fmt.Sprintf("%s.args", label),
-		KeepUnknowns: true,
-		SkipNulls:    true,
-		RejectAssets: true,
-	}
-
-	configEnc := newConfigEncoding(p.config, p.info.Config)
-
-	configMap, err := configEnc.UnmarshalProperties(req.GetArgs(), marshalOptions)
+	configMap, err := configEnc.UnmarshalProperties(req.GetArgs())
 	if err != nil {
 		return nil, err
 	}

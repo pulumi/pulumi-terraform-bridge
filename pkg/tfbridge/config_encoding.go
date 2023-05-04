@@ -22,41 +22,35 @@ import (
 	"github.com/golang/protobuf/ptypes/struct"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-type configEncoding struct {
-	fieldTypes      map[resource.PropertyKey]shim.ValueType
-	sensitiveFields map[resource.PropertyKey]struct{}
+type ConfigEncoding struct {
+	fieldTypes map[resource.PropertyKey]shim.ValueType
 }
 
-func newConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo) *configEncoding {
+func NewConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo) *ConfigEncoding {
 	var tfKeys []string
 	config.Range(func(tfKey string, value shim.Schema) bool {
 		tfKeys = append(tfKeys, tfKey)
 		return true
 	})
 	fieldTypes := make(map[resource.PropertyKey]shim.ValueType)
-	sensitiveFields := make(map[resource.PropertyKey]struct{})
 
 	for _, tfKey := range tfKeys {
 		pulumiKey := resource.PropertyKey(TerraformToPulumiNameV2(tfKey, config, configInfos))
 		schema := config.Get(tfKey)
 		fieldTypes[pulumiKey] = schema.Type()
-		if containsSensitiveElements(schema) {
-			sensitiveFields[pulumiKey] = struct{}{}
-		}
 
 	}
-	return &configEncoding{
-		fieldTypes:      fieldTypes,
-		sensitiveFields: sensitiveFields,
+	return &ConfigEncoding{
+		fieldTypes: fieldTypes,
 	}
 }
 
-func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
+func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
 	// If the schema expects a string, we can just return this as-is.
 	if typ == shim.TypeString {
 		return resource.NewStringProperty(s), nil
@@ -65,16 +59,7 @@ func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType
 	// Otherwise, we will attempt to deserialize the input string as JSON and convert the result into a Pulumi
 	// property. If the input string is empty, we will return an appropriate zero value.
 	if s == "" {
-		switch typ {
-		case shim.TypeBool:
-			return resource.NewPropertyValue(false), nil
-		case shim.TypeInt, shim.TypeFloat:
-			return resource.NewPropertyValue(0), nil
-		case shim.TypeList, shim.TypeSet:
-			return resource.NewPropertyValue([]interface{}{}), nil
-		default:
-			return resource.NewPropertyValue(map[string]interface{}{}), nil
-		}
+		return enc.zeroValue(typ), nil
 	}
 
 	var jsonValue interface{}
@@ -84,50 +69,35 @@ func (*configEncoding) convertStringToPropertyValue(s string, typ shim.ValueType
 	return resource.NewPropertyValue(jsonValue), nil
 }
 
-// Compute an approximation of which properties should be secret. A property should be secret if it is statically marked
-// as secret in the schema, or has nested sub-properties marked in this way. A property should also be secret if the
-// dynamic value sent from the program is marked as secret.
-func (enc *configEncoding) ComputeSecrets(props *structpb.Struct,
-	opts plugin.MarshalOptions) map[resource.PropertyKey]struct{} {
-	opts.KeepSecrets = true
-
-	secrets := make(map[resource.PropertyKey]struct{})
-
-	for k := range enc.sensitiveFields {
-		secrets[k] = struct{}{}
+func (*ConfigEncoding) zeroValue(typ shim.ValueType) resource.PropertyValue {
+	switch typ {
+	case shim.TypeBool:
+		return resource.NewPropertyValue(false)
+	case shim.TypeInt, shim.TypeFloat:
+		return resource.NewPropertyValue(0)
+	case shim.TypeList, shim.TypeSet:
+		return resource.NewPropertyValue([]interface{}{})
+	default:
+		return resource.NewPropertyValue(map[string]interface{}{})
 	}
-
-	pm, err := enc.UnmarshalProperties(props, opts)
-	if err == nil {
-		for k, v := range pm {
-			if v.ContainsSecrets() {
-				secrets[k] = struct{}{}
-			}
-		}
-	}
-	return secrets
 }
 
-// Ensure that the sensitive top-level properties are marked as secret.
-func (enc *configEncoding) MarkSecrets(secrets map[resource.PropertyKey]struct{},
-	pm resource.PropertyMap) resource.PropertyMap {
-	copy := make(resource.PropertyMap)
-	for k, v := range pm {
-		_, secret := secrets[k]
-		if secret {
-			copy[k] = resource.MakeSecret(v)
-		} else {
-			copy[k] = v
-		}
+func (enc *ConfigEncoding) unmarshalOpts() plugin.MarshalOptions {
+	return plugin.MarshalOptions{
+		Label:        "config",
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
 	}
-	return copy
 }
 
 // Like plugin.UnmarshalPropertyValue but overrides string parsing with convertStringToPropertyValue.
-func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
-	opts plugin.MarshalOptions) (*resource.PropertyValue, error) {
+func (enc *ConfigEncoding) unmarshalPropertyValue(key resource.PropertyKey,
+	v *structpb.Value) (*resource.PropertyValue, error) {
 
-	pv, err := plugin.UnmarshalPropertyValue(key, v, opts)
+	opts := enc.unmarshalOpts()
+
+	pv, err := plugin.UnmarshalPropertyValue(key, v, enc.unmarshalOpts())
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
 	}
@@ -164,12 +134,22 @@ func (enc *configEncoding) UnmarshalPropertyValue(key resource.PropertyKey, v *s
 		return &v, nil
 	}
 
+	// Computed sentinels are coming in as always having an empty string, but the encoding coerses them to a zero
+	// value of the appropriate type.
+	if pv.IsComputed() && gotShimType {
+		el := pv.V.(resource.Computed).Element
+		if el.IsString() && el.StringValue() == "" {
+			res := resource.MakeComputed(enc.zeroValue(shimType))
+			return &res, nil
+		}
+	}
+
 	return pv, nil
 }
 
 // Inline from plugin.UnmarshalProperties substituting plugin.UnmarshalPropertyValue.
-func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
-	opts plugin.MarshalOptions) (resource.PropertyMap, error) {
+func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
+	opts := enc.unmarshalOpts()
 
 	result := make(resource.PropertyMap)
 
@@ -185,15 +165,12 @@ func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
 		pk := resource.PropertyKey(key)
-		v, err := enc.UnmarshalPropertyValue(pk, props.Fields[key], opts)
+		v, err := enc.unmarshalPropertyValue(pk, props.Fields[key])
 		if err != nil {
 			return nil, err
 		} else if v != nil {
-			logging.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 			if opts.SkipNulls && v.IsNull() {
-				logging.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is null", opts.Label, key)
 			} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(pk) {
-				logging.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is internal", opts.Label, key)
 			} else {
 				result[pk] = *v
 			}
@@ -204,9 +181,15 @@ func (enc *configEncoding) UnmarshalProperties(props *structpb.Struct,
 }
 
 // Inverse of UnmarshalProperties, with additional support for top-level (but not nested) secrets.
-func (enc *configEncoding) MarshalProperties(props resource.PropertyMap,
-	opts plugin.MarshalOptions) (*structpb.Struct, error) {
-	opts.KeepSecrets = true
+func (enc *ConfigEncoding) MarshalProperties(props resource.PropertyMap) (*structpb.Struct, error) {
+	opts := plugin.MarshalOptions{
+		Label:        "config",
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		RejectAssets: true,
+		KeepSecrets:  true,
+	}
+
 	copy := make(resource.PropertyMap)
 	for k, v := range props {
 		var err error
@@ -218,17 +201,17 @@ func (enc *configEncoding) MarshalProperties(props resource.PropertyMap,
 	return plugin.MarshalProperties(copy, opts)
 }
 
-func (enc *configEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
+func (enc *ConfigEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
 	v resource.PropertyValue) (resource.PropertyValue, error) {
 	if v.ContainsUnknowns() {
 		return resource.NewStringProperty(plugin.UnknownStringValue), nil
 	}
-	if v.IsSecret() {
-		encoded, err := enc.jsonEncodePropertyValue(k, v.SecretValue().Element)
+	if v.ContainsSecrets() {
+		encoded, err := enc.jsonEncodePropertyValue(k, propertyvalue.RemoveSecrets(v))
 		if err != nil {
 			return v, err
 		}
-		return resource.NewSecretProperty(&resource.Secret{Element: encoded}), err
+		return resource.MakeSecret(encoded), err
 	}
 	_, knownKey := enc.fieldTypes[k]
 	switch {
@@ -242,27 +225,5 @@ func (enc *configEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
 		return resource.NewStringProperty(string(encoded)), nil
 	default:
 		return v, nil
-	}
-}
-
-func containsSensitiveElements(x shim.Schema) bool {
-	if x.Sensitive() {
-		return true
-	}
-	switch elem := x.Elem().(type) {
-	case shim.Schema:
-		return containsSensitiveElements(elem)
-	case shim.Resource:
-		sensitive := false
-		s := elem.Schema()
-		s.Range(func(key string, value shim.Schema) bool {
-			if containsSensitiveElements(value) {
-				sensitive = true
-			}
-			return true
-		})
-		return sensitive
-	default:
-		return false
 	}
 }
