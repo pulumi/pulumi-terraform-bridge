@@ -16,16 +16,11 @@ package convert
 
 import (
 	"fmt"
-	//"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-
-	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type encoding struct {
@@ -205,12 +200,7 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 			}
 			return newSetEncoder(tt.ElementType, elementEncoder)
 		case tftypes.Tuple:
-			// 	tok, referredType, err := e.resolveRef(typeSpec.Ref)
-			// 	if err != nil {
-			// 		return nil, fmt.Errorf("expected a Tuple type: %w", err)
-			// 	}
-			// 	return e.deriveTupleEncoder(tokens.Type(tok), referredType, t)
-			panic("tuple")
+			return e.deriveTupleEncoder(pctx, tt)
 		default:
 			return nil, fmt.Errorf("Cannot build an encoder for type %v", t)
 		}
@@ -263,12 +253,7 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 			}
 			return newSetDecoder(elementDecoder)
 		case tftypes.Tuple:
-			// 	tok, referredType, err := e.resolveRef(typeSpec.Ref)
-			// 	if err != nil {
-			// 		return nil, fmt.Errorf("expected a Tuple type: %w", err)
-			// 	}
-			// 	return e.deriveTupleEncoder(tokens.Type(tok), referredType, t)
-			panic("tuple")
+			return e.deriveTupleDecoder(pctx, tt)
 		default:
 			return nil, fmt.Errorf("Cannot build a decoder type %v", t)
 		}
@@ -279,21 +264,14 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 //
 // It handles reference validation and property discovery.
 func deriveTupleBase[T any](
-	f func(*pschema.TypeSpec, tftypes.Type) (T, error),
-	tok tokens.Type,
-	typ *pschema.ComplexTypeSpec,
+	pctx *schemaPropContext,
+	f func(*schemaPropContext, tftypes.Type) (T, error),
 	t tftypes.Tuple,
 ) ([]T, error) {
 	elements := make([]T, len(t.ElementTypes))
 	for i := range t.ElementTypes {
-		propName := tuplePropertyName(i)
-		prop, ok := typ.Properties[propName]
-		if !ok {
-			return nil, fmt.Errorf("could not find expected property '%s' on type '%s'",
-				propName, tok)
-		}
 		var err error
-		elements[i], err = f(&prop.TypeSpec, t.ElementTypes[i])
+		elements[i], err = f(pctx.TupleElement(i), t.ElementTypes[i])
 		if err != nil {
 			return nil, err
 		}
@@ -301,56 +279,18 @@ func deriveTupleBase[T any](
 	return elements, nil
 }
 
-func (e *encoding) deriveTupleEncoder(tok tokens.Type, typeSpec *pschema.ComplexTypeSpec,
-	t tftypes.Tuple) (*tupleEncoder, error) {
-	panic("TODO")
-	// encoders, err := deriveTupleBase(e.deriveEncoder, tok, typeSpec, t)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("could not build tuple encoder: %w", err)
-	// }
-	// return &tupleEncoder{t.ElementTypes, encoders}, nil
-}
-
-func (e *encoding) deriveTupleDecoder(tok tokens.Type, typeSpec *pschema.ComplexTypeSpec,
-	t tftypes.Tuple) (*tupleDecoder, error) {
-	panic("TODO")
-	// decoders, err := deriveTupleBase(e.deriveDecoder, tok, typeSpec, t)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("could not build tuple decoder: %w", err)
-	// }
-	// return &tupleDecoder{decoders}, nil
-}
-
-type specFinderFn = func(pk resource.PropertyKey) *pschema.PropertySpec
-
-func specFinderWithID(props map[string]pschema.PropertySpec) specFinderFn {
-	return func(pk resource.PropertyKey) *pschema.PropertySpec {
-		if prop, ok := props[string(pk)]; ok {
-			return &prop
-		}
-		// Currently id is implied by the translation but absent from rspec.Properties.
-		if string(pk) == "id" {
-			return &pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
-		}
-		return nil
+func (e *encoding) deriveTupleEncoder(pctx *schemaPropContext, t tftypes.Tuple) (*tupleEncoder, error) {
+	encoders, err := deriveTupleBase(pctx, e.deriveEncoder, t)
+	if err != nil {
+		return nil, fmt.Errorf("could not build tuple encoder: %w", err)
 	}
+	return &tupleEncoder{t.ElementTypes, encoders}, nil
 }
 
-func specFinder(props map[string]pschema.PropertySpec) specFinderFn {
-	return func(pk resource.PropertyKey) *pschema.PropertySpec {
-		if prop, ok := props[string(pk)]; ok {
-			return &prop
-		}
-		return nil
+func (e *encoding) deriveTupleDecoder(pctx *schemaPropContext, t tftypes.Tuple) (*tupleDecoder, error) {
+	decoders, err := deriveTupleBase(pctx, e.deriveDecoder, t)
+	if err != nil {
+		return nil, fmt.Errorf("could not build tuple decoder: %w", err)
 	}
-}
-
-func specFinderWithFallback(a, b specFinderFn) specFinderFn {
-	return func(pk resource.PropertyKey) *pschema.PropertySpec {
-		v := a(pk)
-		if v != nil {
-			return v
-		}
-		return b(pk)
-	}
+	return &tupleDecoder{decoders}, nil
 }

@@ -106,6 +106,10 @@ func (pc *schemaPropContext) Element() *schemaPropContext {
 	return pc
 }
 
+func (pc *schemaPropContext) TupleElement(position int) *schemaPropContext {
+	return nil
+}
+
 func (pc *schemaPropContext) Object() *schemaMapContext {
 	panic("TODO")
 }
