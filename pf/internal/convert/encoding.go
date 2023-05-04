@@ -83,18 +83,12 @@ func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object
 }
 
 func (e *encoding) NewDataSourceEncoder(dataSource string, objectType tftypes.Object) (Encoder, error) {
-	// fspec := e.spec.Function(functionToken)
-	// if fspec == nil {
-	// 	return nil, fmt.Errorf("dangling function token %q", string(functionToken))
-	// }
-	//token := tokens.Token(functionToken)
-	// spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(functionOutputs(fspec).Properties))
-	// propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
-	propertyEncoders, err := e.buildPropertyEncoders(nil /* TODO */, objectType)
+	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
+	propertyEncoders, err := e.buildPropertyEncoders(mctx, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, nil /* TODO */)
+	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
@@ -102,18 +96,12 @@ func (e *encoding) NewDataSourceEncoder(dataSource string, objectType tftypes.Ob
 }
 
 func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Object) (Decoder, error) {
-	// token := tokens.Token(functionToken)
-	// fspec := e.spec.Function(functionToken)
-	// if fspec == nil {
-	// 	return nil, fmt.Errorf("dangling function token %q", string(token))
-	// }
-	//spec := specFinderWithFallback(specFinder(functionOutputs(fspec).Properties), specFinder(fspec.Inputs.Properties))
-	// propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
-	propertyDecoders, err := e.buildPropertyDecoders(nil /* TODO */, objectType)
+	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
+	propertyDecoders, err := e.buildPropertyDecoders(mctx, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w", dataSource, err)
 	}
-	dec, err := newObjectDecoder(objectType, propertyDecoders, nil /* TODO */)
+	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for data source %q: %w", dataSource, err)
 	}
