@@ -43,13 +43,12 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 }
 
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
-	// spec := specFinder(e.spec.Config().Variables)
-	// propNames := NewConfigPropertyNames(e.propertyNames)
-	propertyEncoders, err := e.buildPropertyEncoders(nil /* TODO */, configType)
+	mctx := newSchemaMapContext(e.ProviderInfo.P.Schema(), e.ProviderInfo.Config)
+	propertyEncoders, err := e.buildPropertyEncoders(mctx, configType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}
-	enc, err := newObjectEncoder(configType, propertyEncoders, nil /* TODO */)
+	enc, err := newObjectEncoder(configType, propertyEncoders, mctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}

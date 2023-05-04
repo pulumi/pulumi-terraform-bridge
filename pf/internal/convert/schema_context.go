@@ -29,6 +29,20 @@ type schemaMapContext struct {
 	schemaInfos map[string]*tfbridge.SchemaInfo
 }
 
+var _ LocalPropertyNames = &schemaMapContext{}
+
+func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbridge.SchemaInfo) *schemaMapContext {
+	return &schemaMapContext{
+		schemaPath:  walk.NewSchemaPath(),
+		schemaMap:   schemaMap,
+		schemaInfos: schemaInfos,
+	}
+}
+
+func (sc *schemaMapContext) PropertyKey(tfname TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
+	return sc.ToPropertyKey(tfname)
+}
+
 func (sc *schemaMapContext) ToPropertyKey(tfname TerraformPropertyName) resource.PropertyKey {
 	n := tfbridge.TerraformToPulumiNameV2(tfname, sc.schemaMap, sc.schemaInfos)
 	return resource.PropertyKey(n)
@@ -38,7 +52,7 @@ func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) *schemaPropCon
 	step := walk.NewSchemaPath().GetAttr(tfname)
 	s, err := walk.LookupSchemaMapPath(step, sc.schemaMap)
 	if err != nil {
-		panic(err)
+		panic(err) /* TODO proper error handling */
 	}
 	sinfo := twalk.LookupSchemaInfoMapPath(step, sc.schemaInfos)
 	return &schemaPropContext{
