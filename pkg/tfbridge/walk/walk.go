@@ -40,10 +40,11 @@ func PropertyPathToSchemaPath(
 }
 
 func propertyPathToSchemaPath(
-	basePath walk.SchemaPath,
+	basePath SchemaPath,
 	propertyPath resource.PropertyPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo) walk.SchemaPath {
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) SchemaPath {
 
 	if len(propertyPath) == 0 {
 		return basePath
@@ -69,10 +70,11 @@ func propertyPathToSchemaPath(
 }
 
 func propertyPathToSchemaPathInner(
-	basePath walk.SchemaPath,
+	basePath SchemaPath,
 	propertyPath resource.PropertyPath,
 	schema shim.Schema,
-	schemaInfo *tfbridge.SchemaInfo) walk.SchemaPath {
+	schemaInfo *tfbridge.SchemaInfo,
+) SchemaPath {
 
 	if len(propertyPath) == 0 {
 		return basePath
@@ -114,8 +116,10 @@ func propertyPathToSchemaPathInner(
 }
 
 // Drill down a path from a map of SchemaInfo objects and find a matching SchemaInfo if any.
-func LookupSchemaInfoMapPath(schemaPath walk.SchemaPath,
-	schemaInfos map[string]*tfbridge.SchemaInfo) *tfbridge.SchemaInfo {
+func LookupSchemaInfoMapPath(
+	schemaPath SchemaPath,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) *tfbridge.SchemaInfo {
 
 	if len(schemaPath) == 0 {
 		return nil
@@ -136,7 +140,7 @@ func LookupSchemaInfoMapPath(schemaPath walk.SchemaPath,
 }
 
 // Drill down a path from a  SchemaInfo object and find a matching SchemaInfo if any.
-func LookupSchemaInfoPath(schemaPath walk.SchemaPath, schemaInfo *tfbridge.SchemaInfo) *tfbridge.SchemaInfo {
+func LookupSchemaInfoPath(schemaPath SchemaPath, schemaInfo *tfbridge.SchemaInfo) *tfbridge.SchemaInfo {
 	if len(schemaPath) == 0 {
 		return schemaInfo
 	}

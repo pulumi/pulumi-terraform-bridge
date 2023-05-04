@@ -65,7 +65,7 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		name        string
 		pp          resource.PropertyPath
 		schemaInfos map[string]*tfbridge.SchemaInfo
-		expected    walk.SchemaPath
+		expected    SchemaPath
 	}
 
 	cases := []testCase{
@@ -169,7 +169,7 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 
 	type testCase struct {
 		name     string
-		path     walk.SchemaPath
+		path     SchemaPath
 		expected *tfbridge.SchemaInfo
 	}
 
