@@ -49,14 +49,8 @@ type LocalPropertyNames interface {
 
 func NewResourceLocalPropertyNames(resource string,
 	schemaOnlyProvider shim.Provider,
-	providerInfo tfbridge.ProviderInfo) LocalPropertyNames {
-
-	var sm shim.SchemaMap
-	r, gotR := schemaOnlyProvider.ResourcesMap().GetOk(resource)
-	if gotR {
-		sm = r.Schema()
-	}
-	return newSchemaMapContext(sm, providerInfo.Resources[resource].GetFields())
+	providerInfo *tfbridge.ProviderInfo) LocalPropertyNames {
+	return newResourceSchemaMapContext(resource, schemaOnlyProvider, providerInfo)
 }
 
 type Encoder interface {

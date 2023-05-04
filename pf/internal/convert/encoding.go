@@ -56,18 +56,12 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 }
 
 func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
-
-	// rspec := e.spec.Resource(resourceToken)
-	// if rspec == nil {
-	// 	return nil, fmt.Errorf("dangling resource token %q", string(resourceToken))
-	// }
-	// spec := specFinderWithID(rspec.Properties)
-	// propNames := NewTypeLocalPropertyNames(e.propertyNames, tokens.Token(resourceToken))
-	propertyEncoders, err := e.buildPropertyEncoders(nil /* TODO */, objectType)
+	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
+	propertyEncoders, err := e.buildPropertyEncoders(mctx, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, nil /* TODO */)
+	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
@@ -75,18 +69,13 @@ func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object
 }
 
 func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
-	// rspec := e.spec.Resource(resourceToken)
-	// if rspec == nil {
-	// 	return nil, fmt.Errorf("dangling resource token %q", string(resourceToken))
-	// }
-	// spec := specFinderWithID(rspec.Properties)
-	// propNames := NewTypeLocalPropertyNames(nil /* TODO */, tokens.Token(resourceToken))
-	propertyDecoders, err := e.buildPropertyDecoders(nil /* TODO */, objectType)
+	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
+	propertyDecoders, err := e.buildPropertyDecoders(mctx, objectType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", resource, err)
 	}
 	propertyDecoders["id"] = newStringDecoder()
-	dec, err := newObjectDecoder(objectType, propertyDecoders, nil /* TODO */)
+	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}

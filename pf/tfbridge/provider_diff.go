@@ -99,7 +99,7 @@ func (p *provider) DiffWithContext(
 	}
 
 	renames := convert.NewResourceLocalPropertyNames(rh.terraformResourceName, p.schemaOnlyProvider,
-		p.info.ProviderInfo)
+		&p.info.ProviderInfo)
 
 	replaceKeys, err := diffPathsToPropertyKeySet(renames, planResp.RequiresReplace)
 	if err != nil {

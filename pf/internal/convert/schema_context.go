@@ -39,6 +39,21 @@ func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbri
 	}
 }
 
+func newResourceSchemaMapContext(resource string,
+	schemaOnlyProvider shim.Provider,
+	providerInfo *tfbridge.ProviderInfo) *schemaMapContext {
+	var sm shim.SchemaMap
+	r, gotR := schemaOnlyProvider.ResourcesMap().GetOk(resource)
+	if gotR {
+		sm = r.Schema()
+	}
+	var fields map[string]*tfbridge.SchemaInfo
+	if providerInfo != nil {
+		fields = providerInfo.Resources[resource].GetFields()
+	}
+	return newSchemaMapContext(sm, fields)
+}
+
 func (sc *schemaMapContext) PropertyKey(tfname TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	return sc.ToPropertyKey(tfname)
 }
