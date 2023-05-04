@@ -115,6 +115,19 @@ func propertyPathToSchemaPathInner(
 	return nil
 }
 
+// Convenience method to lookup both a Schema and a SchemaInfo by path.
+func LookupSchemas(schemaPath walk.SchemaPath,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo) (shim.Schema, *tfbridge.SchemaInfo, error) {
+
+	s, err := walk.LookupSchemaMapPath(schemaPath, schemaMap)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return s, LookupSchemaInfoMapPath(schemaPath, schemaInfos), nil
+}
+
 // Drill down a path from a map of SchemaInfo objects and find a matching SchemaInfo if any.
 func LookupSchemaInfoMapPath(
 	schemaPath SchemaPath,
