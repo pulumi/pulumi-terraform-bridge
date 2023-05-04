@@ -115,5 +115,15 @@ func (pc *schemaPropContext) Object() *schemaMapContext {
 }
 
 func (pc *schemaPropContext) IsMaxItemsOne(collection tftypes.Type) (tftypes.Type, bool) {
+	switch c := collection.(type) {
+	case tftypes.List:
+		if tfbridge.IsMaxItemsOne(pc.schema, pc.schemaInfo) {
+			return c.ElementType, true
+		}
+	case tftypes.Set:
+		if tfbridge.IsMaxItemsOne(pc.schema, pc.schemaInfo) {
+			return c.ElementType, false
+		}
+	}
 	return nil, false
 }
