@@ -3,7 +3,7 @@ config numberIn number {
 config stringIn string {
 }
 config nullableStringIn string {
-  default = null
+    default = null
 }
 config boolIn bool {
 }
