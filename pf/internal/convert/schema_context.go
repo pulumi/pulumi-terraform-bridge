@@ -110,9 +110,13 @@ func (pc *schemaPropContext) Secret() bool {
 
 func (pc *schemaPropContext) Element() *schemaPropContext {
 	step := walk.NewSchemaPath().Element()
-	s, err := walk.LookupSchemaPath(step, pc.schema)
-	if err != nil {
-		panic(err) /* TODO proper error handling */
+	var s shim.Schema
+	if pc.schema != nil {
+		var err error
+		s, err = walk.LookupSchemaPath(step, pc.schema)
+		if err != nil {
+			panic(err) /* TODO proper error handling */
+		}
 	}
 	sinfo := twalk.LookupSchemaInfoPath(step, pc.schemaInfo)
 	return &schemaPropContext{
@@ -123,25 +127,25 @@ func (pc *schemaPropContext) Element() *schemaPropContext {
 }
 
 func (pc *schemaPropContext) TupleElement(position int) *schemaPropContext {
-	panic("TODO tuples not properly supported yet")
-	//return nil
+	return pc.Object().GetAttr(tuplePropertyName(position))
 }
 
 func (pc *schemaPropContext) Object() *schemaMapContext {
-	switch elem := pc.schema.Elem().(type) {
-	case shim.Resource:
-		var fields map[string]*tfbridge.SchemaInfo
-		if pc.schemaInfo != nil {
-			fields = pc.schemaInfo.Fields
+	if pc.schema != nil {
+		switch elem := pc.schema.Elem().(type) {
+		case shim.Resource:
+			var fields map[string]*tfbridge.SchemaInfo
+			if pc.schemaInfo != nil {
+				fields = pc.schemaInfo.Fields
+			}
+			return &schemaMapContext{
+				schemaPath:  pc.schemaPath,
+				schemaMap:   elem.Schema(),
+				schemaInfos: fields,
+			}
 		}
-		return &schemaMapContext{
-			schemaPath:  pc.schemaPath,
-			schemaMap:   elem.Schema(),
-			schemaInfos: fields,
-		}
-	default:
-		panic("TODO proper error handling; expected an Object schema")
 	}
+	panic("TODO proper error handling; expected an Object schema")
 }
 
 func (pc *schemaPropContext) IsMaxItemsOne(collection tftypes.Type) (tftypes.Type, bool) {
