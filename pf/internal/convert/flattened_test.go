@@ -128,9 +128,9 @@ func TestFlattenedDecoder(t *testing.T) {
 func maxItemsOneCollectionPropContext(propName string, collectionType shim.ValueType) *schemaPropContext {
 	yes := true
 	return &schemaPropContext{
-		schemaPath: walk.NewSchemaPath().GetAttr("p"),
+		schemaPath: walk.NewSchemaPath().GetAttr(propName),
 		schema: (&shimschema.Schema{
-			Type:     shim.TypeList,
+			Type:     collectionType,
 			Optional: true,
 			Elem: (&shimschema.Schema{
 				Type:     shim.TypeString,
