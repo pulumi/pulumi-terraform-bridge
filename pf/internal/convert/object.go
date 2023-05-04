@@ -34,11 +34,8 @@ type objectDecoder struct {
 	propertyNames    LocalPropertyNames
 }
 
-func newObjectEncoder(
-	objectType tftypes.Object,
-	propertyEncoders map[TerraformPropertyName]Encoder,
-	propertyNames LocalPropertyNames,
-) (Encoder, error) {
+func newObjectEncoder(objectType tftypes.Object,
+	propertyEncoders map[TerraformPropertyName]Encoder, propertyNames LocalPropertyNames) (Encoder, error) {
 	for prop := range objectType.AttributeTypes {
 		if _, ok := propertyEncoders[prop]; !ok {
 			return nil, fmt.Errorf("Missing property encoder for %q", prop)
