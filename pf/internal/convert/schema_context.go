@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	twalk "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/walk"
@@ -126,11 +127,15 @@ func (pc *schemaPropContext) Element() *schemaPropContext {
 	}
 }
 
-func (pc *schemaPropContext) TupleElement(position int) *schemaPropContext {
-	return pc.Object().GetAttr(tuplePropertyName(position))
+func (pc *schemaPropContext) TupleElement(position int) (*schemaPropContext, error) {
+	mctx, err := pc.Object()
+	if err != nil {
+		return nil, fmt.Errorf("when converting tuple element at position %d %w", position, err)
+	}
+	return mctx.GetAttr(tuplePropertyName(position)), nil
 }
 
-func (pc *schemaPropContext) Object() *schemaMapContext {
+func (pc *schemaPropContext) Object() (*schemaMapContext, error) {
 	if pc.schema != nil {
 		switch elem := pc.schema.Elem().(type) {
 		case shim.Resource:
@@ -142,10 +147,11 @@ func (pc *schemaPropContext) Object() *schemaMapContext {
 				schemaPath:  pc.schemaPath,
 				schemaMap:   elem.Schema(),
 				schemaInfos: fields,
-			}
+			}, nil
 		}
 	}
-	panic("TODO proper error handling; expected an Object schema")
+	return nil, fmt.Errorf("expected an object type schema at %s",
+		pc.schemaPath.String())
 }
 
 func (pc *schemaPropContext) IsMaxItemsOne(collection tftypes.Type) (tftypes.Type, bool) {

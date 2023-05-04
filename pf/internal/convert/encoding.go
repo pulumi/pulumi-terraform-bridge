@@ -173,7 +173,10 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 	default:
 		switch tt := t.(type) {
 		case tftypes.Object:
-			mctx := pctx.Object()
+			mctx, err := pctx.Object()
+			if err != nil {
+				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+			}
 			propertyEncoders, err := e.buildPropertyEncoders(mctx, tt)
 			if err != nil {
 				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
@@ -226,7 +229,10 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 	default:
 		switch tt := t.(type) {
 		case tftypes.Object:
-			mctx := pctx.Object()
+			mctx, err := pctx.Object()
+			if err != nil {
+				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+			}
 			propertyDecoders, err := e.buildPropertyDecoders(mctx, tt)
 			if err != nil {
 				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
@@ -266,7 +272,11 @@ func deriveTupleBase[T any](pctx *schemaPropContext, f func(*schemaPropContext, 
 	elements := make([]T, len(t.ElementTypes))
 	for i := range t.ElementTypes {
 		var err error
-		elements[i], err = f(pctx.TupleElement(i), t.ElementTypes[i])
+		elctx, err := pctx.TupleElement(i)
+		if err != nil {
+			return nil, err
+		}
+		elements[i], err = f(elctx, t.ElementTypes[i])
 		if err != nil {
 			return nil, err
 		}
