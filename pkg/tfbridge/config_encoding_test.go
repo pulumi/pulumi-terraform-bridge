@@ -242,7 +242,7 @@ func TestConfigEncoding(t *testing.T) {
 			})
 		}
 
-		// Checking a few extra cases for nested secrets.
+		// Checking a few extra cases for nested computedness.
 		nestedUnkownTestCases := []testCase{
 			{
 				shim.TypeList,
