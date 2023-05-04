@@ -165,6 +165,16 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 				},
 			},
 		},
+		"max_items_one_prop": {
+			MaxItemsOne: &yes,
+			Elem: &tfbridge.SchemaInfo{
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"sub_prop": {
+						Secret: &yes,
+					},
+				},
+			},
+		},
 	}
 
 	type testCase struct {
@@ -188,6 +198,11 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 			"nested object",
 			walk.NewSchemaPath().GetAttr("nested_obj_prop").GetAttr("sub_prop").GetAttr("p"),
 			schemaInfos["nested_obj_prop"].Fields["sub_prop"].Fields["p"],
+		},
+		{
+			"oblivious to maxitemsone",
+			walk.NewSchemaPath().GetAttr("max_items_one_prop").Element().GetAttr("sub_prop"),
+			schemaInfos["max_items_one_prop"].Elem.Fields["sub_prop"],
 		},
 	}
 
