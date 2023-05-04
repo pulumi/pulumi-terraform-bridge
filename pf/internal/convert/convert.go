@@ -24,9 +24,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/propertyvalue"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // An alias to assist marking Terraform-level property names (see for example AttributeTypes in tftypes.Object). Pulumi
@@ -35,15 +36,27 @@ type TerraformPropertyName = string
 
 type Encoding interface {
 	NewConfigEncoder(tftypes.Object) (Encoder, error)
-	NewResourceDecoder(tokens.Type, tftypes.Object) (Decoder, error)
-	NewResourceEncoder(tokens.Type, tftypes.Object) (Encoder, error)
-	NewDataSourceDecoder(tokens.ModuleMember, tftypes.Object) (Decoder, error)
-	NewDataSourceEncoder(tokens.ModuleMember, tftypes.Object) (Encoder, error)
+	NewResourceDecoder(resoruce string, resourceType tftypes.Object) (Decoder, error)
+	NewResourceEncoder(resource string, resourceType tftypes.Object) (Encoder, error)
+	NewDataSourceDecoder(dataSource string, dataSourceType tftypes.Object) (Decoder, error)
+	NewDataSourceEncoder(dataSource string, dataSourceType tftypes.Object) (Encoder, error)
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
 type LocalPropertyNames interface {
 	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+}
+
+func NewResourceLocalPropertyNames(resource string,
+	schemaOnlyProvider shim.Provider,
+	providerInfo tfbridge.ProviderInfo) LocalPropertyNames {
+
+	var sm shim.SchemaMap
+	r, gotR := schemaOnlyProvider.ResourcesMap().GetOk(resource)
+	if gotR {
+		sm = r.Schema()
+	}
+	return newSchemaMapContext(sm, providerInfo.Resources[resource].GetFields())
 }
 
 type Encoder interface {

@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type datasourceHandle struct {
@@ -39,10 +39,10 @@ type datasourceHandle struct {
 	pulumiDataSourceInfo    *tfbridge.DataSourceInfo // optional
 }
 
-func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
+func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (*datasourceHandle, error) {
 	dsName, err := p.terraformDatasourceName(token)
 	if err != nil {
-		return datasourceHandle{}, err
+		return nil, err
 	}
 
 	typeName := pfutils.TypeName(dsName)
@@ -54,14 +54,14 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 
 	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewDataSourceEncoder(token, typ)
+	encoder, err := p.encoding.NewDataSourceEncoder(dsName, typ)
 	if err != nil {
-		return datasourceHandle{}, err
+		return nil, err
 	}
 
-	decoder, err := p.encoding.NewDataSourceDecoder(token, typ)
+	decoder, err := p.encoding.NewDataSourceDecoder(dsName, typ)
 	if err != nil {
-		return datasourceHandle{}, err
+		return nil, err
 	}
 
 	shim, _ := p.schemaOnlyProvider.DataSourcesMap().GetOk(dsName)
@@ -80,5 +80,5 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		result.pulumiDataSourceInfo = info
 	}
 
-	return result, nil
+	return *result, nil
 }

@@ -67,7 +67,7 @@ func (p *provider) InvokeWithContext(
 	return p.readDataSource(ctx, handle, config)
 }
 
-func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
+func (p *provider) validateDataResourceConfig(ctx context.Context, handle *datasourceHandle,
 	config *tfprotov6.DynamicValue) ([]plugin.CheckFailure, error) {
 	req := &tfprotov6.ValidateDataResourceConfigRequest{
 		TypeName: handle.terraformDataSourceName,
@@ -77,10 +77,10 @@ func (p *provider) validateDataResourceConfig(ctx context.Context, handle dataso
 	if err != nil {
 		return nil, fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
 	}
-	return p.processInvokeDiagnostics(handle.token, resp.Diagnostics)
+	return p.processInvokeDiagnostics(handle, resp.Diagnostics)
 }
 
-func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
+func (p *provider) readDataSource(ctx context.Context, handle *datasourceHandle,
 	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
@@ -96,7 +96,7 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 		return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
 	}
 
-	failures, err := p.processInvokeDiagnostics(handle.token, resp.Diagnostics)
+	failures, err := p.processInvokeDiagnostics(handle, resp.Diagnostics)
 	if err != nil || len(failures) > 0 {
 		return nil, failures, err
 	}
@@ -125,21 +125,21 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	return propertyMap, nil, nil
 }
 
-func (p *provider) processInvokeDiagnostics(tok tokens.ModuleMember,
+func (p *provider) processInvokeDiagnostics(ds *datasourceHandle,
 	diags []*tfprotov6.Diagnostic) ([]plugin.CheckFailure, error) {
-	failures, rest := p.parseInvokePropertyCheckFailures(tok, diags)
+	failures, rest := p.parseInvokePropertyCheckFailures(ds, diags)
 	return failures, p.processDiagnostics(rest)
 }
 
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
 // optimal rendering by Pulumi CLI.
-func (p *provider) parseInvokePropertyCheckFailures(tok tokens.ModuleMember, diags []*tfprotov6.Diagnostic) (
+func (p *provider) parseInvokePropertyCheckFailures(ds *datasourceHandle, diags []*tfprotov6.Diagnostic) (
 	[]plugin.CheckFailure, []*tfprotov6.Diagnostic) {
 	rest := []*tfprotov6.Diagnostic{}
 	failures := []plugin.CheckFailure{}
 
 	for _, d := range diags {
-		if pk, ok := functionPropertyKey(tok, p.propertyNames, d.Attribute); ok {
+		if pk, ok := functionPropertyKey(ds, d.Attribute); ok {
 			reason := strings.Join([]string{d.Summary, d.Detail}, ": ")
 			failure := plugin.CheckFailure{
 				Property: pk,

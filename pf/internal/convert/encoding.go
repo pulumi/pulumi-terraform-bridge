@@ -55,8 +55,7 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 	return enc, nil
 }
 
-func (e *encoding) NewResourceEncoder(resourceToken tokens.Type, /* TODO tf ID */
-	objectType tftypes.Object) (Encoder, error) {
+func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
 
 	// rspec := e.spec.Resource(resourceToken)
 	// if rspec == nil {
@@ -66,16 +65,16 @@ func (e *encoding) NewResourceEncoder(resourceToken tokens.Type, /* TODO tf ID *
 	// propNames := NewTypeLocalPropertyNames(e.propertyNames, tokens.Token(resourceToken))
 	propertyEncoders, err := e.buildPropertyEncoders(nil /* TODO */, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", string(resourceToken), err)
+		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
 	enc, err := newObjectEncoder(objectType, propertyEncoders, nil /* TODO */)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", string(resourceToken), err)
+		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
 	return enc, nil
 }
 
-func (e *encoding) NewResourceDecoder(resourceToken tokens.Type, objectType tftypes.Object) (Decoder, error) {
+func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
 	// rspec := e.spec.Resource(resourceToken)
 	// if rspec == nil {
 	// 	return nil, fmt.Errorf("dangling resource token %q", string(resourceToken))
@@ -84,37 +83,37 @@ func (e *encoding) NewResourceDecoder(resourceToken tokens.Type, objectType tfty
 	// propNames := NewTypeLocalPropertyNames(nil /* TODO */, tokens.Token(resourceToken))
 	propertyDecoders, err := e.buildPropertyDecoders(nil /* TODO */, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", string(resourceToken), err)
+		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", resource, err)
 	}
 	propertyDecoders["id"] = newStringDecoder()
 	dec, err := newObjectDecoder(objectType, propertyDecoders, nil /* TODO */)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", string(resourceToken), err)
+		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}
 	return dec, nil
 }
 
-func (e *encoding) NewDataSourceEncoder(functionToken tokens.ModuleMember, objectType tftypes.Object) (Encoder, error) {
+func (e *encoding) NewDataSourceEncoder(dataSource string, objectType tftypes.Object) (Encoder, error) {
 	// fspec := e.spec.Function(functionToken)
 	// if fspec == nil {
 	// 	return nil, fmt.Errorf("dangling function token %q", string(functionToken))
 	// }
-	token := tokens.Token(functionToken)
+	//token := tokens.Token(functionToken)
 	// spec := specFinderWithFallback(specFinder(fspec.Inputs.Properties), specFinder(functionOutputs(fspec).Properties))
 	// propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
 	propertyEncoders, err := e.buildPropertyEncoders(nil /* TODO */, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
+		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
 	enc, err := newObjectEncoder(objectType, propertyEncoders, nil /* TODO */)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for function %q: %w", string(token), err)
+		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
 	return enc, nil
 }
 
-func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objectType tftypes.Object) (Decoder, error) {
-	token := tokens.Token(functionToken)
+func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Object) (Decoder, error) {
+	// token := tokens.Token(functionToken)
 	// fspec := e.spec.Function(functionToken)
 	// if fspec == nil {
 	// 	return nil, fmt.Errorf("dangling function token %q", string(token))
@@ -123,11 +122,11 @@ func (e *encoding) NewDataSourceDecoder(functionToken tokens.ModuleMember, objec
 	// propNames := NewTypeLocalPropertyNames(e.propertyNames, token)
 	propertyDecoders, err := e.buildPropertyDecoders(nil /* TODO */, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for function %q: %w", string(token), err)
+		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w", dataSource, err)
 	}
 	dec, err := newObjectDecoder(objectType, propertyDecoders, nil /* TODO */)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive a decoder for function %q: %w", string(token), err)
+		return nil, fmt.Errorf("cannot derive a decoder for data source %q: %w", dataSource, err)
 	}
 	return dec, nil
 }

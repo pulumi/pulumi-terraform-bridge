@@ -78,12 +78,12 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	objectType := result.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewResourceEncoder(token, objectType)
+	encoder, err := p.encoding.NewResourceEncoder(typeName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare a resource encoder: %s", err)
 	}
 
-	outputsDecoder, err := p.encoding.NewResourceDecoder(token, objectType)
+	outputsDecoder, err := p.encoding.NewResourceDecoder(typeName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare an resoure decoder: %s", err)
 	}
