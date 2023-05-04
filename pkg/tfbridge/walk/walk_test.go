@@ -28,6 +28,7 @@ import (
 )
 
 func TestPropertyPathToSchemaPath(t *testing.T) {
+	yes := true
 	strSchema := (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim()
 
 	xySchema := (&schema.Resource{
@@ -51,6 +52,10 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 			Elem:     xySchema,
 			MaxItems: 1,
 		}).Shim(),
+		"flat_list_via_schema_info": (&schema.Schema{
+			Type: shim.TypeList,
+			Elem: xySchema,
+		}).Shim(),
 		"obj_set": (&schema.Schema{
 			Type: shim.TypeSet,
 			Elem: xySchema,
@@ -61,11 +66,16 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		}).Shim(),
 	}
 
+	schemaInfos := map[string]*tfbridge.SchemaInfo{
+		"flat_list_via_schema_info": {
+			MaxItemsOne: &yes,
+		},
+	}
+
 	type testCase struct {
-		name        string
-		pp          resource.PropertyPath
-		schemaInfos map[string]*tfbridge.SchemaInfo
-		expected    SchemaPath
+		name     string
+		pp       resource.PropertyPath
+		expected SchemaPath
 	}
 
 	cases := []testCase{
@@ -134,12 +144,17 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 			pp:       []any{"flatList", "xProp"},
 			expected: walk.NewSchemaPath().GetAttr("flat_list").Element().GetAttr("x_prop"),
 		},
+		{
+			name:     "max-items-1 list 3 via schemainfo",
+			pp:       []any{"flatListViaSchemaInfo", "xProp"},
+			expected: walk.NewSchemaPath().GetAttr("flat_list_via_schema_info").Element().GetAttr("x_prop"),
+		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			pp := PropertyPathToSchemaPath(tc.pp, schemaMap, tc.schemaInfos)
+			pp := PropertyPathToSchemaPath(tc.pp, schemaMap, schemaInfos)
 			assert.Equal(t, tc.expected, pp)
 		})
 	}
