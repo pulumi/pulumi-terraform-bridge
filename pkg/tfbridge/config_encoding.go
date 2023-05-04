@@ -180,7 +180,8 @@ func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource
 	return result, nil
 }
 
-// Inverse of UnmarshalProperties, with additional support for top-level (but not nested) secrets.
+// Inverse of UnmarshalProperties, with additional support for secrets. Since the encoding cannot represent nested
+// secrets, any nested secrets will be approximated by making the entire top-level property secret.
 func (enc *ConfigEncoding) MarshalProperties(props resource.PropertyMap) (*structpb.Struct, error) {
 	opts := plugin.MarshalOptions{
 		Label:        "config",
