@@ -108,44 +108,33 @@ func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Ob
 	return dec, nil
 }
 
-func (e *encoding) buildPropertyEncoders(
-	mctx *schemaMapContext,
-	objectType tftypes.Object,
-) (map[TerraformPropertyName]Encoder, error) {
+func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
+	objectType tftypes.Object) (map[TerraformPropertyName]Encoder, error) {
 	propertyEncoders := map[TerraformPropertyName]Encoder{}
-	/* TODO */
-	// for tfName, t := range objectType.AttributeTypes {
-	// 	pctx := mctx.GetAttr(tfName)
-	// 	key := mctx.ToPropertyKey(tfName)
-	// 	enc, err := e.newPropertyEncoder(tfName, *puSpec, t)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	propertyEncoders[tfName] = enc
-	// }
+	for tfName, t := range objectType.AttributeTypes {
+		pctx := mctx.GetAttr(tfName)
+		enc, err := e.newPropertyEncoder(pctx, tfName, t)
+		if err != nil {
+			return nil, err
+		}
+		propertyEncoders[tfName] = enc
+	}
 	return propertyEncoders, nil
 }
 
-func (e *encoding) buildPropertyDecoders(
-	mctx *schemaMapContext,
-	objectType tftypes.Object,
-) (map[TerraformPropertyName]Decoder, error) {
-	/* TODO */
-	// propertyEncoders := map[TerraformPropertyName]Decoder{}
-	// for tfName, t := range objectType.AttributeTypes {
-	// 	key := propertyNames.PropertyKey(tfName, t)
-	// 	puSpec := propSpecs(key)
-	// 	if puSpec == nil {
-	// 		return nil, fmt.Errorf("missing property %q", string(key))
-	// 	}
-	// 	dec, err := e.newPropertyDecoder(tfName, *puSpec, t)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	propertyEncoders[tfName] = dec
-	// }
-	// return propertyEncoders, nil
-	panic("TOOD")
+func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
+	objectType tftypes.Object) (map[TerraformPropertyName]Decoder, error) {
+
+	propertyEncoders := map[TerraformPropertyName]Decoder{}
+	for tfName, t := range objectType.AttributeTypes {
+		pctx := mctx.GetAttr(tfName)
+		dec, err := e.newPropertyDecoder(pctx, tfName, t)
+		if err != nil {
+			return nil, err
+		}
+		propertyEncoders[tfName] = dec
+	}
+	return propertyEncoders, nil
 }
 
 func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name TerraformPropertyName,
@@ -157,12 +146,13 @@ func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name TerraformPro
 	return enc, nil
 }
 
-func (e *encoding) newPropertyDecoder(name string, propSpec pschema.PropertySpec, t tftypes.Type) (Decoder, error) {
-	dec, err := e.deriveDecoder(&propSpec.TypeSpec, t)
+func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name TerraformPropertyName,
+	t tftypes.Type) (Decoder, error) {
+	dec, err := e.deriveDecoder(pctx, t)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive a decoder for property %q: %w", name, err)
 	}
-	if propSpec.Secret {
+	if pctx.Secret() {
 		return newSecretDecoder(dec)
 	}
 	return dec, nil
@@ -190,11 +180,12 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 	default:
 		switch tt := t.(type) {
 		case tftypes.Object:
-			propertyEncoders, err := e.buildPropertyEncoders(pctx.Object(), tt)
+			mctx := pctx.Object()
+			propertyEncoders, err := e.buildPropertyEncoders(mctx, tt)
 			if err != nil {
 				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 			}
-			return newObjectEncoder(tt, propertyEncoders, nil)
+			return newObjectEncoder(tt, propertyEncoders, mctx)
 		case tftypes.List:
 			elementEncoder, err := e.deriveEncoder(pctx.Element(), tt.ElementType)
 			if err != nil {
@@ -221,21 +212,14 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 			// 	return e.deriveTupleEncoder(tokens.Type(tok), referredType, t)
 			panic("tuple")
 		default:
-			return nil, fmt.Errorf("Cannot build an encoder for type %s", t)
+			return nil, fmt.Errorf("Cannot build an encoder for type %v", t)
 		}
 	}
 }
 
-func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (Decoder, error) {
-	if (t.Is(tftypes.List{}) || t.Is(tftypes.Set{})) && typeSpec.Type != "array" {
-		// In case of IsMaxItemOne lists or sets, Pulumi flattens List[T] or Set[T] to T.
-		var elementType tftypes.Type
-		if t.Is(tftypes.List{}) {
-			elementType = t.(tftypes.List).ElementType
-		} else {
-			elementType = t.(tftypes.Set).ElementType
-		}
-		decoder, err := e.deriveDecoder(typeSpec, elementType)
+func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
+	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
+		decoder, err := e.deriveDecoder(pctx.Element(), elementType)
 		if err != nil {
 			return nil, err
 		}
@@ -244,63 +228,50 @@ func (e *encoding) deriveDecoder(typeSpec *pschema.TypeSpec, t tftypes.Type) (De
 		}, nil
 	}
 
-	// switch t := t.(type) {
-	// case tftypes.Object:
-	// 	ref, referredType, err := e.resolveRef(typeSpec.Ref)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("expected an Object type: %w", err)
-	// 	}
-	// 	return e.deriveDecoderForNamedObjectType(ref, referredType, t)
-	// case tftypes.Tuple:
-	// 	ref, referredType, err := e.resolveRef(typeSpec.Ref)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("expected a Tuple type: %w", err)
-	// 	}
-	// 	return e.deriveTupleDecoder(tokens.Type(ref), referredType, t)
-	// }
-
-	switch typeSpec.Type {
-	case "boolean":
-		return newBoolDecoder(), nil
-	case "integer":
-		return newNumberDecoder(), nil
-	case "number":
-		return newNumberDecoder(), nil
-	case "string":
+	switch {
+	case t.Is(tftypes.String):
 		return newStringDecoder(), nil
-	case "array":
-		switch t := t.(type) {
+	case t.Is(tftypes.Number):
+		return newNumberDecoder(), nil
+	case t.Is(tftypes.Bool):
+		return newBoolDecoder(), nil
+	default:
+		switch tt := t.(type) {
+		case tftypes.Object:
+			mctx := pctx.Object()
+			propertyDecoders, err := e.buildPropertyDecoders(mctx, tt)
+			if err != nil {
+				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+			}
+			return newObjectDecoder(tt, propertyDecoders, mctx)
 		case tftypes.List:
-			elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newListDecoder(elementDecoder)
+		case tftypes.Map:
+			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			return newMapDecoder(elementDecoder)
 		case tftypes.Set:
-			elementDecoder, err := e.deriveDecoder(typeSpec.Items, t.ElementType)
+			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newSetDecoder(elementDecoder)
+		case tftypes.Tuple:
+			// 	tok, referredType, err := e.resolveRef(typeSpec.Ref)
+			// 	if err != nil {
+			// 		return nil, fmt.Errorf("expected a Tuple type: %w", err)
+			// 	}
+			// 	return e.deriveTupleEncoder(tokens.Type(tok), referredType, t)
+			panic("tuple")
 		default:
-			return nil, fmt.Errorf("expected a List or Set, got %s", t.String())
+			return nil, fmt.Errorf("Cannot build a decoder type %v", t)
 		}
-	case "object":
-		// Ensure Map[string,X] type case
-		if !(typeSpec.AdditionalProperties != nil && typeSpec.Ref == "") {
-			return nil, fmt.Errorf("expected Ref or AdditionalProperties set")
-		}
-		mt, ok := t.(tftypes.Map)
-		if !ok {
-			return nil, fmt.Errorf("expected a Map, got %s", t.String())
-		}
-		elementDecoder, err := e.deriveDecoder(typeSpec.AdditionalProperties, mt.ElementType)
-		if err != nil {
-			return nil, err
-		}
-		return newMapDecoder(elementDecoder)
-	default:
-		return nil, fmt.Errorf("Cannot build a decoder type %q", typeSpec.Type)
 	}
 }
 
@@ -342,11 +313,12 @@ func (e *encoding) deriveTupleEncoder(tok tokens.Type, typeSpec *pschema.Complex
 
 func (e *encoding) deriveTupleDecoder(tok tokens.Type, typeSpec *pschema.ComplexTypeSpec,
 	t tftypes.Tuple) (*tupleDecoder, error) {
-	decoders, err := deriveTupleBase(e.deriveDecoder, tok, typeSpec, t)
-	if err != nil {
-		return nil, fmt.Errorf("could not build tuple decoder: %w", err)
-	}
-	return &tupleDecoder{decoders}, nil
+	panic("TODO")
+	// decoders, err := deriveTupleBase(e.deriveDecoder, tok, typeSpec, t)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("could not build tuple decoder: %w", err)
+	// }
+	// return &tupleDecoder{decoders}, nil
 }
 
 type specFinderFn = func(pk resource.PropertyKey) *pschema.PropertySpec

@@ -98,6 +98,10 @@ type schemaPropContext struct {
 	schemaInfo *tfbridge.SchemaInfo
 }
 
+func (pc *schemaPropContext) Secret() bool {
+	return false
+}
+
 func (pc *schemaPropContext) Element() *schemaPropContext {
 	return pc
 }
