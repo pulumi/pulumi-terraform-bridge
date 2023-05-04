@@ -153,7 +153,11 @@ func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name TerraformPro
 
 func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
-		encoder, err := e.deriveEncoder(pctx.Element(), elementType)
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		encoder, err := e.deriveEncoder(elctx, elementType)
 		if err != nil {
 			return nil, err
 		}
@@ -183,19 +187,31 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 			}
 			return newObjectEncoder(tt, propertyEncoders, mctx)
 		case tftypes.List:
-			elementEncoder, err := e.deriveEncoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newListEncoder(tt.ElementType, elementEncoder)
 		case tftypes.Map:
-			elementEncoder, err := e.deriveEncoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newMapEncoder(tt.ElementType, elementEncoder)
 		case tftypes.Set:
-			elementEncoder, err := e.deriveEncoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
@@ -210,7 +226,11 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 
 func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
 	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
-		decoder, err := e.deriveDecoder(pctx.Element(), elementType)
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		decoder, err := e.deriveDecoder(elctx, elementType)
 		if err != nil {
 			return nil, err
 		}
@@ -239,19 +259,31 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 			}
 			return newObjectDecoder(tt, propertyDecoders, mctx)
 		case tftypes.List:
-			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newListDecoder(elementDecoder)
 		case tftypes.Map:
-			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}
 			return newMapDecoder(elementDecoder)
 		case tftypes.Set:
-			elementDecoder, err := e.deriveDecoder(pctx.Element(), tt.ElementType)
+			elctx, err := pctx.Element()
+			if err != nil {
+				return nil, err
+			}
+			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
 			if err != nil {
 				return nil, err
 			}

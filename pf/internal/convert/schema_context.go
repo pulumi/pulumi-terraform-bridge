@@ -109,14 +109,14 @@ func (pc *schemaPropContext) Secret() bool {
 	return false
 }
 
-func (pc *schemaPropContext) Element() *schemaPropContext {
+func (pc *schemaPropContext) Element() (*schemaPropContext, error) {
 	step := walk.NewSchemaPath().Element()
 	var s shim.Schema
 	if pc.schema != nil {
 		var err error
 		s, err = walk.LookupSchemaPath(step, pc.schema)
 		if err != nil {
-			panic(err) /* TODO proper error handling */
+			return nil, fmt.Errorf("when deriving converters for an element of a collection: %w", err)
 		}
 	}
 	sinfo := twalk.LookupSchemaInfoPath(step, pc.schemaInfo)
@@ -124,13 +124,13 @@ func (pc *schemaPropContext) Element() *schemaPropContext {
 		schemaPath: pc.schemaPath.Element(),
 		schema:     s,
 		schemaInfo: sinfo,
-	}
+	}, nil
 }
 
 func (pc *schemaPropContext) TupleElement(position int) (*schemaPropContext, error) {
 	mctx, err := pc.Object()
 	if err != nil {
-		return nil, fmt.Errorf("when converting tuple element at position %d %w", position, err)
+		return nil, fmt.Errorf("when deriving converters for a tuple element at position %d %w", position, err)
 	}
 	return mctx.GetAttr(tuplePropertyName(position)), nil
 }
