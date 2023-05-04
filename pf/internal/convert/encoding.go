@@ -4,14 +4,13 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package convert
 
 import (
@@ -119,7 +118,6 @@ func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
 
 func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
 	objectType tftypes.Object) (map[TerraformPropertyName]Decoder, error) {
-
 	propertyEncoders := map[TerraformPropertyName]Decoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx := mctx.GetAttr(tfName)
@@ -263,11 +261,8 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 // A generic base function for deriving tuple encoders and decoders.
 //
 // It handles reference validation and property discovery.
-func deriveTupleBase[T any](
-	pctx *schemaPropContext,
-	f func(*schemaPropContext, tftypes.Type) (T, error),
-	t tftypes.Tuple,
-) ([]T, error) {
+func deriveTupleBase[T any](pctx *schemaPropContext, f func(*schemaPropContext, tftypes.Type) (T, error),
+	t tftypes.Tuple) ([]T, error) {
 	elements := make([]T, len(t.ElementTypes))
 	for i := range t.ElementTypes {
 		var err error
