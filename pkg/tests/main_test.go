@@ -92,10 +92,15 @@ func ensureCompiledTestProviders(wd string) error {
 		return nil
 	}
 
+	var suffix string
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
+	}
+
 	for _, p := range testProviders {
 		// build tfgen binary
 		{
-			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name))
+			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.tfgenSource
 			if err := runcmd(cmd); err != nil {
@@ -105,10 +110,6 @@ func ensureCompiledTestProviders(wd string) error {
 
 		// generate schema
 		{
-			var suffix string
-			if runtime.GOOS == "windows" {
-				suffix = ".exe"
-			}
 			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command(exe, "schema", "--out", p.source)
 			cmd.Dir = bin
@@ -119,7 +120,7 @@ func ensureCompiledTestProviders(wd string) error {
 
 		// build provider binary
 		{
-			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s", p.name))
+			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.source
 			if err := runcmd(cmd); err != nil {
