@@ -201,9 +201,39 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
+func defaultMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) (names []string) {
+	postfixes := []string{
+		".html.markdown",
+		".markdown",
+		".html.md",
+		".md",
+	}
+	resNames := []string{
+		// Most frequently, docs leave off the provider prefix
+		withoutPackageName(resourcePrefix, rawName),
+		// But for some providers, the prefix is included in the name of the doc file
+		rawName,
+	}
+	for _, res := range resNames {
+		for _, postfix := range postfixes {
+			names = append(names, res+postfix)
+		}
+	}
+
+	if globalInfo != nil && globalInfo.AlternativeNames != nil {
+		names = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
+			Resource: rawName,
+		}), names...)
+	}
+
+	return names
+}
+
 func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
-	resourcePrefix string, kind DocKind, rawname string,
-	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string) ([]byte, string, bool) {
+	resourcePrefix string, kind DocKind, rawName string,
+	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
+	globalInfo *tfbridge.DocRuleInfo,
+) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
@@ -218,23 +248,12 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 		repoPath, err = getRepoPath(githost, org, provider, providerModuleVersion)
 		if err != nil {
 			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-			sink.Debugf(&diag.Diag{Message: msg}, rawname, githost, org, provider, providerModuleVersion, err)
+			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
 			return nil, "", false
 		}
 	}
 
-	possibleMarkdownNames := []string{
-		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(resourcePrefix, rawname) + ".html.markdown",
-		withoutPackageName(resourcePrefix, rawname) + ".markdown",
-		withoutPackageName(resourcePrefix, rawname) + ".html.md",
-		withoutPackageName(resourcePrefix, rawname) + ".md",
-		// But for some providers, the prefix is included in the name of the doc file
-		rawname + ".html.markdown",
-		rawname + ".markdown",
-		rawname + ".html.md",
-		rawname + ".md",
-	}
+	possibleMarkdownNames := defaultMarkdownNames(resourcePrefix, rawName, globalInfo)
 
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
@@ -243,6 +262,19 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
 	if !found {
 		return nil, "", false
+	}
+
+	if globalInfo != nil {
+		for _, rule := range globalInfo.ReplaceRules {
+			match, err := filepath.Match(rule.Path, markdownFileName)
+			contract.AssertNoErrorf(err, "invalid glob: %q", rule.Path)
+			if !match {
+				continue
+			}
+			bytes, err := rule.Replace(markdownFileName, markdownBytes)
+			contract.AssertNoErrorf(err, "replace failed on file %q", markdownFileName)
+			markdownBytes = bytes
+		}
 	}
 
 	return markdownBytes, markdownFileName, true
@@ -281,7 +313,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	}
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
-		resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
+		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
 	if !found {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
@@ -1779,7 +1811,6 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
-		// TODO: fail the build in the face of such text, once we have a processes in place.
 		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
 			return "", true
 		}
@@ -1791,13 +1822,6 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 		// Trim Prefixes we see when the description is spread across multiple lines.
 		text = strings.TrimPrefix(text, "\n(Required)\n")
 		text = strings.TrimPrefix(text, "\n(Optional)\n")
-
-		// Find markdown Terraform docs site reference links.
-		text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
-			parts := strings.Split(referenceLink, " ")
-			// Add Terraform domain to avoid broken links.
-			return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
-		})
 
 		// Find links from the footer links.
 		text = replaceFooterLinks(text, footerLinks)
