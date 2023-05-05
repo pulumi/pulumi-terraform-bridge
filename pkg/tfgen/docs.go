@@ -1871,6 +1871,13 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 		text = strings.TrimPrefix(text, "\n(Required)\n")
 		text = strings.TrimPrefix(text, "\n(Optional)\n")
 
+		// Find markdown Terraform docs site reference links.
+		text = markdownPageReferenceLink.ReplaceAllStringFunc(text, func(referenceLink string) string {
+			parts := strings.Split(referenceLink, " ")
+			// Add Terraform domain to avoid broken links.
+			return fmt.Sprintf("%s https://www.terraform.io%s", parts[0], parts[1])
+		})
+
 		// Find links from the footer links.
 		text = replaceFooterLinks(text, footerLinks)
 
