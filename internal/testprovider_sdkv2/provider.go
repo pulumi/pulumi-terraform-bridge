@@ -19,12 +19,78 @@ import (
 )
 
 func Provider() *schema.Provider {
+	objectSchema := &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		Computed: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"str_nested_prop": {
+					Type:      schema.TypeString,
+					Optional:  true,
+					Sensitive: true,
+				},
+				"bool_nested_prop": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	secretObjectSchema := &schema.Schema{
+		Type:     schema.TypeList,
+		MaxItems: 1,
+		Optional: true,
+		Computed: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"str_nested_secret_prop": {
+					Type:      schema.TypeString,
+					Optional:  true,
+					Sensitive: true,
+				},
+				"bool_nested_secret_prop": {
+					Type:      schema.TypeBool,
+					Optional:  true,
+					Sensitive: true,
+				},
+			},
+		},
+	}
+
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"str_config_prop": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
+
+			"secret_str_config_prop": {
+				Type:      schema.TypeString,
+				Sensitive: true,
+				Optional:  true,
+				Computed:  true,
+			},
+
+			"bool_config_prop": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+
+			"secret_bool_config_prop": {
+				Type:      schema.TypeBool,
+				Sensitive: true,
+				Optional:  true,
+				Computed:  true,
+			},
+
+			"object_prop": objectSchema,
+
+			"secret_object_prop": secretObjectSchema,
 		},
 	}
 }

@@ -15,17 +15,15 @@
 package tests
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -81,15 +79,25 @@ func ensureCompiledTestProviders(wd string) error {
 		},
 	}
 
+	runcmd := func(cmd *exec.Cmd) error {
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout.String())
+			fmt.Println(stderr.String())
+			return err
+		}
+		return nil
+	}
+
 	for _, p := range testProviders {
 		// build tfgen binary
 		{
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name))
 			cmd := exec.Command("go", "build", "-o", tfgenExe) //nolint:gosec
 			cmd.Dir = p.tfgenSource
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
+			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("tfgen build failed for %s: %w", p.name, err)
 			}
 		}
@@ -99,9 +107,7 @@ func ensureCompiledTestProviders(wd string) error {
 			cmd := exec.Command(filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name)),
 				"schema", "--out", p.source)
 			cmd.Dir = bin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
+			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("schema generation failed for %s: %w", p.name, err)
 			}
 		}
@@ -111,54 +117,11 @@ func ensureCompiledTestProviders(wd string) error {
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s", p.name))
 			cmd := exec.Command("go", "build", "-o", tfgenExe) //nolint:gosec
 			cmd.Dir = p.source
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
+			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("provider build failed for %s: %w", p.name, err)
 			}
 		}
 	}
 
 	return nil
-}
-
-// Stacks may define tests inline by a simple convention of providing
-// ${test}__expect and ${test}__actual pairs. For example:
-//
-//	outputs:
-//	  test1__expect: 1
-//	  test1__actual: ${res1.out}
-//
-// This function interpretes these outputs to actual tests.
-func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-	expects := map[string]interface{}{}
-	actuals := map[string]interface{}{}
-	for n, output := range stack.Outputs {
-		switch {
-		case strings.HasSuffix(n, "__actual"):
-			actuals[strings.TrimSuffix(n, "__actual")] = output
-		case strings.HasSuffix(n, "__expect"):
-			expects[strings.TrimSuffix(n, "__expect")] = output
-		case strings.HasSuffix(n, "__secret"):
-			n, output := n, output
-			t.Run(n, func(t *testing.T) {
-				o, ok := output.(map[string]interface{})
-				if assert.Truef(t, ok, "Expected Secret (map[string]any), found %T", output) {
-					assert.Equal(t, "1b47061264138c4ac30d75fd1eb44270",
-						o["4dabf18193072939515e22adb298388d"])
-				}
-			})
-		}
-	}
-	keys := []string{}
-	for k := range expects {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		k := k
-		t.Run(k, func(t *testing.T) {
-			assert.Equal(t, expects[k], actuals[k])
-		})
-	}
 }

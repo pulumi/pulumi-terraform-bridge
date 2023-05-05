@@ -6,8 +6,17 @@ resources:
   provider:
     type: pulumi:providers:tpsdkv2
     properties:
-      strConfigProp:
-        fn::secret: "secretInput"
 
-outputs:
-  test_preserved_program_secrets__secret: ${provider.strConfigProp}
+      strConfigProp:
+        fn::secret: "SECRET strConfigProp value"
+
+      secretStrConfigProp: "SECRET secretStrConfigProp value"
+
+      objectProp:
+        strNestedProp:
+          fn::secret:
+            "SECRET objectProp.strNestedProp value"
+
+      secretObjectProp:
+        strNestedSecretProp:
+          "SECRET secretObjectProp.strNestedSecretProp value"

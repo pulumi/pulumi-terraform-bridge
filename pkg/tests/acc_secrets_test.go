@@ -17,14 +17,21 @@ package tests
 import (
 	"testing"
 
+	"encoding/json"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAccProviderSecrets(t *testing.T) {
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-secrets",
 
-		ExtraRuntimeValidation: validateExpectedVsActual,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			bytes, err := json.MarshalIndent(stack.Deployment, "", "  ")
+			assert.NoError(t, err)
+			assert.NotContainsf(t, string(bytes), "SECRET",
+				"Secret data leaked into the state")
+		},
 	})
 	integration.ProgramTest(t, &opts)
 }
