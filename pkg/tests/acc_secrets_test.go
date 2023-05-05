@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tpsdkv2
+package tests
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func Provider() *schema.Provider {
-	return &schema.Provider{
-		Schema: map[string]*schema.Schema{
-			"str_config_prop": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-		},
-	}
+func TestAccProviderSecrets(t *testing.T) {
+	opts := accTestOptions(t).With(integration.ProgramTestOptions{
+		Dir: "provider-secrets",
+
+		ExtraRuntimeValidation: validateExpectedVsActual,
+	})
+	integration.ProgramTest(t, &opts)
 }

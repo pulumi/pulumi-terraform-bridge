@@ -1,0 +1,13 @@
+name: provider-secrets
+
+runtime: yaml
+
+resources:
+  provider:
+    type: pulumi:providers:tpsdkv2
+    properties:
+      strConfigProp:
+        fn::secret: "secretInput"
+
+outputs:
+  test_preserved_program_secrets__secret: ${provider.strConfigProp}

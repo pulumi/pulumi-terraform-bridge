@@ -16,13 +16,18 @@ package tpsdkv2
 
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func ProviderInfo() tfbridge.ProviderInfo {
 	return tfbridge.ProviderInfo{
 		P:    sdkv2.NewProvider(Provider()),
 		Name: "tpsdkv2",
+
+		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return nil
+		},
 	}
 }
