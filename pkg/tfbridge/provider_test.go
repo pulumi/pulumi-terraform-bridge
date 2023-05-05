@@ -1355,6 +1355,46 @@ func TestPreConfigureCallback(t *testing.T) {
 		  }
 		}`)
 	})
+	t.Run("PreConfigureCallback not called at preview with unknown values", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *hostclient.HostClient,
+					vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					if cv, ok := vars["configValue"]; ok {
+						// This used to panic when cv is a resource.Computed.
+						cv.StringValue()
+					}
+					// PreConfigureCallback should not even be called.
+					t.FailNow()
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0",
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "version": "6.54.0",
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+		    }
+		  }
+		}`)
+	})
 }
 
 func TestInvoke(t *testing.T) {
