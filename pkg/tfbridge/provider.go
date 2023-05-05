@@ -322,18 +322,20 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
 	}
 
-	if p.info.PreConfigureCallback != nil {
-		// NOTE: the user code may modify news in-place.
-		if validationErrors = p.info.PreConfigureCallback(news, config); validationErrors != nil {
-			return nil, validationErrors
+	if !news.ContainsUnknowns() {
+		if p.info.PreConfigureCallback != nil {
+			// NOTE: the user code may modify news in-place.
+			validationErrors := p.info.PreConfigureCallback(news, config)
+			if validationErrors != nil {
+				return nil, validationErrors
+			}
 		}
-	}
-
-	if p.info.PreConfigureCallbackWithLogger != nil {
-		// NOTE: the user code may modify news in-place.
-		validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
-		if validationErrors != nil {
-			return nil, validationErrors
+		if p.info.PreConfigureCallbackWithLogger != nil {
+			// NOTE: the user code may modify news in-place.
+			validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
+			if validationErrors != nil {
+				return nil, validationErrors
+			}
 		}
 	}
 
