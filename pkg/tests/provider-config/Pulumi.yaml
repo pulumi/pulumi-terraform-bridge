@@ -1,0 +1,26 @@
+name: provider-config
+
+runtime: yaml
+
+resources:
+
+  randomString:
+    type: random:RandomString
+    properties:
+      length: 16
+      special: true
+
+  provider:
+    type: pulumi:providers:tpsdkv2
+    properties:
+
+      # Excercise passing indeterminate Output values to provider config.
+      strConfigProp: ${randomString.result}
+
+      # Same with nested properties.
+      objectProp:
+        strNestedProp: ${randomString.result}
+
+outputs:
+  providerRandomString: ${provider.strConfigProp}
+  generatedRandomString: ${randomString.result}

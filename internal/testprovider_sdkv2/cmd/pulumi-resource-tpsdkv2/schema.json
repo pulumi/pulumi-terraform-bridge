@@ -1,0 +1,149 @@
+{
+    "name": "tpsdkv2",
+    "attribution": "This Pulumi package is based on the [`tpsdkv2` Terraform Provider](https://github.com/terraform-providers/terraform-provider-tpsdkv2).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "nodejs": {
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true,
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tpsdkv2)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tpsdkv2` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tpsdkv2` repo](https://github.com/terraform-providers/terraform-provider-tpsdkv2/issues)."
+        },
+        "python": {
+            "compatibility": "tfbridge20",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tpsdkv2)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tpsdkv2` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tpsdkv2` repo](https://github.com/terraform-providers/terraform-provider-tpsdkv2/issues)."
+        }
+    },
+    "config": {
+        "variables": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "objectProp": {
+                "$ref": "#/types/tpsdkv2:config/objectProp:objectProp"
+            },
+            "secretBoolConfigProp": {
+                "type": "boolean",
+                "secret": true
+            },
+            "secretObjectProp": {
+                "$ref": "#/types/tpsdkv2:config/secretObjectProp:secretObjectProp"
+            },
+            "secretStrConfigProp": {
+                "type": "string",
+                "secret": true
+            },
+            "strConfigProp": {
+                "type": "string"
+            }
+        },
+        "defaults": [
+            "boolConfigProp",
+            "objectProp",
+            "secretBoolConfigProp",
+            "secretObjectProp",
+            "secretStrConfigProp",
+            "strConfigProp"
+        ]
+    },
+    "types": {
+        "tpsdkv2:config/objectProp:objectProp": {
+            "properties": {
+                "boolNestedProp": {
+                    "type": "boolean"
+                },
+                "strNestedProp": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "type": "object"
+        },
+        "tpsdkv2:config/secretObjectProp:secretObjectProp": {
+            "properties": {
+                "boolNestedSecretProp": {
+                    "type": "boolean",
+                    "secret": true
+                },
+                "strNestedSecretProp": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "type": "object"
+        },
+        "tpsdkv2:index/ProviderObjectProp:ProviderObjectProp": {
+            "properties": {
+                "boolNestedProp": {
+                    "type": "boolean"
+                },
+                "strNestedProp": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "type": "object"
+        },
+        "tpsdkv2:index/ProviderSecretObjectProp:ProviderSecretObjectProp": {
+            "properties": {
+                "boolNestedSecretProp": {
+                    "type": "boolean",
+                    "secret": true
+                },
+                "strNestedSecretProp": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "type": "object"
+        }
+    },
+    "provider": {
+        "description": "The provider type for the tpsdkv2 package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "objectProp": {
+                "$ref": "#/types/tpsdkv2:index/ProviderObjectProp:ProviderObjectProp"
+            },
+            "secretBoolConfigProp": {
+                "type": "boolean",
+                "secret": true
+            },
+            "secretObjectProp": {
+                "$ref": "#/types/tpsdkv2:index/ProviderSecretObjectProp:ProviderSecretObjectProp"
+            },
+            "secretStrConfigProp": {
+                "type": "string",
+                "secret": true
+            },
+            "strConfigProp": {
+                "type": "string"
+            }
+        },
+        "inputProperties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "objectProp": {
+                "$ref": "#/types/tpsdkv2:index/ProviderObjectProp:ProviderObjectProp"
+            },
+            "secretBoolConfigProp": {
+                "type": "boolean",
+                "secret": true
+            },
+            "secretObjectProp": {
+                "$ref": "#/types/tpsdkv2:index/ProviderSecretObjectProp:ProviderSecretObjectProp"
+            },
+            "secretStrConfigProp": {
+                "type": "string",
+                "secret": true
+            },
+            "strConfigProp": {
+                "type": "string"
+            }
+        }
+    }
+}
