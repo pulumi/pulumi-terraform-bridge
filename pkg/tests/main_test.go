@@ -95,7 +95,7 @@ func ensureCompiledTestProviders(wd string) error {
 		// build tfgen binary
 		{
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name))
-			cmd := exec.Command("go", "build", "-o", tfgenExe) //nolint:gosec
+			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.tfgenSource
 			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("tfgen build failed for %s: %w", p.name, err)
@@ -104,8 +104,8 @@ func ensureCompiledTestProviders(wd string) error {
 
 		// generate schema
 		{
-			cmd := exec.Command(filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name)),
-				"schema", "--out", p.source)
+			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name))
+			cmd := exec.Command(exe, "schema", "--out", p.source)
 			cmd.Dir = bin
 			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("schema generation failed for %s: %w", p.name, err)
@@ -115,7 +115,7 @@ func ensureCompiledTestProviders(wd string) error {
 		// build provider binary
 		{
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s", p.name))
-			cmd := exec.Command("go", "build", "-o", tfgenExe) //nolint:gosec
+			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.source
 			if err := runcmd(cmd); err != nil {
 				return fmt.Errorf("provider build failed for %s: %w", p.name, err)
