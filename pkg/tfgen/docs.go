@@ -233,14 +233,14 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 	resourcePrefix string, kind DocKind, rawName string,
 	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
 	globalInfo *tfbridge.DocRuleInfo,
-) ([]byte, string, bool) {
+) ([]byte, string, bool, error) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
 		docinfo = info.GetDocs()
 	}
 	if docinfo != nil && len(docinfo.Markdown) != 0 {
-		return docinfo.Markdown, "", true
+		return docinfo.Markdown, "", true, nil
 	}
 
 	if repoPath == "" {
@@ -249,7 +249,7 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 		if err != nil {
 			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
 			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
-			return nil, "", false
+			return nil, "", false, nil
 		}
 	}
 
@@ -261,23 +261,68 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 
 	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
 	if !found {
-		return nil, "", false
+		return nil, "", false, nil
 	}
 
 	if globalInfo != nil {
-		for _, rule := range globalInfo.ReplaceRules {
+		for _, rule := range getReplaceRules(globalInfo) {
 			match, err := filepath.Match(rule.Path, markdownFileName)
-			contract.AssertNoErrorf(err, "invalid glob: %q", rule.Path)
+			if err != nil {
+				return nil, "", false, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
+			}
 			if !match {
 				continue
 			}
 			bytes, err := rule.Replace(markdownFileName, markdownBytes)
-			contract.AssertNoErrorf(err, "replace failed on file %q", markdownFileName)
+			if err != nil {
+				return nil, "", false, err
+			}
 			markdownBytes = bytes
 		}
 	}
 
-	return markdownBytes, markdownFileName, true
+	return markdownBytes, markdownFileName, true, nil
+}
+
+// Create a regexp based replace rule that is bounded by non-ascii letter text.
+//
+// This function is not appropriate to be called in hot loops.
+func boundedReplace(from, to string) tfbridge.ReplaceRule {
+	r := regexp.MustCompile(fmt.Sprintf(`([^a-zA-Z]|^)%s([^a-zA-Z]|$)`, from))
+	bTo := []byte(fmt.Sprintf("${1}%s${%d}", to, r.NumSubexp()))
+	return tfbridge.ReplaceRule{
+		Path: "*",
+		Replace: func(_ string, content []byte) ([]byte, error) {
+			return r.ReplaceAll(content, bTo), nil
+		},
+	}
+}
+
+var (
+	// Replace content such as "`terraform plan`" with "`pulumi preview`"
+	replaceTfPlan = boundedReplace("[tT]erraform [pP]lan", "pulumi preview")
+	// Replace content such as " Terraform Apply." with " pulumi up."
+	replaceTfApply = boundedReplace("[tT]erraform [aA]pply", "pulumi up")
+	// A markdown link that has terraform in the link component.
+	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
+)
+
+// Get the replace rule set for a DocRuleInfo.
+func getReplaceRules(info *tfbridge.DocRuleInfo) []tfbridge.ReplaceRule {
+	defaults := []tfbridge.ReplaceRule{
+		replaceTfPlan,
+		replaceTfApply,
+		{ // Here we strip links to terraform documentation.
+			Path: "*",
+			Replace: func(_ string, content []byte) ([]byte, error) {
+				return tfLink.ReplaceAll(content, []byte("$1")), nil
+			},
+		},
+	}
+	if info == nil {
+		return defaults
+	}
+	return append(info.ReplaceRules, defaults...)
 }
 
 func (k DocKind) String() string {
@@ -312,8 +357,11 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
+	markdownBytes, markdownFileName, found, err := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
 		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
+	if err != nil {
+		return entityDocs{}, nil
+	}
 	if !found {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+

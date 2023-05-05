@@ -115,6 +115,7 @@ type ProviderInfo struct {
 }
 
 type DocRuleInfo struct {
+	// A list of replace rules to apply.
 	ReplaceRules []ReplaceRule
 
 	// A function to suggest alternative file names for a TF element.
@@ -127,7 +128,12 @@ type DocsPathInfo struct {
 
 type ReplaceRule struct {
 	// The path at which this rule applies. Paths are matched via filepath.Match.
-	Path    string
+	//
+	// To match all files, supply "*".
+	Path string
+	// The function that performs the replace on the byte string.
+	//
+	// Must not be nil.
 	Replace func(path string, content []byte) ([]byte, error)
 }
 
