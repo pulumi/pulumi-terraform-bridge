@@ -201,7 +201,7 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
-func defaultMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) (names []string) {
+func getMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) (names []string) {
 	postfixes := []string{
 		".html.markdown",
 		".markdown",
@@ -233,14 +233,14 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 	resourcePrefix string, kind DocKind, rawName string,
 	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
 	globalInfo *tfbridge.DocRuleInfo,
-) ([]byte, string, bool, error) {
+) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
 		docinfo = info.GetDocs()
 	}
 	if docinfo != nil && len(docinfo.Markdown) != 0 {
-		return docinfo.Markdown, "", true, nil
+		return docinfo.Markdown, "", true
 	}
 
 	if repoPath == "" {
@@ -249,11 +249,11 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 		if err != nil {
 			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
 			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
-			return nil, "", false, nil
+			return nil, "", false
 		}
 	}
 
-	possibleMarkdownNames := defaultMarkdownNames(resourcePrefix, rawName, globalInfo)
+	possibleMarkdownNames := getMarkdownNames(resourcePrefix, rawName, globalInfo)
 
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
@@ -261,27 +261,10 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 
 	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
 	if !found {
-		return nil, "", false, nil
+		return nil, "", false
 	}
 
-	if globalInfo != nil {
-		for _, rule := range getReplaceRules(globalInfo) {
-			match, err := filepath.Match(rule.Path, markdownFileName)
-			if err != nil {
-				return nil, "", false, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
-			}
-			if !match {
-				continue
-			}
-			bytes, err := rule.Replace(markdownFileName, markdownBytes)
-			if err != nil {
-				return nil, "", false, err
-			}
-			markdownBytes = bytes
-		}
-	}
-
-	return markdownBytes, markdownFileName, true, nil
+	return markdownBytes, markdownFileName, true
 }
 
 // Create a regexp based replace rule that is bounded by non-ascii letter text.
@@ -307,8 +290,27 @@ var (
 	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
 )
 
+type replaceRules []tfbridge.ReplaceRule
+
+func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
+	for _, rule := range rr {
+		match, err := filepath.Match(rule.Path, fileName)
+		if err != nil {
+			return nil, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
+		}
+		if !match {
+			continue
+		}
+		contents, err = rule.Replace(fileName, contents)
+		if err != nil {
+			return nil, fmt.Errorf("replace failed: %w", err)
+		}
+	}
+	return contents, nil
+}
+
 // Get the replace rule set for a DocRuleInfo.
-func getReplaceRules(info *tfbridge.DocRuleInfo) []tfbridge.ReplaceRule {
+func getReplaceRules(info *tfbridge.DocRuleInfo) replaceRules {
 	defaults := []tfbridge.ReplaceRule{
 		replaceTfPlan,
 		replaceTfApply,
@@ -357,11 +359,8 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found, err := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
+	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
 		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
-	if err != nil {
-		return entityDocs{}, nil
-	}
 	if !found {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
@@ -380,7 +379,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, resourcePrefix, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -536,28 +535,40 @@ func splitGroupLines(s, sep string) [][]string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
+	markdown []byte, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
-		g:                g,
+		sink:             g,
 		info:             info,
 		kind:             kind,
-		markdown:         markdown,
 		markdownFileName: markdownFileName,
-		resourcePrefix:   resourcePrefix,
 		rawname:          rawname,
+
+		infoCtx: infoContext{
+			language: g.language,
+			pkg:      g.pkg,
+			info:     g.info,
+		},
+		docRules: g.info.DocRules,
 	}
-	return p.parse()
+	return p.parse(markdown)
+}
+
+type diagsSink interface {
+	debug(string, ...interface{})
+	warn(string, ...interface{})
+	error(string, ...interface{})
 }
 
 type tfMarkdownParser struct {
-	g                *Generator
+	sink             diagsSink
 	info             tfbridge.ResourceOrDataSourceInfo
 	kind             DocKind
-	markdown         string
 	markdownFileName string
-	resourcePrefix   string
 	rawname          string
+
+	infoCtx  infoContext
+	docRules *tfbridge.DocRuleInfo
 
 	ret entityDocs
 }
@@ -579,21 +590,27 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 	}
 	fileBytes, err := os.ReadFile(absPath)
 	if err != nil {
-		p.g.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
+		p.sink.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
 		return "", err
 	}
 
 	return string(fileBytes), nil
 }
 
-func (p *tfMarkdownParser) parse() (entityDocs, error) {
+func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
+	var err error
+	tfMarkdown, err = getReplaceRules(p.docRules).apply(p.markdownFileName, tfMarkdown)
+	if err != nil {
+		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
+	}
+	markdown := string(tfMarkdown)
 
 	// Replace any Windows-style newlines.
-	markdown := strings.Replace(p.markdown, "\r\n", "\n", -1)
+	markdown = strings.Replace(markdown, "\r\n", "\n", -1)
 
 	// Replace redundant comment.
 	markdown = strings.Replace(markdown, "<!-- schema generated by tfplugindocs -->", "", -1)
@@ -633,7 +650,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, _ := cleanupDoc(p.rawname, p.g, p.ret, footerLinks)
+	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
 
 	return doc, nil
 }
@@ -745,7 +762,7 @@ func reformatExamples(sections [][]string) [][]string {
 func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	// Extract the header name, since this will drive how we process the content.
 	if len(h2Section) == 0 {
-		p.g.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
+		p.sink.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
 		return nil
 	}
 
@@ -759,7 +776,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
-		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
+		p.sink.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
 		ignoredDocHeaders[header]++
 		return nil
 	case "Example Usage":
@@ -785,7 +802,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
-			p.g.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location", p.rawname, p.kind)
+			p.sink.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location",
+				p.rawname, p.kind)
 			continue
 		}
 
@@ -797,7 +815,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
 			!p.info.ReplaceExamplesSection() {
-			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
+			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 			unexpectedSnippets++
 		}
@@ -851,14 +869,14 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	node := parseNode(strings.Join(subsection, "\n"))
 	topLevelSchema, err := parseTopLevelSchema(node, nil)
 	if err != nil {
-		p.g.warn(fmt.Sprintf("error: Failure in parsing resource name: %s, subsection: %s", p.rawname, subsection[0]))
+		p.sink.warn(fmt.Sprintf("error: Failure in parsing resource name: %s, subsection: %s", p.rawname, subsection[0]))
 		return
 	}
 	if topLevelSchema == nil {
-		p.g.warn("Failed to parse top-level Schema section")
+		p.sink.warn("Failed to parse top-level Schema section")
 		return
 	}
-	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
+	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.sink.warn)
 }
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
@@ -1099,7 +1117,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundEndHeader {
-		p.g.warn("", "Expected to pair --- begin/end for resource %v's Markdown header", p.rawname)
+		p.sink.warn("", "Expected to pair --- begin/end for resource %v's Markdown header", p.rawname)
 	}
 
 	// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
@@ -1120,7 +1138,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundH1Resource {
-		p.g.warn("Expected an H1 in markdown for resource %v", p.rawname)
+		p.sink.warn("Expected an H1 in markdown for resource %v", p.rawname)
 	}
 }
 
@@ -1670,13 +1688,16 @@ func genLanguageToSlice(input Language) []string {
 	}
 }
 
-func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
+func cleanupDoc(
+	name string, g diagsSink, infoCtx infoContext, doc entityDocs,
+	footerLinks map[string]string,
+) (entityDocs, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 
 	for k, v := range doc.Arguments {
 		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
-		cleanedText, elided := reformatText(g, v.description, footerLinks)
+		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
 			elidedArguments++
 			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
@@ -1693,7 +1714,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
 			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := reformatText(g, vv, footerLinks)
+			cleanedText, elided := reformatText(infoCtx, vv, footerLinks)
 			if elided {
 				elidedNestedArguments++
 				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
@@ -1707,7 +1728,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanedText, elided := reformatText(g, v, footerLinks)
+		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
 			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
@@ -1718,7 +1739,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	}
 
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText, elided := reformatText(g, doc.Description, footerLinks)
+	cleanupText, elided := reformatText(infoCtx, doc.Description, footerLinks)
 	if elided {
 		g.debug("Found <elided> in the description. Attempting to extract examples from the description and " +
 			"reformat examples only.")
@@ -1736,7 +1757,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		} else {
 			g.debug("Found examples in the description text. Attempting to reformat the examples.")
 
-			cleanedupExamples, examplesElided := reformatText(g, examples, footerLinks)
+			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
 			if examplesElided {
 				elidedDescriptions++
 				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
@@ -1779,7 +1800,13 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 
 const elidedDocComment = "<elided>"
 
-func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridge.ProviderInfo, text string) string {
+type infoContext struct {
+	language Language
+	pkg      tokens.Package
+	info     tfbridge.ProviderInfo
+}
+
+func (c infoContext) fixupPropertyReference(text string) string {
 	formatModulePrefix := func(mod tokens.ModuleName) string {
 		modname := mod.String()
 		if mod == indexMod {
@@ -1801,23 +1828,23 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 			open, name, close = "`", parts[7], "`"
 		}
 
-		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
+		if resInfo, hasResourceInfo := c.info.Resources[name]; hasResourceInfo {
 			// This is a resource name
-			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
+			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch language {
+			switch c.language {
 			case Golang, Python:
 				// Use `ec2.Instance` format
 				return open + modname + resname.String() + close
 			default:
 				// Use `aws.ec2.Instance` format
-				return open + pkg.String() + "." + modname + resname.String() + close
+				return open + c.pkg.String() + "." + modname + resname.String() + close
 			}
-		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
+		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
-			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
+			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch language {
+			switch c.language {
 			case Golang:
 				// Use `ec2.getAmi` format
 				return open + modname + getname.String() + close
@@ -1826,11 +1853,11 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 				return open + python.PyName(modname+getname.String()) + close
 			default:
 				// Use `aws.ec2.getAmi` format
-				return open + pkg.String() + "." + modname + getname.String() + close
+				return open + c.pkg.String() + "." + modname + getname.String() + close
 			}
 		}
 		// Else just treat as a property name
-		switch language {
+		switch c.language {
 		case NodeJS, Golang:
 			// Use `camelCase` format
 			pname := propertyName(name, nil, nil)
@@ -1855,7 +1882,7 @@ func extractExamples(description string) string {
 }
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func reformatText(g *Generator, text string, footerLinks map[string]string) (string, bool) {
+func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
 
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
@@ -1902,7 +1929,7 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 		})
 
 		// Fixup resource and property name references
-		text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
+		text = g.fixupPropertyReference(text)
 
 		return text, false
 	}
