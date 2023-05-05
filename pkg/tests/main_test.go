@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"runtime"
 )
 
 func TestMain(m *testing.M) {
@@ -104,7 +105,11 @@ func ensureCompiledTestProviders(wd string) error {
 
 		// generate schema
 		{
-			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s", p.name))
+			var suffix string
+			if runtime.GOOS == "windows" {
+				suffix = ".exe"
+			}
+			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command(exe, "schema", "--out", p.source)
 			cmd.Dir = bin
 			if err := runcmd(cmd); err != nil {
