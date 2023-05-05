@@ -322,6 +322,12 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
 	}
 
+	// It is currently a breaking change to call PreConfigureCallback with unknown values. The user code does not
+	// expect them and may panic.
+	//
+	// Currently we do not call it at all if there are any unknowns.
+	//
+	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
 		if p.info.PreConfigureCallback != nil {
 			// NOTE: the user code may modify news in-place.
