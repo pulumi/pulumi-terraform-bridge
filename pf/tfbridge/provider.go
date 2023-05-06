@@ -38,7 +38,9 @@ import (
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -61,6 +63,8 @@ type provider struct {
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logutils.LogSink
+
+	schemaOnlyProvider shim.Provider
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -145,6 +149,8 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
 		version:       semverVersion,
+
+		schemaOnlyProvider: SchemaOnlyPluginFrameworkProvider(ctx, p),
 	}, nil
 }
 
@@ -159,8 +165,11 @@ func NewProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	p.(*provider).logSink = logSink
-	return pl.NewProviderServerWithContext(p), nil
+	pp := p.(*provider)
+
+	pp.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.ProviderInfo.Config)
+	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).

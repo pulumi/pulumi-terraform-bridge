@@ -22,36 +22,61 @@ import (
 )
 
 func TestConfigure(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
-	testCase := `
-[
-  {
-    "method": "/pulumirpc.ResourceProvider/Configure",
-    "request": {
-      "args": {
-        "stringConfigProp": "example"
-      }
-    },
-    "response": {
-      "supportsPreview": true,
-      "acceptResources": true
-    }
-  },
-  {
-    "method": "/pulumirpc.ResourceProvider/Create",
-    "request": {
-      "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:TestConfigRes::r1",
-      "preview": false
-    },
-    "response": {
-      "id": "id-1",
-      "properties": {
-        "configCopy": "example",
-        "id": "id-1"
-      }
-    }
-  }
-]
-        `
-	testutils.ReplaySequence(t, server, testCase)
+
+	t.Run("configiure communicates to create", func(t *testing.T) {
+		// Test interaction of Configure and Create.
+		//
+		// TestConfigRes will read stringConfigProp information the provider receives via Configure.
+		server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+		testCase := `
+		[
+		  {
+		    "method": "/pulumirpc.ResourceProvider/Configure",
+		    "request": {
+		      "args": {
+			"stringConfigProp": "example"
+		      }
+		    },
+		    "response": {
+		      "supportsPreview": true,
+		      "acceptResources": true
+		    }
+		  },
+		  {
+		    "method": "/pulumirpc.ResourceProvider/Create",
+		    "request": {
+		      "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:TestConfigRes::r1",
+		      "preview": false
+		    },
+		    "response": {
+		      "id": "id-1",
+		      "properties": {
+			"configCopy": "example",
+			"id": "id-1"
+		      }
+		    }
+		  }
+		]`
+		testutils.ReplaySequence(t, server, testCase)
+	})
+
+	t.Run("booleans", func(t *testing.T) {
+		// Non-string properties caused trouble at some point, test booleans.
+		server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+
+		testCase := `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Configure",
+		  "request": {
+		    "args": {
+                      "boolConfigProp": "true"
+		    }
+		  },
+		  "response": {
+		    "supportsPreview": true,
+		    "acceptResources": true
+		  }
+		}`
+		testutils.Replay(t, server, testCase)
+	})
 }

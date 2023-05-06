@@ -39,10 +39,12 @@
                 "tuplesOptionals": "tuples_optional"
             },
             "testbridge:index:Provider": {
+                "boolConfigProp": "bool_config_prop",
                 "stringConfigProp": "string_config_prop"
             }
         },
         "renamedConfigProperties": {
+            "boolConfigProp": "bool_config_prop",
             "stringConfigProp": "string_config_prop"
         }
     }
