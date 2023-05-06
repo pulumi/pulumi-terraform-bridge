@@ -39,12 +39,12 @@
                 "tuplesOptionals": "tuples_optional"
             },
             "testbridge:index:Provider": {
-                "skipMetadataApiCheck": "skip_metadata_api_check",
+                "boolConfigProp": "bool_config_prop",
                 "stringConfigProp": "string_config_prop"
             }
         },
         "renamedConfigProperties": {
-            "skipMetadataApiCheck": "skip_metadata_api_check",
+            "boolConfigProp": "bool_config_prop",
             "stringConfigProp": "string_config_prop"
         }
     }

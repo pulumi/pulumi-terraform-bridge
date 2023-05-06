@@ -69,7 +69,7 @@ func TestConfigure(t *testing.T) {
 		  "method": "/pulumirpc.ResourceProvider/Configure",
 		  "request": {
 		    "args": {
-                      "skipMetadataApiCheck": "true"
+                      "boolConfigProp": "true"
 		    }
 		  },
 		  "response": {
