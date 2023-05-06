@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package walk
+package tfbridge
 
 import (
 	"testing"
@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
@@ -66,7 +65,7 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		}).Shim(),
 	}
 
-	schemaInfos := map[string]*tfbridge.SchemaInfo{
+	schemaInfos := map[string]*SchemaInfo{
 		"flat_list_via_schema_info": {
 			MaxItemsOne: &yes,
 		},
@@ -163,16 +162,16 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 func TestLookupSchemaInfoMapPath(t *testing.T) {
 	yes := true
 
-	schemaInfos := map[string]*tfbridge.SchemaInfo{
+	schemaInfos := map[string]*SchemaInfo{
 		"list_prop": {
-			Elem: &tfbridge.SchemaInfo{
+			Elem: &SchemaInfo{
 				Secret: &yes,
 			},
 		},
 		"nested_obj_prop": {
-			Fields: map[string]*tfbridge.SchemaInfo{
+			Fields: map[string]*SchemaInfo{
 				"sub_prop": {
-					Fields: map[string]*tfbridge.SchemaInfo{
+					Fields: map[string]*SchemaInfo{
 						"p": {
 							Secret: &yes,
 						},
@@ -182,8 +181,8 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 		},
 		"max_items_one_prop": {
 			MaxItemsOne: &yes,
-			Elem: &tfbridge.SchemaInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
+			Elem: &SchemaInfo{
+				Fields: map[string]*SchemaInfo{
 					"sub_prop": {
 						Secret: &yes,
 					},
@@ -195,7 +194,7 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 	type testCase struct {
 		name     string
 		path     SchemaPath
-		expected *tfbridge.SchemaInfo
+		expected *SchemaInfo
 	}
 
 	testCases := []testCase{

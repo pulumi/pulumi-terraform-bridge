@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package tfbridge
 
 import (
 	"context"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/walk"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -26,7 +24,7 @@ import (
 // Ensures resource.MakeSecret is used to wrap any nested values that correspond to secret properties in the schema. A
 // property is considered secret if it is declared Sensitive in the SchemaMap in the upstream provider. Users may also
 // override a matching SchemaInfo.Secret setting to force a property to be considered secret or non-secret.
-func MarkSchemaSecrets(ctx context.Context, schemaMap shim.SchemaMap, configInfos map[string]*tfbridge.SchemaInfo,
+func MarkSchemaSecrets(ctx context.Context, schemaMap shim.SchemaMap, configInfos map[string]*SchemaInfo,
 	pv resource.PropertyValue) resource.PropertyValue {
 	ss := &schemaSecrets{schemaMap, configInfos}
 	return ss.markSchemaSecretsTransform(make(resource.PropertyPath, 0), pv)
@@ -34,12 +32,12 @@ func MarkSchemaSecrets(ctx context.Context, schemaMap shim.SchemaMap, configInfo
 
 type schemaSecrets struct {
 	schemaMap   shim.SchemaMap
-	schemaInfos map[string]*tfbridge.SchemaInfo
+	schemaInfos map[string]*SchemaInfo
 }
 
 func (ss *schemaSecrets) shouldBeSecret(path resource.PropertyPath) bool {
-	schemaPath := walk.PropertyPathToSchemaPath(path, ss.schemaMap, ss.schemaInfos)
-	s, info, err := walk.LookupSchemas(schemaPath, ss.schemaMap, ss.schemaInfos)
+	schemaPath := PropertyPathToSchemaPath(path, ss.schemaMap, ss.schemaInfos)
+	s, info, err := LookupSchemas(schemaPath, ss.schemaMap, ss.schemaInfos)
 	if err != nil {
 		return false
 	}

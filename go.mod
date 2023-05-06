@@ -55,6 +55,7 @@ require (
 	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.29.1
+	pgregory.net/rapid v0.5.5
 )
 
 require (

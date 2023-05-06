@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package walk
+package tfbridge
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -35,7 +34,7 @@ type SchemaPath = walk.SchemaPath
 func PropertyPathToSchemaPath(
 	propertyPath resource.PropertyPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo) SchemaPath {
+	schemaInfos map[string]*SchemaInfo) SchemaPath {
 	return propertyPathToSchemaPath(walk.NewSchemaPath(), propertyPath, schemaMap, schemaInfos)
 }
 
@@ -43,7 +42,7 @@ func propertyPathToSchemaPath(
 	basePath SchemaPath,
 	propertyPath resource.PropertyPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) SchemaPath {
 
 	if len(propertyPath) == 0 {
@@ -51,7 +50,7 @@ func propertyPathToSchemaPath(
 	}
 
 	if schemaInfos == nil {
-		schemaInfos = make(map[string]*tfbridge.SchemaInfo)
+		schemaInfos = make(map[string]*SchemaInfo)
 	}
 
 	firstStep, ok := propertyPath[0].(string)
@@ -59,7 +58,7 @@ func propertyPathToSchemaPath(
 		return nil
 	}
 
-	firstStepTF := tfbridge.PulumiToTerraformName(firstStep, schemaMap, schemaInfos)
+	firstStepTF := PulumiToTerraformName(firstStep, schemaMap, schemaInfos)
 
 	fieldSchema, found := schemaMap.GetOk(firstStepTF)
 	if !found {
@@ -73,7 +72,7 @@ func propertyPathToSchemaPathInner(
 	basePath SchemaPath,
 	propertyPath resource.PropertyPath,
 	schema shim.Schema,
-	schemaInfo *tfbridge.SchemaInfo,
+	schemaInfo *SchemaInfo,
 ) SchemaPath {
 
 	if len(propertyPath) == 0 {
@@ -81,7 +80,7 @@ func propertyPathToSchemaPathInner(
 	}
 
 	if schemaInfo == nil {
-		schemaInfo = &tfbridge.SchemaInfo{}
+		schemaInfo = &SchemaInfo{}
 	}
 
 	// Detect single-nested blocks (object types).
@@ -93,7 +92,7 @@ func propertyPathToSchemaPathInner(
 	switch schema.Type() {
 	case shim.TypeList, shim.TypeMap, shim.TypeSet:
 		var elemPP resource.PropertyPath
-		if tfbridge.IsMaxItemsOne(schema, schemaInfo) {
+		if IsMaxItemsOne(schema, schemaInfo) {
 			// Pulumi flattens MaxItemsOne values, so the element path is the same as the current path.
 			elemPP = propertyPath
 		} else {
@@ -118,7 +117,7 @@ func propertyPathToSchemaPathInner(
 // Convenience method to lookup both a Schema and a SchemaInfo by path.
 func LookupSchemas(schemaPath walk.SchemaPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo) (shim.Schema, *tfbridge.SchemaInfo, error) {
+	schemaInfos map[string]*SchemaInfo) (shim.Schema, *SchemaInfo, error) {
 
 	s, err := walk.LookupSchemaMapPath(schemaPath, schemaMap)
 	if err != nil {
@@ -131,8 +130,8 @@ func LookupSchemas(schemaPath walk.SchemaPath,
 // Drill down a path from a map of SchemaInfo objects and find a matching SchemaInfo if any.
 func LookupSchemaInfoMapPath(
 	schemaPath SchemaPath,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
-) *tfbridge.SchemaInfo {
+	schemaInfos map[string]*SchemaInfo,
+) *SchemaInfo {
 
 	if len(schemaPath) == 0 {
 		return nil
@@ -153,7 +152,7 @@ func LookupSchemaInfoMapPath(
 }
 
 // Drill down a path from a  SchemaInfo object and find a matching SchemaInfo if any.
-func LookupSchemaInfoPath(schemaPath SchemaPath, schemaInfo *tfbridge.SchemaInfo) *tfbridge.SchemaInfo {
+func LookupSchemaInfoPath(schemaPath SchemaPath, schemaInfo *SchemaInfo) *SchemaInfo {
 	if len(schemaPath) == 0 {
 		return schemaInfo
 	}
