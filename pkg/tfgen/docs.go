@@ -201,32 +201,28 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
-func getMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) (names []string) {
-	postfixes := []string{
-		".html.markdown",
-		".markdown",
-		".html.md",
-		".md",
-	}
-	resNames := []string{
+func getMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
+	possibleMarkdownNames := []string{
 		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(resourcePrefix, rawName),
+		withoutPackageName(resourcePrefix, rawName) + ".html.markdown",
+		withoutPackageName(resourcePrefix, rawName) + ".markdown",
+		withoutPackageName(resourcePrefix, rawName) + ".html.md",
+		withoutPackageName(resourcePrefix, rawName) + ".md",
 		// But for some providers, the prefix is included in the name of the doc file
-		rawName,
-	}
-	for _, res := range resNames {
-		for _, postfix := range postfixes {
-			names = append(names, res+postfix)
-		}
+		rawName + ".html.markdown",
+		rawName + ".markdown",
+		rawName + ".html.md",
+		rawName + ".md",
 	}
 
 	if globalInfo != nil && globalInfo.AlternativeNames != nil {
-		names = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
+		// We look at user generated names before we look at default names
+		possibleMarkdownNames = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
 			Resource: rawName,
-		}), names...)
+		}), possibleMarkdownNames...)
 	}
 
-	return names
+	return possibleMarkdownNames
 }
 
 func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,

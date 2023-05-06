@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -62,21 +63,19 @@ func TestURLRewrite(t *testing.T) {
 		},
 	}
 
-	g, err := NewGenerator(GeneratorOptions{
-		Package:  "google",
-		Version:  "0.1.2",
-		Language: "nodejs",
-		ProviderInfo: tfbridge.ProviderInfo{
+	infoCtx := infoContext{
+		pkg:      "google",
+		language: "nodejs",
+		info: tfbridge.ProviderInfo{
 			Name: "google",
 			Resources: map[string]*tfbridge.ResourceInfo{
 				"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 			},
 		},
-	})
-	assert.NoError(t, err)
+	}
 
 	for _, test := range tests {
-		text, _ := reformatText(g, test.Input, nil)
+		text, _ := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
 	}
 }
@@ -897,6 +896,74 @@ throw new Exception("!");
 
 	assert.NotContains(t, string(schemaBytes), "{{% //examples %}}")
 }
+
+func TestParseTFMarkdown(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		info                    tfbridge.ResourceOrDataSourceInfo
+		providerInfo            tfbridge.ProviderInfo
+		kind                    DocKind
+		resourcePrefix, rawName string
+
+		docRules *tfbridge.DocRuleInfo
+
+		fileName     string
+		fileContents []byte
+
+		expected entityDocs
+	}
+
+	tests := []testCase{
+		{
+			kind:           ResourceDocs,
+			resourcePrefix: "pkg_",
+			rawName:        "pkg_mod1_res1",
+
+			fileName: "mod1_res1.md",
+			fileContents: []byte(`
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
+`),
+			expected: entityDocs{
+				Description: `## 
+
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
+				Arguments:  map[string]*argumentDocs{},
+				Attributes: map[string]string{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			p := &tfMarkdownParser{
+				sink:             mockSink{t},
+				info:             tt.info,
+				kind:             tt.kind,
+				markdownFileName: tt.fileName,
+				rawname:          tt.rawName,
+
+				infoCtx: infoContext{
+					language: Schema,
+					pkg:      "pkg",
+					info:     tt.providerInfo,
+				},
+				docRules: tt.docRules,
+			}
+
+			actual, err := p.parse(tt.fileContents)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+type mockSink struct{ t *testing.T }
+
+func (mockSink) warn(string, ...interface{})  {}
+func (mockSink) debug(string, ...interface{}) {}
+func (mockSink) error(string, ...interface{}) {}
 
 type mockResource struct {
 	docs  tfbridge.DocInfo
