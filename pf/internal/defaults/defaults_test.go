@@ -178,6 +178,22 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				"boolProp": resource.NewBoolProperty(true),
 			},
 		},
+		{
+			name: "From function can compute defaults",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"string_prop": {
+					Default: &tfbridge.DefaultInfo{
+						From: func(res *tfbridge.PulumiResource) (interface{}, error) {
+							return resource.NewStringProperty("OK"), nil
+						},
+					},
+				},
+			},
+			resourceInstance: &tfbridge.PulumiResource{},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("OK"),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
