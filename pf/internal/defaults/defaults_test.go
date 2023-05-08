@@ -32,6 +32,12 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	var schemaMap shim.SchemaMap = schema.SchemaMap{
 		"string_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 
+		"int_prop": (&schema.Schema{Type: shim.TypeInt, Optional: true}).Shim(),
+
+		"float_prop": (&schema.Schema{Type: shim.TypeFloat, Optional: true}).Shim(),
+
+		"bool_prop": (&schema.Schema{Type: shim.TypeBool, Optional: true}).Shim(),
+
 		"object_prop": (&schema.Schema{
 			Type:     shim.TypeMap,
 			Optional: true,
@@ -122,6 +128,54 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("S"),
+			},
+		},
+		{
+			name: "int prop can be set from environment",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"int_prop": {
+					Default: &tfbridge.DefaultInfo{
+						EnvVars: []string{"FOO", "BAR"},
+					},
+				},
+			},
+			env: map[string]string{
+				"FOO": "42",
+			},
+			expected: resource.PropertyMap{
+				"intProp": resource.NewNumberProperty(42),
+			},
+		},
+		{
+			name: "float prop can be set from environment",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"float_prop": {
+					Default: &tfbridge.DefaultInfo{
+						EnvVars: []string{"FOO", "BAR"},
+					},
+				},
+			},
+			env: map[string]string{
+				"FOO": "42.25",
+			},
+			expected: resource.PropertyMap{
+				"floatProp": resource.NewNumberProperty(42.25),
+			},
+		},
+		{
+			name: "bool prop can be set from environment",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"bool_prop": {
+					Default: &tfbridge.DefaultInfo{
+						EnvVars: []string{"FOO", "BAR"},
+					},
+				},
+			},
+			env: map[string]string{
+				"FOO": "true",
+			},
+			expected: resource.PropertyMap{
+				"boolProp": resource.NewBoolProperty(true),
 			},
 		},
 	}
