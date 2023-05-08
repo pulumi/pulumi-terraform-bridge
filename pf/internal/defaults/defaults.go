@@ -22,10 +22,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // Transforms a PropertyMap to apply default values specified in DefaultInfo.
@@ -247,14 +249,11 @@ func (du *defaultsTransform) withDefaults(
 	path resource.PropertyPath,
 	value resource.PropertyValue,
 ) resource.PropertyValue {
-	switch {
-	case value.IsObject():
-		pm := make(resource.PropertyMap)
-		for k, v := range value.ObjectValue() {
-			subPath := append(path, string(k))
-			tv := du.withDefaults(ctx, subPath, v)
-			pm[k] = tv
+	tr := func(path resource.PropertyPath, value resource.PropertyValue) (resource.PropertyValue, error) {
+		if !value.IsObject() {
+			return value, nil
 		}
+		pm := value.ObjectValue()
 		// After recurring on the elements, try to apply defaults here.
 		if extended, err := du.extendPropertyMapWithDefaults(ctx, path, pm); err != nil {
 			tflog.Trace(ctx, "Ignoring an error in extendPropertyMapWithDefaults",
@@ -263,28 +262,9 @@ func (du *defaultsTransform) withDefaults(
 		} else {
 			value = resource.NewObjectProperty(extended)
 		}
-	case value.IsArray():
-		av := value.ArrayValue()
-		tvs := make([]resource.PropertyValue, 0, len(av))
-		for i, v := range av {
-			subPath := append(path, i)
-			tv := du.withDefaults(ctx, subPath, v)
-			tvs = append(tvs, tv)
-		}
-		value = resource.NewArrayProperty(tvs)
-	case value.IsOutput():
-		o := value.OutputValue()
-		tv := du.withDefaults(ctx, path, o.Element)
-		value = resource.NewOutputProperty(resource.Output{
-			Element:      tv,
-			Known:        o.Known,
-			Secret:       o.Secret,
-			Dependencies: o.Dependencies,
-		})
-	case value.IsSecret():
-		s := value.SecretValue()
-		newElement := du.withDefaults(ctx, path, s.Element)
-		return resource.MakeSecret(newElement)
+		return value, nil
 	}
-	return value
+	transformed, err := propertyvalue.TransformPropertyValue(path, tr, value)
+	contract.AssertNoErrorf(err, "TransformPropertyValue should not return errors here")
+	return transformed
 }
