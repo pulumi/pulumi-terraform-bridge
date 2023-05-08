@@ -15,6 +15,7 @@
 package defaults
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -32,17 +33,25 @@ import (
 //
 // Note that resourceInstance need not be specified when applying defaults for Invoke or Configure processing.
 func ApplyDefaultInfoValues(
+	ctx context.Context,
 	topSchemaMap shim.SchemaMap,
 	topFieldInfos map[string]*tfbridge.SchemaInfo, // optional
 	resourceInstance *tfbridge.PulumiResource, // optional
 	props resource.PropertyMap,
 ) resource.PropertyMap {
+
+	// Can short-circuit the entire processing if there are no matching SchemaInfo entries, and therefore no
+	// matching DefaultInfo entries at all.
+	if topFieldInfos == nil {
+		return props
+	}
+
 	t := &defaultsTransform{
 		resourceInstance: resourceInstance,
 		topSchemaMap:     topSchemaMap,
 		topFieldInfos:    topFieldInfos,
 	}
-	result := t.withDefaults(make(resource.PropertyPath, 0), resource.NewObjectProperty(props))
+	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(props))
 	if !result.IsObject() {
 		contract.Failf("defaultsTransform.withDefaults returned a non-object value")
 	}
@@ -50,6 +59,7 @@ func ApplyDefaultInfoValues(
 }
 
 func getDefaultValue(
+	ctx context.Context,
 	res *tfbridge.PulumiResource,
 	fieldSchema shim.Schema,
 	defaultInfo *tfbridge.DefaultInfo,
@@ -175,6 +185,7 @@ func (du *defaultsTransform) lookupSchemaByContext(
 
 // Extends PropertyMap with Pulumi-specified default values.
 func (du *defaultsTransform) extendPropertyMapWithDefaults(
+	ctx context.Context,
 	path resource.PropertyPath,
 	props resource.PropertyMap,
 ) (resource.PropertyMap, error) {
@@ -203,7 +214,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		}
 
 		// using default value for empty property
-		pv, gotDefault, err := getDefaultValue(du.resourceByPath(path), fieldSchema, fld.Default)
+		pv, gotDefault, err := getDefaultValue(ctx, du.resourceByPath(path), fieldSchema, fld.Default)
 		if err != nil {
 			return nil, fmt.Errorf("when computing a default for property '%s' %w", key, err)
 		}
@@ -217,6 +228,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 
 // This is mostly simply a recursion pattern on PropertyValue, can be abstracted out.
 func (du *defaultsTransform) withDefaults(
+	ctx context.Context,
 	path resource.PropertyPath,
 	value resource.PropertyValue,
 ) resource.PropertyValue {
@@ -225,11 +237,11 @@ func (du *defaultsTransform) withDefaults(
 		pm := make(resource.PropertyMap)
 		for k, v := range value.ObjectValue() {
 			subPath := append(path, string(k))
-			tv := du.withDefaults(subPath, v)
+			tv := du.withDefaults(ctx, subPath, v)
 			pm[k] = tv
 		}
 		// After recurring on the elements, try to apply defaults here.
-		if extended, err := du.extendPropertyMapWithDefaults(path, pm); err != nil {
+		if extended, err := du.extendPropertyMapWithDefaults(ctx, path, pm); err != nil {
 			// TODO can we log the ignored error here
 			value = resource.NewObjectProperty(pm)
 		} else {
@@ -240,13 +252,13 @@ func (du *defaultsTransform) withDefaults(
 		tvs := make([]resource.PropertyValue, 0, len(av))
 		for i, v := range av {
 			subPath := append(path, i)
-			tv := du.withDefaults(subPath, v)
+			tv := du.withDefaults(ctx, subPath, v)
 			tvs = append(tvs, tv)
 		}
 		value = resource.NewArrayProperty(tvs)
 	case value.IsOutput():
 		o := value.OutputValue()
-		tv := du.withDefaults(path, o.Element)
+		tv := du.withDefaults(ctx, path, o.Element)
 		value = resource.NewOutputProperty(resource.Output{
 			Element:      tv,
 			Known:        o.Known,
@@ -255,7 +267,7 @@ func (du *defaultsTransform) withDefaults(
 		})
 	case value.IsSecret():
 		s := value.SecretValue()
-		newElement := du.withDefaults(path, s.Element)
+		newElement := du.withDefaults(ctx, path, s.Element)
 		return resource.MakeSecret(newElement)
 	}
 	return value
