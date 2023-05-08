@@ -17,7 +17,7 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -44,15 +44,16 @@ func (p *provider) CheckWithContext(
 	}
 
 	// Transform checkedInputs to apply Pulumi-level defaults.
-	err = internal.SetDefaultValues(&tfbridge.PulumiResource{
-		URN:        urn,
-		Properties: checkedInputs,
-		Seed:       randomSeed,
-	}, rh.schemaOnlyShimResource, rh.pulumiResourceInfo.Fields)
-	if err != nil {
-		return checkedInputs, checkFailures, err
-	}
+	checkedInputsWithDefaults := defaults.ApplyDefaultInfoValues(ctx,
+		rh.schemaOnlyShimResource.Schema(),
+		rh.pulumiResourceInfo.Fields,
+		&tfbridge.PulumiResource{
+			URN:        urn,
+			Properties: checkedInputs,
+			Seed:       randomSeed,
+		},
+		checkedInputs)
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
-	return checkedInputs, checkFailures, nil
+	return checkedInputsWithDefaults, checkFailures, nil
 }
