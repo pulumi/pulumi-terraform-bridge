@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package defaults
 
 import (
 	"fmt"
@@ -27,10 +27,10 @@ import (
 
 // Transforms a PropertyMap to apply default values specified in DefaultInfo.
 //
-// These values are specified at the bridged provider configuration level, and should be applied before any Terraform
-// processing at Pulumi level.
+// These values are specified at the bridged provider configuration level, and are applied before any Terraform
+// processing; therefore the function works at Pulumi level (transforming a PropertyMap).
 //
-// resourceInstance need not be specified when applying defaults for Invoke or Configure processing.
+// Note that resourceInstance need not be specified when applying defaults for Invoke or Configure processing.
 func ApplyDefaultInfoValues(
 	topSchemaMap shim.SchemaMap,
 	topFieldInfos map[string]*tfbridge.SchemaInfo, // optional
