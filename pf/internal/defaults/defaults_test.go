@@ -92,6 +92,22 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				}),
 			},
 		},
+		{
+			name: "nested string does not create object",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"object_prop": {
+					Fields: map[string]*tfbridge.SchemaInfo{
+						"y_prop": {
+							Default: &tfbridge.DefaultInfo{
+								Value: "Y",
+							},
+						},
+					},
+				},
+			},
+			props:    resource.PropertyMap{},
+			expected: resource.PropertyMap{},
+		},
 	}
 
 	for _, tc := range testCases {
