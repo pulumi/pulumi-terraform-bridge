@@ -914,24 +914,60 @@ func TestParseTFMarkdown(t *testing.T) {
 		expected entityDocs
 	}
 
-	tests := []testCase{
-		{
+	// A pre-configured test case
+	tc := func(configure func(tc *testCase)) testCase {
+		tc := testCase{
 			kind:           ResourceDocs,
 			resourcePrefix: "pkg_",
 			rawName:        "pkg_mod1_res1",
 
 			fileName: "mod1_res1.md",
-			fileContents: []byte(`
-This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
-`),
 			expected: entityDocs{
-				Description: `## 
-
-This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
 				Arguments:  map[string]*argumentDocs{},
 				Attributes: map[string]string{},
 			},
-		},
+		}
+		configure(&tc)
+		return tc
+	}
+	// Assert that file contents match the expected description.
+	desc := func(fileContents, expected string) testCase {
+		return tc(func(c *testCase) {
+			c.fileContents = []byte(fileContents)
+			c.expected.Description = expected
+		})
+	}
+
+	tests := []testCase{
+		desc(`
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
+`, `##`+" " /* Extra whitespace is generated. TODO Remove extra whitespace */ +`
+
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
+		),
+		desc(`
+This is a test that we [correctly](https://www.terraform.io/docs/pkg/some-resource) strip TF doc links.
+`, "## \n\nThis is a test that we correctly strip TF doc links."),
+		tc(func(c *testCase) {
+			c.fileContents = []byte(`
+This is a test for CUSTOM_REPLACES.`)
+			c.expected.Description = "## \n\nThis is a test for checking custom replaces."
+			rule := tfbridge.DocsEdit{
+				Path: "*",
+				Edit: func(path string, content []byte) ([]byte, error) {
+					assert.Equal(t, "mod1_res1.md", path)
+					return bytes.ReplaceAll(content,
+						[]byte(`CUSTOM_REPLACES`),
+						[]byte(`checking custom replaces`)), nil
+				},
+			}
+
+			c.docRules = &tfbridge.DocRuleInfo{
+				EditRules: []tfbridge.DocsEdit{
+					rule,
+				},
+			}
+		}),
 	}
 
 	for _, tt := range tests {

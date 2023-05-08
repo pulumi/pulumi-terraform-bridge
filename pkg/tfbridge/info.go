@@ -101,7 +101,7 @@ type ProviderInfo struct {
 	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
 	MetadataInfo *MetadataInfo
 
-	// Rules that control discovery and replacement for docs.
+	// Rules that control file discovery and edits for any subset of docs in a provider.
 	DocRules *DocRuleInfo
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
@@ -114,27 +114,29 @@ type ProviderInfo struct {
 	SkipExamples func(SkipExamplesArgs) bool
 }
 
+// DocRuleInfo controls file discovery and edits for any subset of docs in a provider.
 type DocRuleInfo struct {
-	// A list of replace rules to apply.
-	ReplaceRules []ReplaceRule
+	// A list of edit rules to apply.
+	EditRules []DocsEdit
 
 	// A function to suggest alternative file names for a TF element.
 	AlternativeNames func(DocsPathInfo) []string
 }
 
+// Information for file lookup.
 type DocsPathInfo struct {
 	Resource string
 }
 
-type ReplaceRule struct {
+type DocsEdit struct {
 	// The path at which this rule applies. Paths are matched via filepath.Match.
 	//
 	// To match all files, supply "*".
 	Path string
-	// The function that performs the replace on the byte string.
+	// The function that performs the edit on the file bytes.
 	//
 	// Must not be nil.
-	Replace func(path string, content []byte) ([]byte, error)
+	Edit func(path string, content []byte) ([]byte, error)
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.

@@ -266,12 +266,12 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 // Create a regexp based replace rule that is bounded by non-ascii letter text.
 //
 // This function is not appropriate to be called in hot loops.
-func boundedReplace(from, to string) tfbridge.ReplaceRule {
+func boundedReplace(from, to string) tfbridge.DocsEdit {
 	r := regexp.MustCompile(fmt.Sprintf(`([^a-zA-Z]|^)%s([^a-zA-Z]|$)`, from))
 	bTo := []byte(fmt.Sprintf("${1}%s${%d}", to, r.NumSubexp()))
-	return tfbridge.ReplaceRule{
+	return tfbridge.DocsEdit{
 		Path: "*",
-		Replace: func(_ string, content []byte) ([]byte, error) {
+		Edit: func(_ string, content []byte) ([]byte, error) {
 			return r.ReplaceAll(content, bTo), nil
 		},
 	}
@@ -286,7 +286,7 @@ var (
 	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
 )
 
-type replaceRules []tfbridge.ReplaceRule
+type replaceRules []tfbridge.DocsEdit
 
 func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
 	for _, rule := range rr {
@@ -297,7 +297,7 @@ func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
 		if !match {
 			continue
 		}
-		contents, err = rule.Replace(fileName, contents)
+		contents, err = rule.Edit(fileName, contents)
 		if err != nil {
 			return nil, fmt.Errorf("replace failed: %w", err)
 		}
@@ -307,12 +307,12 @@ func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
 
 // Get the replace rule set for a DocRuleInfo.
 func getReplaceRules(info *tfbridge.DocRuleInfo) replaceRules {
-	defaults := []tfbridge.ReplaceRule{
+	defaults := []tfbridge.DocsEdit{
 		replaceTfPlan,
 		replaceTfApply,
 		{ // Here we strip links to terraform documentation.
 			Path: "*",
-			Replace: func(_ string, content []byte) ([]byte, error) {
+			Edit: func(_ string, content []byte) ([]byte, error) {
 				return tfLink.ReplaceAll(content, []byte("$1")), nil
 			},
 		},
@@ -320,7 +320,7 @@ func getReplaceRules(info *tfbridge.DocRuleInfo) replaceRules {
 	if info == nil {
 		return defaults
 	}
-	return append(info.ReplaceRules, defaults...)
+	return append(info.EditRules, defaults...)
 }
 
 func (k DocKind) String() string {
