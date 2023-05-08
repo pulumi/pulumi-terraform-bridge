@@ -167,6 +167,10 @@ func (du *defaultsTransform) resourceByPath(path resource.PropertyPath) *tfbridg
 func (du *defaultsTransform) lookupSchemaByContext(
 	path resource.PropertyPath,
 ) (shim.SchemaMap, map[string]*tfbridge.SchemaInfo, bool) {
+	if len(path) == 0 {
+		return du.topSchemaMap, du.topFieldInfos, true
+	}
+
 	schemaPath := tfbridge.PropertyPathToSchemaPath(path, du.topSchemaMap, du.topFieldInfos)
 	if schemaPath == nil {
 		return nil, nil, false
@@ -185,7 +189,7 @@ func (du *defaultsTransform) lookupSchemaByContext(
 	objectSchema := encodedObjectSchema.Schema()
 
 	var fields map[string]*tfbridge.SchemaInfo
-	if info.Fields == nil {
+	if info == nil || info.Fields == nil {
 		fields = map[string]*tfbridge.SchemaInfo{}
 	}
 
