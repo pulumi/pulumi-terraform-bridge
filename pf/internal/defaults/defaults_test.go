@@ -108,17 +108,32 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			props:    resource.PropertyMap{},
 			expected: resource.PropertyMap{},
 		},
+		{
+			name: "string prop can be set from environment",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"string_prop": {
+					Default: &tfbridge.DefaultInfo{
+						EnvVars: []string{"FOO", "BAR"},
+					},
+				},
+			},
+			env: map[string]string{
+				"FOO": "S",
+			},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("S"),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ctx := context.Background()
 			for k, v := range tc.env {
 				t.Setenv(k, v)
 			}
+			ctx := context.Background()
 			actual := ApplyDefaultInfoValues(ctx, schemaMap, tc.fieldInfos, tc.resourceInstance, tc.props)
 			assert.Equal(t, tc.expected, actual)
 		})
