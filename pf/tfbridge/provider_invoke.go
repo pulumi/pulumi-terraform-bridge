@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -45,7 +46,14 @@ func (p *provider) InvokeWithContext(
 
 	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, args)
+	// Transform args to apply Pulumi-level defaults.
+	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx,
+		handle.schemaOnlyShim.Schema(),
+		handle.pulumiDataSourceInfo.GetFields(),
+		nil,
+		args)
+
+	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, argsWithDefaults)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
 			handle.terraformDataSourceName, err)

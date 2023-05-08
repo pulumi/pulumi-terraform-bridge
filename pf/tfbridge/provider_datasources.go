@@ -24,6 +24,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type datasourceHandle struct {
@@ -33,6 +35,8 @@ type datasourceHandle struct {
 	schema                  pfutils.Schema
 	encoder                 convert.Encoder
 	decoder                 convert.Decoder
+	schemaOnlyShim          shim.Resource
+	pulumiDataSourceInfo    *tfbridge.DataSourceInfo // optional
 }
 
 func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
@@ -60,12 +64,21 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		return datasourceHandle{}, err
 	}
 
-	return datasourceHandle{
+	shim, _ := p.schemaOnlyProvider.DataSourcesMap().GetOk(dsName)
+
+	result := datasourceHandle{
 		token:                   token,
 		makeDataSource:          makeDataSource,
 		terraformDataSourceName: dsName,
 		schema:                  schema,
 		encoder:                 encoder,
 		decoder:                 decoder,
-	}, nil
+		schemaOnlyShim:          shim,
+	}
+
+	if info, ok := p.info.DataSources[dsName]; ok {
+		result.pulumiDataSourceInfo = info
+	}
+
+	return result, nil
 }
