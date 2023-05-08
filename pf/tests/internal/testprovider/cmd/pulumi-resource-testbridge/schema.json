@@ -21,6 +21,9 @@
     },
     "config": {
         "variables": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
             "stringConfigProp": {
                 "type": "string"
             }
@@ -50,12 +53,7 @@
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"
                 }
             },
-            "type": "object",
-            "required": [
-                "automaticHttpsRewrites",
-                "bic",
-                "phases"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases": {
             "properties": {
@@ -66,11 +64,7 @@
                     "type": "boolean"
                 }
             },
-            "type": "object",
-            "required": [
-                "p1",
-                "p2"
-            ]
+            "type": "object"
         },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
@@ -139,7 +133,17 @@
         }
     },
     "provider": {
-        "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+        "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            }
+        },
+        "inputProperties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            }
+        }
     },
     "resources": {
         "testbridge:index/testnest:Testnest": {

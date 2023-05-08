@@ -94,6 +94,9 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 	resp.Schema = pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
 			"string_config_prop": pschema.StringAttribute{},
+			"bool_config_prop": pschema.BoolAttribute{
+				Optional: true,
+			},
 		},
 	}
 }

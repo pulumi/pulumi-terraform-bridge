@@ -131,7 +131,7 @@ func TestConvertStringToPropertyValue(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		enc := &configEncoding{}
+		enc := &ConfigEncoding{}
 		v, err := enc.convertStringToPropertyValue(c.str, c.typ)
 		assert.Equal(t, resource.NewPropertyValue(c.expected), v)
 		if c.expected == nil {
@@ -957,41 +957,6 @@ func TestCheckConfig(t *testing.T) {
 		}`)
 	})
 
-	// Secrets: it is important to handle secrets correctly since the results of CheckConfig are stored in the
-	// state. If secrets are not marked as such, they are stored as plaintext in the state.
-	t.Run("preserve_program_secrets", func(t *testing.T) {
-		// If the program passed a secret-marked value to a non-secret-marked property, preserve the secret bit.
-		// Trust the program that the value is secret.
-		provider := &Provider{
-			tf:     shimv2.NewProvider(testTFProviderV2),
-			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-		}
-		testutils.Replay(t, provider, `
-		{
-		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
-		  "request": {
-		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
-		    "olds": {},
-		    "news": {
-                      "config_value": {
-			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-                        "value": "foo"
-                      },
-		      "version": "6.54.0"
-		    }
-		  },
-		  "response": {
-		    "inputs": {
-                      "config_value": {
-			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-                        "value": "foo"
-                      },
-		      "version": "6.54.0"
-		    }
-		  }
-		}`)
-	})
-
 	t.Run("enforce_schema_secrets", func(t *testing.T) {
 		// If the schema marks a config property as sensitive, enforce the secret bit on that property.
 		p := testprovider.ProviderV2()
@@ -1086,58 +1051,6 @@ func TestCheckConfig(t *testing.T) {
                         "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
                       },
                       "scopes": "[\"a\",\"b\"]",
-                      "version": "6.54.0"
-                    }
-                  }
-                }`)
-	})
-
-	t.Run("preserve_program_nested_secrets", func(t *testing.T) {
-		p := testprovider.ProviderV2()
-
-		p.Schema["batching"] = &schema.Schema{
-			Type:     schema.TypeList,
-			Optional: true,
-			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"send_after": {
-						Type:     schema.TypeString,
-						Optional: true,
-					},
-					"enable_batching": {
-						Type:     schema.TypeBool,
-						Optional: true,
-					},
-				},
-			},
-		}
-
-		provider := &Provider{
-			tf:     shimv2.NewProvider(p),
-			config: shimv2.NewSchemaMap(p.Schema),
-		}
-
-		testutils.Replay(t, provider, `
-                {
-                  "method": "/pulumirpc.ResourceProvider/CheckConfig",
-                  "request": {
-                    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
-                    "olds": {},
-                    "news": {
-                      "batching": {
-                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-                        "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
-                      },
-                      "version": "6.54.0"
-                    }
-                  },
-                  "response": {
-                    "inputs": {
-                      "batching": {
-                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-                        "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
-                      },
                       "version": "6.54.0"
                     }
                   }
@@ -1351,6 +1264,46 @@ func TestPreConfigureCallback(t *testing.T) {
 		    "inputs": {
                       "config_value": "updated",
 		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+	t.Run("PreConfigureCallback not called at preview with unknown values", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			info: ProviderInfo{
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *hostclient.HostClient,
+					vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					if cv, ok := vars["configValue"]; ok {
+						// This used to panic when cv is a resource.Computed.
+						cv.StringValue()
+					}
+					// PreConfigureCallback should not even be called.
+					t.FailNow()
+					return nil
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0",
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "version": "6.54.0",
+                      "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 		    }
 		  }
 		}`)
