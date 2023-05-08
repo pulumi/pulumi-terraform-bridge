@@ -20,6 +20,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -86,6 +88,13 @@ func getDefaultValue(
 				// TODO what is the behavior of an env var set to an emtpy string? Is this the same as
 				// unset, or the same as actually setting to empty?
 				v, err := parseValueFromEnv(fieldSchema, str)
+
+				tflog.Info(ctx,
+					"Applying a default value from an environment variable",
+					map[string]any{
+						"envvar": n,
+					})
+
 				return v, true, err
 			}
 		}
@@ -242,7 +251,8 @@ func (du *defaultsTransform) withDefaults(
 		}
 		// After recurring on the elements, try to apply defaults here.
 		if extended, err := du.extendPropertyMapWithDefaults(ctx, path, pm); err != nil {
-			// TODO can we log the ignored error here
+			tflog.Trace(ctx, "Ignoring an error in extendPropertyMapWithDefaults",
+				map[string]any{"err": err.Error()})
 			value = resource.NewObjectProperty(pm)
 		} else {
 			value = resource.NewObjectProperty(extended)
