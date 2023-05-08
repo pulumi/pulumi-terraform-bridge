@@ -92,6 +92,6 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	result.decoder = outputsDecoder
 	result.token = token
 
-	result.schemaOnlyShimResource, _ = p.schemaOnlyShimProvider.ResourcesMap().GetOk(typeName)
+	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeName)
 	return result, nil
 }
