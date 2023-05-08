@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	twalk "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -85,7 +84,7 @@ func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) *schemaPropCon
 	if err != nil {
 		panic(err) /* TODO proper error handling */
 	}
-	sinfo := twalk.LookupSchemaInfoMapPath(step, sc.schemaInfos)
+	sinfo := tfbridge.LookupSchemaInfoMapPath(step, sc.schemaInfos)
 	return &schemaPropContext{
 		schemaPath: sc.schemaPath.GetAttr(tfname),
 		schema:     s,
@@ -119,7 +118,7 @@ func (pc *schemaPropContext) Element() (*schemaPropContext, error) {
 			return nil, fmt.Errorf("when deriving converters for an element of a collection: %w", err)
 		}
 	}
-	sinfo := twalk.LookupSchemaInfoPath(step, pc.schemaInfo)
+	sinfo := tfbridge.LookupSchemaInfoPath(step, pc.schemaInfo)
 	return &schemaPropContext{
 		schemaPath: pc.schemaPath.Element(),
 		schema:     s,
