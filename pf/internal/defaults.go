@@ -15,13 +15,13 @@
 package internal
 
 import (
-	"os"
-
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"strconv"
 )
 
 func getDefaultValue(

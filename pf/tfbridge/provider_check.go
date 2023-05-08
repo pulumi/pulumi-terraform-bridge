@@ -33,8 +33,7 @@ func (p *provider) CheckWithContext(
 	allowUnknowns bool,
 	randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
-	// ctx = p.initLogging(ctx, p.logSink, urn)
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	checkedInputs := inputs.Copy()
 	checkFailures := make([]plugin.CheckFailure, 0)
