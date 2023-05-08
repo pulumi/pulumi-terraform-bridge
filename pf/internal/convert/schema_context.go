@@ -151,7 +151,7 @@ func (pc *schemaPropContext) Object() (*schemaMapContext, error) {
 		}
 	}
 	return nil, fmt.Errorf("expected an object type schema at %s",
-		pc.schemaPath.String())
+		pc.schemaPath.GoString())
 }
 
 func (pc *schemaPropContext) IsMaxItemsOne(collection tftypes.Type) (tftypes.Type, bool) {
