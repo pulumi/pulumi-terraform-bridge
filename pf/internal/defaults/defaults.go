@@ -191,6 +191,8 @@ func (du *defaultsTransform) lookupSchemaByContext(
 	var fields map[string]*tfbridge.SchemaInfo
 	if info == nil || info.Fields == nil {
 		fields = map[string]*tfbridge.SchemaInfo{}
+	} else {
+		fields = info.Fields
 	}
 
 	return objectSchema, fields, true

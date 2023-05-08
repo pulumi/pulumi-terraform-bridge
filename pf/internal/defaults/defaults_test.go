@@ -31,6 +31,17 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 
 	var schemaMap shim.SchemaMap = schema.SchemaMap{
 		"string_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+
+		"object_prop": (&schema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem: (&schema.Resource{
+				Schema: schema.SchemaMap{
+					"x_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+					"y_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+				},
+			}).Shim(),
+		}).Shim(),
 	}
 
 	type testCase struct {
@@ -52,7 +63,34 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 					},
 				},
 			},
-			expected: resource.PropertyMap{"stringProp": resource.NewStringProperty("defaultValue")},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("defaultValue"),
+			},
+		},
+		{
+			name: "nested string",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"object_prop": {
+					Fields: map[string]*tfbridge.SchemaInfo{
+						"y_prop": {
+							Default: &tfbridge.DefaultInfo{
+								Value: "Y",
+							},
+						},
+					},
+				},
+			},
+			props: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+				}),
+			},
+			expected: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+					"yProp": resource.NewStringProperty("Y"),
+				}),
+			},
 		},
 	}
 
