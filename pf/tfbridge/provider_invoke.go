@@ -47,11 +47,11 @@ func (p *provider) InvokeWithContext(
 	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	// Transform args to apply Pulumi-level defaults.
-	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx,
-		handle.schemaOnlyShim.Schema(),
-		handle.pulumiDataSourceInfo.GetFields(),
-		nil,
-		args)
+	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+		TopSchemaMap:  handle.schemaOnlyShim.Schema(),
+		TopFieldInfos: handle.pulumiDataSourceInfo.GetFields(),
+		PropertyMap:   args,
+	})
 
 	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, argsWithDefaults)
 	if err != nil {

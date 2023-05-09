@@ -204,7 +204,12 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				t.Setenv(k, v)
 			}
 			ctx := context.Background()
-			actual := ApplyDefaultInfoValues(ctx, schemaMap, tc.fieldInfos, tc.resourceInstance, tc.props, nil)
+			actual := ApplyDefaultInfoValues(ctx, ApplyDefaultInfoValuesArgs{
+				TopSchemaMap:     schemaMap,
+				TopFieldInfos:    tc.fieldInfos,
+				ResourceInstance: tc.resourceInstance,
+				PropertyMap:      tc.props,
+			})
 			assert.Equal(t, tc.expected, actual)
 		})
 	}

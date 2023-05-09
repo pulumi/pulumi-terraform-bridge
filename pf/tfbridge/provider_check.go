@@ -44,15 +44,16 @@ func (p *provider) CheckWithContext(
 	}
 
 	// Transform checkedInputs to apply Pulumi-level defaults.
-	checkedInputsWithDefaults := defaults.ApplyDefaultInfoValues(ctx,
-		rh.schemaOnlyShimResource.Schema(),
-		rh.pulumiResourceInfo.Fields,
-		&tfbridge.PulumiResource{
+	checkedInputsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+		TopSchemaMap:  rh.schemaOnlyShimResource.Schema(),
+		TopFieldInfos: rh.pulumiResourceInfo.Fields,
+		ResourceInstance: &tfbridge.PulumiResource{
 			URN:        urn,
 			Properties: checkedInputs,
 			Seed:       randomSeed,
 		},
-		checkedInputs)
+		PropertyMap: checkedInputs,
+	})
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
 	return checkedInputsWithDefaults, checkFailures, nil

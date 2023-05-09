@@ -30,34 +30,42 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
+type ApplyDefaultInfoValuesArgs struct {
+	// Required. The configuration property map to extend with defaults.
+	PropertyMap resource.PropertyMap
+
+	// Toplevel schema map for the resource, data source or provider.
+	TopSchemaMap shim.SchemaMap
+
+	// Toplevel SchemaInfo configuration matching TopSchemaMap.
+	TopFieldInfos map[string]*tfbridge.SchemaInfo
+
+	// Optional. Note that ResourceInstance need not be specified for Invoke or Configure processing.
+	ResourceInstance *tfbridge.PulumiResource
+
+	// Optional. If known, these are the provider-level configuration values, to support DefaultInfo.Config.
+	ProviderConfig resource.PropertyMap
+}
+
 // Transforms a PropertyMap to apply default values specified in DefaultInfo.
 //
 // These values are specified at the bridged provider configuration level, and are applied before any Terraform
 // processing; therefore the function works at Pulumi level (transforming a PropertyMap).
-//
-// Note that resourceInstance need not be specified when applying defaults for Invoke or Configure processing.
-func ApplyDefaultInfoValues(
-	ctx context.Context,
-	topSchemaMap shim.SchemaMap,
-	topFieldInfos map[string]*tfbridge.SchemaInfo, // optional
-	resourceInstance *tfbridge.PulumiResource, // optional
-	providerConfig resource.PropertyMap, // optional
-	props resource.PropertyMap,
-) resource.PropertyMap {
+func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs) resource.PropertyMap {
 
 	// Can short-circuit the entire processing if there are no matching SchemaInfo entries, and therefore no
 	// matching DefaultInfo entries at all.
-	if topFieldInfos == nil {
-		return props
+	if args.TopFieldInfos == nil {
+		return args.PropertyMap
 	}
 
 	t := &defaultsTransform{
-		resourceInstance: resourceInstance,
-		topSchemaMap:     topSchemaMap,
-		topFieldInfos:    topFieldInfos,
-		providerConfig:   providerConfig,
+		resourceInstance: args.ResourceInstance,
+		topSchemaMap:     args.TopSchemaMap,
+		topFieldInfos:    args.TopFieldInfos,
+		providerConfig:   args.ProviderConfig,
 	}
-	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(props))
+	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(args.PropertyMap))
 	if !result.IsObject() {
 		contract.Failf("defaultsTransform.withDefaults returned a non-object value")
 	}
