@@ -227,7 +227,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 	if !ok {
 		return props, nil
 	}
-	res := props.Copy()
+	res := props.Copy() // take a shallow copy
 
 	// Can iterate over SchemaInfo.Fields instead of iterating over every field in the schema, since the algorithm
 	// is only interested in properties where there is a SchemaInfo.Field specifying a default.
