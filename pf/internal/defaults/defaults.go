@@ -84,6 +84,8 @@ func getDefaultValue(
 		return na, false
 	}
 
+	// Conditional order follows old code v3/tfbridge but may be relaxed in the future, for instance allowing
+	// defaultInfo.Value to kick in as fallback when Config is specified but does not match.
 	if len(defaultInfo.EnvVars) != 0 {
 		for _, n := range defaultInfo.EnvVars {
 			// Following code in v3/tfbridge, ignoring set but empty env vars.
@@ -104,9 +106,16 @@ func getDefaultValue(
 				return v, true
 			}
 		}
-	}
 
-	if defaultInfo.Config != "" {
+		// Value is allowed together with EnvVars but serves as a fallback.
+		if defaultInfo.Value != nil {
+			tflog.Info(ctx, "DefaultInfo.Value applied a default value",
+				map[string]any{
+					"property": string(property),
+				})
+			return recoverDefaultValue(defaultInfo.Value), true
+		}
+	} else if defaultInfo.Config != "" {
 		pk := resource.PropertyKey(defaultInfo.Config)
 		if providerConfig != nil {
 			if pv, ok := providerConfig[pk]; ok {
@@ -118,11 +127,7 @@ func getDefaultValue(
 				return pv, true
 			}
 		}
-	}
-
-	// Unlike v3/tfbridge the code here still falls back to Value or From specs if Config did not match, this seems
-	// resaonable to do.
-	if defaultInfo.Value != nil {
+	} else if defaultInfo.Value != nil {
 		tflog.Info(ctx, "DefaultInfo.Value applied a default value",
 			map[string]any{
 				"property": string(property),
