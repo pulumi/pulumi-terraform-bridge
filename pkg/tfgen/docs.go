@@ -317,10 +317,10 @@ func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 			},
 		},
 	}
-	if info == nil {
+	if info == nil || info.EditRules == nil {
 		return defaults
 	}
-	return append(info.EditRules, defaults...)
+	return info.EditRules(defaults)
 }
 
 func (k DocKind) String() string {

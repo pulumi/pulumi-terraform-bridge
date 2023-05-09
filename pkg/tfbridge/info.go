@@ -114,10 +114,27 @@ type ProviderInfo struct {
 	SkipExamples func(SkipExamplesArgs) bool
 }
 
+// The function used to produce the set of edit rules for a provider.
+//
+// For example, if you want to skip default edits, you would use the function:
+//
+//	func([]DocsEdit) []DocsEdit { return nil }
+//
+// If you wanted to incorporate custom edits, default edits, and then a check that the
+// resulting document is valid, you would use the function:
+//
+//	func(defaults []DocsEdit) []DocsEdit {
+//		return append(customEdits, append(defaults, validityCheck)...)
+//	}
+type MakeEditRules func(defaults []DocsEdit) []DocsEdit
+
 // DocRuleInfo controls file discovery and edits for any subset of docs in a provider.
 type DocRuleInfo struct {
-	// A list of edit rules to apply.
-	EditRules []DocsEdit
+	// The function called to get the set of edit rules to use.
+	//
+	// defaults represents suggested edit rules. If EditRules is `nil`, defaults is
+	// used as is.
+	EditRules MakeEditRules
 
 	// A function to suggest alternative file names for a TF element.
 	//
@@ -140,6 +157,13 @@ type DocRuleInfo struct {
 	// The bridge will check any file names returned by AlternativeNames before
 	// checking it's standard list.
 	AlternativeNames func(DocsPathInfo) []string
+}
+
+// PreAppendEdits is a MakeEditRules that applies custom edits before default edits.
+func PreAppendEdits(edits ...DocsEdit) MakeEditRules {
+	return func(defaults []DocsEdit) []DocsEdit {
+		return append(edits, defaults...)
+	}
 }
 
 // Information for file lookup.

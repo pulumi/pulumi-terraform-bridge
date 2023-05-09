@@ -965,9 +965,7 @@ This is a test for CUSTOM_REPLACES.`)
 			}
 
 			c.docRules = &tfbridge.DocRuleInfo{
-				EditRules: []tfbridge.DocsEdit{
-					rule,
-				},
+				EditRules: tfbridge.PreAppendEdits(rule),
 			}
 		}),
 	}
