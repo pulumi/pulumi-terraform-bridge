@@ -45,6 +45,15 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
+
+		Config: map[string]*tfbridge.SchemaInfo{
+			"string_defaultinfo_config_prop": {
+				Default: &tfbridge.DefaultInfo{
+					Value: "DEFAULT",
+				},
+			},
+		},
+
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 			"testbridge_testnest": {
@@ -96,6 +105,10 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			"string_config_prop": pschema.StringAttribute{},
 			"bool_config_prop": pschema.BoolAttribute{
 				Optional: true,
+			},
+			"string_defaultinfo_config_prop": pschema.StringAttribute{
+				Optional:    true,
+				Description: "Used for testing DefaultInfo default application support",
 			},
 		},
 	}

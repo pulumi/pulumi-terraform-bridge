@@ -1,0 +1,9 @@
+name: defaultinfo-program
+runtime: yaml
+resources:
+  provider:
+    type: pulumi:providers:testbridge
+
+outputs:
+  test__actual: ${provider.stringDefaultinfoConfigProp}
+  test__expect: "DEFAULT"

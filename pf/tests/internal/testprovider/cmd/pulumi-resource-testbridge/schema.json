@@ -26,6 +26,11 @@
             },
             "stringConfigProp": {
                 "type": "string"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
             }
         },
         "defaults": [
@@ -137,11 +142,20 @@
         "properties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n"
             }
         },
         "inputProperties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
             }
         }
     },
