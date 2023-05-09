@@ -89,6 +89,10 @@ func TestUpdateProgram(t *testing.T) {
 }
 
 func TestDefaultInfo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 	bin := filepath.Join(wd, "..", "bin")
