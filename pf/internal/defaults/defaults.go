@@ -77,11 +77,11 @@ func getDefaultValue(
 	fieldSchema shim.Schema,
 	defaultInfo *tfbridge.DefaultInfo,
 	providerConfig resource.PropertyMap,
-) (resource.PropertyValue, bool, error) {
+) (resource.PropertyValue, bool) {
 	na := resource.NewNullProperty()
 
 	if defaultInfo == nil {
-		return na, false, nil
+		return na, false
 	}
 
 	if len(defaultInfo.EnvVars) != 0 {
@@ -91,13 +91,17 @@ func getDefaultValue(
 
 				v, err := parseValueFromEnv(fieldSchema, str)
 				if err != nil {
-					return na, false, err
+					msg := fmt.Errorf("Cannot parse the value of environment variable '%s'"+
+						" to populate property '%s' with a default value: %w",
+						n, string(property), err)
+					tflog.Error(ctx, msg.Error())
+					return na, false
 				}
 
-				tflog.Info(ctx, "DefaultInfo.EnvVars applied a default from an environment variable",
+				tflog.Trace(ctx, "DefaultInfo.EnvVars applied a default from an environment variable",
 					map[string]any{"envvar": n, "property": string(property)})
 
-				return v, true, err
+				return v, true
 			}
 		}
 	}
@@ -106,12 +110,12 @@ func getDefaultValue(
 		pk := resource.PropertyKey(defaultInfo.Config)
 		if providerConfig != nil {
 			if pv, ok := providerConfig[pk]; ok {
-				tflog.Info(ctx, "DefaultInfo.Config inherited a value from provider config",
+				tflog.Trace(ctx, "DefaultInfo.Config inherited a value from provider config",
 					map[string]any{
 						"key":      defaultInfo.Config,
 						"property": string(property),
 					})
-				return pv, true, nil
+				return pv, true
 			}
 		}
 	}
@@ -123,32 +127,24 @@ func getDefaultValue(
 			map[string]any{
 				"property": string(property),
 			})
-		return recoverDefaultValue(defaultInfo.Value), true, nil
+		return recoverDefaultValue(defaultInfo.Value), true
 	} else if defaultInfo.From != nil && res != nil {
 		raw, err := defaultInfo.From(res)
 		if err != nil {
-			return na, false, err
+			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",
+				string(property), err)
+			tflog.Error(ctx, msg.Error())
+			return na, false
 		}
 		if raw == nil {
-			return na, false, nil
+			return na, false
 		}
-		tflog.Info(ctx, "DefaultInfo.From applied a computed default value",
-			map[string]any{
-				"property": string(property),
-			})
-		return recoverDefaultValue(raw), true, nil
+		tflog.Trace(ctx, "DefaultInfo.From applied a computed default value",
+			map[string]any{"property": string(property)})
+		return recoverDefaultValue(raw), true
 	}
 
-	return na, false, nil
-}
-
-func multiEnvDefault(names []string, dv interface{}) interface{} {
-	for _, n := range names {
-		if v := os.Getenv(n); v != "" {
-			return v
-		}
-	}
-	return dv
+	return na, false
 }
 
 func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, error) {
@@ -250,10 +246,10 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 	ctx context.Context,
 	path resource.PropertyPath,
 	props resource.PropertyMap,
-) (resource.PropertyMap, error) {
+) resource.PropertyMap {
 	schemaMap, infos, ok := du.lookupSchemaByContext(path)
 	if !ok {
-		return props, nil
+		return props
 	}
 	res := props.Copy() // take a shallow copy
 
@@ -276,21 +272,18 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		}
 
 		// using default value for empty property
-		pv, gotDefault, err := getDefaultValue(ctx,
+		pv, gotDefault := getDefaultValue(ctx,
 			pk,
 			du.resourceByPath(path),
 			fieldSchema,
 			fld.Default,
 			du.providerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("when computing a default for property '%s' %w", key, err)
-		}
 		if gotDefault {
 			res[pk] = pv
 		}
 	}
 
-	return res, nil
+	return res
 }
 
 // This is mostly simply a recursion pattern on PropertyValue, can be abstracted out.
@@ -305,14 +298,8 @@ func (du *defaultsTransform) withDefaults(
 		}
 		pm := value.ObjectValue()
 		// After recurring on the elements, try to apply defaults here.
-		if extended, err := du.extendPropertyMapWithDefaults(ctx, path, pm); err != nil {
-			tflog.Trace(ctx, "Ignoring an error in extendPropertyMapWithDefaults",
-				map[string]any{"err": err.Error()})
-			value = resource.NewObjectProperty(pm)
-		} else {
-			value = resource.NewObjectProperty(extended)
-		}
-		return value, nil
+		extended := du.extendPropertyMapWithDefaults(ctx, path, pm)
+		return resource.NewObjectProperty(extended), nil /* no errors here */
 	}
 	transformed, err := propertyvalue.TransformPropertyValue(path, tr, value)
 	contract.AssertNoErrorf(err, "TransformPropertyValue should not return errors here")
