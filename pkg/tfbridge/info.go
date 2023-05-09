@@ -159,13 +159,6 @@ type DocRuleInfo struct {
 	AlternativeNames func(DocsPathInfo) []string
 }
 
-// PreAppendEdits is a MakeEditRules that applies custom edits before default edits.
-func PreAppendEdits(edits ...DocsEdit) MakeEditRules {
-	return func(defaults []DocsEdit) []DocsEdit {
-		return append(edits, defaults...)
-	}
-}
-
 // Information for file lookup.
 type DocsPathInfo struct {
 	TfToken string

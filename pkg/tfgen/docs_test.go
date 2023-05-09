@@ -906,8 +906,6 @@ func TestParseTFMarkdown(t *testing.T) {
 		kind                    DocKind
 		resourcePrefix, rawName string
 
-		docRules *tfbridge.DocRuleInfo
-
 		fileName     string
 		fileContents []byte
 
@@ -964,8 +962,10 @@ This is a test for CUSTOM_REPLACES.`)
 				},
 			}
 
-			c.docRules = &tfbridge.DocRuleInfo{
-				EditRules: tfbridge.PreAppendEdits(rule),
+			c.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
 			}
 		}),
 	}
@@ -985,7 +985,7 @@ This is a test for CUSTOM_REPLACES.`)
 					pkg:      "pkg",
 					info:     tt.providerInfo,
 				},
-				docRules: tt.docRules,
+				editRules: getEditRules(tt.providerInfo.DocRules),
 			}
 
 			actual, err := p.parse(tt.fileContents)

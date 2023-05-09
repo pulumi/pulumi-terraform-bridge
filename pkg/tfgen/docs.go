@@ -545,7 +545,7 @@ func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			pkg:      g.pkg,
 			info:     g.info,
 		},
-		docRules: g.info.DocRules,
+		editRules: g.editRules,
 	}
 	return p.parse(markdown)
 }
@@ -563,8 +563,8 @@ type tfMarkdownParser struct {
 	markdownFileName string
 	rawname          string
 
-	infoCtx  infoContext
-	docRules *tfbridge.DocRuleInfo
+	infoCtx   infoContext
+	editRules editRules
 
 	ret entityDocs
 }
@@ -599,7 +599,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		Attributes: make(map[string]string),
 	}
 	var err error
-	tfMarkdown, err = getEditRules(p.docRules).apply(p.markdownFileName, tfMarkdown)
+	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown)
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
 	}

@@ -72,6 +72,7 @@ type Generator struct {
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
 	renamesBuilder   *renamesBuilder
+	editRules        editRules
 
 	convertedCode map[string][]byte
 }
@@ -817,6 +818,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
 		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
+		editRules:        getEditRules(info.DocRules),
 	}, nil
 }
 
