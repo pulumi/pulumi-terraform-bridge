@@ -66,9 +66,7 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 		providerConfig:   args.ProviderConfig,
 	}
 	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(args.PropertyMap))
-	if !result.IsObject() {
-		contract.Failf("defaultsTransform.withDefaults returned a non-object value")
-	}
+	contract.Assertf(result.IsObject(), "defaultsTransform.withDefaults returned a non-object value")
 	return result.ObjectValue()
 }
 
