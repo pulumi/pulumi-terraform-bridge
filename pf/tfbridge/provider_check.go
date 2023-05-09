@@ -52,7 +52,8 @@ func (p *provider) CheckWithContext(
 			Properties: checkedInputs,
 			Seed:       randomSeed,
 		},
-		PropertyMap: checkedInputs,
+		PropertyMap:    checkedInputs,
+		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig

@@ -30,10 +30,13 @@ func (p *provider) CheckConfigWithContext(ctx context.Context, urn resource.URN,
 
 	// Transform checkedInputs to apply Pulumi-level defaults.
 	newsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
-		TopSchemaMap:  p.schemaOnlyProvider.Schema(),
-		TopFieldInfos: p.info.Config,
-		PropertyMap:   news,
+		TopSchemaMap:   p.schemaOnlyProvider.Schema(),
+		TopFieldInfos:  p.info.Config,
+		PropertyMap:    news,
+		ProviderConfig: news,
 	})
+
+	p.lastKnownProviderConfig = newsWithDefaults
 
 	// TODO[pulumi/pulumi-terraform-bridge#821] validate provider config
 	return newsWithDefaults, []plugin.CheckFailure{}, nil

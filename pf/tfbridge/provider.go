@@ -64,6 +64,10 @@ type provider struct {
 	version       semver.Version
 	logSink       logutils.LogSink
 
+	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
+	// populating defaults specified via DefaultInfo.Config.
+	lastKnownProviderConfig resource.PropertyMap
+
 	schemaOnlyProvider shim.Provider
 }
 
