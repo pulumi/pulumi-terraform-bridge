@@ -87,7 +87,7 @@ func getDefaultValue(
 	} else if defaultInfo.EnvVars != nil {
 		for _, n := range defaultInfo.EnvVars {
 			if str, ok := os.LookupEnv(n); ok {
-				// TODO what is the behavior of an env var set to an emtpy string? Is this the same as
+				// TODO what is the behavior of an env var set to an empty string? Is this the same as
 				// unset, or the same as actually setting to empty?
 				v, err := parseValueFromEnv(fieldSchema, str)
 
@@ -135,7 +135,7 @@ func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, err
 				return resource.NewNullProperty(), err
 			}
 		}
-		return resource.NewNumberProperty(float64(v)), nil
+		return resource.NewNumberProperty(v), nil
 	case shim.TypeString:
 		return resource.NewStringProperty(str), nil
 	default:
@@ -156,7 +156,7 @@ type defaultsTransform struct {
 	resourceInstance *tfbridge.PulumiResource        // optional
 }
 
-// Returns a non-nil resourceInstance only if the defaults are beeing applied to a resource at the top level.
+// Returns a non-nil resourceInstance only if the defaults are being applied to a resource at the top level.
 func (du *defaultsTransform) resourceByPath(path resource.PropertyPath) *tfbridge.PulumiResource {
 	var res *tfbridge.PulumiResource
 	if len(path) == 0 {
