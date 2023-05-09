@@ -567,6 +567,40 @@
                     "id"
                 ]
             }
+        },
+        "testbridge:index/testres:TestDefaultInfoDataSource": {
+            "inputs": {
+                "description": "A collection of arguments for invoking TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    },
+                    "output": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
+                    "id"
+                ]
+            }
         }
     }
 }

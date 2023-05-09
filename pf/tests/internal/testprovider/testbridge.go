@@ -89,9 +89,22 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 				},
 			},
 		},
+
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
+
+			"testbridge_test_defaultinfo": {
+				Tok: "testbridge:index/testres:TestDefaultInfoDataSource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
 		},
+
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 	return tfpf.ProviderInfo{
@@ -137,6 +150,7 @@ func (p *syntheticProvider) Configure(ctx context.Context, req provider.Configur
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newEchoDataSource,
+		newTestDefaultInfoDataSource,
 	}
 }
 

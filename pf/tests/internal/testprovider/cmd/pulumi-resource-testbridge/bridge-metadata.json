@@ -8,7 +8,8 @@
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
         "functions": {
-            "testbridge:index/echo:Echo": "testbridge_echo"
+            "testbridge:index/echo:Echo": "testbridge_echo",
+            "testbridge:index/testres:TestDefaultInfoDataSource": "testbridge_test_defaultinfo"
         },
         "renamedProperties": {
             "testbridge:index/TestnestRule:TestnestRule": {
