@@ -57,6 +57,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 		props            resource.PropertyMap
 		expected         resource.PropertyMap
 		fieldInfos       map[string]*tfbridge.SchemaInfo
+		providerConfig   resource.PropertyMap
 	}
 
 	testCases := []testCase{
@@ -194,6 +195,22 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				"stringProp": resource.NewStringProperty("OK"),
 			},
 		},
+		{
+			name: "Defaults can be copied from provider configuration",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"string_prop": {
+					Default: &tfbridge.DefaultInfo{
+						Config: "providerStringProp",
+					},
+				},
+			},
+			providerConfig: resource.PropertyMap{
+				"providerStringProp": resource.NewStringProperty("OK"),
+			},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("OK"),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -209,6 +226,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				TopFieldInfos:    tc.fieldInfos,
 				ResourceInstance: tc.resourceInstance,
 				PropertyMap:      tc.props,
+				ProviderConfig:   tc.providerConfig,
 			})
 			assert.Equal(t, tc.expected, actual)
 		})
