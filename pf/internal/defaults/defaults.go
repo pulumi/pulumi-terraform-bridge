@@ -35,10 +35,10 @@ type ApplyDefaultInfoValuesArgs struct {
 	PropertyMap resource.PropertyMap
 
 	// Toplevel schema map for the resource, data source or provider.
-	TopSchemaMap shim.SchemaMap
+	SchemaMap shim.SchemaMap
 
 	// Toplevel SchemaInfo configuration matching TopSchemaMap.
-	TopFieldInfos map[string]*tfbridge.SchemaInfo
+	SchemaInfos map[string]*tfbridge.SchemaInfo
 
 	// Optional. Note that ResourceInstance need not be specified for Invoke or Configure processing.
 	ResourceInstance *tfbridge.PulumiResource
@@ -55,14 +55,14 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 
 	// Can short-circuit the entire processing if there are no matching SchemaInfo entries, and therefore no
 	// matching DefaultInfo entries at all.
-	if args.TopFieldInfos == nil {
+	if args.SchemaInfos == nil {
 		return args.PropertyMap
 	}
 
 	t := &defaultsTransform{
 		resourceInstance: args.ResourceInstance,
-		topSchemaMap:     args.TopSchemaMap,
-		topFieldInfos:    args.TopFieldInfos,
+		topSchemaMap:     args.SchemaMap,
+		topFieldInfos:    args.SchemaInfos,
 		providerConfig:   args.ProviderConfig,
 	}
 	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(args.PropertyMap))

@@ -48,8 +48,8 @@ func (p *provider) InvokeWithContext(
 
 	// Transform args to apply Pulumi-level defaults.
 	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
-		TopSchemaMap:   handle.schemaOnlyShim.Schema(),
-		TopFieldInfos:  handle.pulumiDataSourceInfo.GetFields(),
+		SchemaMap:      handle.schemaOnlyShim.Schema(),
+		SchemaInfos:    handle.pulumiDataSourceInfo.GetFields(),
 		PropertyMap:    args,
 		ProviderConfig: p.lastKnownProviderConfig,
 	})

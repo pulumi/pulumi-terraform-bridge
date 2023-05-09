@@ -211,6 +211,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				"stringProp": resource.NewStringProperty("OK"),
 			},
 		},
+		{},
 	}
 
 	for _, tc := range testCases {
@@ -222,8 +223,8 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			}
 			ctx := context.Background()
 			actual := ApplyDefaultInfoValues(ctx, ApplyDefaultInfoValuesArgs{
-				TopSchemaMap:     schemaMap,
-				TopFieldInfos:    tc.fieldInfos,
+				SchemaMap:        schemaMap,
+				SchemaInfos:      tc.fieldInfos,
 				ResourceInstance: tc.resourceInstance,
 				PropertyMap:      tc.props,
 				ProviderConfig:   tc.providerConfig,

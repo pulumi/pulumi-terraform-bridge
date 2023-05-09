@@ -30,8 +30,8 @@ func (p *provider) CheckConfigWithContext(ctx context.Context, urn resource.URN,
 
 	// Transform checkedInputs to apply Pulumi-level defaults.
 	newsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
-		TopSchemaMap:   p.schemaOnlyProvider.Schema(),
-		TopFieldInfos:  p.info.Config,
+		SchemaMap:      p.schemaOnlyProvider.Schema(),
+		SchemaInfos:    p.info.Config,
 		PropertyMap:    news,
 		ProviderConfig: news,
 	})
