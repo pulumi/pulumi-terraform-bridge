@@ -41,6 +41,7 @@ func ApplyDefaultInfoValues(
 	topSchemaMap shim.SchemaMap,
 	topFieldInfos map[string]*tfbridge.SchemaInfo, // optional
 	resourceInstance *tfbridge.PulumiResource, // optional
+	providerConfig resource.PropertyMap, // optional
 	props resource.PropertyMap,
 ) resource.PropertyMap {
 
@@ -54,6 +55,7 @@ func ApplyDefaultInfoValues(
 		resourceInstance: resourceInstance,
 		topSchemaMap:     topSchemaMap,
 		topFieldInfos:    topFieldInfos,
+		providerConfig:   providerConfig,
 	}
 	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(props))
 	if !result.IsObject() {
@@ -67,10 +69,10 @@ func getDefaultValue(
 	res *tfbridge.PulumiResource,
 	fieldSchema shim.Schema,
 	defaultInfo *tfbridge.DefaultInfo,
+	providerConfig resource.PropertyMap,
 ) (resource.PropertyValue, bool, error) {
 	na := resource.NewNullProperty()
 
-	// TODO handle defaultInfo.Config
 	if defaultInfo == nil {
 		return na, false, nil
 	}
@@ -100,7 +102,15 @@ func getDefaultValue(
 				return v, true, err
 			}
 		}
+	} else if defaultInfo.Config != "" {
+		pk := resource.PropertyKey(defaultInfo.Config)
+		if providerConfig != nil {
+			if pv, ok := providerConfig[pk]; ok {
+				return pv, true, nil
+			}
+		}
 	}
+
 	if defaultInfo.Value != nil {
 		return recoverDefaultValue(defaultInfo.Value), true, nil
 	}
@@ -154,6 +164,7 @@ type defaultsTransform struct {
 	topSchemaMap     shim.SchemaMap
 	topFieldInfos    map[string]*tfbridge.SchemaInfo // optional
 	resourceInstance *tfbridge.PulumiResource        // optional
+	providerConfig   resource.PropertyMap            // optional
 }
 
 // Returns a non-nil resourceInstance only if the defaults are being applied to a resource at the top level.
@@ -231,7 +242,11 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		}
 
 		// using default value for empty property
-		pv, gotDefault, err := getDefaultValue(ctx, du.resourceByPath(path), fieldSchema, fld.Default)
+		pv, gotDefault, err := getDefaultValue(ctx,
+			du.resourceByPath(path),
+			fieldSchema,
+			fld.Default,
+			du.providerConfig)
 		if err != nil {
 			return nil, fmt.Errorf("when computing a default for property '%s' %w", key, err)
 		}
