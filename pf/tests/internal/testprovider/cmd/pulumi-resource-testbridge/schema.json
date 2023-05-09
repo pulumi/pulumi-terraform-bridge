@@ -212,6 +212,33 @@
                 "type": "object"
             }
         },
+        "testbridge:index/testres:TestDefaultInfoRes": {
+            "properties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "required": [
+                "str"
+            ],
+            "inputProperties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering TestDefaultInfoRes resources.\n",
+                "properties": {
+                    "str": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:Testcompres": {
             "properties": {
                 "ecdsacurve": {

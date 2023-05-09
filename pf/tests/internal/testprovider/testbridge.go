@@ -77,6 +77,17 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
+
+			"testbridge_test_default_info_res": {
+				Tok: "testbridge:index/testres:TestDefaultInfoRes",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"str": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
@@ -135,5 +146,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestnest,
 		newTestCompRes,
 		newTestConfigRes,
+		newTestDefaultInfoRes,
 	}
 }

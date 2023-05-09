@@ -3,6 +3,7 @@
         "resources": {
             "testbridge:index/testnest:Testnest": "testbridge_testnest",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
+            "testbridge:index/testres:TestDefaultInfoRes": "testbridge_test_default_info_res",
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
