@@ -3,11 +3,13 @@
         "resources": {
             "testbridge:index/testnest:Testnest": "testbridge_testnest",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
+            "testbridge:index/testres:TestDefaultInfoRes": "testbridge_test_default_info_res",
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
         "functions": {
-            "testbridge:index/echo:Echo": "testbridge_echo"
+            "testbridge:index/echo:Echo": "testbridge_echo",
+            "testbridge:index/testres:TestDefaultInfoDataSource": "testbridge_test_defaultinfo"
         },
         "renamedProperties": {
             "testbridge:index/TestnestRule:TestnestRule": {
@@ -40,12 +42,14 @@
             },
             "testbridge:index:Provider": {
                 "boolConfigProp": "bool_config_prop",
-                "stringConfigProp": "string_config_prop"
+                "stringConfigProp": "string_config_prop",
+                "stringDefaultinfoConfigProp": "string_defaultinfo_config_prop"
             }
         },
         "renamedConfigProperties": {
             "boolConfigProp": "bool_config_prop",
-            "stringConfigProp": "string_config_prop"
+            "stringConfigProp": "string_config_prop",
+            "stringDefaultinfoConfigProp": "string_defaultinfo_config_prop"
         }
     }
 }

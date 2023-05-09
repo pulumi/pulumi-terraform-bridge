@@ -26,6 +26,11 @@
             },
             "stringConfigProp": {
                 "type": "string"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
             }
         },
         "defaults": [
@@ -137,11 +142,20 @@
         "properties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n"
             }
         },
         "inputProperties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
             }
         }
     },
@@ -193,6 +207,33 @@
                 "properties": {
                     "configCopy": {
                         "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:TestDefaultInfoRes": {
+            "properties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "required": [
+                "str"
+            ],
+            "inputProperties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering TestDefaultInfoRes resources.\n",
+                "properties": {
+                    "str": {
+                        "type": "string",
+                        "default": "DEFAULT"
                     }
                 },
                 "type": "object"
@@ -523,6 +564,40 @@
                     "input",
                     "output",
                     "sensitive",
+                    "id"
+                ]
+            }
+        },
+        "testbridge:index/testres:TestDefaultInfoDataSource": {
+            "inputs": {
+                "description": "A collection of arguments for invoking TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    },
+                    "output": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
                     "id"
                 ]
             }

@@ -1,0 +1,23 @@
+name: defaultinfo-program
+runtime: yaml
+resources:
+
+  provider:
+    type: pulumi:providers:testbridge
+
+  r:
+    type: testbridge:index/testres:TestDefaultInfoRes
+
+outputs:
+  test_provider_config__actual: ${provider.stringDefaultinfoConfigProp}
+  test_provider_config__expect: "DEFAULT"
+
+  test_resource__actual: ${r.str}
+  test_resource__expect: "DEFAULT"
+
+  test_datasource__actual:
+    fn::invoke:
+      function: testbridge:index/testres:TestDefaultInfoDataSource
+      arguments: {}
+      return: output
+  test_datasource__expect: "DEFAULT"

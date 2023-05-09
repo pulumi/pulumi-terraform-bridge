@@ -104,7 +104,9 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+      "inputs": {
+          "stringDefaultinfoConfigProp": "DEFAULT"
+      }
     },
     "metadata": {
       "kind": "resource",
@@ -353,7 +355,9 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+      "inputs": {
+          "stringDefaultinfoConfigProp": "DEFAULT"
+      }
     },
     "metadata": {
       "kind": "resource",
@@ -634,7 +638,7 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
     },
     "metadata": {
       "kind": "resource",
@@ -917,7 +921,7 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
     },
     "metadata": {
       "kind": "resource",
@@ -1270,7 +1274,7 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
     },
     "metadata": {
       "kind": "resource",
@@ -1594,7 +1598,7 @@
       "news": {}
     },
     "response": {
-      "inputs": {}
+        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
     },
     "metadata": {
       "kind": "resource",

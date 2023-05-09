@@ -16,15 +16,28 @@ package tfbridge
 
 import (
 	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 )
 
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfigWithContext(ctx context.Context, urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	// ctx = p.initLogging(ctx, p.logSink, urn)
+	ctx = p.initLogging(ctx, p.logSink, urn)
+
+	// Transform checkedInputs to apply Pulumi-level defaults.
+	newsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+		SchemaMap:      p.schemaOnlyProvider.Schema(),
+		SchemaInfos:    p.info.Config,
+		PropertyMap:    news,
+		ProviderConfig: news,
+	})
+
+	p.lastKnownProviderConfig = newsWithDefaults
 
 	// TODO[pulumi/pulumi-terraform-bridge#821] validate provider config
-	return news, []plugin.CheckFailure{}, nil
+	return newsWithDefaults, []plugin.CheckFailure{}, nil
 }

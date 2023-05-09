@@ -88,6 +88,25 @@ func TestUpdateProgram(t *testing.T) {
 	})
 }
 
+func TestDefaultInfo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	bin := filepath.Join(wd, "..", "bin")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "defaultinfo-program"),
+		PrepareProject: func(info *engine.Projinfo) error {
+			return prepareStateFolder(info.Root)
+		},
+		ExtraRuntimeValidation: validateExpectedVsActual,
+	})
+}
+
 func prepareStateFolder(root string) error {
 	err := os.Mkdir(filepath.Join(root, "state"), 0777)
 	if os.IsExist(err) {

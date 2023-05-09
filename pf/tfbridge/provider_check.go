@@ -17,6 +17,8 @@ package tfbridge
 import (
 	"context"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -31,11 +33,29 @@ func (p *provider) CheckWithContext(
 	allowUnknowns bool,
 	randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	ctx = p.initLogging(ctx, p.logSink, urn)
 
-	// ctx = p.initLogging(ctx, p.logSink, urn)
+	checkedInputs := inputs.Copy()
+	checkFailures := make([]plugin.CheckFailure, 0)
+
+	rh, err := p.resourceHandle(ctx, urn)
+	if err != nil {
+		return checkedInputs, checkFailures, err
+	}
+
+	// Transform checkedInputs to apply Pulumi-level defaults.
+	checkedInputsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
+		SchemaInfos: rh.pulumiResourceInfo.Fields,
+		ResourceInstance: &tfbridge.PulumiResource{
+			URN:        urn,
+			Properties: checkedInputs,
+			Seed:       randomSeed,
+		},
+		PropertyMap:    checkedInputs,
+		ProviderConfig: p.lastKnownProviderConfig,
+	})
 
 	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
-	checkedInputs := inputs.Copy()
-
-	return checkedInputs, []plugin.CheckFailure{}, nil
+	return checkedInputsWithDefaults, checkFailures, nil
 }

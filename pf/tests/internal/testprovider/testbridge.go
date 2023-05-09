@@ -45,6 +45,15 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
+
+		Config: map[string]*tfbridge.SchemaInfo{
+			"string_defaultinfo_config_prop": {
+				Default: &tfbridge.DefaultInfo{
+					Value: "DEFAULT",
+				},
+			},
+		},
+
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 			"testbridge_testnest": {
@@ -68,10 +77,34 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
+
+			"testbridge_test_default_info_res": {
+				Tok: "testbridge:index/testres:TestDefaultInfoRes",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"str": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
 		},
+
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
+
+			"testbridge_test_defaultinfo": {
+				Tok: "testbridge:index/testres:TestDefaultInfoDataSource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
 		},
+
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 	return tfpf.ProviderInfo{
@@ -97,6 +130,10 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			"bool_config_prop": pschema.BoolAttribute{
 				Optional: true,
 			},
+			"string_defaultinfo_config_prop": pschema.StringAttribute{
+				Optional:    true,
+				Description: "Used for testing DefaultInfo default application support",
+			},
 		},
 	}
 }
@@ -113,6 +150,7 @@ func (p *syntheticProvider) Configure(ctx context.Context, req provider.Configur
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newEchoDataSource,
+		newTestDefaultInfoDataSource,
 	}
 }
 
@@ -122,5 +160,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestnest,
 		newTestCompRes,
 		newTestConfigRes,
+		newTestDefaultInfoRes,
 	}
 }
