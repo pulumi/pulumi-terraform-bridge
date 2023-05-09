@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -62,21 +63,19 @@ func TestURLRewrite(t *testing.T) {
 		},
 	}
 
-	g, err := NewGenerator(GeneratorOptions{
-		Package:  "google",
-		Version:  "0.1.2",
-		Language: "nodejs",
-		ProviderInfo: tfbridge.ProviderInfo{
+	infoCtx := infoContext{
+		pkg:      "google",
+		language: "nodejs",
+		info: tfbridge.ProviderInfo{
 			Name: "google",
 			Resources: map[string]*tfbridge.ResourceInfo{
 				"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 			},
 		},
-	})
-	assert.NoError(t, err)
+	}
 
 	for _, test := range tests {
-		text, _ := reformatText(g, test.Input, nil)
+		text, _ := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
 	}
 }
@@ -897,6 +896,110 @@ throw new Exception("!");
 
 	assert.NotContains(t, string(schemaBytes), "{{% //examples %}}")
 }
+
+func TestParseTFMarkdown(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		info                    tfbridge.ResourceOrDataSourceInfo
+		providerInfo            tfbridge.ProviderInfo
+		kind                    DocKind
+		resourcePrefix, rawName string
+
+		fileName     string
+		fileContents []byte
+
+		expected entityDocs
+	}
+
+	// A pre-configured test case
+	tc := func(configure func(tc *testCase)) testCase {
+		tc := testCase{
+			kind:           ResourceDocs,
+			resourcePrefix: "pkg_",
+			rawName:        "pkg_mod1_res1",
+
+			fileName: "mod1_res1.md",
+			expected: entityDocs{
+				Arguments:  map[string]*argumentDocs{},
+				Attributes: map[string]string{},
+			},
+		}
+		configure(&tc)
+		return tc
+	}
+	// Assert that file contents match the expected description.
+	desc := func(fileContents, expected string) testCase {
+		return tc(func(c *testCase) {
+			c.fileContents = []byte(fileContents)
+			c.expected.Description = expected
+		})
+	}
+
+	tests := []testCase{
+		desc(`
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
+`, `##`+" " /* Extra whitespace is generated. TODO Remove extra whitespace */ +`
+
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
+		),
+
+		desc(`
+This is a test that we [correctly](https://www.terraform.io/docs/pkg/some-resource) strip TF doc links.
+`, "## \n\nThis is a test that we correctly strip TF doc links."),
+
+		tc(func(c *testCase) {
+			c.fileContents = []byte(`
+This is a test for CUSTOM_REPLACES.`)
+			c.expected.Description = "## \n\nThis is a test for checking custom replaces."
+			rule := tfbridge.DocsEdit{
+				Path: "*",
+				Edit: func(path string, content []byte) ([]byte, error) {
+					assert.Equal(t, "mod1_res1.md", path)
+					return bytes.ReplaceAll(content,
+						[]byte(`CUSTOM_REPLACES`),
+						[]byte(`checking custom replaces`)), nil
+				},
+			}
+
+			c.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
+			}
+		}),
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			p := &tfMarkdownParser{
+				sink:             mockSink{t},
+				info:             tt.info,
+				kind:             tt.kind,
+				markdownFileName: tt.fileName,
+				rawname:          tt.rawName,
+
+				infoCtx: infoContext{
+					language: Schema,
+					pkg:      "pkg",
+					info:     tt.providerInfo,
+				},
+				editRules: getEditRules(tt.providerInfo.DocRules),
+			}
+
+			actual, err := p.parse(tt.fileContents)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+type mockSink struct{ t *testing.T }
+
+func (mockSink) warn(string, ...interface{})  {}
+func (mockSink) debug(string, ...interface{}) {}
+func (mockSink) error(string, ...interface{}) {}
 
 type mockResource struct {
 	docs  tfbridge.DocInfo

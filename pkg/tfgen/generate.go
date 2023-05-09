@@ -72,6 +72,7 @@ type Generator struct {
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
 	renamesBuilder   *renamesBuilder
+	editRules        editRules
 
 	convertedCode map[string][]byte
 }
@@ -817,6 +818,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
 		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
+		editRules:        getEditRules(info.DocRules),
 	}, nil
 }
 
@@ -1198,7 +1200,7 @@ func (g *Generator) gatherResource(rawname string,
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
-		pd, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
+		pd, err := getDocsForResource(g, g.info.GetGitHubOrg(), g.info.Name,
 			g.info.GetResourcePrefix(), ResourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
 			g.info.GetGitHubHost())
 		if err != nil {
@@ -1392,7 +1394,7 @@ func (g *Generator) gatherDataSource(rawname string,
 	g.renamesBuilder.registerDataSource(dataSourcePath)
 
 	// Collect documentation information for this data source.
-	entityDocs, err := getDocsForProvider(g, g.info.GetGitHubOrg(), g.info.Name,
+	entityDocs, err := getDocsForResource(g, g.info.GetGitHubOrg(), g.info.Name,
 		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
 		g.info.GetGitHubHost())
 	if err != nil {
