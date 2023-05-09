@@ -81,17 +81,6 @@ func getDefaultValue(
 
 	if defaultInfo == nil {
 		return na, false, nil
-	}
-	if defaultInfo.From != nil && res != nil {
-		raw, err := defaultInfo.From(res)
-		if err != nil {
-			return na, false, err
-		}
-		if raw == nil {
-			return na, false, nil
-		}
-		return recoverDefaultValue(raw), true, nil
-
 	} else if len(defaultInfo.EnvVars) != 0 {
 		for _, n := range defaultInfo.EnvVars {
 			if str, ok := os.LookupEnv(n); ok {
@@ -115,10 +104,17 @@ func getDefaultValue(
 				return pv, true, nil
 			}
 		}
-	}
-
-	if defaultInfo.Value != nil {
+	} else if defaultInfo.Value != nil {
 		return recoverDefaultValue(defaultInfo.Value), true, nil
+	} else if defaultInfo.From != nil && res != nil {
+		raw, err := defaultInfo.From(res)
+		if err != nil {
+			return na, false, err
+		}
+		if raw == nil {
+			return na, false, nil
+		}
+		return recoverDefaultValue(raw), true, nil
 	}
 	return na, false, nil
 }
