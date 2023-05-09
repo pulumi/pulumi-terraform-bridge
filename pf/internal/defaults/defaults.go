@@ -92,7 +92,7 @@ func getDefaultValue(
 		}
 		return recoverDefaultValue(raw), true, nil
 
-	} else if defaultInfo.EnvVars != nil {
+	} else if len(defaultInfo.EnvVars) != 0 {
 		for _, n := range defaultInfo.EnvVars {
 			if str, ok := os.LookupEnv(n); ok {
 				// TODO what is the behavior of an env var set to an empty string? Is this the same as
