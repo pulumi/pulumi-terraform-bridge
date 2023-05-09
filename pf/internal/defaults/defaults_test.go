@@ -211,7 +211,20 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				"stringProp": resource.NewStringProperty("OK"),
 			},
 		},
-		{},
+		{
+			name: "Empty env var is not a numeric zero",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"int_prop": {
+					Default: &tfbridge.DefaultInfo{
+						EnvVars: []string{"INT_PROP"},
+					},
+				},
+			},
+			env: map[string]string{
+				"INT_PROP": "",
+			},
+			expected: resource.PropertyMap{},
+		},
 	}
 
 	for _, tc := range testCases {
