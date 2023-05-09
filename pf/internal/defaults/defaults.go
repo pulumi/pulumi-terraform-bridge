@@ -151,7 +151,7 @@ func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, err
 	var err error
 	switch sch.Type() {
 	case shim.TypeBool:
-		v := false
+		var v bool
 		if str != "" {
 			if v, err = strconv.ParseBool(str); err != nil {
 				return resource.NewNullProperty(), err
@@ -159,7 +159,7 @@ func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, err
 		}
 		return resource.NewBoolProperty(v), nil
 	case shim.TypeInt:
-		v := int(0)
+		var v int
 		if str != "" {
 			iv, iverr := strconv.ParseInt(str, 0, 0)
 			if iverr != nil {
@@ -169,7 +169,7 @@ func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, err
 		}
 		return resource.NewNumberProperty(float64(v)), nil
 	case shim.TypeFloat:
-		v := float64(0.0)
+		var v float64
 		if str != "" {
 			if v, err = strconv.ParseFloat(str, 64); err != nil {
 				return resource.NewNullProperty(), err
