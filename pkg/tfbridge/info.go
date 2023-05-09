@@ -120,18 +120,47 @@ type DocRuleInfo struct {
 	EditRules []DocsEdit
 
 	// A function to suggest alternative file names for a TF element.
+	//
+	// When the bridge loads the documentation for a resource or a datasource, it
+	// infers the name of the file that contains the documentation. AlternativeNames
+	// allows you to provide a provider specific extension to the override list.
+	//
+	// For example, when attempting to find the documentation for the resource token
+	// aws_waf_instances, the bridge will check the following files (in order):
+	//
+	//	"waf_instance.html.markdown"
+	//	"waf_instance.markdown"
+	//	"waf_instance.html.md"
+	//	"waf_instance.md"
+	//	"aws_waf_instance.html.markdown"
+	//	"aws_waf_instance.markdown"
+	//	"aws_waf_instance.html.md"
+	//	"aws_waf_instance.md"
+	//
+	// The bridge will check any file names returned by AlternativeNames before
+	// checking it's standard list.
 	AlternativeNames func(DocsPathInfo) []string
 }
 
 // Information for file lookup.
 type DocsPathInfo struct {
-	Resource string
+	TfToken string
 }
 
 type DocsEdit struct {
-	// The path at which this rule applies. Paths are matched via filepath.Match.
+	// The file name at which this rule applies. File names are matched via filepath.Match.
 	//
 	// To match all files, supply "*".
+	//
+	// All 4 of these names will match "waf_instances.html.markdown":
+	//
+	// - "waf_instances.html.markdown"
+	// - "waf_instances.*"
+	// - "waf*"
+	// - "*"
+	//
+	// Provider resources are sourced directly from the TF schema, and as such have an
+	// empty path.
 	Path string
 	// The function that performs the edit on the file bytes.
 	//

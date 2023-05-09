@@ -201,13 +201,13 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
-func getMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
+func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
 	possibleMarkdownNames := []string{
 		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(resourcePrefix, rawName) + ".html.markdown",
-		withoutPackageName(resourcePrefix, rawName) + ".markdown",
-		withoutPackageName(resourcePrefix, rawName) + ".html.md",
-		withoutPackageName(resourcePrefix, rawName) + ".md",
+		withoutPackageName(packagePrefix, rawName) + ".html.markdown",
+		withoutPackageName(packagePrefix, rawName) + ".markdown",
+		withoutPackageName(packagePrefix, rawName) + ".html.md",
+		withoutPackageName(packagePrefix, rawName) + ".md",
 		// But for some providers, the prefix is included in the name of the doc file
 		rawName + ".html.markdown",
 		rawName + ".markdown",
@@ -218,7 +218,7 @@ func getMarkdownNames(resourcePrefix, rawName string, globalInfo *tfbridge.DocRu
 	if globalInfo != nil && globalInfo.AlternativeNames != nil {
 		// We look at user generated names before we look at default names
 		possibleMarkdownNames = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
-			Resource: rawName,
+			TfToken: rawName,
 		}), possibleMarkdownNames...)
 	}
 
@@ -286,9 +286,9 @@ var (
 	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
 )
 
-type replaceRules []tfbridge.DocsEdit
+type editRules []tfbridge.DocsEdit
 
-func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
+func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
 	for _, rule := range rr {
 		match, err := filepath.Match(rule.Path, fileName)
 		if err != nil {
@@ -306,7 +306,7 @@ func (rr replaceRules) apply(fileName string, contents []byte) ([]byte, error) {
 }
 
 // Get the replace rule set for a DocRuleInfo.
-func getReplaceRules(info *tfbridge.DocRuleInfo) replaceRules {
+func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 	defaults := []tfbridge.DocsEdit{
 		replaceTfPlan,
 		replaceTfApply,
@@ -345,9 +345,9 @@ func formatEntityName(rawname string) string {
 	return fmt.Sprintf("'%s'", rawname)
 }
 
-// getDocsForProvider extracts documentation details for the given package from
+// getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
+func getDocsForResource(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
 	githost string) (entityDocs, error) {
 
@@ -387,7 +387,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	if docinfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
-			return getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
+			return getDocsForResource(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
 		}
 
 		if docinfo.IncludeAttributesFrom != "" {
@@ -599,7 +599,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		Attributes: make(map[string]string),
 	}
 	var err error
-	tfMarkdown, err = getReplaceRules(p.docRules).apply(p.markdownFileName, tfMarkdown)
+	tfMarkdown, err = getEditRules(p.docRules).apply(p.markdownFileName, tfMarkdown)
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
 	}

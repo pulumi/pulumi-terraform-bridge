@@ -945,9 +945,11 @@ This is a document for the pkg_mod1_res1 resource. To create this resource, run 
 
 This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
 		),
+
 		desc(`
 This is a test that we [correctly](https://www.terraform.io/docs/pkg/some-resource) strip TF doc links.
 `, "## \n\nThis is a test that we correctly strip TF doc links."),
+
 		tc(func(c *testCase) {
 			c.fileContents = []byte(`
 This is a test for CUSTOM_REPLACES.`)
