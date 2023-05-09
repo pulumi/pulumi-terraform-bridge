@@ -72,6 +72,7 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 
 func getDefaultValue(
 	ctx context.Context,
+	property resource.PropertyKey,
 	res *tfbridge.PulumiResource,
 	fieldSchema shim.Schema,
 	defaultInfo *tfbridge.DefaultInfo,
@@ -81,30 +82,47 @@ func getDefaultValue(
 
 	if defaultInfo == nil {
 		return na, false, nil
-	} else if len(defaultInfo.EnvVars) != 0 {
-		for _, n := range defaultInfo.EnvVars {
-			if str, ok := os.LookupEnv(n); ok {
-				// TODO what is the behavior of an env var set to an empty string? Is this the same as
-				// unset, or the same as actually setting to empty?
-				v, err := parseValueFromEnv(fieldSchema, str)
+	}
 
-				tflog.Info(ctx,
-					"Applying a default value from an environment variable",
-					map[string]any{
-						"envvar": n,
-					})
+	if len(defaultInfo.EnvVars) != 0 {
+		for _, n := range defaultInfo.EnvVars {
+			// Following code in v3/tfbridge, ignoring set but empty env vars.
+			if str, ok := os.LookupEnv(n); ok && str != "" {
+
+				v, err := parseValueFromEnv(fieldSchema, str)
+				if err != nil {
+					return na, false, err
+				}
+
+				tflog.Info(ctx, "DefaultInfo.EnvVars applied a default from an environment variable",
+					map[string]any{"envvar": n, "property": string(property)})
 
 				return v, true, err
 			}
 		}
-	} else if defaultInfo.Config != "" {
+	}
+
+	if defaultInfo.Config != "" {
 		pk := resource.PropertyKey(defaultInfo.Config)
 		if providerConfig != nil {
 			if pv, ok := providerConfig[pk]; ok {
+				tflog.Info(ctx, "DefaultInfo.Config inherited a value from provider config",
+					map[string]any{
+						"key":      defaultInfo.Config,
+						"property": string(property),
+					})
 				return pv, true, nil
 			}
 		}
-	} else if defaultInfo.Value != nil {
+	}
+
+	// Unlike v3/tfbridge the code here still falls back to Value or From specs if Config did not match, this seems
+	// resaonable to do.
+	if defaultInfo.Value != nil {
+		tflog.Info(ctx, "DefaultInfo.Value applied a default value",
+			map[string]any{
+				"property": string(property),
+			})
 		return recoverDefaultValue(defaultInfo.Value), true, nil
 	} else if defaultInfo.From != nil && res != nil {
 		raw, err := defaultInfo.From(res)
@@ -114,9 +132,23 @@ func getDefaultValue(
 		if raw == nil {
 			return na, false, nil
 		}
+		tflog.Info(ctx, "DefaultInfo.From applied a computed default value",
+			map[string]any{
+				"property": string(property),
+			})
 		return recoverDefaultValue(raw), true, nil
 	}
+
 	return na, false, nil
+}
+
+func multiEnvDefault(names []string, dv interface{}) interface{} {
+	for _, n := range names {
+		if v := os.Getenv(n); v != "" {
+			return v
+		}
+	}
+	return dv
 }
 
 func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, error) {
@@ -245,6 +277,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 
 		// using default value for empty property
 		pv, gotDefault, err := getDefaultValue(ctx,
+			pk,
 			du.resourceByPath(path),
 			fieldSchema,
 			fld.Default,
