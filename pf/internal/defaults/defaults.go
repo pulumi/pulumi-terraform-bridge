@@ -153,32 +153,26 @@ func getDefaultValue(
 }
 
 func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, error) {
-	var err error
+	contract.Assertf(str != "", "parseValueFromEnv only works on non-empty strings")
+
 	switch sch.Type() {
 	case shim.TypeBool:
-		var v bool
-		if str != "" {
-			if v, err = strconv.ParseBool(str); err != nil {
-				return resource.NewNullProperty(), err
-			}
+		v, err := strconv.ParseBool(str)
+		if err != nil {
+			return resource.NewNullProperty(), err
 		}
 		return resource.NewBoolProperty(v), nil
 	case shim.TypeInt:
-		var v int
-		if str != "" {
-			iv, iverr := strconv.ParseInt(str, 0, 0)
-			if iverr != nil {
-				return resource.NewNullProperty(), iverr
-			}
-			v = int(iv)
+		iv, iverr := strconv.ParseInt(str, 0, 0)
+		if iverr != nil {
+			return resource.NewNullProperty(), iverr
 		}
+		v := int(iv)
 		return resource.NewNumberProperty(float64(v)), nil
 	case shim.TypeFloat:
-		var v float64
-		if str != "" {
-			if v, err = strconv.ParseFloat(str, 64); err != nil {
-				return resource.NewNullProperty(), err
-			}
+		v, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			return resource.NewNullProperty(), err
 		}
 		return resource.NewNumberProperty(v), nil
 	case shim.TypeString:
