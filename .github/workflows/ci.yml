@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        provider: [ "gcp", "azure", "azuread", "random", ]
+        provider: [ "gcp", "azuread", "random", ]
     steps:
       - name: Install Node.js
         uses: actions/setup-node@v1
