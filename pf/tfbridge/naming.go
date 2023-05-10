@@ -42,7 +42,7 @@ func pluralize(name string, typ tftypes.Type) (string, bool) {
 	return name, false
 }
 
-func functionPropertyKey(ds *datasourceHandle, path *tftypes.AttributePath) (resource.PropertyKey, bool) {
+func functionPropertyKey(ds datasourceHandle, path *tftypes.AttributePath) (resource.PropertyKey, bool) {
 	if path == nil {
 		return "", false
 	}
