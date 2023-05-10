@@ -36,7 +36,7 @@ type TerraformPropertyName = string
 
 type Encoding interface {
 	NewConfigEncoder(tftypes.Object) (Encoder, error)
-	NewResourceDecoder(resoruce string, resourceType tftypes.Object) (Decoder, error)
+	NewResourceDecoder(resource string, resourceType tftypes.Object) (Decoder, error)
 	NewResourceEncoder(resource string, resourceType tftypes.Object) (Encoder, error)
 	NewDataSourceDecoder(dataSource string, dataSourceType tftypes.Object) (Decoder, error)
 	NewDataSourceEncoder(dataSource string, dataSourceType tftypes.Object) (Encoder, error)
