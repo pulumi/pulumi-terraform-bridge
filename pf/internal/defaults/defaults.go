@@ -153,6 +153,8 @@ func getDefaultValue(
 }
 
 func parseValueFromEnv(sch shim.Schema, str string) (resource.PropertyValue, error) {
+	contract.Assertf(str != "", "parseValueFromEnv only works on non-empty strings")
+
 	var err error
 	switch sch.Type() {
 	case shim.TypeBool:
