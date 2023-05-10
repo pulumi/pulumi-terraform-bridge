@@ -1,6 +1,6 @@
 resource "renames_resource" "a_resource" {
     a_number = 1
-    a_resource = {
+    a_resource {
         inner_string = "hello"
     }
 }
@@ -18,7 +18,7 @@ output "some_output_a" {
 
 data "renames_data_source" "a_data_source" {
     a_number = 2
-    a_resource = {
+    a_resource {
         inner_string = "hello"
     }
 }
@@ -36,7 +36,7 @@ output "some_output_c" {
 resource "renames_resource" "many_resource" {
     count = 2
     a_number = 1
-    a_resource = {
+    a_resource {
         inner_string = "hello"
     }
 }

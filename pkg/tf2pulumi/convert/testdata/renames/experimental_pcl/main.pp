@@ -3,7 +3,6 @@ resource "aResource" "renames:index/index:resource" {
   theResource = {
     theInnerString = "hello"
   }
-
 }
 output "someOutputA" {
   value = aResource.myResult
@@ -20,7 +19,6 @@ aDataSource = invoke("renames:index/index:data_source", {
   theResource = {
     theInnerString = "hello"
   }
-
 })
 output "someOutputC" {
   value = aDataSource.myResult
@@ -39,5 +37,4 @@ resource "manyResource" "renames:index/index:resource" {
   theResource = {
     theInnerString = "hello"
   }
-
 }

@@ -1,7 +1,7 @@
 resource aResource "renames:index/index:resource" {
     theNumber = 1
-    theResource = {
-        theInnerString = "hello"
+theResource = {
+        innerString = "hello"
     }
 }
 output someOutputA {
@@ -15,8 +15,8 @@ output someOutputA {
 
 aDataSource = invoke("renames:index/index:data_source", {
     theNumber = 2,
-    theResource = {
-        theInnerString = "hello"
+theResource = {
+        innerString = "hello"
     }
 })
 output someOutputC {
@@ -33,7 +33,7 @@ options {
 
 }
     theNumber = 1
-    theResource = {
-        theInnerString = "hello"
+theResource = {
+        innerString = "hello"
     }
 }
