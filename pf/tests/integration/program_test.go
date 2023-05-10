@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"sort"
 )
 
 func TestBasicProgram(t *testing.T) {
@@ -96,12 +97,18 @@ func prepareStateFolder(root string) error {
 }
 
 func ensureTestBridgeProviderCompiled(wd string) error {
-	exe := "pulumi-resource-testbridge"
-	cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "bin", exe)) //nolint:gosec
-	cmd.Dir = filepath.Join(wd, "..", "internal", "cmd", exe)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	ensure := func(exe string) error {
+		cmd := exec.Command("go", "build", "-o", filepath.Join("..", "..", "..", "..", "bin", exe)) //nolint:gosec
+		cmd.Dir = filepath.Join(wd, "..", "internal", "testprovider", "cmd", exe)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+	if err := ensure("pulumi-resource-testbridge"); err != nil {
+		return err
+	}
+	return ensure("pulumi-resource-muxedrandom")
+
 }
 
 // Stacks may define tests inline by a simple convention of providing
@@ -116,14 +123,28 @@ func validateExpectedVsActual(t *testing.T, stack integration.RuntimeValidationS
 	expects := map[string]interface{}{}
 	actuals := map[string]interface{}{}
 	for n, output := range stack.Outputs {
-		if strings.HasSuffix(n, "__actual") {
+		switch {
+		case strings.HasSuffix(n, "__actual"):
 			actuals[strings.TrimSuffix(n, "__actual")] = output
-		}
-		if strings.HasSuffix(n, "__expect") {
+		case strings.HasSuffix(n, "__expect"):
 			expects[strings.TrimSuffix(n, "__expect")] = output
+		case strings.HasSuffix(n, "__secret"):
+			n, output := n, output
+			t.Run(n, func(t *testing.T) {
+				o, ok := output.(map[string]interface{})
+				if assert.Truef(t, ok, "Expected Secret (map[string]any), found %T", output) {
+					assert.Equal(t, "1b47061264138c4ac30d75fd1eb44270",
+						o["4dabf18193072939515e22adb298388d"])
+				}
+			})
 		}
 	}
+	keys := []string{}
 	for k := range expects {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
 		k := k
 		t.Run(k, func(t *testing.T) {
 			assert.Equal(t, expects[k], actuals[k])

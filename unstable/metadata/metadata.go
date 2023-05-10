@@ -54,6 +54,10 @@ func (d *Data) Marshal() []byte {
 //
 // Set errors only if value fails to serialize.
 func Set(d *Data, key string, value any) error {
+	if value == nil {
+		delete(d.m, key)
+		return nil
+	}
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err

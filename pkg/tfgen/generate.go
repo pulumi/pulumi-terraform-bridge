@@ -698,6 +698,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
+	// NOTE: sequence identical to(*Generator).Generate().
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to gather package metadata")
@@ -711,6 +712,10 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	r, err := g.Renames()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, s, g.renamesBuilder, g.sink); err != nil {
+		return nil, err
 	}
 
 	return &GenerateSchemaResult{
@@ -837,8 +842,9 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-	// First gather up the entire package contents.  This structure is complete and sufficient to hand off
-	// to the language-specific generators to create the full output.
+
+	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
+	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
 		return errors.Wrapf(err, "failed to gather package metadata")
@@ -850,9 +856,47 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	// As a side-effect genPulumiSchema also populated rename tables.
+	renames, err := g.Renames()
+	if err != nil {
+		return errors.Wrapf(err, "failed to generate renames")
+	}
+
+	if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
+		return err
+	}
+
+	genSchemaResult := &GenerateSchemaResult{
+		PackageSpec: pulumiPackageSpec,
+		Renames:     renames,
+	}
+
+	// Now push the schema through the rest of the generator.
+	return g.UnstableGenerateFromSchema(genSchemaResult)
+}
+
+// GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
+// generator was initialized with.
+//
+// This is an unstable API. We have exposed it so other packages within
+// pulumi-terraform-bridge can consume it. We do not recommend other packages consume this
+// API.
+func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
+	// MetadataInfo gets stored on disk from previous versions of the provider. Renames do not need to be
+	// history-aware and they are simply re-computed from scratch as part of generating the schema.
+	// If we are storing such metadata, override the previous Renames with the new Renames.
+	if info := g.info.MetadataInfo; info != nil {
+		err := metadata.Set(info.Data, "renames", genSchemaResult.Renames)
+		if err != nil {
+			return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
+		}
+	}
+
+	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
+	var err error
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal intermediate schema")
@@ -888,12 +932,8 @@ func (g *Generator) Generate() error {
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
-		if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
-			return err
-		}
-
-		if meta := g.info.MetadataInfo; meta != nil {
-			files[meta.Path] = (*metadata.Data)(meta.Data).Marshal()
+		if info := g.info.MetadataInfo; info != nil {
+			files[info.Path] = (*metadata.Data)(info.Data).Marshal()
 		}
 	case PCL:
 		if g.skipExamples {
@@ -930,7 +970,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Emit the Pulumi project information.
-	if err = g.emitProjectMetadata(pack); err != nil {
+	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
 		return errors.Wrapf(err, "failed to create project file")
 	}
 
@@ -1493,15 +1533,15 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 }
 
 // emitProjectMetadata emits the Pulumi.yaml project file into the package's root directory.
-func (g *Generator) emitProjectMetadata(pack *pkg) error {
+func (g *Generator) emitProjectMetadata(name tokens.Package, language Language) error {
 	w, err := newGenWriter(tfgen, g.root, "Pulumi.yaml")
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(w)
-	w.Writefmtln("name: %s", pack.name)
-	w.Writefmtln("description: A Pulumi resource provider for %s.", pack.name)
-	w.Writefmtln("language: %s", pack.language)
+	w.Writefmtln("name: %s", name)
+	w.Writefmtln("description: A Pulumi resource provider for %s.", name)
+	w.Writefmtln("language: %s", language)
 	return nil
 }
 

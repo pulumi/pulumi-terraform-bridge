@@ -266,7 +266,15 @@ func assignNames(files []*file) {
 		name := nt.pulumiName(n.name)
 		resourceGroups[name] = append(resourceGroups[name], n)
 	}
-	for name, group := range resourceGroups {
+
+	keys := make([]string, 0, len(resourceGroups))
+	for k := range resourceGroups {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		group := resourceGroups[name]
 		if len(group) == 1 {
 			// If there is only one resource in this group, allow disambiguation to happen normally.
 			nt.assignResource(group[0])

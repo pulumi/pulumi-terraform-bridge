@@ -21,6 +21,9 @@
     },
     "config": {
         "variables": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
             "stringConfigProp": {
                 "type": "string"
             }
@@ -30,6 +33,39 @@
         ]
     },
     "types": {
+        "testbridge:index/TestnestRule:TestnestRule": {
+            "properties": {
+                "actionParameters": {
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
+            "properties": {
+                "automaticHttpsRewrites": {
+                    "type": "boolean"
+                },
+                "bic": {
+                    "type": "boolean"
+                },
+                "phases": {
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases": {
+            "properties": {
+                "p1": {
+                    "type": "boolean"
+                },
+                "p2": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
                 "intport": {
@@ -97,9 +133,52 @@
         }
     },
     "provider": {
-        "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+        "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            }
+        },
+        "inputProperties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            }
+        }
     },
     "resources": {
+        "testbridge:index/testnest:Testnest": {
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                }
+            },
+            "inputProperties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testnest resources.\n",
+                "properties": {
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                        },
+                        "description": "List of rules to apply to the ruleset.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:TestConfigRes": {
             "properties": {
                 "configCopy": {
@@ -404,6 +483,48 @@
                     }
                 },
                 "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "testbridge:index/echo:Echo": {
+            "inputs": {
+                "description": "A collection of arguments for invoking Echo.\n",
+                "properties": {
+                    "input": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by Echo.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string"
+                    },
+                    "output": {
+                        "type": "string"
+                    },
+                    "sensitive": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
+                    "sensitive",
+                    "id"
+                ]
             }
         }
     }

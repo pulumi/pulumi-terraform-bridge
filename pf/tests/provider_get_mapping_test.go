@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
@@ -52,6 +54,49 @@ func TestGetMapping(t *testing.T) {
 
 		assert.Equal(t, "random", info.Name)
 		assert.Contains(t, info.Resources, "random_integer")
-		assert.Equal(t, "random:index/randomInteger:RandomInteger", string(info.Resources["random_integer"].Tok))
+		assert.Equal(t, "random:index/randomInteger:RandomInteger",
+			string(info.Resources["random_integer"].Tok))
+	}
+}
+
+func TestMuxedGetMapping(t *testing.T) {
+	ctx := context.Background()
+
+	info := testprovider.MuxedRandomProvider()
+
+	server, err := tfbridge.MakeMuxedServer(ctx, "muxedrandom", info, genSDKSchema(t, info))(nil)
+	require.NoError(t, err)
+
+	req := func(key string) (context.Context, *pulumirpc.GetMappingRequest) {
+		return ctx, &pulumirpc.GetMappingRequest{Key: key}
+	}
+
+	t.Run("unknown-key", func(t *testing.T) {
+		resp, err := server.GetMapping(req("unknown-key"))
+		assert.NoError(t, err)
+		assert.Empty(t, resp.Data)
+		assert.Empty(t, resp.Provider)
+	})
+
+	for _, key := range []string{"tf", "terraform"} {
+		resp, err := server.GetMapping(req(key))
+		assert.NoError(t, err)
+
+		assert.Equal(t, "muxedrandom", resp.Provider)
+
+		var info tfbridge0.MarshallableProviderInfo
+		err = json.Unmarshal(resp.Data, &info)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "muxedrandom", info.Name)
+		assert.Contains(t, info.Resources, "random_integer")
+		assert.Contains(t, info.Resources, "random_human_number")
+
+		// A PF based resource
+		assert.Equal(t, "muxedrandom:index/randomInteger:RandomInteger",
+			string(info.Resources["random_integer"].Tok))
+		// An SDK bases resource
+		assert.Equal(t, "muxedrandom:index/randomHumanNumber:RandomHumanNumber",
+			string(info.Resources["random_human_number"].Tok))
 	}
 }

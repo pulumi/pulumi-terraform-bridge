@@ -23,24 +23,24 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestTokensSingleModule(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]struct{}{
-				"foo_fizz_buzz":       {},
-				"foo_bar_hello_world": {},
-				"foo_bar":             {},
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"foo_fizz_buzz":       nil,
+				"foo_bar_hello_world": nil,
+				"foo_bar":             nil,
 			},
-			datasources: map[string]struct{}{
-				"foo_source1":             {},
-				"foo_very_special_source": {},
+			DataSourcesMap: schema.ResourceMap{
+				"foo_source1":             nil,
+				"foo_very_special_source": nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	makeToken := func(module, name string) (string, error) {
@@ -81,16 +81,16 @@ func TestTokensSingleModule(t *testing.T) {
 
 func TestTokensKnownModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_fizz_buzz_one_five": {},
-				"cs101_fizz_three":         {},
-				"cs101_fizz_three_six":     {},
-				"cs101_buzz_five":          {},
-				"cs101_buzz_ten":           {},
-				"cs101_game":               {},
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	err := ComputeDefaults(&info, DefaultStrategy{
@@ -112,18 +112,51 @@ func TestTokensKnownModules(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensMappedModules(t *testing.T) {
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
+			},
+		}).Shim(),
+	}
+	err := ComputeDefaults(&info, DefaultStrategy{
+		Resource: TokensMappedModules("cs101_", "idx", map[string]string{
+			"fizz_":      "fIzZ",
+			"buzz_":      "buZZ",
+			"fizz_buzz_": "fizZBuzz",
+		}, func(module, name string) (string, error) {
+			return fmt.Sprintf("cs101:%s:%s", module, name), nil
+		}).Resource,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizZBuzz:OneFive"},
+		"cs101_fizz_three":         {Tok: "cs101:fIzZ:Three"},
+		"cs101_fizz_three_six":     {Tok: "cs101:fIzZ:ThreeSix"},
+		"cs101_buzz_five":          {Tok: "cs101:buZZ:Five"},
+		"cs101_buzz_ten":           {Tok: "cs101:buZZ:Ten"},
+		"cs101_game":               {Tok: "cs101:idx:Game"},
+	}, info.Resources)
+}
+
 func TestUnmappable(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_fizz_buzz_one_five": {},
-				"cs101_fizz_three":         {},
-				"cs101_fizz_three_six":     {},
-				"cs101_buzz_five":          {},
-				"cs101_buzz_ten":           {},
-				"cs101_game":               {},
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_fizz_buzz_one_five": nil,
+				"cs101_fizz_three":         nil,
+				"cs101_fizz_three_six":     nil,
+				"cs101_buzz_five":          nil,
+				"cs101_buzz_ten":           nil,
+				"cs101_game":               nil,
 			},
-		},
+		}).Shim(),
 	}
 
 	strategy := TokensKnownModules("cs101_", "index", []string{
@@ -155,13 +188,13 @@ func TestUnmappable(t *testing.T) {
 
 func TestIgnored(t *testing.T) {
 	info := tfbridge.ProviderInfo{
-		P: Provider{
-			resources: map[string]struct{}{
-				"cs101_one_five":  {},
-				"cs101_three":     {},
-				"cs101_three_six": {},
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_one_five":  nil,
+				"cs101_three":     nil,
+				"cs101_three_six": nil,
 			},
-		},
+		}).Shim(),
 		IgnoreMappings: []string{"cs101_three"},
 	}
 	err := ComputeDefaults(&info, TokensSingleModule("cs101_", "index_", MakeStandardToken("cs101")))
@@ -323,14 +356,14 @@ func TestTokensInferredModules(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			resources := map[string]struct{}{}
+			resources := schema.ResourceMap{}
 			for k := range tt.resourceMapping {
-				resources[k] = struct{}{}
+				resources[k] = nil
 			}
 			info := &tfbridge.ProviderInfo{
-				P: Provider{
-					resources: resources,
-				},
+				P: (&schema.Provider{
+					ResourcesMap: resources,
+				}).Shim(),
 			}
 
 			strategy, err := TokensInferredModules(info,
@@ -349,16 +382,16 @@ func TestTokensInferredModules(t *testing.T) {
 	}
 }
 
-func TestAliasing(t *testing.T) {
+func TestTokenAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
-			P: Provider{
-				resources: map[string]struct{}{
-					"pkg_mod1_r1": {},
-					"pkg_mod1_r2": {},
-					"pkg_mod2_r1": {},
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_mod1_r1": nil,
+					"pkg_mod1_r2": nil,
+					"pkg_mod2_r1": nil,
 				},
-			},
+			}).Shim(),
 		}
 	}
 	simple := provider()
@@ -432,7 +465,8 @@ func TestAliasing(t *testing.T) {
 	require.NoError(t, err)
 
 	hist3 := md.Clone(metadata)
-	assert.Equal(t, hist2, hist3, "No changes should imply no change in history")
+	assert.Equal(t, string(hist2.Marshal()), string(hist3.Marshal()),
+		"No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
 
 	modules3 := provider()
@@ -472,46 +506,357 @@ func TestAliasing(t *testing.T) {
 	assert.Equal(t, modules.Resources, modules4.Resources)
 }
 
-type Provider struct {
-	util.UnimplementedProvider
-
-	// We are only concerned with tokens, so that's all we support
-	datasources map[string]struct{}
-	resources   map[string]struct{}
-}
-
-func (p Provider) ResourcesMap() shim.ResourceMap   { return ResourceMap{p.resources} }
-func (p Provider) DataSourcesMap() shim.ResourceMap { return ResourceMap{p.datasources} }
-
-type ResourceMap struct{ m map[string]struct{} }
-type Resource struct{ t string }
-
-func (m ResourceMap) Len() int                     { return len(m.m) }
-func (m ResourceMap) Get(key string) shim.Resource { return Resource{key} }
-func (m ResourceMap) GetOk(key string) (shim.Resource, bool) {
-	_, ok := m.m[key]
-	if !ok {
-		return nil, false
+func TestMaxItemsOneAliasing(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"f1": Schema{MaxItemsOne: f1},
+						"f2": Schema{MaxItemsOne: f2},
+						"f3": Schema{typ: shim.TypeString},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
 	}
-	return Resource{key}, true
-}
-func (m ResourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for k := range m.m {
-		each(k, Resource{k})
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": true
+                    },
+                    "f2": {
+                        "maxItemsOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	info = provider(false, true)
+
+	// Apply metadata back into the provider
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, expected, string(metadata.Marshal()))
+
+	// Apply metadata back into the provider again, making sure there isn't a diff
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, expected, string(metadata.Marshal()))
+
+	// Validate that overrides work
+
+	info = provider(true, false)
+	info.Resources["pkg_r1"].Fields = map[string]*tfbridge.SchemaInfo{
+		"f1": {MaxItemsOne: tfbridge.False()},
 	}
-}
-func (m ResourceMap) Set(key string, value shim.Resource) {
-	m.m[key] = struct{}{}
+
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
+	assert.Equal(t, `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": false
+                    },
+                    "f2": {
+                        "maxItemsOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`, string(metadata.Marshal()))
 }
 
-func (r Resource) Schema() shim.SchemaMap          { panic("unimplemented") }
-func (r Resource) SchemaVersion() int              { panic("unimplemented") }
-func (r Resource) Importer() shim.ImportFunc       { panic("unimplemented") }
-func (r Resource) DeprecationMessage() string      { panic("unimplemented") }
-func (r Resource) Timeouts() *shim.ResourceTimeout { panic("unimplemented") }
-func (r Resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
-	panic("unimplemented")
+func TestMaxItemsOneAliasingExpiring(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"f1": Schema{MaxItemsOne: f1},
+						"f2": Schema{MaxItemsOne: f2},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": true
+                    },
+                    "f2": {
+                        "maxItemsOne": false
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	info = provider(false, true)
+
+	// Apply metadata back into the provider
+	info.Version = "1.0.0" // New major version
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"])
+	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"])
+	assert.Equal(t, `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "majorVersion": 1,
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": false
+                    },
+                    "f2": {
+                        "maxItemsOne": true
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`, string(metadata.Marshal()))
+
 }
-func (r Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	panic("unimplemented")
+
+func TestMaxItemsOneAliasingNested(t *testing.T) {
+	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"f1": Schema{},
+						"f2": Schema{elem: (&schema.Resource{
+							Schema: schema.SchemaMap{
+								"n1": Schema{MaxItemsOne: f1},
+								"n2": Schema{MaxItemsOne: f2},
+							},
+						}).Shim()},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+	info := provider(true, false)
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	// Save current state into metadata
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	v := string(metadata.Marshal())
+	expected := `{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": false
+                    },
+                    "f2": {
+                        "maxItemsOne": false,
+                        "elem": {
+                            "fields": {
+                                "n1": {
+                                    "maxItemsOne": true
+                                },
+                                "n2": {
+                                    "maxItemsOne": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "datasources": {}
+    }
+}`
+	assert.Equal(t, expected, v)
+
+	// Apply the saved metadata to a new provider
+	info = provider(false, true)
+	err = AutoAliasing(info, metadata)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
+	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
+
+// (*ProviderInfo).SetAutonaming skips fields that have a SchemaInfo already defined in
+// their resource's ResourceInfo.Fields. We need to make sure that unless we mark a field
+// as `MaxItemsOne: nonNil` for some non-nil value, we don't leave that field entry behind
+// since that will disable SetAutonaming.
+func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"name":      Schema{typ: shim.TypeString},
+						"nest_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"nest_flat": Schema{
+							elem:        Schema{typ: shim.TypeBool},
+							MaxItemsOne: true,
+						},
+						"override_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"override_flat": Schema{
+							elem:        Schema{typ: shim.TypeInt},
+							MaxItemsOne: true,
+						},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+
+	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo, hist *metadata.Data) {
+		r := p.Resources["pkg_r1"]
+		assert.True(t, r.Fields["name"].Default.AutoNamed)
+
+		assert.Nil(t, r.Fields["nest_list"])
+		assert.Nil(t, r.Fields["override_list"])
+
+		t.Log(string(hist.Marshal()))
+		assert.JSONEq(t, `{
+                "auto-aliasing": {
+                    "resources": {
+                        "pkg_r1": {
+                            "current": "pkg:index/r1:R1",
+                            "fields": {
+                                "nest_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "nest_list": {
+                                    "maxItemsOne": false
+                                },
+                                "override_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "override_list": {
+                                    "maxItemsOne": false
+                                }
+                            }
+                        }
+                    },
+                    "datasources": {}
+                }
+            }`, string(hist.Marshal()))
+	}
+
+	t.Run("auto-named-then-aliased", func(t *testing.T) {
+		p := provider()
+
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+
+		assertExpected(t, p, info)
+	})
+
+	t.Run("auto-aliased-then-named", func(t *testing.T) {
+		p := provider()
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+
+		assertExpected(t, p, info)
+	})
+}
+
+type Schema struct {
+	shim.Schema
+	MaxItemsOne bool
+	typ         shim.ValueType
+	elem        any
+}
+
+func (s Schema) MaxItems() int {
+	if s.MaxItemsOne {
+		return 1
+	}
+	return 0
+}
+
+func (s Schema) Type() shim.ValueType {
+	if s.typ == shim.TypeInvalid {
+		return shim.TypeList
+	}
+	return s.typ
+}
+
+func (s Schema) Optional() bool { return true }
+func (s Schema) Required() bool { return false }
+
+func (s Schema) Elem() any { return s.elem }

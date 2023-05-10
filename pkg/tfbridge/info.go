@@ -102,6 +102,13 @@ type ProviderInfo struct {
 	MetadataInfo *MetadataInfo
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
+
+	// EXPERIMENTAL: the signature may change in minor releases.
+	//
+	// If set, allows selecting individual examples to skip generating into the PackageSchema (and eventually API
+	// docs). The primary use case for this hook is to ignore problematic or flaky examples temporarily until the
+	// underlying issues are resolved and the examples can be rendered correctly.
+	SkipExamples func(SkipExamplesArgs) bool
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
@@ -992,4 +999,17 @@ type PreStateUpgradeHookArgs struct {
 	PriorState              resource.PropertyMap
 	PriorStateSchemaVersion int64
 	ResourceSchemaVersion   int64
+}
+
+// EXPERIMENTAL: the signature may change in minor releases.
+type SkipExamplesArgs struct {
+	// token will be a resource, function, or type token from Pulumi Package Schema. For instance,
+	// "aws:acm/certificate:Certificate" would indicate the example pertains to the Certificate resource in the AWS
+	// provider.
+	Token string
+
+	// examplePath will provide even more information on where the example is found. For instance,
+	// "#/resources/aws:acm/certificate:Certificate/arn" would encode that the example pertains to the arn property
+	// of the Certificate resource in the AWS provider.
+	ExamplePath string
 }

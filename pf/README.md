@@ -32,10 +32,14 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     package myprovider
 
     import (
+        _ "embed"
         "github.com/hashicorp/terraform-plugin-framework/provider"
         pf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
         "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
     )
+
+    //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
+    var bridgeMetadata []byte
 
     func MyProvider() pf.ProviderInfo {
         info := tfbridge.ProviderInfo{
@@ -44,6 +48,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
             Resources: map[string]*tfbridge.ResourceInfo{
                 "myresource": {Tok: "myprovider::MyResource"},
             },
+            MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
         }
         return pf.ProviderInfo{
             ProviderInfo: info,
@@ -95,11 +100,8 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     //go:embed schema.json
     var schema []byte
 
-    //go:embed bridge-metadata.json
-    var bridgeMetadata []byte
-
     func main() {
-        meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
+        meta := tfbridge.ProviderMetadata{PackageSchema: schema}
         tfbridge.Main(context.Background(), "myprovider", myprovider.MyProvider(), meta)
     }
     ```
@@ -194,11 +196,8 @@ to the Plugin Framework.
      ```go
      ...
 
-     //go:embed bridge-metadata.json
-     var bridgeMetadata []byte
-
      func main() {
-         meta := tfbridge.ProviderMetadata{PackageSchema: schema, BridgeMetadata: bridgeMetadata}
+         meta := tfbridge.ProviderMetadata{PackageSchema: schema}
          tfbridge.Main(context.Background(), "myprovider", myprovider.MyProvider(), meta)
      }
      ```
@@ -208,6 +207,10 @@ to the Plugin Framework.
    `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge` instead.
 
     ```go
+
+    //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
+    var bridgeMetadata []byte
+
     func Provider() pf.ProviderInfo {
         info := tfbridge.ProviderInfo{
             // Comment out P, use NewProvider below instead.
@@ -215,6 +218,9 @@ to the Plugin Framework.
 
             // Make sure Version is set, as it is now required.
             Version: ...,
+
+            // This is now required.
+            MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
 
             // Keep the rest of the code as before.
         }

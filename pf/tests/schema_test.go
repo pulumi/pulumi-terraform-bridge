@@ -15,7 +15,12 @@
 package tfbridgetests
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 )
@@ -28,6 +33,29 @@ func TestSchemaGen(t *testing.T) {
 		genMetadata(t, testprovider.TLSProvider())
 	})
 	t.Run("testbridge", func(t *testing.T) {
-		genMetadata(t, testprovider.SyntheticTestBridgeProvider())
+		data := genMetadata(t, testprovider.SyntheticTestBridgeProvider())
+		var spec schema.PackageSpec
+		require.NoError(t, json.Unmarshal(data.PackageSchema, &spec))
+		res := spec.Resources["testbridge:index/testnest:Testnest"]
+		assert.Equal(t, "array", res.InputProperties["rules"].Type)
+		assert.Equal(t,
+			"#/types/testbridge:index/TestnestRule:TestnestRule",
+			res.InputProperties["rules"].Items.Ref)
+
+		rule := spec.Types["testbridge:index/TestnestRule:TestnestRule"]
+		assert.Equal(t,
+			"#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters",
+			rule.Properties["actionParameters"].Ref)
+		assert.Equal(t, "", rule.Properties["actionParameters"].Type)
+
+		actionParameters := spec.Types["testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"]
+		assert.Equal(t, "", actionParameters.Properties["phases"].Type)
+		assert.Equal(t,
+			"#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases",
+			actionParameters.Properties["phases"].Ref)
+
+		actionParameterPhases := spec.Types["testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"]
+		assert.Equal(t, "object", actionParameterPhases.Type)
+		assert.Equal(t, "boolean", actionParameterPhases.Properties["p2"].Type)
 	})
 }

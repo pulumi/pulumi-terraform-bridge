@@ -17,10 +17,13 @@ package tfgen
 import (
 	"os"
 	"reflect"
+	"sort"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -33,47 +36,82 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 		})
 	}
 
-	u := &notSupportedUtil{sink}
+	u := &notSupportedUtil{sink: sink}
 
-	if prov.P != nil {
+	skipResource := func(tfToken string) bool { return false }
+	skipDataSource := func(tfToken string) bool { return false }
+	muxedProvider := false
+	if mixed, ok := prov.P.(*muxer.ProviderShim); ok {
+		not := func(f func(string) bool) func(string) bool {
+			return func(s string) bool {
+				return !f(s)
+			}
+		}
+
+		skipResource = not(mixed.ResourceIsPF)
+		skipDataSource = not(mixed.DataSourceIsPF)
+		muxedProvider = true
+	} else if prov.P != nil {
 		u.warn("ProviderInfo.P should be nil for Plugin Framework based providers, populate NewProvider instead")
 	}
 
 	if prov.Resources != nil {
 		for path, res := range prov.Resources {
+			if skipResource(path) {
+				continue
+			}
 			u.resource("resource:"+path, res)
 		}
 	}
 
 	if prov.DataSources != nil {
 		for path, ds := range prov.DataSources {
+			if skipDataSource(path) {
+				continue
+			}
 			u.datasource("datasource:"+path, ds)
 		}
 	}
 
-	if prov.Config != nil {
-		for path, ds := range prov.Config {
-			u.schema("config:"+path, ds)
+	// It might be reasonable to set global values that PF will ignore if this is a
+	// muxed provider, and the SDK side will pick it up.
+	if !muxedProvider {
+		if prov.Config != nil {
+			for path, ds := range prov.Config {
+				u.schema("config:"+path, ds)
+			}
 		}
+
+		u.assertIsZero("PreConfigureCallback", prov.PreConfigureCallback)
+		u.assertIsZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
 	}
 
-	u.assertNotZero("PreConfigureCallback", prov.PreConfigureCallback)
-	u.assertNotZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
+	if len(u.autoNamedResources) > 0 {
+		sort.Strings(u.autoNamedResources)
+		u.warn("SetAutonaming call is currently ignored for bridged resources built with the "+
+			"Plugin Framework. Supporting this feature is tracked in pulumi/pulumi-terraform-bridge#917.\n"+
+			"These resources employ autonaming:\n- %s\n"+
+			"To avoid this warning, exclude these resources from auto naming, for example by adding them"+
+			" to ProviderInfo.Resources after the SetAutonaming call.",
+			strings.Join(u.autoNamedResources, "\n- "))
+	}
 
 	return nil
 }
 
 type notSupportedUtil struct {
 	sink diag.Sink
+
+	autoNamedResources []string
 }
 
 func (u *notSupportedUtil) warn(format string, arg ...interface{}) {
 	u.sink.Warningf(&diag.Diag{Message: format}, arg...)
 }
 
-func (u *notSupportedUtil) assertNotZero(path string, shouldBeZero interface{}) {
+func (u *notSupportedUtil) assertIsZero(path string, shouldBeZero interface{}) {
 	va := reflect.ValueOf(shouldBeZero)
-	if va.IsZero() || va.IsNil() {
+	if va.IsZero() {
 		return
 	}
 	u.warn("%s received a non-zero custom value %v that is being ignored."+
@@ -93,22 +131,28 @@ func (u *notSupportedUtil) datasource(path string, ds *tfbridge.DataSourceInfo) 
 
 func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
 	u.fields(path, res.Fields)
-	u.assertNotZero(path+".UniqueNameFields", res.UniqueNameFields)
-	u.assertNotZero(path+".Docs", res.Docs)
-	u.assertNotZero(path+".Aliases", res.Aliases)
+	u.assertIsZero(path+".UniqueNameFields", res.UniqueNameFields)
+	u.assertIsZero(path+".Docs", res.Docs)
+	u.assertIsZero(path+".Aliases", res.Aliases)
+	for _, v := range res.Fields {
+		if v.Default != nil && v.Default.AutoNamed {
+			// Supporting this feature is tracked in pulumi/pulumi-terraform-bridge#917
+			u.autoNamedResources = append(u.autoNamedResources, path)
+		}
+	}
 }
 
 func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
-	u.assertNotZero(path+".Type", schema.Type)
-	u.assertNotZero(path+".AltTypes", schema.AltTypes)
-	u.assertNotZero(path+".NestedType", schema.NestedType)
-	u.assertNotZero(path+".Transform", schema.Transform)
-	u.assertNotZero(path+".Elem", schema.Elem)
+	u.assertIsZero(path+".Type", schema.Type)
+	u.assertIsZero(path+".AltTypes", schema.AltTypes)
+	u.assertIsZero(path+".NestedType", schema.NestedType)
+	u.assertIsZero(path+".Transform", schema.Transform)
+	u.assertIsZero(path+".Elem", schema.Elem)
 	u.fields(path, schema.Fields)
-	u.assertNotZero(path+".Asset", schema.Asset)
-	u.assertNotZero(path+".Default", schema.Default)
-	u.assertNotZero(path+".Stable", schema.Stable)
-	u.assertNotZero(path+".SuppressEmptyMapElements", schema.SuppressEmptyMapElements)
-	u.assertNotZero(path+".ForceNew", schema.ForceNew)
-	u.assertNotZero(path+".Removed", schema.Removed)
+	u.assertIsZero(path+".Asset", schema.Asset)
+	u.assertIsZero(path+".Default", schema.Default)
+	u.assertIsZero(path+".Stable", schema.Stable)
+	u.assertIsZero(path+".SuppressEmptyMapElements", schema.SuppressEmptyMapElements)
+	u.assertIsZero(path+".ForceNew", schema.ForceNew)
+	u.assertIsZero(path+".Removed", schema.Removed)
 }

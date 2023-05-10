@@ -20,16 +20,24 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
-	ctx := context.TODO()
+	ctx := context.Background()
 	meta := genMetadata(t, info)
-	p, err := tfbridge.NewProvider(ctx, info, meta)
+	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
 	require.NoError(t, err)
-	return plugin.NewProviderServer(p)
+	return srv
+}
+
+func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
+	ctx := context.Background()
+	meta := genSDKSchema(t, info)
+	p, err := tfbridge.MakeMuxedServer(ctx, info.Name, info, meta)(nil)
+	require.NoError(t, err)
+	return p
 }

@@ -38,7 +38,10 @@ import (
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -60,6 +63,8 @@ type provider struct {
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logutils.LogSink
+
+	schemaOnlyProvider shim.Provider
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -96,13 +101,20 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
 	}
 
-	var renames tfgen.Renames
-	if err := json.Unmarshal(meta.BridgeMetadata, &renames); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal BridgeMetadata: %w", err)
+	if info.MetadataInfo == nil {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
+	}
+	renames, ok, err := metadata.Get[tfgen.Renames](info.MetadataInfo.Data, "renames")
+	if !ok {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata has no required 'renames' value")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata failed to unmarshal "+
+			"a 'renames' value: %w", err)
 	}
 
 	propertyNames := newPrecisePropertyNames(renames)
-	enc := convert.NewEncoding(packageSpec{&thePackageSpec}, propertyNames)
+	enc := convert.NewEncoding(convert.PrecomputedPackageSpec(&thePackageSpec), propertyNames)
 
 	schemaResponse := &pfprovider.SchemaResponse{}
 	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
@@ -137,10 +149,13 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
 		version:       semverVersion,
+
+		schemaOnlyProvider: SchemaOnlyPluginFrameworkProvider(ctx, p),
 	}, nil
 }
 
-func newProviderServer(
+// Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
+func NewProviderServer(
 	ctx context.Context,
 	logSink logutils.LogSink,
 	info ProviderInfo,
@@ -150,8 +165,11 @@ func newProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	p.(*provider).logSink = logSink
-	return pl.NewProviderServerWithContext(p), nil
+	pp := p.(*provider)
+
+	pp.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.ProviderInfo.Config)
+	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -234,38 +252,4 @@ func newProviderServer6(ctx context.Context, p pfprovider.Provider) (tfprotov6.P
 	}
 
 	return server6, nil
-}
-
-type packageSpec struct {
-	spec *pschema.PackageSpec
-}
-
-var _ convert.PackageSpec = (*packageSpec)(nil)
-
-func (p packageSpec) Config() *pschema.ConfigSpec {
-	return &p.spec.Config
-}
-
-func (p packageSpec) Resource(tok tokens.Type) *pschema.ResourceSpec {
-	res, ok := p.spec.Resources[string(tok)]
-	if ok {
-		return &res
-	}
-	return nil
-}
-
-func (p packageSpec) Type(tok tokens.Type) *pschema.ComplexTypeSpec {
-	typ, ok := p.spec.Types[string(tok)]
-	if ok {
-		return &typ
-	}
-	return nil
-}
-
-func (p packageSpec) Function(tok tokens.ModuleMember) *pschema.FunctionSpec {
-	res, ok := p.spec.Functions[string(tok)]
-	if ok {
-		return &res
-	}
-	return nil
 }

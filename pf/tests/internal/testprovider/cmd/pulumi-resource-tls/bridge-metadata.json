@@ -1,0 +1,106 @@
+{
+    "renames": {
+        "resources": {
+            "tls:index/certRequest:CertRequest": "tls_cert_request",
+            "tls:index/locallySignedCert:LocallySignedCert": "tls_locally_signed_cert",
+            "tls:index/privateKey:PrivateKey": "tls_private_key",
+            "tls:index/selfSignedCert:SelfSignedCert": "tls_self_signed_cert"
+        },
+        "functions": {
+            "tls:index/getCertificate:getCertificate": "tls_certificate",
+            "tls:index/getPublicKey:getPublicKey": "tls_public_key"
+        },
+        "renamedProperties": {
+            "tls:config/proxy:proxy": {
+                "fromEnv": "from_env"
+            },
+            "tls:index/CertRequestSubject:CertRequestSubject": {
+                "commonName": "common_name",
+                "organizationalUnit": "organizational_unit",
+                "postalCode": "postal_code",
+                "serialNumber": "serial_number",
+                "streetAddresses": "street_address"
+            },
+            "tls:index/ProviderProxy:ProviderProxy": {
+                "fromEnv": "from_env"
+            },
+            "tls:index/SelfSignedCertSubject:SelfSignedCertSubject": {
+                "commonName": "common_name",
+                "organizationalUnit": "organizational_unit",
+                "postalCode": "postal_code",
+                "serialNumber": "serial_number",
+                "streetAddresses": "street_address"
+            },
+            "tls:index/certRequest:CertRequest": {
+                "certRequestPem": "cert_request_pem",
+                "dnsNames": "dns_names",
+                "ipAddresses": "ip_addresses",
+                "keyAlgorithm": "key_algorithm",
+                "privateKeyPem": "private_key_pem"
+            },
+            "tls:index/getCertificate:getCertificate": {
+                "verifyChain": "verify_chain"
+            },
+            "tls:index/getCertificateCertificate:getCertificateCertificate": {
+                "certPem": "cert_pem",
+                "isCa": "is_ca",
+                "notAfter": "not_after",
+                "notBefore": "not_before",
+                "publicKeyAlgorithm": "public_key_algorithm",
+                "serialNumber": "serial_number",
+                "sha1Fingerprint": "sha1_fingerprint",
+                "signatureAlgorithm": "signature_algorithm"
+            },
+            "tls:index/getPublicKey:getPublicKey": {
+                "privateKeyOpenssh": "private_key_openssh",
+                "privateKeyPem": "private_key_pem",
+                "publicKeyFingerprintMd5": "public_key_fingerprint_md5",
+                "publicKeyFingerprintSha256": "public_key_fingerprint_sha256",
+                "publicKeyOpenssh": "public_key_openssh",
+                "publicKeyPem": "public_key_pem"
+            },
+            "tls:index/locallySignedCert:LocallySignedCert": {
+                "allowedUses": "allowed_uses",
+                "caCertPem": "ca_cert_pem",
+                "caKeyAlgorithm": "ca_key_algorithm",
+                "caPrivateKeyPem": "ca_private_key_pem",
+                "certPem": "cert_pem",
+                "certRequestPem": "cert_request_pem",
+                "earlyRenewalHours": "early_renewal_hours",
+                "isCaCertificate": "is_ca_certificate",
+                "readyForRenewal": "ready_for_renewal",
+                "setSubjectKeyId": "set_subject_key_id",
+                "validityEndTime": "validity_end_time",
+                "validityPeriodHours": "validity_period_hours",
+                "validityStartTime": "validity_start_time"
+            },
+            "tls:index/privateKey:PrivateKey": {
+                "ecdsaCurve": "ecdsa_curve",
+                "privateKeyOpenssh": "private_key_openssh",
+                "privateKeyPem": "private_key_pem",
+                "privateKeyPemPkcs8": "private_key_pem_pkcs8",
+                "publicKeyFingerprintMd5": "public_key_fingerprint_md5",
+                "publicKeyFingerprintSha256": "public_key_fingerprint_sha256",
+                "publicKeyOpenssh": "public_key_openssh",
+                "publicKeyPem": "public_key_pem",
+                "rsaBits": "rsa_bits"
+            },
+            "tls:index/selfSignedCert:SelfSignedCert": {
+                "allowedUses": "allowed_uses",
+                "certPem": "cert_pem",
+                "dnsNames": "dns_names",
+                "earlyRenewalHours": "early_renewal_hours",
+                "ipAddresses": "ip_addresses",
+                "isCaCertificate": "is_ca_certificate",
+                "keyAlgorithm": "key_algorithm",
+                "privateKeyPem": "private_key_pem",
+                "readyForRenewal": "ready_for_renewal",
+                "setAuthorityKeyId": "set_authority_key_id",
+                "setSubjectKeyId": "set_subject_key_id",
+                "validityEndTime": "validity_end_time",
+                "validityPeriodHours": "validity_period_hours",
+                "validityStartTime": "validity_start_time"
+            }
+        }
+    }
+}
