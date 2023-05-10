@@ -64,11 +64,12 @@ func isTfPlural(tfs shim.Schema) bool {
 		return false
 	}
 
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
+	switch tfs.Type() {
+	case shim.TypeSet, shim.TypeList:
+		return tfs.MaxItems() != 1
+	default:
 		return false
 	}
-
-	return tfs.MaxItems() != 1
 }
 
 func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
@@ -142,7 +143,16 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 		//	]
 		//
 		// The non-bijectivity will be caught at tfgen time and a warning will be emitted.
-		if _, conflict := sch.GetOk(candidate); !conflict || (ps[candidate] != nil && ps[candidate].Name != candidate) {
+
+		_, conflict := sch.GetOk(candidate)
+
+		// A conflict at the `sch` level doesn't necessarily mean that it is
+		// unsafe to pluralize. It is possible that the potentially conflicting
+		// field had its name manually set to another value.
+		conflictSafe := (ps[candidate] != nil &&
+			ps[candidate].Name != "" &&
+			ps[candidate].Name != candidate)
+		if !conflict || conflictSafe {
 			name = candidate
 		}
 	}
