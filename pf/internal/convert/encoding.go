@@ -180,53 +180,53 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 		return newNumberEncoder(), nil
 	case t.Is(tftypes.Bool):
 		return newBoolEncoder(), nil
-	default:
-		switch tt := t.(type) {
-		case tftypes.Object:
-			mctx, err := pctx.Object()
-			if err != nil {
-				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
-			}
-			propertyEncoders, err := e.buildPropertyEncoders(mctx, tt)
-			if err != nil {
-				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
-			}
-			return newObjectEncoder(tt, propertyEncoders, mctx)
-		case tftypes.List:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newListEncoder(tt.ElementType, elementEncoder)
-		case tftypes.Map:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newMapEncoder(tt.ElementType, elementEncoder)
-		case tftypes.Set:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newSetEncoder(tt.ElementType, elementEncoder)
-		case tftypes.Tuple:
-			return e.deriveTupleEncoder(pctx, tt)
-		default:
-			return nil, fmt.Errorf("Cannot build an encoder for type %v", t)
+	}
+
+	switch tt := t.(type) {
+	case tftypes.Object:
+		mctx, err := pctx.Object()
+		if err != nil {
+			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
+		propertyEncoders, err := e.buildPropertyEncoders(mctx, tt)
+		if err != nil {
+			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+		}
+		return newObjectEncoder(tt, propertyEncoders, mctx)
+	case tftypes.List:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newListEncoder(tt.ElementType, elementEncoder)
+	case tftypes.Map:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newMapEncoder(tt.ElementType, elementEncoder)
+	case tftypes.Set:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newSetEncoder(tt.ElementType, elementEncoder)
+	case tftypes.Tuple:
+		return e.deriveTupleEncoder(pctx, tt)
+	default:
+		return nil, fmt.Errorf("Cannot build an encoder for type %v", t)
 	}
 }
 
@@ -252,53 +252,53 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 		return newNumberDecoder(), nil
 	case t.Is(tftypes.Bool):
 		return newBoolDecoder(), nil
-	default:
-		switch tt := t.(type) {
-		case tftypes.Object:
-			mctx, err := pctx.Object()
-			if err != nil {
-				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
-			}
-			propertyDecoders, err := e.buildPropertyDecoders(mctx, tt)
-			if err != nil {
-				return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
-			}
-			return newObjectDecoder(tt, propertyDecoders, mctx)
-		case tftypes.List:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newListDecoder(elementDecoder)
-		case tftypes.Map:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newMapDecoder(elementDecoder)
-		case tftypes.Set:
-			elctx, err := pctx.Element()
-			if err != nil {
-				return nil, err
-			}
-			elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
-			if err != nil {
-				return nil, err
-			}
-			return newSetDecoder(elementDecoder)
-		case tftypes.Tuple:
-			return e.deriveTupleDecoder(pctx, tt)
-		default:
-			return nil, fmt.Errorf("Cannot build a decoder type %v", t)
+	}
+
+	switch tt := t.(type) {
+	case tftypes.Object:
+		mctx, err := pctx.Object()
+		if err != nil {
+			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
+		propertyDecoders, err := e.buildPropertyDecoders(mctx, tt)
+		if err != nil {
+			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+		}
+		return newObjectDecoder(tt, propertyDecoders, mctx)
+	case tftypes.List:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newListDecoder(elementDecoder)
+	case tftypes.Map:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newMapDecoder(elementDecoder)
+	case tftypes.Set:
+		elctx, err := pctx.Element()
+		if err != nil {
+			return nil, err
+		}
+		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		if err != nil {
+			return nil, err
+		}
+		return newSetDecoder(elementDecoder)
+	case tftypes.Tuple:
+		return e.deriveTupleDecoder(pctx, tt)
+	default:
+		return nil, fmt.Errorf("Cannot build a decoder type %v", t)
 	}
 }
 
