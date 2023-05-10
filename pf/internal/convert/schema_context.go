@@ -39,14 +39,13 @@ func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbri
 	}
 }
 
-func newResourceSchemaMapContext(resource string,
+func newResourceSchemaMapContext(
+	resource string,
 	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo) *schemaMapContext {
-	var sm shim.SchemaMap
-	r, gotR := schemaOnlyProvider.ResourcesMap().GetOk(resource)
-	if gotR {
-		sm = r.Schema()
-	}
+	providerInfo *tfbridge.ProviderInfo,
+) *schemaMapContext {
+	r := schemaOnlyProvider.ResourcesMap().Get(resource)
+	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
 		fields = providerInfo.Resources[resource].GetFields()
@@ -54,14 +53,13 @@ func newResourceSchemaMapContext(resource string,
 	return newSchemaMapContext(sm, fields)
 }
 
-func newDataSourceSchemaMapContext(dataSource string,
+func newDataSourceSchemaMapContext(
+	dataSource string,
 	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo) *schemaMapContext {
-	var sm shim.SchemaMap
-	r, gotR := schemaOnlyProvider.DataSourcesMap().GetOk(dataSource)
-	if gotR {
-		sm = r.Schema()
-	}
+	providerInfo *tfbridge.ProviderInfo,
+) *schemaMapContext {
+	r := schemaOnlyProvider.DataSourcesMap().Get(dataSource)
+	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
 		fields = providerInfo.Resources[dataSource].GetFields()
