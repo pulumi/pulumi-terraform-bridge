@@ -15,99 +15,14 @@
 package tfbridge
 
 import (
-	"github.com/gedex/inflector"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-type precisePropertyNames struct {
-	renames       map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey
-	configRenames map[convert.TerraformPropertyName]resource.PropertyKey
-}
-
-func newPrecisePropertyNames(renames tfgen.Renames) *precisePropertyNames {
-	renamesTable := map[tokens.Token]map[convert.TerraformPropertyName]resource.PropertyKey{}
-	// Invert renames.RenamedProperties maps for faster dynamic lookup.
-	for typ, typRenames := range renames.RenamedProperties {
-		m := map[convert.TerraformPropertyName]resource.PropertyKey{}
-		for k, v := range typRenames {
-			m[v] = resource.PropertyKey(string(k))
-		}
-		renamesTable[typ] = m
-	}
-	configRenames := map[convert.TerraformPropertyName]resource.PropertyKey{}
-	for k, v := range renames.RenamedConfigProperties {
-		configRenames[v] = resource.PropertyKey(string(k))
-	}
-	return &precisePropertyNames{
-		renames:       renamesTable,
-		configRenames: configRenames,
-	}
-}
-
-var _ convert.PropertyNames = (*precisePropertyNames)(nil)
-
-func (s *precisePropertyNames) PropertyKey(typeToken tokens.Token,
-	property convert.TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
-	if renamedProps, ok := s.renames[typeToken]; ok {
-		if propertyKey, renamed := renamedProps[property]; renamed {
-			return propertyKey
-		}
-	}
-	return resource.PropertyKey(property)
-}
-
-func (s *precisePropertyNames) ConfigPropertyKey(property convert.TerraformPropertyName,
-	_ tftypes.Type) resource.PropertyKey {
-	if propertyKey, renamed := s.configRenames[property]; renamed {
-		return propertyKey
-	}
-	return resource.PropertyKey(property)
-}
-
-// Approximate implemenation of property renaming. Currently schemas reuse tfgen which calls PulumiToTerraformName, and
-// among other things plurlizes names of list properties. This code accounts only for the pluralization for now. Ideally
-// it should account for all forms of renaming.
-type simplePropertyNames struct{}
-
-var _ convert.PropertyNames = (*simplePropertyNames)(nil)
-
-func (s *simplePropertyNames) PropertyKey(typeToken tokens.Token,
-	property convert.TerraformPropertyName, typ tftypes.Type) resource.PropertyKey {
-	return toPropertyKey(property, typ)
-}
-
-func (s *simplePropertyNames) ConfigPropertyKey(
-	property convert.TerraformPropertyName, typ tftypes.Type) resource.PropertyKey {
-	return toPropertyKey(property, typ)
-}
-
-func toPropertyKey(name string, typ tftypes.Type) resource.PropertyKey {
-	if pluralized, ok := pluralize(name, typ); ok {
-		return resource.PropertyKey(pluralized)
-	}
-	return resource.PropertyKey(name)
-}
-
-func pluralize(name string, typ tftypes.Type) (string, bool) {
-	if typ.Is(tftypes.List{}) {
-		plu := inflector.Pluralize(name)
-		distinct := plu != name
-		valid := inflector.Singularize(plu) == name
-		if valid && distinct {
-			return plu, true
-		}
-	}
-	return name, false
-}
-
-func functionPropertyKey(functionToken tokens.ModuleMember, propNames convert.PropertyNames,
-	path *tftypes.AttributePath) (resource.PropertyKey, bool) {
+func functionPropertyKey(ds datasourceHandle, path *tftypes.AttributePath) (resource.PropertyKey, bool) {
 	if path == nil {
 		return "", false
 	}
@@ -116,10 +31,9 @@ func functionPropertyKey(functionToken tokens.ModuleMember, propNames convert.Pr
 	}
 	switch attrName := path.LastStep().(type) {
 	case tftypes.AttributeName:
-		return propNames.PropertyKey(
-			tokens.Token(functionToken),
-			convert.TerraformPropertyName(attrName),
-			nil), true
+		pulumiName := tfbridge.TerraformToPulumiNameV2(string(attrName),
+			ds.schemaOnlyShim.Schema(), ds.pulumiDataSourceInfo.GetFields())
+		return resource.PropertyKey(pulumiName), true
 	default:
 		return "", false
 	}

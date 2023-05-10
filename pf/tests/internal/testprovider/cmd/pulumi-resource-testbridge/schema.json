@@ -24,6 +24,11 @@
             "boolConfigProp": {
                 "type": "boolean"
             },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "default": true
+            },
             "stringConfigProp": {
                 "type": "string"
             },
@@ -143,6 +148,10 @@
             "boolConfigProp": {
                 "type": "boolean"
             },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n"
+            },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
                 "description": "Used for testing DefaultInfo default application support\n"
@@ -151,6 +160,11 @@
         "inputProperties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "default": true
             },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
@@ -564,6 +578,25 @@
                     "input",
                     "output",
                     "sensitive",
+                    "id"
+                ]
+            }
+        },
+        "testbridge:index/smac:SMAC": {
+            "outputs": {
+                "description": "A collection of values returned by SMAC.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "skipMetadataApiCheck": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "skipMetadataApiCheck",
                     "id"
                 ]
             }

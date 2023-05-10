@@ -107,6 +107,23 @@ func TestDefaultInfo(t *testing.T) {
 	})
 }
 
+// Test skip_metadata_api_check example from pulumi-aws that is unusual in remapping a string prop to boolean.
+func TestRegressSMAC(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	bin := filepath.Join(wd, "..", "bin")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env:                    []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir:                    filepath.Join("..", "testdata", "smac-program"),
+		ExtraRuntimeValidation: validateExpectedVsActual,
+	})
+}
+
 func prepareStateFolder(root string) error {
 	err := os.Mkdir(filepath.Join(root, "state"), 0777)
 	if os.IsExist(err) {

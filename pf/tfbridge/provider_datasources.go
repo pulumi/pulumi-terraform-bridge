@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type datasourceHandle struct {
@@ -54,12 +54,12 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 
 	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewDataSourceEncoder(token, typ)
+	encoder, err := p.encoding.NewDataSourceEncoder(dsName, typ)
 	if err != nil {
 		return datasourceHandle{}, err
 	}
 
-	decoder, err := p.encoding.NewDataSourceDecoder(token, typ)
+	decoder, err := p.encoding.NewDataSourceDecoder(dsName, typ)
 	if err != nil {
 		return datasourceHandle{}, err
 	}
