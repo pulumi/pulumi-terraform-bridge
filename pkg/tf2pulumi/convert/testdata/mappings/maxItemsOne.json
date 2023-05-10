@@ -16,6 +16,19 @@
             }
           }
         },
+        "innerResource": {
+          "type": 5,
+          "optional": true,
+          "maxItems": 1,
+          "element": {
+            "resource": {
+              "someInput": {
+                "type": 1,
+                "optional": true
+              }
+            }
+          }
+        },
         "result": {
           "type": 4,
           "computed": true
@@ -31,6 +44,19 @@
           "element": {
             "resource": {
               "ensureHealth": {
+                "type": 1,
+                "optional": true
+              }
+            }
+          }
+        },
+        "innerResource": {
+          "type": 5,
+          "optional": true,
+          "maxItems": 1,
+          "element": {
+            "resource": {
+              "someInput": {
                 "type": 1,
                 "optional": true
               }
