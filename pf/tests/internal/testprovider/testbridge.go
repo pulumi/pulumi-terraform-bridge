@@ -126,7 +126,7 @@ type syntheticProvider struct{}
 
 type resourceData struct {
 	stringConfigProp     *string
-	skipMetadataApiCheck *string
+	skipMetadataAPICheck *string
 }
 
 var _ provider.Provider = (*syntheticProvider)(nil)
@@ -176,7 +176,7 @@ func (p *syntheticProvider) Configure(
 	if smac != nil {
 		switch *smac {
 		case "true", "false", "":
-			rd.skipMetadataApiCheck = smac
+			rd.skipMetadataAPICheck = smac
 		default:
 			resp.Diagnostics.AddError("cannot parse skip_metadata_api_check", *smac)
 		}

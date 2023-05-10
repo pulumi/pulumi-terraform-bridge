@@ -51,7 +51,7 @@ func (ds *smacDataSource) Configure(
 
 	data, ok := rq.ProviderData.(resourceData)
 	if ok {
-		ds.smac = data.skipMetadataApiCheck
+		ds.smac = data.skipMetadataAPICheck
 	}
 }
 
