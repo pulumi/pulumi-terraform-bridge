@@ -52,7 +52,7 @@ func functionPropertyKey(ds *datasourceHandle, path *tftypes.AttributePath) (res
 	switch attrName := path.LastStep().(type) {
 	case tftypes.AttributeName:
 		pulumiName := tfbridge.TerraformToPulumiNameV2(string(attrName),
-			ds.schemaMap, ds.dataSourceInfo.GetFields())
+			ds.schemaOnlyShim.Schema(), ds.pulumiDataSourceInfo.GetFields())
 		return resource.PropertyKey(pulumiName), true
 	default:
 		return "", false

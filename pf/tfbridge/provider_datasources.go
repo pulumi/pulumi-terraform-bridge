@@ -80,5 +80,5 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		result.pulumiDataSourceInfo = info
 	}
 
-	return *result, nil
+	return &result, nil
 }
