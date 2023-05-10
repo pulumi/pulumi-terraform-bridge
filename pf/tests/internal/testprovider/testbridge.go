@@ -37,6 +37,7 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 	defineProvider := func() provider.Provider {
 		return &syntheticProvider{}
 	}
+
 	info := tfbridge.ProviderInfo{
 		Name:        "testbridge",
 		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
@@ -50,6 +51,12 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 			"string_defaultinfo_config_prop": {
 				Default: &tfbridge.DefaultInfo{
 					Value: "DEFAULT",
+				},
+			},
+			"skip_metadata_api_check": {
+				Type: "boolean",
+				Default: &tfbridge.DefaultInfo{
+					Value: true,
 				},
 			},
 		},
@@ -103,6 +110,8 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 					},
 				},
 			},
+
+			"testbridge_smac_ds": {Tok: "testbridge:index/smac:SMAC"},
 		},
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
@@ -113,7 +122,11 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 	}
 }
 
-type syntheticProvider struct {
+type syntheticProvider struct{}
+
+type resourceData struct {
+	stringConfigProp     *string
+	skipMetadataApiCheck *string
 }
 
 var _ provider.Provider = (*syntheticProvider)(nil)
@@ -134,23 +147,49 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				Optional:    true,
 				Description: "Used for testing DefaultInfo default application support",
 			},
+			"skip_metadata_api_check": pschema.StringAttribute{
+				Optional: true,
+				Description: "Example taken from pulumi-aws; used to validate string properties " +
+					"remapped to bool type during briding",
+			},
 		},
 	}
 }
 
-func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *syntheticProvider) Configure(
+	ctx context.Context,
+	req provider.ConfigureRequest,
+	resp *provider.ConfigureResponse,
+) {
+	rd := resourceData{}
+
 	var stringConfigProp *string
 	diags := req.Config.GetAttribute(ctx, path.Root("string_config_prop"), &stringConfigProp)
 	resp.Diagnostics.Append(diags...)
 	if stringConfigProp != nil {
-		resp.ResourceData = stringConfigProp
+		rd.stringConfigProp = stringConfigProp
 	}
+
+	var smac *string
+	diags2 := req.Config.GetAttribute(ctx, path.Root("skip_metadata_api_check"), &smac)
+	resp.Diagnostics.Append(diags2...)
+	if smac != nil {
+		switch *smac {
+		case "true", "false", "":
+			rd.skipMetadataApiCheck = smac
+		default:
+			resp.Diagnostics.AddError("cannot parse skip_metadata_api_check", *smac)
+		}
+	}
+	resp.ResourceData = rd
+	resp.DataSourceData = rd
 }
 
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newEchoDataSource,
 		newTestDefaultInfoDataSource,
+		newSmacDataSource,
 	}
 }
 

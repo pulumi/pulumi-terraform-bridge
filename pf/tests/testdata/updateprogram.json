@@ -105,6 +105,7 @@
     },
     "response": {
       "inputs": {
+          "skipMetadataApiCheck": "true",
           "stringDefaultinfoConfigProp": "DEFAULT"
       }
     },
@@ -356,6 +357,7 @@
     },
     "response": {
       "inputs": {
+          "skipMetadataApiCheck": "true",
           "stringDefaultinfoConfigProp": "DEFAULT"
       }
     },
@@ -638,7 +640,10 @@
       "news": {}
     },
     "response": {
-        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
+        "inputs": {
+            "stringDefaultinfoConfigProp": "DEFAULT",
+            "skipMetadataApiCheck": "true"
+        }
     },
     "metadata": {
       "kind": "resource",
@@ -921,7 +926,10 @@
       "news": {}
     },
     "response": {
-        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
+        "inputs": {
+            "stringDefaultinfoConfigProp": "DEFAULT",
+            "skipMetadataApiCheck": "true"
+        }
     },
     "metadata": {
       "kind": "resource",
@@ -1274,7 +1282,10 @@
       "news": {}
     },
     "response": {
-        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
+        "inputs": {
+            "stringDefaultinfoConfigProp": "DEFAULT",
+            "skipMetadataApiCheck": "true"
+        }
     },
     "metadata": {
       "kind": "resource",
@@ -1598,7 +1609,10 @@
       "news": {}
     },
     "response": {
-        "inputs": {"stringDefaultinfoConfigProp": "DEFAULT"}
+        "inputs": {
+            "skipMetadataApiCheck": "true",
+            "stringDefaultinfoConfigProp": "DEFAULT"
+        }
     },
     "metadata": {
       "kind": "resource",
