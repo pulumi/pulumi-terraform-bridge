@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi-terraform-bridge/testing
 
 go 1.19
 
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
+
 require (
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.28.1
@@ -11,7 +13,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.61.2-0.20230406201520-f744d375535c
+	github.com/pulumi/pulumi/sdk/v3 v3.64.0
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect

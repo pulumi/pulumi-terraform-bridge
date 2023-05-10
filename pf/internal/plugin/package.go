@@ -14,6 +14,8 @@
 
 // The code in this package implements Context-preserving provider server and is forked from pulumi/pulumi.
 //
+// We have started to make edits to customize this for pf. This includes secret handling.
+//
 // When https://github.com/pulumi/pulumi/issues/12010 is complete this may need to be rewritten to the newly introduced
 // APIs.
 //

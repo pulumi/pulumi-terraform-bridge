@@ -43,14 +43,23 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 
 	config, state := configFromShim(c), stateFromShim(s)
 	rawConfig := makeResourceRawConfig(opts.diffStrategy, config, r)
-	if state != nil {
-		state.RawConfig = rawConfig
+
+	if state == nil {
+		// When handling Create Pulumi passes nil for state, but this diverges from how Terraform does things,
+		// see: https://github.com/pulumi/pulumi-terraform-bridge/issues/911 and can lead to panics. Compensate
+		// by constructing an InstanceState.
+
+		state = &terraform.InstanceState{
+			RawConfig: rawConfig,
+		}
+	} else {
+		// Upgrades are needed only if we have non-empty prior state.
+		state, err = upgradeResourceState(p.tf, r, state)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
+		}
 	}
 
-	state, err = upgradeResourceState(p.tf, r, state)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
-	}
 	diff, err := p.simpleDiff(opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
 	if diff != nil {
 		diff.RawConfig = rawConfig
@@ -70,6 +79,13 @@ func (p v2Provider) simpleDiff(
 
 	switch diffStrat {
 	case ClassicDiff:
+		if s.RawPlan.IsNull() {
+			// SimpleDiff may read RawPlan and panic if it is nil; while in the case of ClassicDiff we do
+			// not yet do what TF CLI does (that is PlanState), it is better to approximate and assume that
+			// the RawPlan is the same as RawConfig than to have the code panic.
+			rawPlan := rawConfigVal
+			return res.SimpleDiff(ctx, instanceStateWithUpdatedRawPlan(s, rawPlan), c, meta)
+		}
 		return res.SimpleDiff(ctx, s, c, meta)
 	case PlanState:
 		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
@@ -112,6 +128,15 @@ func (p v2Provider) simpleDiff(
 	}
 }
 
+func instanceStateWithUpdatedRawPlan(
+	s *terraform.InstanceState,
+	rawPlan hcty.Value,
+) *terraform.InstanceState {
+	c := s.DeepCopy()
+	c.RawPlan = rawPlan
+	return c
+}
+
 func simpleDiffViaPlanState(
 	ctx context.Context,
 	res *schema.Resource,
@@ -127,8 +152,9 @@ func simpleDiffViaPlanState(
 	if err != nil {
 		return nil, err
 	}
+
 	planned := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-	return res.SimpleDiff(ctx, s, planned, meta)
+	return res.SimpleDiff(ctx, instanceStateWithUpdatedRawPlan(s, proposedNewStateVal), planned, meta)
 }
 
 func showDiffChangeType(b byte) string {

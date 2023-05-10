@@ -16,6 +16,7 @@ package testprovider
 
 import (
 	"context"
+	_ "embed"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -26,6 +27,9 @@ import (
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
+
+//go:embed cmd/pulumi-resource-testbridge/bridge-metadata.json
+var testBridgeMetadata []byte
 
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
@@ -42,10 +46,33 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"testbridge_testres":       {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
+			"testbridge_testnest": {
+				Tok: "testbridge:index/testnest:Testnest",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"rules": {
+						Elem: &tfbridge.SchemaInfo{
+							Fields: map[string]*tfbridge.SchemaInfo{
+								"action_parameters": {
+									MaxItemsOne: tfbridge.True(),
+									Elem: &tfbridge.SchemaInfo{
+										Fields: map[string]*tfbridge.SchemaInfo{
+											"phases": {MaxItemsOne: tfbridge.True()},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
+		},
+		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 	return tfpf.ProviderInfo{
 		ProviderInfo: info,
@@ -67,6 +94,9 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 	resp.Schema = pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
 			"string_config_prop": pschema.StringAttribute{},
+			"bool_config_prop": pschema.BoolAttribute{
+				Optional: true,
+			},
 		},
 	}
 }
@@ -81,12 +111,15 @@ func (p *syntheticProvider) Configure(ctx context.Context, req provider.Configur
 }
 
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		newEchoDataSource,
+	}
 }
 
 func (p *syntheticProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newTestres,
+		newTestnest,
 		newTestCompRes,
 		newTestConfigRes,
 	}

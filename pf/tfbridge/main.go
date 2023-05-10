@@ -22,14 +22,40 @@ import (
 	"io"
 	"os"
 
+	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
-	version := prov.Version
+	handleFlags(ctx, prov.Version,
+		func() (*tfbridge.MarshallableProviderInfo, error) {
+			pp, err := newProviderWithContext(ctx, prov, meta)
+			if err != nil {
+				return nil, err
+			}
+			return pp.(*provider).marshalProviderInfo(ctx), nil
+		})
+	// TODO[pulumi/pulumi-terraform-bridge#820]
+	// prov.P.InitLogging()
 
+	if err := serve(ctx, pkg, prov, meta); err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+}
+
+func handleFlags(
+	ctx context.Context, version string,
+	getProviderInfo func() (*tfbridge.MarshallableProviderInfo, error),
+) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 
@@ -56,11 +82,10 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 	}
 
 	if *dumpInfo {
-		pp, err := newProviderWithContext(ctx, prov, meta)
+		info, err := getProviderInfo()
 		if err != nil {
 			cmdutil.ExitError(err.Error())
 		}
-		info := pp.(*provider).marshalProviderInfo(ctx)
 		if err := json.NewEncoder(os.Stdout).Encode(info); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
@@ -71,8 +96,84 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 		fmt.Println(version)
 		os.Exit(0)
 	}
+}
 
-	if err := serve(ctx, pkg, prov, meta); err != nil {
+// Implements main() or a bridged Pulumi plugin, complete with argument parsing.
+//
+// This is an experimental API.
+func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte) {
+	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
+		info := info
+		return tfbridge.MarshalProviderInfo(&info), nil
+	})
+
+	f := MakeMuxedServer(ctx, pkg, info, schema)
+
+	err := rprovider.Main(pkg, f)
+	if err != nil {
 		cmdutil.ExitError(err.Error())
+	}
+}
+
+// Create a function to produce a Muxed provider.
+//
+// This function exposes implementation details for testing. It should not be used outside
+// of pulumi-terraform-bridge.  This is an experimental API.
+func MakeMuxedServer(
+	ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte,
+) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+
+	shim, ok := info.P.(*pfmuxer.ProviderShim)
+	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
+	_, err := shim.ResolveDispatch(&info)
+	contract.AssertNoErrorf(err, "Failed to re-apply alias mappings")
+	version := info.Version
+	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux")
+	if err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+	if !found {
+		fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
+		os.Exit(1)
+	}
+
+	getTFMapping := func(muxer.GetMappingArgs) (muxer.GetMappingResponse, error) {
+		info := info
+		marshalled := tfbridge.MarshalProviderInfo(&info)
+		data, err := json.Marshal(marshalled)
+		return muxer.GetMappingResponse{
+			Provider: pkg,
+			Data:     data,
+		}, err
+	}
+	m := muxer.Main{
+		DispatchTable: dispatchTable,
+		Schema:        string(schema),
+		GetMappingHandler: map[string]muxer.MultiMappingHandler{
+			"tf":        getTFMapping,
+			"terraform": getTFMapping,
+		},
+	}
+	return func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+		for _, prov := range shim.MuxedProviders {
+			prov := prov // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
+
+			switch prov := prov.(type) {
+			case *schemashim.SchemaOnlyProvider:
+				m.Servers = append(m.Servers, muxer.Endpoint{
+					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+						return NewProviderServer(ctx, host, ProviderInfo{
+							ProviderInfo: info,
+							NewProvider:  prov.PfProvider,
+						}, ProviderMetadata{PackageSchema: schema})
+					}})
+			default:
+				m.Servers = append(m.Servers, muxer.Endpoint{
+					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+						return tfbridge.NewProvider(ctx, host, pkg, version, prov, info, schema), nil
+					}})
+			}
+		}
+		return m.Server(host, pkg, version)
 	}
 }

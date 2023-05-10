@@ -23,6 +23,6 @@ import (
 
 func serve(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) error {
 	return rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		return newProviderServer(ctx, host, prov, meta)
+		return NewProviderServer(ctx, host, prov, meta)
 	})
 }

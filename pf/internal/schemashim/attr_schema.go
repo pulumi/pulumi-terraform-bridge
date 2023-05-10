@@ -19,6 +19,7 @@ import (
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -91,8 +92,8 @@ func (s *attrSchema) Elem() interface{} {
 	// Elem() needes to return a Resource value.
 	//
 	// See also: documentation on shim.Schema.Elem().
-	if tt, ok := t.(types.ObjectType); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested())
+	if tt, ok := t.(basetypes.ObjectTypable); ok {
+		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested(), nil)
 		return res
 	}
 	if tt, ok := t.(pfattr.TypeWithElementTypes); ok {

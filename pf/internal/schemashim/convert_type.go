@@ -46,8 +46,10 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 		return shim.TypeInvalid, nil
 	default:
 		switch tftype.(type) {
-		case tftypes.List, tftypes.Set:
+		case tftypes.List:
 			return shim.TypeList, nil
+		case tftypes.Set:
+			return shim.TypeSet, nil
 		case tftypes.Map, tftypes.Object, tftypes.Tuple:
 			return shim.TypeMap, nil
 		default:

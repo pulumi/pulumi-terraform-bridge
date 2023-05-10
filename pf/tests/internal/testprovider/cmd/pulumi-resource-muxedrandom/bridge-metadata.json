@@ -1,0 +1,62 @@
+{
+    "mux": {
+        "resources": {
+            "muxedrandom:index/myNumber:MyNumber": 0,
+            "muxedrandom:index/randomHumanNumber:RandomHumanNumber": 0,
+            "muxedrandom:index/randomId:RandomId": 1,
+            "muxedrandom:index/randomInteger:RandomInteger": 1,
+            "muxedrandom:index/randomPassword:RandomPassword": 1,
+            "muxedrandom:index/randomPet:RandomPet": 1,
+            "muxedrandom:index/randomShuffle:RandomShuffle": 1,
+            "muxedrandom:index/randomString:RandomString": 1,
+            "muxedrandom:index/randomUuid:RandomUuid": 1
+        },
+        "functions": {}
+    },
+    "renames": {
+        "resources": {
+            "muxedrandom:index/myNumber:MyNumber": "random_human_number_legacy",
+            "muxedrandom:index/randomHumanNumber:RandomHumanNumber": "random_human_number",
+            "muxedrandom:index/randomId:RandomId": "random_id",
+            "muxedrandom:index/randomInteger:RandomInteger": "random_integer",
+            "muxedrandom:index/randomPassword:RandomPassword": "random_password",
+            "muxedrandom:index/randomPet:RandomPet": "random_pet",
+            "muxedrandom:index/randomShuffle:RandomShuffle": "random_shuffle",
+            "muxedrandom:index/randomString:RandomString": "random_string",
+            "muxedrandom:index/randomUuid:RandomUuid": "random_uuid"
+        },
+        "renamedProperties": {
+            "muxedrandom:index/myNumber:MyNumber": {
+                "suggestionUpdated": "suggestion_updated"
+            },
+            "muxedrandom:index/randomHumanNumber:RandomHumanNumber": {
+                "suggestionUpdated": "suggestion_updated"
+            },
+            "muxedrandom:index/randomId:RandomId": {
+                "b64Std": "b64_std",
+                "b64Url": "b64_url",
+                "byteLength": "byte_length"
+            },
+            "muxedrandom:index/randomPassword:RandomPassword": {
+                "bcryptHash": "bcrypt_hash",
+                "minLower": "min_lower",
+                "minNumeric": "min_numeric",
+                "minSpecial": "min_special",
+                "minUpper": "min_upper",
+                "overrideSpecial": "override_special"
+            },
+            "muxedrandom:index/randomShuffle:RandomShuffle": {
+                "inputs": "input",
+                "resultCount": "result_count",
+                "results": "result"
+            },
+            "muxedrandom:index/randomString:RandomString": {
+                "minLower": "min_lower",
+                "minNumeric": "min_numeric",
+                "minSpecial": "min_special",
+                "minUpper": "min_upper",
+                "overrideSpecial": "override_special"
+            }
+        }
+    }
+}

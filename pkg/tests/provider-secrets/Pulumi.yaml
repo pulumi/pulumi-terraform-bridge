@@ -1,0 +1,22 @@
+name: provider-secrets
+
+runtime: yaml
+
+resources:
+  provider:
+    type: pulumi:providers:tpsdkv2
+    properties:
+
+      strConfigProp:
+        fn::secret: "SECRET strConfigProp value"
+
+      secretStrConfigProp: "SECRET secretStrConfigProp value"
+
+      objectProp:
+        strNestedProp:
+          fn::secret:
+            "SECRET objectProp.strNestedProp value"
+
+      secretObjectProp:
+        strNestedSecretProp:
+          "SECRET secretObjectProp.strNestedSecretProp value"
