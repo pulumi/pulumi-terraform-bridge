@@ -15,32 +15,12 @@
 package tfbridge
 
 import (
-	"github.com/gedex/inflector"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
-
-func toPropertyKey(name string, typ tftypes.Type) resource.PropertyKey {
-	if pluralized, ok := pluralize(name, typ); ok {
-		return resource.PropertyKey(pluralized)
-	}
-	return resource.PropertyKey(name)
-}
-
-func pluralize(name string, typ tftypes.Type) (string, bool) {
-	if typ.Is(tftypes.List{}) {
-		plu := inflector.Pluralize(name)
-		distinct := plu != name
-		valid := inflector.Singularize(plu) == name
-		if valid && distinct {
-			return plu, true
-		}
-	}
-	return name, false
-}
 
 func functionPropertyKey(ds datasourceHandle, path *tftypes.AttributePath) (resource.PropertyKey, bool) {
 	if path == nil {
