@@ -106,7 +106,10 @@ func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
 	objectType tftypes.Object) (map[TerraformPropertyName]Encoder, error) {
 	propertyEncoders := map[TerraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
-		pctx := mctx.GetAttr(tfName)
+		pctx, err := mctx.GetAttr(tfName)
+		if err != nil {
+			return nil, err
+		}
 		enc, err := e.newPropertyEncoder(pctx, tfName, t)
 		if err != nil {
 			return nil, err
@@ -120,7 +123,10 @@ func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
 	objectType tftypes.Object) (map[TerraformPropertyName]Decoder, error) {
 	propertyEncoders := map[TerraformPropertyName]Decoder{}
 	for tfName, t := range objectType.AttributeTypes {
-		pctx := mctx.GetAttr(tfName)
+		pctx, err := mctx.GetAttr(tfName)
+		if err != nil {
+			return nil, err
+		}
 		dec, err := e.newPropertyDecoder(pctx, tfName, t)
 		if err != nil {
 			return nil, err

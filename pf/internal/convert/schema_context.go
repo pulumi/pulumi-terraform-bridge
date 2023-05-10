@@ -78,18 +78,18 @@ func (sc *schemaMapContext) ToPropertyKey(tfname TerraformPropertyName) resource
 	return resource.PropertyKey(n)
 }
 
-func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) *schemaPropContext {
+func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) (*schemaPropContext, error) {
 	step := walk.NewSchemaPath().GetAttr(tfname)
 	s, err := walk.LookupSchemaMapPath(step, sc.schemaMap)
 	if err != nil {
-		panic(err) /* TODO proper error handling */
+		return nil, err
 	}
 	sinfo := tfbridge.LookupSchemaInfoMapPath(step, sc.schemaInfos)
 	return &schemaPropContext{
 		schemaPath: sc.schemaPath.GetAttr(tfname),
 		schema:     s,
 		schemaInfo: sinfo,
-	}
+	}, nil
 }
 
 type schemaPropContext struct {
@@ -131,7 +131,7 @@ func (pc *schemaPropContext) TupleElement(position int) (*schemaPropContext, err
 	if err != nil {
 		return nil, fmt.Errorf("when deriving converters for a tuple element at position %d %w", position, err)
 	}
-	return mctx.GetAttr(tuplePropertyName(position)), nil
+	return mctx.GetAttr(tuplePropertyName(position))
 }
 
 func (pc *schemaPropContext) Object() (*schemaMapContext, error) {
