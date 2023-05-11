@@ -5,7 +5,7 @@ config stringIn string {
 config nullableStringIn string {
     default = null
 }
-config optIn {
+config optAnyIn {
   default = null
 }
 config boolIn bool {

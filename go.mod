@@ -51,7 +51,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
 	github.com/zclconf/go-cty v1.13.1
-	golang.org/x/crypto v0.3.0
+	golang.org/x/crypto v0.5.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.8.0
 	golang.org/x/text v0.8.0

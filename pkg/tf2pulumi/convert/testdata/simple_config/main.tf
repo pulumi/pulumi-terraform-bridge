@@ -12,7 +12,7 @@ variable "nullable_string_in" {
     default = null
 }
 
-variable "opt_in" {
+variable "opt_any_in" {
   default = null
 }
 
