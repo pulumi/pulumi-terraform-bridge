@@ -315,6 +315,8 @@ some but not all resources/datasources to the Plugin Framework.
     }
     ```
 
+> Muxed providers need an accompanying `MetadataInfo`. If the provider did not have one set up, this is the time to do so.
+
 5. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
    the Pulumi Package Schema. It will now also compute a new metadata file `bridge-metadata.json`, build the provider
    binary, re-generate language-specific SDKs and run tests.
