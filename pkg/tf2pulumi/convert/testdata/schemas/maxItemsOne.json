@@ -25,9 +25,25 @@
       },
       "type": "object"
     },
+    "maxItemsOne:index/datasourceInnerResource:datasourceInnerResource": {
+      "properties": {
+        "someInput": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "maxItemsOne:index/resourceAlias:resourceAlias": {
       "properties": {
         "ensureHealth": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "maxItemsOne:index/resourceInnerResource:resourceInnerResource": {
+      "properties": {
+        "someInput": {
           "type": "boolean"
         }
       },
@@ -46,6 +62,9 @@
             "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
           }
         },
+        "innerResource": {
+          "$ref": "#/types/maxItemsOne:index/resourceInnerResource:resourceInnerResource"
+        },
         "result": {
           "type": "string"
         }
@@ -59,6 +78,9 @@
           "items": {
             "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
           }
+        },
+        "innerResource": {
+          "$ref": "#/types/maxItemsOne:index/resourceInnerResource:resourceInnerResource"
         }
       },
       "stateInputs": {
@@ -69,6 +91,9 @@
             "items": {
               "$ref": "#/types/maxItemsOne:index/resourceAlias:resourceAlias"
             }
+          },
+          "innerResource": {
+            "$ref": "#/types/maxItemsOne:index/resourceInnerResource:resourceInnerResource"
           },
           "result": {
             "type": "string"
@@ -85,6 +110,9 @@
         "properties": {
           "aliases": {
             "$ref": "#/types/maxItemsOne:index/datasourceAliases:datasourceAliases"
+          },
+          "innerResource": {
+            "$ref": "#/types/maxItemsOne:index/datasourceInnerResource:datasourceInnerResource"
           }
         },
         "type": "object"
@@ -98,6 +126,9 @@
           "id": {
             "type": "string",
             "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "innerResource": {
+            "$ref": "#/types/maxItemsOne:index/datasourceInnerResource:datasourceInnerResource"
           },
           "result": {
             "type": "string"

@@ -111,6 +111,44 @@ func TestPreviewCreate(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
+func TestMuxedAliasCreate(t *testing.T) {
+	server := newMuxedProviderServer(t, testprovider.MuxedRandomProvider())
+
+	testCase := func(typ string) string {
+		return `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::repro::` + typ + `::k"
+	  },
+	  "response": {
+	    "id": "4",
+	    "properties": {
+	      "id": "4",
+	      "fair": true,
+	      "number": 4,
+	      "suggestionUpdated": false
+	    }
+	  },
+	  "metadata": {
+	    "kind": "resource",
+	    "mode": "client",
+	    "name": "muxedrandom"
+	  }
+	}
+`
+	}
+
+	t.Run("new-token", func(t *testing.T) {
+		testutils.Replay(t, server,
+			testCase("muxedrandom:index/randomHumanNumber:RandomHumanNumber"))
+	})
+	t.Run("legacy-token", func(t *testing.T) {
+		testutils.Replay(t, server,
+			testCase("muxedrandom:index/myNumber:MyNumber"))
+	})
+}
+
 func TestCreateWithFirstClassSecrets(t *testing.T) {
 	server := newProviderServer(t, testprovider.RandomProvider())
 	testCase := `
@@ -135,4 +173,58 @@ func TestCreateWithFirstClassSecrets(t *testing.T) {
           }
 	}`
 	testutils.Replay(t, server, testCase)
+}
+
+func TestCreateWithSchemaBasedSecrets(t *testing.T) {
+	// Ensure that resources that mark output properties as secret in the schema return them as secrets.
+	// RandomPassword is a good example. Surprisingly this test requires a Configure call first, otherwise the
+	// plubming is confused about secrets bits and retursn the wrong result. The test represents production use.
+	server := newProviderServer(t, testprovider.RandomProvider())
+	testCase := `
+	[
+	  {
+	    "method": "/pulumirpc.ResourceProvider/Configure",
+	    "request": {
+	      "args": {},
+	      "acceptSecrets": true,
+	      "acceptResources": true
+	    },
+	    "response": "*"
+	  },
+	  {
+	    "method": "/pulumirpc.ResourceProvider/Create",
+	    "request": {
+	      "urn": "urn:pulumi:dev::secret-random-yaml::random:index/randomPassword:RandomPassword::param",
+	      "properties": {
+		"length": 10
+	      }
+	    },
+	    "response": {
+	      "id": "none",
+	      "properties": {
+		"__meta": "{\"schema_version\":\"3\"}",
+		"bcryptHash": {
+		  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		  "value": "*"
+		},
+		"id": "none",
+		"length": 10,
+		"lower": true,
+		"minLower": 0,
+		"minNumeric": 0,
+		"minSpecial": 0,
+		"minUpper": 0,
+		"number": true,
+		"numeric": true,
+		"result": {
+		  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		  "value": "*"
+		},
+		"special": true,
+		"upper": true
+	      }
+	    }
+	  }
+	]`
+	testutils.ReplaySequence(t, server, testCase)
 }

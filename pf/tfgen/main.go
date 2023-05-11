@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,18 @@ package tfgen
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
-// Implements main() logic for a provider built-time helper utility. By convention these utilities are named
+// Implements main() logic for a provider build-time helper utility. By convention these utilities are named
 // pulumi-tfgen-$provider, for example when building a "random" provider the program would be called
 // pulumi-tfgen-random.
 //
@@ -37,6 +42,10 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 
 	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
 
+		if info.MetadataInfo == nil {
+			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
+		}
+
 		if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
 			return err
 		}
@@ -50,39 +59,52 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 			return err
 		}
 
-		if opts.Language == tfgen.Schema {
-			if err := writeRenames(g, opts); err != nil {
-				return err
-			}
-		}
-
 		return nil
 	})
 }
 
-func writeRenames(g *tfgen.Generator, opts tfgen.GeneratorOptions) error {
-	renames, err := g.Renames()
-	if err != nil {
-		return err
-	}
+// Implements main() logic for a multi-provider build-time helper utility. By convention these utilities are
+// named pulumi-tfgen-$provider, for example when building a "random" provider the program would be called
+// pulumi-tfgen-random.
+//
+// The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
+// programming languages supported by Pulumi such as TypeScript, Go, and Python.
+//
+// This is an experimental API.
+//
+// [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
+func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
+	shim, ok := info.P.(*pfmuxer.ProviderShim)
+	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
-	renamesFile, err := opts.Root.Create("bridge-metadata.json")
-	if err != nil {
-		return err
-	}
+	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
 
-	renamesBytes, err := json.MarshalIndent(renames, "", "  ")
-	if err != nil {
-		return err
-	}
+		if info.MetadataInfo == nil {
+			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
+		}
 
-	if _, err := renamesFile.Write(renamesBytes); err != nil {
-		return err
-	}
+		dispatch, err := shim.ResolveDispatch(&info)
+		if err != nil {
+			return fmt.Errorf("failed to compute dispatch for muxed provider: %w", err)
+		}
+		err = metadata.Set(info.GetMetadata(), "mux", dispatch)
+		if err != nil {
+			return err
+		}
 
-	if err := renamesFile.Close(); err != nil {
-		return err
-	}
+		if err := notSupported(opts.Sink, info); err != nil {
+			return err
+		}
 
-	return nil
+		g, err := tfgen.NewGenerator(opts)
+		if err != nil {
+			return err
+		}
+
+		if err := g.Generate(); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

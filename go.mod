@@ -2,6 +2,11 @@ module github.com/pulumi/pulumi-terraform-bridge/v3
 
 go 1.18
 
+replace (
+	github.com/pulumi/pulumi-terraform-bridge/testing => ./testing
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
+)
+
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/apparentlymart/go-cidr v1.1.0
@@ -35,6 +40,8 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-java/pkg v0.9.2
+	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.3
 	github.com/pulumi/pulumi-yaml v1.1.1
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9
@@ -50,6 +57,7 @@ require (
 	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.29.1
+	pgregory.net/rapid v0.5.5
 )
 
 require (

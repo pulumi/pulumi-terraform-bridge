@@ -1,3 +1,17 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package convert
 
 import (
@@ -243,6 +257,57 @@ func getTokensForRange(sources map[string][]byte, r hcl.Range) hclwrite.Tokens {
 	}
 
 	return rangeTokens
+}
+
+// tokens _must_ be tokens representing an expression that resolves to a list. This function will return a new
+// set of tokens that represent a singleton value containing the first element of the input list.
+func projectListToSingleton(tokens hclwrite.Tokens) hclwrite.Tokens {
+	// See if this is a list literal expression, i.e. the first (non triva) token is an open bracket, and the
+	// last is a close bracket.
+	openBrack := -1
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		if isTrivia(token.Type) {
+			continue
+		}
+		if token.Type == hclsyntax.TokenOBrack {
+			openBrack = i
+		}
+		break
+	}
+
+	closeBrack := -1
+	for i := len(tokens) - 1; i >= 0; i-- {
+		token := tokens[i]
+		if isTrivia(token.Type) {
+			continue
+		}
+		if token.Type == hclsyntax.TokenCBrack {
+			closeBrack = i
+		}
+		break
+	}
+
+	if openBrack == -1 || closeBrack == -1 {
+		// Not a simple list literal, just return the input indexed at 0
+		tokens = append(tokens, hclwrite.Tokens{
+			&hclwrite.Token{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
+			&hclwrite.Token{Type: hclsyntax.TokenNumberLit, Bytes: []byte("0")},
+			&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
+		}...)
+
+		return tokens
+	}
+
+	// We have a list literal, so we return a new list literal with just the element within it
+	newTokens := make(hclwrite.Tokens, 0)
+	for i, token := range tokens {
+		if i == openBrack || i == closeBrack {
+			continue
+		}
+		newTokens = append(newTokens, token)
+	}
+	return newTokens
 }
 
 // Functions need to translate in one of four ways
@@ -1417,6 +1482,15 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		leading, trailing := getTrivia(sources, getAttributeRange(sources, attr.Expr.Range()))
 		expr := convertExpression(sources, scopes, attrPath, attr.Expr)
 		expr = append(expr, trailing...)
+
+		// If this is a maxItemsOne property then in terraform it will be a list, but in Pulumi it will be a
+		// single value. We need to project the list expression we've just converted into a single value, for
+		// literals we can just take the single item from the tuple literal, for everything else we just have
+		// to assume we can index at [0].
+		if scopes.maxItemsOne(attrPath) {
+			expr = projectListToSingleton(expr)
+		}
+
 		newAttributes = append(newAttributes, bodyAttrTokens{
 			Line:   attr.Range.Start.Line,
 			Name:   name,
@@ -2052,7 +2126,7 @@ func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	return camelCaseName(info.Name)
 }
 
-// Given a fully typed path (e.g. data.simple_data_source.a_field) returns whether a_field has max items equals one
+// Given a fully typed path (e.g. data.simple_data_source.a_field) returns whether a_field has maxItemsOne set
 func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 	info := s.getInfo(fullyQualifiedPath)
 
@@ -2073,8 +2147,8 @@ func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 		return sch.MaxItems() == 1
 	}
 
-	// Else assume true
-	return true
+	// Else assume false
+	return false
 }
 
 // An "item" from a terraform file

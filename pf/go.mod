@@ -4,6 +4,8 @@ go 1.19
 
 replace github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
 
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
@@ -11,12 +13,13 @@ require (
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/terraform-plugin-framework v1.1.1
+	github.com/hashicorp/terraform-plugin-framework-validators v0.10.0
 	github.com/hashicorp/terraform-plugin-go v0.14.3
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.43.0
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.3
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.54.0
-	pgregory.net/rapid v0.5.5
 )
 
 require (

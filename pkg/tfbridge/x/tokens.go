@@ -58,7 +58,9 @@ func TokensSingleModule(
 }
 
 func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
-	prefix, defaultModule string, modules []string, new func(string, string) (*T, error),
+	prefix, defaultModule string, modules []string,
+	new func(string, string) (*T, error),
+	moduleTransform func(string) string,
 ) Strategy[T] {
 	return func(tfToken string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
@@ -75,7 +77,7 @@ func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
 		if mod == "" {
 			return nil, fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
 		}
-		return new(camelCase(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
+		return new(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
 	}
 }
 
@@ -98,7 +100,7 @@ func TokensKnownModules(
 					return nil, err
 				}
 				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
-			}),
+			}, camelCase),
 		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
 			func(mod, tk string) (*b.DataSourceInfo, error) {
 				tk, err := finalize(mod, "get"+tk)
@@ -106,7 +108,53 @@ func TokensKnownModules(
 					return nil, err
 				}
 				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
-			}),
+			}, camelCase),
+	}
+}
+
+// A strategy for assigning tokens to a hand generated set of modules with an arbitrary
+// mapping from TF modules to Pulumi modules.
+//
+// If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+func TokensMappedModules(
+	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
+) DefaultStrategy {
+
+	mods := make([]string, 0, len(modules))
+	for k := range modules {
+		mods = append(mods, k)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(mods)))
+
+	transform := func(tf string) string {
+		s, ok := modules[tf]
+		if !ok && tf == defaultModule {
+			// We pass through the default module as is, so it might not be in
+			// `modules`. We need to catch that and return as is.
+			return tf
+		}
+		assert := "Because any mod selected must be from mods, it is guaranteed to be in modules, got %#v"
+		contract.Assertf(ok, assert, tf)
+		return s
+	}
+
+	return DefaultStrategy{
+		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
+			func(mod, tk string) (*b.ResourceInfo, error) {
+				tk, err := finalize(mod, tk)
+				if err != nil {
+					return nil, err
+				}
+				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+			}, transform),
+		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
+			func(mod, tk string) (*b.DataSourceInfo, error) {
+				tk, err := finalize(mod, "get"+tk)
+				if err != nil {
+					return nil, err
+				}
+				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+			}, transform),
 	}
 }
 
@@ -472,20 +520,33 @@ type alias[T ~string] struct {
 }
 
 type aliasHistory struct {
-	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources"`
+	Resources   map[string]*resourceHistory                   `json:"resources"`
 	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources"`
 }
 
-func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
-	remaps := &[]func(*b.ProviderInfo){}
+type resourceHistory struct {
+	tokenHistory[tokens.Type]
 
+	MajorVersion int                      `json:"majorVersion,omitempty"`
+	Fields       map[string]*fieldHistory `json:"fields,omitempty"`
+}
+
+type fieldHistory struct {
+	MaxItemsOne *bool `json:"maxItemsOne,omitempty"`
+
+	Fields map[string]*fieldHistory `json:"fields,omitempty"`
+	Elem   *fieldHistory            `json:"elem,omitempty"`
+}
+
+func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
 	hist, err := getHistory(artifact)
 	if err != nil {
 		return err
 	}
 
 	var currentVersion int
-	// If version is missing, we assume the most recent major version in history
+	// If version is missing, we assume the current version is the most recent major
+	// version in mentioned in history.
 	if providerInfo.Version != "" {
 		v, err := semver.NewVersion(providerInfo.Version)
 		if err != nil {
@@ -509,16 +570,24 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 		}
 	}
 
+	rMap := providerInfo.P.ResourcesMap()
+
+	// Applying resource aliases adds new resources to providerInfo.Resources. To keep
+	// this process deterministic, we don't apply resource aliases until all resources
+	// have been examined.
+	applyResourceAliases := []func(){}
+
 	for tfToken, computed := range providerInfo.Resources {
-		aliasResource(hist.Resources, computed, tfToken, remaps, currentVersion)
+		r, _ := rMap.GetOk(tfToken)
+		aliasResource(providerInfo, r, &applyResourceAliases, hist.Resources,
+			computed, tfToken, currentVersion)
+	}
+	for _, f := range applyResourceAliases {
+		f()
 	}
 
 	for tfToken, computed := range providerInfo.DataSources {
-		aliasDataSource(hist.DataSources, computed, tfToken, remaps, currentVersion)
-	}
-
-	for _, r := range *remaps {
-		r(providerInfo)
+		aliasDataSource(providerInfo, hist.DataSources, computed, tfToken, currentVersion)
 	}
 
 	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
@@ -539,7 +608,7 @@ func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 	}
 	if !ok {
 		hist = aliasHistory{
-			Resources:   map[string]*tokenHistory[tokens.Type]{},
+			Resources:   map[string]*resourceHistory{},
 			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
 		}
 	}
@@ -547,44 +616,214 @@ func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 }
 
 func aliasResource(
-	hist map[string]*tokenHistory[tokens.Type],
-	computed *b.ResourceInfo,
-	tfToken string,
-	remaps *[]func(*b.ProviderInfo),
-	version int,
+	p *b.ProviderInfo, res shim.Resource,
+	applyResourceAliases *[]func(),
+	hist map[string]*resourceHistory, computed *b.ResourceInfo,
+	tfToken string, version int,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
-		*remaps = append(*remaps, func(*b.ProviderInfo) {
-			hist[tfToken] = &tokenHistory[tokens.Type]{
+		hist[tfToken] = &resourceHistory{
+			tokenHistory: tokenHistory[tokens.Type]{
 				Current: computed.Tok,
-			}
-		})
+			},
+		}
 	} else if prev.Current != computed.Tok {
 		// It's in history, but something has changed. Update the history to reflect
 		// the new reality, then add aliases.
-		*remaps = append(*remaps, func(p *b.ProviderInfo) {
-			aliasOrRenameResource(p, tfToken, prev, version)
-		})
 
+		// We don't do this eagerly because aliasResource is called while
+		// iterating over p.Resources which aliasOrRenameResource mutates.
+		*applyResourceAliases = append(*applyResourceAliases,
+			func() { aliasOrRenameResource(p, computed, tfToken, &prev.tokenHistory, version) })
 	}
-}
 
-func aliasOrRenameResource(
-	p *b.ProviderInfo, tfToken string, hist *tokenHistory[tokens.Type],
-	currentVersion int,
-) {
-	// re-fetch the resource, to make sure we have the right pointer.
-	res, ok := p.Resources[tfToken]
-	if !ok {
-		// The resource to be remapped has been removed
-		// from the resource map. There is nothing to
-		// alias anymore.
+	// Apply Aliasing to MaxItemOne by traversing the field tree and applying the
+	// stored value.
+	//
+	// Note: If the user explicitly sets a MaxItemOne value, that value is respected
+	// and overwrites the current history.'
+
+	if res == nil {
 		return
 	}
 
+	// When walking the schema tree for a resource, we create mirroring trees in
+	// *fieldHistory and *b.SchemaInfo. To avoid polluting either tree (and
+	// interfering with other actions such as SetAutonaming), we clean up the paths
+	// that we created but did not store any information into.
+	//
+	// For example, consider the schema for a field of type `Object{ Key1:
+	// List[String] }`.  The schema tree for this field looks like this:
+	//
+	//     Object:
+	//       Fields:
+	//         Key1:
+	//           List:
+	//             Elem:
+	//               String
+	//
+	// When we walk the tree, we create an almost identical history tree:
+	//
+	//     Object:
+	//       Fields:
+	//         Key1:
+	//           List:
+	//             MaxItemsOne: false
+	//             Elem:
+	//               String
+	//
+	// We stored the additional piece of information `MaxItemsOne: false`. We need to
+	// keep enough of the tree to maintain that information, but no more. We can
+	// discard the unnecessary `Elem: String`.
+	//
+	// This keeps the tree as clean as possible for other processes which expect a
+	// `nil` element when making changes. Since other processes (like SetAutonaming)
+	// act on edge nodes (like our String), this allows us to inter-operate with them
+	// without interference.
+
+	// walk traverses a generic shim.Schema recursively, applying fieldHistory to
+	// SchemaInfo and vise versa as necessary to avoid breaking changes in the
+	// resulting sdk.
+	//
+	// We declare walk ahead of its implementation so that (1) walkResource and walk
+	// can be mutually recursive and (2) walk can be self-recursive.
+	var walk func(shim.Schema, *fieldHistory, *b.SchemaInfo) (bool, bool)
+
+	// walkResource traverses a shim.Resource, applying walk to each field in the resource.
+	walkResource := func(r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo) (bool, bool) {
+		if r == nil {
+			return hist != nil, info != nil
+		}
+		m := r.Schema()
+		if m == nil {
+			return hist != nil, info != nil
+		}
+
+		var rHasH, rHasI bool
+
+		m.Range(func(k string, v shim.Schema) bool {
+			h, hasH := getNonNil(hist, k)
+			i, hasI := getNonNil(info, k)
+			fieldHasHist, fieldHasInfo := walk(v, h, i)
+
+			hasH = hasH || fieldHasHist
+			hasI = hasI || fieldHasInfo
+
+			if !hasH {
+				delete(*hist, k)
+			}
+			if !hasI {
+				delete(*info, k)
+			}
+
+			rHasH = rHasH || hasH
+			rHasI = rHasI || hasI
+
+			return true
+		})
+
+		return rHasH, rHasI
+	}
+
+	walk = func(schema shim.Schema, h *fieldHistory, info *b.SchemaInfo) (hasH bool, hasI bool) {
+		if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
+			// MaxItemsOne does not apply, so do nothing
+		} else if info.MaxItemsOne != nil {
+			// The user has overwritten the value, so we will just record that.
+			h.MaxItemsOne = info.MaxItemsOne
+			hasH = true
+		} else if h.MaxItemsOne != nil {
+			// If we have a previous value in the history, we keep it as is.
+			info.MaxItemsOne = h.MaxItemsOne
+			hasI = true
+		} else {
+			// There is no history for this value, so we bake it into the
+			// alias history.
+			h.MaxItemsOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
+			hasH = true
+		}
+
+		// Ensure that the h.Elem and info.Elem fields are non-nil so they can be
+		// safely recursed on.
+		//
+		// If the .Elem existed before this function, we mark it as unsafe to cleanup.
+		var hasElemH, hasElemI bool
+		populateElem := func() {
+			if h.Elem == nil {
+				h.Elem = &fieldHistory{}
+			} else {
+				hasElemH = true
+			}
+			if info.Elem == nil {
+				info.Elem = &b.SchemaInfo{}
+			} else {
+				hasElemI = true
+			}
+		}
+		// Cleanup after we have walked a .Elem value.
+		//
+		// If the .Elem field was created in populateElem and the field was not
+		// changed, we then delete the field.
+		cleanupElem := func(elemHist, elemInfo bool) {
+			hasElemH = hasElemH || elemHist
+			hasElemI = hasElemI || elemInfo
+			if !hasElemH {
+				h.Elem = nil
+			}
+			if !hasElemI {
+				info.Elem = nil
+			}
+		}
+
+		e := schema.Elem()
+		switch e := e.(type) {
+		case shim.Resource:
+			populateElem()
+			eHasH, eHasI := walkResource(e, &h.Elem.Fields, &info.Elem.Fields)
+			cleanupElem(eHasH, eHasI)
+		case shim.Schema:
+			populateElem()
+			eHasH, eHasI := walk(e, h.Elem, info.Elem)
+			cleanupElem(eHasH, eHasI)
+		}
+
+		return hasH || hasElemH, hasI || hasElemI
+	}
+
+	// If we are behind the major version, reset the fields and the major version.
+	if hist[tfToken].MajorVersion < version {
+		hist[tfToken].MajorVersion = version
+		hist[tfToken].Fields = nil
+	}
+
+	walkResource(res, &hist[tfToken].Fields, &computed.Fields)
+}
+
+func getNonNil[K comparable, V any](m *map[K]*V, key K) (_ *V, alreadyThere bool) {
+	contract.Assertf(m != nil, "Cannot restore map if ptr is nil")
+	if *m == nil {
+		*m = map[K]*V{}
+	}
+	v := (*m)[key]
+
+	if v == nil {
+		var new V
+		v = &new
+		(*m)[key] = v
+	} else {
+		alreadyThere = true
+	}
+	return v, alreadyThere
+}
+
+func aliasOrRenameResource(
+	p *b.ProviderInfo,
+	res *b.ResourceInfo, tfToken string,
+	hist *tokenHistory[tokens.Type], currentVersion int,
+) {
 	var alreadyPresent bool
 	for _, a := range hist.Past {
 		if a.Name == hist.Current {
@@ -615,10 +854,10 @@ func aliasOrRenameResource(
 }
 
 func aliasDataSource(
+	p *b.ProviderInfo,
 	hist map[string]*tokenHistory[tokens.ModuleMember],
 	computed *b.DataSourceInfo,
 	tfToken string,
-	remaps *[]func(*b.ProviderInfo),
 	version int,
 ) {
 	prev, hasPrev := hist[tfToken]
@@ -629,36 +868,35 @@ func aliasDataSource(
 			Current: computed.Tok,
 		}
 	} else if prev.Current != computed.Tok {
-		aliasOrRenameDataSource(tfToken, remaps, prev, version)
+		aliasOrRenameDataSource(p, tfToken, prev, version)
 	}
 }
 
-func aliasOrRenameDataSource(tfToken string, remaps *[]func(*b.ProviderInfo), prev *tokenHistory[tokens.ModuleMember],
-	currentVersion int) {
-	// It's in history, but something has changed. Update the history to reflect
-	// the new reality, then add aliases.
-	*remaps = append(*remaps, func(p *b.ProviderInfo) {
-		// re-fetch the resource, to make sure we have the right pointer.
-		computed, ok := p.DataSources[tfToken]
-		if !ok {
-			// The DataSource to alias has been removed. There
-			// is nothing to alias anymore.
-			return
+func aliasOrRenameDataSource(
+	p *b.ProviderInfo, tfToken string,
+	prev *tokenHistory[tokens.ModuleMember],
+	currentVersion int,
+) {
+	// re-fetch the resource, to make sure we have the right pointer.
+	computed, ok := p.DataSources[tfToken]
+	if !ok {
+		// The DataSource to alias has been removed. There
+		// is nothing to alias anymore.
+		return
+	}
+	alias := alias[tokens.ModuleMember]{
+		Name:         prev.Current,
+		MajorVersion: currentVersion,
+	}
+	prev.Past = append(prev.Past, alias)
+	for _, a := range prev.Past {
+		if a.MajorVersion != currentVersion {
+			continue
 		}
-		alias := alias[tokens.ModuleMember]{
-			Name:         prev.Current,
-			MajorVersion: currentVersion,
-		}
-		prev.Past = append(prev.Past, alias)
-		for _, a := range prev.Past {
-			if a.MajorVersion != currentVersion {
-				continue
-			}
-			legacy := a.Name
-			p.RenameDataSource(tfToken, legacy,
-				computed.Tok, legacy.Module().Name().String(),
-				computed.Tok.Module().Name().String(), computed)
-		}
-	})
+		legacy := a.Name
+		p.RenameDataSource(tfToken, legacy,
+			computed.Tok, legacy.Module().Name().String(),
+			computed.Tok.Module().Name().String(), computed)
+	}
 
 }

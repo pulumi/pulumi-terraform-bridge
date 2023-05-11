@@ -17,6 +17,17 @@ resources:
       requiredInputString: |-
         input1
       setOptionals: [ "${r.requiredInputStringCopy}", a, b ]
+
+  randomNumber:
+    type: muxedrandom:RandomInteger
+    properties:
+      min: 2
+      max: 2
+
+  pseudoRandomNumber:
+    type: muxedrandom:RandomHumanNumber
+
+
 outputs:
 
   testRequiredString__actual: ${r.requiredInputStringCopy}
@@ -28,3 +39,15 @@ outputs:
     input2
   testSetOptionals__actual: ${set.setOptionals}
   testSetOptionals__expect: [ "${r.requiredInputStringCopy}", a, b ]
+
+  randomNumber__actual: ${randomNumber.result}
+  randomNumber__expect: 2
+
+  pseudoRandomNumber__actual: ${pseudoRandomNumber.number}
+  pseudoRandomNumber__expect: 4
+
+  pseudoRandomNumberFair__actual: ${pseudoRandomNumber.fair}
+  pseudoRandomNumberFair__expect: true
+
+  pseudoRandomNumberUpdated__actual: ${pseudoRandomNumber.suggestionUpdated}
+  pseudoRandomNumberUpdated__expect: false

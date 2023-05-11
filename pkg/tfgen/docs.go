@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1080,9 +1081,61 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithErrors bool) string {
+func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) (result string) {
 	if docs == "" {
 		return ""
+	}
+
+	if g.info.SkipExamples != nil {
+		if g.info.SkipExamples(tfbridge.SkipExamplesArgs{
+			Token:       path.Token(),
+			ExamplePath: path.String(),
+		}) {
+			return ""
+		}
+	}
+
+	if strings.Contains(docs, "{{% examples %}}") {
+		// The provider author has explicitly written an entire markdown document including examples.
+		// We'll just return it as is.
+		return docs
+	}
+
+	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
+	// specifies the PULUMI_CONVERT_EXAMPES_CACHE_DIR environment variable, pointing to a folder for the cache.
+	{
+		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPES_CACHE_DIR")
+		if enableCache && dir != "" {
+			path := path.String()
+			sep := string(rune(0))
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
+			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
+			fmt.Fprintf(&buf, "path=%v%s", path, sep)
+			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
+			fmt.Fprintf(&buf, "stripSubsectionsWithErrors=%v%s", stripSubsectionsWithErrors, sep)
+
+			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
+
+			filePath := filepath.Join(dir, hash)
+
+			bytes, err := os.ReadFile(filePath)
+			if err == nil {
+				// cache hit
+				return string(bytes)
+			}
+			// ignore the error, assume cache miss or file not found
+			defer func() {
+				// only write the cache for sizable results, >0.5kb
+				if len(result) > 512 {
+					// try to write to the cache
+					err := os.WriteFile(filePath, []byte(result), 0600)
+					if err != nil {
+						panic(fmt.Errorf("failed to write examples-cache: %w", err))
+					}
+				}
+			}()
+		}
 	}
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
@@ -1147,7 +1200,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
 						// We've got some code -- assume it's HCL and try to convert it.
-						g.coverageTracker.foundExample(name, hcl)
+						g.coverageTracker.foundExample(path.String(), hcl)
 
 						exampleTitle := ""
 						if strings.Contains(subsection[0], "###") {
@@ -1155,7 +1208,7 @@ func (g *Generator) convertExamples(docs, name string, stripSubsectionsWithError
 						}
 
 						langs := genLanguageToSlice(g.language)
-						codeBlock, err := g.convertHCL(hcl, name, exampleTitle, langs)
+						codeBlock, err := g.convertHCL(hcl, path.String(), exampleTitle, langs)
 
 						if err != nil {
 							skippedExamples = true

@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi-terraform-bridge/testing
 
 go 1.19
 
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
+
 require (
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.29.1
