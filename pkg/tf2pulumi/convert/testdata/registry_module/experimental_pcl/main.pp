@@ -1,4 +1,4 @@
-component "cidrs" "./subnets" {
+component "cidrs" "./subnets_1.0.0" {
   baseCidrBlock = "10.0.0.0/8"
   networks = [{
     name    = "foo"

@@ -744,7 +744,7 @@ func convertFunctionCallExpr(sources map[string][]byte,
 	buffer := bytes.NewBufferString("")
 	_, err := getTokensForRange(sources, call.Range()).WriteTo(buffer)
 	contract.AssertNoErrorf(err, "Failed to write tokens for range %v", call.Range())
-	text := cty.StringVal(buffer.String())
+	text := cty.StringVal(strings.Replace(buffer.String(), "\r\n", "\n", -1))
 	return hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
 }
 
@@ -1763,14 +1763,15 @@ func convertManagedResources(sources map[string][]byte,
 func convertModuleCall(
 	sources map[string][]byte,
 	scopes *scopes,
-	modules map[addrs.ModuleSource]string,
+	modules map[moduleKey]string,
 	destinationDirectory string,
 	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	// We translate module calls into components
 	pulumiName := scopes.roots["module."+moduleCall.Name]
 
 	// Get the local component path from the module source
-	modulePath, has := modules[moduleCall.SourceAddr]
+	moduleKey := makeModuleKey(moduleCall)
+	modulePath, has := modules[moduleKey]
 	if !has {
 		// This is a genuine system panic, we shoudn't ever hit this.
 		panic("module not found")
@@ -2192,8 +2193,27 @@ func (items terraformItems) Less(i, j int) bool {
 	}
 }
 
+// Used to key into the modules map for the given address and version.
+type moduleKey struct {
+	source  addrs.ModuleSource
+	version string
+}
+
+func (key moduleKey) WithSource(source addrs.ModuleSource) moduleKey {
+	return moduleKey{
+		source: source,
+	}
+}
+
+func makeModuleKey(call *configs.ModuleCall) moduleKey {
+	return moduleKey{
+		source:  call.SourceAddr,
+		version: call.Version.Required.String(),
+	}
+}
+
 func translateRemoteModule(
-	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
+	modules map[moduleKey]string, // A map of module source addresses to paths in destination.
 	packageAddr string, // The address of the remote terraform module to translate.
 	packageSubdir string,
 	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
@@ -2246,7 +2266,7 @@ func translateRemoteModule(
 }
 
 func translateModuleSourceCode(
-	modules map[addrs.ModuleSource]string, // A map of module source addresses to paths in destination.
+	modules map[moduleKey]string, // A map of module source addresses to paths in destination.
 	sourceRoot afero.Fs, // The root of the source terraform package.
 	sourceDirectory string, // The path in sourceRoot to the source terraform module.
 	destinationRoot afero.Fs, // The root of the destination filesystem to write PCL to.
@@ -2319,7 +2339,9 @@ func translateModuleSourceCode(
 
 			// First things first, check if this module has been seen before. If it has, we don't need to
 			// translate it again.
-			if _, has := modules[moduleCall.SourceAddr]; !has {
+			moduleKey := makeModuleKey(moduleCall)
+
+			if _, has := modules[moduleKey]; !has {
 				// We need the source code for this module. But it might be a reference to a module from the
 				// registry (e.g. "terraform-aws-modules/s3-bucket/aws")
 
@@ -2333,9 +2355,10 @@ func translateModuleSourceCode(
 					// also the absolute path to allow this lookup to hit later.
 					absoluteAddr := addrs.ModuleSourceLocal(
 						filepath.Clean(filepath.Join(sourceDirectory, string(addr))))
-					if destinationPath, has := modules[absoluteAddr]; has {
+					absoluteKey := moduleKey.WithSource(absoluteAddr)
+					if destinationPath, has := modules[absoluteKey]; has {
 						// We've already seen this module, just save this new relative address
-						modules[addr] = destinationPath
+						modules[moduleKey] = destinationPath
 						continue
 					}
 
@@ -2355,8 +2378,8 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					modules[addr] = destinationPath
-					modules[absoluteAddr] = destinationPath
+					modules[moduleKey] = destinationPath
+					modules[absoluteKey] = destinationPath
 
 					diags := translateModuleSourceCode(
 						modules,
@@ -2387,7 +2410,7 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					modules[addr] = destinationPath
+					modules[moduleKey] = destinationPath
 
 					diags := translateRemoteModule(
 						modules,
@@ -2431,8 +2454,18 @@ func translateModuleSourceCode(
 						if v.Prerelease() != "" {
 							continue
 						}
-						if latestVersion == nil || v.GreaterThan(latestVersion) {
+						if (latestVersion == nil || v.GreaterThan(latestVersion)) && moduleCall.Version.Required.Check(v) {
 							latestVersion = v
+						}
+					}
+
+					if latestVersion == nil {
+						return hcl.Diagnostics{
+							&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Error accessing remote module registry",
+								Detail:   fmt.Sprintf("Failed to find version for %s that matched %s", addr, moduleCall.Version.Required),
+							},
 						}
 					}
 
@@ -2479,7 +2512,8 @@ func translateModuleSourceCode(
 						}
 					}
 
-					destinationPath := filepath.Join(destinationDirectory, addr.Package.Name)
+					destinationPath := filepath.Join(destinationDirectory,
+						fmt.Sprintf("%s_%s", addr.Package.Name, latestVersion))
 					// Check that this path isn't already taken
 					for _, path := range modules {
 						if path == destinationPath {
@@ -2494,7 +2528,7 @@ func translateModuleSourceCode(
 							}
 						}
 					}
-					modules[addr] = destinationPath
+					modules[moduleKey] = destinationPath
 
 					diags := translateRemoteModule(
 						modules,
@@ -2617,7 +2651,7 @@ func translateModuleSourceCode(
 func TranslateModule(
 	source afero.Fs, sourceDirectory string,
 	destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
-	modules := make(map[addrs.ModuleSource]string)
+	modules := make(map[moduleKey]string)
 	return translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
 }
 
