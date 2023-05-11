@@ -255,12 +255,16 @@ func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			From: FromName(AutoNameOptions{
-				Separator: separator,
-				Maxlen:    maxlength,
-				Randlen:   7,
-			}),
+			From:      FromName(defaultAutoNameOptions(maxlength, separator)),
 		},
+	}
+}
+
+func defaultAutoNameOptions(maxlength int, separator string) AutoNameOptions {
+	return AutoNameOptions{
+		Separator: separator,
+		Maxlen:    maxlength,
+		Randlen:   7,
 	}
 }
 

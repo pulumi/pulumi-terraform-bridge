@@ -44,6 +44,16 @@ func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetad
 			}
 			return pp.(*provider).marshalProviderInfo(ctx), nil
 		})
+
+	// Apply deferred autonaming, if any.
+	if prov.AutoNameOptions != nil {
+		shimProvider := schemashim.ShimSchemaOnlyProvider(ctx, prov.NewProvider())
+		// shimInfo will have P populated with a schema-only provider, just what is needed.
+		var shimInfo tfbridge.ProviderInfo = prov.ProviderInfo
+		shimInfo.P = shimProvider
+		shimInfo.SetAutonamingWithCustomOptions(*prov.AutoNameOptions)
+	}
+
 	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()
 

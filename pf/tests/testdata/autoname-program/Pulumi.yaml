@@ -1,0 +1,11 @@
+name: autoname-program
+runtime: yaml
+resources:
+
+  ar:
+    type: testbridge:index/testres:AutoNameRes
+
+outputs:
+
+  test_autoname__actual: ${ar.name}
+  test_autoname__expect: "foobar"

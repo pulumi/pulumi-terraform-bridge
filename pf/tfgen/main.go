@@ -40,6 +40,12 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 	ctx := context.Background()
 	shimInfo := shimSchemaOnlyProviderInfo(ctx, info)
 
+	// Apply deferred autonaming, if any.
+	if info.AutoNameOptions != nil {
+		// shimInfo will have P populated with a schema-only provider, just what is needed.
+		shimInfo.SetAutonamingWithCustomOptions(*info.AutoNameOptions)
+	}
+
 	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
 
 		if info.MetadataInfo == nil {

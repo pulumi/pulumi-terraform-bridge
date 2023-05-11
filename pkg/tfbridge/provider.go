@@ -1238,12 +1238,28 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 	return fmt.Sprintf("%s.%s.%s", packageName, moduleName, moduleMemberName)
 }
 
-// SetAutonaming will loop all resources with a name property, and will add an auto-name property.  It will skip
-// those that already have a name mapping entry, since those may have custom overrides set in the resource
-// declaration (e.g., for length).
+// SetAutonaming applies [AutoName] to every required or optional resource property that is literally called "name".
+// Every such property is populated by an auto-computed value by Pulumi when no value is given by the user program. If
+// the property was required, it becomes optional.
+//
+// The maxLength and separator parameters configure how AutoName generates default values. See [AutoNameOptions].
+//
+// Currently SetAutonaming will skip properties that already have a [SchemaInfo] entry in [ResourceInfo.Fields],
+// assuming those are already customized by the user. If those properties need AutoName functionality, please use
+// AutoName directly to populate their SchemaInfo entry.
+//
+// Note that when constructing a ProviderInfo incrementally, some care is required to make sure SetAutonaming is called
+// after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
 func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
+	p.SetAutonamingWithCustomOptions(defaultAutoNameOptions(maxLength, separator))
+}
+
+// General form of [SetAutonaming].
+func (p *ProviderInfo) SetAutonamingWithCustomOptions(opts AutoNameOptions) {
+	// In the case of bridging providers based on the Plugin Framework, p.P currently may not be populated at the
+	// time this is applied; defer autonaming processing as a workaround for now.
 	if p.P == nil {
-		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
+		p.AutoNameOptions = &opts
 		return
 	}
 
@@ -1256,7 +1272,7 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 					if res.Fields == nil {
 						res.Fields = make(map[string]*SchemaInfo)
 					}
-					res.Fields[nameProperty] = AutoName(nameProperty, maxLength, separator)
+					res.Fields[nameProperty] = AutoNameWithCustomOptions(nameProperty, opts)
 				}
 			}
 		}

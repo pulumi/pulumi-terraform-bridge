@@ -112,6 +112,10 @@ type ProviderInfo struct {
 	// docs). The primary use case for this hook is to ignore problematic or flaky examples temporarily until the
 	// underlying issues are resolved and the examples can be rendered correctly.
 	SkipExamples func(SkipExamplesArgs) bool
+
+	// This is not intended to be set directly, but may be used by [ProviderInfo.SetAutonaming] to store global
+	// AutoNameOptions.
+	AutoNameOptions *AutoNameOptions
 }
 
 func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {

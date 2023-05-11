@@ -96,7 +96,8 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 				},
 			},
 
-			"testbridge_privst": {Tok: "testbridge:index/testres:Privst"},
+			"testbridge_privst":       {Tok: "testbridge:index/testres:Privst"},
+			"testbridge_autoname_res": {Tok: "testbridge:index/testres:AutoNameRes"},
 		},
 
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -118,6 +119,9 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
+
+	info.SetAutonaming(255, "-")
+
 	return tfpf.ProviderInfo{
 		ProviderInfo: info,
 		NewProvider:  defineProvider,
@@ -205,5 +209,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestConfigRes,
 		newTestDefaultInfoRes,
 		newPrivst,
+		newAutoNameRes,
 	}
 }

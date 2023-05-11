@@ -37,7 +37,10 @@
                 "description": "Used for testing DefaultInfo default application support\n",
                 "default": "DEFAULT"
             }
-        }
+        },
+        "defaults": [
+            "stringConfigProp"
+        ]
     },
     "types": {
         "testbridge:index/TestnestRule:TestnestRule": {
@@ -149,9 +152,6 @@
                 "type": "boolean",
                 "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n"
             },
-            "stringConfigProp": {
-                "type": "string"
-            },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
                 "description": "Used for testing DefaultInfo default application support\n"
@@ -165,9 +165,6 @@
                 "type": "boolean",
                 "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
                 "default": true
-            },
-            "stringConfigProp": {
-                "type": "string"
             },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
@@ -210,45 +207,28 @@
                 "type": "object"
             }
         },
-        "testbridge:index/testres:Privst": {
+        "testbridge:index/testres:AutoNameRes": {
             "properties": {
-                "observedPrivateStateAfter": {
+                "name": {
                     "type": "string",
-                    "description": "Exports current PrivateState after the update to help test it\n"
-                },
-                "observedPrivateStateBefore": {
-                    "type": "string",
-                    "description": "Exports current PrivateState before the update to help test it\n"
-                },
-                "targetPrivateState": {
-                    "type": "string",
-                    "description": "The value of this attribute is stored in PrivateState\n"
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
                 }
             },
             "required": [
-                "observedPrivateStateAfter",
-                "observedPrivateStateBefore"
+                "name"
             ],
             "inputProperties": {
-                "targetPrivateState": {
+                "name": {
                     "type": "string",
-                    "description": "The value of this attribute is stored in PrivateState\n"
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
                 }
             },
             "stateInputs": {
-                "description": "Input properties used for looking up and filtering Privst resources.\n",
+                "description": "Input properties used for looking up and filtering AutoNameRes resources.\n",
                 "properties": {
-                    "observedPrivateStateAfter": {
+                    "name": {
                         "type": "string",
-                        "description": "Exports current PrivateState after the update to help test it\n"
-                    },
-                    "observedPrivateStateBefore": {
-                        "type": "string",
-                        "description": "Exports current PrivateState before the update to help test it\n"
-                    },
-                    "targetPrivateState": {
-                        "type": "string",
-                        "description": "The value of this attribute is stored in PrivateState\n"
+                        "description": "Test AutoNaming; Pulumi makes this property optional\n"
                     }
                 },
                 "type": "object"

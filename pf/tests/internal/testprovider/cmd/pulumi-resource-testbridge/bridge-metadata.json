@@ -2,7 +2,7 @@
     "renames": {
         "resources": {
             "testbridge:index/testnest:Testnest": "testbridge_testnest",
-            "testbridge:index/testres:Privst": "testbridge_privst",
+            "testbridge:index/testres:AutoNameRes": "testbridge_autoname_res",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
             "testbridge:index/testres:TestDefaultInfoRes": "testbridge_test_default_info_res",
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
@@ -22,11 +22,6 @@
             },
             "testbridge:index/smac:SMAC": {
                 "skipMetadataApiCheck": "skip_metadata_api_check"
-            },
-            "testbridge:index/testres:Privst": {
-                "observedPrivateStateAfter": "observed_private_state_after",
-                "observedPrivateStateBefore": "observed_private_state_before",
-                "targetPrivateState": "target_private_state"
             },
             "testbridge:index/testres:TestConfigRes": {
                 "configCopy": "config_copy"
