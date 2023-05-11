@@ -12,6 +12,10 @@ variable "nullable_string_in" {
     default = null
 }
 
+variable "opt_in" {
+  default = null
+}
+
 variable "bool_in" {
     type = bool
 }

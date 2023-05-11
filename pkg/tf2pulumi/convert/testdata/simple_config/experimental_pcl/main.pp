@@ -6,6 +6,9 @@ config "stringIn" "string" {
 config "nullableStringIn" "string" {
   default = null
 }
+config "optIn" {
+  default = null
+}
 config "boolIn" "bool" {
 }
 config "stringListIn" "list(string)" {
