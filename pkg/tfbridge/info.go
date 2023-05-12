@@ -445,13 +445,44 @@ type DefaultInfo struct {
 	AutoNamed bool
 	// Config uses a configuration variable from this package as the default value.
 	Config string
-	// From applies a transformation from other resource properties.
-	From func(res *PulumiResource) (interface{}, error)
+	// From computes a default value on the fly, possibly informed by resource URN, state, and other properties.
+	From func(res *PulumiResource, opts ...DefaultContextOption) (interface{}, error)
 	// Value injects a raw literal value as the default.
 	Value interface{}
 	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)
 	// will be used as the default.
 	EnvVars []string
+}
+
+// Provides additional context to [DefaultInfo.From] to assist computing a default value for a property.
+type DefaultContext struct {
+	// Pulumi name of the property where the default is being applied.
+	PropertyKey resource.PropertyKey
+
+	// Upstream name of the property.
+	Name string
+}
+
+func NewDefaultContext(opts ...DefaultContextOption) DefaultContext {
+	c := DefaultContext{}
+	for _, o := range opts {
+		o(&c)
+	}
+	return c
+}
+
+type DefaultContextOption = func(*DefaultContext)
+
+func withPropertyKeyDefaultContextOption(pk resource.PropertyKey) DefaultContextOption {
+	return func(c *DefaultContext) {
+		c.PropertyKey = pk
+	}
+}
+
+func withNameDefaultContextOption(name string) DefaultContextOption {
+	return func(c *DefaultContext) {
+		c.Name = name
+	}
 }
 
 // Bundles resource URN, property seed and property maps to inform default value generation in [DefaultInfo.From].
@@ -801,9 +832,9 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 		return nil
 	}
 
-	var f func(*PulumiResource) (interface{}, error)
+	var f func(_ *PulumiResource, _ ...DefaultContextOption) (interface{}, error)
 	if m.IsFunc {
-		f = func(*PulumiResource) (interface{}, error) {
+		f = func(_ *PulumiResource, _ ...DefaultContextOption) (interface{}, error) {
 			panic("transforms cannot be run on unmarshaled DefaultInfo values")
 		}
 	}

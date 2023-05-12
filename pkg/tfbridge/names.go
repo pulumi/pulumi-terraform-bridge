@@ -234,7 +234,7 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 
 // AutoNameOptions provides parameters to AutoName to control how names will be generated
 type AutoNameOptions struct {
-	// A separator between name and random portions of the
+	// A separator between fixed and random portions of the name
 	Separator string
 	// Maximum length of the generated name
 	Maxlen int
@@ -300,9 +300,10 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 }
 
 // FromName automatically propagates a resource's URN onto the resulting default info.
-func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
-	return func(res *PulumiResource) (interface{}, error) {
-		// Take the URN name part, transform it if required, and then append some unique characters if requested.
+func FromName(options AutoNameOptions) func(res *PulumiResource, opts ...DefaultContextOption) (interface{}, error) {
+	return func(res *PulumiResource, opts ...DefaultContextOption) (interface{}, error) {
+		// Take the URN name part, transform it if required, and then append some unique characters if
+		// requested.
 		vs := string(res.URN.Name())
 		if options.Transform != nil {
 			vs = options.Transform(vs)

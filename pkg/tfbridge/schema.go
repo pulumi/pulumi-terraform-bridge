@@ -660,7 +660,11 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if from := info.Default.From; from != nil {
-				v, err := from(ctx.Instance)
+				v, err := from(
+					ctx.Instance,
+					withPropertyKeyDefaultContextOption(key),
+					withNameDefaultContextOption(name),
+				)
 				if err != nil {
 					return err
 				}
