@@ -7,6 +7,15 @@ variable "string_in" {
     type = string
 }
 
+variable "nullable_string_in" {
+    type = string
+    default = null
+}
+
+variable "opt_any_in" {
+  default = null
+}
+
 variable "bool_in" {
     type = bool
 }

@@ -2,6 +2,12 @@ config numberIn number {
 }
 config stringIn string {
 }
+config nullableStringIn string {
+    default = null
+}
+config optAnyIn {
+  default = null
+}
 config boolIn bool {
 }
 config stringListIn "list(string)" {

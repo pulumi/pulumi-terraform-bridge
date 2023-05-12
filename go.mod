@@ -52,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/zclconf/go-cty v1.13.1
 	golang.org/x/crypto v0.5.0
-	golang.org/x/mod v0.8.0
+	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.8.0
 	golang.org/x/text v0.8.0
 	google.golang.org/grpc v1.54.0
@@ -205,8 +205,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.64.0
-	github.com/pulumi/pulumi/sdk/v3 v3.64.0
+	github.com/pulumi/pulumi/pkg/v3 v3.66.1-0.20230504185456-de2b56522344
+	github.com/pulumi/pulumi/sdk/v3 v3.66.1-0.20230504185456-de2b56522344
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
