@@ -265,6 +265,28 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"The following arguments are supported:",
+				"",
+				"- `zone_id` - (Required) The DNS zone ID to which the page rule should be added.",
+				"- `target` - (Required) The URL pattern to target with the page rule.",
+				"- `actions` - (Required) The actions taken by the page rule, options given below.",
+				"",
+				"Action blocks support the following:",
+				"",
+				"- `always_use_https` - (Optional) Boolean of whether this action is enabled. Default: false.",
+				"",
+			},
+			expected: map[string]*argumentDocs{
+				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
+				"target":  {description: "The URL pattern to target with the page rule."},
+				"actions": {description: "The actions taken by the page rule, options given below."},
+				// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
+				// because it doesn't correspond to a top level resource property.
+				"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+			},
+		},
 	}
 
 	for _, tt := range tests {

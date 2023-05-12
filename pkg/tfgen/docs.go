@@ -888,6 +888,8 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 	return "", "", false
 }
 
+var genericNestedRegexp = regexp.MustCompile("supports? the following:")
+
 var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
@@ -967,10 +969,11 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				}
 			}
 		} else {
-			if !strings.HasSuffix(line, "supports the following:") {
-				ret.Arguments[name] = &argumentDocs{description: desc}
-				totalArgumentsFromDocs++
+			if genericNestedRegexp.MatchString(line) {
+				return
 			}
+			ret.Arguments[name] = &argumentDocs{description: desc}
+			totalArgumentsFromDocs++
 		}
 	}
 
@@ -984,6 +987,11 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				ret.Arguments[lastMatch].description += line
 			}
 		} else {
+			if genericNestedRegexp.MatchString(line) {
+				lastMatch = ""
+				nested = ""
+				return
+			}
 			ret.Arguments[lastMatch].description += line
 		}
 	}
