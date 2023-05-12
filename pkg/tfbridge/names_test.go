@@ -276,6 +276,17 @@ func TestBijectiveNameConversion(t *testing.T) {
 				"galleryApplications": "gallery_applications",
 			},
 		},
+		{ // Check that users can override .MaxItems() == 1
+			schema: map[string]*schemav2.Schema{
+				"value": {Type: schemav2.TypeList, MaxItems: 1},
+			},
+			info: map[string]*SchemaInfo{
+				"value": {MaxItemsOne: ref(false)},
+			},
+			expected: map[string]string{
+				"values": "value",
+			},
+		},
 	}
 
 	for _, tt := range tests {
