@@ -571,7 +571,12 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
 	inputs, assets, err := MakeTerraformInputs(
-		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
+		&PulumiResource{
+			URN:        urn,
+			Properties: news,
+			PriorState: olds,
+			Seed:       req.RandomSeed,
+		},
 		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, err

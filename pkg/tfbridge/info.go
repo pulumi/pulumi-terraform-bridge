@@ -454,11 +454,25 @@ type DefaultInfo struct {
 	EnvVars []string
 }
 
-// PulumiResource is just a little bundle that carries URN, seed and properties around.
+// Bundles resource URN, property seed and property maps to inform default value generation in [DefaultInfo.From].
+//
+// This structure may be renamed in the future, as it currently applies to both resources and functions.
+//
+// In the context of a function invoke, [PulumiReource.Properties] is populated with the arguments of the function and
+// the rest of the struct fields have zero values.
 type PulumiResource struct {
-	URN        resource.URN
+	URN resource.URN
+
+	// Resource inputs or function invoke arguments.
 	Properties resource.PropertyMap
-	Seed       []byte
+
+	// The prior known resource state, if available.
+	PriorState resource.PropertyMap
+
+	// The engine provides a stable seed useful for generating random values consistently. This guarantees, for
+	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
+	// consistent. This currently is only available for resource changes.
+	Seed []byte
 }
 
 // OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and
