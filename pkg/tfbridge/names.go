@@ -59,23 +59,6 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 	return result
 }
 
-func isTfPlural(tfs shim.Schema) bool {
-	if tfs == nil {
-		return false
-	}
-
-	switch tfs.Type() {
-	case shim.TypeSet, shim.TypeList:
-		return tfs.MaxItems() != 1
-	default:
-		return false
-	}
-}
-
-func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
-	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
-}
-
 // TerraformToPulumiNameV2 performs a standard transformation on the given name string,
 // from Terraform's underscore_casing to Pulumi's camelCasing.
 func TerraformToPulumiNameV2(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo) string {
@@ -124,8 +107,30 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 		}
 	}
 
+	tryPluralize := func() bool {
+		tfs := sch.Get(name)
+		if tfs == nil {
+			// If we can't get type information, we don't attempt to pluralize.
+			return false
+		}
+		switch tfs.Type() {
+		// We only attempt to pluralize lists and sets.
+		case shim.TypeSet, shim.TypeList:
+			// If the user has provided a manual override for MaxItemsOne,
+			// respect that.
+			if psInfo != nil && psInfo.MaxItemsOne != nil {
+				return !*psInfo.MaxItemsOne
+			}
+			// If the user has left MaxItemsOne unspecified, check the value
+			// of MaxItems().
+			return tfs.MaxItems() != 1
+		default:
+			return false
+		}
+	}
+
 	// Pluralize names that will become array-shaped Pulumi values
-	if sch != nil && !isPulumiMaxItemsOne(psInfo) && isTfPlural(sch.Get(name)) {
+	if sch != nil && tryPluralize() {
 		candidate := inflector.Pluralize(name)
 		// We don't assign a plural name if there is another key in the namespace that
 		// would conflict with our name... unless that key is manually assigned a .Name
