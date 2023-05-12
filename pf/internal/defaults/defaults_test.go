@@ -184,7 +184,10 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
-						From: func(res *tfbridge.PulumiResource) (interface{}, error) {
+						From: func(
+							res *tfbridge.PulumiResource,
+							_ ...tfbridge.DefaultContextOption,
+						) (interface{}, error) {
 							return resource.NewStringProperty("OK"), nil
 						},
 					},
