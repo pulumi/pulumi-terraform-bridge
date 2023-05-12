@@ -15,7 +15,6 @@
 package tfbridge
 
 import (
-	"fmt"
 	"unicode"
 
 	"github.com/pkg/errors"
