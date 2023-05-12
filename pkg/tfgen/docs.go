@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/afero"
@@ -819,9 +820,9 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section)
+			parseArgReferenceSection(reformattedH3Section, &p.ret)
 		case sectionAttributesReference:
-			p.parseAttributesReferenceSection(reformattedH3Section)
+			parseAttributesReferenceSection(reformattedH3Section, &p.ret)
 		case sectionFrontMatter:
 			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
@@ -830,7 +831,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
-				p.parseArgReferenceSection(reformattedH3Section)
+				parseArgReferenceSection(reformattedH3Section, &p.ret)
 				continue
 			}
 
@@ -887,6 +888,34 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 	return "", "", false
 }
 
+var nestedObjectRegexps = []*regexp.Regexp{
+	// For example:
+	// s3_bucket.html.markdown: "The `website` object supports the following:"
+	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+	regexp.MustCompile("`([a-z_]+)`.*following"),
+
+	// For example:
+	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+	// For example:
+	// elasticsearch_domain.html.markdown: "### advanced_security_options"
+	regexp.MustCompile("###+ ([a-z_]+).*"),
+
+	// For example:
+	// dynamodb_table.html.markdown: "### `server_side_encryption`"
+	regexp.MustCompile("###+ `([a-z_]+).*`"),
+
+	// For example:
+	// route53_record.html.markdown: "### Failover Routing Policy"
+	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+
+	// For example:
+	// sql_database_instance.html.markdown:
+	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
+}
+
 // getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
 // describes. If the line does not describe a nested block, an empty string is returned.
 //
@@ -896,35 +925,6 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
 func getNestedBlockName(line string) string {
 	nested := ""
-
-	nestedObjectRegexps := []*regexp.Regexp{
-		// For example:
-		// s3_bucket.html.markdown: "The `website` object supports the following:"
-		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-		regexp.MustCompile("`([a-z_]+)`.*following"),
-
-		// For example:
-		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-
-		// For example:
-		// elasticsearch_domain.html.markdown: "### advanced_security_options"
-		regexp.MustCompile("###+ ([a-z_]+).*"),
-
-		// For example:
-		// dynamodb_table.html.markdown: "### `server_side_encryption`"
-		regexp.MustCompile("###+ `([a-z_]+).*`"),
-
-		// For example:
-		// route53_record.html.markdown: "### Failover Routing Policy"
-		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
-
-		// For example:
-		// sql_database_instance.html.markdown:
-		// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
-		regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
-	}
-
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
@@ -940,79 +940,98 @@ func getNestedBlockName(line string) string {
 	return nested
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
+func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var lastMatch, nested string
-	for _, line := range subsection {
-		name, desc, matchFound := parseArgFromMarkdownLine(line)
 
-		if matchFound {
-			// found a property bullet, extract the name and description
-			if nested != "" {
-				// We found this line within a nested field. We should record it as such.
-				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argumentDocs{
-						arguments: make(map[string]string),
-					}
-					totalArgumentsFromDocs++
-				} else if p.ret.Arguments[nested].arguments == nil {
-					p.ret.Arguments[nested].arguments = make(map[string]string)
+	addNewHeading := func(name, desc, line string) {
+		// found a property bullet, extract the name and description
+		if nested != "" {
+			// We found this line within a nested field. We should record it as such.
+			if ret.Arguments[nested] == nil {
+				ret.Arguments[nested] = &argumentDocs{
+					arguments: make(map[string]string),
 				}
-				p.ret.Arguments[nested].arguments[name] = desc
-
-				// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				// argument doesn't match the resource's argument.
-				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[name] == nil {
-					p.ret.Arguments[name] = &argumentDocs{
-						description: desc,
-						isNested:    true, // Mark that this argument comes from a nested field.
-					}
-				}
-			} else {
-				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[name] = &argumentDocs{description: desc}
-					totalArgumentsFromDocs++
-				}
+				totalArgumentsFromDocs++
+			} else if ret.Arguments[nested].arguments == nil {
+				ret.Arguments[nested].arguments = make(map[string]string)
 			}
-			lastMatch = name
-		} else if !isBlank(line) && lastMatch != "" {
-			// this is a continuation of the previous bullet
-			if nested != "" {
-				p.ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+			ret.Arguments[nested].arguments[name] = desc
 
-				// Also update the top-level argument if we took it from a nested field.
-				if p.ret.Arguments[lastMatch].isNested {
-					p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+			// Also record this as a top-level argument just in case, since sometimes the recorded nested
+			// argument doesn't match the resource's argument.
+			// For example, see `cors_rule` in s3_bucket.html.markdown.
+			if ret.Arguments[name] == nil {
+				ret.Arguments[name] = &argumentDocs{
+					description: desc,
+					isNested:    true, // Mark that this argument comes from a nested field.
 				}
-			} else {
-				p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
-			// This line might declare the beginning of a nested object.
-			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
-			nestedBlockCurrentLine := getNestedBlockName(line)
-
-			if nestedBlockCurrentLine != "" {
-				nested = nestedBlockCurrentLine
+			if !strings.HasSuffix(line, "supports the following:") {
+				ret.Arguments[name] = &argumentDocs{description: desc}
+				totalArgumentsFromDocs++
 			}
+		}
+	}
 
-			// Clear the lastMatch.
+	extendExistingHeading := func(line string) {
+		line = "\n" + strings.TrimSpace(line)
+		if nested != "" {
+			ret.Arguments[nested].arguments[lastMatch] += line
+
+			// Also update the top-level argument if we took it from a nested field.
+			if ret.Arguments[lastMatch].isNested {
+				ret.Arguments[lastMatch].description += line
+			}
+		} else {
+			ret.Arguments[lastMatch].description += line
+		}
+	}
+
+	var hadSpace bool
+	for _, line := range subsection {
+		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
+			// We have found a new
+			addNewHeading(name, desc, line)
+			lastMatch = name
+		} else if strings.TrimSpace(line) == "---" {
+			// --- is a markdown section break. This probably indicates the
+			// section is over, but we take it to mean that the current
+			// heading is over.
 			lastMatch = ""
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
+			nested = nestedBlockCurrentLine
+			lastMatch = ""
+		} else if !isBlank(line) && lastMatch != "" {
+			extendExistingHeading(line)
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
+			nested = nestedBlockCurrentLine
+			lastMatch = ""
+		} else if lastMatch != "" {
+			extendExistingHeading(line)
+		}
+		hadSpace = isBlank(line)
+	}
+
+	for _, v := range ret.Arguments {
+		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
+		for k, d := range v.arguments {
+			v.arguments[k] = strings.TrimRightFunc(d, unicode.IsSpace)
 		}
 	}
 }
 
-func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) {
+func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 	var lastMatch string
 	for _, line := range subsection {
 		matches := attributeBulletRegexp.FindStringSubmatch(line)
 		if len(matches) >= 2 {
 			// found a property bullet, extract the name and description
-			p.ret.Attributes[matches[1]] = matches[2]
+			ret.Attributes[matches[1]] = matches[2]
 			lastMatch = matches[1]
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
-			p.ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
+			ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
 		} else {
 			// This is an empty line or there were no bullets yet - clear the lastMatch
 			lastMatch = ""
@@ -1887,8 +1906,8 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 		}
 
 		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
-		text = strings.Replace(text, "-> ", "> ", -1)
-		text = strings.Replace(text, "~> ", "> ", -1)
+		text = strings.ReplaceAll(text, "-> ", "> ")
+		text = strings.ReplaceAll(text, "~> ", "> ")
 
 		// Trim Prefixes we see when the description is spread across multiple lines.
 		text = strings.TrimPrefix(text, "\n(Required)\n")
