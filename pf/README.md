@@ -202,7 +202,7 @@ to the Plugin Framework.
      }
      ```
 
-5. Update code declaring `tfbridge.ProviderInfo` (typically in `resources.go`) from
+4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`) from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and to declare `ProviderInfo` from
    `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge` instead.
 
@@ -231,7 +231,93 @@ to the Plugin Framework.
     }
     ```
 
-6. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
+5. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
+   the Pulumi Package Schema. It will now also compute a new metadata file `bridge-metadata.json`, build the provider
+   binary, re-generate language-specific SDKs and run tests.
+
+    ```
+    make tfgen
+    make provider
+    make build_sdks
+    ```
+
+## How to Upgrade a provider that has partially migrated to the Plugin Framework
+
+Follow these steps if you have a Pulumi provider that was bridged from a Terraform provider built against [Terraform
+Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a version that has migrated
+some but not all resources/datasources to the Plugin Framework.
+
+1. Ensure you have access to the `github.com/hashicorp/terraform-plugin-framework/provider.Provider` from the upstream provider.
+   If the provider is shimmed (or needs to be), you can follow step (1) from the section "How to Upgrade a Bridged Provider to
+   Plugin Framework".
+
+2. Find the tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update
+   it to call `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/pf/tfgen`.
+
+   Note that the extra version parameter is removed from `tfgen.Main`, so this code:
+
+   ```go
+   tfgen.Main("cloudflare", version.Version, tls.Provider())
+   ```
+
+   Becomes:
+
+   ``` go
+   tfgen.MainWithMuxer("cloudflare", cloudflare.Provider())
+   ```
+
+3. Find the provider binary `main` that calls `tfbridge.Main` from
+   `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and update it to `MainWithMuxer` from
+   `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge`.
+
+   Note the signature changes: version parameter is removed, and `Context` is now required, so this
+   code:
+
+     ```go
+     tfbridge.Main("cloudflare", version.Version, cloudflare.Provider(), pulumiSchema)
+     ```
+
+     Becomes:
+
+    ```go
+    tfbridge.MainWithMuxer(context.Background(), "cloudflare", cloudflare.Provider(), pulumiSchema)
+    ```
+
+4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`), changing the embedded
+   `tfbridge.ProviderInfo.P` to the result of calling `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge.MuxShimWithPF`.
+
+   This function combines the original SDK based provider with a new PF based provider, so this code:
+
+    ```go
+    p := shimv2.NewProvider(provShim.NewProvider())
+
+    ...
+
+    prov := 	prov := tfbridge.ProviderInfo{
+		P:                p,
+        ...
+    }
+    ```
+
+    Becomes:
+
+    ```go
+    p := pfbridge.MuxShimWithPF(context.Background(),
+		shimv2.NewProvider(provShim.SDKProvider()),
+		provShim.PFProvider(),
+	)
+
+    ...
+
+    prov := 	prov := tfbridge.ProviderInfo{
+		P:                p,
+        ...
+    }
+    ```
+
+> Muxed providers need an accompanying `MetadataInfo`. If the provider did not have one set up, this is the time to do so.
+
+5. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
    the Pulumi Package Schema. It will now also compute a new metadata file `bridge-metadata.json`, build the provider
    binary, re-generate language-specific SDKs and run tests.
 
