@@ -72,6 +72,7 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 
 func getDefaultValue(
 	ctx context.Context,
+	name string,
 	property resource.PropertyKey,
 	res *tfbridge.PulumiResource,
 	fieldSchema shim.Schema,
@@ -134,7 +135,10 @@ func getDefaultValue(
 			})
 		return recoverDefaultValue(defaultInfo.Value), true
 	} else if defaultInfo.From != nil && res != nil {
-		raw, err := defaultInfo.From(res)
+		raw, err := defaultInfo.From(res, func(ctx *tfbridge.DefaultContext) {
+			ctx.Name = name
+			ctx.PropertyKey = property
+		})
 		if err != nil {
 			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",
 				string(property), err)
@@ -271,11 +275,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		}
 
 		// using default value for empty property
-		pv, gotDefault := getDefaultValue(ctx,
-			pk,
-			du.resourceByPath(path),
-			fieldSchema,
-			fld.Default,
+		pv, gotDefault := getDefaultValue(ctx, key, pk, du.resourceByPath(path), fieldSchema, fld.Default,
 			du.providerConfig)
 		if gotDefault {
 			res[pk] = pv

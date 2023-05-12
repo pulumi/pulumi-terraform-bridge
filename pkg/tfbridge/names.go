@@ -299,9 +299,21 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 	}
 }
 
-// FromName automatically propagates a resource's URN onto the resulting default info.
+// FromName implements [DefaultInfo.From] by automatically computing a default string value for a property based on the
+// resource's URN.
 func FromName(options AutoNameOptions) func(res *PulumiResource, opts ...DefaultContextOption) (interface{}, error) {
 	return func(res *PulumiResource, opts ...DefaultContextOption) (interface{}, error) {
+		dctx := NewDefaultContext(opts...)
+
+		// Reuse the value from prior state if available.
+		if res.PriorState != nil {
+			if oldV, gotOldValue := res.PriorState[dctx.PropertyKey]; gotOldValue {
+				if oldV.IsString() {
+					return oldV.StringValue(), nil
+				}
+			}
+		}
+
 		// Take the URN name part, transform it if required, and then append some unique characters if
 		// requested.
 		vs := string(res.URN.Name())

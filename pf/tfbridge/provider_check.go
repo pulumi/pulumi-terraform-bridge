@@ -53,6 +53,7 @@ func (p *provider) CheckWithContext(
 		ResourceInstance: &tfbridge.PulumiResource{
 			URN:        urn,
 			Properties: checkedInputs,
+			PriorState: priorState,
 			Seed:       randomSeed,
 		},
 		PropertyMap:    checkedInputs,
