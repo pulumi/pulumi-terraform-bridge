@@ -8,7 +8,6 @@ replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-multierror v1.1.1
@@ -20,8 +19,9 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.3
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.54.0
-	pgregory.net/rapid v0.5.5
 )
+
+require github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
 
 require (
 	cloud.google.com/go v0.107.0 // indirect
@@ -85,7 +85,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
-	github.com/cloudflare/circl v1.1.0 // indirect
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
