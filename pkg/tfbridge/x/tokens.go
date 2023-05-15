@@ -656,7 +656,9 @@ func aliasResource(
 }
 
 // applyResourceMaxItemsOneAliasing traverses a shim.Resource, applying walk to each field in the resource.
-func applyResourceMaxItemsOneAliasing(r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo) (bool, bool) {
+func applyResourceMaxItemsOneAliasing(
+	r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo,
+) (bool, bool) {
 	if r == nil {
 		return hist != nil, info != nil
 	}
