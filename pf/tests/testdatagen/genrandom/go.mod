@@ -5,7 +5,7 @@ go 1.19
 require github.com/pulumi/pulumi-random/sdk/v4 v4.8.2
 
 require (
-	github.com/cloudflare/circl v1.1.0 // indirect
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
