@@ -171,7 +171,7 @@ to the Plugin Framework.
      go build
      ```
 
-1. Find tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen`
+2. Find tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen`
    and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/pf/tfgen`.
 
    Note that the extra verson parameter is removed from `tfgen.Main`, so this code:
@@ -186,7 +186,7 @@ to the Plugin Framework.
     tfgen.Main("tls", tls.Provider())
     ```
 
-2. Find the provider binary `main` that calls `tfbridge.Main` from
+3. Find the provider binary `main` that calls `tfbridge.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and update it to `Main` from
    `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge`. Note the signature changes: version parameter is removed,
    `Context` is now required, and there is a new `bridge-metadata.json` blob that needs to be embedded:
@@ -200,7 +200,7 @@ to the Plugin Framework.
      }
      ```
 
-3. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`) from
+4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`) from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and to declare `ProviderInfo` from
    `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge` instead.
 
@@ -229,7 +229,7 @@ to the Plugin Framework.
     }
     ```
 
-4. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
+5. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
    the Pulumi Package Schema. It will now also compute a new metadata file `bridge-metadata.json`, build the provider
    binary, re-generate language-specific SDKs and run tests.
 
