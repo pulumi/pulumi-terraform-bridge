@@ -130,11 +130,9 @@ Follow these steps if you have a Pulumi provider that was bridged from a Terrafo
 Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a version that has migrated
 to the Plugin Framework.
 
-1. Update `./provider/shim` by updating `go.mod` to point to a new version of the Terraform provider as you normally
-   would for upstream upgrades. Make sure the module is now depending on
-   `"github.com/hashicorp/terraform-plugin-framework"` instead of `"github.com/hashicorp/terraform-plugin-sdk/v2"`.
-
-   Update the source code accordingly. For example, a `shim.go` that looked like this:
+1. Ensure you have access to the github.com/hashicorp/terraform-plugin-framework/provider.Provider from the upstream provider.
+   Make sure the module is now depending on "github.com/hashicorp/terraform-plugin-framework" instead of "github.com/hashicorp/terraform-plugin-sdk/v2".
+   If the provider is shimmed (or needs to be), update the source code accordingly. For example, a `shim.go` that looked like this:
 
     ```go
     package shim
