@@ -16,6 +16,11 @@ variable "opt_any_in" {
   default = null
 }
 
+variable "any_with_default" {
+  type = any
+  default = {}
+}
+
 variable "bool_in" {
     type = bool
 }

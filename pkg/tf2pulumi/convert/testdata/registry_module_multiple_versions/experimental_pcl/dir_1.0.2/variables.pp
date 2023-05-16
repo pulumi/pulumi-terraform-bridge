@@ -1,7 +1,7 @@
 config "baseDir" "string" {
   description = "The base directory in which this module will search for static files and templates."
 }
-config "templateVars" "object({})" {
+config "templateVars" {
   default     = {}
   description = "Variables to make available for interpolation and other expressions in template files."
 }
