@@ -291,8 +291,8 @@ some but not all resources/datasources to the Plugin Framework.
 
     ...
 
-    prov := 	prov := tfbridge.ProviderInfo{
-		P:                p,
+    prov := tfbridge.ProviderInfo{
+		P: p,
         ...
     }
     ```
@@ -307,8 +307,8 @@ some but not all resources/datasources to the Plugin Framework.
 
     ...
 
-    prov := 	prov := tfbridge.ProviderInfo{
-		P:                p,
+    prov := tfbridge.ProviderInfo{
+		P: p,
         ...
     }
     ```
