@@ -8,6 +8,9 @@ config nullableStringIn string {
 config optAnyIn {
   default = null
 }
+config anyWithDefault {
+  default = {}
+}
 config boolIn bool {
 }
 config stringListIn "list(string)" {

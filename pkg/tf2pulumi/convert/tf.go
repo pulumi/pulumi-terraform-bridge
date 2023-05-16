@@ -51,6 +51,20 @@ func loadConfigDir(fs afero.Fs, path string) (map[string][]byte, *configs.Module
 	return p.Sources(), mod, diags
 }
 
+func inferPrimitiveType(input cty.Type, defaultType string) string {
+	if input.Equals(cty.Number) {
+		return "number"
+	}
+	if input.Equals(cty.Bool) {
+		return "bool"
+	}
+	if input.Equals(cty.String) {
+		return "string"
+	}
+
+	return defaultType
+}
+
 func convertCtyType(typ cty.Type) string {
 	if typ.Equals(cty.Number) {
 		return "number"
@@ -99,6 +113,11 @@ func convertCtyType(typ cty.Type) string {
 				// add a comma to all pairs but the last one
 				attributePairs = attributePairs + ", "
 			}
+		}
+
+		if len(attributes) == 0 {
+			// empty object, treat it as dynamic
+			return "any"
 		}
 
 		return fmt.Sprintf("object({%s})", attributePairs)
@@ -1571,8 +1590,10 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 
 	pulumiType := convertCtyType(variable.Type)
 	if !variable.Default.IsNull() && variable.Type == cty.DynamicPseudoType {
-		// If we don't have an explicit type but we do have a default value, use it's type
-		pulumiType = convertCtyType(variable.Default.Type())
+		// If we don't have an explicit type but we do have a default value, use its type
+		// Only do this for primitive types. For complex types such as objects and lists
+		// keep the type dynamic since it is usually used as such
+		pulumiType = inferPrimitiveType(variable.Default.Type(), pulumiType)
 	}
 
 	// Don't add the "any" type explicitly, it's the default
