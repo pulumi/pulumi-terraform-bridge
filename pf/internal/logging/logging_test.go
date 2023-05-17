@@ -38,7 +38,7 @@ func TestLogging(t *testing.T) {
 		logs []log
 	}{
 		{
-			name: "INFO and higher propagates by default",
+			name: "WARN and higher propagates by default",
 			opts: LogOptions{},
 			emit: func(ctx context.Context) {
 				tflog.Trace(ctx, "Something went wrong TRACE")
@@ -48,10 +48,6 @@ func TestLogging(t *testing.T) {
 				tflog.Error(ctx, "Something went wrong ERROR ")
 			},
 			logs: []log{
-				{
-					msg: `Something went wrong INFO`,
-					sev: diag.Info,
-				},
 				{
 					msg: `Something went wrong WARN`,
 					sev: diag.Warning,
@@ -66,25 +62,25 @@ func TestLogging(t *testing.T) {
 			name: "URN propagates when set",
 			opts: LogOptions{URN: urn},
 			emit: func(ctx context.Context) {
-				tflog.Info(ctx, "OK")
+				tflog.Warn(ctx, "OK")
 			},
-			logs: []log{{sev: diag.Info, msg: `OK`, urn: urn}},
+			logs: []log{{sev: diag.Warning, msg: `OK`, urn: urn}},
 		},
 		{
 			name: "Provider propagates when set",
 			opts: LogOptions{ProviderName: "random"},
 			emit: func(ctx context.Context) {
-				tflog.Info(ctx, "OK")
+				tflog.Warn(ctx, "OK")
 			},
-			logs: []log{{sev: diag.Info, msg: `provider\=random`}},
+			logs: []log{{sev: diag.Warning, msg: `provider\=random`}},
 		},
 		{
 			name: "ProviderVersion propagates when set",
 			opts: LogOptions{ProviderName: "random", ProviderVersion: "4.12.0"},
 			emit: func(ctx context.Context) {
-				tflog.Info(ctx, "OK")
+				tflog.Warn(ctx, "OK")
 			},
-			logs: []log{{sev: diag.Info, msg: `provider\=random@4.12.0`}},
+			logs: []log{{sev: diag.Warning, msg: `provider\=random@4.12.0`}},
 		},
 	}
 
