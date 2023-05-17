@@ -109,7 +109,7 @@ func getDefaultValue(
 
 		// Value is allowed together with EnvVars but serves as a fallback.
 		if defaultInfo.Value != nil {
-			tflog.Info(ctx, "DefaultInfo.Value applied a default value",
+			tflog.Trace(ctx, "DefaultInfo.Value applied a default value",
 				map[string]any{
 					"property": string(property),
 				})
@@ -128,7 +128,7 @@ func getDefaultValue(
 			}
 		}
 	} else if defaultInfo.Value != nil {
-		tflog.Info(ctx, "DefaultInfo.Value applied a default value",
+		tflog.Trace(ctx, "DefaultInfo.Value applied a default value",
 			map[string]any{
 				"property": string(property),
 			})
