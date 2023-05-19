@@ -366,6 +366,39 @@ func TestConfigEncoding(t *testing.T) {
 		})
 	})
 
+	regressUnmarshalTestCases := []testCase{
+		{
+			shim.TypeList,
+			makeValue(`
+			[
+			  {
+			    "address": "somewhere.org",
+			    "password": {
+			      "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+			      "value": "some-password"
+			    },
+			    "username": "some-user"
+			  }
+			]`),
+			resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"address":  resource.NewStringProperty("somewhere.org"),
+					"password": resource.NewStringProperty("some-password"),
+					"username": resource.NewStringProperty("some-user"),
+				}),
+			}),
+		},
+	}
+
+	t.Run("regress-unmarshal", func(t *testing.T) {
+		for i, tc := range regressUnmarshalTestCases {
+			tc := tc
+			t.Run(fmt.Sprintf("UnmarshalPropertyValue/%d", i), func(t *testing.T) {
+				checkUnmarshal(t, tc)
+			})
+		}
+	})
+
 	// NOTE about the PropertyValue cases not tested here.
 	//
 	// NewAssetProperty, NewArchiveProperty are skipped because MarshalOptions sets RejectAssets: true, which will
