@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -29,6 +28,7 @@ import (
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -608,10 +608,9 @@ func (s set[T]) setMinus(other set[T]) set[T] {
 }
 
 func showStruct(value *structpb.Value) string {
-	m := jsonpb.Marshaler{}
-	v, err := m.MarshalToString(value)
+	j, err := protojson.Marshal(value)
 	if err != nil {
 		return err.Error()
 	}
-	return v
+	return string(j)
 }
