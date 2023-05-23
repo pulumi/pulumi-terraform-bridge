@@ -6,7 +6,7 @@ replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../
 
 require (
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.3
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.30.0
 )
