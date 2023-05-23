@@ -109,7 +109,7 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestDivergentCheckConfig(t *testing.T) {
-	// Early versions of muxer failed hard no divergent responses from CheckConfig. This test ensures that it can
+	// Early versions of muxer failed hard on divergent responses from CheckConfig. This test ensures that it can
 	// tolerate such responses (with logging or warning). The practical case is divergent handling of secret markers
 	// where pf and v3 based providers respond with the same value but do not agree on the secret markers.
 	req := `
