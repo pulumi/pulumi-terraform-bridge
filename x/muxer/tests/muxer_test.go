@@ -108,6 +108,46 @@ func TestConfigure(t *testing.T) {
 		))
 }
 
+func TestDivergentCheckConfig(t *testing.T) {
+	// Early versions of muxer failed hard no divergent responses from CheckConfig. This test ensures that it can
+	// tolerate such responses (with logging or warning). The practical case is divergent handling of secret markers
+	// where pf and v3 based providers respond with the same value but do not agree on the secret markers.
+	req := `
+	{
+	  "urn": "urn:pulumi:repro::label-gitlab::pulumi:providers:gitlab::default",
+	  "olds": {},
+	  "news": {
+	    "token": "verysecrettoken",
+	    "version": "5.0.1"
+	  }
+	}`
+	resp0 := `
+	{
+	  "inputs": {
+	    "token": {
+	      "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+	      "value": "verysecrettoken"
+	    },
+	    "version": "5.0.1"
+	  }
+	}`
+	resp1 := `
+        {
+	  "inputs": {
+	    "token": "verysecrettoken",
+	    "version": "5.0.1"
+	  }
+	}`
+	muxedResp := resp0
+	e := exchange("/pulumirpc.ResourceProvider/CheckConfig", req, muxedResp,
+		part(0, req, resp0),
+		part(1, req, resp1))
+
+	m := muxer.DispatchTable{}
+	m.Resources = map[string]int{}
+	mux(t, m).replay(e)
+}
+
 func TestGetMapping(t *testing.T) {
 	t.Run("single-responding-server", func(t *testing.T) {
 		var m muxer.DispatchTable

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golang/glog"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -127,16 +129,16 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 		// Add missing inputs, but don't override existing inputs.
 		for k, v := range r.A.GetInputs().GetFields() {
 			existingValue, has := inputs.Fields[k]
-			if has {
-				// If different servers return different check values,
-				// signal an error. We don't know how to deal with that.
-				if proto.Equal(existingValue, v) {
-					continue
-				}
-				return nil, fmt.Errorf("config value '%s' mismatch between servers %d and a previous server",
-					k, i)
+			if has && !proto.Equal(existingValue, v) {
+				// If different servers return different values, pick arbitrarily.
+				glog.V(9).Infof("[muxer] CheckConfig results do not agree on the '%s' property:"+
+					"\n    server %d: %s"+
+					"\n    server %d: %s"+
+					"\nPicking the server %d response",
+					k, i-1, showStruct(existingValue), i, showStruct(v), i-1)
+			} else {
+				inputs.Fields[k] = v
 			}
-			inputs.Fields[k] = v
 		}
 
 		// Here we de-duplicate errors.
@@ -603,4 +605,13 @@ func (s set[T]) setMinus(other set[T]) set[T] {
 		new[k] = struct{}{}
 	}
 	return new
+}
+
+func showStruct(value *structpb.Value) string {
+	m := jsonpb.Marshaler{}
+	v, err := m.MarshalToString(value)
+	if err != nil {
+		return err.Error()
+	}
+	return v
 }
