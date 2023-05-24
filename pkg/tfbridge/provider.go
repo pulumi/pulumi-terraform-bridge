@@ -32,7 +32,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	multierror "github.com/hashicorp/go-multierror"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -336,15 +336,17 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
-	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
+	missingKeys, checkFailures := validateProviderConfig(ctx, urn, p, config)
 	if len(missingKeys) > 0 {
 		err := rpcerror.WithDetails(
 			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
 			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
 		return nil, err
 	}
-	if validationErrors != nil {
-		return nil, validationErrors
+	if checkFailures != nil {
+		return &pulumirpc.CheckResponse{
+			Failures: checkFailures,
+		}, nil
 	}
 
 	// Ensure propreties marked secret in the schema have secret values.
@@ -382,8 +384,12 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 	return MakeTerraformConfigFromInputs(p.tf, inputs), nil
 }
 
-func validateProviderConfig(ctx context.Context, p *Provider, config shim.ResourceConfig) (
-	[]*pulumirpc.ConfigureErrorMissingKeys_MissingKey, error) {
+func validateProviderConfig(
+	ctx context.Context,
+	urn resource.URN,
+	p *Provider,
+	config shim.ResourceConfig,
+) ([]*pulumirpc.ConfigureErrorMissingKeys_MissingKey, []*pulumirpc.CheckFailure) {
 
 	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
 	p.config.Range(func(key string, meta shim.Schema) bool {
@@ -409,16 +415,16 @@ func validateProviderConfig(ctx context.Context, p *Provider, config shim.Resour
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(config)
 	for _, warn := range warns {
-		if err := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn)); err != nil {
-			return nil, err
+		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn))
+		if logErr != nil {
+			glog.V(9).Infof("Failed to log to the engine: %v", logErr)
+			return nil, nil
 		}
 	}
 
-	if len(errs) > 0 {
-		return nil, errors.Wrap(multierror.Append(nil, errs...), "could not validate provider configuration")
-	}
-
-	return nil, nil
+	failures := p.formatCheckFailures(urn, true /*isProvider*/, []string{urn.Name().String()}, p.config,
+		p.info.GetConfig(), errs)
+	return nil, failures
 }
 
 // DiffConfig diffs the configuration for this Terraform provider.
@@ -548,14 +554,43 @@ func (p *Provider) Configure(ctx context.Context,
 // https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
 var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
 
-func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err error) string {
+func (p *Provider) formatCheckFailures(
+	urn resource.URN,
+	isProvider bool,
+	prefix []string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+	errs []error,
+) []*pulumirpc.CheckFailure {
+	if len(errs) == 0 {
+		return nil
+	}
+	var failures []*pulumirpc.CheckFailure
+	for _, err := range errs {
+		failures = append(failures, &pulumirpc.CheckFailure{
+			Reason: p.formatFailureReason(urn, isProvider, prefix, schemaMap, schemaInfos, err),
+		})
+	}
+	return failures
+}
+
+func (p *Provider) formatFailureReason(
+	urn resource.URN,
+	isProvider bool,
+	prefix []string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+	err error,
+) string {
 	reason := err.Error()
+
 	var attributePath string
 	var d *diagnostics.ValidationError
+
 	if errors.As(err, &d) {
 		path := d.AttributePath
 		if len(path) > 0 {
-			attrPath := pathToAttributePath(path, tokenType, res)
+			attrPath := append(prefix, pathToAttributePath(path, schemaMap, schemaInfos)...)
 			attributePath = strings.Join(attrPath, "")
 		}
 	}
@@ -563,15 +598,16 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 	// Translate the name in missing-required-field error from TF to Pulumi naming scheme
 	parts := requiredFieldRegex.FindStringSubmatch(reason)
 	if len(parts) == 2 {
-		if getSchema(res.TF.Schema(), parts[1]) != nil {
-			name := TerraformToPulumiNameV2(parts[1], res.TF.Schema(), res.Schema.Fields)
+		if getSchema(schemaMap, parts[1]) != nil {
+			name := TerraformToPulumiNameV2(parts[1], schemaMap, schemaInfos)
 			message := fmt.Sprintf("Missing required property '%s'", name)
 			// If a required field is missing and the value can be set via config,
 			// extend the error with a hint to set the proper config value
-			field := res.Schema.Fields[name]
+			field := schemaInfos[name]
 			if field != nil && field.Default != nil {
 				if configKey := field.Default.Config; configKey != "" {
-					format := "%s. Either set it explicitly or configure it with 'pulumi config set %s:%s <value>'."
+					format := "%s. Either set it explicitly or configure it with " +
+						"'pulumi config set %s:%s <value>'."
 					return fmt.Sprintf(format, message, p.module, configKey)
 				}
 			}
@@ -579,16 +615,47 @@ func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err 
 		}
 	}
 
+	if isProvider {
+		// Provider configuration can be using an explicit provider or the default provider, use a heuristic
+		// here based on URN, to detect the default provider.
+		isExplicit := !strings.Contains(urn.Name().String(), "default")
+		reason = fmt.Sprintf("could not validate provider configuration: %s", reason)
+		if key, gotKey := providerKey(p.module, d.AttributePath); !isExplicit && gotKey {
+			reason = fmt.Sprintf("%s. Check `pulumi config get %s`.", reason, key)
+		}
+		if attributePath != "" && isExplicit {
+			reason = fmt.Sprintf("%s. Examine values at '%s'.", reason, attributePath)
+		}
+		return reason
+	}
+
 	if attributePath != "" {
 		reason += fmt.Sprintf(". Examine values at '%s'.", attributePath)
 	}
+
 	return reason
 }
 
-// pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema.
-func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []string {
-	res.Schema.GetTok()
-	ap := []string{tokenType.Name().String()}
+func providerKey(module string, path cty.Path) (key string, got bool) {
+	if len(path) < 1 {
+		return
+	}
+	step, ok := path[0].(cty.GetAttrStep)
+	if !ok {
+		return
+	}
+	return fmt.Sprintf("%s:%s", module, step.Name), true
+}
+
+// pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema. This looks
+// similar to PropertyPathToSchemaPath but is inverse in direction and works with cty.Path; possibly some factoring is
+// possible to simplify both and reuse functionality.
+func pathToAttributePath(
+	p cty.Path,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) []string {
+	ap := []string{}
 	var sch shim.Schema
 	var info *SchemaInfo
 	for _, step := range p {
@@ -596,8 +663,8 @@ func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []stri
 		case cty.GetAttrStep:
 			ap = append(ap, ".")
 			if sch == nil {
-				sch = getSchema(res.TF.Schema(), selector.Name)
-				info = res.Schema.Fields[selector.Name]
+				sch = getSchema(schemaMap, selector.Name)
+				info = schemaInfos[selector.Name]
 			} else {
 				sch, info = elemSchemas(sch, info)
 			}
@@ -684,12 +751,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// Now produce a return value of any properties that failed verification.
-	var failures []*pulumirpc.CheckFailure
-	for _, err := range errs {
-		failures = append(failures, &pulumirpc.CheckFailure{
-			Reason: p.formatFailureReason(t, res, err),
-		})
-	}
+	failures := p.formatCheckFailures(urn, false /*isProvider*/, []string{t.Name().String()}, res.TF.Schema(),
+		res.Schema.GetFields(), errs)
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)

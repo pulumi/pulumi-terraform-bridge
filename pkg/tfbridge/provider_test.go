@@ -5,7 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
@@ -840,32 +839,36 @@ func TestCheckConfig(t *testing.T) {
 
 	t.Run("invalid_config_value", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.Schema["propwithvalidator"] = &schema.Schema{
-			Type:     schema.TypeString,
-			Optional: true,
-			ValidateDiagFunc: func(v interface{}, atpath cty.Path) (ret diag.Diagnostics) {
-				if v.(string) != "baz" {
-					return diag.Errorf("requiredprop should equal 'baz'")
-				}
-				return
-			},
-		}
 		provider := &Provider{
 			tf:     shimv2.NewProvider(p),
 			config: shimv2.NewSchemaMap(p.Schema),
+			module: "cloudflare",
 		}
 		ctx := context.Background()
 		args, err := structpb.NewStruct(map[string]interface{}{
 			"requiredprop": "baz",
 		})
 		require.NoError(t, err)
-		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+		// Default provider.
+		resp, err := provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::default_5_2_1",
 			News: args,
 		})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "could not validate provider configuration")
-		require.Contains(t, err.Error(), "1 error occurred")
-		require.Contains(t, err.Error(), "Invalid or unknown key")
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		require.Equal(t, "could not validate provider configuration: "+
+			"Invalid or unknown key. Check `pulumi config get cloudflare:requiredprop`.",
+			resp.Failures[0].Reason)
+		// Explicit provider.
+		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::explicitprovider",
+			News: args,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		require.Equal(t, "could not validate provider configuration: "+
+			"Invalid or unknown key. Examine values at 'explicitprovider.Requiredprop'.",
+			resp.Failures[0].Reason)
 	})
 
 	t.Run("missing_required_config_value", func(t *testing.T) {
