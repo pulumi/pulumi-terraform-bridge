@@ -867,7 +867,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
 		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'provider.Requiredprop'.",
+			"Invalid or unknown key. Examine values at 'explicitprovider.Requiredprop'.",
 			resp.Failures[0].Reason)
 	})
 

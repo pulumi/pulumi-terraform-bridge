@@ -422,7 +422,7 @@ func validateProviderConfig(
 		}
 	}
 
-	failures := p.formatCheckFailures(urn, true /*isProvider*/, []string{"provider"}, p.config,
+	failures := p.formatCheckFailures(urn, true /*isProvider*/, []string{urn.Name().String()}, p.config,
 		p.info.GetConfig(), errs)
 	return nil, failures
 }
