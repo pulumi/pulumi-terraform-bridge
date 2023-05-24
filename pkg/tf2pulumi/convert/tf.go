@@ -1390,6 +1390,18 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			continue
 		}
 
+		blockPath := appendPath(fullyQualifiedPath, block.Type)
+		if block.Type == "dynamic" {
+			// For dynamic blocks the path is the first label, not "dynamic"
+			blockPath = appendPath(fullyQualifiedPath, block.Labels[0])
+		}
+		// If this is a list so add [] to the path
+		isList := !scopes.maxItemsOne(blockPath)
+		name := scopes.pulumiName(blockPath)
+		if isList {
+			blockPath = blockPath + "[]"
+		}
+
 		if block.Type == "dynamic" {
 			dynamicBody, ok := block.Body.(*hclsyntax.Body)
 			contract.Assertf(ok, "%T was not a hclsyntax.Body", dynamicBody)
@@ -1427,16 +1439,13 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCParen, ")"))
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenColon, ":"))
 
-			blockPath := appendPath(fullyQualifiedPath, block.Labels[0])
-			name := scopes.pulumiName(blockPath)
-
 			bodyTokens := hclwrite.Tokens{makeToken(hclsyntax.TokenIdent, "{}")}
 			for _, innerBlock := range dynamicBody.Blocks {
 				if innerBlock.Type == "content" {
 					scopes.push(map[string]string{
 						tfEachVar: pulumiEachVar,
 					})
-					contentBody := convertBody(sources, scopes, blockPath+"[]", innerBlock.Body)
+					contentBody := convertBody(sources, scopes, blockPath, innerBlock.Body)
 					bodyTokens = tokensForObject(contentBody)
 					scopes.pop()
 				}
@@ -1445,29 +1454,33 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			dynamicTokens = append(dynamicTokens, bodyTokens...)
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCBrack, "]"))
 
+			if !isList {
+				// This is a block attribute, not a list
+
+				// TODO: This _is_ not correct but it makes the binder happy, we need a new "single_or_none"
+				// intrinsic to handle this correctly.
+				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenOBrack, "["))
+				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenNumberLit, "0"))
+				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCBrack, "]"))
+			}
+
 			newAttributes = append(newAttributes, bodyAttrTokens{
 				Name:  name,
 				Value: dynamicTokens,
 			})
-			continue
-		}
-
-		blockPath := appendPath(fullyQualifiedPath, block.Type)
-		name := scopes.pulumiName(blockPath)
-
-		isList := !scopes.maxItemsOne(blockPath)
-		if !isList {
-			// This is a block attribute, not a list
-			newAttributes = append(newAttributes, bodyAttrTokens{
-				Line:  block.DefRange.Start.Line,
-				Name:  name,
-				Value: tokensForObject(convertBody(sources, scopes, blockPath, block.Body)),
-			})
 		} else {
-			list := blockLists[name]
-			// This is a list so add [] to the path
-			list = append(list, convertBody(sources, scopes, blockPath+"[]", block.Body))
-			blockLists[name] = list
+			if !isList {
+				// This is a block attribute, not a list
+				newAttributes = append(newAttributes, bodyAttrTokens{
+					Line:  block.DefRange.Start.Line,
+					Name:  name,
+					Value: tokensForObject(convertBody(sources, scopes, blockPath, block.Body)),
+				})
+			} else {
+				list := blockLists[name]
+				list = append(list, convertBody(sources, scopes, blockPath, block.Body))
+				blockLists[name] = list
+			}
 		}
 	}
 
