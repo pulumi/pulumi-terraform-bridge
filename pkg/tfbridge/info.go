@@ -114,6 +114,13 @@ type ProviderInfo struct {
 	SkipExamples func(SkipExamplesArgs) bool
 }
 
+func (p *ProviderInfo) GetConfig() map[string]*SchemaInfo {
+	if p.Config != nil {
+		return p.Config
+	}
+	return map[string]*SchemaInfo{}
+}
+
 // The function used to produce the set of edit rules for a provider.
 //
 // For example, if you want to skip default edits, you would use the function:
