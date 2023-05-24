@@ -114,9 +114,9 @@ type ProviderInfo struct {
 	SkipExamples func(SkipExamplesArgs) bool
 }
 
-func (p *ProviderInfo) GetConfig() map[string]*SchemaInfo {
-	if p.Config != nil {
-		return p.Config
+func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {
+	if info.Config != nil {
+		return info.Config
 	}
 	return map[string]*SchemaInfo{}
 }
