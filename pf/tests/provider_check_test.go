@@ -111,6 +111,31 @@ func TestCheck(t *testing.T) {
 			}`, "Invalid Attribute Value Length. Attribute config_value string length must be "+
 				"at least 2, got: 1. Examine values at 'r.configValue'."),
 		},
+		{
+			"missing_required_config_value",
+			schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{Computed: true},
+					"config_value": schema.StringAttribute{
+						Required: true,
+					},
+				},
+			},
+			`
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			    "olds": {},
+			    "news": {},
+			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			  },
+			  "response": {
+                            "inputs": {},
+                            "failures": [{"property": "configValue", "reason": "Missing a required property"}]
+			  }
+			}`,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -131,7 +156,12 @@ func TestCheck(t *testing.T) {
 				Version:      "0.0.1",
 				MetadataInfo: &tfbridge3.MetadataInfo{},
 				Resources: map[string]*tfbridge3.ResourceInfo{
-					"testprovider_res": {Tok: "testprovider:index/res:Res"},
+					"testprovider_res": {
+						Tok: "testprovider:index/res:Res",
+						Docs: &tfbridge3.DocInfo{
+							Markdown: []byte("OK"),
+						},
+					},
 				},
 			}
 			providerInfo := tfbridge.ProviderInfo{

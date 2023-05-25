@@ -16,8 +16,10 @@ package tfbridge
 
 import (
 	"context"
+	"strings"
 
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
@@ -97,6 +99,19 @@ func (p *provider) validateResourceConfig(
 	checkFailures := []plugin.CheckFailure{}
 	remainingDiagnostics := []*tfprotov6.Diagnostic{}
 	for _, diag := range resp.Diagnostics {
+		if k := detectMissingKey(ctx, schemaMap, schemaInfos, diag); k != nil {
+			reason := "Missing a required property"
+			desc := k.Description
+			if desc != "" {
+				reason += ": " + strings.ReplaceAll(desc, "\n", " ")
+			}
+			checkFailures = append(checkFailures, plugin.CheckFailure{
+				Property: resource.PropertyKey(k.Name),
+				Reason:   reason,
+			})
+			continue
+		}
+
 		if cf, ok := p.detectCheckFailure(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, diag); ok {
 			checkFailures = append(checkFailures, cf)
 			continue
