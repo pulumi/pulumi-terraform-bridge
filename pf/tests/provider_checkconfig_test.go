@@ -27,16 +27,18 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	tfbridge3 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestCheckConfig(t *testing.T) {
@@ -191,6 +193,45 @@ func TestCheckConfig(t *testing.T) {
 		assert.Equal(t, "could not validate provider configuration: "+
 			"Invalid or unknown key. Examine values at 'explicitprovider.Requiredprop'.",
 			resp.Failures[0].Reason)
+	})
+
+	t.Run("validators", func(t *testing.T) {
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"my_prop": schema.StringAttribute{
+					Optional: true,
+					Validators: []validator.String{
+						stringvalidator.LengthAtLeast(2),
+					},
+				},
+			},
+		}
+		ctx := context.Background()
+		s := makeProviderServer(t, schema)
+		args, err := structpb.NewStruct(map[string]any{"myProp": "s"})
+		require.NoError(t, err)
+		res, err := s.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::prov::pulumi:providers:prov::explicitprovider",
+			News: args,
+		})
+		assert.NoError(t, err)
+		require.Equal(t, 1, len(res.Failures))
+		require.Equal(t, "could not validate provider configuration: Invalid Attribute Value Length. "+
+			"Attribute my_prop string length must be at least 2, got: 1. "+
+			"Examine values at 'explicitprovider.myProp'.", res.Failures[0].Reason)
+
+		// default provider
+		args, err = structpb.NewStruct(map[string]any{"myProp": "s"})
+		require.NoError(t, err)
+		res, err = s.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::prov::pulumi:providers:prov::default_5_2_1",
+			News: args,
+		})
+		assert.NoError(t, err)
+		require.Equal(t, 1, len(res.Failures))
+		require.Equal(t, "could not validate provider configuration: Invalid Attribute Value Length. "+
+			"Attribute my_prop string length must be at least 2, got: 1. "+
+			"Check `pulumi config get testprovider:my_prop`.", res.Failures[0].Reason)
 	})
 
 	t.Run("missing_required_config_value", func(t *testing.T) {

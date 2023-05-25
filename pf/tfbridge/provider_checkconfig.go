@@ -89,12 +89,10 @@ func (p *provider) CheckConfigWithContext(
 		}
 	}
 
-	/* now: validateProviderConfig */
-
 	// Store for use in subsequent ApplyDefaultInfoValues.
 	p.lastKnownProviderConfig = news
 
-	missingKeys, checkFailures, err := p.validateProviderConfig(ctx, news)
+	missingKeys, checkFailures, err := p.validateProviderConfig(ctx, urn, news)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -115,11 +113,13 @@ func (p *provider) CheckConfigWithContext(
 
 func (p *provider) validateProviderConfig(
 	ctx context.Context,
+	urn resource.URN,
 	inputs resource.PropertyMap,
 ) ([]*pulumirpc.ConfigureErrorMissingKeys_MissingKey, []plugin.CheckFailure, error) {
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
+		err = fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
+		return nil, nil, err
 	}
 	req := &tfprotov6.ValidateProviderConfigRequest{
 		Config: config,
@@ -137,10 +137,15 @@ func (p *provider) validateProviderConfig(
 
 	schemaMap := p.schemaOnlyProvider.Schema()
 	schemaInfos := p.info.Config
+	checkFailures := []plugin.CheckFailure{}
 
 	for _, diag := range resp.Diagnostics {
 		if k := detectMissingKey(ctx, schemaMap, schemaInfos, diag); k != nil {
 			missingKeys = append(missingKeys, k)
+			continue
+		}
+		if cf, ok := p.detectCheckFailure(ctx, urn, true /*isProvider*/, schemaMap, schemaInfos, diag); ok {
+			checkFailures = append(checkFailures, cf)
 			continue
 		}
 		// TODO handle invalid keys here.
@@ -150,7 +155,7 @@ func (p *provider) validateProviderConfig(
 	if err := p.processDiagnostics(remainingDiagnostics); err != nil {
 		return nil, nil, err
 	}
-	return missingKeys, nil, nil
+	return missingKeys, checkFailures, nil
 }
 
 func detectMissingKey(
@@ -185,6 +190,74 @@ func detectMissingKey(
 	}
 
 	return &mk
+}
+
+func (p *provider) detectCheckFailure(
+	ctx context.Context,
+	urn resource.URN,
+	isProvider bool,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	diag *tfprotov6.Diagnostic,
+) (plugin.CheckFailure, bool) {
+	if diag.Attribute == nil || len(diag.Attribute.Steps()) < 1 {
+		return plugin.CheckFailure{}, false
+	}
+	reason := p.formatFailureReason(ctx, urn, isProvider, urn.Name().String(), schemaMap, schemaInfos, diag)
+	return plugin.CheckFailure{
+		Reason: reason,
+	}, true
+}
+
+func (p *provider) formatFailureReason(
+	ctx context.Context,
+	urn resource.URN,
+	isProvider bool,
+	prefix string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	diag *tfprotov6.Diagnostic,
+) string {
+	reason := diag.Summary
+	if diag.Detail != "" {
+		reason = fmt.Sprintf("%s. %s", reason, diag.Detail)
+	}
+
+	attributePath, err := formatAttributePathAsPulumiPath(schemaMap, schemaInfos, diag.Attribute)
+	if err != nil {
+		tflog.Debug(ctx, fmt.Sprintf("Ignoring error from formatAttributePathAsPulumiPath: %w", err))
+	}
+
+	if isProvider {
+		// Provider configuration can be using an explicit provider or the default provider, use a heuristic
+		// here based on URN, to detect the default provider.
+		isExplicit := !strings.Contains(urn.Name().String(), "default")
+		reason = fmt.Sprintf("could not validate provider configuration: %s", reason)
+		if key, gotKey := providerKey(p.info.Name, diag.Attribute); !isExplicit && gotKey {
+			reason = fmt.Sprintf("%s. Check `pulumi config get %s`.", reason, key)
+		}
+		if attributePath != "" && isExplicit {
+			reason = fmt.Sprintf("%s. Examine values at '%s'.", reason, prefix+"."+attributePath)
+		}
+		return reason
+	}
+
+	if attributePath != "" {
+		reason += fmt.Sprintf(". Examine values at '%s'.", prefix+"."+attributePath)
+	}
+
+	return reason
+}
+
+func providerKey(module string, path *tftypes.AttributePath) (key string, got bool) {
+	if len(path.Steps()) < 1 {
+		return
+	}
+	step, ok := path.Steps()[0].(tftypes.AttributeName)
+	if !ok {
+		return
+	}
+	return fmt.Sprintf("%s:%s", module, string(step)), true
 }
 
 func formatAttributePathAsPulumiPath(
