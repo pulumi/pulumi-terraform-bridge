@@ -17,6 +17,10 @@ package tfbridge
 import (
 	"context"
 
+	"fmt"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -36,15 +40,14 @@ func (p *provider) CheckWithContext(
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	checkedInputs := inputs.Copy()
-	checkFailures := make([]plugin.CheckFailure, 0)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
-		return checkedInputs, checkFailures, err
+		return checkedInputs, []plugin.CheckFailure{}, err
 	}
 
 	// Transform checkedInputs to apply Pulumi-level defaults.
-	checkedInputsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
 		SchemaInfos: rh.pulumiResourceInfo.Fields,
 		ResourceInstance: &tfbridge.PulumiResource{
@@ -56,6 +59,54 @@ func (p *provider) CheckWithContext(
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
-	// TODO[pulumi/pulumi-terraform-bridge#822] ValidateResourceConfig
-	return checkedInputsWithDefaults, checkFailures, nil
+	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
+	if err != nil {
+		return news, checkFailures, err
+	}
+
+	return news, checkFailures, nil
+}
+
+func (p *provider) validateResourceConfig(
+	ctx context.Context,
+	urn resource.URN,
+	rh resourceHandle,
+	inputs resource.PropertyMap,
+) ([]plugin.CheckFailure, error) {
+
+	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+
+	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)
+	if err != nil {
+		return nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
+	}
+
+	req := tfprotov6.ValidateResourceConfigRequest{
+		TypeName: rh.terraformResourceName,
+		Config:   encodedInputs,
+	}
+
+	resp, err := p.tfServer.ValidateResourceConfig(ctx, &req)
+	if err != nil {
+		return nil, fmt.Errorf("error calling ValidateResourceConfig: %w", err)
+	}
+
+	schemaMap := rh.schemaOnlyShimResource.Schema()
+	schemaInfos := rh.pulumiResourceInfo.GetFields()
+
+	checkFailures := []plugin.CheckFailure{}
+	remainingDiagnostics := []*tfprotov6.Diagnostic{}
+	for _, diag := range resp.Diagnostics {
+		if cf, ok := p.detectCheckFailure(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, diag); ok {
+			checkFailures = append(checkFailures, cf)
+			continue
+		}
+		remainingDiagnostics = append(remainingDiagnostics, diag)
+	}
+
+	if err := p.processDiagnostics(remainingDiagnostics); err != nil {
+		return nil, err
+	}
+
+	return checkFailures, nil
 }
