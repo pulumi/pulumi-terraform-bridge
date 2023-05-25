@@ -129,7 +129,7 @@ func (p *provider) validateProviderConfig(
 		return nil, nil, fmt.Errorf("error calling ValidateProviderConfig: %w", err)
 	}
 
-	// Note: according to the docs on resp.PrepareConfig for new providers it typicaly is equal to config passed in
+	// Note: according to the docs on resp.PrepareConfig for new providers it typically is equal to config passed in
 	// ValidateProviderConfigRequest so the code here ignores it for now.
 
 	missingKeys := []*pulumirpc.ConfigureErrorMissingKeys_MissingKey{}
@@ -300,7 +300,7 @@ func formatAttributePathAsPulumiPath(
 			if i > 0 {
 				fmt.Fprintf(&buf, ".")
 			}
-			fmt.Fprintf(&buf, name)
+			fmt.Fprintf(&buf, "%s", name)
 		case tftypes.ElementKeyInt:
 			fmt.Fprintf(&buf, "[%d]", int64(s))
 		case tftypes.ElementKeyString:
