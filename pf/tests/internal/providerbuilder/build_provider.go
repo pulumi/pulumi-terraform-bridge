@@ -25,6 +25,7 @@ type Provider struct {
 	TypeName       string
 	Version        string
 	ProviderSchema schema.Schema
+	AllResources   []Resource
 }
 
 var _ provider.Provider = (*Provider)(nil)
@@ -45,6 +46,13 @@ func (*Provider) DataSources(ctx context.Context) []func() datasource.DataSource
 	return []func() datasource.DataSource{}
 }
 
-func (*Provider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource {
+	r := make([]func() resource.Resource, len(impl.AllResources))
+	for i := 0; i < len(impl.AllResources); i++ {
+		i := i
+		r[i] = func() resource.Resource {
+			return &impl.AllResources[i]
+		}
+	}
+	return r
 }
