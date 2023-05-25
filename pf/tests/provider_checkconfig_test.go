@@ -163,8 +163,6 @@ func TestCheckConfig(t *testing.T) {
 	})
 
 	t.Run("invalid_config_value", func(t *testing.T) {
-		t.Skip("Looks like extra values are silently filtered out currently; need to make sure they generate check failures instead")
-
 		// Test error reporting when an unrecognized property is sent.
 		schema := schema.Schema{}
 		provider := makeProviderServer(t, schema)
@@ -181,7 +179,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
 		assert.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get cloudflare:requiredprop`.",
+			"Invalid or unknown key. Check `pulumi config get testprovider:requiredprop`.",
 			resp.Failures[0].Reason)
 		// Explicit provider.
 		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
@@ -191,7 +189,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
 		assert.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'explicitprovider.Requiredprop'.",
+			"Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.",
 			resp.Failures[0].Reason)
 	})
 
@@ -593,7 +591,11 @@ func TestPreConfigureCallback(t *testing.T) {
 	})
 }
 
-func makeProviderServer(t *testing.T, schema schema.Schema, customize ...func(*tfbridge.ProviderInfo)) pulumirpc.ResourceProviderServer {
+func makeProviderServer(
+	t *testing.T,
+	schema schema.Schema,
+	customize ...func(*tfbridge.ProviderInfo),
+) pulumirpc.ResourceProviderServer {
 	testProvider := &providerbuilder.Provider{
 		TypeName:       "testprovider",
 		Version:        "0.0.1",

@@ -148,8 +148,28 @@ func (p *provider) validateProviderConfig(
 			checkFailures = append(checkFailures, cf)
 			continue
 		}
-		// TODO handle invalid keys here.
 		remainingDiagnostics = append(remainingDiagnostics, diag)
+	}
+
+	// Currently the convert.EncodePropertyMapToDynamic silently filters out keys that are not part of the schema,
+	// but pkg/v3 bridge generated CheckFailures for these. Here is some extra code to compensate.
+	for k := range inputs {
+		// Skip reserved keys such as __defaults.
+		if strings.HasPrefix(string(k), "__") {
+			continue
+		}
+		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
+		_, known := p.configType.AttributeTypes[n]
+		if !known {
+			reason := p.formatFailureReason(ctx, urn, true /*isProvider*/, urn.Name().String(), schemaMap,
+				schemaInfos, &tfprotov6.Diagnostic{
+					Attribute: tftypes.NewAttributePath().WithAttributeName(n),
+					Summary:   "Invalid or unknown key",
+				})
+			checkFailures = append(checkFailures, plugin.CheckFailure{
+				Reason: reason,
+			})
+		}
 	}
 
 	if err := p.processDiagnostics(remainingDiagnostics); err != nil {
