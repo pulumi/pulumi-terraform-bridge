@@ -37,28 +37,6 @@ import (
 )
 
 func TestCheckConfig(t *testing.T) {
-
-	makeProviderServer := func(t *testing.T, schema schema.Schema) pulumirpc.ResourceProviderServer {
-		testProvider := &providerbuilder.Provider{
-			TypeName:       "testprovider",
-			Version:        "0.0.1",
-			ProviderSchema: schema,
-		}
-
-		providerInfo := tfbridge.ProviderInfo{
-			ProviderInfo: tfbridge3.ProviderInfo{
-				Name:         "testprovider",
-				Version:      "0.0.1",
-				MetadataInfo: &tfbridge3.MetadataInfo{},
-			},
-			NewProvider: func() provider.Provider {
-				return testProvider
-			},
-		}
-
-		return newProviderServer(t, providerInfo)
-	}
-
 	t.Run("minimal", func(t *testing.T) {
 		schema := schema.Schema{}
 		testutils.Replay(t, makeProviderServer(t, schema), `
@@ -548,3 +526,24 @@ func TestCheckConfig(t *testing.T) {
 // 		}`)
 // 	})
 // }
+
+func makeProviderServer(t *testing.T, schema schema.Schema) pulumirpc.ResourceProviderServer {
+	testProvider := &providerbuilder.Provider{
+		TypeName:       "testprovider",
+		Version:        "0.0.1",
+		ProviderSchema: schema,
+	}
+
+	providerInfo := tfbridge.ProviderInfo{
+		ProviderInfo: tfbridge3.ProviderInfo{
+			Name:         "testprovider",
+			Version:      "0.0.1",
+			MetadataInfo: &tfbridge3.MetadataInfo{},
+		},
+		NewProvider: func() provider.Provider {
+			return testProvider
+		},
+	}
+
+	return newProviderServer(t, providerInfo)
+}
