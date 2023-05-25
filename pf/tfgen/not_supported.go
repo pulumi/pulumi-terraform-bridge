@@ -81,9 +81,6 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 				u.schema("config:"+path, ds)
 			}
 		}
-
-		u.assertIsZero("PreConfigureCallback", prov.PreConfigureCallback)
-		u.assertIsZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
 	}
 
 	if len(u.autoNamedResources) > 0 {
