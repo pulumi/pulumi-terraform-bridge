@@ -62,6 +62,11 @@ func (p *provider) CheckWithContext(
 	})
 
 	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
+
+	schemaMap := rh.schemaOnlyShimResource.Schema()
+	schemaInfos := rh.pulumiResourceInfo.GetFields()
+	news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
+
 	if err != nil {
 		return news, checkFailures, err
 	}

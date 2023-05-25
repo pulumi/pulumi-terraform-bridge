@@ -33,20 +33,21 @@ import (
 func TestCheck(t *testing.T) {
 
 	type testCase struct {
-		name   string
-		schema schema.Schema
-		replay string
+		name        string
+		schema      schema.Schema
+		replay      string
+		replayMulti string
 	}
 
 	testCases := []testCase{
 		{
-			"minimal",
-			schema.Schema{
+			name: "minimal",
+			schema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
 				},
 			},
-			`
+			replay: `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Check",
 			  "request": {
@@ -61,14 +62,14 @@ func TestCheck(t *testing.T) {
 			}`,
 		},
 		{
-			"prop",
-			schema.Schema{
+			name: "prop",
+			schema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id":   schema.StringAttribute{Computed: true},
 					"prop": schema.StringAttribute{Optional: true},
 				},
 			},
-			`
+			replay: `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Check",
 			  "request": {
@@ -83,8 +84,8 @@ func TestCheck(t *testing.T) {
 			}`,
 		},
 		{
-			"validators",
-			schema.Schema{
+			name: "validators",
+			schema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
 					"prop": schema.StringAttribute{
@@ -95,7 +96,7 @@ func TestCheck(t *testing.T) {
 					},
 				},
 			},
-			fmt.Sprintf(`
+			replay: fmt.Sprintf(`
 			{
 			  "method": "/pulumirpc.ResourceProvider/Check",
 			  "request": {
@@ -112,8 +113,8 @@ func TestCheck(t *testing.T) {
 				"at least 2, got: 1. Examine values at 'r.prop'."),
 		},
 		{
-			"missing_required_prop",
-			schema.Schema{
+			name: "missing_required_prop",
+			schema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
 					"prop": schema.StringAttribute{
@@ -121,7 +122,7 @@ func TestCheck(t *testing.T) {
 					},
 				},
 			},
-			`
+			replay: `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Check",
 			  "request": {
@@ -139,13 +140,13 @@ func TestCheck(t *testing.T) {
 		{
 			// Unlike CheckConfig, unrecognized values are passed through without warning so that Pulumi
 			// resources can extend the protocol without triggering warnings.
-			"unrecognized_prop_passed_through",
-			schema.Schema{
+			name: "unrecognized_prop_passed_through",
+			schema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
 				},
 			},
-			`
+			replay: `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Check",
 			  "request": {
@@ -158,6 +159,51 @@ func TestCheck(t *testing.T) {
                             "inputs": {"prop": "foo"}
 			  }
 			}`,
+		},
+		{
+			name: "enforce_schema_secrets",
+			schema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":   schema.StringAttribute{Computed: true},
+					"prop": schema.StringAttribute{Optional: true, Sensitive: true},
+				},
+			},
+			replayMulti: `
+			[
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Configure",
+			    "request": {
+			      "args": {
+				"version": "4.8.0"
+			      },
+			      "acceptSecrets": true,
+			      "acceptResources": true
+			    },
+			    "response": {
+			      "supportsPreview": true,
+			      "acceptResources": true
+			    }
+			  },
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Check",
+			    "request": {
+			      "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			      "olds": {},
+			      "news": {
+				"prop": "foo"
+			      },
+			      "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			    },
+			    "response": {
+			      "inputs": {
+				"prop": {
+                                  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                                  "value": "foo"
+                                }
+			      }
+			    }
+			  }
+			]`,
 		},
 	}
 
@@ -197,6 +243,9 @@ func TestCheck(t *testing.T) {
 
 			if tc.replay != "" {
 				testutils.Replay(t, s, tc.replay)
+			}
+			if tc.replayMulti != "" {
+				testutils.ReplaySequence(t, s, tc.replayMulti)
 			}
 		})
 	}
