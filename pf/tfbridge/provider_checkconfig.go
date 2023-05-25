@@ -158,6 +158,10 @@ func (p *provider) validateProviderConfig(
 		if strings.HasPrefix(string(k), "__") {
 			continue
 		}
+		// Ignoring version key as it seems to be special.
+		if k == "version" {
+			continue
+		}
 		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
 		_, known := p.configType.AttributeTypes[n]
 		if !known {

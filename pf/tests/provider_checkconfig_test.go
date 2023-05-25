@@ -99,6 +99,9 @@ func TestCheckConfig(t *testing.T) {
 
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{
+				"config_value": schema.StringAttribute{
+					Optional: true,
+				},
 				"scopes": schema.ListAttribute{
 					Optional:    true,
 					ElementType: types.StringType,
