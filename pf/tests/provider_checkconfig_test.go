@@ -240,164 +240,132 @@ func TestCheckConfig(t *testing.T) {
 		require.Equal(t, desc, missingKey.Description)
 	})
 
-	// t.Run("flattened_compound_values", func(t *testing.T) {
-	// 	// Providers may have nested objects or arrays in their configuration space. As of Pulumi v3.63.0 these
-	// 	// may be coming over the wire under a flattened JSON-in-protobuf encoding. This test makes sure they
-	// 	// are recognized correctly.
+	t.Run("flattened_compound_values", func(t *testing.T) {
+		// Providers may have nested objects or arrays in their configuration space. As of Pulumi v3.63.0 these
+		// may be coming over the wire under a flattened JSON-in-protobuf encoding. This test makes sure they
+		// are recognized correctly.
 
-	// 	p := testprovider.ProviderV2()
+		// Examples here are taken from pulumi-gcp, scopes is a list and batching is a nested object.
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"scopes": schema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+				},
+			},
+			Blocks: map[string]schema.Block{
+				"batching": schema.SingleNestedBlock{
+					Attributes: map[string]schema.Attribute{
+						"send_after":      schema.StringAttribute{Optional: true},
+						"enable_batching": schema.BoolAttribute{Optional: true},
+					},
+				},
+			},
+		}
 
-	// 	// Examples here are taken from pulumi-gcp, scopes is a list and batching is a nested object.
-	// 	p.Schema["scopes"] = &schema.Schema{
-	// 		Type:     schema.TypeList,
-	// 		Optional: true,
-	// 		Elem:     &schema.Schema{Type: schema.TypeString},
-	// 	}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+		    "olds": {},
+		    "news": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "inputs": {
+		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+		      "scopes": "[\"a\",\"b\"]",
+		      "version": "6.54.0"
+	            }
+	          }
+		}`)
+	})
 
-	// 	p.Schema["batching"] = &schema.Schema{
-	// 		Type:     schema.TypeList,
-	// 		Optional: true,
-	// 		MaxItems: 1,
-	// 		Elem: &schema.Resource{
-	// 			Schema: map[string]*schema.Schema{
-	// 				"send_after": {
-	// 					Type:     schema.TypeString,
-	// 					Optional: true,
-	// 				},
-	// 				"enable_batching": {
-	// 					Type:     schema.TypeBool,
-	// 					Optional: true,
-	// 				},
-	// 			},
-	// 		},
-	// 	}
+	t.Run("enforce_schema_secrets", func(t *testing.T) {
+		// If the schema marks a config property as sensitive, enforce the secret bit on that property.
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"mysecret": schema.StringAttribute{
+					Optional:  true,
+					Sensitive: true,
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+	              "mysecret": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+	              "mysecret": {
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+	                "value": "foo"
+	              },
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
 
-	// 	provider := &Provider{
-	// 		tf:     shimv2.NewProvider(p),
-	// 		config: shimv2.NewSchemaMap(p.Schema),
-	// 	}
-
-	// 	testutils.Replay(t, provider, `
-	// 	{
-	// 	  "method": "/pulumirpc.ResourceProvider/CheckConfig",
-	// 	  "request": {
-	// 	    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
-	// 	    "olds": {},
-	// 	    "news": {
-	// 	      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
-	// 	      "scopes": "[\"a\",\"b\"]",
-	// 	      "version": "6.54.0"
-	// 	    }
-	// 	  },
-	// 	  "response": {
-	//             "inputs": {
-	// 	      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
-	// 	      "scopes": "[\"a\",\"b\"]",
-	// 	      "version": "6.54.0"
-	//             }
-	//           }
-	// 	}`)
-	// })
-
-	// t.Run("enforce_schema_secrets", func(t *testing.T) {
-	// 	// If the schema marks a config property as sensitive, enforce the secret bit on that property.
-	// 	p := testprovider.ProviderV2()
-
-	// 	p.Schema["mysecret"] = &schema.Schema{
-	// 		Type:      schema.TypeString,
-	// 		Optional:  true,
-	// 		Sensitive: true,
-	// 	}
-
-	// 	provider := &Provider{
-	// 		tf:     shimv2.NewProvider(p),
-	// 		config: shimv2.NewSchemaMap(p.Schema),
-	// 	}
-
-	// 	testutils.Replay(t, provider, `
-	// 	{
-	// 	  "method": "/pulumirpc.ResourceProvider/CheckConfig",
-	// 	  "request": {
-	// 	    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
-	// 	    "olds": {},
-	// 	    "news": {
-	//               "mysecret": "foo",
-	// 	      "version": "6.54.0"
-	// 	    }
-	// 	  },
-	// 	  "response": {
-	// 	    "inputs": {
-	//               "mysecret": {
-	// 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-	//                 "value": "foo"
-	//               },
-	// 	      "version": "6.54.0"
-	// 	    }
-	// 	  }
-	// 	}`)
-	// })
-
-	// t.Run("enforce_schema_nested_secrets", func(t *testing.T) {
-	// 	// Flattened compound values may encode that some nested properties are sensitive. There is currently no
-	// 	// way to preserve the secret-ness accurately in the JSON-in-proto encoding. Instead of this, bridged
-	// 	// providers approximate and mark the entire property as secret when any of the components are
-	// 	// sensitive.
-	// 	p := testprovider.ProviderV2()
-
-	// 	p.Schema["scopes"] = &schema.Schema{
-	// 		Type:     schema.TypeList,
-	// 		Optional: true,
-	// 		Elem:     &schema.Schema{Type: schema.TypeString},
-	// 	}
-
-	// 	p.Schema["batching"] = &schema.Schema{
-	// 		Type:     schema.TypeList,
-	// 		Optional: true,
-	// 		MaxItems: 1,
-	// 		Elem: &schema.Resource{
-	// 			Schema: map[string]*schema.Schema{
-	// 				"send_after": {
-	// 					Type:      schema.TypeString,
-	// 					Sensitive: true,
-	// 					Optional:  true,
-	// 				},
-	// 				"enable_batching": {
-	// 					Type:     schema.TypeBool,
-	// 					Optional: true,
-	// 				},
-	// 			},
-	// 		},
-	// 	}
-
-	// 	provider := &Provider{
-	// 		tf:     shimv2.NewProvider(p),
-	// 		config: shimv2.NewSchemaMap(p.Schema),
-	// 	}
-
-	// 	testutils.Replay(t, provider, `
-	//         {
-	//           "method": "/pulumirpc.ResourceProvider/CheckConfig",
-	//           "request": {
-	//             "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
-	//             "olds": {},
-	//             "news": {
-	//               "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
-	//               "scopes": "[\"a\",\"b\"]",
-	//               "version": "6.54.0"
-	//             }
-	//           },
-	//           "response": {
-	//             "inputs": {
-	//               "batching": {
-	//                 "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-	//                 "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
-	//               },
-	//               "scopes": "[\"a\",\"b\"]",
-	//               "version": "6.54.0"
-	//             }
-	//           }
-	//         }`)
-	// })
+	t.Run("enforce_schema_nested_secrets", func(t *testing.T) {
+		// Flattened compound values may encode that some nested properties are sensitive. There is currently no
+		// way to preserve the secret-ness accurately in the JSON-in-proto encoding. Instead of this, bridged
+		// providers approximate and mark the entire property as secret when any of the components are
+		// sensitive.
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"scopes": schema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+				},
+			},
+			Blocks: map[string]schema.Block{
+				"batching": schema.SingleNestedBlock{
+					Attributes: map[string]schema.Attribute{
+						"send_after": schema.StringAttribute{
+							Optional:  true,
+							Sensitive: true,
+						},
+						"enable_batching": schema.BoolAttribute{Optional: true},
+					},
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+	        {
+	          "method": "/pulumirpc.ResourceProvider/CheckConfig",
+	          "request": {
+	            "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+	            "olds": {},
+	            "news": {
+	              "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
+	              "scopes": "[\"a\",\"b\"]",
+	              "version": "6.54.0"
+	            }
+	          },
+	          "response": {
+	            "inputs": {
+	              "batching": {
+	                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+	                "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
+	              },
+	              "scopes": "[\"a\",\"b\"]",
+	              "version": "6.54.0"
+	            }
+	          }
+	        }`)
+	})
 }
 
 // func TestPreConfigureCallback(t *testing.T) {
