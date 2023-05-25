@@ -136,6 +136,29 @@ func TestCheck(t *testing.T) {
 			  }
 			}`,
 		},
+		{
+			// Unlike CheckConfig, unrecognized values are passed through without warning so that Pulumi
+			// resources can extend the protocol without triggering warnings.
+			"unrecognized_config_value_passed_through",
+			schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{Computed: true},
+				},
+			},
+			`
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			    "olds": {},
+			    "news": {"configValue": "foo"},
+			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			  },
+			  "response": {
+                            "inputs": {"configValue": "foo"}
+			  }
+			}`,
+		},
 	}
 
 	for _, tc := range testCases {
