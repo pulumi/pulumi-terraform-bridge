@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
@@ -89,6 +91,48 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 		schema.SchemaMap(map[string]shim.Schema{name: sch}),
 		map[string]*SchemaInfo{name: ps},
 		upper)
+}
+
+// A helper method to perform TerraformToPulumiNameV2 translation at nested property positions easily. The path argument
+// specifies the nested location of the current property within the schema; sch and ps arguments specify top-level
+// resource, data source or provider SchemaMap and field SchemaInfo overrides. This method automatically finds the
+// approproate nested SchemaMap and field overrides for the property and performs the name translation.
+func TerraformToPulumiNameAtPath(
+	path walk.SchemaPath,
+	sch shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) (string, error) {
+	if len(path) == 0 {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath: path cannot be empty")
+	}
+	attr, ok := path[len(path)-1].(walk.GetAttrStep)
+	if !ok {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath: path must end with GetAttrStep")
+	}
+
+	// If the path is of length 1, this simply degenerates to TerraformToPulumiNameV2.
+	if len(path) == 1 {
+		return TerraformToPulumiNameV2(attr.Name, sch, ps), nil
+	}
+
+	// Otherwise we lookup parent object schema.
+	objSchema, objInfos, err := LookupSchemas(path[0:len(path)-1], sch, ps)
+	if err != nil {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath failed to find parent object schema: %w", err)
+	}
+
+	var objSchemaMap shim.SchemaMap
+	switch r := objSchema.Elem().(type) {
+	case shim.Resource:
+		objSchemaMap = r.Schema()
+	}
+
+	var objFields map[string]*SchemaInfo
+	if objInfos != nil {
+		objFields = objInfos.Fields
+	}
+
+	return TerraformToPulumiNameV2(attr.Name, objSchemaMap, objFields), nil
 }
 
 func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo, upper bool) string {
