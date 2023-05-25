@@ -245,7 +245,7 @@ func (p *provider) formatFailureReason(
 
 	attributePath, err := formatAttributePathAsPulumiPath(schemaMap, schemaInfos, diag.Attribute)
 	if err != nil {
-		tflog.Debug(ctx, fmt.Sprintf("Ignoring error from formatAttributePathAsPulumiPath: %w", err))
+		tflog.Debug(ctx, fmt.Sprintf("Ignoring error from formatAttributePathAsPulumiPath: %v", err))
 	}
 
 	if isProvider {
