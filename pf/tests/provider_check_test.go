@@ -61,11 +61,11 @@ func TestCheck(t *testing.T) {
 			}`,
 		},
 		{
-			"config_value",
+			"prop",
 			schema.Schema{
 				Attributes: map[string]schema.Attribute{
-					"id":           schema.StringAttribute{Computed: true},
-					"config_value": schema.StringAttribute{Optional: true},
+					"id":   schema.StringAttribute{Computed: true},
+					"prop": schema.StringAttribute{Optional: true},
 				},
 			},
 			`
@@ -74,11 +74,11 @@ func TestCheck(t *testing.T) {
 			  "request": {
 			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
 			    "olds": {},
-			    "news": {"configValue": "foo"},
+			    "news": {"prop": "foo"},
 			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
 			  },
 			  "response": {
-			    "inputs": {"configValue": "foo"}
+			    "inputs": {"prop": "foo"}
 			  }
 			}`,
 		},
@@ -87,7 +87,7 @@ func TestCheck(t *testing.T) {
 			schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
-					"config_value": schema.StringAttribute{
+					"prop": schema.StringAttribute{
 						Optional: true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(2),
@@ -101,22 +101,22 @@ func TestCheck(t *testing.T) {
 			  "request": {
 			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
 			    "olds": {},
-			    "news": {"configValue": "f"},
+			    "news": {"prop": "f"},
 			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
 			  },
 			  "response": {
-                            "inputs": {"configValue": "f"},
+                            "inputs": {"prop": "f"},
 			    "failures": [{"reason": "%s"}]
 			  }
-			}`, "Invalid Attribute Value Length. Attribute config_value string length must be "+
-				"at least 2, got: 1. Examine values at 'r.configValue'."),
+			}`, "Invalid Attribute Value Length. Attribute prop string length must be "+
+				"at least 2, got: 1. Examine values at 'r.prop'."),
 		},
 		{
-			"missing_required_config_value",
+			"missing_required_prop",
 			schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
-					"config_value": schema.StringAttribute{
+					"prop": schema.StringAttribute{
 						Required: true,
 					},
 				},
@@ -132,14 +132,14 @@ func TestCheck(t *testing.T) {
 			  },
 			  "response": {
                             "inputs": {},
-                            "failures": [{"property": "configValue", "reason": "Missing a required property"}]
+                            "failures": [{"property": "prop", "reason": "Missing a required property"}]
 			  }
 			}`,
 		},
 		{
 			// Unlike CheckConfig, unrecognized values are passed through without warning so that Pulumi
 			// resources can extend the protocol without triggering warnings.
-			"unrecognized_config_value_passed_through",
+			"unrecognized_prop_passed_through",
 			schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{Computed: true},
@@ -151,11 +151,11 @@ func TestCheck(t *testing.T) {
 			  "request": {
 			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
 			    "olds": {},
-			    "news": {"configValue": "foo"},
+			    "news": {"prop": "foo"},
 			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
 			  },
 			  "response": {
-                            "inputs": {"configValue": "foo"}
+                            "inputs": {"prop": "foo"}
 			  }
 			}`,
 		},
