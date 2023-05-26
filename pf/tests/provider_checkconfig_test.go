@@ -196,6 +196,34 @@ func TestCheckConfig(t *testing.T) {
 			resp.Failures[0].Reason)
 	})
 
+	t.Run("levenshtein_correction", func(t *testing.T) {
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"config_value": schema.StringAttribute{
+					Optional: true,
+				},
+			},
+		}
+		provider := makeProviderServer(t, schema)
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"cofnigValue": "baz",
+		})
+		require.NoError(t, err)
+		resp, err := provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::default_5_2_1",
+			News: args,
+		})
+		require.NoError(t, err)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		require.Equal(t, "could not validate provider configuration: "+
+			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
+			"Did you mean `testprovider:configValue`?",
+			resp.Failures[0].Reason)
+
+	})
+
 	t.Run("validators", func(t *testing.T) {
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -232,7 +260,7 @@ func TestCheckConfig(t *testing.T) {
 		require.Equal(t, 1, len(res.Failures))
 		require.Equal(t, "could not validate provider configuration: Invalid Attribute Value Length. "+
 			"Attribute my_prop string length must be at least 2, got: 1. "+
-			"Check `pulumi config get testprovider:my_prop`.", res.Failures[0].Reason)
+			"Check `pulumi config get testprovider:myProp`.", res.Failures[0].Reason)
 	})
 
 	t.Run("missing_required_config_value", func(t *testing.T) {

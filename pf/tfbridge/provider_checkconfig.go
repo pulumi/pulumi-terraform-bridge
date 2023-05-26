@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/agext/levenshtein"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -257,8 +258,21 @@ func (p *provider) formatFailureReason(
 		// here based on URN, to detect the default provider.
 		isExplicit := !strings.Contains(urn.Name().String(), "default")
 		reason = fmt.Sprintf("could not validate provider configuration: %s", reason)
-		if key, gotKey := providerKey(p.info.Name, diag.Attribute); !isExplicit && gotKey {
+		if key, got := providerKey(p.info.Name, schemaMap, schemaInfos, diag.Attribute); !isExplicit && got {
 			reason = fmt.Sprintf("%s. Check `pulumi config get %s`.", reason, key)
+
+			// Try to find and suggest spelling corrections. Currently this only works for top-level keys.
+			if strings.Contains(reason, "Invalid or unknown key") && len(diag.Attribute.Steps()) == 1 {
+				if sugg := suggestedKeys(p.info.Name, key, schemaMap, schemaInfos); len(sugg) > 0 {
+					quoted := []string{}
+					for _, s := range sugg {
+						quoted = append(quoted, fmt.Sprintf("`%s`", s))
+					}
+					reason = fmt.Sprintf("%s Did you mean %s?", reason,
+						strings.Join(quoted, " or "))
+				}
+			}
+
 		}
 		if attributePath != "" && isExplicit {
 			reason = fmt.Sprintf("%s. Examine values at '%s'.", reason, prefix+"."+attributePath)
@@ -273,7 +287,40 @@ func (p *provider) formatFailureReason(
 	return reason
 }
 
-func providerKey(module string, path *tftypes.AttributePath) (key string, got bool) {
+func suggestedKeys(
+	module string,
+	key string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) []string {
+
+	var allKeys []string
+
+	schemaMap.Range(func(key string, value shim.Schema) bool {
+		p := tftypes.NewAttributePath().WithAttributeName(key)
+		if k, ok := providerKey(module, schemaMap, schemaInfos, p); ok {
+			allKeys = append(allKeys, k)
+		}
+		return true
+	})
+
+	similar := []string{}
+
+	for _, k := range allKeys {
+		if levenshtein.Distance(k, key, levenshtein.NewParams()) <= 2 {
+			similar = append(similar, k)
+		}
+	}
+
+	return similar
+}
+
+func providerKey(
+	module string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	path *tftypes.AttributePath,
+) (key string, got bool) {
 	if len(path.Steps()) < 1 {
 		return
 	}
@@ -281,7 +328,8 @@ func providerKey(module string, path *tftypes.AttributePath) (key string, got bo
 	if !ok {
 		return
 	}
-	return fmt.Sprintf("%s:%s", module, string(step)), true
+	n := tfbridge.TerraformToPulumiNameV2(string(step), schemaMap, schemaInfos)
+	return fmt.Sprintf("%s:%s", module, n), true
 }
 
 func formatAttributePathAsPulumiPath(

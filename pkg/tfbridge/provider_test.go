@@ -871,6 +871,32 @@ func TestCheckConfig(t *testing.T) {
 			resp.Failures[0].Reason)
 	})
 
+	t.Run("levenshtein_correction", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			module: "testprovider",
+		}
+		ctx := context.Background()
+		args, err := structpb.NewStruct(map[string]interface{}{
+			"cofnigValue": "baz",
+		})
+		require.NoError(t, err)
+		resp, err := provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::default_5_2_1",
+			News: args,
+		})
+		require.NoError(t, err)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		require.Equal(t, "could not validate provider configuration: "+
+			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
+			"Did you mean `testprovider:configValue`?",
+			resp.Failures[0].Reason)
+
+	})
+
 	t.Run("missing_required_config_value", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		p.Schema["reqprop"] = &schema.Schema{
