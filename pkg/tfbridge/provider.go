@@ -22,6 +22,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/agext/levenshtein"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -620,8 +621,20 @@ func (p *Provider) formatFailureReason(
 		// here based on URN, to detect the default provider.
 		isExplicit := !strings.Contains(urn.Name().String(), "default")
 		reason = fmt.Sprintf("could not validate provider configuration: %s", reason)
-		if key, gotKey := providerKey(p.module, d.AttributePath); !isExplicit && gotKey {
+		if key, got := providerKey(p.module, schemaMap, schemaInfos, d.AttributePath); !isExplicit && got {
 			reason = fmt.Sprintf("%s. Check `pulumi config get %s`.", reason, key)
+
+			// Try to find and suggest spelling corrections. Currently this only works for top-level keys.
+			if strings.Contains(reason, "Invalid or unknown key") && len(d.AttributePath) == 1 {
+				if sugg := suggestedKeys(p.module, key, schemaMap, schemaInfos); len(sugg) > 0 {
+					quoted := []string{}
+					for _, s := range sugg {
+						quoted = append(quoted, fmt.Sprintf("`%s`", s))
+					}
+					reason = fmt.Sprintf("%s Did you mean %s?", reason,
+						strings.Join(quoted, " or "))
+				}
+			}
 		}
 		if attributePath != "" && isExplicit {
 			reason = fmt.Sprintf("%s. Examine values at '%s'.", reason, attributePath)
@@ -636,7 +649,42 @@ func (p *Provider) formatFailureReason(
 	return reason
 }
 
-func providerKey(module string, path cty.Path) (key string, got bool) {
+func suggestedKeys(
+	module string,
+	key string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) []string {
+
+	var allKeys []string
+
+	schemaMap.Range(func(key string, value shim.Schema) bool {
+		if k, ok := providerKey(module, schemaMap, schemaInfos, cty.GetAttrPath(key)); ok {
+			allKeys = append(allKeys, k)
+		}
+		return true
+	})
+
+	similar := []string{}
+
+	for _, k := range allKeys {
+		if levenshtein.Distance(k, key, levenshtein.NewParams()) <= 2 {
+			similar = append(similar, k)
+		}
+	}
+
+	return similar
+}
+
+// providerKey trims a path to toplevel path, so batching.send_after becomes simply batching, and translates that to a
+// Pulumi name, prefixed by the provider name, someting like `gcp:batching`. This is used to format nicer error
+// messages.
+func providerKey(
+	module string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+	path cty.Path,
+) (key string, got bool) {
 	if len(path) < 1 {
 		return
 	}
@@ -644,7 +692,7 @@ func providerKey(module string, path cty.Path) (key string, got bool) {
 	if !ok {
 		return
 	}
-	return fmt.Sprintf("%s:%s", module, step.Name), true
+	return fmt.Sprintf("%s:%s", module, TerraformToPulumiNameV2(step.Name, schemaMap, schemaInfos)), true
 }
 
 // pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema. This looks
