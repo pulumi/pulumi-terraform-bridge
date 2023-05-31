@@ -417,6 +417,26 @@ func TestCheckConfig(t *testing.T) {
 	          }
 	        }`)
 	})
+
+	t.Run("tolerate pluginDownloadURL", func(t *testing.T) {
+		schema := schema.Schema{}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::typescript-example::pulumi:providers:authress::default_1_1_42_dirty_github_/api.github.com/Authress/pulumi-authress",
+		    "olds": {},
+		    "news": {
+		      "pluginDownloadURL": "github://api.github.com/Authress/pulumi-authress",
+		      "version": "1.1.42+dirty"
+		    }
+		  },
+		  "response": {"inputs": {
+		      "pluginDownloadURL": "github://api.github.com/Authress/pulumi-authress",
+		      "version": "1.1.42+dirty"
+		  }}
+		}`)
+	})
 }
 
 func TestPreConfigureCallback(t *testing.T) {
