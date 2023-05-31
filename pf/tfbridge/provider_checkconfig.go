@@ -160,7 +160,7 @@ func (p *provider) validateProviderConfig(
 			continue
 		}
 		// Ignoring version key as it seems to be special.
-		if k == "version" {
+		if k == "version" || k == "pluginDownloadURL" {
 			continue
 		}
 		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
