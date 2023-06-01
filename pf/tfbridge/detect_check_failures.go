@@ -74,40 +74,22 @@ func formatAttributePathAsPropertyPath(
 	if len(steps) == 0 {
 		return ret, fmt.Errorf("Expected a path with at least 1 step")
 	}
-
 	n, ok := steps[0].(tftypes.AttributeName)
 	if !ok {
 		return ret, fmt.Errorf("Expected a path that starts with an AttributeName step")
 	}
-
 	p := tfbridge.NewCheckFailurePath(schemaMap, schemaInfos, string(n))
-
 	for _, s := range steps[1:] {
 
 		switch s := s.(type) {
 		case tftypes.AttributeName:
 			p = p.Attribute(string(s))
-			// p = p.GetAttr(string(s))
-			// name, err := tfbridge.TerraformToPulumiNameAtPath(p, schemaMap, schemaInfos)
-			// if err != nil {
-			// 	return propertyPath{}, err
-			// }
-			// if i > 0 {
-			// 	fmt.Fprintf(&buf, ".")
-			// }
-			// fmt.Fprintf(&buf, "%s", name)
 		case tftypes.ElementKeyInt:
-			// p = p.ElementKeyInt(int64(s))
-			// fmt.Fprintf(&buf, "[%d]", int64(s))
-			// p = p.Element()
 			p = p.ListElement(int64(s))
 		case tftypes.ElementKeyString:
 			p = p.MapElement(string(s))
 		case tftypes.ElementKeyValue:
 			p = p.SetElement()
-			// Sets will be represented as lists in Pulumi; more could be done here to find the right index.
-			// fmt.Fprintf(&buf, "[?]")
-			// p = p.Element()
 		default:
 			contract.Failf("Unhandled match case for tftypes.AttributePathStep")
 		}
