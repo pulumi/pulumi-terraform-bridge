@@ -682,6 +682,15 @@ var tfFunctionStd = map[string]struct {
 	},
 }
 
+// Returns a call to notImplemented with the text of the input range, e.g. `notImplemented("some.expr[0]")`
+func notImplemented(sources map[string][]byte, rng hcl.Range) hclwrite.Tokens {
+	buffer := bytes.NewBufferString("")
+	_, err := getTokensForRange(sources, rng).WriteTo(buffer)
+	contract.AssertNoErrorf(err, "Failed to write tokens for range %v", rng)
+	text := cty.StringVal(strings.Replace(buffer.String(), "\r\n", "\n", -1))
+	return hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
+}
+
 func convertFunctionCallExpr(sources map[string][]byte,
 	scopes *scopes, fullyQualifiedPath string, call *hclsyntax.FunctionCallExpr,
 ) hclwrite.Tokens {
@@ -760,11 +769,7 @@ func convertFunctionCallExpr(sources map[string][]byte,
 	}
 
 	// Finally just return it as not yet implemented
-	buffer := bytes.NewBufferString("")
-	_, err := getTokensForRange(sources, call.Range()).WriteTo(buffer)
-	contract.AssertNoErrorf(err, "Failed to write tokens for range %v", call.Range())
-	text := cty.StringVal(strings.Replace(buffer.String(), "\r\n", "\n", -1))
-	return hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
+	return notImplemented(sources, call.Range())
 }
 
 func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
@@ -925,11 +930,50 @@ func camelCaseName(name string) string {
 	return name
 }
 
-func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.Traversal) hcl.Traversal {
-	// We need to rewrite traversals, because we don't have the same top level variable names as terraform.
+func rewriteRelativeTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.Traversal) hcl.Traversal {
 	if len(traversal) == 0 {
 		return traversal
 	}
+
+	newTraversal := make([]hcl.Traverser, 0)
+	if attr, ok := traversal[0].(hcl.TraverseAttr); ok {
+		// An attribute look up, we need to know the type path of the traversal so far to resolve this correctly
+		var name string
+		if fullyQualifiedPath != "" {
+			fullyQualifiedPath = appendPath(fullyQualifiedPath, attr.Name)
+			name = scopes.pulumiName(fullyQualifiedPath)
+		} else {
+			name = tfbridge.TerraformToPulumiNameV2(attr.Name, nil, nil)
+		}
+
+		newTraversal = append(newTraversal, hcl.TraverseAttr{Name: name})
+		newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
+	} else if index, ok := traversal[0].(hcl.TraverseIndex); ok {
+		// Index just translates as is
+		newTraversal = append(newTraversal, hcl.TraverseIndex{Key: index.Key})
+		newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
+	} else {
+		panic(fmt.Sprintf("Relative traverser %T not handled", traversal[0]))
+	}
+
+	return newTraversal
+}
+
+func getTraversalRange(traversal hcl.Traversal) hcl.Range {
+	contract.Requiref(len(traversal) > 0, "traversal", "Traversal must have at least one element")
+
+	rng := traversal[0].SourceRange()
+	for _, t := range traversal[1:] {
+		rng = hcl.RangeOver(rng, t.SourceRange())
+	}
+	return rng
+}
+
+func rewriteTraversal(
+	sources map[string][]byte,
+	scopes *scopes, fullyQualifiedPath string, traversal hcl.Traversal) hclwrite.Tokens {
+	// We need to rewrite traversals, because we don't have the same top level variable names as terraform.
+	contract.Requiref(len(traversal) > 0, "traversal", "Traversal must have at least one element")
 
 	newTraversal := make([]hcl.Traverser, 0)
 
@@ -947,29 +991,40 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 	}
 
 	if root, ok := traversal[0].(hcl.TraverseRoot); ok {
-		if root.Name == "var" && maybeFirstAttr != nil {
+
+		matches := func(rootName, attrName string) bool {
+			return root.Name == rootName && maybeFirstAttr != nil && maybeFirstAttr.Name == attrName
+		}
+
+		if matches("terraform", "workspace") ||
+			matches("path", "cwd") ||
+			matches("path", "module") ||
+			matches("path", "root") {
+			// If this is one of the builtin terraform inputs we just rewrite it to notImplemented.
+			return notImplemented(sources, getTraversalRange(traversal))
+		} else if root.Name == "var" && maybeFirstAttr != nil {
 			// This is a lookup of a var etc, we need to rewrite this traversal such that the root is now the
 			// pulumi config value instead.
 			newName := scopes.getOrAddPulumiName("var."+maybeFirstAttr.Name, "", "Config")
 			newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-			newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 		} else if root.Name == "local" && maybeFirstAttr != nil {
 			// This is a lookup of a local etc, we need to rewrite this traversal such that the root is now the
 			// pulumi local value instead.
 			newName := scopes.getOrAddPulumiName("local."+maybeFirstAttr.Name, "their", "")
 			newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-			newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 		} else if root.Name == "data" && maybeFirstAttr != nil && maybeSecondAttr != nil {
 			// This is a lookup of a data resources etc, we need to rewrite this traversal such that the root is now the
 			// pulumi invoked value instead.
 			suffix := camelCaseName(maybeFirstAttr.Name)
 			newName := scopes.getOrAddPulumiName("data."+maybeFirstAttr.Name+"."+maybeSecondAttr.Name, "", "data"+suffix)
 			newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-			newTraversal = append(newTraversal, rewriteTraversal(scopes, "data."+maybeFirstAttr.Name, traversal[3:])...)
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "data."+maybeFirstAttr.Name, traversal[3:])...)
 		} else if root.Name == "count" && maybeFirstAttr != nil {
 			if maybeFirstAttr.Name == "index" && scopes.countIndex != nil {
 				newTraversal = append(newTraversal, scopes.countIndex...)
-				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 			} else {
 				// We didn't have a count_index set but saw count.index!
 				contract.Failf("count.index seen during expression conversion, but index scope not set")
@@ -979,12 +1034,12 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 			localName := scopes.lookup("each")
 			if localName != "" {
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: localName})
-				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[1:])...)
 			} else {
 				if maybeFirstAttr.Name == "key" {
 					if scopes.eachKey != nil {
 						newTraversal = append(newTraversal, scopes.eachKey...)
-						newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+						newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 					} else {
 						contract.Failf("each.key seen during expression conversion, but each scope not set")
 					}
@@ -993,7 +1048,7 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 				if maybeFirstAttr.Name == "value" {
 					if scopes.eachValue != nil {
 						newTraversal = append(newTraversal, scopes.eachValue...)
-						newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[2:])...)
+						newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 					} else {
 						contract.Failf("each.value seen during expression conversion, but each scope not set")
 					}
@@ -1008,19 +1063,19 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 			if newName != "" {
 				// Looks like this is a resource because a local variable would not be recorded in scopes with a "." in it.
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-				newTraversal = append(newTraversal, rewriteTraversal(scopes, root.Name, traversal[2:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, root.Name, traversal[2:])...)
 			} else {
 				// This is either a local variable or a resource we haven't seen yet. First check if this is a local variable
 				newName := scopes.lookup(root.Name)
 				if newName != "" {
 					// Looks like this is a local variable, just rewrite the rest of the traversal
 					newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-					newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+					newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[1:])...)
 				} else {
 					// We don't know what this is, so lets assume it's an unknown resource (we shouldn't ever have unknown locals)
 					newName = scopes.getOrAddPulumiName(root.Name+"."+maybeFirstAttr.Name, "", camelCaseName(root.Name))
 					newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-					newTraversal = append(newTraversal, rewriteTraversal(scopes, root.Name, traversal[2:])...)
+					newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, root.Name, traversal[2:])...)
 				}
 			}
 		} else {
@@ -1028,41 +1083,26 @@ func rewriteTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.T
 			newName := scopes.lookup(root.Name)
 			if newName != "" {
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[1:])...)
 			} else {
 				// This will be an object key or an undeclared variable, try our best to rename those to match
 				// pulumi style (i.e. camelCase)
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: camelCaseName(root.Name)})
-				newTraversal = append(newTraversal, rewriteTraversal(scopes, "", traversal[1:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[1:])...)
 			}
 		}
-	} else if attr, ok := traversal[0].(hcl.TraverseAttr); ok {
-		// An attribute look up, we need to know the type path of the traversal so far to resolve this correctly
-		var name string
-		if fullyQualifiedPath != "" {
-			fullyQualifiedPath = appendPath(fullyQualifiedPath, attr.Name)
-			name = scopes.pulumiName(fullyQualifiedPath)
-		} else {
-			name = tfbridge.TerraformToPulumiNameV2(attr.Name, nil, nil)
-		}
-
-		newTraversal = append(newTraversal, hcl.TraverseAttr{Name: name})
-		newTraversal = append(newTraversal, rewriteTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
-	} else if index, ok := traversal[0].(hcl.TraverseIndex); ok {
-		// Index just translates as is
-		newTraversal = append(newTraversal, hcl.TraverseIndex{Key: index.Key})
-		newTraversal = append(newTraversal, rewriteTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
 	} else {
-		panic(fmt.Sprintf("Traverser %T not handled", traversal[0]))
+		panic(fmt.Sprintf("Root traverser %T not handled", traversal[0]))
 	}
 
-	return newTraversal
+	return hclwrite.TokensForTraversal(newTraversal)
 }
 
 func convertScopeTraversalExpr(
+	sources map[string][]byte,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ScopeTraversalExpr,
 ) hclwrite.Tokens {
-	return hclwrite.TokensForTraversal(rewriteTraversal(scopes, fullyQualifiedPath, expr.Traversal))
+	return rewriteTraversal(sources, scopes, fullyQualifiedPath, expr.Traversal)
 }
 
 func convertRelativeTraversalExpr(
@@ -1070,7 +1110,8 @@ func convertRelativeTraversalExpr(
 	fullyQualifiedPath string, expr *hclsyntax.RelativeTraversalExpr,
 ) hclwrite.Tokens {
 	tokens := convertExpression(sources, scopes, "", expr.Source)
-	tokens = append(tokens, hclwrite.TokensForTraversal(rewriteTraversal(scopes, fullyQualifiedPath, expr.Traversal))...)
+	tokens = append(tokens, hclwrite.TokensForTraversal(
+		rewriteRelativeTraversal(scopes, fullyQualifiedPath, expr.Traversal))...)
 	return tokens
 }
 
@@ -1285,7 +1326,7 @@ func convertExpression(sources map[string][]byte, scopes *scopes,
 	case *hclsyntax.TemplateExpr:
 		return convertTemplateExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ScopeTraversalExpr:
-		return convertScopeTraversalExpr(scopes, fullyQualifiedPath, expr)
+		return convertScopeTraversalExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.BinaryOpExpr:
 		return convertBinaryOpExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.UnaryOpExpr:
