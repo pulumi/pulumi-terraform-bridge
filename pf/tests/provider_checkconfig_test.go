@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -261,7 +262,38 @@ func TestCheckConfig(t *testing.T) {
 			"Check `pulumi config get testprovider:myProp`.", res.Failures[0].Reason)
 	})
 
-	t.Run("missing_required_config_value", func(t *testing.T) {
+	t.Run("missing_required_config_value_default_provider", func(t *testing.T) {
+		desc := "A very important required attribute"
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"req_prop": schema.StringAttribute{
+					Required:    true,
+					Description: desc,
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), fmt.Sprintf(`
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::default_1_1_42",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "inputs": {
+		      "version": "6.54.0"
+	            },
+                    "failures": [{
+                       "reason": "Provider is missing a required configuration key, try %s: A very important required attribute"
+                    }]
+	          }
+		}`, "`pulumi config set testprovider:reqProp`"))
+	})
+
+	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
 		desc := "A very important required attribute"
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -275,7 +307,7 @@ func TestCheckConfig(t *testing.T) {
 		{
 		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
 		  "request": {
-		    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::explicitprovider",
 		    "olds": {},
 		    "news": {
 		      "version": "6.54.0"
@@ -285,10 +317,10 @@ func TestCheckConfig(t *testing.T) {
 	            "inputs": {
 		      "version": "6.54.0"
 	            },
-                    "failures": [{
-                       "property": "reqProp",
-                       "reason": "Missing a required property: A very important required attribute"
-                    }]
+	            "failures": [{
+	               "property": "reqProp",
+	               "reason": "Missing a required property: A very important required attribute"
+	            }]
 	          }
 		}`)
 	})
