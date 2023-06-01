@@ -23,8 +23,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -273,22 +271,26 @@ func TestCheckConfig(t *testing.T) {
 				},
 			},
 		}
-		provider := makeProviderServer(t, schema)
-		ctx := context.Background()
-		args, err := structpb.NewStruct(map[string]any{"version": "6.54.0"})
-		require.NoError(t, err)
-		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{News: args})
-		require.Error(t, err)
-		status, ok := status.FromError(err)
-		require.True(t, ok)
-		require.Equal(t, codes.InvalidArgument, status.Code())
-		require.Equal(t, "required configuration keys were missing", status.Message())
-		require.Equal(t, 1, len(status.Details()))
-		missingKeys := status.Details()[0].(*pulumirpc.ConfigureErrorMissingKeys)
-		require.Equal(t, 1, len(missingKeys.MissingKeys))
-		missingKey := missingKeys.MissingKeys[0]
-		require.Equal(t, "reqProp", missingKey.Name)
-		require.Equal(t, desc, missingKey.Description)
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::testcfg::pulumi:providers:gcp::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "inputs": {
+		      "version": "6.54.0"
+	            },
+                    "failures": [{
+                       "property": "reqProp",
+                       "reason": "Missing a required property: A very important required attribute"
+                    }]
+	          }
+		}`)
 	})
 
 	t.Run("flattened_compound_values", func(t *testing.T) {
