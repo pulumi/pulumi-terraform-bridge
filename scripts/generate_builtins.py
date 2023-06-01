@@ -227,6 +227,8 @@ resource "simple_resource" "a_resource_with_count" {
                     if in_code:
                         if line.startswith("> "):
                             code = (line[1:].strip()
+                                # TODO: Once we remove legacy converter and only use the new converter we can
+                                # remove these path.X workarounds.
                                 .replace("path.module", "local.path_module")
                                 .replace("path.root", "local.path_root")
                                 # For the `matchkeys` example
@@ -265,6 +267,6 @@ resource "simple_resource" "a_resource_with_count" {
             hcl += "\n"
 
 
-        targetFile = os.path.join(os.path.dirname(__file__), "..", "pkg", "tf2pulumi", "convert", "testdata", "builtins", "main.tf")
+        targetFile = os.path.join(os.path.dirname(__file__), "..", "pkg", "tf2pulumi", "convert", "testdata", "builtin_functions", "main.tf")
         with open(targetFile, "w") as f:
             f.write(hcl)
