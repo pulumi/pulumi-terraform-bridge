@@ -22,31 +22,84 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
-type checkFailureReason int64
+type CheckFailureReason int64
 
 const (
-	miscFailure checkFailureReason = 0
-	missingKey  checkFailureReason = 1
-	invalidKey  checkFailureReason = 2
+	MiscFailure CheckFailureReason = 0
+	MissingKey  CheckFailureReason = 1
+	InvalidKey  CheckFailureReason = 2
 )
 
-type propertyPath struct {
-	schemaPath walk.SchemaPath
-	valuePath  string
+type CheckFailurePath struct {
+	schemaPath  walk.SchemaPath
+	valuePath   string
+	schemaMap   shim.SchemaMap
+	schemaInfos map[string]*SchemaInfo
 }
 
-func (pp propertyPath) Len() int {
+func NewCheckFailurePath(schemaMap shim.SchemaMap, schemaInfos map[string]*SchemaInfo, prop string) CheckFailurePath {
+	pulumiName := TerraformToPulumiNameV2(prop, schemaMap, schemaInfos)
+	return CheckFailurePath{
+		schemaPath:  walk.NewSchemaPath().GetAttr(prop),
+		valuePath:   pulumiName,
+		schemaMap:   schemaMap,
+		schemaInfos: schemaInfos,
+	}
+}
+
+func (p CheckFailurePath) Attribute(name string) CheckFailurePath {
+	path := p.schemaPath.GetAttr(name)
+	pulumiName, err := TerraformToPulumiNameAtPath(path, p.schemaMap, p.schemaInfos)
+	if err != nil {
+		pulumiName = name
+	}
+	return CheckFailurePath{
+		schemaPath:  path,
+		valuePath:   fmt.Sprintf("%s.%s", p.valuePath, pulumiName),
+		schemaMap:   p.schemaMap,
+		schemaInfos: p.schemaInfos,
+	}
+}
+
+func (p CheckFailurePath) ListElement(n int64) CheckFailurePath {
+	return CheckFailurePath{
+		schemaPath:  p.schemaPath.Element(),
+		valuePath:   fmt.Sprintf("%s[%d]", p.valuePath, n),
+		schemaMap:   p.schemaMap,
+		schemaInfos: p.schemaInfos,
+	}
+}
+
+func (p CheckFailurePath) MapElement(s string) CheckFailurePath {
+	return CheckFailurePath{
+		schemaPath:  p.schemaPath.Element(),
+		valuePath:   fmt.Sprintf("%s[%q]", p.valuePath, s),
+		schemaMap:   p.schemaMap,
+		schemaInfos: p.schemaInfos,
+	}
+}
+
+func (p CheckFailurePath) SetElement() CheckFailurePath {
+	// Sets will be represented as lists in Pulumi; more could be done here to find the right index.
+	return CheckFailurePath{
+		schemaPath:  p.schemaPath.Element(),
+		valuePath:   fmt.Sprintf("%s[?]", p.valuePath),
+		schemaMap:   p.schemaMap,
+		schemaInfos: p.schemaInfos,
+	}
+}
+
+func (pp CheckFailurePath) len() int {
 	return len(pp.schemaPath)
 }
 
-func (pp propertyPath) TopLevelPropertyKey(
+func (pp CheckFailurePath) topLevelPropertyKey(
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) (resource.PropertyKey, bool) {
 	if len(pp.schemaPath) == 0 {
 		return "", false
@@ -55,21 +108,21 @@ func (pp propertyPath) TopLevelPropertyKey(
 	if !ok {
 		return "", false
 	}
-	n := tfbridge.TerraformToPulumiNameV2(s.Name, schemaMap, schemaInfos)
+	n := TerraformToPulumiNameV2(s.Name, schemaMap, schemaInfos)
 	return resource.PropertyKey(n), true
 }
 
-func formatCheckFailure(
-	reasonType checkFailureReason,
+func NewCheckFailure(
+	reasonType CheckFailureReason,
 	reason string,
-	pp propertyPath,
+	pp CheckFailurePath,
 	urn resource.URN,
 	isProvider bool,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
-	if reasonType == missingKey {
+	if reasonType == MissingKey {
 		if isProvider {
 			return missingProviderKey(urn, configPrefix, pp, schemaMap)
 		}
@@ -93,13 +146,13 @@ func formatCheckFailure(
 }
 
 func formatProviderCheckFailure(
-	reasonType checkFailureReason,
+	reasonType CheckFailureReason,
 	reason string,
-	pp propertyPath,
+	pp CheckFailurePath,
 	urn resource.URN,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
 	reason = "could not validate provider configuration: " + reason
 	if isExplicitProvider(urn) {
@@ -108,7 +161,7 @@ func formatProviderCheckFailure(
 	return formatDefaultProviderCheckFailure(reasonType, reason, pp, configPrefix, schemaMap, schemaInfos)
 }
 
-func formatExplicitProviderCheckFailure(reason string, pp propertyPath, urn resource.URN) plugin.CheckFailure {
+func formatExplicitProviderCheckFailure(reason string, pp CheckFailurePath, urn resource.URN) plugin.CheckFailure {
 	if pp.valuePath != "" && isExplicitProvider(urn) {
 		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
 	}
@@ -118,17 +171,17 @@ func formatExplicitProviderCheckFailure(reason string, pp propertyPath, urn reso
 }
 
 func formatDefaultProviderCheckFailure(
-	reasonType checkFailureReason,
+	reasonType CheckFailureReason,
 	reason string,
-	pp propertyPath,
+	pp CheckFailurePath,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
 	getExpr := "pulumi config get " + pulumiConfigExpr(configPrefix, pp)
 	reason = fmt.Sprintf("%s. Check `%s`.", reason, getExpr)
-	if reasonType == invalidKey {
-		if sugg := suggestedKeys(pp, schemaMap, schemaInfos); len(sugg) > 0 {
+	if reasonType == InvalidKey {
+		if sugg := keySuggestions(pp, schemaMap, schemaInfos); len(sugg) > 0 {
 			quoted := []string{}
 			for _, s := range sugg {
 				quoted = append(quoted, fmt.Sprintf("`%s:%s`", configPrefix, string(s)))
@@ -144,22 +197,22 @@ func formatDefaultProviderCheckFailure(
 	}
 }
 
-func suggestedKeys(
-	pp propertyPath,
+func keySuggestions(
+	pp CheckFailurePath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*SchemaInfo,
 ) []resource.PropertyKey {
 	// Only supported for top-level keys for now.
-	if pp.Len() != 1 {
+	if pp.len() != 1 {
 		return nil
 	}
-	k, ok := pp.TopLevelPropertyKey(schemaMap, schemaInfos)
+	k, ok := pp.topLevelPropertyKey(schemaMap, schemaInfos)
 	if !ok {
 		return nil
 	}
 	var allKeys []resource.PropertyKey
 	schemaMap.Range(func(key string, value shim.Schema) bool {
-		translatedKey := tfbridge.TerraformToPulumiNameV2(key, schemaMap, schemaInfos)
+		translatedKey := TerraformToPulumiNameV2(key, schemaMap, schemaInfos)
 		allKeys = append(allKeys, resource.PropertyKey(translatedKey))
 		return true
 	})
@@ -172,7 +225,7 @@ func suggestedKeys(
 	return similar
 }
 
-func missingDefaultProviderKey(configPrefix string, pp propertyPath, schemaMap shim.SchemaMap) plugin.CheckFailure {
+func missingDefaultProviderKey(configPrefix string, pp CheckFailurePath, schemaMap shim.SchemaMap) plugin.CheckFailure {
 	configSetCommand := "pulumi config set " + pulumiConfigExpr(configPrefix, pp)
 	reason := fmt.Sprintf("Provider is missing a required configuration key, try `%s`", configSetCommand)
 	desc := lookupDescription(pp, schemaMap)
@@ -187,8 +240,8 @@ func missingDefaultProviderKey(configPrefix string, pp propertyPath, schemaMap s
 	}
 }
 
-func pulumiConfigExpr(configPrefix string, pp propertyPath) (expr string) {
-	if pp.Len() > 1 {
+func pulumiConfigExpr(configPrefix string, pp CheckFailurePath) (expr string) {
+	if pp.len() > 1 {
 		expr = fmt.Sprintf("--path %s:%s", configPrefix, pp.valuePath)
 	} else {
 		expr = fmt.Sprintf("%s:%s", configPrefix, pp.valuePath)
@@ -205,7 +258,7 @@ func isExplicitProvider(urn resource.URN) bool {
 func missingProviderKey(
 	urn resource.URN,
 	configPrefix string,
-	pp propertyPath,
+	pp CheckFailurePath,
 	schemaMap shim.SchemaMap,
 ) plugin.CheckFailure {
 	if isExplicitProvider(urn) {
@@ -214,7 +267,7 @@ func missingProviderKey(
 	return missingDefaultProviderKey(configPrefix, pp, schemaMap)
 }
 
-func missingRequiredKey(pp propertyPath, schemaMap shim.SchemaMap) plugin.CheckFailure {
+func missingRequiredKey(pp CheckFailurePath, schemaMap shim.SchemaMap) plugin.CheckFailure {
 	reason := "Missing a required property"
 	desc := lookupDescription(pp, schemaMap)
 	if desc != "" {
@@ -228,7 +281,7 @@ func missingRequiredKey(pp propertyPath, schemaMap shim.SchemaMap) plugin.CheckF
 	}
 }
 
-func lookupDescription(pp propertyPath, schemaMap shim.SchemaMap) (desc string) {
+func lookupDescription(pp CheckFailurePath, schemaMap shim.SchemaMap) (desc string) {
 	s, err := walk.LookupSchemaMapPath(pp.schemaPath, schemaMap)
 	if err == nil && s != nil {
 		// TF descriptions often have newlines in inopportune positions. This makes them present a

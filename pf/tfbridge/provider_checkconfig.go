@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -145,12 +144,10 @@ func (p *provider) validateProviderConfig(
 		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
 		_, known := p.configType.AttributeTypes[n]
 		if !known {
-			pp := propertyPath{
-				schemaPath: walk.NewSchemaPath().GetAttr(n),
-				valuePath:  string(k),
-			}
+			pp := tfbridge.NewCheckFailurePath(schemaMap, schemaInfos, n)
 			isProvider := true
-			checkFailure := formatCheckFailure(invalidKey, "Invalid or unknown key", pp, urn, isProvider,
+			checkFailure := tfbridge.NewCheckFailure(
+				tfbridge.InvalidKey, "Invalid or unknown key", pp, urn, isProvider,
 				p.info.Name, schemaMap, schemaInfos)
 			checkFailures = append(checkFailures, checkFailure)
 		}

@@ -16,21 +16,18 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"bytes"
-	"fmt"
-
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 func (p *provider) detectCheckFailure(
@@ -45,12 +42,12 @@ func (p *provider) detectCheckFailure(
 		return nil
 	}
 
-	failType := miscFailure
+	failType := tfbridge.MiscFailure
 	if diag.Summary == "Missing Configuration for Required Attribute" {
-		failType = missingKey
+		failType = tfbridge.MissingKey
 	}
 	if strings.Contains(diag.Summary, "Invalid or unknown key") {
-		failType = invalidKey
+		failType = tfbridge.InvalidKey
 	}
 
 	pp, err := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, diag.Attribute)
@@ -64,7 +61,7 @@ func (p *provider) detectCheckFailure(
 		s += ". " + diag.Detail
 	}
 
-	cf := formatCheckFailure(failType, s, pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
+	cf := tfbridge.NewCheckFailure(failType, s, pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
 	return &cf
 }
 
@@ -72,40 +69,49 @@ func formatAttributePathAsPropertyPath(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*tfbridge.SchemaInfo,
 	attrPath *tftypes.AttributePath,
-) (propertyPath, error) {
+) (ret tfbridge.CheckFailurePath, finalErr error) {
 	steps := attrPath.Steps()
-	p := walk.NewSchemaPath()
+	if len(steps) == 0 {
+		return ret, fmt.Errorf("Expected a path with at least 1 step")
+	}
 
-	var buf bytes.Buffer
-	for i, s := range steps {
+	n, ok := steps[0].(tftypes.AttributeName)
+	if !ok {
+		return ret, fmt.Errorf("Expected a path that starts with an AttributeName step")
+	}
+
+	p := tfbridge.NewCheckFailurePath(schemaMap, schemaInfos, string(n))
+
+	for _, s := range steps[1:] {
+
 		switch s := s.(type) {
 		case tftypes.AttributeName:
-			p = p.GetAttr(string(s))
-			name, err := tfbridge.TerraformToPulumiNameAtPath(p, schemaMap, schemaInfos)
-			if err != nil {
-				return propertyPath{}, err
-			}
-			if i > 0 {
-				fmt.Fprintf(&buf, ".")
-			}
-			fmt.Fprintf(&buf, "%s", name)
+			p = p.Attribute(string(s))
+			// p = p.GetAttr(string(s))
+			// name, err := tfbridge.TerraformToPulumiNameAtPath(p, schemaMap, schemaInfos)
+			// if err != nil {
+			// 	return propertyPath{}, err
+			// }
+			// if i > 0 {
+			// 	fmt.Fprintf(&buf, ".")
+			// }
+			// fmt.Fprintf(&buf, "%s", name)
 		case tftypes.ElementKeyInt:
-			fmt.Fprintf(&buf, "[%d]", int64(s))
-			p = p.Element()
+			// p = p.ElementKeyInt(int64(s))
+			// fmt.Fprintf(&buf, "[%d]", int64(s))
+			// p = p.Element()
+			p = p.ListElement(int64(s))
 		case tftypes.ElementKeyString:
-			fmt.Fprintf(&buf, "[%q]", string(s))
-			p = p.Element()
+			p = p.MapElement(string(s))
 		case tftypes.ElementKeyValue:
+			p = p.SetElement()
 			// Sets will be represented as lists in Pulumi; more could be done here to find the right index.
-			fmt.Fprintf(&buf, "[?]")
-			p = p.Element()
+			// fmt.Fprintf(&buf, "[?]")
+			// p = p.Element()
 		default:
 			contract.Failf("Unhandled match case for tftypes.AttributePathStep")
 		}
-	}
 
-	return propertyPath{
-		schemaPath: p,
-		valuePath:  buf.String(),
-	}, nil
+	}
+	return p, nil
 }
