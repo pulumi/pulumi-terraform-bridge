@@ -78,13 +78,13 @@ func (p *Provider) detectCheckFailure(
 	if parts := requiredFieldRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		f := NewCheckFailure(MissingKey, err.Error(), pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
+		f := NewCheckFailure(MissingKey, err.Error(), pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 		return &f
 	}
 	if parts := conflictsWithRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		f := NewCheckFailure(MiscFailure, err.Error(), pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
+		f := NewCheckFailure(MiscFailure, err.Error(), pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 		return &f
 	}
 	var d *diagnostics.ValidationError
@@ -107,7 +107,7 @@ func (p *Provider) detectCheckFailure(
 	if d.Detail != "" {
 		s += ". " + d.Detail
 	}
-	cf := NewCheckFailure(failType, s, pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
+	cf := NewCheckFailure(failType, s, pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 	return &cf
 }
 

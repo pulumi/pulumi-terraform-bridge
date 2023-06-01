@@ -268,16 +268,13 @@ func missingProviderKey(
 }
 
 func missingRequiredKey(pp CheckFailurePath, schemaMap shim.SchemaMap) plugin.CheckFailure {
-	reason := "Missing a required property"
+	reason := fmt.Sprintf("Missing required property '%s'", pp.valuePath)
 	desc := lookupDescription(pp, schemaMap)
 	if desc != "" {
 		reason += ": " + desc
 	}
 	return plugin.CheckFailure{
-		// Assuming nested properties "a.b" seem to report OK through the CLI although they are not technically
-		// of type resource.PropertyKey.
-		Property: resource.PropertyKey(pp.valuePath),
-		Reason:   reason,
+		Reason: reason,
 	}
 }
 
