@@ -15,7 +15,6 @@
 package muxer
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -72,8 +71,7 @@ func AugmentShimWithDisjointPF(ctx context.Context, shim shim.Provider, pf provi
 	if len(resources) > 0 {
 		rErr = fmt.Errorf("ResourcesMap is not disjoint: conflicting keys: %s", strings.Join(resources, ", "))
 	}
-	contract.AssertNoErrorf(errors.Join(rErr, dErr), "providers are not disjoint")
-
+	contract.AssertNoErrorf(fmt.Errorf("%v; %v", rErr, dErr), "providers are not disjoint")
 	return p
 }
 

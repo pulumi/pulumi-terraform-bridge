@@ -15,25 +15,26 @@
 package tfbridge
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func applyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
 	var paths []resource.PropertyPath
-	var errs []error
+	var errMsgs []string
 	for i, p := range ignoreChanges {
 		pp, err := resource.ParsePropertyPath(p)
 		if err != nil {
-			errs = append(errs,
-				fmt.Errorf("failed to parse property path %d: %s", i, p))
+			errMsgs = append(errMsgs,
+				fmt.Sprintf("failed to parse property path %d: %s", i, p))
 			continue
 		}
 		paths = append(paths, pp)
 	}
-	if err := errors.Join(errs...); err != nil {
+
+	if err := fmt.Errorf(strings.Join(errMsgs, ",")); err != nil {
 		return nil, err
 	}
 

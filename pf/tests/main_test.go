@@ -15,7 +15,6 @@
 package tfbridgetests
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -43,7 +42,7 @@ func testMain(m *testing.M) (exitCode int, err error) {
 			panicError = fmt.Errorf("Ignoring panic in tests: %v", panicResult)
 		}
 		teardownError := teardownUnitTests()
-		err = errors.Join(panicError, teardownError)
+		err = fmt.Errorf("%v; %v", panicError, teardownError)
 	}()
 
 	exitCode = m.Run()
