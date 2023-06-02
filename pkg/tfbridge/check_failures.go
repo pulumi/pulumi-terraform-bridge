@@ -180,6 +180,11 @@ func formatProviderCheckFailure(
 			reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(),
 				pp.valuePath)
 		}
+		// Similarly to normal resources, do not populate Property here as that changes the UX of how it
+		// displays in CLI. We may want to consider this change at some point.
+		//
+		//     return plugin.CheckFailure{Reason: reason, Property: resource.PropertyKey(pp.valuePath)}
+		//
 		return plugin.CheckFailure{Reason: reason}
 	}
 	return formatDefaultProviderCheckFailure(reasonType, reason, pp, configPrefix, schemaMap, schemaInfos)
@@ -312,6 +317,8 @@ func missingRequiredKey(
 
 	return plugin.CheckFailure{
 		Reason: reason,
+		// Do not populate Property here as that changes the UX of how it displays in CLI. We may want to
+		// consider this change at some point.
 	}
 }
 
