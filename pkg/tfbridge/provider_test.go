@@ -966,10 +966,11 @@ func TestCheckConfig(t *testing.T) {
 		  },
 		  "response": {
 	            "failures": [{
-                       "reason": "Provider is missing a required configuration key, try %s: A very important required attribute"
+                       "reason": "Provider is missing a required configuration key, try %s: %s"
 	            }]
 	          }
-		}`, "`pulumi config set testprovider:reqProp`"))
+		}`, "`pulumi config set testprovider:reqProp`",
+			"A very important required attribute"))
 	})
 
 	t.Run("flattened_compound_values", func(t *testing.T) {

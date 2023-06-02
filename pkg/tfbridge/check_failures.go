@@ -115,18 +115,18 @@ func (p CheckFailurePath) SetElement() CheckFailurePath {
 	}
 }
 
-func (pp CheckFailurePath) len() int {
-	return len(pp.schemaPath)
+func (p CheckFailurePath) len() int {
+	return len(p.schemaPath)
 }
 
-func (pp CheckFailurePath) topLevelPropertyKey(
+func (p CheckFailurePath) topLevelPropertyKey(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) (resource.PropertyKey, bool) {
-	if len(pp.schemaPath) == 0 {
+	if len(p.schemaPath) == 0 {
 		return "", false
 	}
-	s, ok := pp.schemaPath[0].(walk.GetAttrStep)
+	s, ok := p.schemaPath[0].(walk.GetAttrStep)
 	if !ok {
 		return "", false
 	}
@@ -303,9 +303,10 @@ func missingRequiredKey(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
-	reason := fmt.Sprintf("Missing required property '%s'", pp.valuePath)
+	reason := "Missing required property"
 
 	if pp != nil {
+		reason = fmt.Sprintf("Missing required property '%s'", pp.valuePath)
 		if defaultConfig, ok := lookupDefaultConfig(*pp, schemaInfos); ok {
 			expr := fmt.Sprintf("pulumi config set %s:%s <value>", configPrefix, defaultConfig)
 			reason = fmt.Sprintf("%s. Either set it explicitly or configure it with '%s'", reason, expr)
