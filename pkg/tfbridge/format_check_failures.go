@@ -33,7 +33,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
-func (p *Provider) detectCheckFailures(
+func (p *Provider) formatCheckFailures(
 	ctx context.Context,
 	urn resource.URN,
 	isProvider bool,
@@ -43,7 +43,7 @@ func (p *Provider) detectCheckFailures(
 ) []*pulumirpc.CheckFailure {
 	checkFailures := []*pulumirpc.CheckFailure{}
 	for _, e := range errs {
-		cf := p.detectCheckFailure(ctx, urn, isProvider, schemaMap, schemaInfos, e)
+		cf := p.formatCheckFailure(ctx, urn, isProvider, schemaMap, schemaInfos, e)
 		checkFailures = append(checkFailures, &pulumirpc.CheckFailure{
 			Reason:   cf.Reason,
 			Property: string(cf.Property),
@@ -58,7 +58,7 @@ var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not se
 
 var conflictsWithRegex = regexp.MustCompile("\"(.*?)\": conflicts with")
 
-func (p *Provider) detectCheckFailure(
+func (p *Provider) formatCheckFailure(
 	ctx context.Context,
 	urn resource.URN,
 	isProvider bool,

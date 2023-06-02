@@ -411,7 +411,7 @@ func validateProviderConfig(
 		}
 	}
 
-	return p.detectCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs)
+	return p.formatCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs)
 }
 
 // DiffConfig diffs the configuration for this Terraform provider.
@@ -587,7 +587,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
-	failures := p.detectCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
+	failures := p.formatCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)
