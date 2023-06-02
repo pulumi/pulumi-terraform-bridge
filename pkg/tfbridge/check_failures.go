@@ -176,18 +176,13 @@ func formatProviderCheckFailure(
 ) plugin.CheckFailure {
 	reason = "could not validate provider configuration: " + reason
 	if isExplicitProvider(urn) {
-		return formatExplicitProviderCheckFailure(reason, pp, urn)
+		if pp != nil && pp.valuePath != "" {
+			reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(),
+				pp.valuePath)
+		}
+		return plugin.CheckFailure{Reason: reason}
 	}
 	return formatDefaultProviderCheckFailure(reasonType, reason, pp, configPrefix, schemaMap, schemaInfos)
-}
-
-func formatExplicitProviderCheckFailure(reason string, pp *CheckFailurePath, urn resource.URN) plugin.CheckFailure {
-	if pp != nil && pp.valuePath != "" && isExplicitProvider(urn) {
-		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
-	}
-	return plugin.CheckFailure{
-		Reason: reason,
-	}
 }
 
 func formatDefaultProviderCheckFailure(
