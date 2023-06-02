@@ -1,7 +1,22 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfbridge
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -9,8 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -501,9 +514,11 @@ func TestProviderCheck(t *testing.T) {
 
 	failures := testCheckFailures(t, provider, "SecondResource")
 	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
-	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2", failures[0].Reason)
+	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2."+
+		" Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "\"conflicting_property2\": conflicts with conflicting_property", failures[1].Reason)
+	assert.Equal(t, "\"conflicting_property2\": conflicts with conflicting_property."+
+		" Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Missing required property 'arrayPropertyValues'", failures[2].Reason)
 	assert.Equal(t, "", failures[2].Property)
@@ -525,13 +540,13 @@ func TestProviderCheckV2(t *testing.T) {
 	failures := testCheckFailures(t, provider, "SecondResource")
 	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
 	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
-		"conflicting_property2. Examine values at 'SecondResource.ConflictingProperty'.", failures[0].Reason)
+		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
 	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property2\": conflicts with "+
-		"conflicting_property. Examine values at 'SecondResource.ConflictingProperty2'.", failures[1].Reason)
+		"conflicting_property. Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
-	assert.Equal(t, "Missing required argument: The argument \"array_property_value\" is required, but no "+
-		"definition was found.. Examine values at 'SecondResource.ArrayPropertyValues'.", failures[2].Reason)
+	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
+		", but no definition was found.. Examine values at 'name.arrayPropertyValues'.", failures[2].Reason)
 	assert.Equal(t, "", failures[2].Property)
 }
 
@@ -867,7 +882,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
 		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'explicitprovider.Requiredprop'.",
+			"Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.",
 			resp.Failures[0].Reason)
 	})
 
@@ -897,34 +912,65 @@ func TestCheckConfig(t *testing.T) {
 
 	})
 
-	t.Run("missing_required_config_value", func(t *testing.T) {
+	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.Schema["reqprop"] = &schema.Schema{
-			Type:     schema.TypeString,
-			Required: true,
+		p.Schema["req_prop"] = &schema.Schema{
+			Type:        schema.TypeString,
+			Required:    true,
+			Description: "A very important required attribute",
 		}
 		provider := &Provider{
 			tf:     shimv2.NewProvider(p),
 			config: shimv2.NewSchemaMap(p.Schema),
+			module: "testprovider",
 		}
-		ctx := context.Background()
-		args, err := structpb.NewStruct(map[string]interface{}{
-			"version": "6.54.0",
-		})
-		require.NoError(t, err)
-		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
-			News: args,
-		})
-		status, ok := status.FromError(err)
-		require.Error(t, err)
-		require.True(t, ok)
-		require.Equal(t, codes.InvalidArgument, status.Code())
-		require.Equal(t, "required configuration keys were missing", status.Message())
-		require.Equal(t, 1, len(status.Details()))
-		missingKeys := status.Details()[0].(*pulumirpc.ConfigureErrorMissingKeys)
-		require.Equal(t, 1, len(missingKeys.MissingKeys))
-		missingKey := missingKeys.MissingKeys[0]
-		require.Equal(t, "_:reqprop", missingKey.Name)
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::explicitprovider",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "failures": [{
+	               "reason": "Missing required property 'reqProp': A very important required attribute"
+	            }]
+	          }
+		}`)
+	})
+
+	t.Run("missing_required_config_value_default_provider", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.Schema["req_prop"] = &schema.Schema{
+			Type:        schema.TypeString,
+			Required:    true,
+			Description: "A very important required attribute",
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			module: "testprovider",
+		}
+		testutils.Replay(t, provider, fmt.Sprintf(`
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::default_1_1_42",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "failures": [{
+                       "reason": "Provider is missing a required configuration key, try %s: %s"
+	            }]
+	          }
+		}`, "`pulumi config set testprovider:reqProp`",
+			"A very important required attribute"))
 	})
 
 	t.Run("flattened_compound_values", func(t *testing.T) {

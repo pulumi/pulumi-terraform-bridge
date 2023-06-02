@@ -133,7 +133,7 @@ func TestCheck(t *testing.T) {
 			  },
 			  "response": {
                             "inputs": {},
-                            "failures": [{"property": "prop", "reason": "Missing a required property"}]
+                            "failures": [{"reason": "Missing required property 'prop'"}]
 			  }
 			}`,
 		},

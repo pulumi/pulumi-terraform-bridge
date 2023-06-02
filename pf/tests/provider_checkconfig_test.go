@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -23,8 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -263,7 +262,7 @@ func TestCheckConfig(t *testing.T) {
 			"Check `pulumi config get testprovider:myProp`.", res.Failures[0].Reason)
 	})
 
-	t.Run("missing_required_config_value", func(t *testing.T) {
+	t.Run("missing_required_config_value_default_provider", func(t *testing.T) {
 		desc := "A very important required attribute"
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -273,22 +272,56 @@ func TestCheckConfig(t *testing.T) {
 				},
 			},
 		}
-		provider := makeProviderServer(t, schema)
-		ctx := context.Background()
-		args, err := structpb.NewStruct(map[string]any{"version": "6.54.0"})
-		require.NoError(t, err)
-		_, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{News: args})
-		require.Error(t, err)
-		status, ok := status.FromError(err)
-		require.True(t, ok)
-		require.Equal(t, codes.InvalidArgument, status.Code())
-		require.Equal(t, "required configuration keys were missing", status.Message())
-		require.Equal(t, 1, len(status.Details()))
-		missingKeys := status.Details()[0].(*pulumirpc.ConfigureErrorMissingKeys)
-		require.Equal(t, 1, len(missingKeys.MissingKeys))
-		missingKey := missingKeys.MissingKeys[0]
-		require.Equal(t, "reqProp", missingKey.Name)
-		require.Equal(t, desc, missingKey.Description)
+		testutils.Replay(t, makeProviderServer(t, schema), fmt.Sprintf(`
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::default_1_1_42",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "inputs": {
+		      "version": "6.54.0"
+	            },
+                    "failures": [{
+                       "reason": "Provider is missing a required configuration key, try %s: A very important required attribute"
+                    }]
+	          }
+		}`, "`pulumi config set testprovider:reqProp`"))
+	})
+
+	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
+		desc := "A very important required attribute"
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"req_prop": schema.StringAttribute{
+					Required:    true,
+					Description: desc,
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::explicitprovider",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+	            "inputs": {
+		      "version": "6.54.0"
+	            },
+	            "failures": [{
+	               "reason": "Missing required property 'reqProp': A very important required attribute"
+	            }]
+	          }
+		}`)
 	})
 
 	t.Run("flattened_compound_values", func(t *testing.T) {
