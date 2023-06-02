@@ -16,26 +16,25 @@ package tfbridge
 
 import (
 	"fmt"
-	"strings"
-
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func applyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
 	var paths []resource.PropertyPath
-	var errMsgs []string
+	var errs error
 	for i, p := range ignoreChanges {
 		pp, err := resource.ParsePropertyPath(p)
 		if err != nil {
-			errMsgs = append(errMsgs,
-				fmt.Sprintf("failed to parse property path %d: %s", i, p))
+			errs = multierror.Append(errs,
+				fmt.Errorf("failed to parse property path %d: %s", i, p))
 			continue
 		}
 		paths = append(paths, pp)
 	}
 
-	if err := fmt.Errorf(strings.Join(errMsgs, ",")); err != nil {
-		return nil, err
+	if errs != nil {
+		return nil, errs
 	}
 
 	newValue := resource.NewObjectProperty(new.Copy())

@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"log"
 	"os"
 	"testing"
@@ -42,7 +43,7 @@ func testMain(m *testing.M) (exitCode int, err error) {
 			panicError = fmt.Errorf("Ignoring panic in tests: %v", panicResult)
 		}
 		teardownError := teardownUnitTests()
-		err = fmt.Errorf("%v; %v", panicError, teardownError)
+		err = multierror.Append(panicError, teardownError)
 	}()
 
 	exitCode = m.Run()
