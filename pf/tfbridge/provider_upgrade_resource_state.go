@@ -28,7 +28,7 @@ import (
 func (p *provider) UpgradeResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
-	st *resourceState1,
+	st *resourceState,
 ) (*upgradedResourceState, error) {
 	if st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
 		return &upgradedResourceState{st}, nil
@@ -54,7 +54,7 @@ func (p *provider) UpgradeResourceState(
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
-	return &upgradedResourceState{&resourceState1{
+	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
 		Private:         st.Private,

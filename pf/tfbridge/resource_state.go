@@ -32,7 +32,7 @@ import (
 
 const metaKey = "__meta"
 
-type resourceState1 struct {
+type resourceState struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
 	Private         []byte
@@ -40,7 +40,7 @@ type resourceState1 struct {
 
 // Resource state where UpgradeResourceState has been already done if necessary.
 type upgradedResourceState struct {
-	state *resourceState1
+	state *resourceState
 }
 
 func (u *upgradedResourceState) PrivateState() []byte {
@@ -71,7 +71,7 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
-		&resourceState1{
+		&resourceState{
 			Value:           value,
 			TFSchemaVersion: schemaVersion,
 			Private:         private,
@@ -79,7 +79,7 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	}
 }
 
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState1, error) {
+func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
 	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	if err != nil {
 		return nil, err
 	}
-	return &resourceState1{
+	return &resourceState{
 		Value:           value,
 		TFSchemaVersion: stateVersion,
 		Private:         parsedMeta.PrivateState,
@@ -127,7 +127,7 @@ func parseResourceStateFromTF(
 	if err != nil {
 		return nil, err
 	}
-	return &upgradedResourceState{state: &resourceState1{
+	return &upgradedResourceState{state: &resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
 		Private:         private,
