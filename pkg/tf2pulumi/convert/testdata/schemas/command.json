@@ -1,0 +1,517 @@
+{
+  "name": "command",
+  "displayName": "Command",
+  "version": "0.7.2",
+  "description": "The Pulumi Command Provider enables you to execute commands and scripts either locally or remotely as part of the Pulumi resource model.",
+  "keywords": [
+    "pulumi",
+    "command",
+    "category/utility",
+    "kind/native"
+  ],
+  "homepage": "https://pulumi.com",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/pulumi/pulumi-command",
+  "logoUrl": "https://raw.githubusercontent.com/pulumi/pulumi-command/master/assets/logo.svg",
+  "publisher": "Pulumi",
+  "meta": {
+    "moduleFormat": "(.*)"
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*"
+      }
+    },
+    "go": {
+      "generateResourceContainerTypes": true,
+      "importBasePath": "github.com/pulumi/pulumi-command/sdk/go/command"
+    },
+    "java": {
+      "buildFiles": "gradle",
+      "dependencies": {
+        "com.google.code.findbugs:jsr305": "3.0.2",
+        "com.google.code.gson:gson": "2.8.9",
+        "com.pulumi:pulumi": "0.6.0"
+      },
+      "gradleNexusPublishPluginVersion": "1.1.0"
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+      }
+    },
+    "python": {
+      "requires": {
+        "pulumi": "\u003e=3.0.0,\u003c4.0.0"
+      }
+    }
+  },
+  "config": {},
+  "types": {
+    "command:remote:Connection": {
+      "description": "Instructions for how to connect to a remote endpoint.",
+      "properties": {
+        "agentSocketPath": {
+          "type": "string",
+          "description": "SSH Agent socket path. Default to environment variable SSH_AUTH_SOCK if present."
+        },
+        "dialErrorLimit": {
+          "type": "integer",
+          "description": "Max allowed errors on trying to dial the remote host. -1 set count to unlimited. Default value is 10",
+          "default": 10
+        },
+        "host": {
+          "type": "string",
+          "description": "The address of the resource to connect to."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password we should use for the connection."
+        },
+        "port": {
+          "type": "number",
+          "description": "The port to connect to.",
+          "default": 22
+        },
+        "privateKey": {
+          "type": "string",
+          "description": "The contents of an SSH key to use for the connection. This takes preference over the password if provided."
+        },
+        "privateKeyPassword": {
+          "type": "string",
+          "description": "The password to use in case the private key is encrypted."
+        },
+        "user": {
+          "type": "string",
+          "description": "The user that we should use for the connection.",
+          "default": "root"
+        }
+      },
+      "type": "object",
+      "required": [
+        "host"
+      ]
+    }
+  },
+  "provider": {
+    "type": "object"
+  },
+  "resources": {
+    "command:local:Command": {
+      "description": "A local command to be executed.\nThis command can be inserted into the life cycles of other resources using the\n`dependsOn` or `parent` resource options. A command is considered to have\nfailed when it finished with a non-zero exit code. This will fail the CRUD step\nof the `Command` resource.",
+      "properties": {
+        "archive": {
+          "$ref": "pulumi.json#/Archive",
+          "description": "An archive asset containing files found after running the command."
+        },
+        "archivePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of path globs to return as a single archive asset after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+        },
+        "assetPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of path globs to read after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Asset"
+          },
+          "description": "A map of assets found after running the command.\nThe key is the relative path from the command dir"
+        },
+        "create": {
+          "type": "string",
+          "description": "The command to run on create."
+        },
+        "delete": {
+          "type": "string",
+          "description": "The command to run on delete. The environment variables PULUMI_COMMAND_STDOUT\nand PULUMI_COMMAND_STDERR are set to the stdout and stderr properties of the\nCommand resource from previous create or update steps."
+        },
+        "dir": {
+          "type": "string",
+          "description": "The directory from which to run the command from. If `dir` does not exist, then\n`Command` will fail."
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional environment variables available to the command's process."
+        },
+        "interpreter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The program and arguments to run the command.\nOn Linux and macOS, defaults to: `[\"/bin/sh\", \"-c\"]`. On Windows, defaults to: `[\"cmd\", \"/C\"]`"
+        },
+        "stderr": {
+          "type": "string",
+          "description": "The standard error of the command's process"
+        },
+        "stdin": {
+          "type": "string",
+          "description": "Pass a string to the command's process as standard in"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "The standard output of the command's process"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        },
+        "update": {
+          "type": "string",
+          "description": "The command to run on update, if empty, create will \nrun again. The environment variables PULUMI_COMMAND_STDOUT and PULUMI_COMMAND_STDERR \nare set to the stdout and stderr properties of the Command resource from previous \ncreate or update steps."
+        }
+      },
+      "type": "object",
+      "required": [
+        "stderr",
+        "stdout"
+      ],
+      "inputProperties": {
+        "archivePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of path globs to return as a single archive asset after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+        },
+        "assetPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of path globs to read after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+        },
+        "create": {
+          "type": "string",
+          "description": "The command to run on create."
+        },
+        "delete": {
+          "type": "string",
+          "description": "The command to run on delete. The environment variables PULUMI_COMMAND_STDOUT\nand PULUMI_COMMAND_STDERR are set to the stdout and stderr properties of the\nCommand resource from previous create or update steps."
+        },
+        "dir": {
+          "type": "string",
+          "description": "The directory from which to run the command from. If `dir` does not exist, then\n`Command` will fail."
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional environment variables available to the command's process."
+        },
+        "interpreter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The program and arguments to run the command.\nOn Linux and macOS, defaults to: `[\"/bin/sh\", \"-c\"]`. On Windows, defaults to: `[\"cmd\", \"/C\"]`"
+        },
+        "stdin": {
+          "type": "string",
+          "description": "Pass a string to the command's process as standard in"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        },
+        "update": {
+          "type": "string",
+          "description": "The command to run on update, if empty, create will \nrun again. The environment variables PULUMI_COMMAND_STDOUT and PULUMI_COMMAND_STDERR \nare set to the stdout and stderr properties of the Command resource from previous \ncreate or update steps."
+        }
+      }
+    },
+    "command:remote:Command": {
+      "description": "A command to run on a remote host.\nThe connection is established via ssh.",
+      "properties": {
+        "connection": {
+          "$ref": "#/types/command:remote:Connection",
+          "description": "The parameters with which to connect to the remote host.",
+          "secret": true
+        },
+        "create": {
+          "type": "string",
+          "description": "The command to run on create."
+        },
+        "delete": {
+          "type": "string",
+          "description": "The command to run on delete. The environment variables PULUMI_COMMAND_STDOUT\nand PULUMI_COMMAND_STDERR are set to the stdout and stderr properties of the\nCommand resource from previous create or update steps."
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional environment variables available to the command's process."
+        },
+        "stderr": {
+          "type": "string",
+          "description": "The standard error of the command's process"
+        },
+        "stdin": {
+          "type": "string",
+          "description": "Pass a string to the command's process as standard in"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "The standard output of the command's process"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        },
+        "update": {
+          "type": "string",
+          "description": "The command to run on update, if empty, create will \nrun again. The environment variables PULUMI_COMMAND_STDOUT and PULUMI_COMMAND_STDERR \nare set to the stdout and stderr properties of the Command resource from previous \ncreate or update steps."
+        }
+      },
+      "type": "object",
+      "required": [
+        "connection",
+        "stderr",
+        "stdout"
+      ],
+      "inputProperties": {
+        "connection": {
+          "$ref": "#/types/command:remote:Connection",
+          "description": "The parameters with which to connect to the remote host.",
+          "secret": true
+        },
+        "create": {
+          "type": "string",
+          "description": "The command to run on create."
+        },
+        "delete": {
+          "type": "string",
+          "description": "The command to run on delete. The environment variables PULUMI_COMMAND_STDOUT\nand PULUMI_COMMAND_STDERR are set to the stdout and stderr properties of the\nCommand resource from previous create or update steps."
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional environment variables available to the command's process."
+        },
+        "stdin": {
+          "type": "string",
+          "description": "Pass a string to the command's process as standard in"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        },
+        "update": {
+          "type": "string",
+          "description": "The command to run on update, if empty, create will \nrun again. The environment variables PULUMI_COMMAND_STDOUT and PULUMI_COMMAND_STDERR \nare set to the stdout and stderr properties of the Command resource from previous \ncreate or update steps."
+        }
+      },
+      "requiredInputs": [
+        "connection"
+      ]
+    },
+    "command:remote:CopyFile": {
+      "description": "Copy a local file to a remote host.",
+      "properties": {
+        "connection": {
+          "$ref": "#/types/command:remote:Connection",
+          "description": "The parameters with which to connect to the remote host.",
+          "secret": true
+        },
+        "localPath": {
+          "type": "string",
+          "description": "The path of the file to be copied."
+        },
+        "remotePath": {
+          "type": "string",
+          "description": "The destination path in the remote host."
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        }
+      },
+      "type": "object",
+      "required": [
+        "connection",
+        "localPath",
+        "remotePath"
+      ],
+      "inputProperties": {
+        "connection": {
+          "$ref": "#/types/command:remote:Connection",
+          "description": "The parameters with which to connect to the remote host.",
+          "secret": true
+        },
+        "localPath": {
+          "type": "string",
+          "description": "The path of the file to be copied."
+        },
+        "remotePath": {
+          "type": "string",
+          "description": "The destination path in the remote host."
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Trigger replacements on changes to this input."
+        }
+      },
+      "requiredInputs": [
+        "connection",
+        "localPath",
+        "remotePath"
+      ]
+    }
+  },
+  "functions": {
+    "command:local:run": {
+      "description": "A local command to be executed.\nThis command will always be run on any preview or deployment. Use `local.Command` to avoid duplicating executions.",
+      "inputs": {
+        "properties": {
+          "archivePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of path globs to return as a single archive asset after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+          },
+          "assetPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of path globs to read after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+          },
+          "command": {
+            "type": "string",
+            "description": "The command to run."
+          },
+          "dir": {
+            "type": "string",
+            "description": "The directory from which to run the command from. If `dir` does not exist, then\n`Command` will fail."
+          },
+          "environment": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Additional environment variables available to the command's process."
+          },
+          "interpreter": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The program and arguments to run the command.\nOn Linux and macOS, defaults to: `[\"/bin/sh\", \"-c\"]`. On Windows, defaults to: `[\"cmd\", \"/C\"]`"
+          },
+          "stdin": {
+            "type": "string",
+            "description": "Pass a string to the command's process as standard in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "command"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "archive": {
+            "$ref": "pulumi.json#/Archive",
+            "description": "An archive asset containing files found after running the command."
+          },
+          "archivePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of path globs to return as a single archive asset after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+          },
+          "assetPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of path globs to read after the command completes.\n\nWhen specifying glob patterns the following rules apply:\n- We only include files not directories for assets and archives.\n- Path separators are `/` on all platforms - including Windows.\n- Patterns starting with `!` are 'exclude' rules.\n- Rules are evaluated in order, so exclude rules should be after inclusion rules.\n- `*` matches anything except `/`\n- `**` matches anything, _including_ `/`\n- All returned paths are relative to the working directory (without leading `./`) e.g. `file.text` or `subfolder/file.txt`.\n- For full details of the globbing syntax, see [github.com/gobwas/glob](https://github.com/gobwas/glob)\n\n#### Example\n\nGiven the rules:\n```yaml\n- \"assets/**\"\n- \"src/**.js\"\n- \"!**secret.*\"\n```\n\nWhen evaluating against this folder:\n\n```yaml\n- assets/\n  - logos/\n    - logo.svg\n- src/\n  - index.js\n  - secret.js\n```\n\nThe following paths will be returned:\n\n```yaml\n- assets/logos/logo.svg\n- src/index.js\n```"
+          },
+          "assets": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Asset"
+            },
+            "description": "A map of assets found after running the command.\nThe key is the relative path from the command dir"
+          },
+          "command": {
+            "type": "string",
+            "description": "The command to run."
+          },
+          "dir": {
+            "type": "string",
+            "description": "The directory from which to run the command from. If `dir` does not exist, then\n`Command` will fail."
+          },
+          "environment": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Additional environment variables available to the command's process."
+          },
+          "interpreter": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The program and arguments to run the command.\nOn Linux and macOS, defaults to: `[\"/bin/sh\", \"-c\"]`. On Windows, defaults to: `[\"cmd\", \"/C\"]`"
+          },
+          "stderr": {
+            "type": "string",
+            "description": "The standard error of the command's process"
+          },
+          "stdin": {
+            "type": "string",
+            "description": "Pass a string to the command's process as standard in"
+          },
+          "stdout": {
+            "type": "string",
+            "description": "The standard output of the command's process"
+          }
+        },
+        "type": "object",
+        "required": [
+          "command",
+          "stderr",
+          "stdout"
+        ]
+      }
+    }
+  }
+}

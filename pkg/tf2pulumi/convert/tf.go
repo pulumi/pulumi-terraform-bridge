@@ -925,6 +925,11 @@ func convertTemplateExpr(sources map[string][]byte,
 }
 
 func camelCaseName(name string) string {
+	// If name is all uppercase assume it stays upper case, else camel case it in pulumi style
+	if strings.ToUpper(name) == name {
+		return name
+	}
+
 	name = tfbridge.TerraformToPulumiNameV2(name, nil, nil)
 	name = strings.ToLower(string(rune(name[0]))) + name[1:]
 	return name
@@ -1793,10 +1798,86 @@ func convertDataResource(sources map[string][]byte,
 	return leading, pulumiName, dataResourceExpression, trailing
 }
 
+func convertProvisioner(
+	sources map[string][]byte,
+	info il.ProviderInfoSource, scopes *scopes,
+	provisioner *configs.Provisioner,
+	resourceName string, provisionerIndex int,
+	target *hclwrite.Body,
+) {
+	if provisioner.Type != "local-exec" {
+		// We don't support anything other than local-exec for now
+		target.AppendUnstructuredTokens(hclwrite.Tokens{
+			&hclwrite.Token{
+				Type:  hclsyntax.TokenComment,
+				Bytes: []byte(fmt.Sprintf("// Unsupported provisioner type %s", provisioner.Type)),
+			},
+		})
+		return
+	}
+
+	provisionerName := fmt.Sprintf("%sProvisioner%d", resourceName, provisionerIndex)
+
+	labels := []string{provisionerName, "command:local:Command"}
+	block := hclwrite.NewBlock("resource", labels)
+	blockBody := block.Body()
+
+	optionsBlock := blockBody.AppendNewBlock("options", nil)
+	optionsBlockBody := optionsBlock.Body()
+
+	// The first provisioner dependsOn the resource we're provisioning, each provisioner after that depends on
+	// the previous provisioner
+	dependsOn := hclwrite.Tokens{makeToken(hclsyntax.TokenOBrack, "[")}
+	if provisionerIndex == 0 {
+		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenIdent, resourceName))
+	} else {
+		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenIdent,
+			fmt.Sprintf("%sProvisioner%d", resourceName, (provisionerIndex-1))))
+	}
+	dependsOn = append(dependsOn, makeToken(hclsyntax.TokenCBrack, "]"))
+	optionsBlockBody.SetAttributeRaw("dependsOn", dependsOn)
+
+	attributes, _ := provisioner.Config.JustAttributes()
+	var command, interpreter, environment hclwrite.Tokens
+	for _, attr := range attributes {
+		if attr.Name == "command" {
+			command = convertExpression(sources, scopes, "", attr.Expr)
+		}
+		if attr.Name == "interpreter" {
+			interpreter = convertExpression(sources, scopes, "", attr.Expr)
+		}
+		if attr.Name == "environment" {
+			environment = convertExpression(sources, scopes, "", attr.Expr)
+		}
+	}
+
+	onDestroy := provisioner.When == configs.ProvisionerWhenDestroy
+
+	if onDestroy {
+		// We need to set create & update to a command that does nothing, and set destroy to the actual command
+		blockBody.SetAttributeValue("create", cty.StringVal("true"))
+		blockBody.SetAttributeValue("update", cty.StringVal("true"))
+		blockBody.SetAttributeRaw("delete", command)
+	} else {
+		blockBody.SetAttributeRaw("create", command)
+	}
+
+	if len(interpreter) != 0 {
+		blockBody.SetAttributeRaw("interpreter", interpreter)
+	}
+
+	if len(environment) != 0 {
+		blockBody.SetAttributeRaw("environment", environment)
+	}
+
+	target.AppendBlock(block)
+}
+
 func convertManagedResources(sources map[string][]byte,
 	info il.ProviderInfoSource, scopes *scopes,
 	managedResource *configs.Resource,
-) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
+	target *hclwrite.Body,
+) {
 	// We translate managedResources into resources
 	pulumiName := scopes.roots[managedResource.Type+"."+managedResource.Name]
 
@@ -1840,7 +1921,15 @@ func convertManagedResources(sources map[string][]byte,
 	scopes.eachKey = nil
 	scopes.eachValue = nil
 	leading, trailing := getTrivia(sources, managedResource.DeclRange)
-	return leading, block, trailing
+
+	target.AppendUnstructuredTokens(leading)
+	target.AppendBlock(block)
+	target.AppendUnstructuredTokens(trailing)
+
+	// Add "command:Command" resources to handle provisioners
+	for idx, provisioner := range managedResource.Managed.Provisioners {
+		convertProvisioner(sources, info, scopes, provisioner, pulumiName, idx, target)
+	}
 }
 
 func convertModuleCall(
@@ -2676,10 +2765,7 @@ func translateModuleSourceCode(
 		}
 		// Next handle any resources
 		if item.resource != nil {
-			leading, block, trailing := convertManagedResources(sources, info, scopes, item.resource)
-			body.AppendUnstructuredTokens(leading)
-			body.AppendBlock(block)
-			body.AppendUnstructuredTokens(trailing)
+			convertManagedResources(sources, info, scopes, item.resource, body)
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
