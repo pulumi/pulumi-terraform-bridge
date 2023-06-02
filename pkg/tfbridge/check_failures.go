@@ -124,9 +124,9 @@ func NewCheckFailure(
 ) plugin.CheckFailure {
 	if reasonType == MissingKey {
 		if isProvider {
-			return missingProviderKey(urn, configPrefix, pp, schemaMap)
+			return missingProviderKey(urn, configPrefix, pp, schemaMap, schemaInfos)
 		}
-		return missingRequiredKey(pp, schemaMap)
+		return missingRequiredKey(pp, configPrefix, schemaMap, schemaInfos)
 	}
 
 	if isProvider {
@@ -260,22 +260,52 @@ func missingProviderKey(
 	configPrefix string,
 	pp CheckFailurePath,
 	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
 	if isExplicitProvider(urn) {
-		return missingRequiredKey(pp, schemaMap)
+		return missingRequiredKey(pp, configPrefix, schemaMap, schemaInfos)
 	}
 	return missingDefaultProviderKey(configPrefix, pp, schemaMap)
 }
 
-func missingRequiredKey(pp CheckFailurePath, schemaMap shim.SchemaMap) plugin.CheckFailure {
+func missingRequiredKey(
+	pp CheckFailurePath,
+	configPrefix string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) plugin.CheckFailure {
 	reason := fmt.Sprintf("Missing required property '%s'", pp.valuePath)
+
+	if defaultConfig, ok := lookupDefaultConfig(pp, schemaInfos); ok {
+		expr := fmt.Sprintf("pulumi config set %s:%s <value>", configPrefix, defaultConfig)
+		reason = fmt.Sprintf("%s. Either set it explicitly or configure it with '%s'", reason, expr)
+	}
+
 	desc := lookupDescription(pp, schemaMap)
 	if desc != "" {
 		reason += ": " + desc
 	}
+
 	return plugin.CheckFailure{
 		Reason: reason,
 	}
+}
+
+func lookupDefaultConfig(
+	pp CheckFailurePath,
+	schemaInfos map[string]*SchemaInfo,
+) (string, bool) {
+	info := LookupSchemaInfoMapPath(pp.schemaPath, schemaInfos)
+	if info == nil {
+		return "", false
+	}
+	if info.Default == nil {
+		return "", false
+	}
+	if info.Default.Config == "" {
+		return "", false
+	}
+	return info.Default.Config, true
 }
 
 func lookupDescription(pp CheckFailurePath, schemaMap shim.SchemaMap) (desc string) {
