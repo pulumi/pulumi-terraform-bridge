@@ -61,7 +61,7 @@ func (p *provider) detectCheckFailure(
 		s += ". " + diag.Detail
 	}
 
-	cf := tfbridge.NewCheckFailure(failType, s, pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
+	cf := tfbridge.NewCheckFailure(failType, s, &pp, urn, isProvider, p.info.Name, schemaMap, schemaInfos)
 	return &cf
 }
 

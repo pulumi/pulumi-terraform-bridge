@@ -147,7 +147,7 @@ func (p *provider) validateProviderConfig(
 			pp := tfbridge.NewCheckFailurePath(schemaMap, schemaInfos, n)
 			isProvider := true
 			checkFailure := tfbridge.NewCheckFailure(
-				tfbridge.InvalidKey, "Invalid or unknown key", pp, urn, isProvider,
+				tfbridge.InvalidKey, "Invalid or unknown key", &pp, urn, isProvider,
 				p.info.Name, schemaMap, schemaInfos)
 			checkFailures = append(checkFailures, checkFailure)
 		}
