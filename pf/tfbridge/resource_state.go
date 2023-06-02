@@ -153,11 +153,15 @@ func parseMeta(m resource.PropertyMap) (metaState, error) {
 				metaKey, err)
 			return metaState{}, err
 		}
-		versionN, err := strconv.Atoi(meta.SchemaVersion)
-		if err != nil {
-			err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
-				metaKey, meta.SchemaVersion, err)
-			return metaState{}, err
+		var versionN int64
+		if meta.SchemaVersion != "" {
+			versionI, err := strconv.Atoi(meta.SchemaVersion)
+			if err != nil {
+				err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
+					metaKey, meta.SchemaVersion, err)
+				return metaState{}, err
+			}
+			versionN = int64(versionI)
 		}
 
 		var privateStateBytes []byte
@@ -170,7 +174,7 @@ func parseMeta(m resource.PropertyMap) (metaState, error) {
 		}
 
 		return metaState{
-			SchemaVersion: int64(versionN),
+			SchemaVersion: versionN,
 			PrivateState:  privateStateBytes,
 		}, nil
 	}
