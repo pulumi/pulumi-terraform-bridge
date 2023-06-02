@@ -107,10 +107,10 @@ type privateStateLike interface {
 
 func (*privst) copyTarget(ctx context.Context, plan tfsdk.Plan, ps privateStateLike) diag.Diagnostics {
 	var diags diag.Diagnostics
-	var target string
+	var target *string
 	diags0 := plan.GetAttribute(ctx, path.Root("target_private_state"), &target)
 	diags = append(diags, diags0...)
-	if target != "" {
+	if target != nil && *target != "" {
 		bytes, err := json.Marshal(target)
 		if err != nil {
 			ed := diag.NewWarningDiagnostic(err.Error(), "")

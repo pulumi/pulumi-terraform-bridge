@@ -121,6 +121,14 @@ func TestPrivateState(t *testing.T) {
 		Dir:                    filepath.Join("..", "testdata", "privst-program"),
 		ExtraRuntimeValidation: validateExpectedVsActual,
 		SkipRefresh:            true,
+		RequireService:         true, // EditDirs do not work otherwise
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join("..", "testdata", "privst-program", "edit-1"),
+				ExtraRuntimeValidation: validateExpectedVsActual,
+				Additive:               true,
+			},
+		},
 	})
 }
 
