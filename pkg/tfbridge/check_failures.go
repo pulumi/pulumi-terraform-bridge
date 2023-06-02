@@ -135,7 +135,7 @@ func (pp CheckFailurePath) topLevelPropertyKey(
 func NewCheckFailure(
 	reasonType CheckFailureReason,
 	reason string,
-	pp CheckFailurePath,
+	pp *CheckFailurePath,
 	urn resource.URN,
 	isProvider bool,
 	configPrefix string,
@@ -153,7 +153,7 @@ func NewCheckFailure(
 		return formatProviderCheckFailure(reasonType, reason, pp, urn, configPrefix, schemaMap, schemaInfos)
 	}
 
-	if pp.valuePath != "" {
+	if pp != nil && pp.valuePath != "" {
 		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
 	}
 
@@ -168,7 +168,7 @@ func NewCheckFailure(
 func formatProviderCheckFailure(
 	reasonType CheckFailureReason,
 	reason string,
-	pp CheckFailurePath,
+	pp *CheckFailurePath,
 	urn resource.URN,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
@@ -181,8 +181,8 @@ func formatProviderCheckFailure(
 	return formatDefaultProviderCheckFailure(reasonType, reason, pp, configPrefix, schemaMap, schemaInfos)
 }
 
-func formatExplicitProviderCheckFailure(reason string, pp CheckFailurePath, urn resource.URN) plugin.CheckFailure {
-	if pp.valuePath != "" && isExplicitProvider(urn) {
+func formatExplicitProviderCheckFailure(reason string, pp *CheckFailurePath, urn resource.URN) plugin.CheckFailure {
+	if pp != nil && pp.valuePath != "" && isExplicitProvider(urn) {
 		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
 	}
 	return plugin.CheckFailure{
@@ -193,15 +193,17 @@ func formatExplicitProviderCheckFailure(reason string, pp CheckFailurePath, urn 
 func formatDefaultProviderCheckFailure(
 	reasonType CheckFailureReason,
 	reason string,
-	pp CheckFailurePath,
+	pp *CheckFailurePath,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
-	getExpr := "pulumi config get " + pulumiConfigExpr(configPrefix, pp)
-	reason = fmt.Sprintf("%s. Check `%s`.", reason, getExpr)
-	if reasonType == InvalidKey {
-		if sugg := keySuggestions(pp, schemaMap, schemaInfos); len(sugg) > 0 {
+	if pp != nil {
+		getExpr := "pulumi config get " + pulumiConfigExpr(configPrefix, *pp)
+		reason = fmt.Sprintf("%s. Check `%s`.", reason, getExpr)
+	}
+	if pp != nil && reasonType == InvalidKey {
+		if sugg := keySuggestions(*pp, schemaMap, schemaInfos); len(sugg) > 0 {
 			quoted := []string{}
 			for _, s := range sugg {
 				quoted = append(quoted, fmt.Sprintf("`%s:%s`", configPrefix, string(s)))
@@ -245,12 +247,19 @@ func keySuggestions(
 	return similar
 }
 
-func missingDefaultProviderKey(configPrefix string, pp CheckFailurePath, schemaMap shim.SchemaMap) plugin.CheckFailure {
-	configSetCommand := "pulumi config set " + pulumiConfigExpr(configPrefix, pp)
-	reason := fmt.Sprintf("Provider is missing a required configuration key, try `%s`", configSetCommand)
-	desc := lookupDescription(pp, schemaMap)
-	if desc != "" {
-		reason += ": " + desc
+func missingDefaultProviderKey(
+	configPrefix string,
+	pp *CheckFailurePath,
+	schemaMap shim.SchemaMap,
+) plugin.CheckFailure {
+	reason := "Provider is missing a required configuration key"
+	if pp != nil {
+		configSetCommand := "pulumi config set " + pulumiConfigExpr(configPrefix, *pp)
+		reason = fmt.Sprintf("%s, try `%s`", reason, configSetCommand)
+		desc := lookupDescription(*pp, schemaMap)
+		if desc != "" {
+			reason += ": " + desc
+		}
 	}
 	return plugin.CheckFailure{
 		Reason: reason,
@@ -278,7 +287,7 @@ func isExplicitProvider(urn resource.URN) bool {
 func missingProviderKey(
 	urn resource.URN,
 	configPrefix string,
-	pp CheckFailurePath,
+	pp *CheckFailurePath,
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
@@ -289,21 +298,22 @@ func missingProviderKey(
 }
 
 func missingRequiredKey(
-	pp CheckFailurePath,
+	pp *CheckFailurePath,
 	configPrefix string,
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
 	reason := fmt.Sprintf("Missing required property '%s'", pp.valuePath)
 
-	if defaultConfig, ok := lookupDefaultConfig(pp, schemaInfos); ok {
-		expr := fmt.Sprintf("pulumi config set %s:%s <value>", configPrefix, defaultConfig)
-		reason = fmt.Sprintf("%s. Either set it explicitly or configure it with '%s'", reason, expr)
-	}
-
-	desc := lookupDescription(pp, schemaMap)
-	if desc != "" {
-		reason += ": " + desc
+	if pp != nil {
+		if defaultConfig, ok := lookupDefaultConfig(*pp, schemaInfos); ok {
+			expr := fmt.Sprintf("pulumi config set %s:%s <value>", configPrefix, defaultConfig)
+			reason = fmt.Sprintf("%s. Either set it explicitly or configure it with '%s'", reason, expr)
+		}
+		desc := lookupDescription(*pp, schemaMap)
+		if desc != "" {
+			reason += ": " + desc
+		}
 	}
 
 	return plugin.CheckFailure{

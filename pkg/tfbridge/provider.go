@@ -386,7 +386,7 @@ func validateProviderConfig(
 	p.config.Range(func(key string, meta shim.Schema) bool {
 		if meta.Required() && !config.IsSet(key) {
 			pp := NewCheckFailurePath(schemaMap, schemaInfos, key)
-			cf := NewCheckFailure(MissingKey, "Missing key", pp, urn, true /*isProvider*/, p.module,
+			cf := NewCheckFailure(MissingKey, "Missing key", &pp, urn, true /*isProvider*/, p.module,
 				schemaMap, schemaInfos)
 			checkFailure := pulumirpc.CheckFailure{
 				Property: string(cf.Property),

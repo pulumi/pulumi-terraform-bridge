@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -45,18 +44,10 @@ func (p *Provider) detectCheckFailures(
 	checkFailures := []*pulumirpc.CheckFailure{}
 	for _, e := range errs {
 		cf := p.detectCheckFailure(ctx, urn, isProvider, schemaMap, schemaInfos, e)
-		if cf != nil {
-			checkFailures = append(checkFailures, &pulumirpc.CheckFailure{
-				Reason:   cf.Reason,
-				Property: string(cf.Property),
-			})
-		} else {
-			msg := fmt.Sprintf("%v", e)
-			logErr := p.host.Log(ctx, diag.Warning, urn, msg)
-			if logErr != nil {
-				glog.V(9).Infof("Failed to log to a warning to the engine: %v. Warn: %s", logErr, msg)
-			}
-		}
+		checkFailures = append(checkFailures, &pulumirpc.CheckFailure{
+			Reason:   cf.Reason,
+			Property: string(cf.Property),
+		})
 	}
 	return checkFailures
 }
@@ -74,30 +65,30 @@ func (p *Provider) detectCheckFailure(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 	err error,
-) *plugin.CheckFailure {
+) (ret plugin.CheckFailure) {
+	// By default if there is no way to identify a propertyPath, still report a generic CheckFailure.
+	ret = NewCheckFailure(MiscFailure, err.Error(), nil, urn, isProvider, p.module, schemaMap, schemaInfos)
 	if parts := requiredFieldRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		f := NewCheckFailure(MissingKey, err.Error(), pp, urn, isProvider, p.module, schemaMap, schemaInfos)
-		return &f
+		return NewCheckFailure(MissingKey, err.Error(), &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 	}
 	if parts := conflictsWithRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		f := NewCheckFailure(MiscFailure, err.Error(), pp, urn, isProvider, p.module, schemaMap, schemaInfos)
-		return &f
+		return NewCheckFailure(MiscFailure, err.Error(), &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 	}
 	var d *diagnostics.ValidationError
 	if !errors.As(err, &d) {
-		return nil
+		return
 	}
 	if d.AttributePath == nil || len(d.AttributePath) < 1 {
-		return nil
+		return
 	}
 	pp, err := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, d.AttributePath)
 	if err != nil {
 		glog.V(9).Infof("Ignoring path formatting error: %v", err)
-		return nil
+		return
 	}
 	failType := MiscFailure
 	if strings.Contains(d.Summary, "Invalid or unknown key") {
@@ -107,8 +98,7 @@ func (p *Provider) detectCheckFailure(
 	if d.Detail != "" {
 		s += ". " + d.Detail
 	}
-	cf := NewCheckFailure(failType, s, pp, urn, isProvider, p.module, schemaMap, schemaInfos)
-	return &cf
+	return NewCheckFailure(failType, s, &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
 }
 
 func formatAttributePathAsPropertyPath(
