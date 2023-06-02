@@ -57,7 +57,7 @@ func (p *Provider) adaptCheckFailures(
 // https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
 var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
 
-// Similarly recognize conflics with messages to parse their path.
+// Similarly recognize conflicts with messages to parse their path.
 var conflictsWithRegex = regexp.MustCompile("\"(.*?)\": conflicts with")
 
 // Underlying validators return check failures as error values. This method attempts to recover type and path
