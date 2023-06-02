@@ -269,19 +269,17 @@ func missingDefaultProviderKey(
 	}
 }
 
-func pulumiConfigExpr(configPrefix string, pp CheckFailurePath) (expr string) {
+func pulumiConfigExpr(configPrefix string, pp CheckFailurePath) string {
 	if pp.len() > 1 {
-		expr = fmt.Sprintf("--path %s:%s", configPrefix, pp.valuePath)
-	} else {
-		expr = fmt.Sprintf("%s:%s", configPrefix, pp.valuePath)
+		return fmt.Sprintf("--path %s:%s", configPrefix, pp.valuePath)
 	}
-	return
+	return fmt.Sprintf("%s:%s", configPrefix, pp.valuePath)
 }
 
 // Provider configuration can be using an explicit provider or the default provider, use a heuristic here based on URN,
 // to detect the default provider.
 func isExplicitProvider(urn resource.URN) bool {
-	return urn != "" && !strings.Contains(urn.Name().String(), "default")
+	return urn != "" && !strings.HasPrefix(urn.Name().String(), "default")
 }
 
 func missingProviderKey(
