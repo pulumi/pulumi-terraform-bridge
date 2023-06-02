@@ -318,8 +318,7 @@ func TestCheckConfig(t *testing.T) {
 		      "version": "6.54.0"
 	            },
 	            "failures": [{
-	               "property": "reqProp",
-	               "reason": "Missing a required property: A very important required attribute"
+	               "reason": "Missing required property 'reqProp': A very important required attribute"
 	            }]
 	          }
 		}`)
