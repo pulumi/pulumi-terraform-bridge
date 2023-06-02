@@ -1502,12 +1502,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 
 			if !isList {
 				// This is a block attribute, not a list
-
-				// TODO: This _is_ not correct but it makes the binder happy, we need a new "single_or_none"
-				// intrinsic to handle this correctly.
-				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenOBrack, "["))
-				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenNumberLit, "0"))
-				dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenCBrack, "]"))
+				dynamicTokens = hclwrite.TokensForFunctionCall("singleOrNone", dynamicTokens)
 			}
 
 			newAttributes = append(newAttributes, bodyAttrTokens{

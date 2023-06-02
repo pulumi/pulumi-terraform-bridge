@@ -50,7 +50,7 @@ func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
 func (mapper *mapperProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
-	data, err := mapper.mapper.GetMapping(name)
+	data, err := mapper.mapper.GetMapping(name, GetPulumiProviderName(name))
 	if err != nil {
 		return nil, err
 	}

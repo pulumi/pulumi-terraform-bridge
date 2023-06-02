@@ -23,9 +23,12 @@ type TestFileMapper struct {
 	Path string
 }
 
-func (l *TestFileMapper) GetMapping(provider string) ([]byte, error) {
-	mappingPath := filepath.Join(l.Path, provider) + ".json"
+func (l *TestFileMapper) GetMapping(provider string, pulumiProvider string) ([]byte, error) {
+	if pulumiProvider == "" {
+		pulumiProvider = provider
+	}
 
+	mappingPath := filepath.Join(l.Path, pulumiProvider) + ".json"
 	mappingBytes, err := os.ReadFile(mappingPath)
 	if err != nil {
 		if os.IsNotExist(err) {
