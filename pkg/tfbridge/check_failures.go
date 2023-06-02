@@ -65,19 +65,35 @@ func (p CheckFailurePath) Attribute(name string) CheckFailurePath {
 	}
 }
 
+func (p CheckFailurePath) isMaxItemsOne() bool {
+	s, i, err := LookupSchemas(p.schemaPath, p.schemaMap, p.schemaInfos)
+	if err != nil {
+		return false
+	}
+	return IsMaxItemsOne(s, i)
+}
+
 func (p CheckFailurePath) ListElement(n int64) CheckFailurePath {
+	valuePath := p.valuePath
+	if !p.isMaxItemsOne() {
+		valuePath = fmt.Sprintf("%s[%d]", p.valuePath, n)
+	}
 	return CheckFailurePath{
 		schemaPath:  p.schemaPath.Element(),
-		valuePath:   fmt.Sprintf("%s[%d]", p.valuePath, n),
+		valuePath:   valuePath,
 		schemaMap:   p.schemaMap,
 		schemaInfos: p.schemaInfos,
 	}
 }
 
 func (p CheckFailurePath) MapElement(s string) CheckFailurePath {
+	valuePath := p.valuePath
+	if !p.isMaxItemsOne() {
+		valuePath = fmt.Sprintf("%s[%q]", p.valuePath, s)
+	}
 	return CheckFailurePath{
 		schemaPath:  p.schemaPath.Element(),
-		valuePath:   fmt.Sprintf("%s[%q]", p.valuePath, s),
+		valuePath:   valuePath,
 		schemaMap:   p.schemaMap,
 		schemaInfos: p.schemaInfos,
 	}
@@ -85,9 +101,13 @@ func (p CheckFailurePath) MapElement(s string) CheckFailurePath {
 
 func (p CheckFailurePath) SetElement() CheckFailurePath {
 	// Sets will be represented as lists in Pulumi; more could be done here to find the right index.
+	valuePath := p.valuePath
+	if p.isMaxItemsOne() {
+		valuePath = fmt.Sprintf("%s[?]", p.valuePath)
+	}
 	return CheckFailurePath{
 		schemaPath:  p.schemaPath.Element(),
-		valuePath:   fmt.Sprintf("%s[?]", p.valuePath),
+		valuePath:   valuePath,
 		schemaMap:   p.schemaMap,
 		schemaInfos: p.schemaInfos,
 	}
