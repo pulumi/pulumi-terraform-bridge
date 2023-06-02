@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
+// Enumerates categories of failing checks. See [NewCheckFailure].
 type CheckFailureReason int64
 
 const (
@@ -34,6 +35,7 @@ const (
 	InvalidKey  CheckFailureReason = 2
 )
 
+// Identifies a path to the property that is failing checks. See [NewCheckFailure].
 type CheckFailurePath struct {
 	schemaPath  walk.SchemaPath
 	valuePath   string
@@ -132,6 +134,8 @@ func (pp CheckFailurePath) topLevelPropertyKey(
 	return resource.PropertyKey(n), true
 }
 
+// Formats a CheckFailure to report an issue with a resource or provider configuration. This method is made public to
+// facilitate cross-package use by the bridge framework and is not intended for use by provider authors.
 func NewCheckFailure(
 	reasonType CheckFailureReason,
 	reason string,
@@ -148,21 +152,17 @@ func NewCheckFailure(
 		}
 		return missingRequiredKey(pp, configPrefix, schemaMap, schemaInfos)
 	}
-
 	if isProvider {
 		return formatProviderCheckFailure(reasonType, reason, pp, urn, configPrefix, schemaMap, schemaInfos)
 	}
-
 	if pp != nil && pp.valuePath != "" {
 		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
 	}
-
 	return plugin.CheckFailure{
 		Reason: reason,
 		// Do not populate Property here as that changes the UX of how it displays in CLI. We may want to
 		// consider this change at some point.
 	}
-
 }
 
 func formatProviderCheckFailure(
