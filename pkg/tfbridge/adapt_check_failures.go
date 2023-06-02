@@ -16,16 +16,13 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -33,7 +30,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
-func (p *Provider) formatCheckFailures(
+// Underlying validators return check failures as error values. This method adapts these errors by recognizing path and
+// type information to turn them into CheckFailure objects suitable for gRPC. [NewCheckFailure] makes all the
+// presentation decision, while this method and the rest of the code in this file deals with adapter specifics.
+func (p *Provider) adaptCheckFailures(
 	ctx context.Context,
 	urn resource.URN,
 	isProvider bool,
@@ -43,7 +43,8 @@ func (p *Provider) formatCheckFailures(
 ) []*pulumirpc.CheckFailure {
 	checkFailures := []*pulumirpc.CheckFailure{}
 	for _, e := range errs {
-		cf := p.formatCheckFailure(ctx, urn, isProvider, schemaMap, schemaInfos, e)
+		path, kind, reason := parseCheckError(schemaMap, schemaInfos, e)
+		cf := NewCheckFailure(kind, reason, path, urn, isProvider, p.module, schemaMap, schemaInfos)
 		checkFailures = append(checkFailures, &pulumirpc.CheckFailure{
 			Reason:   cf.Reason,
 			Property: string(cf.Property),
@@ -56,63 +57,56 @@ func (p *Provider) formatCheckFailures(
 // https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
 var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
 
+// Similarly recognize conflics with messages to parse their path.
 var conflictsWithRegex = regexp.MustCompile("\"(.*?)\": conflicts with")
 
-func (p *Provider) formatCheckFailure(
-	ctx context.Context,
-	urn resource.URN,
-	isProvider bool,
+// Underlying validators return check failures as error values. This method attempts to recover type and path
+// information and initially format the failure reason.
+func parseCheckError(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 	err error,
-) (ret plugin.CheckFailure) {
-	// By default if there is no way to identify a propertyPath, still report a generic CheckFailure.
-	ret = NewCheckFailure(MiscFailure, err.Error(), nil, urn, isProvider, p.module, schemaMap, schemaInfos)
+) (*CheckFailurePath, CheckFailureReason, string) {
 	if parts := requiredFieldRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		return NewCheckFailure(MissingKey, err.Error(), &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
+		return &pp, MissingKey, err.Error()
 	}
 	if parts := conflictsWithRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
-		return NewCheckFailure(MiscFailure, err.Error(), &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
+		return &pp, MiscFailure, err.Error()
 	}
 	var d *diagnostics.ValidationError
-	if !errors.As(err, &d) {
-		return
+	if errors.As(err, &d) {
+		failType := MiscFailure
+		if strings.Contains(d.Summary, "Invalid or unknown key") {
+			failType = InvalidKey
+		}
+		pp := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, d.AttributePath)
+		s := d.Summary
+		if d.Detail != "" {
+			s += ". " + d.Detail
+		}
+		return pp, failType, s
 	}
-	if d.AttributePath == nil || len(d.AttributePath) < 1 {
-		return
-	}
-	pp, err := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, d.AttributePath)
-	if err != nil {
-		glog.V(9).Infof("Ignoring path formatting error: %v", err)
-		return
-	}
-	failType := MiscFailure
-	if strings.Contains(d.Summary, "Invalid or unknown key") {
-		failType = InvalidKey
-	}
-	s := d.Summary
-	if d.Detail != "" {
-		s += ". " + d.Detail
-	}
-	return NewCheckFailure(failType, s, &pp, urn, isProvider, p.module, schemaMap, schemaInfos)
+	// If there is no way to identify a propertyPath, still report a generic CheckFailure.
+	return nil, MiscFailure, d.Error()
 }
 
+// Best effort path converter; may return nil.
 func formatAttributePathAsPropertyPath(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 	attrPath cty.Path,
-) (ret CheckFailurePath, finalErr error) {
+) *CheckFailurePath {
 	steps := attrPath
 	if len(steps) == 0 {
-		return ret, fmt.Errorf("Expected a path with at least 1 step")
+		return nil
 	}
 	n, ok := steps[0].(cty.GetAttrStep)
 	if !ok {
-		return ret, fmt.Errorf("Expected a path that starts with an AttributeName step")
+		return nil
 	}
 	p := NewCheckFailurePath(schemaMap, schemaInfos, n.Name)
 	for _, s := range steps[1:] {
@@ -134,5 +128,5 @@ func formatAttributePathAsPropertyPath(
 			contract.Failf("Unhandled match case for cty.Path")
 		}
 	}
-	return p, nil
+	return &p
 }
