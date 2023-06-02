@@ -25,9 +25,13 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
 
-func (p *provider) DeleteWithContext(ctx context.Context,
-	urn resource.URN, id resource.ID,
-	props resource.PropertyMap, timeout float64) (resource.Status, error) {
+func (p *provider) DeleteWithContext(
+	ctx context.Context,
+	urn resource.URN,
+	id resource.ID,
+	props resource.PropertyMap,
+	timeout float64,
+) (resource.Status, error) {
 
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
@@ -43,7 +47,7 @@ func (p *provider) DeleteWithContext(ctx context.Context,
 		return resource.StatusOK, err
 	}
 
-	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request DELETE.
+	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
 	//
 	//nolint:lll // See
 	// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
@@ -56,7 +60,8 @@ func (p *provider) DeleteWithContext(ctx context.Context,
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
+
+	// NOTE: no need to handle resp.Private in Delete.
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
 		return resource.StatusPartialFailure, err

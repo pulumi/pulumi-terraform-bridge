@@ -31,16 +31,22 @@ import (
 
 const metaKey = "__meta"
 
-type resourceState struct {
+type resourceState1 struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
+	Private         []byte
 }
 
 // Resource state where UpgradeResourceState has been already done if necessary.
 type upgradedResourceState struct {
-	state *resourceState
+	state *resourceState1
 }
 
+func (u *upgradedResourceState) PrivateState() []byte {
+	return u.state.Private
+}
+
+// TODO save private state if any.
 func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.PropertyMap, error) {
 	propMap, err := convert.DecodePropertyMap(rh.decoder, u.state.Value)
 	if err != nil {
@@ -58,19 +64,20 @@ func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, erro
 	return resource.ID(idString), nil
 }
 
-func newResourceState(ctx context.Context, rh *resourceHandle) *upgradedResourceState {
+func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *upgradedResourceState {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
-		&resourceState{
+		&resourceState1{
 			Value:           value,
 			TFSchemaVersion: schemaVersion,
+			Private:         private,
 		},
 	}
 }
 
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
+func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState1, error) {
 	stateVersion, err := parseTFSchemaVersion(props)
 	if err != nil {
 		return nil, err
@@ -96,9 +103,10 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	if err != nil {
 		return nil, err
 	}
-	return &resourceState{
+	return &resourceState1{
 		Value:           value,
 		TFSchemaVersion: stateVersion,
+		Private:         []byte{}, // TODO!!
 	}, nil
 }
 
@@ -106,15 +114,17 @@ func parseResourceStateFromTF(
 	ctx context.Context,
 	rh *resourceHandle,
 	state *tfprotov6.DynamicValue,
+	private []byte,
 ) (*upgradedResourceState, error) {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	v, err := state.Unmarshal(tfType)
 	if err != nil {
 		return nil, err
 	}
-	return &upgradedResourceState{state: &resourceState{
+	return &upgradedResourceState{state: &resourceState1{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
+		Private:         private,
 	}}, nil
 }
 
