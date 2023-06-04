@@ -63,6 +63,19 @@
             }
           }
         },
+        "innerResourceOutput": {
+          "type": 5,
+          "computed": true,
+          "maxItems": 1,
+          "element": {
+            "resource": {
+              "someInput": {
+                "type": 1,
+                "optional": true
+              }
+            }
+          }
+        },
         "result": {
           "type": 4,
           "computed": true

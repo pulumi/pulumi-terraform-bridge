@@ -48,6 +48,14 @@
         }
       },
       "type": "object"
+    },
+    "maxItemsOne:index/resourceInnerResourceOutput:resourceInnerResourceOutput": {
+      "properties": {
+        "someInput": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
     }
   },
   "provider": {
@@ -65,11 +73,15 @@
         "innerResource": {
           "$ref": "#/types/maxItemsOne:index/resourceInnerResource:resourceInnerResource"
         },
+        "innerResourceOutput": {
+          "$ref": "#/types/maxItemsOne:index/resourceInnerResourceOutput:resourceInnerResourceOutput"
+        },
         "result": {
           "type": "string"
         }
       },
       "required": [
+        "innerResourceOutput",
         "result"
       ],
       "inputProperties": {
@@ -94,6 +106,9 @@
           },
           "innerResource": {
             "$ref": "#/types/maxItemsOne:index/resourceInnerResource:resourceInnerResource"
+          },
+          "innerResourceOutput": {
+            "$ref": "#/types/maxItemsOne:index/resourceInnerResourceOutput:resourceInnerResourceOutput"
           },
           "result": {
             "type": "string"
