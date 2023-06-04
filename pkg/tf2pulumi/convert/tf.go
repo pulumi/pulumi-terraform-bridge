@@ -935,8 +935,7 @@ func camelCaseName(name string) string {
 	return name
 }
 
-// Returns whether the fully qualified path is being applied for a property
-// for which we can get the `maxItemsOne` field.
+// Returns whether the fully qualified path is being applied for a property.
 func (s *scopes) isPropertyPath(fullyQualifiedPath string) bool {
 	if fullyQualifiedPath == "" {
 		return false
