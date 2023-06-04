@@ -935,6 +935,16 @@ func camelCaseName(name string) string {
 	return name
 }
 
+// Returns whether the fully qualified path is being applied for a property
+// for which we can get the `maxItemsOne` field.
+func (s *scopes) isPropertyPath(fullyQualifiedPath string) bool {
+	if fullyQualifiedPath == "" {
+		return false
+	}
+	info := s.getInfo(fullyQualifiedPath)
+	return info.Resource == nil && info.ResourceInfo == nil && info.DataSourceInfo == nil
+}
+
 func rewriteRelativeTraversal(scopes *scopes, fullyQualifiedPath string, traversal hcl.Traversal) hcl.Traversal {
 	if len(traversal) == 0 {
 		return traversal
@@ -954,9 +964,15 @@ func rewriteRelativeTraversal(scopes *scopes, fullyQualifiedPath string, travers
 		newTraversal = append(newTraversal, hcl.TraverseAttr{Name: name})
 		newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
 	} else if index, ok := traversal[0].(hcl.TraverseIndex); ok {
-		// Index just translates as is
-		newTraversal = append(newTraversal, hcl.TraverseIndex{Key: index.Key})
-		newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
+		if scopes.isPropertyPath(fullyQualifiedPath) && scopes.maxItemsOne(fullyQualifiedPath) {
+			// if are indexing a field which is marked with max items = 1
+			// then we skip the index altogether and return traversal as is
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
+		} else {
+			// Index just translates as is
+			newTraversal = append(newTraversal, hcl.TraverseIndex{Key: index.Key})
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, fullyQualifiedPath, traversal[1:])...)
+		}
 	} else {
 		panic(fmt.Sprintf("Relative traverser %T not handled", traversal[0]))
 	}
@@ -1397,6 +1413,36 @@ func (ts bodyAttrsTokens) Line() int {
 	return line
 }
 
+func expressionTypePath(expr hcl.Expression) string {
+	path := ""
+
+	computePath := func(traversal hcl.Traversal) {
+		for index, part := range traversal {
+			if index == 1 {
+				// skip <name> in traversals of the shape {type}.<name>.{field1}.{field2}...{fieldN}
+				// because the name is defined in the program, not part of the schema
+				continue
+			}
+
+			switch part := part.(type) {
+			case hcl.TraverseRoot:
+				path = path + part.Name
+			case hcl.TraverseAttr:
+				path = path + "." + part.Name
+			}
+		}
+	}
+
+	switch expr := expr.(type) {
+	case *hclsyntax.ScopeTraversalExpr:
+		computePath(expr.Traversal)
+	case *hclsyntax.RelativeTraversalExpr:
+		computePath(expr.Traversal)
+	}
+
+	return path
+}
+
 // Convert a hcl.Body treating sub-bodies as attributes
 func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath string, body hcl.Body) bodyAttrsTokens {
 	contract.Assertf(fullyQualifiedPath != "", "fullyQualifiedPath should not be empty")
@@ -1560,7 +1606,15 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		// single value. We need to project the list expression we've just converted into a single value, for
 		// literals we can just take the single item from the tuple literal, for everything else we just have
 		// to assume we can index at [0].
-		if scopes.maxItemsOne(attrPath) {
+		targetExpressionPath := expressionTypePath(attr.Expr)
+		if scopes.isPropertyPath(targetExpressionPath) {
+			// the attribute is being assigned to an expression which is a traversal
+			// we check here whether the result of the traversal is marked with max items = 1
+			// because if that the case, we shouldn't project it to singleton
+			if scopes.maxItemsOne(attrPath) && !scopes.maxItemsOne(targetExpressionPath) {
+				expr = projectListToSingleton(expr)
+			}
+		} else if scopes.maxItemsOne(attrPath) {
 			expr = projectListToSingleton(expr)
 		}
 
