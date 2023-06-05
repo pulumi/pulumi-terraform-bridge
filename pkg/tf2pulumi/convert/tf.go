@@ -1038,9 +1038,10 @@ func rewriteTraversal(
 			// This is a lookup of a data resources etc, we need to rewrite this traversal such that the root is now the
 			// pulumi invoked value instead.
 			suffix := camelCaseName(maybeFirstAttr.Name)
-			newName := scopes.getOrAddPulumiName("data."+maybeFirstAttr.Name+"."+maybeSecondAttr.Name, "", "data"+suffix)
+			path := "data." + maybeFirstAttr.Name + "." + maybeSecondAttr.Name
+			newName := scopes.getOrAddPulumiName(path, "", "data"+suffix)
 			newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "data."+maybeFirstAttr.Name, traversal[3:])...)
+			newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, path, traversal[3:])...)
 		} else if root.Name == "count" && maybeFirstAttr != nil {
 			if maybeFirstAttr.Name == "index" && scopes.countIndex != nil {
 				newTraversal = append(newTraversal, scopes.countIndex...)
@@ -1079,11 +1080,12 @@ func rewriteTraversal(
 			// rewrite this traversal such that the root is now the pulumi invoked value instead.
 
 			// First see if this is a resource
-			newName := scopes.lookup(root.Name + "." + maybeFirstAttr.Name)
+			path := root.Name + "." + maybeFirstAttr.Name
+			newName := scopes.lookup(path)
 			if newName != "" {
 				// Looks like this is a resource because a local variable would not be recorded in scopes with a "." in it.
 				newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, root.Name, traversal[2:])...)
+				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, path, traversal[2:])...)
 			} else {
 				// This is either a local variable or a resource we haven't seen yet. First check if this is a local variable
 				newName := scopes.lookup(root.Name)
@@ -1093,9 +1095,9 @@ func rewriteTraversal(
 					newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[1:])...)
 				} else {
 					// We don't know what this is, so lets assume it's an unknown resource (we shouldn't ever have unknown locals)
-					newName = scopes.getOrAddPulumiName(root.Name+"."+maybeFirstAttr.Name, "", camelCaseName(root.Name))
+					newName = scopes.getOrAddPulumiName(path, "", camelCaseName(root.Name))
 					newTraversal = append(newTraversal, hcl.TraverseRoot{Name: newName})
-					newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, root.Name, traversal[2:])...)
+					newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, path, traversal[2:])...)
 				}
 			}
 		} else {
@@ -1416,13 +1418,7 @@ func expressionTypePath(expr hcl.Expression) string {
 	path := ""
 
 	computePath := func(traversal hcl.Traversal) {
-		for index, part := range traversal {
-			if index == 1 {
-				// skip <name> in traversals of the shape {type}.<name>.{field1}.{field2}...{fieldN}
-				// because the name is defined in the program, not part of the schema
-				continue
-			}
-
+		for _, part := range traversal {
 			switch part := part.(type) {
 			case hcl.TraverseRoot:
 				path = path + part.Name
@@ -1605,16 +1601,18 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		// single value. We need to project the list expression we've just converted into a single value, for
 		// literals we can just take the single item from the tuple literal, for everything else we just have
 		// to assume we can index at [0].
-		targetExpressionPath := expressionTypePath(attr.Expr)
-		if scopes.isPropertyPath(targetExpressionPath) {
-			// the attribute is being assigned to an expression which is a traversal
-			// we check here whether the result of the traversal is marked with max items = 1
-			// because if that the case, we shouldn't project it to singleton
-			if scopes.maxItemsOne(attrPath) && !scopes.maxItemsOne(targetExpressionPath) {
+		if scopes.maxItemsOne(attrPath) {
+			targetExpressionPath := expressionTypePath(attr.Expr)
+			if scopes.isPropertyPath(targetExpressionPath) {
+				// the attribute is being assigned to an expression which is a traversal
+				// we check here whether the result of the traversal is marked with max items = 1
+				// because if that the case, we shouldn't project it to singleton
+				if !scopes.maxItemsOne(targetExpressionPath) {
+					expr = projectListToSingleton(expr)
+				}
+			} else {
 				expr = projectListToSingleton(expr)
 			}
-		} else if scopes.maxItemsOne(attrPath) {
-			expr = projectListToSingleton(expr)
 		}
 
 		newAttributes = append(newAttributes, bodyAttrTokens{
@@ -1692,7 +1690,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 
 func convertVariable(sources map[string][]byte, scopes *scopes,
 	variable *configs.Variable) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
-	pulumiName := scopes.roots["var."+variable.Name]
+	pulumiName := scopes.roots["var."+variable.Name].Name
 	labels := []string{pulumiName}
 
 	pulumiType := convertCtyType(variable.Type)
@@ -1755,7 +1753,7 @@ func impliedToken(typeName string) string {
 
 func convertLocal(sources map[string][]byte, scopes *scopes,
 	local *configs.Local) (hclwrite.Tokens, string, hclwrite.Tokens, hclwrite.Tokens) {
-	identifier := scopes.roots["local."+local.Name]
+	identifier := scopes.roots["local."+local.Name].Name
 	expr := convertExpression(sources, scopes, "", local.Expr)
 	leading, trailing := getTrivia(sources, local.DeclRange)
 	return leading, identifier, expr, trailing
@@ -1766,7 +1764,10 @@ func convertDataResource(sources map[string][]byte,
 	dataResource *configs.Resource,
 ) (hclwrite.Tokens, string, hclwrite.Tokens, hclwrite.Tokens) {
 	// We translate dataResources into invokes
-	pulumiName := scopes.roots["data."+dataResource.Type+"."+dataResource.Name]
+	path := "data." + dataResource.Type + "." + dataResource.Name
+	root, has := scopes.roots[path]
+	contract.Assertf(has, "data resource %s not found", dataResource.Name)
+	pulumiName := root.Name
 
 	// We special case the old template_file data resource to just return not implemented for now, eventually
 	// we want to map this to a templating function in std.
@@ -1778,13 +1779,8 @@ func convertDataResource(sources map[string][]byte,
 	}
 
 	invokeToken := cty.StringVal(impliedToken(dataResource.Type))
-	provider := impliedProvider(dataResource.Type)
-	providerInfo, err := info.GetProviderInfo("", "", provider, "")
-	if err == nil {
-		dataResourceInfo := providerInfo.DataSources[dataResource.Type]
-		if dataResourceInfo != nil {
-			invokeToken = cty.StringVal(dataResourceInfo.Tok.String())
-		}
+	if root.DataSourceInfo != nil {
+		invokeToken = cty.StringVal(root.DataSourceInfo.Tok.String())
 	}
 
 	// If count is set we'll make this into an array expression
@@ -1802,7 +1798,7 @@ func convertDataResource(sources map[string][]byte,
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "__value"}}
 	}
 
-	invokeArgs := convertBody(sources, scopes, "data."+dataResource.Type, dataResource.Config)
+	invokeArgs := convertBody(sources, scopes, path, dataResource.Config)
 
 	functionCall := hclwrite.TokensForFunctionCall(
 		"invoke",
@@ -1927,16 +1923,14 @@ func convertManagedResources(sources map[string][]byte,
 	target *hclwrite.Body,
 ) {
 	// We translate managedResources into resources
-	pulumiName := scopes.roots[managedResource.Type+"."+managedResource.Name]
+	path := managedResource.Type + "." + managedResource.Name
+	root, has := scopes.roots[path]
+	contract.Assertf(has, "resource %s not found", path)
+	pulumiName := root.Name
 
 	resourceToken := impliedToken(managedResource.Type)
-	provider := impliedProvider(managedResource.Type)
-	providerInfo, err := info.GetProviderInfo("", "", provider, "")
-	if err == nil {
-		managedResourceInfo := providerInfo.Resources[managedResource.Type]
-		if managedResourceInfo != nil {
-			resourceToken = managedResourceInfo.Tok.String()
-		}
+	if root.ResourceInfo != nil {
+		resourceToken = root.ResourceInfo.Tok.String()
 	}
 
 	labels := []string{pulumiName, resourceToken}
@@ -1959,7 +1953,7 @@ func convertManagedResources(sources map[string][]byte,
 		options.Body().SetAttributeRaw("range", forEachExpr)
 	}
 
-	resourceArgs := convertBody(sources, scopes, managedResource.Type, managedResource.Config)
+	resourceArgs := convertBody(sources, scopes, path, managedResource.Config)
 	for _, arg := range resourceArgs {
 		blockBody.SetAttributeRaw(arg.Name, arg.Value)
 	}
@@ -1987,7 +1981,8 @@ func convertModuleCall(
 	destinationDirectory string,
 	moduleCall *configs.ModuleCall) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	// We translate module calls into components
-	pulumiName := scopes.roots["module."+moduleCall.Name]
+	path := "module." + moduleCall.Name
+	pulumiName := scopes.roots[path].Name
 
 	// Get the local component path from the module source
 	moduleKey := makeModuleKey(moduleCall)
@@ -2032,7 +2027,7 @@ func convertModuleCall(
 		options.Body().SetAttributeRaw("range", forEachExpr)
 	}
 
-	moduleArgs := convertBody(sources, scopes, pulumiName, moduleCall.Config)
+	moduleArgs := convertBody(sources, scopes, path, moduleCall.Config)
 	for _, arg := range moduleArgs {
 		blockBody.SetAttributeRaw(arg.Name, arg.Value)
 	}
@@ -2047,7 +2042,7 @@ func convertModuleCall(
 
 func convertOutput(sources map[string][]byte, scopes *scopes,
 	output *configs.Output) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
-	labels := []string{scopes.roots["output."+output.Name]}
+	labels := []string{scopes.roots["output."+output.Name].Name}
 	block := hclwrite.NewBlock("output", labels)
 	blockBody := block.Body()
 	leading, _ := getTrivia(sources, getAttributeRange(sources, output.Expr.Range()))
@@ -2058,12 +2053,33 @@ func convertOutput(sources map[string][]byte, scopes *scopes,
 	return leading, block, trailing
 }
 
+// Used to return info about a path in the schema.
+type PathInfo struct {
+	// The final part of the path (e.g. a_field)
+	Name string
+
+	// The Resource that contains the path (e.g. data.simple_data_source)
+	Resource shim.Resource
+	// The DataSourceInfo for the path (e.g. data.simple_data_source)
+	DataSourceInfo *tfbridge.DataSourceInfo
+	// The ResourceInfo for the path (e.g. simple_resource)
+	ResourceInfo *tfbridge.ResourceInfo
+
+	// The Schema for the path (e.g. data.simple_data_source.a_field)
+	Schema shim.Schema
+	// The SchemaInfo for the path (e.g. data.simple_data_source.a_field)
+	SchemaInfo *tfbridge.SchemaInfo
+}
+
 type scopes struct {
 	info il.ProviderInfoSource
 
-	roots map[string]string
+	// All known roots, keyed by fully qualified path e.g. data.some_data_source
+	roots map[string]PathInfo
+
 	// Local variables that are in scope from for expressions
 	locals []map[string]string
+
 	// Set non-nil if "count.index" can be mapped
 	countIndex hcl.Traversal
 	eachKey    hcl.Traversal
@@ -2077,8 +2093,8 @@ func (s *scopes) lookup(name string) string {
 			return s.locals[i][name]
 		}
 	}
-	if s.roots[name] != "" {
-		return s.roots[name]
+	if root, has := s.roots[name]; has {
+		return root.Name
 	}
 	return ""
 }
@@ -2099,7 +2115,7 @@ func (s *scopes) isUsed(name string) bool {
 	}
 
 	for _, usedName := range s.roots {
-		if usedName == name {
+		if usedName.Name == name {
 			return true
 		}
 	}
@@ -2133,46 +2149,29 @@ func (s *scopes) generateUniqueName(name, prefix, suffix string) string {
 // getPulumiName takes "name" and ensures it's unique.
 // First by appending `suffix` to it, and then appending an incrementing count
 func (s *scopes) getOrAddPulumiName(name, prefix, suffix string) string {
-	pulumiName := s.roots[name]
-	if pulumiName != "" {
-		return pulumiName
+	root, has := s.roots[name]
+	if has {
+		return root.Name
 	}
 	parts := strings.Split(name, ".")
 	tfName := parts[len(parts)-1]
-	pulumiName = camelCaseName(tfName)
+	pulumiName := camelCaseName(tfName)
 	pulumiName = s.generateUniqueName(pulumiName, prefix, suffix)
-	s.roots[name] = pulumiName
+	s.roots[name] = PathInfo{Name: pulumiName}
 	return pulumiName
-}
-
-// Used to return info about a path in the schema.
-type PathInfo struct {
-	// The final part of the path (e.g. a_field)
-	Name string
-
-	// The Resource that contains the path (e.g. data.simple_data_source)
-	Resource shim.Resource
-	// The DataSourceInfo for the path (e.g. data.simple_data_source)
-	DataSourceInfo *tfbridge.DataSourceInfo
-	// The ResourceInfo for the path (e.g. simple_resource)
-	ResourceInfo *tfbridge.ResourceInfo
-
-	// The Schema for the path (e.g. data.simple_data_source.a_field)
-	Schema shim.Schema
-	// The SchemaInfo for the path (e.g. data.simple_data_source.a_field)
-	SchemaInfo *tfbridge.SchemaInfo
 }
 
 // Given a fully typed path (e.g. data.simple_data_source.a_field) returns the final part of that path
 // (a_field) and the either the Resource or Schema, and SchemaInfo for that path (if any).
 func (s *scopes) getInfo(fullyQualifiedPath string) PathInfo {
 	parts := strings.Split(fullyQualifiedPath, ".")
-	contract.Assertf(len(parts) != 0, "empty path passed into pulumiName")
-	contract.Assertf(parts[0] != "", "empty path part passed into pulumiName")
+	contract.Assertf(len(parts) >= 2, "empty path passed into getInfo: %s", fullyQualifiedPath)
+	contract.Assertf(parts[0] != "", "empty path part passed into getInfo: %s", fullyQualifiedPath)
+	contract.Assertf(parts[1] != "", "empty path part passed into getInfo: %s", fullyQualifiedPath)
 
 	var getInner func(sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo, parts []string) PathInfo
 	getInner = func(sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo, parts []string) PathInfo {
-		contract.Assertf(parts[0] != "", "empty path part passed into pulumiName")
+		contract.Assertf(parts[0] != "", "empty path part passed into getInfo")
 
 		// At this point parts[0] may be an property + indexer or just a property. Work that out first.
 		part, rest, indexer := strings.Cut(parts[0], "[]")
@@ -2248,71 +2247,54 @@ func (s *scopes) getInfo(fullyQualifiedPath string) PathInfo {
 	}
 
 	if parts[0] == "data" {
-		typ := parts[1]
-		contract.Assertf(typ != "", "empty data type passed into pulumiName")
+		contract.Assertf(len(parts) >= 3, "empty path passed into getInfo: %s", fullyQualifiedPath)
+		contract.Assertf(parts[2] != "", "empty path part passed into getInfo: %s", fullyQualifiedPath)
 
-		provider := impliedProvider(typ)
-		providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
-		var res shim.Resource
-		var dataSourceInfo *tfbridge.DataSourceInfo
-		if err == nil {
-			res = providerInfo.P.DataSourcesMap().Get(typ)
-			dataSourceInfo = providerInfo.DataSources[typ]
-		}
-
-		if len(parts) == 2 {
-			return PathInfo{
-				Name:           typ,
-				Resource:       res,
-				DataSourceInfo: dataSourceInfo,
+		root, has := s.roots[parts[0]+"."+parts[1]+"."+parts[2]]
+		if len(parts) == 3 {
+			if has {
+				return root
 			}
+			// If we don't have a root, just return the name
+			return PathInfo{Name: parts[2]}
 		}
 
 		var currentSchema shim.SchemaMap
 		var currentInfo map[string]*tfbridge.SchemaInfo
-		if res != nil {
-			currentSchema = res.Schema()
+		if root.Resource != nil {
+			currentSchema = root.Resource.Schema()
 		}
-		if dataSourceInfo != nil {
-			currentInfo = dataSourceInfo.Fields
+		if root.DataSourceInfo != nil {
+			currentInfo = root.DataSourceInfo.Fields
 		}
 
-		return getInner(currentSchema, currentInfo, parts[2:])
+		return getInner(currentSchema, currentInfo, parts[3:])
+
 	}
 
-	// This is only for looking up types so this must be a resource
-	typ := parts[0]
+	root, has := s.roots[parts[0]+"."+parts[1]]
 
-	provider := impliedProvider(typ)
-	providerInfo, err := s.info.GetProviderInfo("", "", provider, "")
-	var res shim.Resource
-	var resourceInfo *tfbridge.ResourceInfo
-	if err == nil {
-		res = providerInfo.P.ResourcesMap().Get(typ)
-		resourceInfo = providerInfo.Resources[typ]
-	}
-
-	if len(parts) == 1 {
-		return PathInfo{
-			Name:         typ,
-			Resource:     res,
-			ResourceInfo: resourceInfo,
+	if len(parts) == 2 {
+		if has {
+			return root
 		}
+		// If we don't have a root, just return the name
+		return PathInfo{Name: parts[1]}
 	}
 
 	var currentSchema shim.SchemaMap
 	var currentInfo map[string]*tfbridge.SchemaInfo
-	if res != nil {
-		currentSchema = res.Schema()
+	if root.Resource != nil {
+		currentSchema = root.Resource.Schema()
 	}
-	if resourceInfo != nil {
-		currentInfo = resourceInfo.Fields
+	if root.ResourceInfo != nil {
+		currentInfo = root.ResourceInfo.Fields
 	}
 
-	return getInner(currentSchema, currentInfo, parts[1:])
+	return getInner(currentSchema, currentInfo, parts[2:])
 }
 
-// Given a fully typed path (e.g. data.simple_data_source.a_field) returns the pulumi name for that path.
+// Given a fully typed path (e.g. data.simple_data_source.my_data.a_field) returns the pulumi name for that path.
 func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	info := s.getInfo(fullyQualifiedPath)
 
@@ -2502,9 +2484,11 @@ func translateModuleSourceCode(
 
 	scopes := &scopes{
 		info:   info,
-		roots:  make(map[string]string),
+		roots:  make(map[string]PathInfo),
 		locals: make([]map[string]string, 0),
 	}
+
+	diagnostics := hcl.Diagnostics{}
 
 	// First go through and add everything to the items list so we can sort it by source order
 	items := make(terraformItems, 0)
@@ -2543,13 +2527,49 @@ func translateModuleSourceCode(
 	for _, item := range items {
 		if item.data != nil {
 			dataResource := item.data
-			scopes.getOrAddPulumiName("data."+dataResource.Type+"."+dataResource.Name, "", "Data")
+			key := "data." + dataResource.Type + "." + dataResource.Name
+			scopes.getOrAddPulumiName(key, "", "Data")
+			// Try to grab the info for this data type
+			provider := impliedProvider(dataResource.Type)
+			providerInfo, err := info.GetProviderInfo("", "", provider, "")
+			if err != nil {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Failed to get provider info",
+					Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", dataResource.Type, err),
+				})
+			}
+
+			if providerInfo != nil {
+				root := scopes.roots[key]
+				root.Resource = providerInfo.P.DataSourcesMap().Get(dataResource.Type)
+				root.DataSourceInfo = providerInfo.DataSources[dataResource.Type]
+				scopes.roots[key] = root
+			}
 		}
 	}
 	for _, item := range items {
 		if item.resource != nil {
 			managedResource := item.resource
-			scopes.getOrAddPulumiName(managedResource.Type+"."+managedResource.Name, "", "Resource")
+			key := managedResource.Type + "." + managedResource.Name
+			scopes.getOrAddPulumiName(key, "", "Resource")
+			// Try to grab the info for this resource type
+			provider := impliedProvider(managedResource.Type)
+			providerInfo, err := info.GetProviderInfo("", "", provider, "")
+			if err != nil {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Failed to get provider info",
+					Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", managedResource.Type, err),
+				})
+			}
+
+			if providerInfo != nil {
+				root := scopes.roots[key]
+				root.Resource = providerInfo.P.ResourcesMap().Get(managedResource.Type)
+				root.ResourceInfo = providerInfo.Resources[managedResource.Type]
+				scopes.roots[key] = root
+			}
 		}
 	}
 	for _, item := range items {
@@ -2862,14 +2882,21 @@ func translateModuleSourceCode(
 			}}
 		}
 	}
-	return nil
+	return diagnostics
 }
 
 func TranslateModule(
 	source afero.Fs, sourceDirectory string,
 	destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
 	modules := make(map[moduleKey]string)
-	return translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
+	diags := translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
+	// TODO: pulumi-terraform-converter doesn't correctly translate returned diagnostics yet. Once that's
+	// fixed up we can change this to just always return diagnostics and the converter plugin will be able to
+	// handle warning diagnostics.
+	if diags != nil && diags.HasErrors() {
+		return diags
+	}
+	return nil
 }
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
