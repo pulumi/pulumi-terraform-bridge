@@ -15,6 +15,7 @@
 package il
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,7 +51,8 @@ func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
 func (mapper *mapperProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
-	data, err := mapper.mapper.GetMapping(name, GetPulumiProviderName(name))
+	// TODO: Mapper has been made context aware, but ProviderInfoSource isn't.
+	data, err := mapper.mapper.GetMapping(context.TODO(), name, GetPulumiProviderName(name))
 	if err != nil {
 		return nil, err
 	}
