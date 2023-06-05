@@ -98,7 +98,7 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 
 	opts := EjectOptions{
 		Loader:             loader,
-		ProviderInfoSource: il.NewMapperProviderInfoSource(mapper),
+		ProviderInfoSource: il.NewCachingProviderInfoSource(il.NewMapperProviderInfoSource(mapper)),
 	}
 
 	if setOpts != nil {
