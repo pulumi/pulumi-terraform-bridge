@@ -118,10 +118,14 @@ func TestRegressHCloud175(t *testing.T) {
 	    },
 	    "preview": true
 	  },
-	  "errors": [
-	    "rpc error: code = Unknown desc = diffing urn:pulumi:dev::repro-175::hcloud:index/networkSubnet:NetworkSubnet::subnet: value is not known"
-	  ]
+	  "response": {
+            "properties": {
+	      "id": "*",
+	      "ipRange": "10.0.1.0/24",
+	      "networkZone": "eu-central",
+	      "type": "cloud"
+            }
+	  }
 	}`
 	testutils.Replay(t, server, testCase)
-
 }

@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/configs/configschema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/plans/objchange"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
@@ -30,15 +31,9 @@ func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, er
 	if err != nil {
 		return hcty.False, err
 	}
-	priorC, err := hcty2cty(prior)
-	if err != nil {
-		return hcty.False, err
-	}
-	configC, err := hcty2cty(config)
-	if err != nil {
-		return hcty.False, err
-	}
-	return cty2hcty(objchange.ProposedNew(schema, priorC, configC))
+	priorC := hcty2cty(prior)
+	configC := hcty2cty(config)
+	return cty2hcty(objchange.ProposedNew(schema, priorC, configC)), nil
 }
 
 func htype2ctype(t hcty.Type) (cty.Type, error) {
@@ -52,39 +47,161 @@ func htype2ctype(t hcty.Type) (cty.Type, error) {
 	return ctyjson.UnmarshalType(typeJSON)
 }
 
-func hcty2cty(v hcty.Value) (cty.Value, error) {
-	if v.Equals(hcty.NilVal).True() {
-		return cty.NilVal, nil
+func hcty2cty(val hcty.Value) cty.Value {
+	if val.Equals(hcty.NilVal).True() {
+		return cty.NilVal
 	}
-	typ, err := htype2ctype(v.Type())
-	if err != nil {
-		return cty.False, err
-	}
-	valueJSON, err := hctyjson.Marshal(v, v.Type())
-	if err != nil {
-		return cty.False, err
-	}
-	return ctyjson.Unmarshal(valueJSON, typ)
+	ty, err := htype2ctype(val.Type())
+	contract.AssertNoErrorf(err, "unexpected error in htype2ctype")
+	return hcty2ctyWithType(ty, val)
 }
 
-func cty2hcty(v cty.Value) (hcty.Value, error) {
-	if v.Equals(cty.NilVal).True() {
-		return hcty.NilVal, nil
+func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
+	// Pattern-matching below is based on how hcty.Transform is written.
+	switch {
+	case val.IsNull():
+		return cty.NullVal(ty)
+	case !val.IsKnown():
+		return cty.UnknownVal(ty)
+	case ty.Equals(cty.String):
+		return cty.StringVal(val.AsString())
+	case ty.Equals(cty.Number):
+		return cty.NumberVal(val.AsBigFloat())
+	case ty.Equals(cty.Bool):
+		if val.True() {
+			return cty.True
+		}
+		return cty.False
+	case ty.IsListType(), ty.IsSetType(), ty.IsTupleType():
+		l := val.LengthInt()
+		eT := ty.ElementType()
+		elems := make([]cty.Value, 0, l)
+		for it := val.ElementIterator(); it.Next(); {
+			_, ev := it.Element()
+			newEv := hcty2ctyWithType(eT, ev)
+			elems = append(elems, newEv)
+		}
+		switch {
+		case ty.IsListType():
+			if len(elems) == 0 {
+				return cty.ListValEmpty(eT)
+			}
+			return cty.ListVal(elems)
+		case ty.IsSetType():
+			if len(elems) == 0 {
+				return cty.SetValEmpty(eT)
+			}
+			return cty.SetVal(elems)
+		case ty.IsTupleType():
+			return cty.TupleVal(elems)
+		default:
+			contract.Assertf(false, "match failure on cty.Type: unknown sequence type")
+		}
+	case ty.IsMapType():
+		eT := ty.ElementType()
+		elems := make(map[string]cty.Value)
+		for it := val.ElementIterator(); it.Next(); {
+			kv, ev := it.Element()
+			newEv := hcty2ctyWithType(eT, ev)
+			elems[kv.AsString()] = newEv
+		}
+		return cty.MapVal(elems)
+	case ty.IsObjectType():
+		atys := ty.AttributeTypes()
+		newAVs := make(map[string]cty.Value)
+		for name, aT := range atys {
+			av := val.GetAttr(name)
+			newAV := hcty2ctyWithType(aT, av)
+			newAVs[name] = newAV
+		}
+		return cty.ObjectVal(newAVs)
 	}
+	contract.Assertf(false, "match failure on hcty.Value: %v", val.GoString())
+	return cty.DynamicVal
+}
 
-	typeJSON, err := ctyjson.MarshalType(v.Type())
-	if err != nil {
-		return hcty.False, err
+func ctype2htype(t cty.Type) (hcty.Type, error) {
+	if t.Equals(cty.NilType) {
+		return hcty.NilType, nil
 	}
-	valueJSON, err := ctyjson.Marshal(v, v.Type())
+	typeJSON, err := ctyjson.MarshalType(t)
 	if err != nil {
-		return hcty.False, err
+		return hcty.Bool, err
 	}
-	typ, err := hctyjson.UnmarshalType(typeJSON)
-	if err != nil {
-		return hcty.False, err
+	return hctyjson.UnmarshalType(typeJSON)
+}
+
+func cty2hcty(val cty.Value) hcty.Value {
+	if val.Equals(cty.NilVal).True() {
+		return hcty.NilVal
 	}
-	return hctyjson.Unmarshal(valueJSON, typ)
+	ty, err := ctype2htype(val.Type())
+	contract.AssertNoErrorf(err, "unexpected error in ctype2htype")
+	return cty2hctyWithType(ty, val)
+}
+
+func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
+	// Pattern-matching below is based on how hcty.Transform is written.
+	switch {
+	case val.IsNull():
+		return hcty.NullVal(ty)
+	case !val.IsKnown():
+		return hcty.UnknownVal(ty)
+	case ty.Equals(hcty.String):
+		return hcty.StringVal(val.AsString())
+	case ty.Equals(hcty.Number):
+		return hcty.NumberVal(val.AsBigFloat())
+	case ty.Equals(hcty.Bool):
+		if val.True() {
+			return hcty.True
+		}
+		return hcty.False
+	case ty.IsListType(), ty.IsSetType(), ty.IsTupleType():
+		l := val.LengthInt()
+		eT := ty.ElementType()
+		elems := make([]hcty.Value, 0, l)
+		for it := val.ElementIterator(); it.Next(); {
+			_, ev := it.Element()
+			newEv := cty2hctyWithType(eT, ev)
+			elems = append(elems, newEv)
+		}
+		switch {
+		case ty.IsListType():
+			if len(elems) == 0 {
+				return hcty.ListValEmpty(eT)
+			}
+			return hcty.ListVal(elems)
+		case ty.IsSetType():
+			if len(elems) == 0 {
+				return hcty.SetValEmpty(eT)
+			}
+			return hcty.SetVal(elems)
+		case ty.IsTupleType():
+			return hcty.TupleVal(elems)
+		default:
+			contract.Assertf(false, "match failure on cty.Type: unknown sequence type")
+		}
+	case ty.IsMapType():
+		eT := ty.ElementType()
+		elems := make(map[string]hcty.Value)
+		for it := val.ElementIterator(); it.Next(); {
+			kv, ev := it.Element()
+			newEv := cty2hctyWithType(eT, ev)
+			elems[kv.AsString()] = newEv
+		}
+		return hcty.MapVal(elems)
+	case ty.IsObjectType():
+		atys := ty.AttributeTypes()
+		newAVs := make(map[string]hcty.Value)
+		for name, aT := range atys {
+			av := val.GetAttr(name)
+			newAV := cty2hctyWithType(aT, av)
+			newAVs[name] = newAV
+		}
+		return hcty.ObjectVal(newAVs)
+	}
+	contract.Assertf(false, "match failure on cty.Value")
+	return hcty.DynamicVal
 }
 
 func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
