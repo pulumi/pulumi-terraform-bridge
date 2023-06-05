@@ -25,10 +25,10 @@ resource "maxItemsOne_resource" "resource_from_output_field_indexed" {
   innerResource = maxItemsOne_resource.resource_list.innerResourceOutput[0]
 }
 
-
 resource "maxItemsOne_resource" "resource_var" {
   innerResource = var.list_input
 }
+
 #endif
 
 data "maxItemsOne_datasource" "datasource_block" {

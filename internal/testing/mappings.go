@@ -15,6 +15,8 @@
 package testing
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -27,14 +29,29 @@ func (l *TestFileMapper) GetMapping(provider string, pulumiProvider string) ([]b
 	if pulumiProvider == "" {
 		pulumiProvider = provider
 	}
+	if pulumiProvider == "" {
+		panic("provider and pulumiProvider cannot both be empty")
+	}
+
+	if pulumiProvider == "unknown" || pulumiProvider == "terraform-template" {
+		// 'unknown' is used as a known provider name that will return nothing, so return early here so we
+		// don't hit the standard unknown error below. 'template' is used in tests but we don't have a
+		// provider for it so we also return nothing for that.
+		return nil, nil
+	}
+	if pulumiProvider == "error" {
+		// 'error' is used as a known provider name that will cause GetMapping to error, so return early here
+		// so we don't hit the standard unknown error below.
+		return nil, errors.New("test error")
+	}
 
 	mappingPath := filepath.Join(l.Path, pulumiProvider) + ".json"
 	mappingBytes, err := os.ReadFile(mappingPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			panic(fmt.Sprintf("provider %s (%s) is not known to the test system", provider, pulumiProvider))
 		}
-		return nil, err
+		panic(err)
 	}
 
 	return mappingBytes, nil

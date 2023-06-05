@@ -4,7 +4,7 @@ resource "maxItemsOne_resource" "main" {
     }
 }
 
-data "maxItemsOne_datasource" "some_datasource" {
+data "maxItemsOne_datasource" "unknown_datasource" {
   aliases {
     ensureHealth = true
   }
