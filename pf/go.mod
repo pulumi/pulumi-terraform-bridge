@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.10.0
 	github.com/hashicorp/terraform-plugin-go v0.14.3
 	github.com/hashicorp/terraform-plugin-log v0.7.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.48.1-0.20230527113951-a0f92e793f31
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.49.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.54.0
