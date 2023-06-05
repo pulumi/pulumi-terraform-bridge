@@ -95,6 +95,8 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 					},
 				},
 			},
+
+			"testbridge_privst": {Tok: "testbridge:index/testres:Privst"},
 		},
 
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -202,5 +204,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestCompRes,
 		newTestConfigRes,
 		newTestDefaultInfoRes,
+		newPrivst,
 	}
 }

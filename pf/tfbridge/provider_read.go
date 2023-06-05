@@ -109,10 +109,10 @@ func (p *provider) readViaReadResource(
 	req := tfprotov6.ReadResourceRequest{
 		TypeName:     rh.terraformResourceName,
 		CurrentState: &currentStateDV,
+		Private:      currentState.PrivateState(),
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
-	// TODO[pulumi/pulumi-terraform-bridge#747] set Private
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
@@ -123,12 +123,11 @@ func (p *provider) readViaReadResource(
 		return plugin.ReadResult{}, err
 	}
 
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 	if resp.NewState == nil {
 		return plugin.ReadResult{}, nil
 	}
 
-	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState)
+	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState, resp.Private)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}
@@ -155,7 +154,6 @@ func (p *provider) readViaImportResourceState(
 	id resource.ID,
 ) (plugin.ReadResult, error) {
 	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
-	// TODO[pulumi/pulumi-terraform-bridge#747] set Private
 	req := tfprotov6.ImportResourceStateRequest{
 		TypeName: rh.terraformResourceName,
 		ID:       string(id),
@@ -165,8 +163,6 @@ func (p *provider) readViaImportResourceState(
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}
-
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
 		return plugin.ReadResult{}, err
@@ -185,7 +181,7 @@ func (p *provider) readViaImportResourceState(
 
 	r := resp.ImportedResources[0]
 
-	readState, err := parseResourceStateFromTF(ctx, rh, r.State)
+	readState, err := parseResourceStateFromTF(ctx, rh, r.State, r.Private)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}

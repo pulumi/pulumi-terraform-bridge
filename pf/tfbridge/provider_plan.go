@@ -55,13 +55,15 @@ func (p *provider) plan(
 		return nil, err
 	}
 
+	priorPrivate := priorState.PrivateState()
+
 	planReq := tfprotov6.PlanResourceChangeRequest{
 		TypeName:         typeName,
 		PriorState:       &priorStateV,
 		ProposedNewState: &proposedNewStateV,
 		Config:           &configV,
+		PriorPrivate:     priorPrivate,
 
-		// TODO[pulumi/pulumi-terraform-bridge#747] PriorPrivate
 		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	}
 

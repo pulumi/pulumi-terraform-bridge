@@ -86,10 +86,11 @@ func (p *provider) UpdateWithContext(
 	}
 
 	req := tfprotov6.ApplyResourceChangeRequest{
-		TypeName:     rh.terraformResourceName,
-		Config:       &checkedInputsDV,
-		PriorState:   &priorStateDV,
-		PlannedState: planResp.PlannedState,
+		TypeName:       rh.terraformResourceName,
+		Config:         &checkedInputsDV,
+		PriorState:     &priorStateDV,
+		PlannedState:   planResp.PlannedState,
+		PlannedPrivate: planResp.PlannedPrivate,
 	}
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
@@ -101,8 +102,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private
-	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
+	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
 		return nil, 0, err
 	}

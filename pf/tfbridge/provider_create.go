@@ -42,7 +42,7 @@ func (p *provider) CreateWithContext(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	priorState := newResourceState(ctx, &rh)
+	priorState := newResourceState(ctx, &rh, nil /*private state*/)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
@@ -57,8 +57,6 @@ func (p *provider) CreateWithContext(
 	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
 		return "", nil, 0, err
 	}
-
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
 
 	// NOTE: it seems that planResp.RequiresReplace can be ignored in Create and must be false.
 
@@ -77,12 +75,11 @@ func (p *provider) CreateWithContext(
 	}
 
 	req := tfprotov6.ApplyResourceChangeRequest{
-		TypeName:     rh.terraformResourceName,
-		PriorState:   &priorStateValue,
-		PlannedState: planResp.PlannedState,
-		Config:       &configValue,
-
-		// TODO[pulumi/pulumi-terraform-bridge#747] PlannedPrivate []byte{},
+		TypeName:       rh.terraformResourceName,
+		PriorState:     &priorStateValue,
+		PlannedState:   planResp.PlannedState,
+		Config:         &configValue,
+		PlannedPrivate: planResp.PlannedPrivate,
 		// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 		//
 		// See https://www.terraform.io/internals/provider-meta
@@ -97,9 +94,7 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle resp.Private field to save that state inside Pulumi state.
-
-	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState)
+	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
 		return "", nil, 0, err
 	}

@@ -1,0 +1,12 @@
+name: privst-program
+runtime: yaml
+resources:
+  r:
+    type: testbridge:index/testres:Privst
+
+outputs:
+  test_privst_before_edit__actual: ${r.observedPrivateStateBefore}
+  test_privst_before_edit__expect: "target-1" # read from state
+
+  test_privst_after_edit__actual: ${r.observedPrivateStateAfter}
+  test_privst_after_edit__expect: "target-1"

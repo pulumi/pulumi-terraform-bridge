@@ -77,7 +77,10 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	// TODO[pulumi/pulumi-terraform-bridge#747] handle planResp.PlannedPrivate
+	// NOTE: this currently ingores planRep.PlanedPrivate but it is unclear if it should signal differences between
+	// planResp.PlannedPrivate and priorState.PrivateState() when the only thing that is changing is the private
+	// state. Currently assume that planResp will signal RequiresReplace if needed anyway and there is no useful way
+	// to surface private state differences to the user from the Diff method.
 
 	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
 		return plugin.DiffResult{}, err
@@ -88,10 +91,6 @@ func (p *provider) DiffWithContext(
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
-	// fmt.Printf("checkedInputsValue = %s\n\n", checkedInputsValue)
-
-	// fmt.Printf("priorStateValue   = %s\n\n", priorStateValue)
-	// fmt.Printf("plannedStateValue = %s\n\n", plannedStateValue)
 
 	tfDiff, err := priorState.state.Value.Diff(plannedStateValue)
 	if err != nil {
@@ -133,8 +132,6 @@ func (p *provider) DiffWithContext(
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#824] StableKeys
-
-	// TODO[pulumi/pulumi-terraform-bridge#752] DetailedDiff
 	return diffResult, nil
 }
 

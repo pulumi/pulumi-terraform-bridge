@@ -210,6 +210,50 @@
                 "type": "object"
             }
         },
+        "testbridge:index/testres:Privst": {
+            "properties": {
+                "observedPrivateStateAfter": {
+                    "type": "string",
+                    "description": "Exports current PrivateState after the update to help test it\n"
+                },
+                "observedPrivateStateBefore": {
+                    "type": "string",
+                    "description": "Exports current PrivateState before the update to help test it\n"
+                },
+                "targetPrivateState": {
+                    "type": "string",
+                    "description": "The value of this attribute is stored in PrivateState\n"
+                }
+            },
+            "required": [
+                "observedPrivateStateAfter",
+                "observedPrivateStateBefore"
+            ],
+            "inputProperties": {
+                "targetPrivateState": {
+                    "type": "string",
+                    "description": "The value of this attribute is stored in PrivateState\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Privst resources.\n",
+                "properties": {
+                    "observedPrivateStateAfter": {
+                        "type": "string",
+                        "description": "Exports current PrivateState after the update to help test it\n"
+                    },
+                    "observedPrivateStateBefore": {
+                        "type": "string",
+                        "description": "Exports current PrivateState before the update to help test it\n"
+                    },
+                    "targetPrivateState": {
+                        "type": "string",
+                        "description": "The value of this attribute is stored in PrivateState\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:TestConfigRes": {
             "properties": {
                 "configCopy": {
