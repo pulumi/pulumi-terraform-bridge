@@ -2751,9 +2751,11 @@ func translateModuleSourceCode(
 							},
 						}
 					}
+					// Maintain the subdir from the original module call.
+					remoteAddr.Subdir = addr.Subdir
 
 					destinationPath := filepath.Join(destinationDirectory,
-						fmt.Sprintf("%s_%s", addr.Package.Name, latestVersion))
+						fmt.Sprintf("%s_%s", addr.Package.Name, latestVersion), addr.Subdir)
 					// Check that this path isn't already taken
 					for _, path := range modules {
 						if path == destinationPath {
