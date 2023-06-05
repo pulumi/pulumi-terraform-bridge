@@ -37,7 +37,7 @@ func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, er
 }
 
 func htype2ctype(t hcty.Type) (cty.Type, error) {
-	if t.Equals(hcty.NilType) {
+	if t.GoString() == "cty.NilType" {
 		return cty.NilType, nil
 	}
 	typeJSON, err := hctyjson.MarshalType(t)
@@ -48,7 +48,7 @@ func htype2ctype(t hcty.Type) (cty.Type, error) {
 }
 
 func hcty2cty(val hcty.Value) cty.Value {
-	if val.Equals(hcty.NilVal).True() {
+	if val.IsKnown() && val.Equals(hcty.NilVal).True() {
 		return cty.NilVal
 	}
 	ty, err := htype2ctype(val.Type())
@@ -63,6 +63,8 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 		return cty.NullVal(ty)
 	case !val.IsKnown():
 		return cty.UnknownVal(ty)
+	case ty.Equals(cty.EmptyTuple):
+		return cty.EmptyTupleVal
 	case ty.Equals(cty.String):
 		return cty.StringVal(val.AsString())
 	case ty.Equals(cty.Number):
@@ -74,22 +76,29 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 		return cty.False
 	case ty.IsListType(), ty.IsSetType(), ty.IsTupleType():
 		l := val.LengthInt()
-		eT := ty.ElementType()
 		elems := make([]cty.Value, 0, l)
+		idx := 0
 		for it := val.ElementIterator(); it.Next(); {
 			_, ev := it.Element()
+			var eT cty.Type
+			if ty.IsTupleType() {
+				eT = ty.TupleElementType(idx)
+			} else {
+				eT = ty.ElementType()
+			}
 			newEv := hcty2ctyWithType(eT, ev)
 			elems = append(elems, newEv)
+			idx++
 		}
 		switch {
 		case ty.IsListType():
 			if len(elems) == 0 {
-				return cty.ListValEmpty(eT)
+				return cty.ListValEmpty(ty.ElementType())
 			}
 			return cty.ListVal(elems)
 		case ty.IsSetType():
 			if len(elems) == 0 {
-				return cty.SetValEmpty(eT)
+				return cty.SetValEmpty(ty.ElementType())
 			}
 			return cty.SetVal(elems)
 		case ty.IsTupleType():
@@ -104,6 +113,9 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 			kv, ev := it.Element()
 			newEv := hcty2ctyWithType(eT, ev)
 			elems[kv.AsString()] = newEv
+		}
+		if len(elems) == 0 {
+			return cty.MapValEmpty(eT)
 		}
 		return cty.MapVal(elems)
 	case ty.IsObjectType():
@@ -121,7 +133,7 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 }
 
 func ctype2htype(t cty.Type) (hcty.Type, error) {
-	if t.Equals(cty.NilType) {
+	if t.GoString() == "cty.NilType" {
 		return hcty.NilType, nil
 	}
 	typeJSON, err := ctyjson.MarshalType(t)
@@ -132,7 +144,7 @@ func ctype2htype(t cty.Type) (hcty.Type, error) {
 }
 
 func cty2hcty(val cty.Value) hcty.Value {
-	if val.Equals(cty.NilVal).True() {
+	if val.IsKnown() && val.Equals(cty.NilVal).True() {
 		return hcty.NilVal
 	}
 	ty, err := ctype2htype(val.Type())
@@ -147,6 +159,8 @@ func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
 		return hcty.NullVal(ty)
 	case !val.IsKnown():
 		return hcty.UnknownVal(ty)
+	case ty.Equals(hcty.EmptyTuple):
+		return hcty.EmptyTupleVal
 	case ty.Equals(hcty.String):
 		return hcty.StringVal(val.AsString())
 	case ty.Equals(hcty.Number):
@@ -158,22 +172,29 @@ func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
 		return hcty.False
 	case ty.IsListType(), ty.IsSetType(), ty.IsTupleType():
 		l := val.LengthInt()
-		eT := ty.ElementType()
 		elems := make([]hcty.Value, 0, l)
+		idx := 0
 		for it := val.ElementIterator(); it.Next(); {
 			_, ev := it.Element()
+			var eT hcty.Type
+			if ty.IsTupleType() {
+				eT = ty.TupleElementType(idx)
+			} else {
+				eT = ty.ElementType()
+			}
 			newEv := cty2hctyWithType(eT, ev)
 			elems = append(elems, newEv)
+			idx++
 		}
 		switch {
 		case ty.IsListType():
 			if len(elems) == 0 {
-				return hcty.ListValEmpty(eT)
+				return hcty.ListValEmpty(ty.ElementType())
 			}
 			return hcty.ListVal(elems)
 		case ty.IsSetType():
 			if len(elems) == 0 {
-				return hcty.SetValEmpty(eT)
+				return hcty.SetValEmpty(ty.ElementType())
 			}
 			return hcty.SetVal(elems)
 		case ty.IsTupleType():
@@ -188,6 +209,9 @@ func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
 			kv, ev := it.Element()
 			newEv := cty2hctyWithType(eT, ev)
 			elems[kv.AsString()] = newEv
+		}
+		if len(elems) == 0 {
+			return hcty.MapValEmpty(eT)
 		}
 		return hcty.MapVal(elems)
 	case ty.IsObjectType():

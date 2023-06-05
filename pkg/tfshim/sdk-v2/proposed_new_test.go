@@ -15,6 +15,7 @@
 package sdkv2
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -69,6 +70,46 @@ func TestProposedNew(t *testing.T) {
 			actual, err := proposedNew(c.res, c.prior, c.config)
 			require.NoError(t, err)
 			assert.Equal(t, c.expect.GoString(), actual.GoString())
+		})
+	}
+}
+
+func TestCtyTurnaround(t *testing.T) {
+	type testCase struct {
+		value cty.Value
+	}
+
+	testCases := []testCase{
+		{cty.NilVal},
+		{cty.BoolVal(false)},
+		{cty.BoolVal(true)},
+		{cty.NumberIntVal(0)},
+		{cty.NumberIntVal(42)},
+		{cty.NumberFloatVal(3.17)},
+		{cty.StringVal("")},
+		{cty.StringVal("OK")},
+		{cty.EmptyTupleVal},
+		{cty.EmptyObjectVal},
+		{cty.ListValEmpty(cty.Number)},
+		{cty.MapValEmpty(cty.Number)},
+		{cty.SetValEmpty(cty.Number)},
+		{cty.TupleVal([]cty.Value{cty.True, cty.Zero})},
+		{cty.ObjectVal(map[string]cty.Value{"x": cty.False, "y": cty.Zero})},
+		{cty.ListVal([]cty.Value{cty.True, cty.False})},
+		{cty.MapVal(map[string]cty.Value{"0": cty.False, "1": cty.True})},
+		{cty.SetVal([]cty.Value{cty.Zero, cty.NumberIntVal(42)})},
+	}
+
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			assert.Truef(t, tc.value.Equals(cty2hcty(hcty2cty(tc.value))).True(), "value turnaround")
+
+			nullValue := cty.NullVal(tc.value.Type())
+			assert.Truef(t, nullValue.Equals(cty2hcty(hcty2cty(nullValue))).True(), "null turnaround")
+
+			unkValue := cty.UnknownVal(tc.value.Type())
+			assert.Falsef(t, cty2hcty(hcty2cty(unkValue)).IsKnown(), "unknown turnaround")
 		})
 	}
 }
