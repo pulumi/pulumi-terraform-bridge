@@ -127,6 +127,8 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 			newAVs[name] = newAV
 		}
 		return cty.ObjectVal(newAVs)
+	case ty.IsCapsuleType():
+		contract.Assertf(false, "Capsule types are not yet supported")
 	}
 	contract.Assertf(false, "match failure on hcty.Value: %v", val.GoString())
 	return cty.DynamicVal
@@ -223,6 +225,8 @@ func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
 			newAVs[name] = newAV
 		}
 		return hcty.ObjectVal(newAVs)
+	case ty.IsCapsuleType():
+		contract.Assertf(false, "Capsule types are not yet supported")
 	}
 	contract.Assertf(false, "match failure on cty.Value")
 	return hcty.DynamicVal
