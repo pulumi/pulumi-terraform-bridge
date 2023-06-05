@@ -1695,9 +1695,9 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 				Schema: &ResourceInfo{
 					Tok: tokens.NewTypeToken("module", "importableResource"),
 					Fields: map[string]*SchemaInfo{
-						"inputY": {
+						"input_y": {
 							Default: &DefaultInfo{
-								Config: "input_y_config",
+								Config: "inputYConfig",
 							},
 						},
 					},
@@ -1733,7 +1733,7 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Check that Y error reason has been amended with a hint about the config, while X reason is unaffected
 	assert.Equal(t, "Missing required property 'inputX'", x)
 	assert.Equal(t, "Missing required property 'inputY'. Either set it explicitly or configure it "+
-		"with 'pulumi config set test:input_y_config <value>'.", y)
+		"with 'pulumi config set test:inputYConfig <value>'", y)
 }
 
 func TestAssetRoundtrip(t *testing.T) {

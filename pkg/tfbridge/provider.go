@@ -18,13 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"unicode"
-
-	"github.com/hashicorp/go-cty/cty"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -32,7 +27,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	multierror "github.com/hashicorp/go-multierror"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -336,15 +331,11 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
-	missingKeys, validationErrors := validateProviderConfig(ctx, p, config)
-	if len(missingKeys) > 0 {
-		err := rpcerror.WithDetails(
-			rpcerror.New(codes.InvalidArgument, "required configuration keys were missing"),
-			&pulumirpc.ConfigureErrorMissingKeys{MissingKeys: missingKeys})
-		return nil, err
-	}
-	if validationErrors != nil {
-		return nil, validationErrors
+	checkFailures := validateProviderConfig(ctx, urn, p, config)
+	if len(checkFailures) > 0 {
+		return &pulumirpc.CheckResponse{
+			Failures: checkFailures,
+		}, nil
 	}
 
 	// Ensure propreties marked secret in the schema have secret values.
@@ -382,43 +373,45 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 	return MakeTerraformConfigFromInputs(p.tf, inputs), nil
 }
 
-func validateProviderConfig(ctx context.Context, p *Provider, config shim.ResourceConfig) (
-	[]*pulumirpc.ConfigureErrorMissingKeys_MissingKey, error) {
+func validateProviderConfig(
+	ctx context.Context,
+	urn resource.URN,
+	p *Provider,
+	config shim.ResourceConfig,
+) []*pulumirpc.CheckFailure {
+	schemaMap := p.config
+	schemaInfos := p.info.GetConfig()
 
-	var missingKeys []*pulumirpc.ConfigureErrorMissingKeys_MissingKey
+	var missingKeys []*pulumirpc.CheckFailure
 	p.config.Range(func(key string, meta shim.Schema) bool {
 		if meta.Required() && !config.IsSet(key) {
-			name := TerraformToPulumiNameV2(key, p.config, nil)
-			fullyQualifiedName := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(name))
-
-			// TF descriptions often have newlines in inopportune positions. This makes them present
-			// a little better in our console output.
-			descriptionWithoutNewlines := strings.Replace(meta.Description(), "\n", " ", -1)
-			missingKeys = append(missingKeys, &pulumirpc.ConfigureErrorMissingKeys_MissingKey{
-				Name:        fullyQualifiedName.String(),
-				Description: descriptionWithoutNewlines,
-			})
+			pp := NewCheckFailurePath(schemaMap, schemaInfos, key)
+			cf := NewCheckFailure(MissingKey, "Missing key", &pp, urn, true /*isProvider*/, p.module,
+				schemaMap, schemaInfos)
+			checkFailure := pulumirpc.CheckFailure{
+				Property: string(cf.Property),
+				Reason:   cf.Reason,
+			}
+			missingKeys = append(missingKeys, &checkFailure)
 		}
 		return true
 	})
 
 	if len(missingKeys) > 0 {
-		return missingKeys, nil
+		return missingKeys
 	}
 
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(config)
 	for _, warn := range warns {
-		if err := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn)); err != nil {
-			return nil, err
+		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn))
+		if logErr != nil {
+			glog.V(9).Infof("Failed to log to the engine: %v", logErr)
+			continue
 		}
 	}
 
-	if len(errs) > 0 {
-		return nil, errors.Wrap(multierror.Append(nil, errs...), "could not validate provider configuration")
-	}
-
-	return nil, nil
+	return p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs)
 }
 
 // DiffConfig diffs the configuration for this Terraform provider.
@@ -544,96 +537,6 @@ func (p *Provider) Configure(ctx context.Context,
 	}, nil
 }
 
-// Parse the TF error of a missing field:
-// https://github.com/hashicorp/terraform/blob/7f5ffbfe9027c34c4ce1062a42b6e8d80b5504e0/helper/schema/schema.go#L1356
-var requiredFieldRegex = regexp.MustCompile("\"(.*?)\": required field is not set")
-
-func (p *Provider) formatFailureReason(tokenType tokens.Type, res Resource, err error) string {
-	reason := err.Error()
-	var attributePath string
-	var d *diagnostics.ValidationError
-	if errors.As(err, &d) {
-		path := d.AttributePath
-		if len(path) > 0 {
-			attrPath := pathToAttributePath(path, tokenType, res)
-			attributePath = strings.Join(attrPath, "")
-		}
-	}
-
-	// Translate the name in missing-required-field error from TF to Pulumi naming scheme
-	parts := requiredFieldRegex.FindStringSubmatch(reason)
-	if len(parts) == 2 {
-		if getSchema(res.TF.Schema(), parts[1]) != nil {
-			name := TerraformToPulumiNameV2(parts[1], res.TF.Schema(), res.Schema.Fields)
-			message := fmt.Sprintf("Missing required property '%s'", name)
-			// If a required field is missing and the value can be set via config,
-			// extend the error with a hint to set the proper config value
-			field := res.Schema.Fields[name]
-			if field != nil && field.Default != nil {
-				if configKey := field.Default.Config; configKey != "" {
-					format := "%s. Either set it explicitly or configure it with 'pulumi config set %s:%s <value>'."
-					return fmt.Sprintf(format, message, p.module, configKey)
-				}
-			}
-			return message
-		}
-	}
-
-	if attributePath != "" {
-		reason += fmt.Sprintf(". Examine values at '%s'.", attributePath)
-	}
-	return reason
-}
-
-// pathToAttributePath takes a cty.Path and translates it to a path compatible with the Pulumi schema.
-func pathToAttributePath(p cty.Path, tokenType tokens.Type, res Resource) []string {
-	res.Schema.GetTok()
-	ap := []string{tokenType.Name().String()}
-	var sch shim.Schema
-	var info *SchemaInfo
-	for _, step := range p {
-		switch selector := step.(type) {
-		case cty.GetAttrStep:
-			ap = append(ap, ".")
-			if sch == nil {
-				sch = getSchema(res.TF.Schema(), selector.Name)
-				info = res.Schema.Fields[selector.Name]
-			} else {
-				sch, info = elemSchemas(sch, info)
-			}
-			name := TerraformToPulumiNameV2(selector.Name,
-				schema.SchemaMap{selector.Name: sch},
-				map[string]*SchemaInfo{selector.Name: info})
-			if name != "" {
-				name = string(unicode.ToUpper(rune(name[0]))) + name[1:]
-			}
-			ap = append(ap, name)
-		case cty.IndexStep:
-			// list type with max items 1 are collapsed.
-			if IsMaxItemsOne(sch, info) {
-				sch, info = elemSchemas(sch, info)
-				continue
-			}
-			key := selector.Key
-			if key.IsNull() {
-				continue
-			}
-			switch key.Type() {
-			case cty.String:
-				ap = append(ap, fmt.Sprintf("[\"%s\"]", key.AsString()))
-			case cty.Number:
-				i, _ := key.AsBigFloat().Int64()
-				ap = append(ap, fmt.Sprintf("[%d]", i))
-			default:
-				// We'll bail early if we encounter anything else, and just
-				// return the valid prefix.
-				return ap
-			}
-		}
-	}
-	return ap
-}
-
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	p.setLoggingContext(ctx)
@@ -683,13 +586,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		}
 	}
 
-	// Now produce a return value of any properties that failed verification.
-	var failures []*pulumirpc.CheckFailure
-	for _, err := range errs {
-		failures = append(failures, &pulumirpc.CheckFailure{
-			Reason: p.formatFailureReason(t, res, err),
-		})
-	}
+	// Now produce CheckFalures for any properties that failed verification.
+	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)

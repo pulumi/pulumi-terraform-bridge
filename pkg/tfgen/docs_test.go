@@ -18,12 +18,15 @@ package tfgen
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"text/template"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -62,21 +65,19 @@ func TestURLRewrite(t *testing.T) {
 		},
 	}
 
-	g, err := NewGenerator(GeneratorOptions{
-		Package:  "google",
-		Version:  "0.1.2",
-		Language: "nodejs",
-		ProviderInfo: tfbridge.ProviderInfo{
+	infoCtx := infoContext{
+		pkg:      "google",
+		language: "nodejs",
+		info: tfbridge.ProviderInfo{
 			Name: "google",
 			Resources: map[string]*tfbridge.ResourceInfo{
 				"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 			},
 		},
-	})
-	assert.NoError(t, err)
+	}
 
 	for _, test := range tests {
-		text, _ := reformatText(g, test.Input, nil)
+		text, _ := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
 	}
 }
@@ -264,17 +265,37 @@ func TestArgumentRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []string{
+				"The following arguments are supported:",
+				"",
+				"- `zone_id` - (Required) The DNS zone ID to which the page rule should be added.",
+				"- `target` - (Required) The URL pattern to target with the page rule.",
+				"- `actions` - (Required) The actions taken by the page rule, options given below.",
+				"",
+				"Action blocks support the following:",
+				"",
+				"- `always_use_https` - (Optional) Boolean of whether this action is enabled. Default: false.",
+				"",
+			},
+			expected: map[string]*argumentDocs{
+				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
+				"target":  {description: "The URL pattern to target with the page rule."},
+				"actions": {description: "The actions taken by the page rule, options given below."},
+				// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
+				// because it doesn't correspond to a top level resource property.
+				"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+			},
+		},
 	}
 
 	for _, tt := range tests {
-		parser := &tfMarkdownParser{
-			ret: entityDocs{
-				Arguments: make(map[string]*argumentDocs),
-			},
+		ret := entityDocs{
+			Arguments: make(map[string]*argumentDocs),
 		}
-		parser.parseArgReferenceSection(tt.input)
+		parseArgReferenceSection(tt.input, &ret)
 
-		assert.Equal(t, tt.expected, parser.ret.Arguments)
+		assert.Equal(t, tt.expected, ret.Arguments)
 
 		//assert.Len(t, parser.ret.Arguments, len(tt.expected))
 		//for k, v := range tt.expected {
@@ -626,20 +647,19 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSection(t *testing.T) {
-	p := tfMarkdownParser{}
-	p.ret = entityDocs{
+	ret := entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
-	p.parseAttributesReferenceSection([]string{
+	parseAttributesReferenceSection([]string{
 		"The following attributes are exported:",
 		"",
 		"* `id` - The ID of the Droplet",
 		"* `urn` - The uniform resource name of the Droplet",
 		"* `name`- The name of the Droplet",
 		"* `region` - The region of the Droplet",
-	})
-	assert.Len(t, p.ret.Attributes, 4)
+	}, &ret)
+	assert.Len(t, ret.Attributes, 4)
 }
 
 func TestGetNestedBlockName(t *testing.T) {
@@ -897,6 +917,146 @@ throw new Exception("!");
 
 	assert.NotContains(t, string(schemaBytes), "{{% //examples %}}")
 }
+
+func TestParseTFMarkdown(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		info                    tfbridge.ResourceOrDataSourceInfo
+		providerInfo            tfbridge.ProviderInfo
+		kind                    DocKind
+		resourcePrefix, rawName string
+
+		fileName     string
+		fileContents []byte
+
+		expected entityDocs
+	}
+
+	// A pre-configured test case
+	tc := func(configure func(tc *testCase)) testCase {
+		tc := testCase{
+			kind:           ResourceDocs,
+			resourcePrefix: "pkg_",
+			rawName:        "pkg_mod1_res1",
+
+			fileName: "mod1_res1.md",
+			expected: entityDocs{
+				Arguments:  map[string]*argumentDocs{},
+				Attributes: map[string]string{},
+			},
+		}
+		configure(&tc)
+		return tc
+	}
+	// Assert that file contents match the expected description.
+	desc := func(fileContents, expected string) testCase {
+		return tc(func(c *testCase) {
+			c.fileContents = []byte(fileContents)
+			c.expected.Description = expected
+		})
+	}
+
+	tests := []testCase{
+		desc(`
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
+`, `##`+" " /* Extra whitespace is generated. TODO Remove extra whitespace */ +`
+
+This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
+		),
+
+		desc(`
+This is a test that we [correctly](https://www.terraform.io/docs/pkg/some-resource) strip TF doc links.
+`, "## \n\nThis is a test that we correctly strip TF doc links."),
+
+		tc(func(c *testCase) {
+			c.fileContents = []byte(`
+This is a test for CUSTOM_REPLACES.`)
+			c.expected.Description = "## \n\nThis is a test for checking custom replaces."
+			rule := tfbridge.DocsEdit{
+				Path: "*",
+				Edit: func(path string, content []byte) ([]byte, error) {
+					assert.Equal(t, "mod1_res1.md", path)
+					return bytes.ReplaceAll(content,
+						[]byte(`CUSTOM_REPLACES`),
+						[]byte(`checking custom replaces`)), nil
+				},
+			}
+
+			c.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
+			}
+		}),
+
+		tc(func(c *testCase) {
+			var err error
+			c.fileContents, err = os.ReadFile(filepath.Join("test_data", "azurerm-sql-firewall-rule.md"))
+			require.NoError(t, err)
+
+			c.expected = entityDocs{
+				Import:      "## Import\n\nSQL Firewall Rules can be imported using the `resource id`, e.g. <break><break>```sh<break> $ pulumi import MISSING_TOK rule1 /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myresourcegroup/providers/Microsoft.Sql/servers/myserver/firewallRules/rule1 <break>```<break><break>",
+				Description: "Allows you to manage an Azure SQL Firewall Rule.\n\n> **Note:** The `azurerm_sql_firewall_rule` resource is deprecated in version 3.0 of the AzureRM provider and will be removed in version 4.0. Please use the `azurerm_mssql_firewall_rule` resource instead.\n\n## Example Usage\n\n```hcl\nresource \"azurerm_resource_group\" \"example\" {\n  name     = \"example-resources\"\n  location = \"West Europe\"\n}\n\nresource \"azurerm_sql_server\" \"example\" {\n  name                         = \"mysqlserver\"\n  resource_group_name          = azurerm_resource_group.example.name\n  location                     = azurerm_resource_group.example.location\n  version                      = \"12.0\"\n  administrator_login          = \"4dm1n157r470r\"\n  administrator_login_password = \"4-v3ry-53cr37-p455w0rd\"\n}\n\nresource \"azurerm_sql_firewall_rule\" \"example\" {\n  name                = \"FirewallRule1\"\n  resource_group_name = azurerm_resource_group.example.name\n  server_name         = azurerm_sql_server.example.name\n  start_ip_address    = \"10.0.17.62\"\n  end_ip_address      = \"10.0.17.62\"\n}\n```",
+				Arguments: map[string]*argumentDocs{
+					"name": {
+						description: "The name of the firewall rule. Changing this forces a new resource to be created.",
+						arguments:   map[string]string{},
+					},
+					"resource_group_name": {
+						description: "The name of the resource group in which to create the SQL Server. Changing this forces a new resource to be created.",
+						arguments:   map[string]string{},
+					},
+					"server_name": {
+						description: "The name of the SQL Server on which to create the Firewall Rule. Changing this forces a new resource to be created.",
+						arguments:   map[string]string{},
+					},
+					"start_ip_address": {
+						description: "The starting IP address to allow through the firewall for this rule.",
+						arguments:   map[string]string{},
+					},
+					"end_ip_address": {
+						description: "The ending IP address to allow through the firewall for this rule.\n\n> **NOTE:** The Azure feature `Allow access to Azure services` can be enabled by setting `start_ip_address` and `end_ip_address` to `0.0.0.0` which ([is documented in the Azure API Docs](https://docs.microsoft.com/rest/api/sql/firewallrules/createorupdate)).",
+						arguments:   map[string]string{},
+					},
+				},
+				Attributes: map[string]string{
+					"id": "The SQL Firewall Rule ID.",
+				},
+			}
+		}),
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			p := &tfMarkdownParser{
+				sink:             mockSink{t},
+				info:             tt.info,
+				kind:             tt.kind,
+				markdownFileName: tt.fileName,
+				rawname:          tt.rawName,
+
+				infoCtx: infoContext{
+					language: Schema,
+					pkg:      "pkg",
+					info:     tt.providerInfo,
+				},
+				editRules: getEditRules(tt.providerInfo.DocRules),
+			}
+
+			actual, err := p.parse(tt.fileContents)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+type mockSink struct{ t *testing.T }
+
+func (mockSink) warn(string, ...interface{})  {}
+func (mockSink) debug(string, ...interface{}) {}
+func (mockSink) error(string, ...interface{}) {}
 
 type mockResource struct {
 	docs  tfbridge.DocInfo

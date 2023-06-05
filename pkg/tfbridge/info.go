@@ -101,6 +101,9 @@ type ProviderInfo struct {
 	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
 	MetadataInfo *MetadataInfo
 
+	// Rules that control file discovery and edits for any subset of docs in a provider.
+	DocRules *DocRuleInfo
+
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
 
 	// EXPERIMENTAL: the signature may change in minor releases.
@@ -109,6 +112,84 @@ type ProviderInfo struct {
 	// docs). The primary use case for this hook is to ignore problematic or flaky examples temporarily until the
 	// underlying issues are resolved and the examples can be rendered correctly.
 	SkipExamples func(SkipExamplesArgs) bool
+}
+
+func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {
+	if info.Config != nil {
+		return info.Config
+	}
+	return map[string]*SchemaInfo{}
+}
+
+// The function used to produce the set of edit rules for a provider.
+//
+// For example, if you want to skip default edits, you would use the function:
+//
+//	func([]DocsEdit) []DocsEdit { return nil }
+//
+// If you wanted to incorporate custom edits, default edits, and then a check that the
+// resulting document is valid, you would use the function:
+//
+//	func(defaults []DocsEdit) []DocsEdit {
+//		return append(customEdits, append(defaults, validityCheck)...)
+//	}
+type MakeEditRules func(defaults []DocsEdit) []DocsEdit
+
+// DocRuleInfo controls file discovery and edits for any subset of docs in a provider.
+type DocRuleInfo struct {
+	// The function called to get the set of edit rules to use.
+	//
+	// defaults represents suggested edit rules. If EditRules is `nil`, defaults is
+	// used as is.
+	EditRules MakeEditRules
+
+	// A function to suggest alternative file names for a TF element.
+	//
+	// When the bridge loads the documentation for a resource or a datasource, it
+	// infers the name of the file that contains the documentation. AlternativeNames
+	// allows you to provide a provider specific extension to the override list.
+	//
+	// For example, when attempting to find the documentation for the resource token
+	// aws_waf_instances, the bridge will check the following files (in order):
+	//
+	//	"waf_instance.html.markdown"
+	//	"waf_instance.markdown"
+	//	"waf_instance.html.md"
+	//	"waf_instance.md"
+	//	"aws_waf_instance.html.markdown"
+	//	"aws_waf_instance.markdown"
+	//	"aws_waf_instance.html.md"
+	//	"aws_waf_instance.md"
+	//
+	// The bridge will check any file names returned by AlternativeNames before
+	// checking it's standard list.
+	AlternativeNames func(DocsPathInfo) []string
+}
+
+// Information for file lookup.
+type DocsPathInfo struct {
+	TfToken string
+}
+
+type DocsEdit struct {
+	// The file name at which this rule applies. File names are matched via filepath.Match.
+	//
+	// To match all files, supply "*".
+	//
+	// All 4 of these names will match "waf_instances.html.markdown":
+	//
+	// - "waf_instances.html.markdown"
+	// - "waf_instances.*"
+	// - "waf*"
+	// - "*"
+	//
+	// Provider resources are sourced directly from the TF schema, and as such have an
+	// empty path.
+	Path string
+	// The function that performs the edit on the file bytes.
+	//
+	// Must not be nil.
+	Edit func(path string, content []byte) ([]byte, error)
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.

@@ -50,6 +50,26 @@ func NewConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo
 	}
 }
 
+func (*ConfigEncoding) tryUnwrapSecret(encoded any) (any, bool) {
+	m, ok := encoded.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	sig, ok := m["4dabf18193072939515e22adb298388d"]
+	if !ok {
+		return nil, false
+	}
+	ss, ok := sig.(string)
+	if !ok {
+		return nil, false
+	}
+	if ss != "1b47061264138c4ac30d75fd1eb44270" {
+		return nil, false
+	}
+	value, ok := m["value"]
+	return value, ok
+}
+
 func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
 	// If the schema expects a string, we can just return this as-is.
 	if typ == shim.TypeString {
@@ -66,7 +86,26 @@ func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.Value
 	if err := json.Unmarshal([]byte(s), &jsonValue); err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return resource.NewPropertyValue(jsonValue), nil
+
+	opts := enc.unmarshalOpts()
+
+	// Instead of using resource.NewPropertyValue, specialize it to detect nested json-encoded secrets.
+	var replv func(encoded any) (resource.PropertyValue, bool)
+	replv = func(encoded any) (resource.PropertyValue, bool) {
+		encodedSecret, isSecret := enc.tryUnwrapSecret(encoded)
+		if !isSecret {
+			return resource.NewNullProperty(), false
+		}
+
+		v := resource.NewPropertyValueRepl(encodedSecret, nil, replv)
+		if opts.KeepSecrets {
+			v = resource.MakeSecret(v)
+		}
+
+		return v, true
+	}
+
+	return resource.NewPropertyValueRepl(jsonValue, nil, replv), nil
 }
 
 func (*ConfigEncoding) zeroValue(typ shim.ValueType) resource.PropertyValue {

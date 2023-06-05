@@ -22,9 +22,10 @@ func Transform(
 	transformer func(resource.PropertyValue) resource.PropertyValue,
 	value resource.PropertyValue,
 ) resource.PropertyValue {
-	tvalue, _ := TransformErr(func(pv resource.PropertyValue) (resource.PropertyValue, error) {
-		return transformer(pv), nil
-	}, value)
+	tvalue, _ := TransformPropertyValue(make(resource.PropertyPath, 0),
+		func(_ resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
+			return transformer(pv), nil
+		}, value)
 	return tvalue
 }
 
@@ -32,11 +33,22 @@ func TransformErr(
 	transformer func(resource.PropertyValue) (resource.PropertyValue, error),
 	value resource.PropertyValue,
 ) (resource.PropertyValue, error) {
+	return TransformPropertyValue(make(resource.PropertyPath, 0),
+		func(_ resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
+			return transformer(pv)
+		}, value)
+}
+
+func TransformPropertyValue(
+	path resource.PropertyPath,
+	transformer func(resource.PropertyPath, resource.PropertyValue) (resource.PropertyValue, error),
+	value resource.PropertyValue,
+) (resource.PropertyValue, error) {
 	switch {
 	case value.IsArray():
 		tvs := []resource.PropertyValue{}
-		for _, v := range value.ArrayValue() {
-			tv, err := TransformErr(transformer, v)
+		for i, v := range value.ArrayValue() {
+			tv, err := TransformPropertyValue(extendPath(path, i), transformer, v)
 			if err != nil {
 				return resource.NewNullProperty(), err
 			}
@@ -46,7 +58,7 @@ func TransformErr(
 	case value.IsObject():
 		pm := make(resource.PropertyMap)
 		for k, v := range value.ObjectValue() {
-			tv, err := TransformErr(transformer, v)
+			tv, err := TransformPropertyValue(extendPath(path, string(k)), transformer, v)
 			if err != nil {
 				return resource.NewNullProperty(), err
 			}
@@ -55,7 +67,7 @@ func TransformErr(
 		value = resource.NewObjectProperty(pm)
 	case value.IsOutput():
 		o := value.OutputValue()
-		te, err := TransformErr(transformer, o.Element)
+		te, err := TransformPropertyValue(path, transformer, o.Element)
 		if err != nil {
 			return resource.NewNullProperty(), err
 		}
@@ -67,7 +79,7 @@ func TransformErr(
 		})
 	case value.IsSecret():
 		s := value.SecretValue()
-		te, err := TransformErr(transformer, s.Element)
+		te, err := TransformPropertyValue(path, transformer, s.Element)
 		if err != nil {
 			return resource.NewNullProperty(), err
 		}
@@ -75,7 +87,7 @@ func TransformErr(
 			Element: te,
 		})
 	}
-	return transformer(value)
+	return transformer(path, value)
 }
 
 // Removes any resource.NewSecretProperty wrappers. Removes Secret: true flags from any first-class outputs.
@@ -96,4 +108,11 @@ func RemoveSecrets(pv resource.PropertyValue) resource.PropertyValue {
 		return pv
 	}
 	return Transform(unsecret, pv)
+}
+
+func extendPath(p resource.PropertyPath, segment any) resource.PropertyPath {
+	rp := make(resource.PropertyPath, len(p)+1)
+	copy(rp, p)
+	rp[len(p)] = segment
+	return rp
 }

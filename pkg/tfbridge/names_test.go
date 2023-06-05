@@ -52,6 +52,8 @@ func TestTerraformToPulumiName(t *testing.T) {
 	assert.Equal(t, "TESTNAME", TerraformToPulumiName("t_e_s_t_n_a_m_e", nil, nil, true))
 }
 
+func ref[T any](value T) *T { return &value }
+
 func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 	tfs := map[string]*schema.Schema{
 		"list_property": {
@@ -60,10 +62,9 @@ func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 	}
 
 	// Override the List from the TF Schema with our own SchemaInfo overrides
-	maxItemsOne := true
 	ps := map[string]*SchemaInfo{
 		"list_property": {
-			MaxItemsOne: &maxItemsOne,
+			MaxItemsOne: ref(true),
 		},
 	}
 
@@ -80,10 +81,9 @@ func TestPulumiToTerraformNameWithSchemaInfoOverride(t *testing.T) {
 		},
 	}
 
-	maxItemsOne := true
 	ps := map[string]*SchemaInfo{
 		"list_property": {
-			MaxItemsOne: &maxItemsOne,
+			MaxItemsOne: ref(true),
 		},
 	}
 
@@ -246,6 +246,45 @@ func TestBijectiveNameConversion(t *testing.T) {
 			expected: map[string]string{
 				"pluralTypes": "plural_type",
 				"remaped":     "plural_types",
+			},
+		},
+		{ // Check when SchemaInfo is non-nil
+			schema: map[string]*schemav2.Schema{
+				"gallery_application":  {Type: schemav2.TypeList},
+				"gallery_applications": {Type: schemav2.TypeList},
+			},
+			info: map[string]*SchemaInfo{
+				"gallery_application":  {},
+				"gallery_applications": {},
+			},
+			expected: map[string]string{
+				"galleryApplication":  "gallery_application",
+				"galleryApplications": "gallery_applications",
+			},
+		},
+		{ // Check when SchemaInfo.MaxItemsOne: &false is set explicitly
+			schema: map[string]*schemav2.Schema{
+				"gallery_application":  {Type: schemav2.TypeList},
+				"gallery_applications": {Type: schemav2.TypeList},
+			},
+			info: map[string]*SchemaInfo{
+				"gallery_application":  {MaxItemsOne: ref(false)},
+				"gallery_applications": {MaxItemsOne: ref(false)},
+			},
+			expected: map[string]string{
+				"galleryApplication":  "gallery_application",
+				"galleryApplications": "gallery_applications",
+			},
+		},
+		{ // Check that users can override .MaxItems() == 1
+			schema: map[string]*schemav2.Schema{
+				"value": {Type: schemav2.TypeList, MaxItems: 1},
+			},
+			info: map[string]*SchemaInfo{
+				"value": {MaxItemsOne: ref(false)},
+			},
+			expected: map[string]string{
+				"values": "value",
 			},
 		},
 	}

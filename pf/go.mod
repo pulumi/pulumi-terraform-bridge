@@ -8,7 +8,6 @@ replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-multierror v1.1.1
@@ -30,7 +29,8 @@ require (
 	github.com/bmatcuk/doublestar v1.1.5 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
-	github.com/pulumi/terraform v1.4.0 // indirect
+	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
+	github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/zclconf/go-cty-yaml v1.0.3 // indirect
 )
@@ -111,7 +111,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/glog v1.0.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect

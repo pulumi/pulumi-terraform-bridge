@@ -81,9 +81,6 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 				u.schema("config:"+path, ds)
 			}
 		}
-
-		u.assertIsZero("PreConfigureCallback", prov.PreConfigureCallback)
-		u.assertIsZero("PreConfigureCallbackWithLogger", prov.PreConfigureCallbackWithLogger)
 	}
 
 	if len(u.autoNamedResources) > 0 {
@@ -150,7 +147,6 @@ func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
 	u.assertIsZero(path+".Elem", schema.Elem)
 	u.fields(path, schema.Fields)
 	u.assertIsZero(path+".Asset", schema.Asset)
-	u.assertIsZero(path+".Default", schema.Default)
 	u.assertIsZero(path+".Stable", schema.Stable)
 	u.assertIsZero(path+".SuppressEmptyMapElements", schema.SuppressEmptyMapElements)
 	u.assertIsZero(path+".ForceNew", schema.ForceNew)

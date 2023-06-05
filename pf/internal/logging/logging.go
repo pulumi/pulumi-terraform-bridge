@@ -84,9 +84,16 @@ func setupRootLoggers(ctx context.Context, output io.Writer) context.Context {
 	return ctx
 }
 
+// Choose the default level carefully: logs at this level or higher (more severe) will be shown to the user of Pulumi
+// CLI direcrtly by default. Experimentally it seems that Info is too verbose, for example Cloudflare provider emits
+// routine authentication messages at INFO level.
+func defaultTFLogLevel() hclog.Level {
+	return hclog.Warn
+}
+
 func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.LoggerOptions {
 	if level == hclog.NoLevel {
-		level = hclog.Info
+		level = defaultTFLogLevel()
 	}
 	return &hclog.LoggerOptions{
 		Name:              name,

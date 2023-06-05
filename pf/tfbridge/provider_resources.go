@@ -27,17 +27,19 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type resourceHandle struct {
-	token                 tokens.Type
-	makeResource          func() pfresource.Resource
-	terraformResourceName string
-	schema                pfutils.Schema
-	pulumiResourceInfo    *tfbridge.ResourceInfo // optional
-	idExtractor           idExtractor
-	encoder               convert.Encoder
-	decoder               convert.Decoder
+	token                  tokens.Type
+	makeResource           func() pfresource.Resource
+	terraformResourceName  string
+	schema                 pfutils.Schema
+	pulumiResourceInfo     *tfbridge.ResourceInfo // optional
+	idExtractor            idExtractor
+	encoder                convert.Encoder
+	decoder                convert.Decoder
+	schemaOnlyShimResource shim.Resource
 }
 
 func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
@@ -76,12 +78,12 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	objectType := result.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewResourceEncoder(token, objectType)
+	encoder, err := p.encoding.NewResourceEncoder(typeName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare a resource encoder: %s", err)
 	}
 
-	outputsDecoder, err := p.encoding.NewResourceDecoder(token, objectType)
+	outputsDecoder, err := p.encoding.NewResourceDecoder(typeName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare an resoure decoder: %s", err)
 	}
@@ -89,5 +91,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	result.encoder = encoder
 	result.decoder = outputsDecoder
 	result.token = token
+
+	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeName)
 	return result, nil
 }

@@ -24,9 +24,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // An alias to assist marking Terraform-level property names (see for example AttributeTypes in tftypes.Object). Pulumi
@@ -35,20 +36,10 @@ type TerraformPropertyName = string
 
 type Encoding interface {
 	NewConfigEncoder(tftypes.Object) (Encoder, error)
-	NewResourceDecoder(tokens.Type, tftypes.Object) (Decoder, error)
-	NewResourceEncoder(tokens.Type, tftypes.Object) (Encoder, error)
-	NewDataSourceDecoder(tokens.ModuleMember, tftypes.Object) (Decoder, error)
-	NewDataSourceEncoder(tokens.ModuleMember, tftypes.Object) (Encoder, error)
-}
-
-type PropertyNames interface {
-	// Translates a Terraform property name for a given type to a Pulumi PropertyKey.
-	//
-	// typeToken identifies the resource, data source, or named object type.
-	PropertyKey(typeToken tokens.Token, property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-
-	// Same as PropertyKey but for provider-level configuration properties.
-	ConfigPropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+	NewResourceDecoder(resource string, resourceType tftypes.Object) (Decoder, error)
+	NewResourceEncoder(resource string, resourceType tftypes.Object) (Encoder, error)
+	NewDataSourceDecoder(dataSource string, dataSourceType tftypes.Object) (Decoder, error)
+	NewDataSourceEncoder(dataSource string, dataSourceType tftypes.Object) (Encoder, error)
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
@@ -56,29 +47,10 @@ type LocalPropertyNames interface {
 	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
 }
 
-type typeLocalPropertyNames struct {
-	propertyNames PropertyNames
-	typeToken     tokens.Token
-}
-
-func (l *typeLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return l.propertyNames.PropertyKey(l.typeToken, property, t)
-}
-
-func NewTypeLocalPropertyNames(pn PropertyNames, tok tokens.Token) LocalPropertyNames {
-	return &typeLocalPropertyNames{pn, tok}
-}
-
-type configLocalPropertyNames struct {
-	propertyNames PropertyNames
-}
-
-func (l *configLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
-	return l.propertyNames.ConfigPropertyKey(property, t)
-}
-
-func NewConfigPropertyNames(pn PropertyNames) LocalPropertyNames {
-	return &configLocalPropertyNames{pn}
+func NewResourceLocalPropertyNames(resource string,
+	schemaOnlyProvider shim.Provider,
+	providerInfo *tfbridge.ProviderInfo) LocalPropertyNames {
+	return newResourceSchemaMapContext(resource, schemaOnlyProvider, providerInfo)
 }
 
 type Encoder interface {

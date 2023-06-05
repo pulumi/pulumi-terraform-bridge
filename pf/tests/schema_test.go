@@ -16,13 +16,19 @@ package tfbridgetests
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"runtime"
 )
 
 func TestSchemaGen(t *testing.T) {
@@ -58,4 +64,85 @@ func TestSchemaGen(t *testing.T) {
 		assert.Equal(t, "object", actionParameterPhases.Type)
 		assert.Equal(t, "boolean", actionParameterPhases.Properties["p2"].Type)
 	})
+}
+
+func TestSchemaGenInSync(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a minor path discrepancy in actual vs generated schema")
+	}
+
+	type testCase struct {
+		name     string
+		file     string
+		pf       tfpf.ProviderInfo
+		provider tfbridge.ProviderInfo
+	}
+	testprovider.MuxedRandomProvider()
+
+	testCases := []testCase{
+		{
+			name: "tls",
+			file: "internal/testprovider/cmd/pulumi-resource-tls/schema.json",
+			pf:   testprovider.TLSProvider(),
+		},
+		{
+			name:     "muxedrandom",
+			file:     "internal/testprovider/cmd/pulumi-resource-muxedrandom/schema.json",
+			provider: testprovider.MuxedRandomProvider(),
+		},
+		{
+			name: "random",
+			file: "./internal/testprovider/cmd/pulumi-resource-random/schema.json",
+			pf:   testprovider.RandomProvider(),
+		},
+		{
+			name: "testbridge",
+			file: "./internal/testprovider/cmd/pulumi-resource-testbridge/schema.json",
+			pf:   testprovider.SyntheticTestBridgeProvider(),
+		},
+	}
+
+	renorm := func(a schema.PackageSpec) (out schema.PackageSpec) {
+		b, err := json.Marshal(a)
+		require.NoError(t, err)
+		err = json.Unmarshal(b, &out)
+		require.NoError(t, err)
+		return
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		expectedBytes, err := os.ReadFile(tc.file)
+		require.NoError(t, err)
+
+		var expectedSpec schema.PackageSpec
+		require.NoError(t, json.Unmarshal(expectedBytes, &expectedSpec))
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var actualSpec schema.PackageSpec
+			if tc.pf.NewProvider != nil {
+				data := genMetadata(t, tc.pf)
+				require.NoError(t, json.Unmarshal(data.PackageSchema, &actualSpec))
+			} else {
+				var err error
+				actualSpec, err = tfgen.GenerateSchema(tc.provider, testSink(t))
+				require.NoError(t, err)
+			}
+
+			// Ignoring version differences, for some obscure reason they diverge right now.
+			expectedSpec.Version = actualSpec.Version
+
+			// Currently languge sections disagree on JSON formatting, ignoring.
+			expectedSpec = renorm(expectedSpec)
+			actualSpec = renorm(actualSpec)
+
+			assert.Equal(t, expectedSpec, actualSpec,
+				"On-disk schema for %q seems out of date, try running `make build.testproviders`",
+				tc.name)
+		})
+	}
+
 }
