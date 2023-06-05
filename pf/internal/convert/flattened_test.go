@@ -21,21 +21,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestFlattenedEncoder(t *testing.T) {
 	enc := &encoding{nil, nil}
 
-	listEncoder, err := enc.newPropertyEncoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{Type: "string"},
-	}, tftypes.List{ElementType: tftypes.String})
+	listEncoder, err := enc.newPropertyEncoder(
+		maxItemsOneCollectionPropContext("p", shim.TypeList),
+		"p",
+		tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
-	setEncoder, err := enc.newPropertyEncoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{Type: "string"},
-	}, tftypes.Set{ElementType: tftypes.String})
+	setEncoder, err := enc.newPropertyEncoder(
+		maxItemsOneCollectionPropContext("p", shim.TypeSet),
+		"p",
+		tftypes.Set{ElementType: tftypes.String})
 	require.NoError(t, err)
 
 	t.Run("singleton-list", func(t *testing.T) {
@@ -72,14 +77,16 @@ func TestFlattenedEncoder(t *testing.T) {
 func TestFlattenedDecoder(t *testing.T) {
 	enc := &encoding{nil, nil}
 
-	listDecoder, err := enc.newPropertyDecoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{Type: "string"},
-	}, tftypes.List{ElementType: tftypes.String})
+	listDecoder, err := enc.newPropertyDecoder(
+		maxItemsOneCollectionPropContext("p", shim.TypeList),
+		"p",
+		tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
-	setDecoder, err := enc.newPropertyDecoder("p", schema.PropertySpec{
-		TypeSpec: schema.TypeSpec{Type: "string"},
-	}, tftypes.Set{ElementType: tftypes.String})
+	setDecoder, err := enc.newPropertyDecoder(
+		maxItemsOneCollectionPropContext("p", shim.TypeSet),
+		"p",
+		tftypes.Set{ElementType: tftypes.String})
 	require.NoError(t, err)
 
 	t.Run("singleton-list", func(t *testing.T) {
@@ -115,4 +122,22 @@ func TestFlattenedDecoder(t *testing.T) {
 		expected := resource.NewNullProperty()
 		assert.Equal(t, expected, actual)
 	})
+}
+
+func maxItemsOneCollectionPropContext(propName string, collectionType shim.ValueType) *schemaPropContext {
+	yes := true
+	return &schemaPropContext{
+		schemaPath: walk.NewSchemaPath().GetAttr(propName),
+		schema: (&shimschema.Schema{
+			Type:     collectionType,
+			Optional: true,
+			Elem: (&shimschema.Schema{
+				Type:     shim.TypeString,
+				Optional: true,
+			}).Shim(),
+		}).Shim(),
+		schemaInfo: &tfbridge.SchemaInfo{
+			MaxItemsOne: &yes,
+		},
+	}
 }

@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
@@ -99,7 +98,8 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	renames := convert.NewTypeLocalPropertyNames(p.propertyNames, tokens.Token(rh.token))
+	renames := convert.NewResourceLocalPropertyNames(rh.terraformResourceName, p.schemaOnlyProvider,
+		&p.info.ProviderInfo)
 
 	replaceKeys, err := diffPathsToPropertyKeySet(renames, planResp.RequiresReplace)
 	if err != nil {

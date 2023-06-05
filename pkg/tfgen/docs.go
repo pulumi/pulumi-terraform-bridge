@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/afero"
@@ -201,9 +202,35 @@ func findRepoPath(repoPathsEnvVar string, moduleCoordinates string) string {
 	return ""
 }
 
+func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
+	possibleMarkdownNames := []string{
+		// Most frequently, docs leave off the provider prefix
+		withoutPackageName(packagePrefix, rawName) + ".html.markdown",
+		withoutPackageName(packagePrefix, rawName) + ".markdown",
+		withoutPackageName(packagePrefix, rawName) + ".html.md",
+		withoutPackageName(packagePrefix, rawName) + ".md",
+		// But for some providers, the prefix is included in the name of the doc file
+		rawName + ".html.markdown",
+		rawName + ".markdown",
+		rawName + ".html.md",
+		rawName + ".md",
+	}
+
+	if globalInfo != nil && globalInfo.AlternativeNames != nil {
+		// We look at user generated names before we look at default names
+		possibleMarkdownNames = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
+			TfToken: rawName,
+		}), possibleMarkdownNames...)
+	}
+
+	return possibleMarkdownNames
+}
+
 func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
-	resourcePrefix string, kind DocKind, rawname string,
-	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string) ([]byte, string, bool) {
+	resourcePrefix string, kind DocKind, rawName string,
+	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
+	globalInfo *tfbridge.DocRuleInfo,
+) ([]byte, string, bool) {
 
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
@@ -218,23 +245,12 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 		repoPath, err = getRepoPath(githost, org, provider, providerModuleVersion)
 		if err != nil {
 			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-			sink.Debugf(&diag.Diag{Message: msg}, rawname, githost, org, provider, providerModuleVersion, err)
+			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
 			return nil, "", false
 		}
 	}
 
-	possibleMarkdownNames := []string{
-		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(resourcePrefix, rawname) + ".html.markdown",
-		withoutPackageName(resourcePrefix, rawname) + ".markdown",
-		withoutPackageName(resourcePrefix, rawname) + ".html.md",
-		withoutPackageName(resourcePrefix, rawname) + ".md",
-		// But for some providers, the prefix is included in the name of the doc file
-		rawname + ".html.markdown",
-		rawname + ".markdown",
-		rawname + ".html.md",
-		rawname + ".md",
-	}
+	possibleMarkdownNames := getMarkdownNames(resourcePrefix, rawName, globalInfo)
 
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
@@ -246,6 +262,66 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 	}
 
 	return markdownBytes, markdownFileName, true
+}
+
+// Create a regexp based replace rule that is bounded by non-ascii letter text.
+//
+// This function is not appropriate to be called in hot loops.
+func boundedReplace(from, to string) tfbridge.DocsEdit {
+	r := regexp.MustCompile(fmt.Sprintf(`([^a-zA-Z]|^)%s([^a-zA-Z]|$)`, from))
+	bTo := []byte(fmt.Sprintf("${1}%s${%d}", to, r.NumSubexp()))
+	return tfbridge.DocsEdit{
+		Path: "*",
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			return r.ReplaceAll(content, bTo), nil
+		},
+	}
+}
+
+var (
+	// Replace content such as "`terraform plan`" with "`pulumi preview`"
+	replaceTfPlan = boundedReplace("[tT]erraform [pP]lan", "pulumi preview")
+	// Replace content such as " Terraform Apply." with " pulumi up."
+	replaceTfApply = boundedReplace("[tT]erraform [aA]pply", "pulumi up")
+	// A markdown link that has terraform in the link component.
+	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
+)
+
+type editRules []tfbridge.DocsEdit
+
+func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
+	for _, rule := range rr {
+		match, err := filepath.Match(rule.Path, fileName)
+		if err != nil {
+			return nil, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
+		}
+		if !match {
+			continue
+		}
+		contents, err = rule.Edit(fileName, contents)
+		if err != nil {
+			return nil, fmt.Errorf("replace failed: %w", err)
+		}
+	}
+	return contents, nil
+}
+
+// Get the replace rule set for a DocRuleInfo.
+func getEditRules(info *tfbridge.DocRuleInfo) editRules {
+	defaults := []tfbridge.DocsEdit{
+		replaceTfPlan,
+		replaceTfApply,
+		{ // Here we strip links to terraform documentation.
+			Path: "*",
+			Edit: func(_ string, content []byte) ([]byte, error) {
+				return tfLink.ReplaceAll(content, []byte("$1")), nil
+			},
+		},
+	}
+	if info == nil || info.EditRules == nil {
+		return defaults
+	}
+	return info.EditRules(defaults)
 }
 
 func (k DocKind) String() string {
@@ -270,9 +346,9 @@ func formatEntityName(rawname string) string {
 	return fmt.Sprintf("'%s'", rawname)
 }
 
-// getDocsForProvider extracts documentation details for the given package from
+// getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForProvider(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
+func getDocsForResource(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
 	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
 	githost string) (entityDocs, error) {
 
@@ -281,7 +357,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	}
 
 	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
-		resourcePrefix, kind, rawname, info, providerModuleVersion, githost)
+		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
 	if !found {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
@@ -300,7 +376,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, string(markdownBytes), markdownFileName, resourcePrefix, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, resourcePrefix, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -312,7 +388,7 @@ func getDocsForProvider(g *Generator, org string, provider string, resourcePrefi
 	if docinfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
-			return getDocsForProvider(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
+			return getDocsForResource(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
 		}
 
 		if docinfo.IncludeAttributesFrom != "" {
@@ -456,28 +532,40 @@ func splitGroupLines(s, sep string) [][]string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
+	markdown []byte, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
-		g:                g,
+		sink:             g,
 		info:             info,
 		kind:             kind,
-		markdown:         markdown,
 		markdownFileName: markdownFileName,
-		resourcePrefix:   resourcePrefix,
 		rawname:          rawname,
+
+		infoCtx: infoContext{
+			language: g.language,
+			pkg:      g.pkg,
+			info:     g.info,
+		},
+		editRules: g.editRules,
 	}
-	return p.parse()
+	return p.parse(markdown)
+}
+
+type diagsSink interface {
+	debug(string, ...interface{})
+	warn(string, ...interface{})
+	error(string, ...interface{})
 }
 
 type tfMarkdownParser struct {
-	g                *Generator
+	sink             diagsSink
 	info             tfbridge.ResourceOrDataSourceInfo
 	kind             DocKind
-	markdown         string
 	markdownFileName string
-	resourcePrefix   string
 	rawname          string
+
+	infoCtx   infoContext
+	editRules editRules
 
 	ret entityDocs
 }
@@ -499,21 +587,27 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 	}
 	fileBytes, err := os.ReadFile(absPath)
 	if err != nil {
-		p.g.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
+		p.sink.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
 		return "", err
 	}
 
 	return string(fileBytes), nil
 }
 
-func (p *tfMarkdownParser) parse() (entityDocs, error) {
+func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	p.ret = entityDocs{
 		Arguments:  make(map[string]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
+	var err error
+	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown)
+	if err != nil {
+		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
+	}
+	markdown := string(tfMarkdown)
 
 	// Replace any Windows-style newlines.
-	markdown := strings.Replace(p.markdown, "\r\n", "\n", -1)
+	markdown = strings.Replace(markdown, "\r\n", "\n", -1)
 
 	// Replace redundant comment.
 	markdown = strings.Replace(markdown, "<!-- schema generated by tfplugindocs -->", "", -1)
@@ -553,7 +647,7 @@ func (p *tfMarkdownParser) parse() (entityDocs, error) {
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
-	doc, _ := cleanupDoc(p.rawname, p.g, p.ret, footerLinks)
+	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
 
 	return doc, nil
 }
@@ -665,7 +759,7 @@ func reformatExamples(sections [][]string) [][]string {
 func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	// Extract the header name, since this will drive how we process the content.
 	if len(h2Section) == 0 {
-		p.g.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
+		p.sink.warn("Unparseable H2 doc section for %v; consider overriding doc source location", p.rawname)
 		return nil
 	}
 
@@ -679,7 +773,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
-		p.g.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
+		p.sink.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
 		ignoredDocHeaders[header]++
 		return nil
 	case "Example Usage":
@@ -705,7 +799,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
 			// log it as debug output:
-			p.g.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location", p.rawname, p.kind)
+			p.sink.debug("empty or unparseable H3 doc section for %v; consider overriding doc source location",
+				p.rawname, p.kind)
 			continue
 		}
 
@@ -717,7 +812,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
 			!p.info.ReplaceExamplesSection() {
-			p.g.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
+			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 			unexpectedSnippets++
 		}
@@ -725,9 +820,9 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
 		case sectionArgsReference:
-			p.parseArgReferenceSection(reformattedH3Section)
+			parseArgReferenceSection(reformattedH3Section, &p.ret)
 		case sectionAttributesReference:
-			p.parseAttributesReferenceSection(reformattedH3Section)
+			parseAttributesReferenceSection(reformattedH3Section, &p.ret)
 		case sectionFrontMatter:
 			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
@@ -736,7 +831,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[header]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
-				p.parseArgReferenceSection(reformattedH3Section)
+				parseArgReferenceSection(reformattedH3Section, &p.ret)
 				continue
 			}
 
@@ -771,14 +866,14 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	node := parseNode(strings.Join(subsection, "\n"))
 	topLevelSchema, err := parseTopLevelSchema(node, nil)
 	if err != nil {
-		p.g.warn(fmt.Sprintf("error: Failure in parsing resource name: %s, subsection: %s", p.rawname, subsection[0]))
+		p.sink.warn(fmt.Sprintf("error: Failure in parsing resource name: %s, subsection: %s", p.rawname, subsection[0]))
 		return
 	}
 	if topLevelSchema == nil {
-		p.g.warn("Failed to parse top-level Schema section")
+		p.sink.warn("Failed to parse top-level Schema section")
 		return
 	}
-	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.g.warn)
+	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.sink.warn)
 }
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
@@ -793,6 +888,36 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 	return "", "", false
 }
 
+var genericNestedRegexp = regexp.MustCompile("supports? the following:")
+
+var nestedObjectRegexps = []*regexp.Regexp{
+	// For example:
+	// s3_bucket.html.markdown: "The `website` object supports the following:"
+	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
+	regexp.MustCompile("`([a-z_]+)`.*following"),
+
+	// For example:
+	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+
+	// For example:
+	// elasticsearch_domain.html.markdown: "### advanced_security_options"
+	regexp.MustCompile("###+ ([a-z_]+).*"),
+
+	// For example:
+	// dynamodb_table.html.markdown: "### `server_side_encryption`"
+	regexp.MustCompile("###+ `([a-z_]+).*`"),
+
+	// For example:
+	// route53_record.html.markdown: "### Failover Routing Policy"
+	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+
+	// For example:
+	// sql_database_instance.html.markdown:
+	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
+}
+
 // getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
 // describes. If the line does not describe a nested block, an empty string is returned.
 //
@@ -802,35 +927,6 @@ func parseArgFromMarkdownLine(line string) (string, string, bool) {
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
 func getNestedBlockName(line string) string {
 	nested := ""
-
-	nestedObjectRegexps := []*regexp.Regexp{
-		// For example:
-		// s3_bucket.html.markdown: "The `website` object supports the following:"
-		// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-		regexp.MustCompile("`([a-z_]+)`.*following"),
-
-		// For example:
-		// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-		regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-
-		// For example:
-		// elasticsearch_domain.html.markdown: "### advanced_security_options"
-		regexp.MustCompile("###+ ([a-z_]+).*"),
-
-		// For example:
-		// dynamodb_table.html.markdown: "### `server_side_encryption`"
-		regexp.MustCompile("###+ `([a-z_]+).*`"),
-
-		// For example:
-		// route53_record.html.markdown: "### Failover Routing Policy"
-		regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
-
-		// For example:
-		// sql_database_instance.html.markdown:
-		// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
-		regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
-	}
-
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
@@ -846,79 +942,104 @@ func getNestedBlockName(line string) string {
 	return nested
 }
 
-func (p *tfMarkdownParser) parseArgReferenceSection(subsection []string) {
+func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var lastMatch, nested string
-	for _, line := range subsection {
-		name, desc, matchFound := parseArgFromMarkdownLine(line)
 
-		if matchFound {
-			// found a property bullet, extract the name and description
-			if nested != "" {
-				// We found this line within a nested field. We should record it as such.
-				if p.ret.Arguments[nested] == nil {
-					p.ret.Arguments[nested] = &argumentDocs{
-						arguments: make(map[string]string),
-					}
-					totalArgumentsFromDocs++
-				} else if p.ret.Arguments[nested].arguments == nil {
-					p.ret.Arguments[nested].arguments = make(map[string]string)
+	addNewHeading := func(name, desc, line string) {
+		// found a property bullet, extract the name and description
+		if nested != "" {
+			// We found this line within a nested field. We should record it as such.
+			if ret.Arguments[nested] == nil {
+				ret.Arguments[nested] = &argumentDocs{
+					arguments: make(map[string]string),
 				}
-				p.ret.Arguments[nested].arguments[name] = desc
-
-				// Also record this as a top-level argument just in case, since sometimes the recorded nested
-				// argument doesn't match the resource's argument.
-				// For example, see `cors_rule` in s3_bucket.html.markdown.
-				if p.ret.Arguments[name] == nil {
-					p.ret.Arguments[name] = &argumentDocs{
-						description: desc,
-						isNested:    true, // Mark that this argument comes from a nested field.
-					}
-				}
-			} else {
-				if !strings.HasSuffix(line, "supports the following:") {
-					p.ret.Arguments[name] = &argumentDocs{description: desc}
-					totalArgumentsFromDocs++
-				}
+				totalArgumentsFromDocs++
+			} else if ret.Arguments[nested].arguments == nil {
+				ret.Arguments[nested].arguments = make(map[string]string)
 			}
-			lastMatch = name
-		} else if !isBlank(line) && lastMatch != "" {
-			// this is a continuation of the previous bullet
-			if nested != "" {
-				p.ret.Arguments[nested].arguments[lastMatch] += "\n" + strings.TrimSpace(line)
+			ret.Arguments[nested].arguments[name] = desc
 
-				// Also update the top-level argument if we took it from a nested field.
-				if p.ret.Arguments[lastMatch].isNested {
-					p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
+			// Also record this as a top-level argument just in case, since sometimes the recorded nested
+			// argument doesn't match the resource's argument.
+			// For example, see `cors_rule` in s3_bucket.html.markdown.
+			if ret.Arguments[name] == nil {
+				ret.Arguments[name] = &argumentDocs{
+					description: desc,
+					isNested:    true, // Mark that this argument comes from a nested field.
 				}
-			} else {
-				p.ret.Arguments[lastMatch].description += "\n" + strings.TrimSpace(line)
 			}
 		} else {
-			// This line might declare the beginning of a nested object.
-			// If we do not find a "nested", then this is an empty line or there were no bullets yet.
-			nestedBlockCurrentLine := getNestedBlockName(line)
-
-			if nestedBlockCurrentLine != "" {
-				nested = nestedBlockCurrentLine
+			if genericNestedRegexp.MatchString(line) {
+				return
 			}
+			ret.Arguments[name] = &argumentDocs{description: desc}
+			totalArgumentsFromDocs++
+		}
+	}
 
-			// Clear the lastMatch.
+	extendExistingHeading := func(line string) {
+		line = "\n" + strings.TrimSpace(line)
+		if nested != "" {
+			ret.Arguments[nested].arguments[lastMatch] += line
+
+			// Also update the top-level argument if we took it from a nested field.
+			if ret.Arguments[lastMatch].isNested {
+				ret.Arguments[lastMatch].description += line
+			}
+		} else {
+			if genericNestedRegexp.MatchString(line) {
+				lastMatch = ""
+				nested = ""
+				return
+			}
+			ret.Arguments[lastMatch].description += line
+		}
+	}
+
+	var hadSpace bool
+	for _, line := range subsection {
+		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
+			// We have found a new
+			addNewHeading(name, desc, line)
+			lastMatch = name
+		} else if strings.TrimSpace(line) == "---" {
+			// --- is a markdown section break. This probably indicates the
+			// section is over, but we take it to mean that the current
+			// heading is over.
 			lastMatch = ""
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
+			nested = nestedBlockCurrentLine
+			lastMatch = ""
+		} else if !isBlank(line) && lastMatch != "" {
+			extendExistingHeading(line)
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
+			nested = nestedBlockCurrentLine
+			lastMatch = ""
+		} else if lastMatch != "" {
+			extendExistingHeading(line)
+		}
+		hadSpace = isBlank(line)
+	}
+
+	for _, v := range ret.Arguments {
+		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
+		for k, d := range v.arguments {
+			v.arguments[k] = strings.TrimRightFunc(d, unicode.IsSpace)
 		}
 	}
 }
 
-func (p *tfMarkdownParser) parseAttributesReferenceSection(subsection []string) {
+func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 	var lastMatch string
 	for _, line := range subsection {
 		matches := attributeBulletRegexp.FindStringSubmatch(line)
 		if len(matches) >= 2 {
 			// found a property bullet, extract the name and description
-			p.ret.Attributes[matches[1]] = matches[2]
+			ret.Attributes[matches[1]] = matches[2]
 			lastMatch = matches[1]
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
-			p.ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
+			ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
 		} else {
 			// This is an empty line or there were no bullets yet - clear the lastMatch
 			lastMatch = ""
@@ -1019,7 +1140,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundEndHeader {
-		p.g.warn("", "Expected to pair --- begin/end for resource %v's Markdown header", p.rawname)
+		p.sink.warn("", "Expected to pair --- begin/end for resource %v's Markdown header", p.rawname)
 	}
 
 	// Now extract the description section. We assume here that the first H1 (line starting with #) is the name
@@ -1040,7 +1161,7 @@ func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
 		}
 	}
 	if !foundH1Resource {
-		p.g.warn("Expected an H1 in markdown for resource %v", p.rawname)
+		p.sink.warn("Expected an H1 in markdown for resource %v", p.rawname)
 	}
 }
 
@@ -1590,13 +1711,16 @@ func genLanguageToSlice(input Language) []string {
 	}
 }
 
-func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[string]string) (entityDocs, bool) {
+func cleanupDoc(
+	name string, g diagsSink, infoCtx infoContext, doc entityDocs,
+	footerLinks map[string]string,
+) (entityDocs, bool) {
 	elidedDoc := false
 	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
 
 	for k, v := range doc.Arguments {
 		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
-		cleanedText, elided := reformatText(g, v.description, footerLinks)
+		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
 			elidedArguments++
 			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
@@ -1613,7 +1737,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		// Clean nested arguments (if any)
 		for kk, vv := range v.arguments {
 			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := reformatText(g, vv, footerLinks)
+			cleanedText, elided := reformatText(infoCtx, vv, footerLinks)
 			if elided {
 				elidedNestedArguments++
 				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
@@ -1627,7 +1751,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanedText, elided := reformatText(g, v, footerLinks)
+		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
 			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
@@ -1638,7 +1762,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 	}
 
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText, elided := reformatText(g, doc.Description, footerLinks)
+	cleanupText, elided := reformatText(infoCtx, doc.Description, footerLinks)
 	if elided {
 		g.debug("Found <elided> in the description. Attempting to extract examples from the description and " +
 			"reformat examples only.")
@@ -1656,7 +1780,7 @@ func cleanupDoc(name string, g *Generator, doc entityDocs, footerLinks map[strin
 		} else {
 			g.debug("Found examples in the description text. Attempting to reformat the examples.")
 
-			cleanedupExamples, examplesElided := reformatText(g, examples, footerLinks)
+			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
 			if examplesElided {
 				elidedDescriptions++
 				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
@@ -1699,7 +1823,13 @@ var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(
 
 const elidedDocComment = "<elided>"
 
-func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridge.ProviderInfo, text string) string {
+type infoContext struct {
+	language Language
+	pkg      tokens.Package
+	info     tfbridge.ProviderInfo
+}
+
+func (c infoContext) fixupPropertyReference(text string) string {
 	formatModulePrefix := func(mod tokens.ModuleName) string {
 		modname := mod.String()
 		if mod == indexMod {
@@ -1721,23 +1851,23 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 			open, name, close = "`", parts[7], "`"
 		}
 
-		if resInfo, hasResourceInfo := info.Resources[name]; hasResourceInfo {
+		if resInfo, hasResourceInfo := c.info.Resources[name]; hasResourceInfo {
 			// This is a resource name
-			resname, mod := resourceName(info.GetResourcePrefix(), name, resInfo, false)
+			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch language {
+			switch c.language {
 			case Golang, Python:
 				// Use `ec2.Instance` format
 				return open + modname + resname.String() + close
 			default:
 				// Use `aws.ec2.Instance` format
-				return open + pkg.String() + "." + modname + resname.String() + close
+				return open + c.pkg.String() + "." + modname + resname.String() + close
 			}
-		} else if dataInfo, hasDatasourceInfo := info.DataSources[name]; hasDatasourceInfo {
+		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
-			getname, mod := dataSourceName(info.GetResourcePrefix(), name, dataInfo)
+			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch language {
+			switch c.language {
 			case Golang:
 				// Use `ec2.getAmi` format
 				return open + modname + getname.String() + close
@@ -1746,11 +1876,11 @@ func fixupPropertyReferences(language Language, pkg tokens.Package, info tfbridg
 				return open + python.PyName(modname+getname.String()) + close
 			default:
 				// Use `aws.ec2.getAmi` format
-				return open + pkg.String() + "." + modname + getname.String() + close
+				return open + c.pkg.String() + "." + modname + getname.String() + close
 			}
 		}
 		// Else just treat as a property name
-		switch language {
+		switch c.language {
 		case NodeJS, Golang:
 			// Use `camelCase` format
 			pname := propertyName(name, nil, nil)
@@ -1775,18 +1905,17 @@ func extractExamples(description string) string {
 }
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func reformatText(g *Generator, text string, footerLinks map[string]string) (string, bool) {
+func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
 
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
-		// TODO: fail the build in the face of such text, once we have a processes in place.
 		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
 			return "", true
 		}
 
 		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
-		text = strings.Replace(text, "-> ", "> ", -1)
-		text = strings.Replace(text, "~> ", "> ", -1)
+		text = strings.ReplaceAll(text, "-> ", "> ")
+		text = strings.ReplaceAll(text, "~> ", "> ")
 
 		// Trim Prefixes we see when the description is spread across multiple lines.
 		text = strings.TrimPrefix(text, "\n(Required)\n")
@@ -1823,7 +1952,7 @@ func reformatText(g *Generator, text string, footerLinks map[string]string) (str
 		})
 
 		// Fixup resource and property name references
-		text = fixupPropertyReferences(g.language, g.pkg, g.info, text)
+		text = g.fixupPropertyReference(text)
 
 		return text, false
 	}

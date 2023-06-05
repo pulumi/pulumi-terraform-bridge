@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -48,8 +49,12 @@ func testSink(t *testing.T) diag.Sink {
 	})
 
 	t.Cleanup(func() {
-		t.Logf("%s\n", stdout.String())
-		t.Logf("%s\n", stderr.String())
+		if strings.TrimSpace(stdout.String()) != "" {
+			t.Logf("%s\n", stdout.String())
+		}
+		if strings.TrimSpace(stderr.String()) != "" {
+			t.Logf("%s\n", stderr.String())
+		}
 	})
 
 	return testSink

@@ -3,11 +3,14 @@
         "resources": {
             "testbridge:index/testnest:Testnest": "testbridge_testnest",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
+            "testbridge:index/testres:TestDefaultInfoRes": "testbridge_test_default_info_res",
             "testbridge:index/testres:Testcompres": "testbridge_testcompres",
             "testbridge:index/testres:Testres": "testbridge_testres"
         },
         "functions": {
-            "testbridge:index/echo:Echo": "testbridge_echo"
+            "testbridge:index/echo:Echo": "testbridge_echo",
+            "testbridge:index/smac:SMAC": "testbridge_smac_ds",
+            "testbridge:index/testres:TestDefaultInfoDataSource": "testbridge_test_defaultinfo"
         },
         "renamedProperties": {
             "testbridge:index/TestnestRule:TestnestRule": {
@@ -15,6 +18,9 @@
             },
             "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
                 "automaticHttpsRewrites": "automatic_https_rewrites"
+            },
+            "testbridge:index/smac:SMAC": {
+                "skipMetadataApiCheck": "skip_metadata_api_check"
             },
             "testbridge:index/testres:TestConfigRes": {
                 "configCopy": "config_copy"
@@ -40,12 +46,16 @@
             },
             "testbridge:index:Provider": {
                 "boolConfigProp": "bool_config_prop",
-                "stringConfigProp": "string_config_prop"
+                "skipMetadataApiCheck": "skip_metadata_api_check",
+                "stringConfigProp": "string_config_prop",
+                "stringDefaultinfoConfigProp": "string_defaultinfo_config_prop"
             }
         },
         "renamedConfigProperties": {
             "boolConfigProp": "bool_config_prop",
-            "stringConfigProp": "string_config_prop"
+            "skipMetadataApiCheck": "skip_metadata_api_check",
+            "stringConfigProp": "string_config_prop",
+            "stringDefaultinfoConfigProp": "string_defaultinfo_config_prop"
         }
     }
 }

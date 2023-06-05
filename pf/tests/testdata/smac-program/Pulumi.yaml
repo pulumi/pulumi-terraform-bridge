@@ -1,0 +1,42 @@
+name: smac-program
+runtime: yaml
+resources:
+
+  provider1:
+    type: pulumi:providers:testbridge
+    properties:
+      skipMetadataApiCheck: true
+
+  provider2:
+    type: pulumi:providers:testbridge
+    properties:
+      skipMetadataApiCheck: false
+
+  provider3:
+    type: pulumi:providers:testbridge
+
+outputs:
+
+  test_true_smac__actual:
+    fn::invoke:
+      function: testbridge:index/smac:SMAC
+      options:
+        provider: ${provider1}
+      return: skipMetadataApiCheck
+  test_true_smac__expect: "true"
+
+  test_false_smac__actual:
+    fn::invoke:
+      function: testbridge:index/smac:SMAC
+      options:
+        provider: ${provider2}
+      return: skipMetadataApiCheck
+  test_false_smac__expect: "false"
+
+  test_def_smac__actual:
+    fn::invoke:
+      function: testbridge:index/smac:SMAC
+      options:
+        provider: ${provider3}
+      return: skipMetadataApiCheck
+  test_def_smac__expect: "true"

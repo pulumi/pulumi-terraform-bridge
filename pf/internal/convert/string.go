@@ -40,6 +40,12 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	if p.IsNull() {
 		return tftypes.NewValue(tftypes.String, nil), nil
 	}
+
+	// Special-case to tolerate booleans.
+	if p.IsBool() {
+		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.BoolValue())), nil
+	}
+
 	if !p.IsString() {
 		return tftypes.NewValue(tftypes.String, nil),
 			fmt.Errorf("Expected a string, got: %v", p)

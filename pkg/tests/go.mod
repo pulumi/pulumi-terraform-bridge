@@ -13,9 +13,10 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.19.0
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.48.1-0.20230527113951-a0f92e793f31
-	github.com/pulumi/pulumi/pkg/v3 v3.69.0
 	github.com/stretchr/testify v1.8.2
 )
+
+require github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 
 require (
 	cloud.google.com/go v0.107.0 // indirect
@@ -161,6 +162,7 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.69.0
 	github.com/pulumi/pulumi/sdk/v3 v3.69.0 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect

@@ -50,9 +50,9 @@ testbridge_testconfigres is built to test Configure support in the provider.
 }
 
 func (e *testconfigres) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	cfg := req.ProviderData.(*string)
-	if cfg != nil {
-		e.config = *cfg
+	cfg := req.ProviderData.(resourceData)
+	if cfg.stringConfigProp != nil {
+		e.config = *cfg.stringConfigProp
 	}
 }
 

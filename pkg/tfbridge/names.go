@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 // PulumiToTerraformName performs a standard transformation on the given name string, from Pulumi's PascalCasing or
@@ -59,22 +61,6 @@ func PulumiToTerraformName(name string, tfs shim.SchemaMap, ps map[string]*Schem
 	return result
 }
 
-func isTfPlural(tfs shim.Schema) bool {
-	if tfs == nil {
-		return false
-	}
-
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
-		return false
-	}
-
-	return tfs.MaxItems() != 1
-}
-
-func isPulumiMaxItemsOne(ps *SchemaInfo) bool {
-	return ps != nil && ps.MaxItemsOne != nil && *ps.MaxItemsOne
-}
-
 // TerraformToPulumiNameV2 performs a standard transformation on the given name string,
 // from Terraform's underscore_casing to Pulumi's camelCasing.
 func TerraformToPulumiNameV2(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo) string {
@@ -107,6 +93,48 @@ func TerraformToPulumiName(name string, sch shim.Schema, ps *SchemaInfo, upper b
 		upper)
 }
 
+// A helper method to perform TerraformToPulumiNameV2 translation at nested property positions easily. The path argument
+// specifies the nested location of the current property within the schema; sch and ps arguments specify top-level
+// resource, data source or provider SchemaMap and field SchemaInfo overrides. This method automatically finds the
+// approproate nested SchemaMap and field overrides for the property and performs the name translation.
+func TerraformToPulumiNameAtPath(
+	path walk.SchemaPath,
+	sch shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) (string, error) {
+	if len(path) == 0 {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath: path cannot be empty")
+	}
+	attr, ok := path[len(path)-1].(walk.GetAttrStep)
+	if !ok {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath: path must end with GetAttrStep")
+	}
+
+	// If the path is of length 1, this simply degenerates to TerraformToPulumiNameV2.
+	if len(path) == 1 {
+		return TerraformToPulumiNameV2(attr.Name, sch, ps), nil
+	}
+
+	// Otherwise we lookup parent object schema.
+	objSchema, objInfos, err := LookupSchemas(path[0:len(path)-1], sch, ps)
+	if err != nil {
+		return "", fmt.Errorf("TerraformToPulumiNameAtPath failed to find parent object schema: %w", err)
+	}
+
+	var objSchemaMap shim.SchemaMap
+	switch r := objSchema.Elem().(type) {
+	case shim.Resource:
+		objSchemaMap = r.Schema()
+	}
+
+	var objFields map[string]*SchemaInfo
+	if objInfos != nil {
+		objFields = objInfos.Fields
+	}
+
+	return TerraformToPulumiNameV2(attr.Name, objSchemaMap, objFields), nil
+}
+
 func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*SchemaInfo, upper bool) string {
 	var result string
 	var nextCap bool
@@ -123,8 +151,30 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 		}
 	}
 
+	tryPluralize := func() bool {
+		tfs := sch.Get(name)
+		if tfs == nil {
+			// If we can't get type information, we don't attempt to pluralize.
+			return false
+		}
+		switch tfs.Type() {
+		// We only attempt to pluralize lists and sets.
+		case shim.TypeSet, shim.TypeList:
+			// If the user has provided a manual override for MaxItemsOne,
+			// respect that.
+			if psInfo != nil && psInfo.MaxItemsOne != nil {
+				return !*psInfo.MaxItemsOne
+			}
+			// If the user has left MaxItemsOne unspecified, check the value
+			// of MaxItems().
+			return tfs.MaxItems() != 1
+		default:
+			return false
+		}
+	}
+
 	// Pluralize names that will become array-shaped Pulumi values
-	if sch != nil && !isPulumiMaxItemsOne(psInfo) && isTfPlural(sch.Get(name)) {
+	if sch != nil && tryPluralize() {
 		candidate := inflector.Pluralize(name)
 		// We don't assign a plural name if there is another key in the namespace that
 		// would conflict with our name... unless that key is manually assigned a .Name
@@ -142,7 +192,16 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 		//	]
 		//
 		// The non-bijectivity will be caught at tfgen time and a warning will be emitted.
-		if _, conflict := sch.GetOk(candidate); !conflict || (ps[candidate] != nil && ps[candidate].Name != candidate) {
+
+		_, conflict := sch.GetOk(candidate)
+
+		// A conflict at the `sch` level doesn't necessarily mean that it is
+		// unsafe to pluralize. It is possible that the potentially conflicting
+		// field had its name manually set to another value.
+		conflictSafe := (ps[candidate] != nil &&
+			ps[candidate].Name != "" &&
+			ps[candidate].Name != candidate)
+		if !conflict || conflictSafe {
 			name = candidate
 		}
 	}

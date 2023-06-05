@@ -37,6 +37,7 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 	defineProvider := func() provider.Provider {
 		return &syntheticProvider{}
 	}
+
 	info := tfbridge.ProviderInfo{
 		Name:        "testbridge",
 		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
@@ -45,6 +46,21 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
 		Version:     "0.0.1",
+
+		Config: map[string]*tfbridge.SchemaInfo{
+			"string_defaultinfo_config_prop": {
+				Default: &tfbridge.DefaultInfo{
+					Value: "DEFAULT",
+				},
+			},
+			"skip_metadata_api_check": {
+				Type: "boolean",
+				Default: &tfbridge.DefaultInfo{
+					Value: true,
+				},
+			},
+		},
+
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 			"testbridge_testnest": {
@@ -68,10 +84,36 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
+
+			"testbridge_test_default_info_res": {
+				Tok: "testbridge:index/testres:TestDefaultInfoRes",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"str": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
 		},
+
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
+
+			"testbridge_test_defaultinfo": {
+				Tok: "testbridge:index/testres:TestDefaultInfoDataSource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input": {
+						Default: &tfbridge.DefaultInfo{
+							Value: "DEFAULT",
+						},
+					},
+				},
+			},
+
+			"testbridge_smac_ds": {Tok: "testbridge:index/smac:SMAC"},
 		},
+
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 	return tfpf.ProviderInfo{
@@ -80,7 +122,11 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 	}
 }
 
-type syntheticProvider struct {
+type syntheticProvider struct{}
+
+type resourceData struct {
+	stringConfigProp     *string
+	skipMetadataAPICheck *string
 }
 
 var _ provider.Provider = (*syntheticProvider)(nil)
@@ -93,26 +139,59 @@ func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataReque
 func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
-			"string_config_prop": pschema.StringAttribute{},
+			"string_config_prop": pschema.StringAttribute{
+				Optional: true,
+			},
 			"bool_config_prop": pschema.BoolAttribute{
 				Optional: true,
+			},
+			"string_defaultinfo_config_prop": pschema.StringAttribute{
+				Optional:    true,
+				Description: "Used for testing DefaultInfo default application support",
+			},
+			"skip_metadata_api_check": pschema.StringAttribute{
+				Optional: true,
+				Description: "Example taken from pulumi-aws; used to validate string properties " +
+					"remapped to bool type during briding",
 			},
 		},
 	}
 }
 
-func (p *syntheticProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *syntheticProvider) Configure(
+	ctx context.Context,
+	req provider.ConfigureRequest,
+	resp *provider.ConfigureResponse,
+) {
+	rd := resourceData{}
+
 	var stringConfigProp *string
 	diags := req.Config.GetAttribute(ctx, path.Root("string_config_prop"), &stringConfigProp)
 	resp.Diagnostics.Append(diags...)
 	if stringConfigProp != nil {
-		resp.ResourceData = stringConfigProp
+		rd.stringConfigProp = stringConfigProp
 	}
+
+	var smac *string
+	diags2 := req.Config.GetAttribute(ctx, path.Root("skip_metadata_api_check"), &smac)
+	resp.Diagnostics.Append(diags2...)
+	if smac != nil {
+		switch *smac {
+		case "true", "false", "":
+			rd.skipMetadataAPICheck = smac
+		default:
+			resp.Diagnostics.AddError("cannot parse skip_metadata_api_check", *smac)
+		}
+	}
+	resp.ResourceData = rd
+	resp.DataSourceData = rd
 }
 
 func (p *syntheticProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newEchoDataSource,
+		newTestDefaultInfoDataSource,
+		newSmacDataSource,
 	}
 }
 
@@ -122,5 +201,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestnest,
 		newTestCompRes,
 		newTestConfigRes,
+		newTestDefaultInfoRes,
 	}
 }
