@@ -2889,14 +2889,7 @@ func TranslateModule(
 	source afero.Fs, sourceDirectory string,
 	destination afero.Fs, info il.ProviderInfoSource) hcl.Diagnostics {
 	modules := make(map[moduleKey]string)
-	diags := translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
-	// TODO: pulumi-terraform-converter doesn't correctly translate returned diagnostics yet. Once that's
-	// fixed up we can change this to just always return diagnostics and the converter plugin will be able to
-	// handle warning diagnostics.
-	if diags != nil && diags.HasErrors() {
-		return diags
-	}
-	return nil
+	return translateModuleSourceCode(modules, source, sourceDirectory, destination, "/", info)
 }
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
