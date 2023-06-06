@@ -34,10 +34,9 @@ func (l *TestFileMapper) GetMapping(ctx context.Context, provider string, pulumi
 		panic("provider and pulumiProvider cannot both be empty")
 	}
 
-	if pulumiProvider == "unknown" || pulumiProvider == "terraform-template" {
+	if pulumiProvider == "unknown" {
 		// 'unknown' is used as a known provider name that will return nothing, so return early here so we
-		// don't hit the standard unknown error below. 'template' is used in tests but we don't have a
-		// provider for it so we also return nothing for that.
+		// don't hit the standard unknown error below.
 		return nil, nil
 	}
 	if pulumiProvider == "error" {
