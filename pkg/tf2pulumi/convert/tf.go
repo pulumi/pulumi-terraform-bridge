@@ -2531,20 +2531,25 @@ func translateModuleSourceCode(
 			scopes.getOrAddPulumiName(key, "", "Data")
 			// Try to grab the info for this data type
 			provider := impliedProvider(dataResource.Type)
-			providerInfo, err := info.GetProviderInfo("", "", provider, "")
-			if err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagWarning,
-					Summary:  "Failed to get provider info",
-					Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", dataResource.Type, err),
-				})
-			}
+			if provider != "template" {
+				// We rewrite uses of template because it's really common but the provider for it is
+				// deprecated. As such we don't want to try and do a mapping lookup for it.
 
-			if providerInfo != nil {
-				root := scopes.roots[key]
-				root.Resource = providerInfo.P.DataSourcesMap().Get(dataResource.Type)
-				root.DataSourceInfo = providerInfo.DataSources[dataResource.Type]
-				scopes.roots[key] = root
+				providerInfo, err := info.GetProviderInfo("", "", provider, "")
+				if err != nil {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagWarning,
+						Summary:  "Failed to get provider info",
+						Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", dataResource.Type, err),
+					})
+				}
+
+				if providerInfo != nil {
+					root := scopes.roots[key]
+					root.Resource = providerInfo.P.DataSourcesMap().Get(dataResource.Type)
+					root.DataSourceInfo = providerInfo.DataSources[dataResource.Type]
+					scopes.roots[key] = root
+				}
 			}
 		}
 	}
