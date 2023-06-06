@@ -1,0 +1,41 @@
+{
+    "name": "assets",
+    "provider": {
+        "dataSources": {
+            "assets_data_source": {
+                "source": {
+                    "type": 4,
+                    "optional": true
+                }
+            }
+        },
+        "resources": {
+            "assets_resource": {
+                "source": {
+                    "type": 4,
+                    "optional": true
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "assets_data_source": {
+            "tok": "assets:index:data_source",
+            "fields": {
+                "source": {
+                    "asset": {}
+                }
+            }
+        }
+    },
+    "resources": {
+        "assets_resource": {
+            "tok":  "assets:index:resource",
+            "fields": {
+                "source": {
+                    "asset": {}
+                }
+            }
+        }
+    }
+}
