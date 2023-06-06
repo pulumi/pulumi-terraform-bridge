@@ -80,7 +80,6 @@ func TestCtyTurnaround(t *testing.T) {
 	}
 
 	testCases := []testCase{
-		{cty.NilVal},
 		{cty.BoolVal(false)},
 		{cty.BoolVal(true)},
 		{cty.NumberIntVal(0)},
@@ -99,6 +98,19 @@ func TestCtyTurnaround(t *testing.T) {
 		{cty.MapVal(map[string]cty.Value{"0": cty.False, "1": cty.True})},
 		{cty.SetVal([]cty.Value{cty.Zero, cty.NumberIntVal(42)})},
 	}
+
+	for _, tc := range testCases {
+		testCases = append(testCases,
+			testCase{cty.ListVal([]cty.Value{tc.value})},
+			testCase{cty.MapVal(map[string]cty.Value{"x": tc.value})},
+			testCase{cty.SetVal([]cty.Value{tc.value})},
+			testCase{cty.TupleVal([]cty.Value{tc.value})},
+			testCase{cty.ObjectVal(map[string]cty.Value{"x": tc.value})})
+	}
+
+	// Assuming that NilVal should not be nested in real-world use cases so it is added here after the nesting
+	// cases. It is slightly problematic to test as it can makes Equals() and other methods panic.
+	testCases = append(testCases, testCase{cty.NilVal})
 
 	for i, tc := range testCases {
 		tc := tc
