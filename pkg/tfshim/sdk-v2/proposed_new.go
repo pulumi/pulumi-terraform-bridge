@@ -15,8 +15,6 @@
 package sdkv2
 
 import (
-	"reflect"
-
 	hcty "github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/zclconf/go-cty/cty"
@@ -39,7 +37,7 @@ func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, er
 func htype2ctype(t hcty.Type) cty.Type {
 	// Used t.HasDynamicTypes() as an example of how to pattern-match types.
 	switch {
-	case reflect.DeepEqual(t, hcty.NilType):
+	case t == hcty.NilType:
 		return cty.NilType
 	case t == hcty.DynamicPseudoType:
 		return cty.DynamicPseudoType
@@ -176,7 +174,7 @@ func hcty2ctyWithType(ty cty.Type, val hcty.Value) cty.Value {
 func ctype2htype(t cty.Type) hcty.Type {
 	// Used t.HasDynamicTypes() as an example of how to pattern-match types.
 	switch {
-	case reflect.DeepEqual(t, cty.NilType):
+	case t == cty.NilType:
 		return hcty.NilType
 	case t == cty.DynamicPseudoType:
 		return hcty.DynamicPseudoType
