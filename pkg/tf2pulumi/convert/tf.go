@@ -1615,6 +1615,15 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			}
 		}
 
+		asset := scopes.isAsset(attrPath)
+		if asset != nil {
+			if asset.Kind == tfbridge.FileArchive || asset.Kind == tfbridge.BytesArchive {
+				expr = hclwrite.TokensForFunctionCall("fileArchive", expr)
+			} else {
+				expr = hclwrite.TokensForFunctionCall("fileAsset", expr)
+			}
+		}
+
 		newAttributes = append(newAttributes, bodyAttrTokens{
 			Line:   attr.Range.Start.Line,
 			Name:   name,
@@ -2326,9 +2335,9 @@ func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 	info := s.getInfo(fullyQualifiedPath)
 
 	// This should only be called for attribute paths, so panic if this returned a resource
-	contract.Assertf(info.Resource == nil, "pulumiName called on a resource or data source")
-	contract.Assertf(info.ResourceInfo == nil, "pulumiName called on a resource or data source")
-	contract.Assertf(info.DataSourceInfo == nil, "pulumiName called on a resource or data source")
+	contract.Assertf(info.Resource == nil, "maxItemsOne called on a resource or data source")
+	contract.Assertf(info.ResourceInfo == nil, "maxItemsOne called on a resource or data source")
+	contract.Assertf(info.DataSourceInfo == nil, "maxItemsOne called on a resource or data source")
 
 	// If we have a SchemaInfo and a MaxItems override use it
 	schemaInfo := info.SchemaInfo
@@ -2344,6 +2353,24 @@ func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 
 	// Else assume false
 	return false
+}
+
+// Given a fully typed path (e.g. data.simple_data_source.a_field) returns whether a_field has Asset information set
+func (s *scopes) isAsset(fullyQualifiedPath string) *tfbridge.AssetTranslation {
+	info := s.getInfo(fullyQualifiedPath)
+
+	// This should only be called for attribute paths, so panic if this returned a resource
+	contract.Assertf(info.Resource == nil, "isAsset called on a resource or data source")
+	contract.Assertf(info.ResourceInfo == nil, "isAsset called on a resource or data source")
+	contract.Assertf(info.DataSourceInfo == nil, "isAsset called on a resource or data source")
+
+	// If we have a SchemaInfo and a asset info return that
+	schemaInfo := info.SchemaInfo
+	if schemaInfo != nil {
+		return schemaInfo.Asset
+	}
+
+	return nil
 }
 
 // An "item" from a terraform file
