@@ -4,14 +4,14 @@ resource example "simple:index:resource" {
 }
 resource anotherExample "simple:index:resource" {
     inputOne = example_resource_type.resource_name.some_attribute
-    inputTwo = var.example.test_attribute
+    inputTwo = var.some_config.test_attribute
 }
 output testUnknownAlreadyDeclaredDataSource {
-    value = data.example.another_test_attribute
+    value = data.unknown_data_source.example.another_test_attribute
 }
 output testUnknownLocalVariable {
     value = local.some_variable_name
 }
-output testUnknownAlreadyDeclaredLocalVariable {
+output testUnknownConflictingLocalVariable {
     value = local.example.another_test_attribute
 }

@@ -5,17 +5,17 @@ resource "simple_resource" "example" {
 
 resource "simple_resource" "another_example" {
     input_one = example_resource_type.resource_name.some_attribute
-    input_two = var.example.test_attribute
+    input_two = var.some_config.test_attribute
 }
 
 output "test_unknown_already_declared_data_source" {
-    value = data.example.another_test_attribute
+    value = data.unknown_data_source.example.another_test_attribute
 }
 
 output "test_unknown_local_variable" {
     value = local.some_variable_name
 }
 
-output "test_unknown_already_declared_local_variable" {
+output "test_unknown_conflicting_local_variable" {
     value = local.example.another_test_attribute
 }
