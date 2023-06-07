@@ -2155,6 +2155,18 @@ func (s *scopes) generateUniqueName(name, prefix, suffix string) string {
 	}
 }
 
+func (s *scopes) getOrAddOutput(name string) string {
+	root, has := s.roots[name]
+	if has {
+		return root.Name
+	}
+	parts := strings.Split(name, ".")
+	tfName := parts[len(parts)-1]
+	pulumiName := camelCaseName(tfName)
+	s.roots[name] = PathInfo{Name: pulumiName}
+	return pulumiName
+}
+
 // getPulumiName takes "name" and ensures it's unique.
 // First by appending `suffix` to it, and then appending an incrementing count
 func (s *scopes) getOrAddPulumiName(name, prefix, suffix string) string {
@@ -2822,7 +2834,7 @@ func translateModuleSourceCode(
 
 	for _, item := range items {
 		if item.output != nil {
-			scopes.getOrAddPulumiName("output."+item.output.Name, "", "Output")
+			scopes.getOrAddOutput("output." + item.output.Name)
 		}
 	}
 

@@ -162,8 +162,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.69.1-0.20230605220215-9df9a4a8bd14
-	github.com/pulumi/pulumi/sdk/v3 v3.69.1-0.20230605220215-9df9a4a8bd14 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.69.1-0.20230607092117-c85c53a16f79
+	github.com/pulumi/pulumi/sdk/v3 v3.69.1-0.20230607092117-c85c53a16f79 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
