@@ -1,4 +1,4 @@
-output "filesOutput" {
+output "files" {
   value = files
 }
 output "filesOnDisk" {

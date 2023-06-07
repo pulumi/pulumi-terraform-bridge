@@ -1,9 +1,9 @@
 output "networkCidrBlocks" {
   value = notImplemented("tomap(local.addrs_by_name)")
 }
-output "networksOutput" {
+output "networks" {
   value = notImplemented("tolist(local.network_objs)")
 }
-output "baseCidrBlockOutput" {
+output "baseCidrBlock" {
   value = baseCidrBlock
 }
