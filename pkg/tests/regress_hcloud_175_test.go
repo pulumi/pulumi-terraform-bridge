@@ -42,11 +42,6 @@ func TestRegressHCloud175(t *testing.T) {
 					Type:     schema.TypeString,
 					Required: true,
 					ForceNew: true,
-					// ValidateFunc: validation.StringInSlice([]string{
-					// 	"cloud",
-					// 	"server",
-					// 	"vswitch",
-					// }, false),
 				},
 				"network_zone": {
 					Type:     schema.TypeString,
