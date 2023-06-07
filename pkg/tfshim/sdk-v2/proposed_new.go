@@ -50,7 +50,7 @@ func htype2ctype(t hcty.Type) cty.Type {
 		case t.Equals(hcty.Number):
 			return cty.Number
 		default:
-			contract.Assertf(false, "Match failure on hcty.Type with t.IsPrimitiveType()")
+			contract.Failf("Match failure on hcty.Type with t.IsPrimitiveType()")
 		}
 	case t.IsListType():
 		return cty.List(htype2ctype(*t.ListElementType()))
