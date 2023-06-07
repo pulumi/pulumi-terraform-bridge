@@ -9,8 +9,6 @@ require (
 	google.golang.org/protobuf v1.29.1
 )
 
-require github.com/pulumi/pulumi/pkg/v3 v3.69.1-0.20230607092117-c85c53a16f79 // indirect
-
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
