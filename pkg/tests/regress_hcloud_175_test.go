@@ -29,9 +29,6 @@ func TestRegressHCloud175(t *testing.T) {
 
 	subnetResource := func() *schema.Resource {
 		return &schema.Resource{
-			// CreateContext: resourceNetworkSubnetCreate,
-			// ReadContext:   resourceNetworkSubnetRead,
-			// DeleteContext: resourceNetworkSubnetDelete,
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
