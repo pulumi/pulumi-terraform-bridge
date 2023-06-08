@@ -777,7 +777,7 @@ func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
 ) hclwrite.Tokens {
 	elems := []hclwrite.Tokens{}
 	for _, expr := range expr.Exprs {
-		elems = append(elems, convertExpression(sources, scopes, fullyQualifiedPath+"[]", expr))
+		elems = append(elems, convertExpression(sources, scopes, appendPathArray(fullyQualifiedPath), expr))
 	}
 	tokens := hclwrite.TokensForTuple(elems)
 	leading, trailing := getTrivia(sources, expr.SrcRange)
@@ -791,6 +791,15 @@ func appendPath(root, part string) string {
 		return ""
 	}
 	return root + "." + part
+}
+
+// appendPathArray appends an array part to a fully quailifed dot-separated path. If the root is "" then append returns
+// "".
+func appendPathArray(root string) string {
+	if root == "" {
+		return ""
+	}
+	return root + "[]"
 }
 
 // matchStaticString returns a literal string if the expression is a static string or identifier, else nil
@@ -835,19 +844,28 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 		// Keys _might_ need renaming if we're translating for an object type, we can do this if it's
 		// statically known and we know our current path
 		var nameTokens hclwrite.Tokens
+		var subQualifiedPath string
 		if fullyQualifiedPath != "" {
-			name := matchStaticString(item.KeyExpr)
-			if name != nil {
-				fullyQualifiedPath = appendPath(fullyQualifiedPath, *name)
-				nameTokens = hclwrite.TokensForIdentifier(scopes.pulumiName(fullyQualifiedPath))
+			// We should rename the object keys if this is an object type. It's a map type we should leave it
+			// alone. TODO: If we don't know what type it is we should assume it's a map if it's strings,
+			// object if it's identifiers. Currently we just default to assuming it's an object.
+			isMap := scopes.isMap(fullyQualifiedPath)
+
+			if isMap != nil && !*isMap {
+				// We know this isn't a map type, so we should try to rename the keys
+				name := matchStaticString(item.KeyExpr)
+				if name != nil {
+					subQualifiedPath = appendPath(fullyQualifiedPath, *name)
+					nameTokens = hclwrite.TokensForIdentifier(scopes.pulumiName(subQualifiedPath))
+				}
 			}
 		}
 		// If we can't statically determine the name, we can't rename it, so just convert the expression.
 		if nameTokens == nil {
 			nameTokens = convertExpression(sources, scopes, "", item.KeyExpr)
-			fullyQualifiedPath = ""
 		}
-		valueTokens := convertExpression(sources, scopes, fullyQualifiedPath, item.ValueExpr)
+
+		valueTokens := convertExpression(sources, scopes, subQualifiedPath, item.ValueExpr)
 		items = append(items, hclwrite.ObjectAttrTokens{
 			Name:  nameTokens,
 			Value: valueTokens,
@@ -1486,7 +1504,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		isList := !scopes.maxItemsOne(blockPath)
 		name := scopes.pulumiName(blockPath)
 		if isList {
-			blockPath = blockPath + "[]"
+			blockPath = appendPathArray(blockPath)
 		}
 
 		if block.Type == "dynamic" {
@@ -2320,7 +2338,6 @@ func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	info := s.getInfo(fullyQualifiedPath)
 
 	// This should only be called for attribute paths, so panic if this returned a resource
-	contract.Assertf(info.Resource == nil, "pulumiName called on a resource or data source")
 	contract.Assertf(info.ResourceInfo == nil, "pulumiName called on a resource or data source")
 	contract.Assertf(info.DataSourceInfo == nil, "pulumiName called on a resource or data source")
 
@@ -2342,12 +2359,35 @@ func (s *scopes) pulumiName(fullyQualifiedPath string) string {
 	return camelCaseName(info.Name)
 }
 
+// Given a fully typed path (e.g. data.simple_data_source.my_data.a_field) returns if the schema says it's a map.
+func (s *scopes) isMap(fullyQualifiedPath string) *bool {
+	info := s.getInfo(fullyQualifiedPath)
+
+	// This should only be called for attribute paths, so panic if this returned a resource
+	contract.Assertf(info.ResourceInfo == nil, "isMap called on a resource or data source")
+	contract.Assertf(info.DataSourceInfo == nil, "isMap called on a resource or data source")
+
+	// If we have a shim schema use the type from that
+	sch := info.Schema
+	if sch != nil {
+		isMap := sch.Type() == shim.TypeMap
+		return &isMap
+	}
+
+	// If we have a Resource schema this must be an object
+	if info.Resource != nil {
+		isMap := false
+		return &isMap
+	}
+
+	return nil
+}
+
 // Given a fully typed path (e.g. data.simple_data_source.a_field) returns whether a_field has maxItemsOne set
 func (s *scopes) maxItemsOne(fullyQualifiedPath string) bool {
 	info := s.getInfo(fullyQualifiedPath)
 
 	// This should only be called for attribute paths, so panic if this returned a resource
-	contract.Assertf(info.Resource == nil, "maxItemsOne called on a resource or data source")
 	contract.Assertf(info.ResourceInfo == nil, "maxItemsOne called on a resource or data source")
 	contract.Assertf(info.DataSourceInfo == nil, "maxItemsOne called on a resource or data source")
 
@@ -2372,7 +2412,6 @@ func (s *scopes) isAsset(fullyQualifiedPath string) *tfbridge.AssetTranslation {
 	info := s.getInfo(fullyQualifiedPath)
 
 	// This should only be called for attribute paths, so panic if this returned a resource
-	contract.Assertf(info.Resource == nil, "isAsset called on a resource or data source")
 	contract.Assertf(info.ResourceInfo == nil, "isAsset called on a resource or data source")
 	contract.Assertf(info.DataSourceInfo == nil, "isAsset called on a resource or data source")
 
