@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -34,6 +35,7 @@ const metaKey = "__meta"
 type resourceState struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
+	Private         []byte
 }
 
 // Resource state where UpgradeResourceState has been already done if necessary.
@@ -41,13 +43,19 @@ type upgradedResourceState struct {
 	state *resourceState
 }
 
+func (u *upgradedResourceState) PrivateState() []byte {
+	return u.state.Private
+}
+
 func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.PropertyMap, error) {
 	propMap, err := convert.DecodePropertyMap(rh.decoder, u.state.Value)
 	if err != nil {
 		return nil, err
 	}
-
-	return updateTFSchemaVersion(propMap, u.state.TFSchemaVersion)
+	return updateMeta(propMap, metaState{
+		SchemaVersion: u.state.TFSchemaVersion,
+		PrivateState:  u.state.Private,
+	})
 }
 
 func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, error) {
@@ -58,7 +66,7 @@ func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, erro
 	return resource.ID(idString), nil
 }
 
-func newResourceState(ctx context.Context, rh *resourceHandle) *upgradedResourceState {
+func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *upgradedResourceState {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
@@ -66,27 +74,32 @@ func newResourceState(ctx context.Context, rh *resourceHandle) *upgradedResource
 		&resourceState{
 			Value:           value,
 			TFSchemaVersion: schemaVersion,
+			Private:         private,
 		},
 	}
 }
 
 func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
-	stateVersion, err := parseTFSchemaVersion(props)
+	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
 	}
+	stateVersion := parsedMeta.SchemaVersion
 
 	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
 		var err error
 		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
 			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
 			PriorState:              props.Copy(),
-			PriorStateSchemaVersion: stateVersion,
+			PriorStateSchemaVersion: parsedMeta.SchemaVersion,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
 		}
-		props, err = updateTFSchemaVersion(props, stateVersion)
+		props, err = updateMeta(props, metaState{
+			SchemaVersion: stateVersion,
+			PrivateState:  parsedMeta.PrivateState,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
 		}
@@ -99,6 +112,7 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	return &resourceState{
 		Value:           value,
 		TFSchemaVersion: stateVersion,
+		Private:         parsedMeta.PrivateState,
 	}, nil
 }
 
@@ -106,6 +120,7 @@ func parseResourceStateFromTF(
 	ctx context.Context,
 	rh *resourceHandle,
 	state *tfprotov6.DynamicValue,
+	private []byte,
 ) (*upgradedResourceState, error) {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	v, err := state.Unmarshal(tfType)
@@ -115,37 +130,61 @@ func parseResourceStateFromTF(
 	return &upgradedResourceState{state: &resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
+		Private:         private,
 	}}, nil
 }
 
-type metaBlock struct {
-	SchemaVersion string `json:"schema_version"`
+type metaState struct {
+	SchemaVersion int64
+	PrivateState  []byte
 }
 
 // Restores Terraform Schema version encoded in __meta.schema_version section of Pulumi state. If __meta block is
-// absent, returns 0, which is the correct implied schema version.
-func parseTFSchemaVersion(m resource.PropertyMap) (int64, error) {
+// absent, returns 0, which is the correct implied schema version. Reads __meta.private_state similarly.
+func parseMeta(m resource.PropertyMap) (metaState, error) {
+	type metaBlock struct {
+		SchemaVersion string `json:"schema_version"`
+		PrivateState  string `json:"private_state"`
+	}
 	var meta metaBlock
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
 				metaKey, err)
-			return 0, err
+			return metaState{}, err
 		}
-		versionN, err := strconv.Atoi(meta.SchemaVersion)
-		if err != nil {
-			err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
-				metaKey, meta.SchemaVersion, err)
-			return 0, err
+		var versionN int64
+		if meta.SchemaVersion != "" {
+			versionI, err := strconv.Atoi(meta.SchemaVersion)
+			if err != nil {
+				err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
+					metaKey, meta.SchemaVersion, err)
+				return metaState{}, err
+			}
+			versionN = int64(versionI)
 		}
-		return int64(versionN), nil
+
+		var privateStateBytes []byte
+		if meta.PrivateState != "" {
+			var err error
+			privateStateBytes, err = base64.StdEncoding.DecodeString(meta.PrivateState)
+			if err != nil {
+				return metaState{}, err
+			}
+		}
+
+		return metaState{
+			SchemaVersion: versionN,
+			PrivateState:  privateStateBytes,
+		}, nil
 	}
-	return 0, nil
+	return metaState{}, nil
 }
 
 // Stores Terraform Schema Version in the __meta.schema_version section of Pulumi state. If the __meta block is absent,
-// adds it. If __meta block is present, copies it and only updates the schema_version field.
-func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.PropertyMap, error) {
+// adds it. If __meta block is present, copies it and only updates the schema_version field. Updates
+// __meta.private_state similarly.
+func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap, error) {
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
@@ -156,8 +195,11 @@ func updateTFSchemaVersion(m resource.PropertyMap, version int64) (resource.Prop
 	} else {
 		meta = map[string]interface{}{}
 	}
-	if version != 0 {
-		meta["schema_version"] = fmt.Sprintf("%d", version)
+	if newMeta.SchemaVersion != 0 {
+		meta["schema_version"] = fmt.Sprintf("%d", newMeta.SchemaVersion)
+	}
+	if len(newMeta.PrivateState) > 0 {
+		meta["private_state"] = base64.StdEncoding.EncodeToString(newMeta.PrivateState)
 	}
 	if len(meta) == 0 {
 		return m, nil

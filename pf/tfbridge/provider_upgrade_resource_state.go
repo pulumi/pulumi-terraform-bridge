@@ -57,5 +57,6 @@ func (p *provider) UpgradeResourceState(
 	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
+		Private:         st.Private,
 	}}, nil
 }
