@@ -15,8 +15,10 @@
 package tfbridgetests
 
 import (
+	"context"
 	"encoding/json"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,11 +26,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-	"runtime"
 )
 
 func TestSchemaGen(t *testing.T) {
@@ -77,7 +79,7 @@ func TestSchemaGenInSync(t *testing.T) {
 		pf       tfpf.ProviderInfo
 		provider tfbridge.ProviderInfo
 	}
-	testprovider.MuxedRandomProvider()
+	// testprovider.MuxedRandomProvider()
 
 	testCases := []testCase{
 		{
@@ -124,7 +126,18 @@ func TestSchemaGenInSync(t *testing.T) {
 
 			var actualSpec schema.PackageSpec
 			if tc.pf.NewProvider != nil {
-				data := genMetadata(t, tc.pf)
+
+				// Apply deferred autonaming, if any.
+				prov := tc.pf
+				if prov.AutoNameOptions != nil {
+					shimProvider := schemashim.ShimSchemaOnlyProvider(context.Background(), prov.NewProvider())
+					// shimInfo will have P populated with a schema-only provider, just what is needed.
+					var shimInfo tfbridge.ProviderInfo = prov.ProviderInfo
+					shimInfo.P = shimProvider
+					shimInfo.SetAutonamingWithCustomOptions(*prov.AutoNameOptions)
+				}
+
+				data := genMetadata(t, prov)
 				require.NoError(t, json.Unmarshal(data.PackageSchema, &actualSpec))
 			} else {
 				var err error
