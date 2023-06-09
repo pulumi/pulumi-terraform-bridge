@@ -2616,6 +2616,7 @@ func translateModuleSourceCode(
 				providerInfo, err := info.GetProviderInfo("", "", provider, "")
 				if err != nil {
 					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Subject:  &dataResource.DeclRange,
 						Severity: hcl.DiagWarning,
 						Summary:  "Failed to get provider info",
 						Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", dataResource.Type, err),
@@ -2641,6 +2642,7 @@ func translateModuleSourceCode(
 			providerInfo, err := info.GetProviderInfo("", "", provider, "")
 			if err != nil {
 				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Subject:  &managedResource.DeclRange,
 					Severity: hcl.DiagWarning,
 					Summary:  "Failed to get provider info",
 					Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", managedResource.Type, err),
