@@ -1,0 +1,145 @@
+{
+  "name": "configured",
+  "attribution": "This Pulumi package is based on the [`configured` Terraform Provider](https://github.com/terraform-providers/terraform-provider-configured).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-configured)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-configured` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-configured` repo](https://github.com/terraform-providers/terraform-provider-configured/issues)."
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-configured)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-configured` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-configured` repo](https://github.com/terraform-providers/terraform-provider-configured/issues)."
+    }
+  },
+  "config": {
+    "variables": {
+      "anotherName": {
+        "type": "string"
+      },
+      "listConfigs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "stringConfig": {
+        "type": "string"
+      }
+    }
+  },
+  "provider": {
+    "description": "The provider type for the configured package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "properties": {
+      "anotherName": {
+        "type": "string"
+      },
+      "listConfigs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "stringConfig": {
+        "type": "string"
+      }
+    },
+    "inputProperties": {
+      "anotherName": {
+        "type": "string"
+      },
+      "listConfigs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "stringConfig": {
+        "type": "string"
+      }
+    }
+  },
+  "resources": {
+    "configured:index:resource": {
+      "properties": {
+        "inputOne": {
+          "type": "string"
+        },
+        "inputTwo": {
+          "type": "integer"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "inputProperties": {
+        "inputOne": {
+          "type": "string"
+        },
+        "inputTwo": {
+          "type": "integer"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering resource resources.\n",
+        "properties": {
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "configured:index:data_source": {
+      "inputs": {
+        "description": "A collection of arguments for invoking data_source.\n",
+        "properties": {
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by data_source.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "inputOne": {
+            "type": "string"
+          },
+          "inputTwo": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "id"
+        ]
+      }
+    }
+  }
+}

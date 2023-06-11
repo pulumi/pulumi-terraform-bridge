@@ -17,6 +17,7 @@ package convert
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -35,7 +36,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/terraform/pkg/addrs"
 	"github.com/pulumi/terraform/pkg/configs"
 	"github.com/pulumi/terraform/pkg/getmodules"
@@ -43,6 +46,9 @@ import (
 	"github.com/pulumi/terraform/pkg/registry/regsrc"
 	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
+
+	yaml "gopkg.in/yaml.v3"
 )
 
 func loadConfigDir(fs afero.Fs, path string) (map[string][]byte, *configs.Module, hcl.Diagnostics) {
@@ -2432,6 +2438,7 @@ type terraformItem struct {
 	moduleCall *configs.ModuleCall
 	resource   *configs.Resource
 	output     *configs.Output
+	provider   *configs.Provider
 }
 
 func (item terraformItem) DeclRange() hcl.Range {
@@ -2452,6 +2459,9 @@ func (item terraformItem) DeclRange() hcl.Range {
 	}
 	if item.output != nil {
 		return item.output.DeclRange
+	}
+	if item.provider != nil {
+		return item.provider.DeclRange
 	}
 	panic("at least one of the fields in terraformItem should be set!")
 }
@@ -2587,6 +2597,9 @@ func translateModuleSourceCode(
 	}
 	for _, output := range module.Outputs {
 		items = append(items, terraformItem{output: output})
+	}
+	for _, provider := range module.ProviderConfigs {
+		items = append(items, terraformItem{provider: provider})
 	}
 	// Now sort that items array by source location
 	sort.Sort(items)
@@ -2879,6 +2892,114 @@ func translateModuleSourceCode(
 		}
 	}
 
+	var pulumiYaml *workspace.Project
+	for _, item := range items {
+		if item.provider != nil {
+			provider := item.provider
+
+			// If an alias is set just warn and ignore this, we can't support this yet
+			if provider.Alias != "" {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Subject:  &provider.DeclRange,
+					Severity: hcl.DiagWarning,
+					Summary:  "Provider alias not supported",
+					Detail:   fmt.Sprintf("Provider aliases are not supported, ignoring %s=%s", provider.Name, provider.Alias),
+				})
+				continue
+			}
+
+			// Set the project name to the folder name
+			if pulumiYaml == nil {
+				projectName := filepath.Base(sourceDirectory)
+				pulumiYaml = &workspace.Project{
+					Name: tokens.PackageName(projectName),
+				}
+			}
+
+			// Try to grab the info for this provider config
+			providerInfo, err := info.GetProviderInfo("", "", provider.Name, "")
+			if err != nil {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Subject:  &provider.DeclRange,
+					Severity: hcl.DiagWarning,
+					Summary:  "Failed to get provider info",
+					Detail:   fmt.Sprintf("Failed to get provider info for %q: %v", provider.Name, err),
+				})
+			}
+
+			// Translate the config from this provider block to pulumi config
+			if pulumiYaml.Config == nil {
+				pulumiYaml.Config = make(map[string]workspace.ProjectConfigType)
+			}
+			cfg := pulumiYaml.Config
+
+			attrs, diags := provider.Config.JustAttributes()
+			diagnostics = append(diagnostics, diags...)
+			// We need to iterate over the attributes in a stable order to ensure we get the same output
+			attrKeys := make([]string, 0, len(attrs))
+			for name := range attrs {
+				attrKeys = append(attrKeys, name)
+			}
+			sort.Slice(attrKeys, func(i, j int) bool {
+				ia := attrs[attrKeys[i]]
+				ja := attrs[attrKeys[j]]
+
+				return ia.Range.Start.Line < ja.Range.Start.Line
+			})
+
+			for _, attrKey := range attrKeys {
+				// Evauluate and marshal the attribute to a YAML like value for Pulumi config
+				value := attrs[attrKey]
+				val, diags := value.Expr.Value(nil)
+				diagnostics = append(diagnostics, diags...)
+				if diags.HasErrors() {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Subject:  &provider.DeclRange,
+						Severity: hcl.DiagError,
+						Summary:  "Failed to evaluate provider config",
+						Detail:   fmt.Sprintf("Failed to evaluate provider config for %s:%s", provider.Name, attrKey),
+					})
+					continue
+				}
+
+				// Simplest way to get a cty type into YAML is to roundtrip it through JSON
+				buffer, err := json.Marshal(ctyjson.SimpleJSONValue{Value: val})
+				if err != nil {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Subject:  &provider.DeclRange,
+						Severity: hcl.DiagError,
+						Summary:  "Failed to marshal provider config",
+						Detail:   fmt.Sprintf("Failed to marshal provider config for %s:%s: %v", provider.Name, attrKey, err),
+					})
+					continue
+				}
+				var yamlValue interface{}
+				err = json.Unmarshal(buffer, &yamlValue)
+				if err != nil {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Subject:  &provider.DeclRange,
+						Severity: hcl.DiagError,
+						Summary:  "Failed to marshal provider config",
+						Detail:   fmt.Sprintf("Failed to unmarshal provider config for %s:%s: %v", provider.Name, attrKey, err),
+					})
+					continue
+				}
+
+				// Check if we need to rename this config key, but default to camelcase
+				name := camelCaseName(attrKey)
+				if providerInfo != nil {
+					if info, has := providerInfo.Config[attrKey]; has {
+						name = info.Name
+					}
+				}
+
+				cfg[provider.Name+":"+name] = workspace.ProjectConfigType{
+					Value: yamlValue,
+				}
+			}
+		}
+	}
+
 	pclFiles := make(map[string]*hclwrite.File)
 
 	// We want to write things out to matching .pp files and in source order
@@ -2969,6 +3090,36 @@ func translateModuleSourceCode(
 			}}
 		}
 	}
+
+	// Finally write out the Pulumi.yaml file if needed
+	if pulumiYaml != nil {
+		fullpath := filepath.Join(destinationDirectory, "Pulumi.yaml")
+		keyDirectory := filepath.Dir(fullpath)
+		err := destinationRoot.MkdirAll(keyDirectory, 0755)
+		if err != nil {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("could not create destination directory for project YAML: %s", err),
+			}}
+		}
+
+		formatted, err := yaml.Marshal(pulumiYaml)
+		if err != nil {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("could not format project YAML: %s", err),
+			}}
+		}
+
+		err = afero.WriteFile(destinationRoot, fullpath, formatted, 0644)
+		if err != nil {
+			return hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("could not write project YAML to destination: %s", err),
+			}}
+		}
+	}
+
 	return diagnostics
 }
 
@@ -3058,7 +3209,9 @@ func componentProgramBinderFromAfero(fs afero.Fs) pcl.ComponentProgramBinder {
 	}
 }
 
-func convertTerraform(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
+func convertTerraform(
+	dir string, opts EjectOptions,
+) (*workspace.Project, []*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	var pulumiOptions []pcl.BindOption
 	if opts.AllowMissingProperties {
 		pulumiOptions = append(pulumiOptions, pcl.AllowMissingProperties)
@@ -3084,7 +3237,7 @@ func convertTerraform(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Progr
 
 	diagnostics := TranslateModule(opts.Root, dir, tempDir, opts.ProviderInfoSource)
 	if diagnostics.HasErrors() {
-		return nil, nil, diagnostics, diagnostics
+		return nil, nil, nil, diagnostics, diagnostics
 	}
 
 	pulumiOptions = append(pulumiOptions, pcl.DirPath("/"))
@@ -3094,16 +3247,17 @@ func convertTerraform(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Progr
 
 	files, err := afero.ReadDir(tempDir, "/")
 	if err != nil {
-		return nil, nil, diagnostics, fmt.Errorf("could not read files at the root: %v", err)
+		return nil, nil, nil, diagnostics, fmt.Errorf("could not read files at the root: %v", err)
 	}
 
+	var project *workspace.Project
 	for _, file := range files {
 		// These are all in the root folder, and Open needs the full filename.
 		fileName := "/" + file.Name()
 		if filepath.Ext(fileName) == ".pp" {
 			reader, err := tempDir.Open(fileName)
 			if err != nil {
-				return nil, nil, diagnostics, err
+				return nil, nil, nil, diagnostics, err
 			}
 			contract.AssertNoErrorf(err, "reading file should work")
 			err = pulumiParser.ParseFile(reader, filepath.Base(fileName))
@@ -3113,16 +3267,30 @@ func convertTerraform(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Progr
 				contract.AssertNoErrorf(err, "reading file should work")
 				opts.logf("%s", string(file))
 				opts.logf("%v", pulumiParser.Diagnostics)
-				return nil, nil, pulumiParser.Diagnostics, pulumiParser.Diagnostics
+				return nil, nil, nil, pulumiParser.Diagnostics, pulumiParser.Diagnostics
+			}
+		}
+		if fileName == "/Pulumi.yaml" {
+			reader, err := tempDir.Open(fileName)
+			if err != nil {
+				return nil, nil, nil, diagnostics, err
+			}
+			buffer, err := afero.ReadAll(reader)
+			if err != nil {
+				return nil, nil, nil, diagnostics, err
+			}
+			err = yaml.Unmarshal(buffer, &project)
+			if err != nil {
+				return nil, nil, nil, diagnostics, err
 			}
 		}
 	}
 
 	if err != nil {
-		return pulumiParser.Files, nil, pulumiParser.Diagnostics, err
+		return project, pulumiParser.Files, nil, pulumiParser.Diagnostics, err
 	}
 
 	program, diagnostics, err := pcl.BindProgram(pulumiParser.Files, pulumiOptions...)
 
-	return pulumiParser.Files, program, diagnostics, err
+	return project, pulumiParser.Files, program, diagnostics, err
 }

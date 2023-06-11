@@ -121,7 +121,7 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 		}
 	}
 
-	tfFiles, program, diags, err := internalEject(dir, opts)
+	project, tfFiles, program, diags, err := internalEject(dir, opts)
 
 	d := Diagnostics{All: diags, files: tfFiles}
 	diagWriter := d.NewDiagnosticWriter(os.Stderr, 0, true)
@@ -138,10 +138,6 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 		return nil, nil, fmt.Errorf("failed to convert Terraform configuration, %v", diags)
 	}
 
-	project := &workspace.Project{
-		Name: tokens.PackageName(filepath.Base(dir)),
-	}
-
 	return project, program, nil
 }
 
@@ -149,16 +145,25 @@ func isTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
-func internalEject(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
+func internalEject(
+	dir string, opts EjectOptions,
+) (*workspace.Project, []*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
 	// Set default options where appropriate.
 	if opts.ProviderInfoSource == nil {
 		opts.ProviderInfoSource = il.PluginProviderInfoSource
 	}
 
+	defaultProject := &workspace.Project{
+		Name: tokens.PackageName(filepath.Base(dir)),
+	}
+
 	// If experimental use the new Terraform-based converter
 	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
-		files, program, tfDiagnostics, err := convertTerraform(dir, opts)
-		return files, program, tfDiagnostics, err
+		project, files, program, tfDiagnostics, err := convertTerraform(dir, opts)
+		if project == nil {
+			project = defaultProject
+		}
+		return project, files, program, tfDiagnostics, err
 	}
 
 	// Else fallback to the old code that tries to convert TF11 and TF12. We should probably clean all this up
@@ -181,23 +186,23 @@ func internalEject(dir string, opts EjectOptions) ([]*syntax.File, *pcl.Program,
 		}
 		tf12Files, diagnostics = parser.Files, append(diagnostics, parser.Diagnostics...)
 		if diagnostics.HasErrors() {
-			return tf12Files, nil, diagnostics, nil
+			return defaultProject, tf12Files, nil, diagnostics, nil
 		}
 	} else {
 		tf12Files, diagnostics = parseTF12(opts)
 		if diagnostics.HasErrors() {
-			return tf12Files, nil, diagnostics, nil
+			return defaultProject, tf12Files, nil, diagnostics, nil
 		}
 	}
 
 	tf12Files, program, programDiags, err := convertTF12(tf12Files, opts)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	diagnostics = append(diagnostics, programDiags...)
 	if diagnostics.HasErrors() {
-		return tf12Files, nil, diagnostics, nil
+		return defaultProject, tf12Files, nil, diagnostics, nil
 	}
-	return tf12Files, program, diagnostics, nil
+	return defaultProject, tf12Files, program, diagnostics, nil
 }

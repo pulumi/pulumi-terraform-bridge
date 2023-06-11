@@ -1,0 +1,11 @@
+name: provider_config
+runtime: ""
+config:
+    configured:anotherName:
+        value: a different pulumi name
+    configured:listConfig:
+        value:
+            - a
+            - list
+    configured:stringConfig:
+        value: a string
