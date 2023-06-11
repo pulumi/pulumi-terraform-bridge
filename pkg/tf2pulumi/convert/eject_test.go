@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
+	yaml "gopkg.in/yaml.v3"
 
 	"github.com/blang/semver"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
@@ -280,18 +281,28 @@ func TestEject(t *testing.T) {
 
 			pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
 
+			writeToFileSystem := func(fs afero.Fs) {
+				err = program.WriteSource(fs)
+				require.NoError(t, err, "failed to write program source files")
+				// If the project has any config write that to the memory file system
+				if len(project.Config) > 0 {
+					buffer, err := yaml.Marshal(project)
+					require.NoError(t, err, "failed to marshal project config")
+					err = afero.WriteFile(fs, "/Pulumi.yaml", buffer, 0644)
+					require.NoError(t, err, "failed to write Pulumi.yaml")
+				}
+			}
+
 			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				err := pclFs.RemoveAll(pclPath)
 				require.NoError(t, err, "failed to remove existing files at %s", pclPath)
-				err = program.WriteSource(pclFs)
-				require.NoError(t, err, "failed to write program source files")
+				writeToFileSystem(pclFs)
 			}
 
-			pclMemFs := afero.NewMemMapFs()
 			// Write the program to a memory file system
-			err = program.WriteSource(pclMemFs)
-			require.NoError(t, err, "failed to write program source files")
+			pclMemFs := afero.NewMemMapFs()
+			writeToFileSystem(pclMemFs)
 
 			// compare the generated files with files on disk
 			err = afero.Walk(pclMemFs, "/", func(path string, info fs.FileInfo, err error) error {

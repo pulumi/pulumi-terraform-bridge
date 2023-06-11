@@ -1,0 +1,71 @@
+{
+    "name": "configured",
+    "provider": {
+        "schema": {
+            "string_config": {
+                "type": 4,
+                "optional": true
+            },
+            "list_config": {
+                "type": 7,
+                "optional": true,
+                "element": {
+                    "schema": {
+                        "type": 4
+                    }
+                }
+            },
+            "renamed_config": {
+                "type": 4,
+                "optional": true
+            }
+        },
+        "dataSources": {
+            "configured_data_source": {
+                "input_one": {
+                    "type": 4,
+                    "optional": true
+                },
+                "input_two": {
+                    "type": 2,
+                    "optional": true
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        },
+        "resources": {
+            "configured_resource": {
+                "input_one": {
+                    "type": 4,
+                    "optional": true
+                },
+                "input_two": {
+                    "type": 2,
+                    "optional": true
+                },
+                "result": {
+                    "type": 4,
+                    "computed": true
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "configured_data_source": {
+            "tok": "configured:index:data_source"
+        }
+    },
+    "resources": {
+        "configured_resource": {
+            "tok":  "configured:index:resource"
+        }
+    },
+    "config": {
+        "renamed_config": {
+            "name": "anotherName"
+        }
+    }
+}
