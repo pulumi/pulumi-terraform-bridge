@@ -1880,6 +1880,7 @@ func convertProvisioner(
 	info il.ProviderInfoSource, scopes *scopes,
 	provisioner *configs.Provisioner,
 	resourceName string, provisionerIndex int,
+	forEach hcl.Expression,
 	target *hclwrite.Body,
 ) {
 	if provisioner.Type != "local-exec" {
@@ -1902,16 +1903,31 @@ func convertProvisioner(
 	optionsBlock := blockBody.AppendNewBlock("options", nil)
 	optionsBlockBody := optionsBlock.Body()
 
+	if forEach != nil {
+		forEachExpr := convertExpression(sources, scopes, "", forEach)
+		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
+		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
+		optionsBlockBody.SetAttributeRaw("range", forEachExpr)
+	}
+
 	// The first provisioner dependsOn the resource we're provisioning, each provisioner after that depends on
 	// the previous provisioner
-	dependsOn := hclwrite.Tokens{makeToken(hclsyntax.TokenOBrack, "[")}
+	var dependsOn hclwrite.Tokens
+	if forEach == nil {
+		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenOBrack, "["))
+	}
+
 	if provisionerIndex == 0 {
 		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenIdent, resourceName))
 	} else {
 		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenIdent,
 			fmt.Sprintf("%sProvisioner%d", resourceName, (provisionerIndex-1))))
 	}
-	dependsOn = append(dependsOn, makeToken(hclsyntax.TokenCBrack, "]"))
+
+	if forEach == nil {
+		dependsOn = append(dependsOn, makeToken(hclsyntax.TokenCBrack, "]"))
+	}
+
 	optionsBlockBody.SetAttributeRaw("dependsOn", dependsOn)
 
 	attributes, _ := provisioner.Config.JustAttributes()
@@ -2003,7 +2019,7 @@ func convertManagedResources(sources map[string][]byte,
 
 	// Add "command:Command" resources to handle provisioners
 	for idx, provisioner := range managedResource.Managed.Provisioners {
-		convertProvisioner(sources, info, scopes, provisioner, pulumiName, idx, target)
+		convertProvisioner(sources, info, scopes, provisioner, pulumiName, idx, managedResource.ForEach, target)
 	}
 }
 
