@@ -141,8 +141,12 @@ func MakeMuxedServer(
 		info := info
 		marshalled := tfbridge.MarshalProviderInfo(&info)
 		data, err := json.Marshal(marshalled)
+		mapped := info.ResourcePrefix
+		if mapped == "" {
+			mapped = info.Name
+		}
 		return muxer.GetMappingResponse{
-			Provider: pkg,
+			Provider: mapped,
 			Data:     data,
 		}, err
 	}
