@@ -40,7 +40,7 @@ var muxedRandomProviderBridgeMetadata []byte
 
 // Adapts Random provider to tfbridge for testing tfbridge against a
 // realistic provider.
-func RandomProvider() tfpf.ProviderInfo {
+func RandomProvider() tfbridge.ProviderInfo {
 	randomPkg := "random"
 	randomMod := "index"
 
@@ -61,8 +61,9 @@ func RandomProvider() tfpf.ProviderInfo {
 		return randomType(mod+"/"+fn, res)
 	}
 
-	info := tfbridge.ProviderInfo{
+	return tfbridge.ProviderInfo{
 		Name:        "random",
+		P:           tfpf.ShimProvider(randomshim.NewProvider()),
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
 		Keywords:    []string{"pulumi", "random"},
 		License:     "Apache-2.0",
@@ -111,11 +112,6 @@ func RandomProvider() tfpf.ProviderInfo {
 
 		MetadataInfo: tfbridge.NewProviderMetadata(randomProviderBridgeMetadata),
 	}
-
-	return tfpf.ProviderInfo{
-		ProviderInfo: info,
-		NewProvider:  randomshim.NewProvider,
-	}
 }
 
 func MuxedRandomProvider() tfbridge.ProviderInfo {
@@ -151,7 +147,7 @@ func MuxedRandomProvider() tfbridge.ProviderInfo {
 		Version:     "4.8.2",
 		P: tfpf.MuxShimWithPF(context.Background(),
 			sdkv2.NewProvider(sdkv2randomprovider.New()),
-			pf.NewProvider()),
+			randomshim.NewProvider()),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			// "random_human_number": {Tok: randomResource("RandomHumanNumber")},
 		},

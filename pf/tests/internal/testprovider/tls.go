@@ -30,7 +30,7 @@ import (
 var tlsProviderBridgeMetadata []byte
 
 // Adapts tls provider to tfbridge for testing tfbridge against another realistic provider.
-func TLSProvider() tfpf.ProviderInfo {
+func TLSProvider() tfbridge.ProviderInfo {
 	tlsPkg := "tls"
 	tlsMod := "index"
 	tlsVersion := "4.0.4"
@@ -53,8 +53,9 @@ func TLSProvider() tfpf.ProviderInfo {
 		return tlsType(mod+"/"+fn, res)
 	}
 
-	info := tfbridge.ProviderInfo{
+	return tfbridge.ProviderInfo{
 		Name:        "tls",
+		P:           tfpf.ShimProvider(tlsshim.NewProvider()),
 		Description: "A Pulumi package to create TLS resources in Pulumi programs.",
 		Keywords:    []string{"pulumi", "tls"},
 		License:     "Apache-2.0",
@@ -102,10 +103,5 @@ func TLSProvider() tfpf.ProviderInfo {
 		},
 		Version:      tlsVersion,
 		MetadataInfo: tfbridge.NewProviderMetadata(tlsProviderBridgeMetadata),
-	}
-
-	return tfpf.ProviderInfo{
-		ProviderInfo: info,
-		NewProvider:  tlsshim.NewProvider,
 	}
 }
