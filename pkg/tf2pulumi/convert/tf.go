@@ -2929,6 +2929,9 @@ func translateModuleSourceCode(
 				projectName := filepath.Base(sourceDirectory)
 				pulumiYaml = &workspace.Project{
 					Name: tokens.PackageName(projectName),
+					// We _have_ to fill in a runtime here because otherwise the CLI errors when loading the
+					// Pulumi.yaml, even though it will just overwrite this.
+					Runtime: workspace.NewProjectRuntimeInfo("terraform", nil),
 				}
 			}
 

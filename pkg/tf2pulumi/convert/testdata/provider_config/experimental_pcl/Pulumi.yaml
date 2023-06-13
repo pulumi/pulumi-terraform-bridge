@@ -1,5 +1,5 @@
 name: provider_config
-runtime: ""
+runtime: terraform
 config:
     configured:anotherName:
         value: a different pulumi name
