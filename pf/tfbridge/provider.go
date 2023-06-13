@@ -38,6 +38,7 @@ import (
 	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -49,7 +50,7 @@ import (
 type provider struct {
 	tfProvider    pfprovider.Provider
 	tfServer      tfprotov6.ProviderServer
-	info          ProviderInfo
+	info          tfbridge.ProviderInfo
 	resources     pfutils.Resources
 	datasources   pfutils.DataSources
 	pulumiSchema  []byte
@@ -72,7 +73,9 @@ var _ pl.ProviderWithContext = &provider{}
 
 // Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
-func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
+//
+// info.P must be constructed with ShimProvider or ShimProviderWithContext.
+func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
 	pwc, err := newProviderWithContext(ctx, info, meta)
 	if err != nil {
 		return nil, err
@@ -80,9 +83,28 @@ func NewProvider(ctx context.Context, info ProviderInfo, meta ProviderMetadata) 
 	return pl.NewProvider(ctx, pwc), nil
 }
 
-func newProviderWithContext(ctx context.Context, info ProviderInfo,
+// Wrap a PF Provider in a shim.Provider.
+func ShimProvider(p pfprovider.Provider) shim.Provider {
+	return ShimProviderWithContext(context.Background(), p)
+}
+
+// Wrap a PF Provider in a shim.Provider with the given context.Context.
+func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Provider {
+	return schemashim.ShimSchemaOnlyProvider(ctx, p)
+}
+
+func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	meta ProviderMetadata) (pl.ProviderWithContext, error) {
-	p := info.NewProvider()
+	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
+	if info.P == nil {
+		return nil, fmt.Errorf("%s: cannot be nil", infoPErrMSg)
+	}
+	schemaOnlyProvider, ok := info.P.(*schemashim.SchemaOnlyProvider)
+	if !ok {
+		return nil, fmt.Errorf("%s: found non-conforming type %T", infoPErrMSg, info.P)
+	}
+	p := schemaOnlyProvider.PfProvider()
+
 	server6, err := newProviderServer6(ctx, p)
 	if err != nil {
 		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
@@ -106,8 +128,7 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
 	}
 
-	schemaOnlyProvider := SchemaOnlyPluginFrameworkProvider(ctx, p)
-	enc := convert.NewEncoding(schemaOnlyProvider, &info.ProviderInfo)
+	enc := convert.NewEncoding(schemaOnlyProvider, &info)
 
 	schemaResponse := &pfprovider.SchemaResponse{}
 	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
@@ -150,7 +171,7 @@ func newProviderWithContext(ctx context.Context, info ProviderInfo,
 func NewProviderServer(
 	ctx context.Context,
 	logSink logutils.LogSink,
-	info ProviderInfo,
+	info tfbridge.ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {
 	p, err := newProviderWithContext(ctx, info, meta)
@@ -160,7 +181,7 @@ func NewProviderServer(
 	pp := p.(*provider)
 
 	pp.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.ProviderInfo.Config)
+	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
 	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 

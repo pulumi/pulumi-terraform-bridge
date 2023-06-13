@@ -24,11 +24,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	sdkbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 type GenerateSchemaOptions struct {
-	ProviderInfo    tfbridge.ProviderInfo
+	ProviderInfo    sdkbridge.ProviderInfo
 	DiagnosticsSink diag.Sink
 }
 
@@ -51,10 +52,9 @@ func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateS
 			Color: colors.Never,
 		})
 	}
-	shimInfo := shimSchemaOnlyProviderInfo(ctx, opts.ProviderInfo)
 
 	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
-		ProviderInfo:    shimInfo,
+		ProviderInfo:    opts.ProviderInfo,
 		DiagnosticsSink: sink,
 	})
 
