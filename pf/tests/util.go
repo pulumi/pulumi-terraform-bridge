@@ -26,7 +26,7 @@ import (
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func newProviderServer(t *testing.T, info tfbridge.ProviderInfo) pulumirpc.ResourceProviderServer {
+func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
 	ctx := context.Background()
 	meta := genMetadata(t, info)
 	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)

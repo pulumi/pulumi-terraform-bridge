@@ -32,7 +32,7 @@ import (
 	tfgen0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
-func genMetadata(t *testing.T, info tfpf.ProviderInfo) tfpf.ProviderMetadata {
+func genMetadata(t *testing.T, info tfbridge0.ProviderInfo) tfpf.ProviderMetadata {
 	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),

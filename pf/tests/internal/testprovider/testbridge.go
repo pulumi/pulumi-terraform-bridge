@@ -33,13 +33,10 @@ var testBridgeMetadata []byte
 
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
-func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
-	defineProvider := func() provider.Provider {
-		return &syntheticProvider{}
-	}
-
-	info := tfbridge.ProviderInfo{
+func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
+	return tfbridge.ProviderInfo{
 		Name:        "testbridge",
+		P:           tfpf.ShimProvider(&syntheticProvider{}),
 		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
 		Keywords:    []string{},
 		License:     "Apache-2.0",
@@ -117,10 +114,6 @@ func SyntheticTestBridgeProvider() tfpf.ProviderInfo {
 		},
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
-	}
-	return tfpf.ProviderInfo{
-		ProviderInfo: info,
-		NewProvider:  defineProvider,
 	}
 }
 

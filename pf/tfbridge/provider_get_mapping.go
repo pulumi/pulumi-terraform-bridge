@@ -45,7 +45,7 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key string) ([]byt
 }
 
 func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
-	var providerInfoCopy tfbridge.ProviderInfo = p.info.ProviderInfo
+	var providerInfoCopy tfbridge.ProviderInfo = p.info
 	providerInfoCopy.P = schemashim.ShimSchemaOnlyProvider(ctx, p.tfProvider)
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
 }

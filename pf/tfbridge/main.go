@@ -35,7 +35,9 @@ import (
 )
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
-func Main(ctx context.Context, pkg string, prov ProviderInfo, meta ProviderMetadata) {
+//
+// info.P must be constructed with ShimProvider or ShimProviderWithContext.
+func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
 	handleFlags(ctx, prov.Version,
 		func() (*tfbridge.MarshallableProviderInfo, error) {
 			pp, err := newProviderWithContext(ctx, prov, meta)
@@ -166,10 +168,10 @@ func MakeMuxedServer(
 			case *schemashim.SchemaOnlyProvider:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-						return NewProviderServer(ctx, host, ProviderInfo{
-							ProviderInfo: info,
-							NewProvider:  prov.PfProvider,
-						}, ProviderMetadata{PackageSchema: schema})
+						infoCopy := info
+						infoCopy.P = prov
+						return NewProviderServer(ctx, host,
+							infoCopy, ProviderMetadata{PackageSchema: schema})
 					}})
 			default:
 				m.Servers = append(m.Servers, muxer.Endpoint{

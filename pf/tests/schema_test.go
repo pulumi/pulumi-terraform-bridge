@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"runtime"
@@ -74,7 +73,7 @@ func TestSchemaGenInSync(t *testing.T) {
 	type testCase struct {
 		name     string
 		file     string
-		pf       tfpf.ProviderInfo
+		pf       tfbridge.ProviderInfo
 		provider tfbridge.ProviderInfo
 	}
 	testprovider.MuxedRandomProvider()
@@ -123,7 +122,7 @@ func TestSchemaGenInSync(t *testing.T) {
 			t.Parallel()
 
 			var actualSpec schema.PackageSpec
-			if tc.pf.NewProvider != nil {
+			if tc.pf.P != nil {
 				data := genMetadata(t, tc.pf)
 				require.NoError(t, json.Unmarshal(data.PackageSchema, &actualSpec))
 			} else {

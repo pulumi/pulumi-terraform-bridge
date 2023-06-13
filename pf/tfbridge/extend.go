@@ -23,6 +23,9 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
+// Wrap a PF Provider in a shim.Provider.
+//
+// Deprecated: This function has been renamed ShimProviderWithContext.
 func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provider) shim.Provider {
 	return schemashim.ShimSchemaOnlyProvider(ctx, p)
 }

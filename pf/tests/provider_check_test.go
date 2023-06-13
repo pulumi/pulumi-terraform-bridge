@@ -22,12 +22,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
-	tfbridge3 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestCheck(t *testing.T) {
@@ -220,26 +219,21 @@ func TestCheck(t *testing.T) {
 					ResourceSchema: tc.schema,
 				}},
 			}
-			info := tfbridge3.ProviderInfo{
+			info := tfbridge0.ProviderInfo{
 				Name:         "testprovider",
+				P:            tfbridge.ShimProvider(testProvider),
 				Version:      "0.0.1",
-				MetadataInfo: &tfbridge3.MetadataInfo{},
-				Resources: map[string]*tfbridge3.ResourceInfo{
+				MetadataInfo: &tfbridge0.MetadataInfo{},
+				Resources: map[string]*tfbridge0.ResourceInfo{
 					"testprovider_res": {
 						Tok: "testprovider:index/res:Res",
-						Docs: &tfbridge3.DocInfo{
+						Docs: &tfbridge0.DocInfo{
 							Markdown: []byte("OK"),
 						},
 					},
 				},
 			}
-			providerInfo := tfbridge.ProviderInfo{
-				ProviderInfo: info,
-				NewProvider: func() provider.Provider {
-					return testProvider
-				},
-			}
-			s := newProviderServer(t, providerInfo)
+			s := newProviderServer(t, info)
 
 			if tc.replay != "" {
 				testutils.Replay(t, s, tc.replay)
