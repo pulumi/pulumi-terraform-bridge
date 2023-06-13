@@ -1,0 +1,5 @@
+name: provider_config_locals
+runtime: terraform
+config:
+    configured:stringConfig:
+        value: Static
