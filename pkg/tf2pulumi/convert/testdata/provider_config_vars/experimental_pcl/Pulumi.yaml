@@ -1,0 +1,5 @@
+name: provider_config_vars
+runtime: terraform
+config:
+    configured:stringConfig:
+        value: 'TODO: var.region'
