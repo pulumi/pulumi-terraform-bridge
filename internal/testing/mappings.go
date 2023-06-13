@@ -15,6 +15,7 @@
 package testing
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 )
@@ -23,7 +24,7 @@ type TestFileMapper struct {
 	Path string
 }
 
-func (l *TestFileMapper) GetMapping(provider string, pulumiProvider string) ([]byte, error) {
+func (l *TestFileMapper) GetMapping(_ context.Context, provider string, pulumiProvider string) ([]byte, error) {
 	if pulumiProvider == "" {
 		pulumiProvider = provider
 	}
