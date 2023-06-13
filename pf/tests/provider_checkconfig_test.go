@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
-	tfbridge3 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -483,7 +482,7 @@ func TestPreConfigureCallback(t *testing.T) {
 			},
 		}
 		callCounter := 0
-		s := makeProviderServer(t, schema, func(info *tfbridge.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
 			info.PreConfigureCallback = func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 				require.Equal(t, "bar", vars["configValue"].StringValue())
 				require.Truef(t, config.IsSet("configValue"), "configValue should be set")
@@ -522,7 +521,7 @@ func TestPreConfigureCallback(t *testing.T) {
 			},
 		}
 		callCounter := 0
-		s := makeProviderServer(t, schema, func(info *tfbridge.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
 			info.PreConfigureCallbackWithLogger = func(
 				ctx context.Context,
 				host *hostclient.HostClient,
@@ -565,7 +564,7 @@ func TestPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
 			info.PreConfigureCallback = func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 				vars["configValue"] = resource.NewStringProperty("updated")
 				return nil
@@ -607,7 +606,7 @@ func TestPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -651,7 +650,7 @@ func TestPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -678,26 +677,21 @@ func TestPreConfigureCallback(t *testing.T) {
 func makeProviderServer(
 	t *testing.T,
 	schema schema.Schema,
-	customize ...func(*tfbridge.ProviderInfo),
+	customize ...func(*tfbridge0.ProviderInfo),
 ) pulumirpc.ResourceProviderServer {
 	testProvider := &providerbuilder.Provider{
 		TypeName:       "testprovider",
 		Version:        "0.0.1",
 		ProviderSchema: schema,
 	}
-	info := tfbridge3.ProviderInfo{
+	info := tfbridge0.ProviderInfo{
 		Name:         "testprovider",
 		Version:      "0.0.1",
-		MetadataInfo: &tfbridge3.MetadataInfo{},
-	}
-	providerInfo := tfbridge.ProviderInfo{
-		ProviderInfo: info,
-		NewProvider: func() provider.Provider {
-			return testProvider
-		},
+		MetadataInfo: &tfbridge0.MetadataInfo{},
+		P:            tfbridge.ShimProvider(testProvider),
 	}
 	for _, c := range customize {
-		c(&providerInfo)
+		c(&info)
 	}
-	return newProviderServer(t, providerInfo)
+	return newProviderServer(t, info)
 }
