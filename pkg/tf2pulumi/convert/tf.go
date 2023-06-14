@@ -2666,7 +2666,7 @@ func translateModuleSourceCode(
 				// Check if we need to rename this config key, but default to camelcase
 				name := camelCaseName(attrKey)
 				if providerInfo != nil {
-					if info, has := providerInfo.Config[attrKey]; has {
+					if info, has := providerInfo.Config[attrKey]; has && info.Name != "" {
 						name = info.Name
 					}
 				}

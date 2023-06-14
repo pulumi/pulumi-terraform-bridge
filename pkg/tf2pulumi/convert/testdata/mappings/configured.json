@@ -66,6 +66,9 @@
     "config": {
         "renamed_config": {
             "name": "anotherName"
+        },
+        "string_config": {
+            "$comment": "Adding a SchemaInfo block without Name set to regress test https://github.com/pulumi/pulumi-terraform-bridge/issues/1221"
         }
     }
 }
