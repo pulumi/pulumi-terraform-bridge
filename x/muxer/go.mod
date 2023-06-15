@@ -49,8 +49,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.71.0
-	github.com/pulumi/pulumi/sdk/v3 v3.71.0
+	github.com/pulumi/pulumi/pkg/v3 v3.70.0
+	github.com/pulumi/pulumi/sdk/v3 v3.70.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
