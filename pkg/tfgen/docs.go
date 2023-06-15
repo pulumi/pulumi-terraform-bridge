@@ -453,10 +453,18 @@ func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
 
 // checkIfNewDocsExist checks if the new docs root exists
 func checkIfNewDocsExist(repo string) bool {
-	// Check if the new docs path exists
-	newDocsPath := filepath.Join(repo, "docs", "resources")
-	_, err := os.Stat(newDocsPath)
-	return !os.IsNotExist(err)
+	// Check if either of the new docs paths exist
+	_, err := os.Stat(filepath.Join(repo, "docs", "resources"))
+	if !os.IsNotExist(err) {
+		return true
+	}
+
+	_, err = os.Stat(filepath.Join(repo, "docs", "data-sources"))
+	if !os.IsNotExist(err) {
+		return true
+	}
+
+	return false
 }
 
 // getDocsPath finds the correct docs path for the repo/kind
