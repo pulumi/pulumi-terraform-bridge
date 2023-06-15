@@ -269,14 +269,16 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 	}
 
 	// Calculating overall error percentages
-	providerStatistic.Successes.Pct = float64(providerStatistic.Successes.Number) /
-		float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Warnings.Pct = float64(providerStatistic.Warnings.Number) /
-		float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Failures.Pct = float64(providerStatistic.Failures.Number) /
-		float64(providerStatistic.TotalConversions) * 100.0
-	providerStatistic.Fatals.Pct = float64(providerStatistic.Fatals.Number) /
-		float64(providerStatistic.TotalConversions) * 100.0
+	if providerStatistic.TotalConversions > 0 {
+		providerStatistic.Successes.Pct = float64(providerStatistic.Successes.Number) /
+			float64(providerStatistic.TotalConversions) * 100.0
+		providerStatistic.Warnings.Pct = float64(providerStatistic.Warnings.Number) /
+			float64(providerStatistic.TotalConversions) * 100.0
+		providerStatistic.Failures.Pct = float64(providerStatistic.Failures.Number) /
+			float64(providerStatistic.TotalConversions) * 100.0
+		providerStatistic.Fatals.Pct = float64(providerStatistic.Fatals.Number) /
+			float64(providerStatistic.TotalConversions) * 100.0
+	}
 
 	// Appending and sorting conversion errors by their frequency
 	for reason, count := range providerStatistic._errorHistogram {
