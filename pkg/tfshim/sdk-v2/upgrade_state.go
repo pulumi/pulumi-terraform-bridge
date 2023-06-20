@@ -79,7 +79,7 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID
 
-	// If state upgraders have modified the ID, respect that modifeid ID instead.
+	// If state upgraders have modified the ID, respect the modification.
 	if updatedID, ok := findID(v); ok {
 		newState.ID = updatedID
 	}
