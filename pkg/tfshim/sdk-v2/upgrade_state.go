@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -77,6 +78,12 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID
+
+	// If state upgraders have modified the ID, respect that modifeid ID instead.
+	if updatedID, ok := findID(v); ok {
+		newState.ID = updatedID
+	}
+
 	newState.Meta = instanceState.Meta
 	if hasVersion || version > 0 {
 		if newState.Meta == nil {
@@ -85,4 +92,18 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 		newState.Meta["schema_version"] = strconv.Itoa(version)
 	}
 	return newState, nil
+}
+
+func findID(v cty.Value) (string, bool) {
+	if !v.Type().IsObjectType() {
+		return "", false
+	}
+	id, ok := v.AsValueMap()["id"]
+	if !ok {
+		return "", false
+	}
+	if !id.Type().Equals(cty.String) {
+		return "", false
+	}
+	return id.AsString(), true
 }
