@@ -31,7 +31,9 @@ func TestRegress923(t *testing.T) {
 
 	resource := &schema.Resource{
 		Read: func(d *schema.ResourceData, meta interface{}) error {
-			d.Set("name", "webhookname")
+			if err := d.Set("name", "webhookname"); err != nil {
+				return err
+			}
 			if strings.Contains(d.Id(), "webhooks") {
 				return fmt.Errorf("ID should not contain 'webhooks'")
 			}
