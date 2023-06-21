@@ -33,15 +33,26 @@ func TestRegress940(t *testing.T) {
 
 	news = resource.PropertyMap{
 		"build": resource.NewObjectProperty(resource.PropertyMap{
-			"build_arg": resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
-				"":    resource.NewStringProperty("baz"),
+			"buildArg": resource.NewObjectProperty(resource.PropertyMap{
+				"foo":    resource.NewStringProperty("bar"),
+				"":       resource.NewStringProperty("baz"),
+				"fooBar": resource.NewStringProperty("foo_bar_value"),
 			}),
 		}),
 	}
 
-	_, _, err := tfbridge.MakeTerraformInputs(instance, config, olds, news, shimmedR.Schema(), map[string]*tfbridge.SchemaInfo{})
-	assert.NoError(t, err)
+	result, _, err := tfbridge.MakeTerraformInputs(instance, config, olds, news, shimmedR.Schema(), map[string]*tfbridge.SchemaInfo{})
+
+	t.Run("no error with empty keys", func(t *testing.T) {
+		assert.NoError(t, err)
+	})
+
+	t.Run("map keys are not renamed to Pulumi-style names", func(t *testing.T) {
+		// buildArg becomes build_arg  because it is an object property
+		// in contrast, fooBar stays the same because it is a map key
+		// note also that build becomes array-wrapped because of MaxItems=1 flattening
+		assert.Equal(t, "foo_bar_value", result["build"].([]any)[0].(map[string]any)["build_arg"].(map[string]any)["fooBar"])
+	})
 }
 
 func resourceDockerImage() *schema.Resource {
