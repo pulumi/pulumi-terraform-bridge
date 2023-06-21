@@ -136,12 +136,21 @@ func isTrivia(tokenType hclsyntax.TokenType) bool {
 	return tokenType == hclsyntax.TokenComment || tokenType == hclsyntax.TokenNewline
 }
 
-// Return the triva before first token index, and after the last token index.
-func getTrivaFromIndex(tokens hclsyntax.Tokens, first, last int) (hclwrite.Tokens, hclwrite.Tokens) {
+// Return the trivia before first token index, and after the last token index. Note that last is inclusive and
+// may be equal to first. blockLike toggles the search to treat new lines and brackets as semantically
+// significant, see the doc comment on getTrivia for more details.
+func getTrivaFromIndex(tokens hclsyntax.Tokens, first, last int, blockLike bool) (hclwrite.Tokens, hclwrite.Tokens) {
+	contract.Assertf(first <= last, "first (%d) must be <= last (%d)", first, last)
+
 	// Work backwards from first to build up leading trivia
 	leading := make(hclwrite.Tokens, 0)
 	first = first - 1
+	newlineIndex := -1
+	hitBrace := false
 	for first >= 0 {
+		if tokens[first].Type == hclsyntax.TokenNewline {
+			newlineIndex = len(leading)
+		}
 		if isTrivia(tokens[first].Type) {
 			leading = append(leading, &hclwrite.Token{
 				Type:  tokens[first].Type,
@@ -149,43 +158,92 @@ func getTrivaFromIndex(tokens hclsyntax.Tokens, first, last int) (hclwrite.Token
 			})
 			first = first - 1
 		} else {
+			hitBrace = tokens[first].Type == hclsyntax.TokenOBrace
 			break
 		}
 	}
-	// Trim leading new lines
-	for len(leading) > 0 {
-		end := len(leading) - 1
-		if leading[end].Type == hclsyntax.TokenNewline {
-			leading = leading[0:end]
-		} else {
-			break
-		}
+
+	// If we're not in block mode, or we are in block mode but we hit a brace then we're taking all the
+	// leading trivia. But otherwise we need to cut the first line of trivia because it will be associated
+	// with the item before us in the block.
+	if blockLike && !hitBrace && newlineIndex != -1 {
+		leading = leading[0:newlineIndex]
 	}
-	// Reverse the list
+
+	// Drop the first trailing new line if any, we'll add it back later building up attributes and blocks
+	if len(leading) > 0 && leading[0].Type == hclsyntax.TokenNewline {
+		leading = leading[1:]
+	}
+	// Reverse the list, we built leading up backwards
 	for i, j := 0, len(leading)-1; i < j; i, j = i+1, j-1 {
 		leading[i], leading[j] = leading[j], leading[i]
 	}
 
 	// Now work forwards from last to build up trailing trivia
 	trailing := make(hclwrite.Tokens, 0)
-	last = last - 1
+	last = last + 1
+	newlineIndex = -1
+	hitBrace = false
 	for last < len(tokens) {
+		if newlineIndex == -1 && tokens[last].Type == hclsyntax.TokenNewline {
+			newlineIndex = len(trailing)
+		}
 		if isTrivia(tokens[last].Type) {
-			trailing = append(leading, &hclwrite.Token{
+			trailing = append(trailing, &hclwrite.Token{
 				Type:  tokens[last].Type,
 				Bytes: tokens[last].Bytes,
 			})
 			last = last + 1
 		} else {
+			hitBrace = tokens[last].Type == hclsyntax.TokenCBrace
 			break
 		}
+	}
+
+	// If we're not in block mode, or we are in block mode but we hit a brace then we're taking all the
+	// trailing trivia. But otherwise we need to cut after the first new line, everything else will be
+	// associated with the next item in the block.
+	if blockLike && !hitBrace && newlineIndex != -1 {
+		trailing = trailing[0:newlineIndex]
+	}
+
+	// Drop the last trailing new line if any, we'll add it back later building up attributes and blocks
+	if len(trailing) > 0 && trailing[len(trailing)-1].Type == hclsyntax.TokenNewline {
+		trailing = trailing[0 : len(trailing)-1]
 	}
 
 	return leading, trailing
 }
 
-// Given a HCL range find the trivia before and after that range
-func getTrivia(sources map[string][]byte, r hcl.Range) (hclwrite.Tokens, hclwrite.Tokens) {
+// Given a HCL range find the trivia before and after that range. Be careful about doubly counting trivia with
+// this function. For example, if you have a binary expression `/* leading */ 1 + 2` and you call this
+// function for the binary expressions range you'll get back ["/* leading */", ""]. But then when evaluating
+// the first argument of that binary expression (1) if you call this function you'll get ["/* leading */", ""]
+// again. As such you should only call this for expressions where you know the sub expressions will not also
+// pick up the same trivia. This is normally because of some token that makes up the current expression range.
+// e.g. a ParenthesesExpr will have a range that includes the parentheses, but the sub expression will not. As
+// such any trivia before and after those parens won't get picked up by any sub expression as they'll stop
+// their trivia search at the parentheses.
+//
+// blockLike is used to tell the trivia search that this is searching for trivia for a block like expression.
+// For example given a block of code like:
+//
+// locals {
+//    # leading trivia
+//    local_a = "a" /* trailing trivia a */
+//
+//    # leading trivia b
+//    /* more leading trivia */ local_b = "b"
+//    # trailing trivia
+// }
+//
+// If we're searching for trivia for local_a and local_b we don't want to double count "trailing trivia a" and
+// "leading trivia b". But there aren't any semantic tokens between these two blocks to split the trivia
+// search. blockLike tells the search engine that it should treat new lines and braces as semantically
+// significant and return ["# leading trivia", "/* trailing trivia a */"] for local_a, and ["# leading trivia
+// b\n/* more leading trivia */", "# trailing trivia"] for local_b.
+
+func getTrivia(sources map[string][]byte, r hcl.Range, blockLike bool) (hclwrite.Tokens, hclwrite.Tokens) {
 	// Load the file referenced in the range
 	src, has := sources[r.Filename]
 	if !has {
@@ -207,17 +265,7 @@ func getTrivia(sources map[string][]byte, r hcl.Range) (hclwrite.Tokens, hclwrit
 		}
 	}
 
-	if len(tokens) > 0 && first == last {
-		// edge case for single-digit numerical map keys,
-		// where the first and last are the same index
-		// do not carry over the trivia
-		// TODO: fix this in getTrivaFromIndex
-		leading := make(hclwrite.Tokens, 0)
-		trailing := make(hclwrite.Tokens, 0)
-		return leading, trailing
-	}
-
-	return getTrivaFromIndex(tokens, first, last)
+	return getTrivaFromIndex(tokens, first, last, blockLike)
 }
 
 // Given a HCL range for an attribute expression find the full range for that attribute
@@ -323,13 +371,12 @@ func projectListToSingleton(tokens hclwrite.Tokens) hclwrite.Tokens {
 
 	if openBrack == -1 || closeBrack == -1 {
 		// Not a simple list literal, just return the input indexed at 0
-		tokens = append(tokens, hclwrite.Tokens{
+		zeroIndex := hclwrite.Tokens{
 			&hclwrite.Token{Type: hclsyntax.TokenOBrack, Bytes: []byte("[")},
 			&hclwrite.Token{Type: hclsyntax.TokenNumberLit, Bytes: []byte("0")},
 			&hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte("]")},
-		}...)
-
-		return tokens
+		}
+		return append(tokens, zeroIndex...)
 	}
 
 	// We have a list literal, so we return a new list literal with just the element within it
@@ -715,7 +762,7 @@ func convertFunctionCallExpr(sources map[string][]byte,
 ) hclwrite.Tokens {
 	args := []hclwrite.Tokens{}
 	for _, arg := range call.Args {
-		args = append(args, convertExpression(sources, scopes, "", arg))
+		args = append(args, convertExpression(sources, false, scopes, "", arg))
 	}
 
 	// First see if this is `list`
@@ -791,15 +838,15 @@ func convertFunctionCallExpr(sources map[string][]byte,
 	return notImplemented(sources, call.Range())
 }
 
-func convertTupleConsExpr(sources map[string][]byte, scopes *scopes,
+func convertTupleConsExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.TupleConsExpr,
 ) hclwrite.Tokens {
 	elems := []hclwrite.Tokens{}
 	for _, expr := range expr.Exprs {
-		elems = append(elems, convertExpression(sources, scopes, appendPathArray(fullyQualifiedPath), expr))
+		elems = append(elems, convertExpression(sources, false, scopes, appendPathArray(fullyQualifiedPath), expr))
 	}
 	tokens := hclwrite.TokensForTuple(elems)
-	leading, trailing := getTrivia(sources, expr.SrcRange)
+	leading, trailing := getTrivia(sources, expr.SrcRange, inBlock)
 	return append(append(leading, tokens...), trailing...)
 }
 
@@ -855,7 +902,7 @@ func matchStaticString(expr hclsyntax.Expression) *string {
 	return nil
 }
 
-func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
+func convertObjectConsExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ObjectConsExpr,
 ) hclwrite.Tokens {
 	items := []hclwrite.ObjectAttrTokens{}
@@ -881,10 +928,10 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 		}
 		// If we can't statically determine the name, we can't rename it, so just convert the expression.
 		if nameTokens == nil {
-			nameTokens = convertExpression(sources, scopes, "", item.KeyExpr)
+			nameTokens = convertExpression(sources, false, scopes, "", item.KeyExpr)
 		}
 
-		valueTokens := convertExpression(sources, scopes, subQualifiedPath, item.ValueExpr)
+		valueTokens := convertExpression(sources, false, scopes, subQualifiedPath, item.ValueExpr)
 		items = append(items, hclwrite.ObjectAttrTokens{
 			Name:  nameTokens,
 			Value: valueTokens,
@@ -893,15 +940,16 @@ func convertObjectConsExpr(sources map[string][]byte, scopes *scopes,
 	return hclwrite.TokensForObject(items)
 }
 
-func convertObjectConsKeyExpr(sources map[string][]byte,
+func convertObjectConsKeyExpr(sources map[string][]byte, inBlock bool,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ObjectConsKeyExpr,
 ) hclwrite.Tokens {
 	// Seems we can just ignore ForceNonLiteral here
-	return convertExpression(sources, scopes, fullyQualifiedPath, expr.Wrapped)
+	return convertExpression(sources, false, scopes, fullyQualifiedPath, expr.Wrapped)
 }
 
-func convertLiteralValueExpr(sources map[string][]byte, expr *hclsyntax.LiteralValueExpr) hclwrite.Tokens {
-	leading, trailing := getTrivia(sources, expr.SrcRange)
+func convertLiteralValueExpr(sources map[string][]byte, inBlock bool,
+	expr *hclsyntax.LiteralValueExpr) hclwrite.Tokens {
+	leading, trailing := getTrivia(sources, expr.SrcRange, false)
 	value := hclwrite.TokensForValue(expr.Val)
 
 	tokens := leading
@@ -923,7 +971,7 @@ func convertTemplateWrapExpr(sources map[string][]byte,
 	tokens := []*hclwrite.Token{}
 	tokens = append(tokens, makeToken(hclsyntax.TokenOQuote, "\""))
 	tokens = append(tokens, makeToken(hclsyntax.TokenTemplateInterp, "${"))
-	tokens = append(tokens, convertExpression(sources, scopes, "", expr.Wrapped)...)
+	tokens = append(tokens, convertExpression(sources, false, scopes, "", expr.Wrapped)...)
 	tokens = append(tokens, makeToken(hclsyntax.TokenTemplateSeqEnd, "}"))
 	tokens = append(tokens, makeToken(hclsyntax.TokenCQuote, "\""))
 	return tokens
@@ -953,7 +1001,7 @@ func convertTemplateExpr(sources map[string][]byte,
 			}
 		} else {
 			tokens = append(tokens, makeToken(hclsyntax.TokenTemplateInterp, "${"))
-			tokens = append(tokens, convertExpression(sources, scopes, "", part)...)
+			tokens = append(tokens, convertExpression(sources, false, scopes, "", part)...)
 			tokens = append(tokens, makeToken(hclsyntax.TokenTemplateSeqEnd, "}"))
 		}
 	}
@@ -1158,26 +1206,26 @@ func rewriteTraversal(
 }
 
 func convertScopeTraversalExpr(
-	sources map[string][]byte,
+	sources map[string][]byte, inBlock bool,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ScopeTraversalExpr,
 ) hclwrite.Tokens {
 	return rewriteTraversal(sources, scopes, fullyQualifiedPath, expr.Traversal)
 }
 
 func convertRelativeTraversalExpr(
-	sources map[string][]byte, scopes *scopes,
+	sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.RelativeTraversalExpr,
 ) hclwrite.Tokens {
-	tokens := convertExpression(sources, scopes, "", expr.Source)
+	tokens := convertExpression(sources, false, scopes, "", expr.Source)
 	tokens = append(tokens, hclwrite.TokensForTraversal(
 		rewriteRelativeTraversal(scopes, fullyQualifiedPath, expr.Traversal))...)
 	return tokens
 }
 
-func convertBinaryOpExpr(sources map[string][]byte, scopes *scopes,
+func convertBinaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.BinaryOpExpr,
 ) hclwrite.Tokens {
-	tokens := convertExpression(sources, scopes, fullyQualifiedPath, expr.LHS)
+	tokens := convertExpression(sources, false, scopes, fullyQualifiedPath, expr.LHS)
 	switch expr.Op {
 	case hclsyntax.OpLogicalOr:
 		tokens = append(tokens, makeToken(hclsyntax.TokenOr, "||"))
@@ -1208,11 +1256,11 @@ func convertBinaryOpExpr(sources map[string][]byte, scopes *scopes,
 	default:
 		contract.Failf("unknown binary operation: %T", expr)
 	}
-	tokens = append(tokens, convertExpression(sources, scopes, fullyQualifiedPath, expr.RHS)...)
+	tokens = append(tokens, convertExpression(sources, false, scopes, fullyQualifiedPath, expr.RHS)...)
 	return tokens
 }
 
-func convertUnaryOpExpr(sources map[string][]byte, scopes *scopes,
+func convertUnaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.UnaryOpExpr,
 ) hclwrite.Tokens {
 	var tokens hclwrite.Tokens
@@ -1224,15 +1272,15 @@ func convertUnaryOpExpr(sources map[string][]byte, scopes *scopes,
 	default:
 		contract.Failf("unknown unary operation: %T", expr)
 	}
-	tokens = append(tokens, convertExpression(sources, scopes, fullyQualifiedPath, expr.Val)...)
+	tokens = append(tokens, convertExpression(sources, false, scopes, fullyQualifiedPath, expr.Val)...)
 	return tokens
 }
 
-func convertForExpr(sources map[string][]byte, scopes *scopes,
+func convertForExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ForExpr,
 ) hclwrite.Tokens {
 	// The collection doesn't yet have access to the key/value scopes
-	collTokens := convertExpression(sources, scopes, "", expr.CollExpr)
+	collTokens := convertExpression(sources, false, scopes, "", expr.CollExpr)
 
 	// TODO: We should ensure key and value vars are unique
 	locals := map[string]string{
@@ -1243,9 +1291,9 @@ func convertForExpr(sources map[string][]byte, scopes *scopes,
 	}
 	scopes.push(locals)
 
-	keyTokens := convertExpression(sources, scopes, "", expr.KeyExpr)
-	valueTokens := convertExpression(sources, scopes, "", expr.ValExpr)
-	condTokens := convertExpression(sources, scopes, "", expr.CondExpr)
+	keyTokens := convertExpression(sources, false, scopes, "", expr.KeyExpr)
+	valueTokens := convertExpression(sources, false, scopes, "", expr.ValExpr)
+	condTokens := convertExpression(sources, false, scopes, "", expr.CondExpr)
 
 	scopes.pop()
 
@@ -1307,11 +1355,11 @@ func convertForExpr(sources map[string][]byte, scopes *scopes,
 	return tokens
 }
 
-func convertIndexExpr(sources map[string][]byte, scopes *scopes,
+func convertIndexExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.IndexExpr,
 ) hclwrite.Tokens {
-	collection := convertExpression(sources, scopes, fullyQualifiedPath, expr.Collection)
-	key := convertExpression(sources, scopes, "", expr.Key)
+	collection := convertExpression(sources, inBlock, scopes, fullyQualifiedPath, expr.Collection)
+	key := convertExpression(sources, false, scopes, "", expr.Key)
 
 	tokens := collection
 	tokens = append(tokens, makeToken(hclsyntax.TokenOBrack, "["))
@@ -1320,11 +1368,11 @@ func convertIndexExpr(sources map[string][]byte, scopes *scopes,
 	return tokens
 }
 
-func convertSplatExpr(sources map[string][]byte, scopes *scopes,
+func convertSplatExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.SplatExpr,
 ) hclwrite.Tokens {
-	source := convertExpression(sources, scopes, "", expr.Source)
-	each := convertExpression(sources, scopes, "", expr.Each)
+	source := convertExpression(sources, inBlock, scopes, "", expr.Source)
+	each := convertExpression(sources, false, scopes, "", expr.Each)
 
 	tokens := source
 	tokens = append(tokens, makeToken(hclsyntax.TokenOBrack, "["))
@@ -1340,12 +1388,12 @@ func convertAnonSymbolExpr(scopes *scopes,
 	return hclwrite.Tokens{}
 }
 
-func convertConditionalExpr(sources map[string][]byte, scopes *scopes,
+func convertConditionalExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ConditionalExpr,
 ) hclwrite.Tokens {
-	condition := convertExpression(sources, scopes, "", expr.Condition)
-	trueResult := convertExpression(sources, scopes, "", expr.TrueResult)
-	falseResult := convertExpression(sources, scopes, "", expr.FalseResult)
+	condition := convertExpression(sources, inBlock, scopes, "", expr.Condition)
+	trueResult := convertExpression(sources, false, scopes, "", expr.TrueResult)
+	falseResult := convertExpression(sources, inBlock, scopes, "", expr.FalseResult)
 
 	tokens := condition
 	tokens = append(tokens, makeToken(hclsyntax.TokenQuestion, "?"))
@@ -1355,16 +1403,17 @@ func convertConditionalExpr(sources map[string][]byte, scopes *scopes,
 	return tokens
 }
 
-func convertParenthesesExpr(sources map[string][]byte, scopes *scopes,
+func convertParenthesesExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ParenthesesExpr,
 ) hclwrite.Tokens {
 	tokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOParen, "(")}
-	tokens = append(tokens, convertExpression(sources, scopes, "", expr.Expression)...)
+	tokens = append(tokens, convertExpression(sources, false, scopes, "", expr.Expression)...)
 	tokens = append(tokens, makeToken(hclsyntax.TokenCParen, ")"))
-	return tokens
+	leading, trailing := getTrivia(sources, expr.SrcRange, inBlock)
+	return append(leading, append(tokens, trailing...)...)
 }
 
-func convertExpression(sources map[string][]byte, scopes *scopes,
+func convertExpression(sources map[string][]byte, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr hcl.Expression,
 ) hclwrite.Tokens {
 	if expr == nil {
@@ -1373,39 +1422,39 @@ func convertExpression(sources map[string][]byte, scopes *scopes,
 
 	switch expr := expr.(type) {
 	case *hclsyntax.TupleConsExpr:
-		return convertTupleConsExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertTupleConsExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ObjectConsExpr:
-		return convertObjectConsExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertObjectConsExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ObjectConsKeyExpr:
-		return convertObjectConsKeyExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertObjectConsKeyExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.FunctionCallExpr:
 		return convertFunctionCallExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.LiteralValueExpr:
-		return convertLiteralValueExpr(sources, expr)
+		return convertLiteralValueExpr(sources, inBlock, expr)
 	case *hclsyntax.TemplateExpr:
 		return convertTemplateExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ScopeTraversalExpr:
-		return convertScopeTraversalExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertScopeTraversalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.BinaryOpExpr:
-		return convertBinaryOpExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertBinaryOpExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.UnaryOpExpr:
-		return convertUnaryOpExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertUnaryOpExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ForExpr:
-		return convertForExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertForExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.IndexExpr:
-		return convertIndexExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertIndexExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.RelativeTraversalExpr:
-		return convertRelativeTraversalExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertRelativeTraversalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.SplatExpr:
-		return convertSplatExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertSplatExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.AnonSymbolExpr:
 		return convertAnonSymbolExpr(scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.TemplateWrapExpr:
 		return convertTemplateWrapExpr(sources, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ConditionalExpr:
-		return convertConditionalExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertConditionalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ParenthesesExpr:
-		return convertParenthesesExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertParenthesesExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
 	}
 	contract.Failf("Couldn't convert expression: %T", expr)
 	return nil
@@ -1556,7 +1605,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			}
 
 			// wrap the collection expression into `entries(collection)` so that each entry has key and value
-			forEachExprTokens := convertExpression(sources, scopes, fullyQualifiedPath, forEachAttr.Expr)
+			forEachExprTokens := convertExpression(sources, true, scopes, fullyQualifiedPath, forEachAttr.Expr)
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "entries"))
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenOParen, "("))
 			dynamicTokens = append(dynamicTokens, forEachExprTokens...)
@@ -1630,9 +1679,9 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		attrPath := appendPath(fullyQualifiedPath, attr.Name)
 		name := scopes.pulumiName(attrPath)
 
-		leading, trailing := getTrivia(sources, getAttributeRange(sources, attr.Expr.Range()))
-		expr := convertExpression(sources, scopes, attrPath, attr.Expr)
-		expr = append(expr, trailing...)
+		// We need the leading trivia here, but the trailing trivia will be handled by convertExpression
+		leading, _ := getTrivia(sources, getAttributeRange(sources, attr.Expr.Range()), true)
+		expr := convertExpression(sources, true, scopes, attrPath, attr.Expr)
 
 		// If this is a maxItemsOne property then in terraform it will be a list, but in Pulumi it will be a
 		// single value. We need to project the list expression we've just converted into a single value, for
@@ -1776,7 +1825,7 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	if variable.NullableSet {
 		blockBody.SetAttributeValue("nullable", cty.BoolVal(variable.Nullable))
 	}
-	leading, trailing := getTrivia(sources, variable.DeclRange)
+	leading, trailing := getTrivia(sources, variable.DeclRange, false)
 	return leading, block, trailing
 }
 
@@ -1800,9 +1849,10 @@ func impliedToken(typeName string) string {
 func convertLocal(sources map[string][]byte, scopes *scopes,
 	local *configs.Local) (hclwrite.Tokens, string, hclwrite.Tokens, hclwrite.Tokens) {
 	identifier := scopes.roots["local."+local.Name].Name
-	expr := convertExpression(sources, scopes, "", local.Expr)
-	leading, trailing := getTrivia(sources, local.DeclRange)
-	return leading, identifier, expr, trailing
+	expr := convertExpression(sources, true, scopes, "", local.Expr)
+	// The trailing trivia will have been caught by convertExpression, but we need the leading trivia before the identifier
+	leading, _ := getTrivia(sources, local.DeclRange, true)
+	return leading, identifier, expr, nil
 }
 
 func convertDataResource(sources map[string][]byte,
@@ -1820,7 +1870,7 @@ func convertDataResource(sources map[string][]byte,
 	if dataResource.Type == "template_file" {
 		text := cty.StringVal("The template_file data resource is not yet supported.")
 		dataResourceExpression := hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
-		leading, trailing := getTrivia(sources, dataResource.DeclRange)
+		leading, trailing := getTrivia(sources, dataResource.DeclRange, false)
 		return leading, pulumiName, dataResourceExpression, trailing
 	}
 
@@ -1832,14 +1882,14 @@ func convertDataResource(sources map[string][]byte,
 	// If count is set we'll make this into an array expression
 	var countExpr hclwrite.Tokens
 	if dataResource.Count != nil {
-		countExpr = convertExpression(sources, scopes, "", dataResource.Count)
+		countExpr = convertExpression(sources, true, scopes, "", dataResource.Count)
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "__index"}}
 	}
 
 	// If for_each is set we'll make this into an object expression
 	var forEachExpr hclwrite.Tokens
 	if dataResource.ForEach != nil {
-		forEachExpr = convertExpression(sources, scopes, "", dataResource.ForEach)
+		forEachExpr = convertExpression(sources, true, scopes, "", dataResource.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "__key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "__value"}}
 	}
@@ -1884,7 +1934,7 @@ func convertDataResource(sources map[string][]byte,
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, dataResource.DeclRange)
+	leading, trailing := getTrivia(sources, dataResource.DeclRange, false)
 	return leading, pulumiName, dataResourceExpression, trailing
 }
 
@@ -1917,7 +1967,7 @@ func convertProvisioner(
 	optionsBlockBody := optionsBlock.Body()
 
 	if forEach != nil {
-		forEachExpr := convertExpression(sources, scopes, "", forEach)
+		forEachExpr := convertExpression(sources, true, scopes, "", forEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		optionsBlockBody.SetAttributeRaw("range", forEachExpr)
@@ -1947,13 +1997,13 @@ func convertProvisioner(
 	var command, interpreter, environment hclwrite.Tokens
 	for _, attr := range attributes {
 		if attr.Name == "command" {
-			command = convertExpression(sources, scopes, "", attr.Expr)
+			command = convertExpression(sources, true, scopes, "", attr.Expr)
 		}
 		if attr.Name == "interpreter" {
-			interpreter = convertExpression(sources, scopes, "", attr.Expr)
+			interpreter = convertExpression(sources, true, scopes, "", attr.Expr)
 		}
 		if attr.Name == "environment" {
-			environment = convertExpression(sources, scopes, "", attr.Expr)
+			environment = convertExpression(sources, true, scopes, "", attr.Expr)
 		}
 	}
 
@@ -2002,14 +2052,14 @@ func convertManagedResources(sources map[string][]byte,
 	// Does this resource have a count? If so set the "range" attribute
 	if managedResource.Count != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		countExpr := convertExpression(sources, scopes, "", managedResource.Count)
+		countExpr := convertExpression(sources, true, scopes, "", managedResource.Count)
 		// Set the count_index scope
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", countExpr)
 	}
 	if managedResource.ForEach != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		forEachExpr := convertExpression(sources, scopes, "", managedResource.ForEach)
+		forEachExpr := convertExpression(sources, true, scopes, "", managedResource.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", forEachExpr)
@@ -2024,7 +2074,7 @@ func convertManagedResources(sources map[string][]byte,
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, managedResource.DeclRange)
+	leading, trailing := getTrivia(sources, managedResource.DeclRange, false)
 
 	target.AppendUnstructuredTokens(leading)
 	target.AppendBlock(block)
@@ -2075,7 +2125,7 @@ func convertModuleCall(
 	// Does this resource have a count? If so set the "range" attribute
 	if moduleCall.Count != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		countExpr := convertExpression(sources, scopes, "", moduleCall.Count)
+		countExpr := convertExpression(sources, true, scopes, "", moduleCall.Count)
 		// Set the count_index scope
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", countExpr)
@@ -2083,7 +2133,7 @@ func convertModuleCall(
 
 	if moduleCall.ForEach != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		forEachExpr := convertExpression(sources, scopes, "", moduleCall.ForEach)
+		forEachExpr := convertExpression(sources, true, scopes, "", moduleCall.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", forEachExpr)
@@ -2098,7 +2148,7 @@ func convertModuleCall(
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, moduleCall.DeclRange)
+	leading, trailing := getTrivia(sources, moduleCall.DeclRange, false)
 	return leading, block, trailing
 }
 
@@ -2107,11 +2157,11 @@ func convertOutput(sources map[string][]byte, scopes *scopes,
 	labels := []string{scopes.roots["output."+output.Name].Name}
 	block := hclwrite.NewBlock("output", labels)
 	blockBody := block.Body()
-	leading, _ := getTrivia(sources, getAttributeRange(sources, output.Expr.Range()))
+	leading, _ := getTrivia(sources, getAttributeRange(sources, output.Expr.Range()), true)
 	blockBody.AppendUnstructuredTokens(leading)
-	blockBody.SetAttributeRaw("value", convertExpression(sources, scopes, "", output.Expr))
+	blockBody.SetAttributeRaw("value", convertExpression(sources, true, scopes, "", output.Expr))
 
-	leading, trailing := getTrivia(sources, output.DeclRange)
+	leading, trailing := getTrivia(sources, output.DeclRange, false)
 	return leading, block, trailing
 }
 

@@ -3,5 +3,4 @@ resource "aResource" "complex:index/index:resource" {
     "kubernetes.io/role/elb" = true
     "tricky.name"            = false
   }
-
 }

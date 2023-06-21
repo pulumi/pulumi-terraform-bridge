@@ -7,9 +7,8 @@ component "cidrs" "./subnets_1.0.0" {
     name    = "bar"
     newBits = 8
   }]
-
-
 }
+
 output "blocks" {
   value = cidrs.networkCidrBlocks
 }

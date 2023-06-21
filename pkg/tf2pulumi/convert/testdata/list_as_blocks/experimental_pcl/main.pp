@@ -5,6 +5,7 @@ aDataSource = invoke("blocks:index/index:data_source", {
     innerString = "bye"
   }]
 })
+
 resource "aResource" "blocks:index/index:resource" {
   aListOfResources = [{
     innerString = "hi"
