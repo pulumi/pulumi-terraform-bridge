@@ -1252,6 +1252,10 @@ func min(a int, b int) int {
 func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 	rawNames bool) (resource.PropertyValue, bool) {
 
+	if IsMaxItemsOne(tfs, ps) {
+		tfs, ps = elemSchemas(tfs, ps)
+	}
+
 	possibleDefault := true
 	switch {
 	case oldInput.IsArray() && newState.IsArray():
