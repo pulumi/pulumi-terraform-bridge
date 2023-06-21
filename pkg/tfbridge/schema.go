@@ -460,9 +460,14 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 
 		// First translate the Pulumi property name to a Terraform name.
 		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, rawNames)
-		if name == "" {
-			return nil, fmt.Errorf("name should not be empty")
+
+		// rawNames=true indicate that we are processing a map[string,X], not an object type, and therefore
+		// should not be renaming terraform_style names to pulumiStyle names or assuming that the map keys are
+		// non-empty.
+		if !rawNames {
+			contract.Assertf(name != "", `name != ""`)
 		}
+
 		if _, duplicate := result[name]; duplicate {
 			// If multiple Pulumi `key`s map to the same Terraform attribute `name`, then
 			// this function's output is dependent on the iteration order of `news`, and
