@@ -207,6 +207,16 @@ func getTrivia(sources map[string][]byte, r hcl.Range) (hclwrite.Tokens, hclwrit
 		}
 	}
 
+	if len(tokens) > 0 && first == last {
+		// edge case for single-digit numerical map keys,
+		// where the first and last are the same index
+		// do not carry over the trivia
+		// TODO: fix this in getTrivaFromIndex
+		leading := make(hclwrite.Tokens, 0)
+		trailing := make(hclwrite.Tokens, 0)
+		return leading, trailing
+	}
+
 	return getTrivaFromIndex(tokens, first, last)
 }
 
