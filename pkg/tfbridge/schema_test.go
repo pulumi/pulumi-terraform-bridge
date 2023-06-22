@@ -1674,6 +1674,18 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 
 }
 
+// This schema replicates the panic behavior of
+// pulumi-terraform-bridge/pf/internal/schemashim.objectPseudoResource.
+type volatileMap struct{ schema.SchemaMap }
+
+func (s volatileMap) Get(key string) shim.Schema {
+	v, ok := s.GetOk(key)
+	if !ok {
+		panic("Missing key: " + key)
+	}
+	return v
+}
+
 func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 	t.Parallel()
 
@@ -1697,7 +1709,7 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 			s := schema.Schema{
 				Type: shim.TypeList,
 				Elem: (&schema.Resource{
-					Schema: elem,
+					Schema: volatileMap{elem},
 				}).Shim(),
 			}
 			return s.Shim()
