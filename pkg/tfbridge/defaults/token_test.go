@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package defaults
 
 import (
 	"fmt"
@@ -47,7 +47,7 @@ func TestTokensSingleModule(t *testing.T) {
 		return fmt.Sprintf("foo:%s:%s", module, name), nil
 	}
 	opts := TokensSingleModule("foo_", "index", makeToken)
-	err := ComputeDefaults(&info, opts)
+	err := ApplyStrategy(&info, opts)
 	require.NoError(t, err)
 
 	expectedResources := map[string]*tfbridge.ResourceInfo{
@@ -67,7 +67,7 @@ func TestTokensSingleModule(t *testing.T) {
 	info.Resources = map[string]*tfbridge.ResourceInfo{
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 	}
-	err = ComputeDefaults(&info, DefaultStrategy{
+	err = ApplyStrategy(&info, Strategy{
 		Resource: opts.Resource,
 	})
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestTokensKnownModules(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := ComputeDefaults(&info, DefaultStrategy{
+	err := ApplyStrategy(&info, Strategy{
 		Resource: TokensKnownModules("cs101_", "index", []string{
 			"fizz_", "buzz_", "fizz_buzz_",
 		}, func(module, name string) (string, error) {
@@ -125,7 +125,7 @@ func TestTokensMappedModules(t *testing.T) {
 			},
 		}).Shim(),
 	}
-	err := ComputeDefaults(&info, DefaultStrategy{
+	err := ApplyStrategy(&info, Strategy{
 		Resource: TokensMappedModules("cs101_", "idx", map[string]string{
 			"fizz_":      "fIzZ",
 			"buzz_":      "buZZ",
@@ -165,7 +165,7 @@ func TestUnmappable(t *testing.T) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
 	strategy = strategy.Unmappable("five", "SomeGoodReason")
-	err := ComputeDefaults(&info, strategy)
+	err := ApplyStrategy(&info, strategy)
 	assert.ErrorContains(t, err, "SomeGoodReason")
 
 	// Override the unmappable resources
@@ -174,7 +174,7 @@ func TestUnmappable(t *testing.T) {
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
 		"cs101_buzz_five":          {Tok: "cs101:buzz:Five"},
 	}
-	err = ComputeDefaults(&info, strategy)
+	err = ApplyStrategy(&info, strategy)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
@@ -197,7 +197,7 @@ func TestIgnored(t *testing.T) {
 		}).Shim(),
 		IgnoreMappings: []string{"cs101_three"},
 	}
-	err := ComputeDefaults(&info, TokensSingleModule("cs101_", "index_", MakeStandardToken("cs101")))
+	err := ApplyStrategy(&info, TokensSingleModule("cs101_", "index_", MakeStandardToken("cs101")))
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_one_five":  {Tok: "cs101:index/oneFive:OneFive"},
@@ -370,7 +370,7 @@ func TestTokensInferredModules(t *testing.T) {
 				func(module, name string) (string, error) { return module + ":" + name, nil },
 				tt.opts)
 			require.NoError(t, err)
-			err = ComputeDefaults(info, strategy)
+			err = ApplyStrategy(info, strategy)
 			require.NoError(t, err)
 
 			mapping := map[string]string{}
@@ -399,7 +399,7 @@ func TestTokenAliasing(t *testing.T) {
 	metadata, err := metadata.New(nil)
 	require.NoError(t, err)
 
-	err = ComputeDefaults(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+	err = ApplyStrategy(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 	require.NoError(t, err)
 
 	err = AutoAliasing(simple, metadata)
@@ -417,7 +417,7 @@ func TestTokenAliasing(t *testing.T) {
 	knownModules := TokensKnownModules("pkg_", "",
 		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
 
-	err = ComputeDefaults(modules, knownModules)
+	err = ApplyStrategy(modules, knownModules)
 	require.NoError(t, err)
 
 	err = AutoAliasing(modules, metadata)
@@ -458,7 +458,7 @@ func TestTokenAliasing(t *testing.T) {
 	modules2 := provider()
 	modules2.Version = "1.0.0"
 
-	err = ComputeDefaults(modules2, knownModules)
+	err = ApplyStrategy(modules2, knownModules)
 	require.NoError(t, err)
 
 	err = AutoAliasing(modules2, metadata)
@@ -472,7 +472,7 @@ func TestTokenAliasing(t *testing.T) {
 	modules3 := provider()
 	modules3.Version = "100.0.0"
 
-	err = ComputeDefaults(modules3, knownModules)
+	err = ApplyStrategy(modules3, knownModules)
 	require.NoError(t, err)
 
 	err = AutoAliasing(modules3, metadata)
@@ -498,7 +498,7 @@ func TestTokenAliasing(t *testing.T) {
 	// version in history – in this case, all aliases should be kept
 	modules4 := provider()
 
-	err = ComputeDefaults(modules4, knownModules)
+	err = ApplyStrategy(modules4, knownModules)
 	require.NoError(t, err)
 
 	err = AutoAliasing(modules4, metadata)
@@ -519,7 +519,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -611,7 +611,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -690,7 +690,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -767,7 +767,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -849,7 +849,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}

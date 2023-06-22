@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package defaults
 
 import (
 	"fmt"
@@ -53,7 +53,7 @@ type MakeToken func(module, name string) (string, error)
 // The above example would transform "pkgName_foo" into "pkgName:index:Foo".
 func TokensSingleModule(
 	tfPackagePrefix, moduleName string, finalize MakeToken,
-) DefaultStrategy {
+) Strategy {
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
@@ -61,7 +61,7 @@ func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
 	prefix, defaultModule string, modules []string,
 	new func(string, string) (*T, error),
 	moduleTransform func(string) string,
-) Strategy[T] {
+) ElementStrategy[T] {
 	return func(tfToken string) (*T, error) {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
@@ -86,13 +86,13 @@ func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
-) DefaultStrategy {
+) Strategy {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
 	sort.Sort(sort.Reverse(sort.StringSlice(modules)))
 
-	return DefaultStrategy{
+	return Strategy{
 		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
 			func(mod, tk string) (*b.ResourceInfo, error) {
 				tk, err := finalize(mod, tk)
@@ -118,7 +118,7 @@ func TokensKnownModules(
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
 func TokensMappedModules(
 	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
-) DefaultStrategy {
+) Strategy {
 
 	mods := make([]string, 0, len(modules))
 	for k := range modules {
@@ -138,7 +138,7 @@ func TokensMappedModules(
 		return s
 	}
 
-	return DefaultStrategy{
+	return Strategy{
 		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
 			func(mod, tk string) (*b.ResourceInfo, error) {
 				tk, err := finalize(mod, tk)
@@ -209,13 +209,13 @@ type InferredModulesOpts struct {
 // A strategy to infer module placement from global analysis of all items (Resources & DataSources).
 func TokensInferredModules(
 	info *b.ProviderInfo, finalize MakeToken, opts *InferredModulesOpts,
-) (DefaultStrategy, error) {
+) (Strategy, error) {
 	if opts == nil {
 		opts = &InferredModulesOpts{}
 	}
 	err := opts.ensurePrefix(info)
 	if err != nil {
-		return DefaultStrategy{}, fmt.Errorf("inferring pkg prefix: %w", err)
+		return Strategy{}, fmt.Errorf("inferring pkg prefix: %w", err)
 	}
 	contract.Assertf(opts.MinimumModuleSize >= 0, "Cannot have a minimum modules size less then zero")
 	if opts.MinimumModuleSize == 0 {
@@ -230,7 +230,7 @@ func TokensInferredModules(
 
 	tokenMap := opts.computeTokens(info)
 
-	return DefaultStrategy{
+	return Strategy{
 		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *b.ResourceInfo {
 			return &b.ResourceInfo{Tok: tokens.Type(tk)}
 		}),
@@ -490,7 +490,7 @@ type tokenInfo struct{ mod, name string }
 
 func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
 	tokenMap map[string]tokenInfo, finalize MakeToken, new func(tk string) *T,
-) Strategy[T] {
+) ElementStrategy[T] {
 	return func(tfToken string) (*T, error) {
 		info, ok := tokenMap[tfToken]
 		if !ok {

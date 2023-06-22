@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package defaults
 
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // A generic remapping strategy.
-type Strategy[T tfbridge.ResourceInfo | tfbridge.DataSourceInfo] func(tfToken string) (*T, error)
+type ElementStrategy[T tfbridge.ResourceInfo | tfbridge.DataSourceInfo] func(tfToken string) (*T, error)
 
 // Describe the mapping from resource and datasource tokens to Pulumi resources and
 // datasources.
-type DefaultStrategy struct {
+type Strategy struct {
 	Resource   ResourceStrategy
 	DataSource DataSourceStrategy
 }
 
 // A strategy for generating missing resources.
-type ResourceStrategy = Strategy[tfbridge.ResourceInfo]
+type ResourceStrategy = ElementStrategy[tfbridge.ResourceInfo]
 
 // A strategy for generating missing datasources.
-type DataSourceStrategy = Strategy[tfbridge.DataSourceInfo]
+type DataSourceStrategy = ElementStrategy[tfbridge.DataSourceInfo]

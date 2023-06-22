@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package defaults
 
 import (
 	"fmt"
@@ -33,14 +33,14 @@ func (err UnmappableError) Unwrap() error {
 	return err.Reason
 }
 
-func (ts DefaultStrategy) Unmappable(substring, reason string) DefaultStrategy {
+func (ts Strategy) Unmappable(substring, reason string) Strategy {
 	ts.DataSource = ts.DataSource.Unmappable(substring, reason)
 	ts.Resource = ts.Resource.Unmappable(substring, reason)
 	return ts
 }
 
 // Mark that a strategy cannot handle a sub-string.
-func (ts Strategy[T]) Unmappable(substring, reason string) Strategy[T] {
+func (ts ElementStrategy[T]) Unmappable(substring, reason string) ElementStrategy[T] {
 	msg := fmt.Sprintf("cannot map tokens that contains '%s'", substring)
 	if reason != "" {
 		msg += ": " + reason

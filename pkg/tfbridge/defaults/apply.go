@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package x
+package defaults
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 )
 
 // Add mapped resources and datasources according to the given strategies.
-func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
+func ApplyStrategy(info *b.ProviderInfo, opts Strategy) error {
 	var errs multierror.Error
 
 	ignored := ignoredTokens(info)
@@ -75,7 +75,7 @@ func computeDefaultDataSources(info *b.ProviderInfo, strategy DataSourceStrategy
 // For each key in the info map not present in the result map, compute a result and store
 // it in the result map.
 func applyComputedTokens[T b.ResourceInfo | b.DataSourceInfo](
-	infoMap shim.ResourceMap, resultMap map[string]*T, tks Strategy[T],
+	infoMap shim.ResourceMap, resultMap map[string]*T, tks ElementStrategy[T],
 	ignoredMappings map[string]bool,
 ) error {
 	keys := make([]string, 0, infoMap.Len())
