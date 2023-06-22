@@ -534,7 +534,24 @@ type fieldHistory struct {
 	Elem   *fieldHistory            `json:"elem,omitempty"`
 }
 
-func AutoAliasing(providerInfo *b.ProviderInfo) error {
+// Apply resource and function aliases to maintain backwards compatibility with previous
+// versions of this provider.  Apply MaxItemsOne history to maintain backwards
+// compatibility with previous versions of this provider.
+//
+// All history is dropped when there is a major version change.
+//
+// Panics if ApplyAliases would return an error.
+func MustApplyAliases(providerInfo *b.ProviderInfo)  {
+	err := ApplyAliases(providerInfo)
+	contract.AssertNoErrorf(err, "Failed to apply aliases")
+}
+
+// Apply resource and function aliases to maintain backwards compatibility with previous
+// versions of this provider.  Apply MaxItemsOne history to maintain backwards
+// compatibility with previous versions of this provider.
+//
+// All history is dropped when there is a major version change.
+func ApplyAliases(providerInfo *b.ProviderInfo) error {
 	artifact := providerInfo.GetMetadata()
 	hist, err := getHistory(artifact)
 	if err != nil {

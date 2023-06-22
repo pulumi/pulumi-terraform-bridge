@@ -390,7 +390,7 @@ func makeAutoAliasing(t *testing.T) (
 
 	return metadata, func(prov *tfbridge.ProviderInfo, metadata tfbridge.ProviderMetadata) {
 		prov.MetadataInfo = &tfbridge.MetadataInfo{Data: metadata, Path: "must be non-empty"}
-		err := AutoAliasing(prov)
+		err := ApplyAliases(prov)
 		require.NoError(t, err)
 	}
 }
@@ -812,7 +812,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 		p := provider()
 
 		p.SetAutonaming(24, "-")
-		err := AutoAliasing(p)
+		err := ApplyAliases(p)
 		require.NoError(t, err)
 
 		assertExpected(t, p)
@@ -820,7 +820,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		err := AutoAliasing(p)
+		err := ApplyAliases(p)
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
@@ -893,7 +893,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 		p := provider()
 
 		p.SetAutonaming(24, "-")
-		err := AutoAliasing(p)
+		err := ApplyAliases(p)
 		require.NoError(t, err)
 
 		assertExpected(t, p)
@@ -901,7 +901,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		err := AutoAliasing(p)
+		err := ApplyAliases(p)
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
