@@ -19,17 +19,29 @@ import (
 )
 
 // A generic remapping strategy.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.ElementStrategy"
 type Strategy[T tfbridge.ResourceInfo | tfbridge.DataSourceInfo] func(tfToken string) (*T, error)
 
 // Describe the mapping from resource and datasource tokens to Pulumi resources and
 // datasources.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.Strategy"
 type DefaultStrategy struct {
 	Resource   ResourceStrategy
 	DataSource DataSourceStrategy
 }
 
 // A strategy for generating missing resources.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.ResourceStrategy"
 type ResourceStrategy = Strategy[tfbridge.ResourceInfo]
 
 // A strategy for generating missing datasources.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.DataSourceStrategy"
 type DataSourceStrategy = Strategy[tfbridge.DataSourceInfo]

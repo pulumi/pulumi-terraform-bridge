@@ -42,6 +42,9 @@ const (
 //	func(module, name string) (string, error) {
 //	 return fmt.Sprintf("pkgName:%s:%s", module, name), nil
 //	}
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.MakeToken"
 type MakeToken func(module, name string) (string, error)
 
 // A strategy that assigns all tokens to the same module.
@@ -51,6 +54,9 @@ type MakeToken func(module, name string) (string, error)
 //	rStrat, dStrat := TokensSingleModule("pkgName_", "index", finalize)
 //
 // The above example would transform "pkgName_foo" into "pkgName:index:Foo".
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.TokensSingleModule"
 func TokensSingleModule(
 	tfPackagePrefix, moduleName string, finalize MakeToken,
 ) DefaultStrategy {
@@ -84,6 +90,9 @@ func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
 // A strategy for assigning tokens to a hand generated set of modules.
 //
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.TokensKnownModules"
 func TokensKnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize MakeToken,
 ) DefaultStrategy {
@@ -116,6 +125,9 @@ func TokensKnownModules(
 // mapping from TF modules to Pulumi modules.
 //
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.TokensMappedModules"
 func TokensMappedModules(
 	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
 ) DefaultStrategy {
@@ -163,6 +175,9 @@ func TokensMappedModules(
 // The mapping is
 //
 //	(pkg, module, name) => pkg:module/lowerFirst(name):name
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.MakeStandardToken"
 func MakeStandardToken(pkgName string) MakeToken {
 	return func(module, name string) (string, error) {
 		lowerName := string(unicode.ToLower(rune(name[0]))) + name[1:]
@@ -176,6 +191,8 @@ func camelCase(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
 }
 
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.InferredModulesOpts"
 type InferredModulesOpts struct {
 	// The TF prefix of the package.
 	TfPkgPrefix string
@@ -207,6 +224,9 @@ type InferredModulesOpts struct {
 }
 
 // A strategy to infer module placement from global analysis of all items (Resources & DataSources).
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.TokensInferredModules"
 func TokensInferredModules(
 	info *b.ProviderInfo, finalize MakeToken, opts *InferredModulesOpts,
 ) (DefaultStrategy, error) {
@@ -534,6 +554,8 @@ type fieldHistory struct {
 	Elem   *fieldHistory            `json:"elem,omitempty"`
 }
 
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.ApplyAliases"
 func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
 	hist, err := getHistory(artifact)
 	if err != nil {

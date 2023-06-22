@@ -20,6 +20,9 @@ import (
 )
 
 // Indicate that a token cannot be mapped.
+//
+// Deprecated: This item has been moved to
+// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.UnmappableError"
 type UnmappableError struct {
 	TfToken string
 	Reason  error
