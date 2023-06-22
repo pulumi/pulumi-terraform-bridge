@@ -145,7 +145,11 @@ func (m SchemaMap) Len() int {
 }
 
 func (m SchemaMap) Get(key string) shim.Schema {
-	return m[key]
+	s, ok := m[key]
+	if !ok {
+		panic("Missing key: " + key)
+	}
+	return s
 }
 
 func (m SchemaMap) GetOk(key string) (shim.Schema, bool) {

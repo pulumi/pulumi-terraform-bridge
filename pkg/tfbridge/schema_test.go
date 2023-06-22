@@ -1674,6 +1674,81 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 
 }
 
+func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	ruleSetProps := func() resource.PropertyMap {
+		return resource.NewPropertyMapFromMap(map[string]any{
+			"rule": map[string]any{
+				"action": []any{
+					map[string]any{
+						"overwritten": map[string]any{
+							"from": 299,
+							"to":   999,
+						},
+					},
+				},
+			},
+		})
+	}
+
+	ruleSetSchema := func() shim.SchemaMap {
+		blockList := func(elem schema.SchemaMap) shim.Schema {
+			s := schema.Schema{
+				Type: shim.TypeList,
+				Elem: (&schema.Resource{
+					Schema: elem,
+				}).Shim(),
+			}
+			return s.Shim()
+		}
+
+		return schema.SchemaMap{
+			"rule": blockList(schema.SchemaMap{
+				"action": blockList(schema.SchemaMap{
+					"some_effect": blockList(schema.SchemaMap{
+						"from": (&schema.Schema{Type: shim.TypeInt}).Shim(),
+						"to":   (&schema.Schema{Type: shim.TypeInt}).Shim(),
+					}),
+					"other": (&schema.Schema{Type: shim.TypeInt}).Shim(),
+				}),
+			}),
+		}
+	}
+
+	ruleSetPs := func() map[string]*SchemaInfo {
+		list := func(info *SchemaInfo) *SchemaInfo {
+			return &SchemaInfo{
+				Elem:        info,
+				MaxItemsOne: BoolRef(false),
+			}
+		}
+		maxItemsList := func(info *SchemaInfo) *SchemaInfo {
+			l := list(info)
+			l.MaxItemsOne = BoolRef(true)
+			return l
+		}
+
+		field := func(name string, elem *SchemaInfo) *SchemaInfo {
+			return &SchemaInfo{
+				Fields: map[string]*SchemaInfo{
+					name: elem,
+				},
+			}
+		}
+
+		return map[string]*SchemaInfo{
+			"rule": maxItemsList(field("action", list(field("some_effect", &SchemaInfo{
+				Name: "overwritten",
+			})))),
+		}
+	}
+
+	_, err := ExtractInputsFromOutputs(ruleSetProps(), ruleSetProps(),
+		ruleSetSchema(), ruleSetPs(), true)
+	assert.NoError(t, err)
+}
+
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
 	tfProvider := makeTestTFProvider(
