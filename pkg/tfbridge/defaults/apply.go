@@ -22,6 +22,7 @@ import (
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Add mapped resources and datasources according to the given strategies.
@@ -39,6 +40,14 @@ func ApplyStrategy(info *b.ProviderInfo, opts Strategy) error {
 		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
 	}
 	return errs.ErrorOrNil()
+}
+
+// Add mapped resources and datasources according to the given strategies.
+//
+// Panics if ApplyStrategy would return an error.
+func MustApplyStrategy(info *b.ProviderInfo, opts Strategy) {
+	err := ApplyStrategy(info, opts)
+	contract.AssertNoErrorf(err, "Failed to apply default tokens")
 }
 
 func ignoredTokens(info *b.ProviderInfo) map[string]bool {
