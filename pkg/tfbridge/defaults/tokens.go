@@ -534,7 +534,8 @@ type fieldHistory struct {
 	Elem   *fieldHistory            `json:"elem,omitempty"`
 }
 
-func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
+func AutoAliasing(providerInfo *b.ProviderInfo) error {
+	artifact := providerInfo.GetMetadata()
 	hist, err := getHistory(artifact)
 	if err != nil {
 		return err

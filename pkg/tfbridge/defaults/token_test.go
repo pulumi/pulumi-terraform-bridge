@@ -382,6 +382,19 @@ func TestTokensInferredModules(t *testing.T) {
 	}
 }
 
+func makeAutoAliasing(t *testing.T) (
+	*md.Data, func(*tfbridge.ProviderInfo, tfbridge.ProviderMetadata),
+) {
+	metadata, err := metadata.New(nil)
+	require.NoError(t, err)
+
+	return metadata, func(prov *tfbridge.ProviderInfo, metadata tfbridge.ProviderMetadata) {
+		prov.MetadataInfo = &tfbridge.MetadataInfo{Data: metadata, Path: "must be non-empty"}
+		err := AutoAliasing(prov)
+		require.NoError(t, err)
+	}
+}
+
 func TestTokenAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
@@ -396,14 +409,12 @@ func TestTokenAliasing(t *testing.T) {
 	}
 	simple := provider()
 
-	metadata, err := metadata.New(nil)
+	metadata, autoAliasing := makeAutoAliasing(t)
+
+	err := ApplyStrategy(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 	require.NoError(t, err)
 
-	err = ApplyStrategy(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
-	require.NoError(t, err)
-
-	err = AutoAliasing(simple, metadata)
-	require.NoError(t, err)
+	autoAliasing(simple, metadata)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
@@ -420,7 +431,7 @@ func TestTokenAliasing(t *testing.T) {
 	err = ApplyStrategy(modules, knownModules)
 	require.NoError(t, err)
 
-	err = AutoAliasing(modules, metadata)
+	autoAliasing(modules, metadata)
 	require.NoError(t, err)
 
 	hist2 := md.Clone(metadata)
@@ -461,7 +472,7 @@ func TestTokenAliasing(t *testing.T) {
 	err = ApplyStrategy(modules2, knownModules)
 	require.NoError(t, err)
 
-	err = AutoAliasing(modules2, metadata)
+	autoAliasing(modules2, metadata)
 	require.NoError(t, err)
 
 	hist3 := md.Clone(metadata)
@@ -475,7 +486,7 @@ func TestTokenAliasing(t *testing.T) {
 	err = ApplyStrategy(modules3, knownModules)
 	require.NoError(t, err)
 
-	err = AutoAliasing(modules3, metadata)
+	autoAliasing(modules3, metadata)
 	require.NoError(t, err)
 
 	// All hard aliases should be removed on a major version upgrade
@@ -501,7 +512,7 @@ func TestTokenAliasing(t *testing.T) {
 	err = ApplyStrategy(modules4, knownModules)
 	require.NoError(t, err)
 
-	err = AutoAliasing(modules4, metadata)
+	autoAliasing(modules4, metadata)
 	require.NoError(t, err)
 	assert.Equal(t, modules.Resources, modules4.Resources)
 }
@@ -524,12 +535,10 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 		return prov
 	}
 	info := provider(true, false)
-	metadata, err := metadata.New(nil)
-	require.NoError(t, err)
+	metadata, autoAliasing := makeAutoAliasing(t)
 
 	// Save current state into metadata
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	v := string(metadata.Marshal())
 	expected := `{
@@ -554,16 +563,14 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 	info = provider(false, true)
 
 	// Apply metadata back into the provider
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
 	assert.Equal(t, expected, string(metadata.Marshal()))
 
 	// Apply metadata back into the provider again, making sure there isn't a diff
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
@@ -576,8 +583,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 		"f1": {MaxItemsOne: tfbridge.False()},
 	}
 
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
 	assert.Equal(t, `{
@@ -616,12 +622,10 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 		return prov
 	}
 	info := provider(true, false)
-	metadata, err := metadata.New(nil)
-	require.NoError(t, err)
+	metadata, autoAliasing := makeAutoAliasing(t)
 
 	// Save current state into metadata
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	v := string(metadata.Marshal())
 	expected := `{
@@ -647,8 +651,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 
 	// Apply metadata back into the provider
 	info.Version = "1.0.0" // New major version
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"])
 	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"])
@@ -695,12 +698,10 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 		return prov
 	}
 	info := provider(true, false)
-	metadata, err := metadata.New(nil)
-	require.NoError(t, err)
+	metadata, autoAliasing := makeAutoAliasing(t)
 
 	// Save current state into metadata
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	v := string(metadata.Marshal())
 	expected := `{
@@ -734,8 +735,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 
 	// Apply the saved metadata to a new provider
 	info = provider(false, true)
-	err = AutoAliasing(info, metadata)
-	require.NoError(t, err)
+	autoAliasing(info, metadata)
 
 	assert.Equal(t, expected, string(metadata.Marshal()))
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
@@ -748,6 +748,9 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 // since that will disable SetAutonaming.
 func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
 				ResourcesMap: schema.ResourceMap{
@@ -766,13 +769,14 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 					}}).Shim(),
 				},
 			}).Shim(),
+			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
 		}
-		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err = ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
 
-	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo, hist *metadata.Data) {
+	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo) {
 		r := p.Resources["pkg_r1"]
 		assert.True(t, r.Fields["name"].Default.AutoNamed)
 
@@ -801,35 +805,34 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
                         }
                     }
                 }
-            }`, string(hist.Marshal()))
+            }`, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
 		p := provider()
 
-		info, err := metadata.New(nil)
-		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
-		err = AutoAliasing(p, info)
+		err := AutoAliasing(p)
 		require.NoError(t, err)
 
-		assertExpected(t, p, info)
+		assertExpected(t, p)
 	})
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		info, err := metadata.New(nil)
-		require.NoError(t, err)
-		err = AutoAliasing(p, info)
+		err := AutoAliasing(p)
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
-		assertExpected(t, p, info)
+		assertExpected(t, p)
 	})
 }
 
 func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
 				DataSourcesMap: schema.ResourceMap{
@@ -848,13 +851,14 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 					}}).Shim(),
 				},
 			}).Shim(),
+			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
 		}
-		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err = ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
 
-	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo, hist *metadata.Data) {
+	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo) {
 		r := p.DataSources["pkg_r1"]
 
 		assert.Nil(t, r.Fields["nest_list"])
@@ -882,30 +886,26 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
                         }
                     }
                 }
-            }`, string(hist.Marshal()))
+            }`, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
 		p := provider()
 
-		info, err := metadata.New(nil)
-		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
-		err = AutoAliasing(p, info)
+		err := AutoAliasing(p)
 		require.NoError(t, err)
 
-		assertExpected(t, p, info)
+		assertExpected(t, p)
 	})
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		info, err := metadata.New(nil)
-		require.NoError(t, err)
-		err = AutoAliasing(p, info)
+		err := AutoAliasing(p)
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
-		assertExpected(t, p, info)
+		assertExpected(t, p)
 	})
 }
 
