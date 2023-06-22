@@ -15,9 +15,9 @@
 package tfbridge
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -33,8 +33,8 @@ func applyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (
 		}
 		paths = append(paths, pp)
 	}
-	if err := errors.Join(errs...); err != nil {
-		return nil, err
+	if len(errs) > 0 {
+		return nil, &multierror.Error{Errors: errs}
 	}
 
 	newValue := resource.NewObjectProperty(new.Copy())

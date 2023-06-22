@@ -15,7 +15,6 @@
 package tfbridgetests
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -43,7 +42,15 @@ func testMain(m *testing.M) (exitCode int, err error) {
 			panicError = fmt.Errorf("Ignoring panic in tests: %v", panicResult)
 		}
 		teardownError := teardownUnitTests()
-		err = errors.Join(panicError, teardownError)
+		if teardownError == nil {
+			err = panicError
+		} else {
+			// Wrapping multiple errors was introduced on v1.20.0.  While we
+			// still support go v1.19.0, we need to convert one error into a
+			// string.
+			err = fmt.Errorf("Tests panicked and teardown failed: %w; %s",
+				panicError, teardownError.Error())
+		}
 	}()
 
 	exitCode = m.Run()

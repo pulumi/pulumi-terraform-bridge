@@ -10,7 +10,12 @@ jobs:
     name: Build and Test Bridge
     strategy:
       matrix:
-        go-version: [1.20.x]
+        # To avoid depending on features introduced in newer golang versions, we need to
+        # test our minimum supported golang versions.
+        #
+        # When we decide to bump our minimum go version, we need to remember to bump the
+        # go version in our go.mod files.
+        go-version: [1.19.x, 1.20.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
