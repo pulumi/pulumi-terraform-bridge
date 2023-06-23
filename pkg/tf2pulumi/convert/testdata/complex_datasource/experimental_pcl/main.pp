@@ -7,11 +7,11 @@ aDataSource = invoke("complex:index/index:data_source", {
     a = true
     b = false
   }
-
   innerObject = {
     innerString = "hello again"
   }
 })
+
 output "someOutput" {
   value = aDataSource.result
 }

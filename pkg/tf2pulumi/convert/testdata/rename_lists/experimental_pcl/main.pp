@@ -6,6 +6,8 @@ resource "listAttrResource" "renames:index/index:resource" {
     number = 2
   }]
 }
+
+
 // Check that lists as blocks are handled correctly
 resource "listBlockResource" "renames:index/index:resource" {
   theList = [{
@@ -14,6 +16,8 @@ resource "listBlockResource" "renames:index/index:resource" {
     number = 2
   }]
 }
+
+
 // Check that lists as dynamics are handled correctly
 resource "listDynamicResource" "renames:index/index:resource" {
   theList = [for entry in entries([1, 2]) : {

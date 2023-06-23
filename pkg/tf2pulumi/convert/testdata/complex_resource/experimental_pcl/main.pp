@@ -7,11 +7,11 @@ resource "aResource" "complex:index/index:resource" {
     a = true
     b = false
   }
-
   innerObject = {
     innerString = "hello again"
   }
 }
+
 output "someOutput" {
   value = aResource.result
 }

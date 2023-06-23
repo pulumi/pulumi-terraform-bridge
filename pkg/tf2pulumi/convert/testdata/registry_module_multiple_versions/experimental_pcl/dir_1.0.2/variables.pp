@@ -1,14 +1,17 @@
 config "baseDir" "string" {
   description = "The base directory in which this module will search for static files and templates."
 }
+
 config "templateVars" {
   default     = {}
   description = "Variables to make available for interpolation and other expressions in template files."
 }
+
 config "templateFileSuffix" "string" {
   default     = ".tmpl"
   description = "The filename suffix that indicates that a file is a Terraform template file rather than a static file."
 }
+
 config "fileTypes" "map(string)" {
   default = {
     ".3g2"    = "video/3gpp2"
@@ -44,6 +47,7 @@ config "fileTypes" "map(string)" {
   }
   description = "Map from file suffixes, which must begin with a period and contain no periods, to the corresponding Content-Type values."
 }
+
 config "defaultFileType" "string" {
   default     = "application/octet-stream"
   description = "The Content-Type value to use for any files that don't match one of the suffixes given in file_types."
