@@ -106,9 +106,10 @@ func (prov *provider) CheckConfig(urn resource.URN, olds, news resource.Property
 	return prov.ProviderWithContext.CheckConfigWithContext(prov.ctx, urn, olds, news, allowUnknowns)
 }
 
-func (prov *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
-	return prov.ProviderWithContext.DiffConfigWithContext(prov.ctx, urn, olds, news, allowUnknowns, ignoreChanges)
+func (prov *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	return prov.ProviderWithContext.DiffConfigWithContext(
+		prov.ctx, urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 }
 
 func (prov *provider) Configure(inputs resource.PropertyMap) error {
@@ -120,9 +121,9 @@ func (prov *provider) Check(urn resource.URN, olds, news resource.PropertyMap, a
 	return prov.ProviderWithContext.CheckWithContext(prov.ctx, urn, olds, news, allowUnknowns, randomSeed)
 }
 
-func (prov *provider) Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+func (prov *provider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	return prov.ProviderWithContext.DiffWithContext(prov.ctx, urn, id, olds, news, allowUnknowns, ignoreChanges)
+	return prov.ProviderWithContext.DiffWithContext(prov.ctx, urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 }
 
 func (prov *provider) Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
@@ -135,9 +136,9 @@ func (prov *provider) Read(urn resource.URN, id resource.ID, inputs, state resou
 	return prov.ProviderWithContext.ReadWithContext(prov.ctx, urn, id, inputs, state)
 }
 
-func (prov *provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+func (prov *provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-	return prov.ProviderWithContext.UpdateWithContext(prov.ctx, urn, id, olds, news, timeout, ignoreChanges,
+	return prov.ProviderWithContext.UpdateWithContext(prov.ctx, urn, id, oldOutputs, newInputs, timeout, ignoreChanges,
 		preview)
 }
 
