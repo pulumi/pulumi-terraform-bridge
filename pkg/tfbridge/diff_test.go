@@ -1301,6 +1301,43 @@ func TestComputedSetUpdate(t *testing.T) {
 		})
 }
 
+func TestNestedComputedSetUpdate(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": U,
+		})
+}
+
+func TestNestedComputedSetAdd(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": A,
+		})
+}
+
 func TestComputedSetUpdateReplace(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
