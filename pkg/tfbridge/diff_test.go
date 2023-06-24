@@ -1338,6 +1338,81 @@ func TestNestedComputedSetAdd(t *testing.T) {
 		})
 }
 
+func TestNestedComputedSetUpdateReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{"foo"},
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": UR,
+		})
+}
+
+func TestNestedComputedSetIntUpdate(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{42},
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": U,
+		})
+}
+
+func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}, ForceNew: true},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"prop": []interface{}{42},
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": UR,
+		})
+}
+
+func TestNestedComputedSetIntAdd(t *testing.T) {
+	diffTest(t,
+		map[string]*schema.Schema{
+			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		map[string]*SchemaInfo{},
+		map[string]interface{}{
+			"prop": []interface{}{computedValue},
+		},
+		map[string]interface{}{
+			"outp": "bar",
+		},
+		map[string]DiffKind{
+			"prop": A,
+		})
+}
+
 func TestComputedSetUpdateReplace(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
