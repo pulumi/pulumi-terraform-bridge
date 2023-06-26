@@ -43,7 +43,7 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4
 	github.com/pulumi/pulumi-yaml v1.1.1
 	github.com/pulumi/schema-tools v0.1.2
-	github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e
+	github.com/pulumi/terraform-diff-reader v0.0.1
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
