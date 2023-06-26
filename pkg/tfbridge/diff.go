@@ -109,12 +109,17 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 					if ev, err = tfs.SetElement(makeConfig(ev)); err != nil {
 						return
 					}
-				}
 
-				ti = strconv.FormatInt(int64(tfs.SetHash(ev)), 10)
-				if containsComputedValues(e) {
-					// TF adds a '~' prefix to the hash code for any set element that contains computed values.
-					ti = "~" + ti
+					// We cannot compute the hash for computed values because they are represented by the UnknownVariableValue
+					// sentinel string, which may not be a legal value of the corresponding schema type, and SetHash does not
+					// account for computed values. Skipping this for unknown values will result in computing a diff only on the
+					// set itself, instead of on the set element, which matches the InstanceDiff returned by Terraform,
+					// which is a diff only on the count (and to an unknown value) of the set.
+					ti = strconv.FormatInt(int64(tfs.SetHash(ev)), 10)
+					if containsComputedValues(e) {
+						// TF adds a '~' prefix to the hash code for any set element that contains computed values.
+						ti = "~" + ti
+					}
 				}
 			}
 
