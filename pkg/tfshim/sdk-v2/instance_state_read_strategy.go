@@ -47,7 +47,7 @@ func SetInstanceStateStrategy(resource shim.Resource, strategy InstanceStateStra
 
 func GetInstanceStateStrategy(resource shim.Resource) InstanceStateStrategy {
 	if resource == nil {
-		return ClassicInstanceState
+		return defaultInstanceStateStrategy
 	}
 	v2Res, ok := resource.(v2Resource)
 	contract.Assertf(ok, "expecting resource to be shimmed with sdkv2 shim, got %v", reflect.TypeOf(resource))
