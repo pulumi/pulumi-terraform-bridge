@@ -33,6 +33,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
+func TestOptionalityf(t *testing.T) {
+	provider := testprovider.ProviderOptionality()
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/optionality-schema.json", schema)
+}
+
 // TestRegress611 tests against test_data/regress-611-schema.json.
 // To update the contents of test_data/regress-611-schema.json run the test with env var PULUMI_ACCEPT set to "true".
 func TestRegress611(t *testing.T) {
