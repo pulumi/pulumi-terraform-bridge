@@ -67,10 +67,10 @@ type InstanceStateStrategy int
 
 const (
 	// The legacy strategy.
-	ClassicInstanceState InstanceStateStrategy = 0
+	ClassicInstanceState InstanceStateStrategy = iota
 
 	// The strategy based on transcoding to cty.Value.
-	CtyInstanceState InstanceStateStrategy = 1
+	CtyInstanceState
 )
 
 func (s InstanceStateStrategy) String() string {
