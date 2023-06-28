@@ -244,7 +244,7 @@ func (f shimv2Factory) NewResource(r *schema.Resource) shim.Resource {
 }
 
 func (f shimv2Factory) NewInstanceState(id string) shim.InstanceState {
-	return shimv2.NewInstanceState(nil, &terraformv2.InstanceState{
+	return shimv2.NewInstanceState(&terraformv2.InstanceState{
 		ID: id, Attributes: map[string]string{}, Meta: map[string]interface{}{}})
 }
 

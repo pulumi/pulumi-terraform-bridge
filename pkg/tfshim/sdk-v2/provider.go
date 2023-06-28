@@ -31,7 +31,7 @@ func stateToShim(r *schema.Resource, s *terraform.InstanceState) shim.InstanceSt
 	if s == nil {
 		return nil
 	}
-	return NewInstanceState(r, s)
+	return NewInstanceStateForResource(s, r)
 }
 
 func diffFromShim(d shim.InstanceDiff) *terraform.InstanceDiff {

@@ -35,7 +35,11 @@ type v2InstanceState struct {
 	diff     *terraform.InstanceDiff
 }
 
-func NewInstanceState(resource *schema.Resource, s *terraform.InstanceState) shim.InstanceState {
+func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
+	return v2InstanceState{tf: s}
+}
+
+func NewInstanceStateForResource(s *terraform.InstanceState, resource *schema.Resource) shim.InstanceState {
 	return v2InstanceState{
 		resource: resource,
 		tf:       s,
