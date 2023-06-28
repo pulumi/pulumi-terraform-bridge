@@ -59,8 +59,8 @@ func (s v2InstanceState) ID() string {
 }
 
 func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
-	strat := GetInstanceStateStrategy(v2Resource{s.resource})
-	if strat == CtyInstanceState {
+	strategy := GetInstanceStateStrategy(v2Resource{s.resource})
+	if strategy == CtyInstanceState {
 		return s.objectViaCty(sch)
 	}
 	return s.objectV1(sch)
@@ -84,7 +84,7 @@ func (s v2InstanceState) objectViaCty(sch shim.SchemaMap) (map[string]interface{
 	// Now we need to translate cty.Value to a JSON-like form. This could have been avoided if surrounding Pulumi
 	// code accepted a cty.Value and translated that to resource.PropertyValue, but that is currently not the case.
 	//
-	// An additional complication is that unkown values cannot serialize, so first replace them with sentinels.
+	// An additional complication is that unknown values cannot serialize, so first replace them with sentinels.
 	v, err = cty.Transform(v, func(_ cty.Path, v cty.Value) (cty.Value, error) {
 		if !v.IsKnown() {
 			return cty.StringVal(UnknownVariableValue), nil
