@@ -1905,3 +1905,71 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 			"prop.nest": AR,
 		})
 }
+
+func TestChangingTagsAll(t *testing.T) {
+	stateMap := resource.PropertyMap{
+		"tagsall": resource.NewObjectProperty(
+			resource.PropertyMap{
+				"tag1": resource.NewStringProperty("tag1value"),
+				"tag2": resource.NewStringProperty("tag2value"),
+			},
+		),
+	}
+
+	inputsMap := resource.PropertyMap{}
+
+	tfs := map[string]*v2Schema.Schema{
+		"tagsall": {
+			Type:     v2Schema.TypeMap,
+			Computed: true,
+			Elem: &v2Schema.Schema{
+				Type:     v2Schema.TypeString,
+				Computed: true,
+			},
+		},
+	}
+
+	sch := shimv2.NewSchemaMap(tfs)
+
+	res := &v2Schema.Resource{
+		Schema: tfs,
+		CustomizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+			return d.SetNew("tagsall", map[string]string{
+				"tag1": "tag1value",
+				"tag2": "tag2valueModified",
+			})
+		},
+	}
+
+	provider := shimv2.NewProvider(&v2Schema.Provider{
+		ResourcesMap: map[string]*v2Schema.Resource{
+			"resource": res,
+		},
+	})
+
+	r := Resource{
+		TF:     shimv2.NewResource(res),
+		Schema: &ResourceInfo{},
+	}
+
+	tfState, err := MakeTerraformState(r, "id", stateMap)
+	assert.NoError(t, err)
+
+	config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, nil)
+	assert.NoError(t, err)
+
+	tfDiff, err := provider.Diff("resource", tfState, config)
+	assert.NoError(t, err)
+
+	// t.Logf("tfDiff = %v", valast.String(tfDiff)) ==>
+	//
+	// Attributes: map[string]*terraform.ResourceAttrDiff{"tagsall.tag2": &terraform.ResourceAttrDiff{
+	//         Old: "tag2value",
+	//         New: "tag2valueModified",
+	// }},
+
+	// Convert the diff to a detailed diff and check the result.
+	diff := makeDetailedDiff(sch, nil, stateMap, inputsMap, tfDiff)
+
+	assert.Truef(t, len(diff) > 0, "Expected a non-empty diff")
+}
