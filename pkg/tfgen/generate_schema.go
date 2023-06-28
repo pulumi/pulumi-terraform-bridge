@@ -335,6 +335,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		nodeData["dependencies"] = jsi.Dependencies
 		nodeData["devDependencies"] = jsi.DevDependencies
 		nodeData["typescriptVersion"] = jsi.TypeScriptVersion
+		nodeData["pluginName"] = jsi.PluginName
+		nodeData["pluginVersion"] = jsi.PluginVersion
 	}
 	spec.Language["nodejs"] = rawMessage(nodeData)
 
