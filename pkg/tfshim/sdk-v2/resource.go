@@ -58,7 +58,7 @@ func (r v2Resource) Importer() shim.ImportFunc {
 					"as a bug in the Pulumi provider repository.", id)
 			}
 			if s.Attributes != nil {
-				results[i] = v2InstanceState{s, nil}
+				results[i] = v2InstanceState{r.tf, s, nil}
 			}
 		}
 		return results, nil
@@ -102,11 +102,13 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 		flattenValue(attributes, k, f.Value)
 	}
 
-	return v2InstanceState{&terraform.InstanceState{
-		ID:         id,
-		Attributes: attributes,
-		Meta:       meta,
-	}, nil}, nil
+	return v2InstanceState{
+		r.tf,
+		&terraform.InstanceState{
+			ID:         id,
+			Attributes: attributes,
+			Meta:       meta,
+		}, nil}, nil
 }
 
 func (r v2Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {

@@ -107,6 +107,8 @@ func TestRegressAws1423(t *testing.T) {
 		[]byte{}, /* pulumiSchema */
 	)
 
+	shimv2.SetInstanceStateStrategy(p.ResourcesMap().Get("aws_wafv2_web_acl"), shimv2.CtyInstanceState)
+
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Create",
