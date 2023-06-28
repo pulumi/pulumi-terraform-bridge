@@ -36,13 +36,11 @@ type v2InstanceState struct {
 }
 
 func NewInstanceState(resource *schema.Resource, s *terraform.InstanceState) shim.InstanceState {
-	st := v2InstanceState{
+	return v2InstanceState{
 		resource: resource,
 		tf:       s,
 		diff:     nil,
 	}
-	contract.Assertf(st.resource != nil, "v2InstanceState.resource != nil")
-	return st
 }
 
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {
