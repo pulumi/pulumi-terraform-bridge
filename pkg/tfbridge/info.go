@@ -474,6 +474,10 @@ type JavaScriptInfo struct {
 	Resolutions       map[string]string // NPM resolutions to add to package.json.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
+	PluginName        string            // The name of the plugin, which might be
+	// different from the package name.  The version of the plugin, which might be
+	// different from the version of the package.
+	PluginVersion string
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.
