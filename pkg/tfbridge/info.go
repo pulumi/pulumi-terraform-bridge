@@ -394,6 +394,10 @@ type SchemaInfo struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
+
+	// whether to treat this as a computed input for the purpose of diff, i.e.: should trigger an
+	// update even if it appears only as an output property.
+	ComputedInput bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.

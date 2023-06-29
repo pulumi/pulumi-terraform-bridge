@@ -1948,8 +1948,14 @@ func TestChangingTagsAll(t *testing.T) {
 	})
 
 	r := Resource{
-		TF:     shimv2.NewResource(res),
-		Schema: &ResourceInfo{},
+		TF: shimv2.NewResource(res),
+		Schema: &ResourceInfo{
+			Fields: map[string]*SchemaInfo{
+				"tagsall": {
+					ComputedInput: true,
+				},
+			},
+		},
 	}
 
 	tfState, err := MakeTerraformState(r, "id", stateMap)
@@ -1969,7 +1975,7 @@ func TestChangingTagsAll(t *testing.T) {
 	// }},
 
 	// Convert the diff to a detailed diff and check the result.
-	diff := makeDetailedDiff(sch, nil, stateMap, inputsMap, tfDiff)
-
-	assert.Truef(t, len(diff) > 0, "Expected a non-empty diff")
+	diff := makeDetailedDiff(sch, r.Schema.Fields, stateMap, inputsMap, tfDiff)
+	assert.Truef(t, len(diff) == 1, "Expected a non-empty diff")
+	assert.Contains(t, diff, forceDiffSomeSymbol)
 }
