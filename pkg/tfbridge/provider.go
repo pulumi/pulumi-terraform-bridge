@@ -600,6 +600,11 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	return &pulumirpc.CheckResponse{Inputs: minputs, Failures: failures}, nil
 }
 
+// When this key occurs in the detailed diff, report DIFF_SOME even if no other details are
+// available. This is a side channel used for computed inputs that aren't handled correctly - as
+// they don't appear in `news` and are an output of TF planning.
+var forceDiffSomeSymbol = "7586a3a2-98aa-45c3-9ec9-0e40d168e90c"
+
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	p.setLoggingContext(ctx)
@@ -648,6 +653,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	var changes pulumirpc.DiffResponse_DiffChanges
 	var properties []string
 	hasChanges := len(detailedDiff) > 0
+	if _, ok := detailedDiff[forceDiffSomeSymbol]; ok {
+		hasChanges = true
+		delete(detailedDiff, forceDiffSomeSymbol)
+	}
 	if hasChanges {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 		for k, d := range detailedDiff {
