@@ -112,6 +112,13 @@ type ProviderInfo struct {
 	// docs). The primary use case for this hook is to ignore problematic or flaky examples temporarily until the
 	// underlying issues are resolved and the examples can be rendered correctly.
 	SkipExamples func(SkipExamplesArgs) bool
+
+	// EXPERIMENTAL: the signature may change in minor releases.
+	//
+	// Optional function to post-process the generated schema spec after
+	// the bridge completed its original version based on the TF schema.
+	// A hook to enable custom schema modifications specific to a provider.
+	SchemaPostProcessor func(spec *pschema.PackageSpec)
 }
 
 func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {
