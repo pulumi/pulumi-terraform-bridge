@@ -16,3 +16,8 @@ linters:
     - revive
     - unconvert
     - unused
+
+issues:
+  exclude:
+    - "unused-parameter: parameter"
+    - "redefines-builtin-id:"

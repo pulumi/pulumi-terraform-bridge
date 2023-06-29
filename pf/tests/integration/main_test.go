@@ -35,8 +35,5 @@ func setupIntegrationTests() error {
 		return err
 	}
 
-	if err := ensureTestBridgeProviderCompiled(wd); err != nil {
-		return err
-	}
-	return nil
+	return ensureTestBridgeProviderCompiled(wd)
 }

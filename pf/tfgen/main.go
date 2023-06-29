@@ -53,11 +53,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }
 
@@ -99,10 +95,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }

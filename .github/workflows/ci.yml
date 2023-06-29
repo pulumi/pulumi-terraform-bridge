@@ -39,7 +39,7 @@ jobs:
             skip-cache: true
             skip-pkg-cache: true
             skip-build-cache: true
-            version: v1.51.2
+            version: v1.53
       - name: Lint
         run: make lint
       - name: Test

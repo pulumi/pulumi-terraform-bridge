@@ -42,10 +42,7 @@ func setupIntegrationTests() error {
 		return err
 	}
 
-	if err := ensureCompiledTestProviders(wd); err != nil {
-		return err
-	}
-	return nil
+	return ensureCompiledTestProviders(wd)
 }
 
 func accTestOptions(t *testing.T) *integration.ProgramTestOptions {

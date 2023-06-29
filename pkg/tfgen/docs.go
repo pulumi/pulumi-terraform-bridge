@@ -688,7 +688,8 @@ func reformatExamples(sections [][]string) [][]string {
 
 				// Copy the section over. Note that we intentionally avoid copying the first line and any whitespace
 				// that follows it, as we will overwrite that content with the canonical header later.
-				for s = s[1:]; len(s) > 0 && isBlank(s[0]); s = s[1:] {
+				for s = s[1:]; len(s) > 0 && isBlank(s[0]); {
+					s = s[1:]
 				}
 
 				sectionCopy := make([]string, len(s)+2)
