@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
@@ -29,86 +30,25 @@ func TestRegressAws2490(t *testing.T) {
 	ctx := context.Background()
 
 	resourceIntegrationCreate := func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		var diags diag.Diagnostics
-		conn := meta.(*conns.AWSClient).APIGatewayV2Conn()
-
-		req := &apigatewayv2.CreateIntegrationInput{
-			ApiId:           aws.String(d.Get("api_id").(string)),
-			IntegrationType: aws.String(d.Get("integration_type").(string)),
-		}
-		if v, ok := d.GetOk("connection_id"); ok {
-			req.ConnectionId = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("connection_type"); ok {
-			req.ConnectionType = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("content_handling_strategy"); ok {
-			req.ContentHandlingStrategy = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("credentials_arn"); ok {
-			req.CredentialsArn = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("description"); ok {
-			req.Description = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("integration_method"); ok {
-			req.IntegrationMethod = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("integration_subtype"); ok {
-			req.IntegrationSubtype = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("integration_uri"); ok {
-			req.IntegrationUri = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("passthrough_behavior"); ok {
-			req.PassthroughBehavior = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("payload_format_version"); ok {
-			req.PayloadFormatVersion = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("request_parameters"); ok {
-			req.RequestParameters = flex.ExpandStringMap(v.(map[string]interface{}))
-		}
-		if v, ok := d.GetOk("request_templates"); ok {
-			req.RequestTemplates = flex.ExpandStringMap(v.(map[string]interface{}))
-		}
-		if v, ok := d.GetOk("response_parameters"); ok && v.(*schema.Set).Len() > 0 {
-			req.ResponseParameters = expandIntegrationResponseParameters(v.(*schema.Set).List())
-		}
-		if v, ok := d.GetOk("template_selection_expression"); ok {
-			req.TemplateSelectionExpression = aws.String(v.(string))
-		}
-		if v, ok := d.GetOk("timeout_milliseconds"); ok {
-			req.TimeoutInMillis = aws.Int64(int64(v.(int)))
-		}
-		if v, ok := d.GetOk("tls_config"); ok {
-			req.TlsConfig = expandTLSConfig(v.([]interface{}))
-		}
-
-		resp, err := conn.CreateIntegrationWithContext(ctx, req)
-		if err != nil {
-			return sdkdiag.AppendErrorf(diags, "creating API Gateway v2 integration: %s", err)
-		}
-
-		d.SetId("some-id")
-		return append(diags, resourceIntegrationRead(ctx, d, meta)...)
+		// The real upstream code makes an API call and then calls resourceIntegrationRead. The API call does
+		// not return passthrough_behavior and effectively this sets "passthrough_behavior" to nil.
+		var v *string
+		d.Set("passthrough_behavior", v)
+		d.SetId("myid")
+		return diag.Diagnostics{}
 	}
 
 	resource := &schema.Resource{
 		CreateWithoutTimeout: resourceIntegrationCreate,
 		Schema: map[string]*schema.Schema{
+			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"passthrough_behavior": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "WHEN_NO_MATCH",
-				// ValidateFunc: validation.StringInSlice(apigatewayv2.PassthroughBehavior_Values(), false),
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// Not set for HTTP APIs.
-					if old == "" && new == "WHEN_NO_MATCH" {
-						return true
-					}
-					return false
-				},
 			},
 		},
 	}
@@ -120,7 +60,7 @@ func TestRegressAws2490(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider) // , shimv2.WithDiffStrategy(shimv2.PlanState))
+	p := shimv2.NewProvider(tfProvider)
 
 	info := tfbridge.ProviderInfo{
 		P:           p,
@@ -151,16 +91,14 @@ func TestRegressAws2490(t *testing.T) {
 	  "request": {
 	    "urn": "urn:pulumi:dev::aws-2490::aws:apigatewayv2/integration:Integration::example",
 	    "properties": {
-	      "__defaults": [
-		"connectionType"
-	      ],
-	      "passthroughBehavior": "NEVER",
+	      "__defaults": [],
+	      "passthroughBehavior": "NEVER"
 	    }
 	  },
 	  "response": {
 	    "id": "qkmc19h",
 	    "properties": {
-	      "passthroughBehavior": "",
+	      "passthroughBehavior": "NEVER"
 	    }
 	  }
 	}`
