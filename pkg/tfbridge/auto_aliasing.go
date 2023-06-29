@@ -314,6 +314,7 @@ func applyResourceMaxItemsOneAliasing(
 // SchemaInfo and vise versa as necessary to avoid breaking changes in the
 // resulting sdk.
 func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaInfo) (hasH bool, hasI bool) {
+	//revive:disable-next-line:empty-block
 	if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
 		// MaxItemsOne does not apply, so do nothing
 	} else if info.MaxItemsOne != nil {
