@@ -49,11 +49,36 @@ type fieldHistory struct {
 	Elem   *fieldHistory            `json:"elem,omitempty"`
 }
 
-// Apply resource and function aliases to maintain backwards compatibility with previous
-// versions of this provider.  Apply MaxItemsOne history to maintain backwards
-// compatibility with previous versions of this provider.
+// Automatically applies backwards compatibility best practices.
 //
-// All history is dropped when there is a major version change.
+// Specifically, [ApplyAutoAliases] may perform the following actions:
+//
+// - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+// - Edit [ResourceInfo.Aliases]
+// - Edit [SchemaInfo.MaxItemsOne]
+//
+// The goal is to always maximize backwards compatibility and reduce breaking changes for
+// the users of the Pulumi providers.
+//
+// Resource aliases help mask TF provider resource renames or changes in mapped tokens so
+// older programs continue to work.  See [ResourceInfo.RenameResourceWithAlias] and
+// [ResourceInfo.Aliases] for more details.
+//
+// [SchemaInfo.MaxItemsOne] changes are also important because they involve flattening and
+// pluralizing names. Collections (lists or sets) marked with MaxItems=1 are projected as
+// scalar types in Pulumi SDKs. Therefore changes to the MaxItems property may be breaking
+// the compilation of programs as the type changes from `T to List[T]` or vice versa. To
+// avoid these breaking changes, this method undoes any upstream changes to MaxItems using
+// [SchemaInfo.MaxItemsOne] overrides. This happens until a major version change is
+// detected, and then overrides are cleared. Effectively this makes sure that upstream
+// MaxItems changes are deferred until the next major version.
+//
+// Implementation note: to operate correctly this method needs to keep a persistent track
+// of a database of past decision history. This is currently done by doing reads and
+// writes to `providerInfo.GetMetadata()`, which is assumed to be persisted across
+// provider releases. The bridge framework keeps this information written out to an opaque
+// `bridge-metadata.json` blob which is expected to be stored in source control to persist
+// across releases.
 //
 // Panics if [ProviderInfo.ApplyAutoAliases] would return an error.
 func (info *ProviderInfo) MustApplyAutoAliases() {
@@ -61,11 +86,36 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 	contract.AssertNoErrorf(err, "Failed to apply aliases")
 }
 
-// Apply resource and function aliases to maintain backwards compatibility with previous
-// versions of this provider.  Apply MaxItemsOne history to maintain backwards
-// compatibility with previous versions of this provider.
+// Automatically applies backwards compatibility best practices.
 //
-// All history is dropped when there is a major version change.
+// Specifically, [ApplyAutoAliases] may perform the following actions:
+//
+// - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+// - Edit [ResourceInfo.Aliases]
+// - Edit [SchemaInfo.MaxItemsOne]
+//
+// The goal is to always maximize backwards compatibility and reduce breaking changes for
+// the users of the Pulumi providers.
+//
+// Resource aliases help mask TF provider resource renames or changes in mapped tokens so
+// older programs continue to work.  See [ResourceInfo.RenameResourceWithAlias] and
+// [ResourceInfo.Aliases] for more details.
+//
+// [SchemaInfo.MaxItemsOne] changes are also important because they involve flattening and
+// pluralizing names. Collections (lists or sets) marked with MaxItems=1 are projected as
+// scalar types in Pulumi SDKs. Therefore changes to the MaxItems property may be breaking
+// the compilation of programs as the type changes from `T to List[T]` or vice versa. To
+// avoid these breaking changes, this method undoes any upstream changes to MaxItems using
+// [SchemaInfo.MaxItemsOne] overrides. This happens until a major version change is
+// detected, and then overrides are cleared. Effectively this makes sure that upstream
+// MaxItems changes are deferred until the next major version.
+//
+// Implementation note: to operate correctly this method needs to keep a persistent track
+// of a database of past decision history. This is currently done by doing reads and
+// writes to `providerInfo.GetMetadata()`, which is assumed to be persisted across
+// provider releases. The bridge framework keeps this information written out to an opaque
+// `bridge-metadata.json` blob which is expected to be stored in source control to persist
+// across releas
 func (info *ProviderInfo) ApplyAutoAliases() error {
 	artifact := info.GetMetadata()
 	hist, err := getHistory(artifact)
