@@ -51,20 +51,22 @@ func MappedModules(
 
 	return b.Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string) (*b.ResourceInfo, error) {
+			func(mod, tk string, r *b.ResourceInfo) error {
 				tk, err := finalize(mod, tk)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+				checkedApply(&r.Tok, tokens.Type(tk))
+				return nil
 			}, transform),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string) (*b.DataSourceInfo, error) {
+			func(mod, tk string, d *b.DataSourceInfo) error {
 				tk, err := finalize(mod, "get"+tk)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+				checkedApply(&d.Tok, tokens.ModuleMember(tk))
+				return nil
 			}, transform),
 	}
 }

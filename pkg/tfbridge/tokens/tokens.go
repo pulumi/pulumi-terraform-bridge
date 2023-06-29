@@ -52,3 +52,13 @@ func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase
 func camelCase(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
 }
+
+func checkedApply[T comparable](dst *T, src T) {
+	if dst == nil {
+		panic("checkedApply cannot be applied to nil dst")
+	}
+	var empty T
+	if (*dst) == empty {
+		*dst = src
+	}
+}
