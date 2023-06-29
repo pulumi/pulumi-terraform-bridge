@@ -153,7 +153,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 	}
 }
 
-func makePropertyDiff1(name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
+func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
 	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
 	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
@@ -299,15 +299,15 @@ func makeDetailedDiff(
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff1(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff1(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff1(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE
