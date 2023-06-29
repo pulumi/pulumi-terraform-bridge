@@ -645,20 +645,14 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	doIgnoreChanges(res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
-	detailedDiff := makeDetailedDiff(res.TF.Schema(), res.Schema.Fields, olds, news, diff)
+	detailedDiff, changes := makeDetailedDiff(res.TF.Schema(), res.Schema.Fields, olds, news, diff)
 
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
 	var replaced map[string]bool
-	var changes pulumirpc.DiffResponse_DiffChanges
 	var properties []string
-	hasChanges := len(detailedDiff) > 0
-	if _, ok := detailedDiff[forceDiffSomeSymbol]; ok {
-		hasChanges = true
-		delete(detailedDiff, forceDiffSomeSymbol)
-	}
-	if hasChanges {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
+
+	if changes == pulumirpc.DiffResponse_DIFF_SOME {
 		for k, d := range detailedDiff {
 			// Turn the attribute name into a top-level property name by trimming everything after the first dot.
 			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
@@ -678,8 +672,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 				replaced[k] = true
 			}
 		}
-	} else {
-		changes = pulumirpc.DiffResponse_DIFF_NONE
 	}
 
 	// For all properties that are ForceNew, but didn't change, assume they are stable.  Also recognize
