@@ -156,19 +156,20 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
 	diff map[string]*pulumirpc.PropertyDiff, tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
+	isComputedInput := ps != nil && ps.ComputedInput
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
 		case v.IsArray():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".#"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".#"); d == nil || (!d.NewComputed && !isComputedInput) {
 				return true
 			}
 			name += ".#"
 		case v.IsObject():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".%"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".%"); d == nil || (!d.NewComputed && !isComputedInput) {
 				return true
 			}
 			name += ".%"
@@ -203,6 +204,10 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				if hasOtherDiff &&
 					(other.Kind == pulumirpc.PropertyDiff_ADD || other.Kind == pulumirpc.PropertyDiff_ADD_REPLACE) &&
 					!d.RequiresNew {
+					if isComputedInput {
+						// The value is irrelevant, see forceDiffSomeSymbol
+						diff[forceDiffSomeSymbol] = nil
+					}
 					delete(diff, path)
 				}
 				return false
