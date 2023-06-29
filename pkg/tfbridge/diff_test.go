@@ -2058,7 +2058,7 @@ func TestChangingTagsAll(t *testing.T) {
 		Schema: &ResourceInfo{
 			Fields: map[string]*SchemaInfo{
 				"tagsall": {
-					ComputedInput: true,
+					XComputedInput: true,
 				},
 			},
 		},

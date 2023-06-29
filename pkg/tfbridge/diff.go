@@ -157,7 +157,7 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
 	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
-	isComputedInput := ps != nil && ps.ComputedInput
+	isComputedInput := ps != nil && ps.XComputedInput
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
 		case v.IsArray():
