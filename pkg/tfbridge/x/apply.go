@@ -27,7 +27,7 @@ import (
 // Add mapped resources and datasources according to the given strategies.
 //
 // Deprecated: This item has been moved to
-// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/defaults.ApplyStrategy"
+// [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ComputeTokens]
 func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
 	var errs multierror.Error
 

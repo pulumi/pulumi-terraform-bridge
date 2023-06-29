@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package defaults
+package tfbridge_test
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -46,8 +47,8 @@ func TestTokensSingleModule(t *testing.T) {
 	makeToken := func(module, name string) (string, error) {
 		return fmt.Sprintf("foo:%s:%s", module, name), nil
 	}
-	opts := TokensSingleModule("foo_", "index", makeToken)
-	err := ApplyStrategy(&info, opts)
+	opts := tokens.SingleModule("foo_", "index", makeToken)
+	err := info.ComputeTokens(opts)
 	require.NoError(t, err)
 
 	expectedResources := map[string]*tfbridge.ResourceInfo{
@@ -67,7 +68,7 @@ func TestTokensSingleModule(t *testing.T) {
 	info.Resources = map[string]*tfbridge.ResourceInfo{
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 	}
-	err = ApplyStrategy(&info, Strategy{
+	err = info.ComputeTokens(tfbridge.Strategy{
 		Resource: opts.Resource,
 	})
 	require.NoError(t, err)
@@ -93,8 +94,8 @@ func TestTokensKnownModules(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := ApplyStrategy(&info, Strategy{
-		Resource: TokensKnownModules("cs101_", "index", []string{
+	err := info.ComputeTokens(tfbridge.Strategy{
+		Resource: tokens.KnownModules("cs101_", "index", []string{
 			"fizz_", "buzz_", "fizz_buzz_",
 		}, func(module, name string) (string, error) {
 			return fmt.Sprintf("cs101:%s:%s", module, name), nil
@@ -125,8 +126,8 @@ func TestTokensMappedModules(t *testing.T) {
 			},
 		}).Shim(),
 	}
-	err := ApplyStrategy(&info, Strategy{
-		Resource: TokensMappedModules("cs101_", "idx", map[string]string{
+	err := info.ComputeTokens(tfbridge.Strategy{
+		Resource: tokens.MappedModules("cs101_", "idx", map[string]string{
 			"fizz_":      "fIzZ",
 			"buzz_":      "buZZ",
 			"fizz_buzz_": "fizZBuzz",
@@ -159,13 +160,13 @@ func TestUnmappable(t *testing.T) {
 		}).Shim(),
 	}
 
-	strategy := TokensKnownModules("cs101_", "index", []string{
+	strategy := tokens.KnownModules("cs101_", "index", []string{
 		"fizz_", "buzz_", "fizz_buzz_",
 	}, func(module, name string) (string, error) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
 	strategy = strategy.Unmappable("five", "SomeGoodReason")
-	err := ApplyStrategy(&info, strategy)
+	err := info.ComputeTokens(strategy)
 	assert.ErrorContains(t, err, "SomeGoodReason")
 
 	// Override the unmappable resources
@@ -174,7 +175,7 @@ func TestUnmappable(t *testing.T) {
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
 		"cs101_buzz_five":          {Tok: "cs101:buzz:Five"},
 	}
-	err = ApplyStrategy(&info, strategy)
+	err = info.ComputeTokens(strategy)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_fizz_buzz_one_five": {Tok: "cs101:fizzBuzz:One5"},
@@ -197,7 +198,7 @@ func TestIgnored(t *testing.T) {
 		}).Shim(),
 		IgnoreMappings: []string{"cs101_three"},
 	}
-	err := ApplyStrategy(&info, TokensSingleModule("cs101_", "index_", MakeStandardToken("cs101")))
+	err := info.ComputeTokens(tokens.SingleModule("cs101_", "index_", tokens.MakeStandard("cs101")))
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"cs101_one_five":  {Tok: "cs101:index/oneFive:OneFive"},
@@ -209,7 +210,7 @@ func TestTokensInferredModules(t *testing.T) {
 	tests := []struct {
 		name            string
 		resourceMapping map[string]string
-		opts            *InferredModulesOpts
+		opts            *tokens.InferredModulesOpts
 	}{
 		{
 			name: "oci-example",
@@ -267,7 +268,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"oci_apm_synthetics_script":                  "apmSynthetics:Script",
 				"oci_apm_synthetics_dedicated_vantage_point": "apmSynthetics:DedicatedVantagePoint",
 			},
-			opts: &InferredModulesOpts{
+			opts: &tokens.InferredModulesOpts{
 				TfPkgPrefix:          "oci_",
 				MinimumModuleSize:    2,
 				MimimumSubmoduleSize: 2,
@@ -292,7 +293,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_goodbye_folks": "index:GoodbyeFolks",
 				"pkg_hi":            "index:Hi",
 			},
-			opts: &InferredModulesOpts{
+			opts: &tokens.InferredModulesOpts{
 				// We set MinimumModuleSize down to 3 to so we only need
 				// tree entries prefixed with `pkg_hello` to have a hello
 				// module created.
@@ -313,7 +314,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_not_r1": "mod:NotR1",
 				"pkg_mod_not_r2": "mod:NotR2",
 			},
-			opts: &InferredModulesOpts{
+			opts: &tokens.InferredModulesOpts{
 				TfPkgPrefix: "pkg_",
 				// We set the minimum module size to 4. This ensures that
 				// `pkg_mod` is picked up as a module.
@@ -333,7 +334,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_sub_r1": "mod:SubR1",
 				"pkg_mod_sub_r2": "mod:SubR2",
 			},
-			opts: &InferredModulesOpts{
+			opts: &tokens.InferredModulesOpts{
 				TfPkgPrefix:          "pkg_",
 				MinimumModuleSize:    4,
 				MimimumSubmoduleSize: 3,
@@ -347,7 +348,7 @@ func TestTokensInferredModules(t *testing.T) {
 				"pkg_mod_r2": "mod:R2",
 				"pkg_r1":     "index:R1",
 			},
-			opts: &InferredModulesOpts{
+			opts: &tokens.InferredModulesOpts{
 				MinimumModuleSize: 3,
 			},
 		},
@@ -366,11 +367,11 @@ func TestTokensInferredModules(t *testing.T) {
 				}).Shim(),
 			}
 
-			strategy, err := TokensInferredModules(info,
+			strategy, err := tokens.InferredModules(info,
 				func(module, name string) (string, error) { return module + ":" + name, nil },
 				tt.opts)
 			require.NoError(t, err)
-			err = ApplyStrategy(info, strategy)
+			err = info.ComputeTokens(strategy)
 			require.NoError(t, err)
 
 			mapping := map[string]string{}
@@ -390,7 +391,7 @@ func makeAutoAliasing(t *testing.T) (
 
 	return metadata, func(prov *tfbridge.ProviderInfo, metadata tfbridge.ProviderMetadata) {
 		prov.MetadataInfo = &tfbridge.MetadataInfo{Data: metadata, Path: "must be non-empty"}
-		err := ApplyAliases(prov)
+		err := prov.ApplyAutoAliases()
 		require.NoError(t, err)
 	}
 }
@@ -411,7 +412,7 @@ func TestTokenAliasing(t *testing.T) {
 
 	metadata, autoAliasing := makeAutoAliasing(t)
 
-	err := ApplyStrategy(simple, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+	err := simple.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 	require.NoError(t, err)
 
 	autoAliasing(simple, metadata)
@@ -425,10 +426,10 @@ func TestTokenAliasing(t *testing.T) {
 	modules := provider()
 	modules.Version = "1.0.0"
 
-	knownModules := TokensKnownModules("pkg_", "",
-		[]string{"mod1", "mod2"}, MakeStandardToken("pkg"))
+	knownModules := tokens.KnownModules("pkg_", "",
+		[]string{"mod1", "mod2"}, tokens.MakeStandard("pkg"))
 
-	err = ApplyStrategy(modules, knownModules)
+	err = modules.ComputeTokens(knownModules)
 	require.NoError(t, err)
 
 	autoAliasing(modules, metadata)
@@ -469,7 +470,7 @@ func TestTokenAliasing(t *testing.T) {
 	modules2 := provider()
 	modules2.Version = "1.0.0"
 
-	err = ApplyStrategy(modules2, knownModules)
+	err = modules2.ComputeTokens(knownModules)
 	require.NoError(t, err)
 
 	autoAliasing(modules2, metadata)
@@ -483,7 +484,7 @@ func TestTokenAliasing(t *testing.T) {
 	modules3 := provider()
 	modules3.Version = "100.0.0"
 
-	err = ApplyStrategy(modules3, knownModules)
+	err = modules3.ComputeTokens(knownModules)
 	require.NoError(t, err)
 
 	autoAliasing(modules3, metadata)
@@ -509,7 +510,7 @@ func TestTokenAliasing(t *testing.T) {
 	// version in history – in this case, all aliases should be kept
 	modules4 := provider()
 
-	err = ApplyStrategy(modules4, knownModules)
+	err = modules4.ComputeTokens(knownModules)
 	require.NoError(t, err)
 
 	autoAliasing(modules4, metadata)
@@ -530,7 +531,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := prov.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -617,7 +618,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := prov.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -693,7 +694,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 				},
 			}).Shim(),
 		}
-		err := ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err := prov.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -771,7 +772,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 			}).Shim(),
 			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
 		}
-		err = ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err = prov.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -812,7 +813,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 		p := provider()
 
 		p.SetAutonaming(24, "-")
-		err := ApplyAliases(p)
+		err := p.ApplyAutoAliases()
 		require.NoError(t, err)
 
 		assertExpected(t, p)
@@ -820,7 +821,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		err := ApplyAliases(p)
+		err := p.ApplyAutoAliases()
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
@@ -853,7 +854,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 			}).Shim(),
 			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
 		}
-		err = ApplyStrategy(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		err = prov.ComputeTokens(tokens.SingleModule("pkg_", "index", tokens.MakeStandard("pkg")))
 		require.NoError(t, err)
 		return prov
 	}
@@ -893,7 +894,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 		p := provider()
 
 		p.SetAutonaming(24, "-")
-		err := ApplyAliases(p)
+		err := p.ApplyAutoAliases()
 		require.NoError(t, err)
 
 		assertExpected(t, p)
@@ -901,7 +902,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 
 	t.Run("auto-aliased-then-named", func(t *testing.T) {
 		p := provider()
-		err := ApplyAliases(p)
+		err := p.ApplyAutoAliases()
 		require.NoError(t, err)
 		p.SetAutonaming(24, "-")
 
