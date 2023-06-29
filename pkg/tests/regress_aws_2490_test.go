@@ -85,22 +85,61 @@ func TestRegressAws2490(t *testing.T) {
 		[]byte{}, /* pulumiSchema */
 	)
 
-	testCase := `
-	{
-	  "method": "/pulumirpc.ResourceProvider/Create",
-	  "request": {
-	    "urn": "urn:pulumi:dev::aws-2490::aws:apigatewayv2/integration:Integration::example",
-	    "properties": {
-	      "__defaults": [],
-	      "passthroughBehavior": "NEVER"
-	    }
-	  },
-	  "response": {
-	    "id": "qkmc19h",
-	    "properties": {
-	      "passthroughBehavior": "NEVER"
-	    }
-	  }
-	}`
-	testutils.Replay(t, server, testCase)
+	t.Run("create", func(t *testing.T) {
+		testCase := `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Create",
+		  "request": {
+		    "urn": "urn:pulumi:dev::aws-2490::aws:apigatewayv2/integration:Integration::example",
+		    "properties": {
+		      "__defaults": [],
+		      "passthroughBehavior": "NEVER"
+		    }
+		  },
+		  "response": {
+		    "id": "qkmc19h",
+		    "properties": {
+		      "passthroughBehavior": ""
+		    }
+		  }
+		}`
+		// Currently this is how it works.. Subsequently Pulumi stores passthroughBehavior output as "" in the
+		// state input as "NEVER" in the state. Should output still be "" here?
+		testutils.Replay(t, server, testCase)
+	})
+
+	t.Run("diff", func(t *testing.T) {
+		testCase := `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+		    "id": "hacg44t",
+		    "urn": "urn:pulumi:dev::aws-2490::aws:apigatewayv2/integration:Integration::example",
+		    "olds": {
+		      "passthroughBehavior": "",
+		    },
+		    "news": {
+		      "__defaults": [],
+		      "passthroughBehavior": "NEVER",
+		    }
+		  },
+		  "response": {
+		    "changes": "DIFF_SOME",
+		    "diffs": [
+		      "passthroughBehavior"
+		    ],
+		    "detailedDiff": {
+		      "passthroughBehavior": {
+			"kind": "UPDATE"
+		      }
+		    },
+		    "hasDetailedDiff": true
+		  }
+		}
+		`
+		// Subsequently this is reported as a diff, which is undesirable. Apparently this is getting Pulumi
+		// "output" in olds, but not getting old inputs. Should Pulumi be using old inputs as the basis for the
+		// diff?
+		testutils.Replay(t, server, testCase)
+	})
 }
