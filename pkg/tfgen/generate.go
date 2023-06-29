@@ -57,6 +57,11 @@ const (
 )
 
 type Generator struct {
+	// Optional function to post-process the generated schema spec after
+	// the bridge completed its original version based on the TF schema.
+	// A hook to enable custom schema modifications specific to a provider.
+	SchemaPostProcessor func(spec *pschema.PackageSpec)
+
 	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
 	version          string                // the package version.
 	language         Language              // the language runtime to generate.
@@ -856,6 +861,11 @@ func (g *Generator) Generate() error {
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
+	}
+
+	// Apply schema post-processing if defined in the provider.
+	if g.SchemaPostProcessor != nil {
+		g.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
 	// As a side-effect genPulumiSchema also populated rename tables.
