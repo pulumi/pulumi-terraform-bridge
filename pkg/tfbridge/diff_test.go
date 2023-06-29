@@ -1783,7 +1783,6 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 		},
 	}
 
-	//nolint:lll
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
 		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
 		t.Run(name, func(t *testing.T) {
