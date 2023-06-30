@@ -15,6 +15,7 @@
 package tfbridge_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -485,6 +486,13 @@ func TestTokenAliasing(t *testing.T) {
 	assert.Equal(t, string(hist2.Marshal()), string(hist3.Marshal()),
 		"No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
+	assert.Equalf(t, func() string {
+		m := map[string]interface{}{}
+		require.NoError(t, json.Unmarshal(hist2.Marshal(), &m))
+		resources := m["auto-aliasing"].(map[string]interface{})["resources"]
+		pkgMod2R1 := resources.(map[string]interface{})["pkg_mod2_r1"]
+		return pkgMod2R1.(map[string]interface{})["current"].(string)
+	}(), "pkg:mod2/r1:R1", "Ensure current holds the most recent name")
 
 	modules3 := provider()
 	modules3.Version = "100.0.0"

@@ -209,10 +209,7 @@ func aliasResource(
 		hist[tfToken] = &tokenHistory[tokens.Type]{
 			Current: computed.Tok,
 		}
-	} else if prev.Current != computed.Tok {
-		// It's in history, but something has changed. Update the history to reflect
-		// the new reality, then add aliases.
-
+	} else {
 		// We don't do this eagerly because aliasResource is called while
 		// iterating over p.Resources which aliasOrRenameResource mutates.
 		*applyResourceAliases = append(*applyResourceAliases,
@@ -403,17 +400,20 @@ func aliasOrRenameResource(
 ) {
 	var alreadyPresent bool
 	for _, a := range hist.Past {
-		if a.Name == hist.Current {
+		if a.Name == res.Tok {
 			alreadyPresent = true
 			break
 		}
 	}
-	if !alreadyPresent {
+	if !alreadyPresent && res.Tok != hist.Current {
+		// The resource is in history, but the name has changed. Update the new current name
+		// and add the old name to the history.
 		hist.Past = append(hist.Past, alias[tokens.Type]{
 			Name:         hist.Current,
 			InCodegen:    true,
 			MajorVersion: currentVersion,
 		})
+		hist.Current = res.Tok
 	}
 	for _, a := range hist.Past {
 		legacy := a.Name
