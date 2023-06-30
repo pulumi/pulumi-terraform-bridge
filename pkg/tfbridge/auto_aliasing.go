@@ -209,10 +209,7 @@ func aliasResource(
 		hist[tfToken] = &tokenHistory[tokens.Type]{
 			Current: computed.Tok,
 		}
-	} else if prev.Current != computed.Tok {
-		// It's in history, but something has changed. Update the history to reflect
-		// the new reality, then add aliases.
-
+	} else {
 		// We don't do this eagerly because aliasResource is called while
 		// iterating over p.Resources which aliasOrRenameResource mutates.
 		*applyResourceAliases = append(*applyResourceAliases,
@@ -408,12 +405,15 @@ func aliasOrRenameResource(
 			break
 		}
 	}
-	if !alreadyPresent {
+	if !alreadyPresent && res.Tok != hist.Current {
+		// The resource is in history, but the name has changed. Update the new current name
+		// and add the old name to the history.
 		hist.Past = append(hist.Past, alias[tokens.Type]{
 			Name:         hist.Current,
 			InCodegen:    true,
 			MajorVersion: currentVersion,
 		})
+		hist.Current = res.Tok
 	}
 	for _, a := range hist.Past {
 		legacy := a.Name
@@ -446,8 +446,8 @@ func aliasDataSource(
 			Current:      computed.Tok,
 			MajorVersion: version,
 		}
-	} else if prev.Current != computed.Tok {
-		aliasOrRenameDataSource(p, tfToken, prev, version)
+	} else {
+		aliasOrRenameDataSource(p, computed, tfToken, prev, version)
 	}
 
 	if ds == nil {
@@ -465,7 +465,8 @@ func aliasDataSource(
 }
 
 func aliasOrRenameDataSource(
-	p *ProviderInfo, tfToken string,
+	p *ProviderInfo,
+	ds *DataSourceInfo, tfToken string,
 	prev *tokenHistory[tokens.ModuleMember],
 	currentVersion int,
 ) {
@@ -476,11 +477,20 @@ func aliasOrRenameDataSource(
 		// is nothing to alias anymore.
 		return
 	}
-	alias := alias[tokens.ModuleMember]{
-		Name:         prev.Current,
-		MajorVersion: currentVersion,
+
+	var alreadyPresent bool
+	for _, a := range prev.Past {
+		if a.Name == prev.Current {
+			alreadyPresent = true
+			break
+		}
 	}
-	prev.Past = append(prev.Past, alias)
+	if !alreadyPresent && ds.Tok != prev.Current {
+		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
+			Name:         prev.Current,
+			MajorVersion: currentVersion,
+		})
+	}
 	for _, a := range prev.Past {
 		if a.MajorVersion != currentVersion {
 			continue

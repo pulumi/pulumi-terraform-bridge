@@ -15,6 +15,7 @@
 package tfbridge_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -410,6 +411,9 @@ func TestTokenAliasing(t *testing.T) {
 					"pkg_mod1_r2": nil,
 					"pkg_mod2_r1": nil,
 				},
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_mod1_r1": nil,
+				},
 			}).Shim(),
 		}
 	}
@@ -471,6 +475,15 @@ func TestTokenAliasing(t *testing.T) {
 			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
 		},
 	}, modules.Resources)
+	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
+		"pkg_mod1_r1": {Tok: "pkg:mod1/getR1:getR1"},
+		"pkg_mod1_r1_legacy": {
+			Tok:                "pkg:index/getMod1R1:getMod1R1",
+			DeprecationMessage: "pkg.index/getmod1r1.getMod1R1 has been deprecated in favor of pkg.mod1/getr1.getR1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		},
+	},
+		modules.DataSources)
 
 	modules2 := provider()
 	modules2.Version = "1.0.0"
@@ -485,6 +498,13 @@ func TestTokenAliasing(t *testing.T) {
 	assert.Equal(t, string(hist2.Marshal()), string(hist3.Marshal()),
 		"No changes should imply no change in history")
 	assert.Equal(t, modules, modules2)
+	assert.Equalf(t, func() string {
+		m := map[string]interface{}{}
+		require.NoError(t, json.Unmarshal(hist2.Marshal(), &m))
+		resources := m["auto-aliasing"].(map[string]interface{})["resources"]
+		pkgMod2R1 := resources.(map[string]interface{})["pkg_mod2_r1"]
+		return pkgMod2R1.(map[string]interface{})["current"].(string)
+	}(), "pkg:mod2/r1:R1", "Ensure current holds the most recent name")
 
 	modules3 := provider()
 	modules3.Version = "100.0.0"
