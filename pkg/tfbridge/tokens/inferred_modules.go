@@ -80,11 +80,11 @@ func InferredModules(
 	tokenMap := opts.computeTokens(info)
 
 	return b.Strategy{
-		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *b.ResourceInfo {
-			return &b.ResourceInfo{Tok: tokens.Type(tk)}
+		Resource: tokenFromMap(tokenMap, finalize, func(tk string, resource *b.ResourceInfo) {
+			checkedApply(&resource.Tok, tokens.Type(tk))
 		}),
-		DataSource: tokenFromMap(tokenMap, finalize, func(tk string) *b.DataSourceInfo {
-			return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}
+		DataSource: tokenFromMap(tokenMap, finalize, func(tk string, datasource *b.DataSourceInfo) {
+			checkedApply(&datasource.Tok, tokens.ModuleMember(tk))
 		}),
 	}, nil
 }
@@ -349,21 +349,22 @@ func sharedPrefix(s1, s2 string) string {
 type tokenInfo struct{ mod, name string }
 
 func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
-	tokenMap map[string]tokenInfo, finalize Make, new func(tk string) *T,
+	tokenMap map[string]tokenInfo, finalize Make, apply func(tk string, elem *T),
 ) b.ElementStrategy[T] {
-	return func(tfToken string) (*T, error) {
+	return func(tfToken string, elem *T) error {
 		info, ok := tokenMap[tfToken]
 		if !ok {
 			existing := []string{}
 			for k := range tokenMap {
 				existing = append(existing, k)
 			}
-			return nil, fmt.Errorf("TF token '%s' not present when prefix computed, found %#v", tfToken, existing)
+			return fmt.Errorf("TF token '%s' not present when prefix computed, found %#v", tfToken, existing)
 		}
 		tk, err := finalize(camelCase(info.mod), upperCamelCase(info.name))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return new(tk), nil
+		apply(tk, elem)
+		return nil
 	}
 }

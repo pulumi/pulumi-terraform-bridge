@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -26,7 +27,7 @@ import (
 )
 
 // A generic remapping strategy.
-type ElementStrategy[T ResourceInfo | DataSourceInfo] func(tfToken string) (*T, error)
+type ElementStrategy[T ResourceInfo | DataSourceInfo] func(tfToken string, elem *T) error
 
 // Describe the mapping from TF resource and datasource tokens to Pulumi resources and
 // datasources.
@@ -127,56 +128,43 @@ func applyComputedTokens[T ResourceInfo | DataSourceInfo](
 
 	var errs multierror.Error
 	for _, k := range keys {
-		v := resultMap[k]
-		if v != nil || ignoredMappings[k] {
+		if ignoredMappings[k] {
 			// Skipping, since there is already a non-nil resource there.
 			continue
 		}
-		v, err := tks(k)
+		v := resultMap[k]
+		var newT bool
+		if v == nil {
+			v = new(T)
+			newT = true
+		}
+		err := tks(k, v)
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
-		if v != nil {
+
+		// We only add a value to the map if it wasn't there before *and* it is
+		// non-zero.
+		if newT && !reflect.ValueOf(*v).IsZero() {
 			resultMap[k] = v
 		}
 	}
 	return errs.ErrorOrNil()
 }
 
-// Indicate that a token cannot be mapped.
-type UnmappableError struct {
-	TfToken string
-	Reason  error
-}
-
-func (err UnmappableError) Error() string {
-	return fmt.Sprintf("'%s' unmappable: %s", err.TfToken, err.Reason)
-}
-
-func (err UnmappableError) Unwrap() error {
-	return err.Reason
-}
-
-func (ts Strategy) Unmappable(substring, reason string) Strategy {
-	ts.DataSource = ts.DataSource.Unmappable(substring, reason)
-	ts.Resource = ts.Resource.Unmappable(substring, reason)
+func (ts Strategy) Ignore(substring string) Strategy {
+	ts.DataSource = ts.DataSource.Ignore(substring)
+	ts.Resource = ts.Resource.Ignore(substring)
 	return ts
 }
 
-// Instruct the strategy to reject all TF tokens containing the given substring with an UnmappableError.
-func (ts ElementStrategy[T]) Unmappable(substring, reason string) ElementStrategy[T] {
-	msg := fmt.Sprintf("cannot map tokens that contains '%s'", substring)
-	if reason != "" {
-		msg += ": " + reason
-	}
-	return func(tfToken string) (*T, error) {
+// Instruct the strategy not to apply to a token that contains substring.
+func (ts ElementStrategy[T]) Ignore(substring string) ElementStrategy[T] {
+	return func(tfToken string, elem *T) error {
 		if strings.Contains(tfToken, substring) {
-			return nil, UnmappableError{
-				TfToken: tfToken,
-				Reason:  fmt.Errorf(msg),
-			}
+			return nil
 		}
-		return ts(tfToken)
+		return ts(tfToken, elem)
 	}
 }

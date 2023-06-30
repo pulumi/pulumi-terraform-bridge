@@ -42,6 +42,9 @@ func TestTokensSingleModule(t *testing.T) {
 				"foo_very_special_source": nil,
 			},
 		}).Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"foo_bar": {Docs: &tfbridge.DocInfo{}},
+		},
 	}
 
 	makeToken := func(module, name string) (string, error) {
@@ -54,7 +57,7 @@ func TestTokensSingleModule(t *testing.T) {
 	expectedResources := map[string]*tfbridge.ResourceInfo{
 		"foo_fizz_buzz":       {Tok: "foo:index:FizzBuzz"},
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloWorld"},
-		"foo_bar":             {Tok: "foo:index:Bar"},
+		"foo_bar":             {Tok: "foo:index:Bar", Docs: &tfbridge.DocInfo{}},
 	}
 	expectedDatasources := map[string]*tfbridge.DataSourceInfo{
 		"foo_source1":             {Tok: "foo:index:getSource1"},
@@ -165,9 +168,11 @@ func TestUnmappable(t *testing.T) {
 	}, func(module, name string) (string, error) {
 		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	})
-	strategy = strategy.Unmappable("five", "SomeGoodReason")
+	strategy = strategy.Ignore("five")
 	err := info.ComputeTokens(strategy)
-	assert.ErrorContains(t, err, "SomeGoodReason")
+	assert.NoError(t, err)
+	assert.Nilf(t, info.Resources["cs101_buzz_five"],
+		`We told the strategy to ignore tokens containing "five"`)
 
 	// Override the unmappable resources
 	info.Resources = map[string]*tfbridge.ResourceInfo{

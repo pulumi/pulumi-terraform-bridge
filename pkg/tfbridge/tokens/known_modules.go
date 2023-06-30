@@ -26,13 +26,13 @@ import (
 
 func knownModules[T b.ResourceInfo | b.DataSourceInfo](
 	prefix, defaultModule string, modules []string,
-	new func(string, string) (*T, error),
+	apply func(string, string, *T) error,
 	moduleTransform func(string) string,
 ) b.ElementStrategy[T] {
-	return func(tfToken string) (*T, error) {
+	return func(tfToken string, elem *T) error {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
-			return nil, fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
+			return fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
 		}
 		mod := defaultModule
 		for _, m := range modules {
@@ -42,9 +42,9 @@ func knownModules[T b.ResourceInfo | b.DataSourceInfo](
 			}
 		}
 		if mod == "" {
-			return nil, fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
+			return fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
 		}
-		return new(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)))
+		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem)
 	}
 }
 
@@ -61,20 +61,22 @@ func KnownModules(
 
 	return b.Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string) (*b.ResourceInfo, error) {
+			func(mod, tk string, r *b.ResourceInfo) error {
 				tk, err := finalize(mod, tk)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+				checkedApply(&r.Tok, tokens.Type(tk))
+				return nil
 			}, camelCase),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string) (*b.DataSourceInfo, error) {
+			func(mod, tk string, d *b.DataSourceInfo) error {
 				tk, err := finalize(mod, "get"+tk)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+				checkedApply(&d.Tok, tokens.ModuleMember(tk))
+				return nil
 			}, camelCase),
 	}
 }
