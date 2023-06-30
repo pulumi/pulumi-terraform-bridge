@@ -16,7 +16,10 @@ require (
 	github.com/stretchr/testify v1.8.3
 )
 
-require github.com/frankban/quicktest v1.14.3 // indirect
+require (
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/frankban/quicktest v1.14.3 // indirect
+)
 
 require (
 	cloud.google.com/go v0.110.0 // indirect
