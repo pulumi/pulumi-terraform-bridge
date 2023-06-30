@@ -2011,17 +2011,57 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestChangingTagsAll(t *testing.T) {
-	stateMap := resource.PropertyMap{
-		"tagsall": resource.NewObjectProperty(
-			resource.PropertyMap{
-				"tag1": resource.NewStringProperty("tag1value"),
-				"tag2": resource.NewStringProperty("tag2value"),
-			},
-		),
+func TestXComputedInput(t *testing.T) {
+
+	type testCase struct {
+		name                string
+		stateMap            resource.PropertyMap
+		customizeDiff       func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error
+		expectedDiffChanges pulumirpc.DiffResponse_DiffChanges
+		expectedDiffLength  int
 	}
 
-	inputsMap := resource.PropertyMap{}
+	testCases := []testCase{
+		{
+			name: "adding a tag",
+			stateMap: resource.PropertyMap{
+				"tagsall": resource.NewObjectProperty(resource.PropertyMap{}),
+			},
+			customizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+				return d.SetNew("tagsall", map[string]string{
+					"tag1": "tag1value",
+				})
+			},
+			expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+			expectedDiffLength:  0,
+		},
+		{
+			name: "modifying a tag",
+			stateMap: resource.PropertyMap{
+				"tagsall": resource.NewObjectProperty(resource.PropertyMap{
+					"tag1": resource.NewStringProperty("tag1value"),
+				}),
+			},
+			customizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+				return d.SetNew("tagsall", map[string]string{
+					"tag1": "tag1valueModified",
+				})
+			},
+			expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+			expectedDiffLength:  0,
+		},
+		{
+			name: "adding a tag-like list",
+			stateMap: resource.PropertyMap{
+				"tagslikelist": resource.NewArrayProperty([]resource.PropertyValue{}),
+			},
+			customizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+				return d.SetNew("tagslikelist", []string{"v1", "v2"})
+			},
+			expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+			expectedDiffLength:  0,
+		},
+	}
 
 	tfs := map[string]*v2Schema.Schema{
 		"tagsall": {
@@ -2032,55 +2072,62 @@ func TestChangingTagsAll(t *testing.T) {
 				Computed: true,
 			},
 		},
-	}
-
-	sch := shimv2.NewSchemaMap(tfs)
-
-	res := &v2Schema.Resource{
-		Schema: tfs,
-		CustomizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
-			return d.SetNew("tagsall", map[string]string{
-				"tag1": "tag1value",
-				"tag2": "tag2valueModified",
-			})
-		},
-	}
-
-	provider := shimv2.NewProvider(&v2Schema.Provider{
-		ResourcesMap: map[string]*v2Schema.Resource{
-			"resource": res,
-		},
-	})
-
-	r := Resource{
-		TF: shimv2.NewResource(res),
-		Schema: &ResourceInfo{
-			Fields: map[string]*SchemaInfo{
-				"tagsall": {
-					XComputedInput: true,
-				},
+		"tagslikelist": {
+			Type:     v2Schema.TypeList,
+			Computed: true,
+			Elem: &v2Schema.Schema{
+				Type:     v2Schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
 
-	tfState, err := MakeTerraformState(r, "id", stateMap)
-	assert.NoError(t, err)
+	sch := shimv2.NewSchemaMap(tfs)
+	inputsMap := resource.PropertyMap{}
+	fields := map[string]*SchemaInfo{
+		"tagsall": {
+			XComputedInput: true,
+		},
+		"tagslikelist": {
+			XComputedInput: true,
+		},
+	}
 
-	config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, nil)
-	assert.NoError(t, err)
+	for _, tc := range testCases {
+		tc := tc
 
-	tfDiff, err := provider.Diff("resource", tfState, config)
-	assert.NoError(t, err)
+		t.Run(tc.name, func(t *testing.T) {
+			res := &v2Schema.Resource{
+				Schema:        tfs,
+				CustomizeDiff: tc.customizeDiff,
+			}
 
-	// t.Logf("tfDiff = %v", valast.String(tfDiff)) ==>
-	//
-	// Attributes: map[string]*terraform.ResourceAttrDiff{"tagsall.tag2": &terraform.ResourceAttrDiff{
-	//         Old: "tag2value",
-	//         New: "tag2valueModified",
-	// }},
+			provider := shimv2.NewProvider(&v2Schema.Provider{
+				ResourcesMap: map[string]*v2Schema.Resource{
+					"resource": res,
+				},
+			})
 
-	// Convert the diff to a detailed diff and check the result.
-	diff, changes := makeDetailedDiff(sch, r.Schema.Fields, stateMap, inputsMap, tfDiff)
-	assert.Equal(t, pulumirpc.DiffResponse_DIFF_SOME, changes)
-	assert.Empty(t, diff, "Expected an empty diff")
+			r := Resource{
+				TF: shimv2.NewResource(res),
+				Schema: &ResourceInfo{
+					Fields: fields,
+				},
+			}
+
+			tfState, err := MakeTerraformState(r, "id", tc.stateMap)
+			assert.NoError(t, err)
+
+			config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, nil)
+			assert.NoError(t, err)
+
+			tfDiff, err := provider.Diff("resource", tfState, config)
+			assert.NoError(t, err)
+
+			// Convert the diff to a detailed diff and check the result.
+			diff, changes := makeDetailedDiff(sch, r.Schema.Fields, tc.stateMap, inputsMap, tfDiff)
+			assert.Equal(t, tc.expectedDiffChanges, changes)
+			assert.Equal(t, tc.expectedDiffLength, len(diff))
+		})
+	}
 }
