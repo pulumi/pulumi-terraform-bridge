@@ -157,6 +157,10 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
 	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
+	// TODO isComputedInput is determined from the top-level property ps (SchemaInfo). However it is sampled inside
+	// a visitor function that recurs into sub-properties. Therefore marking sub-properties with XComputedInput is
+	// not currently supported. To fix this, visitor should accept SchemaInfo pertaining to the sub-property being
+	// visited and determine isComputedInput from it.
 	isComputedInput := ps != nil && ps.XComputedInput
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
