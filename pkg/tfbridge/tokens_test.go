@@ -411,6 +411,9 @@ func TestTokenAliasing(t *testing.T) {
 					"pkg_mod1_r2": nil,
 					"pkg_mod2_r1": nil,
 				},
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_mod1_r1": nil,
+				},
 			}).Shim(),
 		}
 	}
@@ -472,6 +475,15 @@ func TestTokenAliasing(t *testing.T) {
 			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
 		},
 	}, modules.Resources)
+	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
+		"pkg_mod1_r1": {Tok: "pkg:mod1/getR1:getR1"},
+		"pkg_mod1_r1_legacy": {
+			Tok:                "pkg:index/getMod1R1:getMod1R1",
+			DeprecationMessage: "pkg.index/getmod1r1.getMod1R1 has been deprecated in favor of pkg.mod1/getr1.getR1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		},
+	},
+		modules.DataSources)
 
 	modules2 := provider()
 	modules2.Version = "1.0.0"

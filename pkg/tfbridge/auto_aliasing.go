@@ -400,7 +400,7 @@ func aliasOrRenameResource(
 ) {
 	var alreadyPresent bool
 	for _, a := range hist.Past {
-		if a.Name == res.Tok {
+		if a.Name == hist.Current {
 			alreadyPresent = true
 			break
 		}
@@ -446,8 +446,8 @@ func aliasDataSource(
 			Current:      computed.Tok,
 			MajorVersion: version,
 		}
-	} else if prev.Current != computed.Tok {
-		aliasOrRenameDataSource(p, tfToken, prev, version)
+	} else {
+		aliasOrRenameDataSource(p, computed, tfToken, prev, version)
 	}
 
 	if ds == nil {
@@ -465,7 +465,8 @@ func aliasDataSource(
 }
 
 func aliasOrRenameDataSource(
-	p *ProviderInfo, tfToken string,
+	p *ProviderInfo,
+	ds *DataSourceInfo, tfToken string,
 	prev *tokenHistory[tokens.ModuleMember],
 	currentVersion int,
 ) {
@@ -476,11 +477,20 @@ func aliasOrRenameDataSource(
 		// is nothing to alias anymore.
 		return
 	}
-	alias := alias[tokens.ModuleMember]{
-		Name:         prev.Current,
-		MajorVersion: currentVersion,
+
+	var alreadyPresent bool
+	for _, a := range prev.Past {
+		if a.Name == prev.Current {
+			alreadyPresent = true
+			break
+		}
 	}
-	prev.Past = append(prev.Past, alias)
+	if !alreadyPresent && ds.Tok != prev.Current {
+		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
+			Name:         prev.Current,
+			MajorVersion: currentVersion,
+		})
+	}
 	for _, a := range prev.Past {
 		if a.MajorVersion != currentVersion {
 			continue
