@@ -39,7 +39,7 @@ func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, er
 	if err != nil {
 		return hcty.Value{}, fmt.Errorf("Failed to convert an hcty.Value to a tftypes.Value: %w", err)
 	}
-	configV, err := hcty2tftypes(t, tt, prior)
+	configV, err := hcty2tftypes(t, tt, config)
 	if err != nil {
 		return hcty.Value{}, fmt.Errorf("Failed to convert an hcty.Value to a tftypes.Value: %w", err)
 	}

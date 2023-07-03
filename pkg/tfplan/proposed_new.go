@@ -36,7 +36,7 @@ func ProposedNew(
 	}
 
 	tt := priorState.Type()
-	if tt.Equal(config.Type()) {
+	if !tt.Equal(config.Type()) {
 		return tftypes.Value{}, fmt.Errorf("ProposedNew expects priorState and config to have the same type")
 	}
 
