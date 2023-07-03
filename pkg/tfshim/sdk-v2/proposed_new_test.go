@@ -108,20 +108,25 @@ func TestCtyTurnaround(t *testing.T) {
 			testCase{cty.ObjectVal(map[string]cty.Value{"x": tc.value})})
 	}
 
-	// Assuming that NilVal should not be nested in real-world use cases so it is added here after the nesting
-	// cases. It is slightly problematic to test as it can makes Equals() and other methods panic.
-	testCases = append(testCases, testCase{cty.NilVal})
+	turnaround := func(t *testing.T, ty cty.Type, val cty.Value) cty.Value {
+		tt := htype2tftypes(ty)
+		v, err := hcty2tftypes(ty, tt, val)
+		assert.NoError(t, err)
+		back, err := tftypes2hcty(ty, tt, v)
+		assert.NoError(t, err)
+		return back
+	}
 
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			assert.Truef(t, tc.value.Equals(cty2hcty(hcty2cty(tc.value))).True(), "value turnaround")
+			assert.Truef(t, tc.value.Equals(turnaround(t, tc.value.Type(), tc.value)).True(), "value turnaround")
 
 			nullValue := cty.NullVal(tc.value.Type())
-			assert.Truef(t, nullValue.Equals(cty2hcty(hcty2cty(nullValue))).True(), "null turnaround")
+			assert.Truef(t, nullValue.Equals(turnaround(t, tc.value.Type(), nullValue)).True(), "null turnaround")
 
 			unkValue := cty.UnknownVal(tc.value.Type())
-			assert.Falsef(t, cty2hcty(hcty2cty(unkValue)).IsKnown(), "unknown turnaround")
+			assert.Falsef(t, turnaround(t, tc.value.Type(), unkValue).IsKnown(), "unknown turnaround")
 		})
 	}
 }
