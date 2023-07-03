@@ -201,9 +201,7 @@ to the Plugin Framework.
 
     func Provider() tfbridge.ProviderInfo {
         info := tfbridge.ProviderInfo{
-            // Comment out P
-            // P: shimv2.NewProvider(shim.NewProvider()),
-
+            // Replace P (abbreviated for Provider):
             P: pf.ShimProvider(shim.NewProvider()).
 
             // Make sure Version is set, as it is now required.
