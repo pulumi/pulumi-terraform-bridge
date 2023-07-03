@@ -5,12 +5,8 @@ providers](https://www.pulumi.com/docs/intro/concepts/resources/providers/) from
 Providers](https://github.com/terraform-providers) built using the [Terraform Plugin
 Framework](https://developer.hashicorp.com/terraform/plugin/framework).
 
-This bridge is in active development and has an incomplete feature set. Progress is tracked in
-[#744](https://github.com/pulumi/pulumi-terraform-bridge/issues/744).
-
-If you need to adapt Terraform providers to Pulumi today see [Pulumi Terraform
-Bridge](https://github.com/pulumi/pulumi-terraform-bridge) which only works with providers built with the [Terraform
-Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) but is complete.
+If you need to adapt [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) based providers, see
+[Pulumi Terraform Bridge](https://github.com/pulumi/pulumi-terraform-bridge).
 
 ## How to Bridge a Provider
 
@@ -41,8 +37,9 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
     var bridgeMetadata []byte
 
-    func MyProvider() pf.ProviderInfo {
+    func MyProvider() tfbridge.ProviderInfo {
         info := tfbridge.ProviderInfo{
+            P:       pf.ShimProvider(<TODO fill in Terraform Provider from Step 1>),
             Name:    "myprovider",
             Version: "1.2.3",
             Resources: map[string]*tfbridge.ResourceInfo{
@@ -50,12 +47,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
             },
             MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
         }
-        return pf.ProviderInfo{
-            ProviderInfo: info,
-            NewProvider: func() provider.Provider {
-                return nil // TODO fill in Terraform Provider from Step 1
-            },
-        }
+        return info
     }
     ```
 
@@ -200,19 +192,19 @@ to the Plugin Framework.
      }
      ```
 
-4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`) from
-   `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and to declare `ProviderInfo` from
-   `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge` instead.
+4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`):
 
     ```go
 
     //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
     var bridgeMetadata []byte
 
-    func Provider() pf.ProviderInfo {
+    func Provider() tfbridge.ProviderInfo {
         info := tfbridge.ProviderInfo{
-            // Comment out P, use NewProvider below instead.
+            // Comment out P
             // P: shimv2.NewProvider(shim.NewProvider()),
+
+            P: pf.ShimProvider(shim.NewProvider()).
 
             // Make sure Version is set, as it is now required.
             Version: ...,
@@ -222,10 +214,7 @@ to the Plugin Framework.
 
             // Keep the rest of the code as before.
         }
-        return pf.ProviderInfo{
-            ProviderInfo: info,
-            NewProvider:  shim.NewProvider,
-        }
+        return info
     }
     ```
 
