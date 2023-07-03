@@ -15,14 +15,10 @@
 package pfutils
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // Attr type works around not being able to link to fwschema.Attribute from
@@ -111,62 +107,3 @@ const (
 	NestingModeSet     NestingMode = 3
 	NestingModeMap     NestingMode = 4
 )
-
-// Classifies the results of LookupTerraformPath. The only valid cases are:
-//
-// 1. IsAttr=true, and Attr is set; this means an Attribute was found
-// 2. IsBlock=true, and Block is set; this means a Block was found
-// 3. IsNestedObject=true; this means the path is a nested object one level down from Attr or Block
-// 4. IsMisc=true; this groups all other cases, such as resolving to a simple atomic type as String
-//
-// All other combinations should not be valid.
-type LookupResult struct {
-	IsAttr         bool
-	IsBlock        bool
-	IsNestedObject bool
-	IsMisc         bool
-	Attr           Attr
-	Block          Block
-}
-
-// Drills down a Schema with a given AttributePath to classify what is found at that path, see LookupResult.
-func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResult, error) {
-	res, ok, err := tryLookupAttrOrBlock(schema, path)
-	if err != nil {
-		return res, err
-	}
-	if ok {
-		return res, nil
-	}
-
-	// Perhaps our parent path is an Attribute or a Block with a nested object, then path is a path to a nested
-	// object. This is another way to detect, indirectly, if res is a fwschema.NestedBlockObject or
-	// fwschema.NestedAttributeObject, without relying on reflection.
-	if parent := path.WithoutLastStep(); parent != nil {
-		parentRes, parentOk, parentErr := tryLookupAttrOrBlock(schema, parent)
-		if parentErr == nil && parentOk {
-			if parentRes.IsAttr && parentRes.Attr.HasNestedObject() {
-				return LookupResult{IsNestedObject: true}, nil
-			}
-			if parentRes.IsBlock && parentRes.Block.HasNestedObject() {
-				return LookupResult{IsNestedObject: true}, nil
-			}
-		}
-	}
-
-	return LookupResult{IsMisc: true}, nil
-}
-
-func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupResult, bool, error) {
-	res, remaining, err := tftypes.WalkAttributePath(schema, path)
-	if err != nil {
-		return LookupResult{}, false, fmt.Errorf("%v still remains in the path: %w", remaining, err)
-	}
-	switch res := res.(type) {
-	case AttrLike:
-		return LookupResult{IsAttr: true, Attr: FromAttrLike(res)}, true, nil
-	case BlockLike:
-		return LookupResult{IsBlock: true, Block: FromBlockLike(res)}, true, nil
-	}
-	return LookupResult{}, false, nil
-}
