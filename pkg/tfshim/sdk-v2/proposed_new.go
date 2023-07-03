@@ -15,23 +15,97 @@
 package sdkv2
 
 import (
-	hcty "github.com/hashicorp/go-cty/cty"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/zclconf/go-cty/cty"
+	"fmt"
+	"sort"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/plans/objchange"
+	hcty "github.com/hashicorp/go-cty/cty"
+	hctypack "github.com/hashicorp/go-cty/cty/msgpack"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfplan"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
+	t := res.CoreConfigSchema().ImpliedType()
+	tt := htype2tftypes(t)
 	schema, err := configschemaBlock(res)
 	if err != nil {
 		return hcty.False, err
 	}
-	priorC := hcty2cty(prior)
-	configC := hcty2cty(config)
-	return cty2hcty(objchange.ProposedNew(schema, priorC, configC)), nil
+	priorV, err := hcty2tftypes(t, tt, prior)
+	if err != nil {
+		return hcty.Value{}, fmt.Errorf("Failed to convert an hcty.Value to a tftypes.Value: %w", err)
+	}
+	configV, err := hcty2tftypes(t, tt, prior)
+	if err != nil {
+		return hcty.Value{}, fmt.Errorf("Failed to convert an hcty.Value to a tftypes.Value: %w", err)
+	}
+	planned, err := tfplan.ProposedNew(schema, priorV, configV)
+	if err != nil {
+		return hcty.Value{}, fmt.Errorf("Failure in ProposedNew: %w", err)
+	}
+	result, err := tftypes2hcty(t, tt, planned)
+	if err != nil {
+		return hcty.Value{}, fmt.Errorf("Failed to convert a tftypes.Value to a hcty.Value: %w", err)
+	}
+	return result, nil
+}
+
+func htype2tftypes(t hcty.Type) tftypes.Type {
+	// Used t.HasDynamicTypes() as an example of how to pattern-match types.
+	switch {
+	case t == hcty.NilType:
+		// From docs: NilType is an invalid type used when a function is returning an error and has no useful
+		// type to return.
+		contract.Assertf(false, "NilType is not supported")
+	case t == hcty.DynamicPseudoType:
+		return tftypes.DynamicPseudoType
+	case t.IsPrimitiveType():
+		switch {
+		case t.Equals(hcty.Bool):
+			return tftypes.Bool
+		case t.Equals(hcty.String):
+			return tftypes.String
+		case t.Equals(hcty.Number):
+			return tftypes.Number
+		default:
+			contract.Failf("Match failure on hcty.Type with t.IsPrimitiveType()")
+		}
+	case t.IsListType():
+		return tftypes.List{ElementType: htype2tftypes(*t.ListElementType())}
+	case t.IsMapType():
+		return tftypes.Map{ElementType: htype2tftypes(*t.MapElementType())}
+	case t.IsSetType():
+		return tftypes.Set{ElementType: htype2tftypes(*t.SetElementType())}
+	case t.IsObjectType():
+		attrTypes := t.AttributeTypes()
+		if len(attrTypes) == 0 {
+			return tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}
+		}
+		converted := map[string]tftypes.Type{}
+		for a, at := range attrTypes {
+			converted[a] = htype2tftypes(at)
+		}
+		return tftypes.Object{AttributeTypes: converted}
+	case t.IsTupleType():
+		elemTypes := t.TupleElementTypes()
+		if len(elemTypes) == 0 {
+			return tftypes.Tuple{ElementTypes: []tftypes.Type{}}
+		}
+		converted := []tftypes.Type{}
+		for _, et := range elemTypes {
+			converted = append(converted, htype2tftypes(et))
+		}
+		return tftypes.Tuple{ElementTypes: converted}
+	case t.IsCapsuleType():
+		contract.Assertf(false, "Capsule types are not yet supported")
+	}
+	contract.Assertf(false, "Match failure on hcty.Type: %v", t.GoString())
+	var undefined tftypes.Type
+	return undefined
 }
 
 func htype2ctype(t hcty.Type) cty.Type {
@@ -83,6 +157,22 @@ func htype2ctype(t hcty.Type) cty.Type {
 	}
 	contract.Assertf(false, "Match failure on hcty.Type: %v", t.GoString())
 	return cty.NilType
+}
+
+func hcty2tftypes(t hcty.Type, tt tftypes.Type, val hcty.Value) (tftypes.Value, error) {
+	msgpack, err := hctypack.Marshal(val, t)
+	if err != nil {
+		return tftypes.Value{}, err
+	}
+	return tfprotov6.DynamicValue{MsgPack: msgpack}.Unmarshal(tt)
+}
+
+func tftypes2hcty(t hcty.Type, tt tftypes.Type, val tftypes.Value) (hcty.Value, error) {
+	dv, err := tfprotov6.NewDynamicValue(tt, val)
+	if err != nil {
+		return hcty.NilVal, nil
+	}
+	return hctypack.Unmarshal(dv.MsgPack, t)
 }
 
 func hcty2cty(val hcty.Value) cty.Value {
@@ -308,32 +398,40 @@ func cty2hctyWithType(ty hcty.Type, val cty.Value) hcty.Value {
 	return hcty.DynamicVal
 }
 
-func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
+func configschemaBlock(res *schema.Resource) (*tfprotov6.SchemaBlock, error) {
 	schema := res.CoreConfigSchema()
 
-	block := &configschema.Block{
-		Attributes:      map[string]*configschema.Attribute{},
-		BlockTypes:      map[string]*configschema.NestedBlock{},
+	block := &tfprotov6.SchemaBlock{
+		Attributes:      []*tfprotov6.SchemaAttribute{},
+		BlockTypes:      []*tfprotov6.SchemaNestedBlock{},
 		Description:     schema.Description,
-		DescriptionKind: configschema.StringKind(int(schema.DescriptionKind)),
+		DescriptionKind: tfprotov6.StringKind(int32(schema.DescriptionKind)),
 		Deprecated:      schema.Deprecated,
 	}
 
-	for name, a := range schema.Attributes {
-		t := htype2ctype(a.Type)
-		block.Attributes[name] = &configschema.Attribute{
+	attrNames := []string{}
+	for name := range schema.Attributes {
+		attrNames = append(attrNames, name)
+	}
+	sort.Strings(attrNames)
+
+	for _, name := range attrNames {
+		a := schema.Attributes[name]
+		t := htype2tftypes(a.Type)
+		block.Attributes = append(block.Attributes, &tfprotov6.SchemaAttribute{
+			Name:            name,
 			Type:            t,
 			Description:     a.Description,
-			DescriptionKind: configschema.StringKind(int(schema.DescriptionKind)),
+			DescriptionKind: tfprotov6.StringKind(int32(schema.DescriptionKind)),
 			Required:        a.Required,
 			Optional:        a.Optional,
 			Computed:        a.Computed,
 			Sensitive:       a.Sensitive,
 			Deprecated:      a.Deprecated,
-		}
+		})
 	}
 
-	// The code below converts each schema.BlockTypes block to *configschema.NestedBlock, and populates
+	// The code below converts each schema.BlockTypes block to *tfprotov6.NestedBlock, and populates
 	// block.BlockTypes. This is a trivial conversion (copying identical fields) that is necessary because Go
 	// toolchain currently sees the two NestedBlock structs as distinct types. If the type of schema.BlockType was
 	// not internal, this could have been expressed as a recursive func, but given that it is internal, Go compiler
@@ -343,7 +441,7 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 	// reflection.
 	queue := newQueue(schema.BlockTypes)
 
-	destinations := map[interface{}]map[string]*configschema.NestedBlock{}
+	destinations := map[interface{}][]*tfprotov6.SchemaNestedBlock{}
 	for _, b := range schema.BlockTypes {
 		destinations[b] = block.BlockTypes
 	}
@@ -351,39 +449,45 @@ func configschemaBlock(res *schema.Resource) (*configschema.Block, error) {
 	for !queue.empty() {
 		name, b := queue.dequeue()
 
-		nested := configschema.Block{
-			Attributes:      map[string]*configschema.Attribute{},
-			BlockTypes:      map[string]*configschema.NestedBlock{},
+		nested := tfprotov6.SchemaBlock{
+			Attributes:      []*tfprotov6.SchemaAttribute{},
+			BlockTypes:      []*tfprotov6.SchemaNestedBlock{},
 			Description:     b.Description,
-			DescriptionKind: configschema.StringKind(int(schema.DescriptionKind)),
+			DescriptionKind: tfprotov6.StringKind(int(schema.DescriptionKind)),
 			Deprecated:      b.Deprecated,
 		}
 
 		for name, a := range b.Attributes {
-			t := htype2ctype(a.Type)
-			nested.Attributes[name] = &configschema.Attribute{
+			t := htype2tftypes(a.Type)
+			nested.Attributes = append(nested.Attributes, &tfprotov6.SchemaAttribute{
+				Name:            name,
 				Type:            t,
 				Description:     a.Description,
-				DescriptionKind: configschema.StringKind(int(schema.DescriptionKind)),
+				DescriptionKind: tfprotov6.StringKind(int(schema.DescriptionKind)),
 				Required:        a.Required,
 				Optional:        a.Optional,
 				Computed:        a.Computed,
 				Sensitive:       a.Sensitive,
 				Deprecated:      a.Deprecated,
-			}
+			})
 		}
+
+		sort.Slice(nested.Attributes, func(i, j int) bool {
+			return nested.Attributes[i].Name < nested.Attributes[j].Name
+		})
 
 		for name, nb := range b.BlockTypes {
 			destinations[nb] = nested.BlockTypes
 			queue.enqueue(name, nb)
 		}
 
-		destinations[b][name] = &configschema.NestedBlock{
-			Block:    nested,
-			Nesting:  configschema.NestingMode(int(b.Nesting)),
-			MinItems: b.MinItems,
-			MaxItems: b.MaxItems,
-		}
+		destinations[b] = append(destinations[b], &tfprotov6.SchemaNestedBlock{
+			TypeName: name,
+			Block:    &nested,
+			Nesting:  tfprotov6.SchemaNestedBlockNestingMode(int32(b.Nesting)),
+			MinItems: int64(b.MinItems),
+			MaxItems: int64(b.MaxItems),
+		})
 	}
 
 	return block, nil
