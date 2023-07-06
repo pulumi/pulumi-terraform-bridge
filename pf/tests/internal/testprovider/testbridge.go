@@ -81,6 +81,7 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
+			"testbridge_compopt_res":   {Tok: "testbridge:index/testres:TestCompOpt"},
 
 			"testbridge_test_default_info_res": {
 				Tok: "testbridge:index/testres:TestDefaultInfoRes",
@@ -198,5 +199,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newTestConfigRes,
 		newTestDefaultInfoRes,
 		newPrivst,
+		newCompOptRes,
 	}
 }

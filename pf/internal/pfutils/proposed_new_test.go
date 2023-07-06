@@ -34,31 +34,6 @@ type testcase struct {
 	Want   valueBuilder
 }
 
-func TestComputedOptionalBecomingUnknown(t *testing.T) {
-	t.Skip("Need to move this to a higher level")
-	// It seems that TF does behave in this way when prior state is nil, but the implementation is not part of
-	// PlannedState computation done in the CLI.
-	// https://github.com/hashicorp/terraform-plugin-framework/blob/27aff715d3d53b6d052358f3e4f1be6573f8a605/internal/fwserver/server_planresourcechange.go#L160
-	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
-		"foo": rschema.SingleNestedAttribute{
-			Attributes: map[string]rschema.Attribute{
-				"bar": rschema.StringAttribute{
-					Optional: true,
-					Computed: true,
-				},
-			},
-			Computed: true,
-			Optional: true,
-		},
-	}}
-	checkTestCase(t, "basic", testcase{
-		Schema: FromResourceSchema(schema),
-		Prior:  obj(field("foo", unk())),
-		Config: obj(field("foo", obj(field("bar", prim(nil))))),
-		Want:   obj(field("foo", obj(field("bar", unk())))),
-	})
-}
-
 // The following test cases are obtained by tabulating ProposedNew from objchange.go.
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange.go
