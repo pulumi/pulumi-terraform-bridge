@@ -34,7 +34,6 @@ type Attr interface {
 	IsNested() bool
 	Nested() map[string]Attr
 	NestingMode() NestingMode
-	HasNestedObject() bool
 }
 
 type AttrLike interface {
@@ -76,15 +75,6 @@ type attrAdapter struct {
 }
 
 var _ Attr = (*attrAdapter)(nil)
-
-func (a *attrAdapter) HasNestedObject() bool {
-	switch a.NestingMode() {
-	case NestingModeList, NestingModeMap, NestingModeSet:
-		return true
-	default:
-		return false
-	}
-}
 
 func (a *attrAdapter) IsNested() bool {
 	return a.nested != nil

@@ -168,10 +168,23 @@ func convertNestedBlock(nb *tfprotov6.SchemaNestedBlock) (*configschema.NestedBl
 	}
 	cnb := &configschema.NestedBlock{
 		Block:    *innerBlock,
-		Nesting:  configschema.NestingMode(nb.Nesting),
 		MinItems: int(nb.MinItems),
 		MaxItems: int(nb.MaxItems),
 	}
+
+	switch nb.Nesting {
+	case 1:
+		cnb.Nesting = configschema.NestingSingle
+	case 2:
+		cnb.Nesting = configschema.NestingList
+	case 3:
+		cnb.Nesting = configschema.NestingSet
+	case 4:
+		cnb.Nesting = configschema.NestingMap
+	case 5:
+		cnb.Nesting = configschema.NestingGroup
+	}
+
 	return cnb, nil
 }
 
@@ -187,9 +200,19 @@ func convertAttr(attr *tfprotov6.SchemaAttribute) (*configschema.Attribute, erro
 	}
 
 	if attr.NestedType != nil {
-		cattr.NestedType = &configschema.Object{
-			Nesting: configschema.NestingMode(attr.NestedType.Nesting),
+		cattr.NestedType = &configschema.Object{}
+
+		switch attr.NestedType.Nesting {
+		case 1:
+			cattr.NestedType.Nesting = configschema.NestingSingle
+		case 2:
+			cattr.NestedType.Nesting = configschema.NestingList
+		case 3:
+			cattr.NestedType.Nesting = configschema.NestingSet
+		case 4:
+			cattr.NestedType.Nesting = configschema.NestingMap
 		}
+
 		cattr.NestedType.Attributes = map[string]*configschema.Attribute{}
 		for _, nattr := range attr.NestedType.Attributes {
 			cnattr, err := convertAttr(nattr)
