@@ -17,6 +17,10 @@ package tfbridgetests
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
@@ -227,4 +231,34 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	  }
 	]`
 	testutils.ReplaySequence(t, server, testCase)
+}
+
+func TestComputedOptionalBecomingUnknown(t *testing.T) {
+	// This tests an interesting case with a nested foo.bar property that is both Computed and Optional, that is it
+	// can be set by either provider or the user. TF behavior is that passing null to such a property becomes
+	// Unknown during planning. This test asserts that this behavior is preserved at Pulumi level.
+	assert.Equal(t, "04da6b54-80e4-46f7-96ec-b56ff0331ba9", plugin.UnknownStringValue)
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::xyz::testbridge:index/testres:TestCompOpt::r1",
+	    "properties": {
+	      "foo": {
+		"bar": null
+	      }
+	    },
+	    "preview": true
+	  },
+	  "response": {
+	    "properties": {
+	      "id": "*",
+	      "foo": {
+		"bar": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	      }
+	    }
+	  }
+	}`
+	testutils.Replay(t, server, testCase)
 }

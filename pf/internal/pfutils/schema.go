@@ -25,7 +25,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemav6"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Attr type works around not being able to link to fwschema.Schema from
@@ -45,6 +48,8 @@ type Schema interface {
 	//
 	// [State Upgrade]: https://developer.hashicorp.com/terraform/plugin/framework/resources/state-upgrade
 	ResourceSchemaVersion() int64
+
+	Proto() *tfprotov6.Schema
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {
@@ -52,7 +57,9 @@ func FromProviderSchema(x pschema.Schema) Schema {
 	blocks := convertMap(FromProviderBlock, x.Blocks)
 	// Provider schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
+	proto, err := schemav6.ProviderSchema(x)
+	contract.AssertNoError(err)
+	return newSchemaAdapter(proto, x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
@@ -60,17 +67,22 @@ func FromDataSourceSchema(x dschema.Schema) Schema {
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
 	// Data source schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
+	proto, err := schemav6.DataSourceSchema(x)
+	contract.AssertNoError(err)
+	return newSchemaAdapter(proto, x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, x.Version)
+	proto, err := schemav6.ResourceSchema(x)
+	contract.AssertNoError(err)
+	return newSchemaAdapter(proto, x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, x.Version)
 }
 
 type schemaAdapter[T any] struct {
 	tftypes.AttributePathStepper
+	protoSchema           *tfprotov6.Schema
 	attrType              attr.Type
 	deprecationMessage    string
 	attrs                 map[string]Attr
@@ -82,6 +94,7 @@ type schemaAdapter[T any] struct {
 var _ Schema = (*schemaAdapter[interface{}])(nil)
 
 func newSchemaAdapter[T any](
+	protoSchema *tfprotov6.Schema,
 	stepper tftypes.AttributePathStepper,
 	t attr.Type,
 	deprecationMessage string,
@@ -90,6 +103,7 @@ func newSchemaAdapter[T any](
 	atPath func(context.Context, path.Path) (T, diag.Diagnostics),
 	resourceSchemaVersion int64,
 ) *schemaAdapter[T] {
+	contract.Assertf(protoSchema != nil, "protoSchema != nil")
 	return &schemaAdapter[T]{
 		AttributePathStepper:  stepper,
 		attrType:              t,
@@ -98,7 +112,12 @@ func newSchemaAdapter[T any](
 		attrs:                 attrs,
 		blocks:                blocks,
 		resourceSchemaVersion: resourceSchemaVersion,
+		protoSchema:           protoSchema,
 	}
+}
+
+func (a *schemaAdapter[T]) Proto() *tfprotov6.Schema {
+	return a.protoSchema
 }
 
 func (a *schemaAdapter[T]) ResourceSchemaVersion() int64 {

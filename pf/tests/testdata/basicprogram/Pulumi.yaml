@@ -186,7 +186,7 @@ outputs:
   #   - { t0: true, t1: "yes"}
 
   setElementAttrRes__actual: ${setElementAttrRes.setOptionals}
-  setElementAttrRes__expect: [ "hi", "bye" ]
+  setElementAttrRes__expect: [ "bye", "hi" ]
 
   setElementRevAttrRes__actual: ${setElementRevAttrRes.setOptionals}
   setElementRevAttrRes__expect: [ "bye", "hi" ]

@@ -36,7 +36,6 @@ type Block interface {
 	NestedBlocks() map[string]Block
 	GetMaxItems() int64
 	GetMinItems() int64
-	HasNestedObject() bool
 }
 
 type BlockLike interface {
@@ -143,6 +142,10 @@ func (b *blockAdapter) NestedBlocks() map[string]Block {
 
 func (b *blockAdapter) NestingMode() BlockNestingMode {
 	return b.nestingMode
+}
+
+type NestedBlock interface {
+	NestingMode() BlockNestingMode
 }
 
 type BlockNestingMode uint8
