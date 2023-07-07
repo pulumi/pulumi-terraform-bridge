@@ -16,7 +16,6 @@ package sdkv2
 
 import (
 	"fmt"
-	"sort"
 
 	hcty "github.com/hashicorp/go-cty/cty"
 	hctypack "github.com/hashicorp/go-cty/cty/msgpack"
@@ -24,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfplan"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/schemav6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -124,129 +124,10 @@ func tftypes2hcty(t hcty.Type, tt tftypes.Type, val tftypes.Value) (hcty.Value, 
 }
 
 func configschemaBlock(res *schema.Resource) (*tfprotov6.SchemaBlock, error) {
-	schema := res.CoreConfigSchema()
-
-	block := &tfprotov6.SchemaBlock{
-		Attributes:      []*tfprotov6.SchemaAttribute{},
-		BlockTypes:      []*tfprotov6.SchemaNestedBlock{},
-		Description:     schema.Description,
-		DescriptionKind: tfprotov6.StringKind(int32(schema.DescriptionKind)),
-		Deprecated:      schema.Deprecated,
+	s, err := schemav6.ResourceSchema(res)
+	if err != nil {
+		return nil, err
 	}
-
-	attrNames := []string{}
-	for name := range schema.Attributes {
-		attrNames = append(attrNames, name)
-	}
-	sort.Strings(attrNames)
-
-	for _, name := range attrNames {
-		a := schema.Attributes[name]
-		t := htype2tftypes(a.Type)
-		block.Attributes = append(block.Attributes, &tfprotov6.SchemaAttribute{
-			Name:            name,
-			Type:            t,
-			Description:     a.Description,
-			DescriptionKind: tfprotov6.StringKind(int32(schema.DescriptionKind)),
-			Required:        a.Required,
-			Optional:        a.Optional,
-			Computed:        a.Computed,
-			Sensitive:       a.Sensitive,
-			Deprecated:      a.Deprecated,
-		})
-	}
-
-	// The code below converts each schema.BlockTypes block to *tfprotov6.NestedBlock, and populates
-	// block.BlockTypes. This is a trivial conversion (copying identical fields) that is necessary because Go
-	// toolchain currently sees the two NestedBlock structs as distinct types. If the type of schema.BlockType was
-	// not internal, this could have been expressed as a recursive func, but given that it is internal, Go compiler
-	// rejects such function definition. To workaround, an explicit queue is introduced to track all NestedBlock
-	// values that need converting, and destinations structure is introduced to track where the conversion results
-	// should go. The code can then proceed without an explicit recursive func definition or resorting to
-	// reflection.
-	queue := newQueue(schema.BlockTypes)
-
-	destinations := map[interface{}][]*tfprotov6.SchemaNestedBlock{}
-	for _, b := range schema.BlockTypes {
-		destinations[b] = block.BlockTypes
-	}
-
-	for !queue.empty() {
-		name, b := queue.dequeue()
-
-		nested := tfprotov6.SchemaBlock{
-			Attributes:      []*tfprotov6.SchemaAttribute{},
-			BlockTypes:      []*tfprotov6.SchemaNestedBlock{},
-			Description:     b.Description,
-			DescriptionKind: tfprotov6.StringKind(int(schema.DescriptionKind)),
-			Deprecated:      b.Deprecated,
-		}
-
-		for name, a := range b.Attributes {
-			t := htype2tftypes(a.Type)
-			nested.Attributes = append(nested.Attributes, &tfprotov6.SchemaAttribute{
-				Name:            name,
-				Type:            t,
-				Description:     a.Description,
-				DescriptionKind: tfprotov6.StringKind(int(schema.DescriptionKind)),
-				Required:        a.Required,
-				Optional:        a.Optional,
-				Computed:        a.Computed,
-				Sensitive:       a.Sensitive,
-				Deprecated:      a.Deprecated,
-			})
-		}
-
-		sort.Slice(nested.Attributes, func(i, j int) bool {
-			return nested.Attributes[i].Name < nested.Attributes[j].Name
-		})
-
-		for name, nb := range b.BlockTypes {
-			destinations[nb] = nested.BlockTypes
-			queue.enqueue(name, nb)
-		}
-
-		destinations[b] = append(destinations[b], &tfprotov6.SchemaNestedBlock{
-			TypeName: name,
-			Block:    &nested,
-			Nesting:  tfprotov6.SchemaNestedBlockNestingMode(int32(b.Nesting)),
-			MinItems: int64(b.MinItems),
-			MaxItems: int64(b.MaxItems),
-		})
-	}
-
-	return block, nil
-}
-
-type queue[T any] struct {
-	elems []struct {
-		key   string
-		value *T
-	}
-}
-
-func (q *queue[T]) dequeue() (string, *T) {
-	k := q.elems[0].key
-	v := q.elems[0].value
-	q.elems = q.elems[1:]
-	return k, v
-}
-
-func (q *queue[T]) empty() bool {
-	return len(q.elems) == 0
-}
-
-func (q *queue[T]) enqueue(key string, value *T) {
-	q.elems = append(q.elems, struct {
-		key   string
-		value *T
-	}{key: key, value: value})
-}
-
-func newQueue[T any](starter map[string]*T) *queue[T] {
-	q := &queue[T]{}
-	for k, v := range starter {
-		q.enqueue(k, v)
-	}
-	return q
+	contract.Assertf(s.Block != nil, "s.Block != nil")
+	return s.Block, nil
 }
