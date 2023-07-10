@@ -79,11 +79,14 @@ func InferredModules(
 
 	tokenMap := opts.computeTokens(info)
 
+	rIsEmpty := func(r *b.ResourceInfo) bool { return r.Tok == "" }
+	dIsEmpty := func(r *b.DataSourceInfo) bool { return r.Tok == "" }
+
 	return b.Strategy{
-		Resource: tokenFromMap(tokenMap, finalize, func(tk string, resource *b.ResourceInfo) {
+		Resource: tokenFromMap(tokenMap, rIsEmpty, finalize, func(tk string, resource *b.ResourceInfo) {
 			checkedApply(&resource.Tok, tokens.Type(tk))
 		}),
-		DataSource: tokenFromMap(tokenMap, finalize, func(tk string, datasource *b.DataSourceInfo) {
+		DataSource: tokenFromMap(tokenMap, dIsEmpty, finalize, func(tk string, datasource *b.DataSourceInfo) {
 			checkedApply(&datasource.Tok, tokens.ModuleMember(tk))
 		}),
 	}, nil
@@ -349,9 +352,13 @@ func sharedPrefix(s1, s2 string) string {
 type tokenInfo struct{ mod, name string }
 
 func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
-	tokenMap map[string]tokenInfo, finalize Make, apply func(tk string, elem *T),
+	tokenMap map[string]tokenInfo, isEmpty func(*T) bool,
+	finalize Make, apply func(tk string, elem *T),
 ) b.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
+		if !isEmpty(elem) {
+			return nil
+		}
 		info, ok := tokenMap[tfToken]
 		if !ok {
 			existing := []string{}
