@@ -17,7 +17,6 @@ package tokens
 import (
 	"sort"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -51,22 +50,8 @@ func MappedModules(
 
 	return b.Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string, r *b.ResourceInfo) error {
-				tk, err := finalize(mod, tk)
-				if err != nil {
-					return err
-				}
-				checkedApply(&r.Tok, tokens.Type(tk))
-				return nil
-			}, transform),
+			knownResource(finalize), transform),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string, d *b.DataSourceInfo) error {
-				tk, err := finalize(mod, "get"+tk)
-				if err != nil {
-					return err
-				}
-				checkedApply(&d.Tok, tokens.ModuleMember(tk))
-				return nil
-			}, transform),
+			knownDataSource(finalize), transform),
 	}
 }

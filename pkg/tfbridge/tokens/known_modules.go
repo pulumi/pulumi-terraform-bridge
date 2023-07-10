@@ -61,22 +61,36 @@ func KnownModules(
 
 	return b.Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string, r *b.ResourceInfo) error {
-				tk, err := finalize(mod, tk)
-				if err != nil {
-					return err
-				}
-				checkedApply(&r.Tok, tokens.Type(tk))
-				return nil
-			}, camelCase),
+			knownResource(finalize), camelCase),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string, d *b.DataSourceInfo) error {
-				tk, err := finalize(mod, "get"+tk)
-				if err != nil {
-					return err
-				}
-				checkedApply(&d.Tok, tokens.ModuleMember(tk))
-				return nil
-			}, camelCase),
+			knownDataSource(finalize), camelCase),
+	}
+}
+
+func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo) error {
+	return func(mod, tk string, r *b.ResourceInfo) error {
+		if r.Tok != "" {
+			return nil
+		}
+		tk, err := finalize(mod, tk)
+		if err != nil {
+			return err
+		}
+		r.Tok = tokens.Type(tk)
+		return nil
+	}
+}
+
+func knownDataSource(finalize Make) func(mod, tk string, d *b.DataSourceInfo) error {
+	return func(mod, tk string, d *b.DataSourceInfo) error {
+		if d.Tok != "" {
+			return nil
+		}
+		tk, err := finalize(mod, "get"+tk)
+		if err != nil {
+			return err
+		}
+		d.Tok = tokens.ModuleMember(tk)
+		return nil
 	}
 }

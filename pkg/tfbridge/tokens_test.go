@@ -193,6 +193,57 @@ func TestUnmappable(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestMapperExistingToken(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		return &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				ResourcesMap: schema.ResourceMap{
+					"pkg_mod1_r1": nil,
+					"pkg_mod1_r2": nil,
+					"pkg_mod1_r3": nil,
+					"pkg_mod2_r1": nil,
+				},
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_mod1_d1": nil,
+				},
+			}).Shim(),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"pkg_mod2_r1": {Tok: "AlreadyMapped."},
+				"pkg_mod1_r3": {Tok: "AlreadyMapped.."},
+			},
+			IgnoreMappings: []string{"pkg_mod1_r2"},
+		}
+	}
+
+	type tk struct{ module, name string }
+	finalize := func(t *testing.T, expectedTokens ...tk) tokens.Make {
+		return func(module, name string) (string, error) {
+			assert.Containsf(t, expectedTokens, tk{module, name},
+				"Finalize called on unexpected token")
+			return tokens.MakeStandard("pkg")(module, name)
+		}
+	}
+
+	// Ensure that we don't call finalize for tokens where we won't use the finalized
+	// value. This allows provider authors to write code that will error or panic on
+	// tokens that they can be reasonably certain it won't be called on.
+
+	t.Run("singe", func(t *testing.T) {
+		provider().MustComputeTokens(tokens.SingleModule("pkg_", "index",
+			finalize(t, tk{"index", "Mod1R1"}, tk{"index", "getMod1D1"})))
+	})
+	t.Run("known", func(t *testing.T) {
+		provider().MustComputeTokens(tokens.KnownModules("pkg_", "index",
+			[]string{"mod1"},
+			finalize(t, tk{"mod1", "R1"}, tk{"mod1", "getD1"})))
+	})
+	t.Run("mapped", func(t *testing.T) {
+		provider().MustComputeTokens(tokens.MappedModules("pkg_", "index",
+			map[string]string{"mod1": "SomeMod"},
+			finalize(t, tk{"SomeMod", "R1"}, tk{"SomeMod", "getD1"})))
+	})
+}
+
 func TestIgnored(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
