@@ -6,7 +6,6 @@ replace (
 	github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20230710100801-03a71d0fca3d
 	github.com/pulumi/pulumi-terraform-bridge/testing => ./testing
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
-
 )
 
 require (
