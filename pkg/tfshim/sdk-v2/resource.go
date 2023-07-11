@@ -21,7 +21,7 @@ func NewResource(r *schema.Resource) shim.Resource {
 }
 
 func (r v2Resource) Schema() shim.SchemaMap {
-	return v2SchemaMap(r.tf.Schema)
+	return v2SchemaMap(r.tf.SchemaMap())
 }
 
 func (r v2Resource) SchemaVersion() int {
@@ -87,8 +87,8 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 	// them into their TF attribute form. The result is our set of TF attributes.
 	config := &terraform.ResourceConfig{Raw: object, Config: object}
 	attributes := map[string]string{}
-	reader := &schema.ConfigFieldReader{Config: config, Schema: r.tf.Schema}
-	for k := range r.tf.Schema {
+	reader := &schema.ConfigFieldReader{Config: config, Schema: r.tf.SchemaMap()}
+	for k := range r.tf.SchemaMap() {
 		// Elide nil values.
 		if v, ok := object[k]; ok && v == nil {
 			continue
