@@ -134,7 +134,7 @@ func makeUnknownElement(elem interface{}) interface{} {
 	case *schema.Resource:
 		// If the element uses a resource schema, fill in unknown values for any required properties.
 		res := make(map[string]interface{})
-		for k, v := range e.Schema {
+		for k, v := range e.SchemaMap() {
 			if v.Required {
 				res[k] = v2Schema{v}.UnknownValue()
 			}

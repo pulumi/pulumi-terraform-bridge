@@ -130,8 +130,12 @@ func (l *testLogger) ResetNamed(name string) hclog.Logger {
 	}
 }
 
+func (l *testLogger) GetLevel() hclog.Level {
+	return l.level
+}
+
 func (l *testLogger) SetLevel(level hclog.Level) {
-	// Do nothing.
+	l.level = level
 }
 
 func (l *testLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
@@ -1406,10 +1410,8 @@ func TestImportResourceState(t *testing.T) {
 	state := states[0]
 
 	expected := cty.ObjectVal(map[string]cty.Value{
-		"id": cty.StringVal("0"),
-		"timeouts": cty.ObjectVal(map[string]cty.Value{
-			"create": cty.NullVal(cty.String),
-		}),
+		"id":                    cty.StringVal("0"),
+		"timeouts":              cty.NullVal(cty.Map(cty.Number)),
 		"nil_property_value":    cty.NullVal(cty.Map(cty.String)),
 		"bool_property_value":   cty.NullVal(cty.Bool),
 		"number_property_value": cty.NullVal(cty.Number),
