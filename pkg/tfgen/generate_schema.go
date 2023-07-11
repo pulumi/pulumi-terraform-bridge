@@ -361,6 +361,11 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		if rootNamespace := csi.RootNamespace; rootNamespace != "" {
 			dotnetData["rootNamespace"] = rootNamespace
 		}
+
+		if packageName := csi.PackageName; packageName != "" {
+			dotnetData["packageName"] = packageName
+		}
+
 		spec.Language["csharp"] = rawMessage(dotnetData)
 	}
 
