@@ -454,6 +454,16 @@ func makeAutoAliasing(t *testing.T) (
 }
 
 func TestTokenAliasing(t *testing.T) {
+	// We run this test multiple times to guard against nondeterminism.
+	//
+	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1286.
+	for i := 0; i < 500; i++ {
+		t.Run(fmt.Sprintf("%d", i), testTokenAliasing)
+	}
+}
+
+func testTokenAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -463,11 +473,12 @@ func TestTokenAliasing(t *testing.T) {
 					"pkg_mod2_r1": nil,
 				},
 				DataSourcesMap: schema.ResourceMap{
-					"pkg_mod1_r1": nil,
+					"pkg_mod1_d1": nil,
 				},
 			}).Shim(),
 		}
 	}
+
 	simple := provider()
 
 	metadata, autoAliasing := makeAutoAliasing(t)
@@ -527,11 +538,11 @@ func TestTokenAliasing(t *testing.T) {
 		},
 	}, modules.Resources)
 	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
-		"pkg_mod1_r1": {Tok: "pkg:mod1/getR1:getR1"},
-		"pkg_mod1_r1_legacy": {
-			Tok:                "pkg:index/getMod1R1:getMod1R1",
-			DeprecationMessage: "pkg.index/getmod1r1.getMod1R1 has been deprecated in favor of pkg.mod1/getr1.getR1",
-			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+		"pkg_mod1_d1": {Tok: "pkg:mod1/getD1:getD1"},
+		"pkg_mod1_d1_legacy": {
+			Tok:                "pkg:index/getMod1D1:getMod1D1",
+			DeprecationMessage: "pkg.index/getmod1d1.getMod1D1 has been deprecated in favor of pkg.mod1/getd1.getD1",
+			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_d1.html.markdown"},
 		},
 	},
 		modules.DataSources)

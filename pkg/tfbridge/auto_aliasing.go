@@ -155,20 +155,24 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	// Applying resource aliases adds new resources to providerInfo.Resources. To keep
 	// this process deterministic, we don't apply resource aliases until all resources
 	// have been examined.
-	applyResourceAliases := []func(){}
+	//
+	// The same logic applies to datasources.
+	applyAliases := []func(){}
 
 	for tfToken, computed := range info.Resources {
 		r, _ := rMap.GetOk(tfToken)
-		aliasResource(info, r, &applyResourceAliases, hist.Resources,
+		aliasResource(info, r, &applyAliases, hist.Resources,
 			computed, tfToken, currentVersion)
-	}
-	for _, f := range applyResourceAliases {
-		f()
 	}
 
 	for tfToken, computed := range info.DataSources {
 		ds, _ := dMap.GetOk(tfToken)
-		aliasDataSource(info, ds, hist.DataSources, computed, tfToken, currentVersion)
+		aliasDataSource(info, ds, &applyAliases, hist.DataSources,
+			computed, tfToken, currentVersion)
+	}
+
+	for _, f := range applyAliases {
+		f()
 	}
 
 	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
@@ -433,6 +437,7 @@ func aliasOrRenameResource(
 func aliasDataSource(
 	p *ProviderInfo,
 	ds shim.Resource,
+	queue *[]func(),
 	hist map[string]*tokenHistory[tokens.ModuleMember],
 	computed *DataSourceInfo,
 	tfToken string,
@@ -447,7 +452,8 @@ func aliasDataSource(
 			MajorVersion: version,
 		}
 	} else {
-		aliasOrRenameDataSource(p, computed, tfToken, prev, version)
+		*queue = append(*queue,
+			func() { aliasOrRenameDataSource(p, computed, tfToken, prev, version) })
 	}
 
 	if ds == nil {
