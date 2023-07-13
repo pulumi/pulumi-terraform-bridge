@@ -21,7 +21,7 @@ func NewResource(r *schema.Resource) shim.Resource {
 }
 
 func (r v2Resource) Schema() shim.SchemaMap {
-	return v2SchemaMap(r.tf.Schema)
+	return v2SchemaMap(r.tf.SchemaMap())
 }
 
 func (r v2Resource) SchemaVersion() int {
@@ -58,7 +58,7 @@ func (r v2Resource) Importer() shim.ImportFunc {
 					"as a bug in the Pulumi provider repository.", id)
 			}
 			if s.Attributes != nil {
-				results[i] = v2InstanceState{s, nil}
+				results[i] = v2InstanceState{r.tf, s, nil}
 			}
 		}
 		return results, nil
@@ -87,8 +87,8 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 	// them into their TF attribute form. The result is our set of TF attributes.
 	config := &terraform.ResourceConfig{Raw: object, Config: object}
 	attributes := map[string]string{}
-	reader := &schema.ConfigFieldReader{Config: config, Schema: r.tf.Schema}
-	for k := range r.tf.Schema {
+	reader := &schema.ConfigFieldReader{Config: config, Schema: r.tf.SchemaMap()}
+	for k := range r.tf.SchemaMap() {
 		// Elide nil values.
 		if v, ok := object[k]; ok && v == nil {
 			continue
@@ -102,11 +102,13 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 		flattenValue(attributes, k, f.Value)
 	}
 
-	return v2InstanceState{&terraform.InstanceState{
-		ID:         id,
-		Attributes: attributes,
-		Meta:       meta,
-	}, nil}, nil
+	return v2InstanceState{
+		r.tf,
+		&terraform.InstanceState{
+			ID:         id,
+			Attributes: attributes,
+			Meta:       meta,
+		}, nil}, nil
 }
 
 func (r v2Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {

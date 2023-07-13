@@ -452,7 +452,8 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 	result, err := combineMapping(&args)
 	if err != nil {
 		if args.err != nil {
-			return nil, fmt.Errorf("%w (sub-provider GetMapping call failed: %w)", err, args.err)
+			// go v1.19.0 only accepts a single %w within fmt.Error, so we convert the second call to %s.
+			return nil, fmt.Errorf("%w (sub-provider GetMapping call failed: %s)", err, args.err.Error())
 		}
 		return nil, err
 	}

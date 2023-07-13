@@ -57,7 +57,7 @@ const (
 )
 
 type Generator struct {
-	pkg              tokens.Package        // the Pulum package name (e.g. `gcp`)
+	pkg              tokens.Package        // the Pulumi package name (e.g. `gcp`)
 	version          string                // the package version.
 	language         Language              // the language runtime to generate.
 	info             tfbridge.ProviderInfo // the provider info for customizing code generation
@@ -856,6 +856,11 @@ func (g *Generator) Generate() error {
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
+	}
+
+	// Apply schema post-processing if defined in the provider.
+	if g.info.SchemaPostProcessor != nil {
+		g.info.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
 	// As a side-effect genPulumiSchema also populated rename tables.

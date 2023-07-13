@@ -27,11 +27,11 @@ func stateFromShim(s shim.InstanceState) *terraform.InstanceState {
 	return s.(v2InstanceState).tf
 }
 
-func stateToShim(s *terraform.InstanceState) shim.InstanceState {
+func stateToShim(r *schema.Resource, s *terraform.InstanceState) shim.InstanceState {
 	if s == nil {
 		return nil
 	}
-	return v2InstanceState{s, nil}
+	return NewInstanceStateForResource(s, r)
 }
 
 func diffFromShim(d shim.InstanceDiff) *terraform.InstanceDiff {
@@ -98,7 +98,7 @@ func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
 	state, diags := r.Apply(context.TODO(), state, diffFromShim(d), p.tf.Meta())
-	return stateToShim(state), errors(diags)
+	return stateToShim(r, state), errors(diags)
 }
 
 func (p v2Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
@@ -111,7 +111,7 @@ func (p v2Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState,
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
 	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
-	return stateToShim(state), errors(diags)
+	return stateToShim(r, state), errors(diags)
 }
 
 func (p v2Provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
@@ -129,7 +129,7 @@ func (p v2Provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceS
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 	state, diags := r.ReadDataApply(context.TODO(), diffFromShim(d), p.tf.Meta())
-	return stateToShim(state), errors(diags)
+	return stateToShim(r, state), errors(diags)
 }
 
 func (p v2Provider) Meta() interface{} {

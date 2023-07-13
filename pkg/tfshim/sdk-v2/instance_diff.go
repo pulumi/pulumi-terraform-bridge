@@ -55,7 +55,11 @@ func (d v2InstanceDiff) ProposedState(res shim.Resource, priorState shim.Instanc
 		}
 	}
 
-	return v2InstanceState{tf: prior, diff: d.tf}, nil
+	return v2InstanceState{
+		resource: res.(v2Resource).tf,
+		tf:       prior,
+		diff:     d.tf,
+	}, nil
 }
 
 func (d v2InstanceDiff) Destroy() bool {

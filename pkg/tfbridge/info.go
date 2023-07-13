@@ -112,6 +112,13 @@ type ProviderInfo struct {
 	// docs). The primary use case for this hook is to ignore problematic or flaky examples temporarily until the
 	// underlying issues are resolved and the examples can be rendered correctly.
 	SkipExamples func(SkipExamplesArgs) bool
+
+	// EXPERIMENTAL: the signature may change in minor releases.
+	//
+	// Optional function to post-process the generated schema spec after
+	// the bridge completed its original version based on the TF schema.
+	// A hook to enable custom schema modifications specific to a provider.
+	SchemaPostProcessor func(spec *pschema.PackageSpec)
 }
 
 func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {
@@ -394,6 +401,13 @@ type SchemaInfo struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
+
+	// experimental workaround to treat this as a computed input for the purpose of diff, i.e.: should
+	// trigger an update even if it appears only as an output property.
+	//
+	// used to address pulumi/pulumi-aws#1655 - however we may need to refine the behavior in the
+	// future, and so we will not reserve the field name ComputedInput at this time.
+	XComputedInput bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
@@ -474,6 +488,10 @@ type JavaScriptInfo struct {
 	Resolutions       map[string]string // NPM resolutions to add to package.json.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
+	PluginName        string            // The name of the plugin, which might be
+	// different from the package name.  The version of the plugin, which might be
+	// different from the version of the package.
+	PluginVersion string
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.

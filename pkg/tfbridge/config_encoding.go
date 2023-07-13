@@ -209,10 +209,12 @@ func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource
 			return nil, err
 		} else if v != nil {
 			if opts.SkipNulls && v.IsNull() {
-			} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(pk) {
-			} else {
-				result[pk] = *v
+				continue
 			}
+			if opts.SkipInternalKeys && resource.IsInternalPropertyKey(pk) {
+				continue
+			}
+			result[pk] = *v
 		}
 	}
 

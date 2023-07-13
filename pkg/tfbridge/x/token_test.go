@@ -546,8 +546,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                     }
                 }
             }
-        },
-        "datasources": {}
+        }
     }
 }`
 	assert.Equal(t, expected, v)
@@ -595,8 +594,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                     }
                 }
             }
-        },
-        "datasources": {}
+        }
     }
 }`, string(metadata.Marshal()))
 }
@@ -640,8 +638,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                     }
                 }
             }
-        },
-        "datasources": {}
+        }
     }
 }`
 	assert.Equal(t, expected, v)
@@ -670,8 +667,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                     }
                 }
             }
-        },
-        "datasources": {}
+        }
     }
 }`, string(metadata.Marshal()))
 
@@ -731,8 +727,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
                     }
                 }
             }
-        },
-        "datasources": {}
+        }
     }
 }`
 	assert.Equal(t, expected, v)
@@ -784,7 +779,6 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 		assert.Nil(t, r.Fields["nest_list"])
 		assert.Nil(t, r.Fields["override_list"])
 
-		t.Log(string(hist.Marshal()))
 		assert.JSONEq(t, `{
                 "auto-aliasing": {
                     "resources": {
@@ -805,8 +799,88 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
                                 }
                             }
                         }
-                    },
-                    "datasources": {}
+                    }
+                }
+            }`, string(hist.Marshal()))
+	}
+
+	t.Run("auto-named-then-aliased", func(t *testing.T) {
+		p := provider()
+
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+
+		assertExpected(t, p, info)
+	})
+
+	t.Run("auto-aliased-then-named", func(t *testing.T) {
+		p := provider()
+		info, err := metadata.New(nil)
+		require.NoError(t, err)
+		err = AutoAliasing(p, info)
+		require.NoError(t, err)
+		p.SetAutonaming(24, "-")
+
+		assertExpected(t, p, info)
+	})
+}
+
+func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
+	provider := func() *tfbridge.ProviderInfo {
+		prov := &tfbridge.ProviderInfo{
+			P: (&schema.Provider{
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_r1": (&schema.Resource{Schema: schema.SchemaMap{
+						"name":      Schema{typ: shim.TypeString},
+						"nest_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"nest_flat": Schema{
+							elem:        Schema{typ: shim.TypeBool},
+							MaxItemsOne: true,
+						},
+						"override_list": Schema{elem: Schema{typ: shim.TypeBool}},
+						"override_flat": Schema{
+							elem:        Schema{typ: shim.TypeInt},
+							MaxItemsOne: true,
+						},
+					}}).Shim(),
+				},
+			}).Shim(),
+		}
+		err := ComputeDefaults(prov, TokensSingleModule("pkg_", "index", MakeStandardToken("pkg")))
+		require.NoError(t, err)
+		return prov
+	}
+
+	assertExpected := func(t *testing.T, p *tfbridge.ProviderInfo, hist *metadata.Data) {
+		r := p.DataSources["pkg_r1"]
+
+		assert.Nil(t, r.Fields["nest_list"])
+		assert.Nil(t, r.Fields["override_list"])
+
+		assert.JSONEq(t, `{
+                "auto-aliasing": {
+                    "datasources": {
+                        "pkg_r1": {
+                            "current": "pkg:index/getR1:getR1",
+                            "fields": {
+                                "nest_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "nest_list": {
+                                    "maxItemsOne": false
+                                },
+                                "override_flat": {
+                                    "maxItemsOne": true
+                                },
+                                "override_list": {
+                                    "maxItemsOne": false
+                                }
+                            }
+                        }
+                    }
                 }
             }`, string(hist.Marshal()))
 	}

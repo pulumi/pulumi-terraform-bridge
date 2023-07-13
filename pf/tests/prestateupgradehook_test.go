@@ -25,7 +25,7 @@ import (
 
 func TestPreStateUpgradeHook(t *testing.T) {
 	info := testprovider.RandomProvider()
-	info.ProviderInfo.Resources["random_string"].PreStateUpgradeHook = func(args tfbridge.PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error) {
+	info.Resources["random_string"].PreStateUpgradeHook = func(args tfbridge.PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error) {
 		// Assume that if prior state is missing a schema version marker, it really is a corrupt state at version 2.
 		if args.PriorStateSchemaVersion == 0 {
 			return 2, args.PriorState, nil

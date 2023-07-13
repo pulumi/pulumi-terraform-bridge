@@ -54,13 +54,9 @@ func TestMaxItemsOne(t *testing.T) {
 		},
 	}
 	res, err := GenerateSchema(ctx, GenerateSchemaOptions{
-		ProviderInfo: pftfbridge.ProviderInfo{
-			ProviderInfo: tfbridge.ProviderInfo{
-				Name: "testprovider",
-			},
-			NewProvider: func() provider.Provider {
-				return &schemaTestProvider{s}
-			},
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "testprovider",
+			P:    pftfbridge.ShimProvider(&schemaTestProvider{s}),
 		},
 	})
 	require.NoError(t, err)

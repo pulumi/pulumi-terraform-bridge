@@ -15,19 +15,24 @@
 package tfbridge
 
 import (
-	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// Configures Pulumi provider metadata and bridging options.
-type ProviderInfo struct {
+func TestKeySuggestions(t *testing.T) {
+	schemaMap := &schema.SchemaMap{
+		"my_prop": (&schema.Schema{
+			Type:     shim.TypeString,
+			Optional: true,
+		}).Shim(),
+	}
 
-	// Inherits the options used for bridging providers built with the Terraform Plugin SDK.
-	//
-	// One notable exception is P (provider itself). When populating ProviderInfo, property P must be nil. Populate
-	// NewProvider instead.
-	tfbridge.ProviderInfo
-
-	// Constructs a new instance of the Terraform provider for bridging.
-	NewProvider func() pfprovider.Provider
+	assert.Empty(t, keySuggestions(NewCheckFailurePath(schemaMap, nil, "my_prop"), schemaMap, nil))
+	assert.Contains(t, keySuggestions(NewCheckFailurePath(schemaMap, nil, "myprop"), schemaMap, nil),
+		resource.PropertyKey("myProp"))
 }

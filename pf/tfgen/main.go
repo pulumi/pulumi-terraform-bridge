@@ -15,13 +15,11 @@
 package tfgen
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -34,19 +32,19 @@ import (
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
 //
+// info.P must be constructed with ShimProvider or ShimProviderWithContext.
+//
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
-func Main(provider string, info tfbridge.ProviderInfo) {
+func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
-	ctx := context.Background()
-	shimInfo := shimSchemaOnlyProviderInfo(ctx, info)
 
-	tfgen.MainWithCustomGenerate(provider, version, shimInfo, func(opts tfgen.GeneratorOptions) error {
+	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
 
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
 
-		if err := notSupported(opts.Sink, info.ProviderInfo); err != nil {
+		if err := notSupported(opts.Sink, info); err != nil {
 			return err
 		}
 
@@ -55,11 +53,7 @@ func Main(provider string, info tfbridge.ProviderInfo) {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }
 
@@ -101,10 +95,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }

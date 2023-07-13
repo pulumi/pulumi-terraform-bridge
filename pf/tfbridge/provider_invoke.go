@@ -147,9 +147,8 @@ func (p *provider) parseInvokePropertyCheckFailures(ds datasourceHandle, diags [
 			}
 			failures = append(failures, failure)
 			continue
-		} else {
-			rest = append(rest, d)
 		}
+		rest = append(rest, d)
 	}
 
 	return failures, rest

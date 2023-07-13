@@ -33,7 +33,11 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key string) ([]byt
 		if err != nil {
 			return nil, "", err
 		}
-		return mapping, p.info.Name, nil
+		mapped := p.info.ResourcePrefix
+		if mapped == "" {
+			mapped = p.info.Name
+		}
+		return mapping, mapped, nil
 	}
 
 	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
@@ -41,7 +45,7 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key string) ([]byt
 }
 
 func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
-	var providerInfoCopy tfbridge.ProviderInfo = p.info.ProviderInfo
+	var providerInfoCopy tfbridge.ProviderInfo = p.info
 	providerInfoCopy.P = schemashim.ShimSchemaOnlyProvider(ctx, p.tfProvider)
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
 }

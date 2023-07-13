@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+package tokens
 
-import (
-	"context"
+import b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
-	pf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-)
-
-func shimSchemaOnlyProviderInfo(ctx context.Context, provider pf.ProviderInfo) tfbridge.ProviderInfo {
-	shimProvider := schemashim.ShimSchemaOnlyProvider(ctx, provider.NewProvider())
-	var copy tfbridge.ProviderInfo = provider.ProviderInfo
-	copy.P = shimProvider
-	return copy
+// A strategy that assigns all tokens to the same module.
+//
+// For example:
+//
+//	rStrat, dStrat := SingleModule("pkgName_", "index", finalize)
+//
+// The above example would transform "pkgName_foo" into "pkgName:index:Foo".
+func SingleModule(
+	tfPackagePrefix, moduleName string, finalize Make,
+) b.Strategy {
+	return KnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }

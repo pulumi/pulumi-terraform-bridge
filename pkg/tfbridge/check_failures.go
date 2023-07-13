@@ -240,6 +240,9 @@ func keySuggestions(
 	})
 	similar := []resource.PropertyKey{}
 	for _, c := range allKeys {
+		if string(k) == string(c) {
+			continue
+		}
 		if levenshtein.Distance(string(k), string(c), levenshtein.NewParams()) <= 2 {
 			similar = append(similar, c)
 		}

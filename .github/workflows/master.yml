@@ -10,6 +10,9 @@ on:
       - '.github/workflows/update-providers.yml'
       - 'README.md'
 
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+
 jobs:
   build:
     name: Build and Test Bridge

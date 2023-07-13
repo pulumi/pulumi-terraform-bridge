@@ -623,59 +623,61 @@ func ProviderV2() *schemav2.Provider {
 				},
 			},
 			"second_resource": {
-				Schema: map[string]*schemav2.Schema{
-					"nil_property_value":    {Type: schemav2.TypeMap, Optional: true},
-					"bool_property_value":   {Type: schemav2.TypeBool, Optional: true},
-					"number_property_value": {Type: schemav2.TypeInt, Optional: true},
-					"float_property_value":  {Type: schemav2.TypeFloat, Optional: true},
-					"string_property_value": {Type: schemav2.TypeString, Optional: true},
-					"array_property_value": {
-						Type:     schemav2.TypeList,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-						Required: true,
-					},
-					"object_property_value": {Type: schemav2.TypeMap, Optional: true},
-					"nested_resources": {
-						Type:     schemav2.TypeList,
-						MaxItems: 1,
-						// Embed a `*schemav2.Resource` to validate that type directed
-						// walk of the schema successfully walks inside Resources as well
-						// as Schemas.
-						Elem: &schemav2.Resource{
-							Schema: map[string]*schemav2.Schema{
-								"configuration": {Type: schemav2.TypeMap, Required: true},
-							},
+				SchemaFunc: func() map[string]*schemav2.Schema {
+					return map[string]*schemav2.Schema{
+						"nil_property_value":    {Type: schemav2.TypeMap, Optional: true},
+						"bool_property_value":   {Type: schemav2.TypeBool, Optional: true},
+						"number_property_value": {Type: schemav2.TypeInt, Optional: true},
+						"float_property_value":  {Type: schemav2.TypeFloat, Optional: true},
+						"string_property_value": {Type: schemav2.TypeString, Optional: true},
+						"array_property_value": {
+							Type:     schemav2.TypeList,
+							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+							Required: true,
 						},
-						Optional: true,
-					},
-					"set_property_value": {
-						Type:     schemav2.TypeSet,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-						Optional: true,
-						ForceNew: true,
-					},
-					"string_with_bad_interpolation": {Type: schemav2.TypeString, Optional: true},
-					"conflicting_property": {
-						Type:          schemav2.TypeString,
-						Optional:      true,
-						ConflictsWith: []string{"conflicting_property2"},
-					},
-					"conflicting_property2": {
-						Type:          schemav2.TypeString,
-						Optional:      true,
-						ConflictsWith: []string{"conflicting_property"},
-					},
-					// Conflicts with conflicting_property, but not vice-versa,
-					// and has a default. The Terraform docs don't say whether
-					// specifying a `ConflictsWith` in one direction but not the
-					// other is permissible, but providers do it in practice:
-					// https://github.com/pulumi/pulumi-snowflake/issues/11
-					"conflicting_property_unidirectional": {
-						Type:          schemav2.TypeBool,
-						Optional:      true,
-						Default:       false,
-						ConflictsWith: []string{"conflicting_property"},
-					},
+						"object_property_value": {Type: schemav2.TypeMap, Optional: true},
+						"nested_resources": {
+							Type:     schemav2.TypeList,
+							MaxItems: 1,
+							// Embed a `*schemav2.Resource` to validate that type directed
+							// walk of the schema successfully walks inside Resources as well
+							// as Schemas.
+							Elem: &schemav2.Resource{
+								Schema: map[string]*schemav2.Schema{
+									"configuration": {Type: schemav2.TypeMap, Required: true},
+								},
+							},
+							Optional: true,
+						},
+						"set_property_value": {
+							Type:     schemav2.TypeSet,
+							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+							Optional: true,
+							ForceNew: true,
+						},
+						"string_with_bad_interpolation": {Type: schemav2.TypeString, Optional: true},
+						"conflicting_property": {
+							Type:          schemav2.TypeString,
+							Optional:      true,
+							ConflictsWith: []string{"conflicting_property2"},
+						},
+						"conflicting_property2": {
+							Type:          schemav2.TypeString,
+							Optional:      true,
+							ConflictsWith: []string{"conflicting_property"},
+						},
+						// Conflicts with conflicting_property, but not vice-versa,
+						// and has a default. The Terraform docs don't say whether
+						// specifying a `ConflictsWith` in one direction but not the
+						// other is permissible, but providers do it in practice:
+						// https://github.com/pulumi/pulumi-snowflake/issues/11
+						"conflicting_property_unidirectional": {
+							Type:          schemav2.TypeBool,
+							Optional:      true,
+							Default:       false,
+							ConflictsWith: []string{"conflicting_property"},
+						},
+					}
 				},
 				SchemaVersion: 1,
 				MigrateState: func(v int, is *terraformv2.InstanceState, p interface{}) (*terraformv2.InstanceState, error) {

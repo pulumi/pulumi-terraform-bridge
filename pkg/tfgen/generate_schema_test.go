@@ -26,7 +26,6 @@ import (
 
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/x"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -57,7 +56,11 @@ func TestNestedMaxItemsOne(t *testing.T) {
 	provider := testprovider.ProviderMiniCloudflare()
 	meta, err := metadata.New(nil)
 	require.NoError(t, err)
-	err = x.AutoAliasing(&provider, meta)
+	provider.MetadataInfo = &tfbridge.MetadataInfo{
+		Path: "non-nil",
+		Data: meta,
+	}
+	err = provider.ApplyAutoAliases()
 	require.NoError(t, err)
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -73,8 +76,11 @@ func TestNestedMaxItemsOne(t *testing.T) {
 	// Round trip through serialization to simulate writing out and reading from disk.
 	meta, err = metadata.New(meta.Marshal())
 	require.NoError(t, err)
-
-	err = x.AutoAliasing(&provider, meta)
+	provider.MetadataInfo = &tfbridge.MetadataInfo{
+		Path: "non-nil",
+		Data: meta,
+	}
+	err = provider.ApplyAutoAliases()
 	require.NoError(t, err)
 
 	schema2, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{

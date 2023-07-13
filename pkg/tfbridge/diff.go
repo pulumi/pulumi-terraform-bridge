@@ -109,12 +109,17 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 					if ev, err = tfs.SetElement(makeConfig(ev)); err != nil {
 						return
 					}
-				}
 
-				ti = strconv.FormatInt(int64(tfs.SetHash(ev)), 10)
-				if containsComputedValues(e) {
-					// TF adds a '~' prefix to the hash code for any set element that contains computed values.
-					ti = "~" + ti
+					// We cannot compute the hash for computed values because they are represented by the UnknownVariableValue
+					// sentinel string, which may not be a legal value of the corresponding schema type, and SetHash does not
+					// account for computed values. Skipping this for unknown values will result in computing a diff only on the
+					// set itself, instead of on the set element, which matches the InstanceDiff returned by Terraform,
+					// which is a diff only on the count (and to an unknown value) of the set.
+					ti = strconv.FormatInt(int64(tfs.SetHash(ev)), 10)
+					if containsComputedValues(e) {
+						// TF adds a '~' prefix to the hash code for any set element that contains computed values.
+						ti = "~" + ti
+					}
 				}
 			}
 
@@ -149,21 +154,23 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 }
 
 func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
-	diff map[string]*pulumirpc.PropertyDiff, tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
+	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
+	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
+	isComputedInput := ps != nil && ps.XComputedInput
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
 		case v.IsArray():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".#"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".#"); d == nil || (!d.NewComputed && !isComputedInput) {
 				return true
 			}
 			name += ".#"
 		case v.IsObject():
 			// If this value has a diff and is considered computed by Terraform, the diff will be woefully incomplete. In
 			// this case, do not recurse into the array; instead, just use the count diff for the details.
-			if d := tfDiff.Attribute(name + ".%"); d == nil || !d.NewComputed {
+			if d := tfDiff.Attribute(name + ".%"); d == nil || (!d.NewComputed && !isComputedInput) {
 				return true
 			}
 			name += ".%"
@@ -198,6 +205,9 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 				if hasOtherDiff &&
 					(other.Kind == pulumirpc.PropertyDiff_ADD || other.Kind == pulumirpc.PropertyDiff_ADD_REPLACE) &&
 					!d.RequiresNew {
+					if isComputedInput {
+						*forceDiff = true
+					}
 					delete(diff, path)
 				}
 				return false
@@ -266,32 +276,43 @@ func doIgnoreChanges(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news r
 // makeDetailedDiff converts the given state (olds), config (news), and InstanceDiff to a Pulumi property diff.
 //
 // See makePropertyDiff for more details.
-func makeDetailedDiff(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news resource.PropertyMap,
-	tfDiff shim.InstanceDiff) map[string]*pulumirpc.PropertyDiff {
+func makeDetailedDiff(
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap,
+	tfDiff shim.InstanceDiff,
+) (map[string]*pulumirpc.PropertyDiff, pulumirpc.DiffResponse_DiffChanges) {
 
 	if tfDiff == nil {
-		return map[string]*pulumirpc.PropertyDiff{}
+		return map[string]*pulumirpc.PropertyDiff{}, pulumirpc.DiffResponse_DIFF_NONE
 	}
 
 	// Check both the old state and the new config for diffs and report them as necessary.
 	//
 	// There is a minor complication here: Terraform has no concept of an "add" diff. Instead, adds are recorded as
-	// updates with an old property value of the empty string. In order to detect adds--and to ensure that all diffs in
-	// the InstanceDiff are reflected in the resulting Pulumi property diff--we first call this function with each
-	// property in a resource's state, then with each property in its config. Any diffs that only appear in the config
-	// are treated as adds; diffs that appear in both the state and config are treated as updates.
+	// updates with an old property value of the empty string. In order to detect adds--and to ensure that all diffs
+	// in the InstanceDiff are reflected in the resulting Pulumi property diff--we first call this function with
+	// each property in a resource's state, then with each property in its config. Any diffs that only appear in the
+	// config are treated as adds; diffs that appear in both the state and config are treated as updates.
+
+	forceDiff := new(bool)
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, etf, eps, true, useRawNames(etf))
+		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
 	}
-	return diff
+
+	changes := pulumirpc.DiffResponse_DIFF_NONE
+	if len(diff) > 0 || *forceDiff {
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+	}
+	return diff, changes
 }

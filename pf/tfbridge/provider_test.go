@@ -27,11 +27,9 @@ import (
 func TestTerraformResourceName(t *testing.T) {
 	urn := resource.URN("urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority")
 	p := &provider{
-		info: ProviderInfo{
-			ProviderInfo: tfbridge.ProviderInfo{
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"random_integer": {Tok: "random:index/randomInteger:RandomInteger"},
-				},
+		info: tfbridge.ProviderInfo{
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"random_integer": {Tok: "random:index/randomInteger:RandomInteger"},
 			},
 		},
 	}
