@@ -44,7 +44,7 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4
 	github.com/pulumi/pulumi-yaml v1.1.1
 	github.com/pulumi/schema-tools v0.1.2
-	github.com/pulumi/terraform v1.4.0
+	github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.9.5
