@@ -743,26 +743,41 @@ var tfFunctionStd = map[string]struct {
 	},
 }
 
+type convertState struct {
+	// The sources for the HCL files we're converting
+	sources map[string][]byte
+
+	// Diagnostic messages from conversion
+	diagnostics hcl.Diagnostics
+}
+
+// Adds a diagnostic to the state
+func (s *convertState) appendDiagnostic(diagnostic *hcl.Diagnostic) {
+	s.diagnostics = append(s.diagnostics, diagnostic)
+}
+
 // Returns the source code for the given range
-func sourceCode(sources map[string][]byte, rng hcl.Range) string {
+func (s *convertState) sourceCode(rng hcl.Range) string {
 	buffer := bytes.NewBufferString("")
-	_, err := getTokensForRange(sources, rng).WriteTo(buffer)
+	_, err := getTokensForRange(s.sources, rng).WriteTo(buffer)
 	contract.AssertNoErrorf(err, "Failed to write tokens for range %v", rng)
 	return strings.Replace(buffer.String(), "\r\n", "\n", -1)
 }
 
 // Returns a call to notImplemented with the text of the input range, e.g. `notImplemented("some.expr[0]")`
-func notImplemented(sources map[string][]byte, rng hcl.Range) hclwrite.Tokens {
-	text := cty.StringVal(sourceCode(sources, rng))
+func notImplemented(state *convertState, rng hcl.Range) hclwrite.Tokens {
+	text := cty.StringVal(state.sourceCode(rng))
 	return hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
 }
 
-func convertFunctionCallExpr(sources map[string][]byte,
+func convertFunctionCallExpr(state *convertState,
 	scopes *scopes, fullyQualifiedPath string, call *hclsyntax.FunctionCallExpr,
 ) hclwrite.Tokens {
+	callRange := hcl.RangeOver(call.NameRange, call.CloseParenRange)
+
 	args := []hclwrite.Tokens{}
 	for _, arg := range call.Args {
-		args = append(args, convertExpression(sources, false, scopes, "", arg))
+		args = append(args, convertExpression(state, false, scopes, "", arg))
 	}
 
 	// First see if this is `list`
@@ -810,13 +825,25 @@ func convertFunctionCallExpr(sources map[string][]byte,
 			})
 
 		} else {
+			if len(args) > len(invoke.inputs) {
+				state.appendDiagnostic(&hcl.Diagnostic{
+					Subject:  &callRange,
+					Severity: hcl.DiagWarning,
+					Summary:  "Unexpected argument count to function",
+					Detail:   fmt.Sprintf("Got %d arguments to function %s, expected %d", len(args), call.Name, len(invoke.inputs)),
+				})
+			}
+
 			for i, arg := range args {
-				if len(invoke.inputs) <= i {
-					panic(fmt.Sprintf("Got argument %d to %s", i, call.Name))
+				var name hclwrite.Tokens
+				if i < len(invoke.inputs) {
+					name = hclwrite.TokensForIdentifier(invoke.inputs[i])
+				} else {
+					name = hclwrite.TokensForIdentifier(fmt.Sprintf("arg%d", i))
 				}
 
 				invokeArgs = append(invokeArgs, hclwrite.ObjectAttrTokens{
-					Name:  hclwrite.TokensForIdentifier(invoke.inputs[i]),
+					Name:  name,
 					Value: arg,
 				})
 			}
@@ -835,18 +862,25 @@ func convertFunctionCallExpr(sources map[string][]byte,
 	}
 
 	// Finally just return it as not yet implemented
-	return notImplemented(sources, call.Range())
+	state.appendDiagnostic(&hcl.Diagnostic{
+		Subject:  &callRange,
+		Severity: hcl.DiagWarning,
+		Summary:  "Function not yet implemented",
+		Detail:   fmt.Sprintf("Function %s not yet implemented", call.Name),
+	})
+
+	return notImplemented(state, call.Range())
 }
 
-func convertTupleConsExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertTupleConsExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.TupleConsExpr,
 ) hclwrite.Tokens {
 	elems := []hclwrite.Tokens{}
 	for _, expr := range expr.Exprs {
-		elems = append(elems, convertExpression(sources, false, scopes, appendPathArray(fullyQualifiedPath), expr))
+		elems = append(elems, convertExpression(state, false, scopes, appendPathArray(fullyQualifiedPath), expr))
 	}
 	tokens := hclwrite.TokensForTuple(elems)
-	leading, trailing := getTrivia(sources, expr.SrcRange, inBlock)
+	leading, trailing := getTrivia(state.sources, expr.SrcRange, inBlock)
 	return append(append(leading, tokens...), trailing...)
 }
 
@@ -902,7 +936,7 @@ func matchStaticString(expr hclsyntax.Expression) *string {
 	return nil
 }
 
-func convertObjectConsExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertObjectConsExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ObjectConsExpr,
 ) hclwrite.Tokens {
 	items := []hclwrite.ObjectAttrTokens{}
@@ -928,10 +962,10 @@ func convertObjectConsExpr(sources map[string][]byte, inBlock bool, scopes *scop
 		}
 		// If we can't statically determine the name, we can't rename it, so just convert the expression.
 		if nameTokens == nil {
-			nameTokens = convertExpression(sources, false, scopes, "", item.KeyExpr)
+			nameTokens = convertExpression(state, false, scopes, "", item.KeyExpr)
 		}
 
-		valueTokens := convertExpression(sources, false, scopes, subQualifiedPath, item.ValueExpr)
+		valueTokens := convertExpression(state, false, scopes, subQualifiedPath, item.ValueExpr)
 		items = append(items, hclwrite.ObjectAttrTokens{
 			Name:  nameTokens,
 			Value: valueTokens,
@@ -940,16 +974,16 @@ func convertObjectConsExpr(sources map[string][]byte, inBlock bool, scopes *scop
 	return hclwrite.TokensForObject(items)
 }
 
-func convertObjectConsKeyExpr(sources map[string][]byte, inBlock bool,
+func convertObjectConsKeyExpr(state *convertState, inBlock bool,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ObjectConsKeyExpr,
 ) hclwrite.Tokens {
 	// Seems we can just ignore ForceNonLiteral here
-	return convertExpression(sources, false, scopes, fullyQualifiedPath, expr.Wrapped)
+	return convertExpression(state, false, scopes, fullyQualifiedPath, expr.Wrapped)
 }
 
-func convertLiteralValueExpr(sources map[string][]byte, inBlock bool,
+func convertLiteralValueExpr(state *convertState, inBlock bool,
 	expr *hclsyntax.LiteralValueExpr) hclwrite.Tokens {
-	leading, trailing := getTrivia(sources, expr.SrcRange, false)
+	leading, trailing := getTrivia(state.sources, expr.SrcRange, false)
 	value := hclwrite.TokensForValue(expr.Val)
 
 	tokens := leading
@@ -965,19 +999,19 @@ func makeToken(typ hclsyntax.TokenType, str string) *hclwrite.Token {
 	}
 }
 
-func convertTemplateWrapExpr(sources map[string][]byte,
+func convertTemplateWrapExpr(state *convertState,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.TemplateWrapExpr,
 ) hclwrite.Tokens {
 	tokens := []*hclwrite.Token{}
 	tokens = append(tokens, makeToken(hclsyntax.TokenOQuote, "\""))
 	tokens = append(tokens, makeToken(hclsyntax.TokenTemplateInterp, "${"))
-	tokens = append(tokens, convertExpression(sources, false, scopes, "", expr.Wrapped)...)
+	tokens = append(tokens, convertExpression(state, false, scopes, "", expr.Wrapped)...)
 	tokens = append(tokens, makeToken(hclsyntax.TokenTemplateSeqEnd, "}"))
 	tokens = append(tokens, makeToken(hclsyntax.TokenCQuote, "\""))
 	return tokens
 }
 
-func convertTemplateExpr(sources map[string][]byte,
+func convertTemplateExpr(state *convertState,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.TemplateExpr,
 ) hclwrite.Tokens {
 	tokens := []*hclwrite.Token{}
@@ -1001,7 +1035,7 @@ func convertTemplateExpr(sources map[string][]byte,
 			}
 		} else {
 			tokens = append(tokens, makeToken(hclsyntax.TokenTemplateInterp, "${"))
-			tokens = append(tokens, convertExpression(sources, false, scopes, "", part)...)
+			tokens = append(tokens, convertExpression(state, false, scopes, "", part)...)
 			tokens = append(tokens, makeToken(hclsyntax.TokenTemplateSeqEnd, "}"))
 		}
 	}
@@ -1075,7 +1109,7 @@ func getTraversalRange(traversal hcl.Traversal) hcl.Range {
 }
 
 func rewriteTraversal(
-	sources map[string][]byte,
+	state *convertState,
 	scopes *scopes, fullyQualifiedPath string, traversal hcl.Traversal) hclwrite.Tokens {
 	// We need to rewrite traversals, because we don't have the same top level variable names as terraform.
 	contract.Requiref(len(traversal) > 0, "traversal", "Traversal must have at least one element")
@@ -1106,7 +1140,7 @@ func rewriteTraversal(
 			matches("path", "module") ||
 			matches("path", "root") {
 			// If this is one of the builtin terraform inputs we just rewrite it to notImplemented.
-			return notImplemented(sources, getTraversalRange(traversal))
+			return notImplemented(state, getTraversalRange(traversal))
 		} else if root.Name == "var" && maybeFirstAttr != nil {
 			// This is a lookup of a var etc, we need to rewrite this traversal such that the root is now the
 			// pulumi config value instead.
@@ -1206,26 +1240,26 @@ func rewriteTraversal(
 }
 
 func convertScopeTraversalExpr(
-	sources map[string][]byte, inBlock bool,
+	state *convertState, inBlock bool,
 	scopes *scopes, fullyQualifiedPath string, expr *hclsyntax.ScopeTraversalExpr,
 ) hclwrite.Tokens {
-	return rewriteTraversal(sources, scopes, fullyQualifiedPath, expr.Traversal)
+	return rewriteTraversal(state, scopes, fullyQualifiedPath, expr.Traversal)
 }
 
 func convertRelativeTraversalExpr(
-	sources map[string][]byte, inBlock bool, scopes *scopes,
+	state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.RelativeTraversalExpr,
 ) hclwrite.Tokens {
-	tokens := convertExpression(sources, false, scopes, "", expr.Source)
+	tokens := convertExpression(state, false, scopes, "", expr.Source)
 	tokens = append(tokens, hclwrite.TokensForTraversal(
 		rewriteRelativeTraversal(scopes, fullyQualifiedPath, expr.Traversal))...)
 	return tokens
 }
 
-func convertBinaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertBinaryOpExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.BinaryOpExpr,
 ) hclwrite.Tokens {
-	tokens := convertExpression(sources, false, scopes, fullyQualifiedPath, expr.LHS)
+	tokens := convertExpression(state, false, scopes, fullyQualifiedPath, expr.LHS)
 	switch expr.Op {
 	case hclsyntax.OpLogicalOr:
 		tokens = append(tokens, makeToken(hclsyntax.TokenOr, "||"))
@@ -1256,11 +1290,11 @@ func convertBinaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes
 	default:
 		contract.Failf("unknown binary operation: %T", expr)
 	}
-	tokens = append(tokens, convertExpression(sources, false, scopes, fullyQualifiedPath, expr.RHS)...)
+	tokens = append(tokens, convertExpression(state, false, scopes, fullyQualifiedPath, expr.RHS)...)
 	return tokens
 }
 
-func convertUnaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertUnaryOpExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.UnaryOpExpr,
 ) hclwrite.Tokens {
 	var tokens hclwrite.Tokens
@@ -1272,15 +1306,15 @@ func convertUnaryOpExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	default:
 		contract.Failf("unknown unary operation: %T", expr)
 	}
-	tokens = append(tokens, convertExpression(sources, false, scopes, fullyQualifiedPath, expr.Val)...)
+	tokens = append(tokens, convertExpression(state, false, scopes, fullyQualifiedPath, expr.Val)...)
 	return tokens
 }
 
-func convertForExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertForExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ForExpr,
 ) hclwrite.Tokens {
 	// The collection doesn't yet have access to the key/value scopes
-	collTokens := convertExpression(sources, false, scopes, "", expr.CollExpr)
+	collTokens := convertExpression(state, false, scopes, "", expr.CollExpr)
 
 	// TODO: We should ensure key and value vars are unique
 	locals := map[string]string{
@@ -1291,9 +1325,9 @@ func convertForExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	}
 	scopes.push(locals)
 
-	keyTokens := convertExpression(sources, false, scopes, "", expr.KeyExpr)
-	valueTokens := convertExpression(sources, false, scopes, "", expr.ValExpr)
-	condTokens := convertExpression(sources, false, scopes, "", expr.CondExpr)
+	keyTokens := convertExpression(state, false, scopes, "", expr.KeyExpr)
+	valueTokens := convertExpression(state, false, scopes, "", expr.ValExpr)
+	condTokens := convertExpression(state, false, scopes, "", expr.CondExpr)
 
 	scopes.pop()
 
@@ -1355,11 +1389,11 @@ func convertForExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	return tokens
 }
 
-func convertIndexExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertIndexExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.IndexExpr,
 ) hclwrite.Tokens {
-	collection := convertExpression(sources, inBlock, scopes, fullyQualifiedPath, expr.Collection)
-	key := convertExpression(sources, false, scopes, "", expr.Key)
+	collection := convertExpression(state, inBlock, scopes, fullyQualifiedPath, expr.Collection)
+	key := convertExpression(state, false, scopes, "", expr.Key)
 
 	tokens := collection
 	tokens = append(tokens, makeToken(hclsyntax.TokenOBrack, "["))
@@ -1368,11 +1402,11 @@ func convertIndexExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
 	return tokens
 }
 
-func convertSplatExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertSplatExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.SplatExpr,
 ) hclwrite.Tokens {
-	source := convertExpression(sources, inBlock, scopes, "", expr.Source)
-	each := convertExpression(sources, false, scopes, "", expr.Each)
+	source := convertExpression(state, inBlock, scopes, "", expr.Source)
+	each := convertExpression(state, false, scopes, "", expr.Each)
 
 	tokens := source
 	tokens = append(tokens, makeToken(hclsyntax.TokenOBrack, "["))
@@ -1388,12 +1422,12 @@ func convertAnonSymbolExpr(scopes *scopes,
 	return hclwrite.Tokens{}
 }
 
-func convertConditionalExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertConditionalExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ConditionalExpr,
 ) hclwrite.Tokens {
-	condition := convertExpression(sources, inBlock, scopes, "", expr.Condition)
-	trueResult := convertExpression(sources, false, scopes, "", expr.TrueResult)
-	falseResult := convertExpression(sources, inBlock, scopes, "", expr.FalseResult)
+	condition := convertExpression(state, inBlock, scopes, "", expr.Condition)
+	trueResult := convertExpression(state, false, scopes, "", expr.TrueResult)
+	falseResult := convertExpression(state, inBlock, scopes, "", expr.FalseResult)
 
 	tokens := condition
 	tokens = append(tokens, makeToken(hclsyntax.TokenQuestion, "?"))
@@ -1403,17 +1437,17 @@ func convertConditionalExpr(sources map[string][]byte, inBlock bool, scopes *sco
 	return tokens
 }
 
-func convertParenthesesExpr(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertParenthesesExpr(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr *hclsyntax.ParenthesesExpr,
 ) hclwrite.Tokens {
 	tokens := hclwrite.Tokens{makeToken(hclsyntax.TokenOParen, "(")}
-	tokens = append(tokens, convertExpression(sources, false, scopes, "", expr.Expression)...)
+	tokens = append(tokens, convertExpression(state, false, scopes, "", expr.Expression)...)
 	tokens = append(tokens, makeToken(hclsyntax.TokenCParen, ")"))
-	leading, trailing := getTrivia(sources, expr.SrcRange, inBlock)
+	leading, trailing := getTrivia(state.sources, expr.SrcRange, inBlock)
 	return append(leading, append(tokens, trailing...)...)
 }
 
-func convertExpression(sources map[string][]byte, inBlock bool, scopes *scopes,
+func convertExpression(state *convertState, inBlock bool, scopes *scopes,
 	fullyQualifiedPath string, expr hcl.Expression,
 ) hclwrite.Tokens {
 	if expr == nil {
@@ -1422,39 +1456,39 @@ func convertExpression(sources map[string][]byte, inBlock bool, scopes *scopes,
 
 	switch expr := expr.(type) {
 	case *hclsyntax.TupleConsExpr:
-		return convertTupleConsExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertTupleConsExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ObjectConsExpr:
-		return convertObjectConsExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertObjectConsExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ObjectConsKeyExpr:
-		return convertObjectConsKeyExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertObjectConsKeyExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.FunctionCallExpr:
-		return convertFunctionCallExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertFunctionCallExpr(state, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.LiteralValueExpr:
-		return convertLiteralValueExpr(sources, inBlock, expr)
+		return convertLiteralValueExpr(state, inBlock, expr)
 	case *hclsyntax.TemplateExpr:
-		return convertTemplateExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertTemplateExpr(state, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ScopeTraversalExpr:
-		return convertScopeTraversalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertScopeTraversalExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.BinaryOpExpr:
-		return convertBinaryOpExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertBinaryOpExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.UnaryOpExpr:
-		return convertUnaryOpExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertUnaryOpExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ForExpr:
-		return convertForExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertForExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.IndexExpr:
-		return convertIndexExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertIndexExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.RelativeTraversalExpr:
-		return convertRelativeTraversalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertRelativeTraversalExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.SplatExpr:
-		return convertSplatExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertSplatExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.AnonSymbolExpr:
 		return convertAnonSymbolExpr(scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.TemplateWrapExpr:
-		return convertTemplateWrapExpr(sources, scopes, fullyQualifiedPath, expr)
+		return convertTemplateWrapExpr(state, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ConditionalExpr:
-		return convertConditionalExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertConditionalExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	case *hclsyntax.ParenthesesExpr:
-		return convertParenthesesExpr(sources, inBlock, scopes, fullyQualifiedPath, expr)
+		return convertParenthesesExpr(state, inBlock, scopes, fullyQualifiedPath, expr)
 	}
 	contract.Failf("Couldn't convert expression: %T", expr)
 	return nil
@@ -1525,7 +1559,7 @@ func expressionTypePath(expr hcl.Expression) string {
 }
 
 // Convert a hcl.Body treating sub-bodies as attributes
-func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath string, body hcl.Body) bodyAttrsTokens {
+func convertBody(state *convertState, scopes *scopes, fullyQualifiedPath string, body hcl.Body) bodyAttrsTokens {
 	contract.Assertf(fullyQualifiedPath != "", "fullyQualifiedPath should not be empty")
 
 	// We want to exclude any hidden blocks and attributes, and the only way to do that with hcl.Body is to
@@ -1605,7 +1639,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 			}
 
 			// wrap the collection expression into `entries(collection)` so that each entry has key and value
-			forEachExprTokens := convertExpression(sources, true, scopes, fullyQualifiedPath, forEachAttr.Expr)
+			forEachExprTokens := convertExpression(state, true, scopes, fullyQualifiedPath, forEachAttr.Expr)
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenIdent, "entries"))
 			dynamicTokens = append(dynamicTokens, makeToken(hclsyntax.TokenOParen, "("))
 			dynamicTokens = append(dynamicTokens, forEachExprTokens...)
@@ -1618,7 +1652,7 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 					scopes.push(map[string]string{
 						tfEachVar: pulumiEachVar,
 					})
-					contentBody := convertBody(sources, scopes, blockPath, innerBlock.Body)
+					contentBody := convertBody(state, scopes, blockPath, innerBlock.Body)
 					bodyTokens = tokensForObject(contentBody)
 					scopes.pop()
 				}
@@ -1642,11 +1676,11 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 				newAttributes = append(newAttributes, bodyAttrTokens{
 					Line:  block.DefRange.Start.Line,
 					Name:  name,
-					Value: tokensForObject(convertBody(sources, scopes, blockPath, block.Body)),
+					Value: tokensForObject(convertBody(state, scopes, blockPath, block.Body)),
 				})
 			} else {
 				list := blockLists[name]
-				list = append(list, convertBody(sources, scopes, blockPath, block.Body))
+				list = append(list, convertBody(state, scopes, blockPath, block.Body))
 				blockLists[name] = list
 			}
 		}
@@ -1680,8 +1714,8 @@ func convertBody(sources map[string][]byte, scopes *scopes, fullyQualifiedPath s
 		name := scopes.pulumiName(attrPath)
 
 		// We need the leading trivia here, but the trailing trivia will be handled by convertExpression
-		leading, _ := getTrivia(sources, getAttributeRange(sources, attr.Expr.Range()), true)
-		expr := convertExpression(sources, true, scopes, attrPath, attr.Expr)
+		leading, _ := getTrivia(state.sources, getAttributeRange(state.sources, attr.Expr.Range()), true)
+		expr := convertExpression(state, true, scopes, attrPath, attr.Expr)
 
 		// If this is a maxItemsOne property then in terraform it will be a list, but in Pulumi it will be a
 		// single value. We need to project the list expression we've just converted into a single value, for
@@ -1783,7 +1817,7 @@ func camelCaseObjectAttributes(value cty.Value) cty.Value {
 	return value
 }
 
-func convertVariable(sources map[string][]byte, scopes *scopes,
+func convertVariable(state *convertState, scopes *scopes,
 	variable *configs.Variable) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	pulumiName := scopes.roots["var."+variable.Name].Name
 	labels := []string{pulumiName}
@@ -1825,7 +1859,7 @@ func convertVariable(sources map[string][]byte, scopes *scopes,
 	if variable.NullableSet {
 		blockBody.SetAttributeValue("nullable", cty.BoolVal(variable.Nullable))
 	}
-	leading, trailing := getTrivia(sources, variable.DeclRange, false)
+	leading, trailing := getTrivia(state.sources, variable.DeclRange, false)
 	return leading, block, trailing
 }
 
@@ -1846,16 +1880,16 @@ func impliedToken(typeName string) string {
 	return camelCaseName(typeName)
 }
 
-func convertLocal(sources map[string][]byte, scopes *scopes,
+func convertLocal(state *convertState, scopes *scopes,
 	local *configs.Local) (hclwrite.Tokens, string, hclwrite.Tokens, hclwrite.Tokens) {
 	identifier := scopes.roots["local."+local.Name].Name
-	expr := convertExpression(sources, true, scopes, "", local.Expr)
+	expr := convertExpression(state, true, scopes, "", local.Expr)
 	// The trailing trivia will have been caught by convertExpression, but we need the leading trivia before the identifier
-	leading, _ := getTrivia(sources, local.DeclRange, true)
+	leading, _ := getTrivia(state.sources, local.DeclRange, true)
 	return leading, identifier, expr, nil
 }
 
-func convertDataResource(sources map[string][]byte,
+func convertDataResource(state *convertState,
 	info il.ProviderInfoSource, scopes *scopes,
 	dataResource *configs.Resource,
 ) (hclwrite.Tokens, string, hclwrite.Tokens, hclwrite.Tokens) {
@@ -1870,7 +1904,7 @@ func convertDataResource(sources map[string][]byte,
 	if dataResource.Type == "template_file" {
 		text := cty.StringVal("The template_file data resource is not yet supported.")
 		dataResourceExpression := hclwrite.TokensForFunctionCall("notImplemented", hclwrite.TokensForValue(text))
-		leading, trailing := getTrivia(sources, dataResource.DeclRange, false)
+		leading, trailing := getTrivia(state.sources, dataResource.DeclRange, false)
 		return leading, pulumiName, dataResourceExpression, trailing
 	}
 
@@ -1882,19 +1916,19 @@ func convertDataResource(sources map[string][]byte,
 	// If count is set we'll make this into an array expression
 	var countExpr hclwrite.Tokens
 	if dataResource.Count != nil {
-		countExpr = convertExpression(sources, true, scopes, "", dataResource.Count)
+		countExpr = convertExpression(state, true, scopes, "", dataResource.Count)
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "__index"}}
 	}
 
 	// If for_each is set we'll make this into an object expression
 	var forEachExpr hclwrite.Tokens
 	if dataResource.ForEach != nil {
-		forEachExpr = convertExpression(sources, true, scopes, "", dataResource.ForEach)
+		forEachExpr = convertExpression(state, true, scopes, "", dataResource.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "__key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "__value"}}
 	}
 
-	invokeArgs := convertBody(sources, scopes, path, dataResource.Config)
+	invokeArgs := convertBody(state, scopes, path, dataResource.Config)
 
 	functionCall := hclwrite.TokensForFunctionCall(
 		"invoke",
@@ -1934,12 +1968,12 @@ func convertDataResource(sources map[string][]byte,
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, dataResource.DeclRange, false)
+	leading, trailing := getTrivia(state.sources, dataResource.DeclRange, false)
 	return leading, pulumiName, dataResourceExpression, trailing
 }
 
 func convertProvisioner(
-	sources map[string][]byte,
+	state *convertState,
 	info il.ProviderInfoSource, scopes *scopes,
 	provisioner *configs.Provisioner,
 	resourceName string, provisionerIndex int,
@@ -1967,7 +2001,7 @@ func convertProvisioner(
 	optionsBlockBody := optionsBlock.Body()
 
 	if forEach != nil {
-		forEachExpr := convertExpression(sources, true, scopes, "", forEach)
+		forEachExpr := convertExpression(state, true, scopes, "", forEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		optionsBlockBody.SetAttributeRaw("range", forEachExpr)
@@ -1997,13 +2031,13 @@ func convertProvisioner(
 	var command, interpreter, environment hclwrite.Tokens
 	for _, attr := range attributes {
 		if attr.Name == "command" {
-			command = convertExpression(sources, true, scopes, "", attr.Expr)
+			command = convertExpression(state, true, scopes, "", attr.Expr)
 		}
 		if attr.Name == "interpreter" {
-			interpreter = convertExpression(sources, true, scopes, "", attr.Expr)
+			interpreter = convertExpression(state, true, scopes, "", attr.Expr)
 		}
 		if attr.Name == "environment" {
-			environment = convertExpression(sources, true, scopes, "", attr.Expr)
+			environment = convertExpression(state, true, scopes, "", attr.Expr)
 		}
 	}
 
@@ -2029,7 +2063,7 @@ func convertProvisioner(
 	target.AppendBlock(block)
 }
 
-func convertManagedResources(sources map[string][]byte,
+func convertManagedResources(state *convertState,
 	info il.ProviderInfoSource, scopes *scopes,
 	managedResource *configs.Resource,
 	target *hclwrite.Body,
@@ -2052,20 +2086,20 @@ func convertManagedResources(sources map[string][]byte,
 	// Does this resource have a count? If so set the "range" attribute
 	if managedResource.Count != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		countExpr := convertExpression(sources, true, scopes, "", managedResource.Count)
+		countExpr := convertExpression(state, true, scopes, "", managedResource.Count)
 		// Set the count_index scope
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", countExpr)
 	}
 	if managedResource.ForEach != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		forEachExpr := convertExpression(sources, true, scopes, "", managedResource.ForEach)
+		forEachExpr := convertExpression(state, true, scopes, "", managedResource.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", forEachExpr)
 	}
 
-	resourceArgs := convertBody(sources, scopes, path, managedResource.Config)
+	resourceArgs := convertBody(state, scopes, path, managedResource.Config)
 	for _, arg := range resourceArgs {
 		blockBody.SetAttributeRaw(arg.Name, arg.Value)
 	}
@@ -2074,7 +2108,7 @@ func convertManagedResources(sources map[string][]byte,
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, managedResource.DeclRange, false)
+	leading, trailing := getTrivia(state.sources, managedResource.DeclRange, false)
 
 	target.AppendUnstructuredTokens(leading)
 	target.AppendBlock(block)
@@ -2082,12 +2116,12 @@ func convertManagedResources(sources map[string][]byte,
 
 	// Add "command:Command" resources to handle provisioners
 	for idx, provisioner := range managedResource.Managed.Provisioners {
-		convertProvisioner(sources, info, scopes, provisioner, pulumiName, idx, managedResource.ForEach, target)
+		convertProvisioner(state, info, scopes, provisioner, pulumiName, idx, managedResource.ForEach, target)
 	}
 }
 
 func convertModuleCall(
-	sources map[string][]byte,
+	state *convertState,
 	scopes *scopes,
 	modules map[moduleKey]string,
 	destinationDirectory string,
@@ -2125,7 +2159,7 @@ func convertModuleCall(
 	// Does this resource have a count? If so set the "range" attribute
 	if moduleCall.Count != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		countExpr := convertExpression(sources, true, scopes, "", moduleCall.Count)
+		countExpr := convertExpression(state, true, scopes, "", moduleCall.Count)
 		// Set the count_index scope
 		scopes.countIndex = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", countExpr)
@@ -2133,13 +2167,13 @@ func convertModuleCall(
 
 	if moduleCall.ForEach != nil {
 		options := blockBody.AppendNewBlock("options", nil)
-		forEachExpr := convertExpression(sources, true, scopes, "", moduleCall.ForEach)
+		forEachExpr := convertExpression(state, true, scopes, "", moduleCall.ForEach)
 		scopes.eachKey = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "key"}}
 		scopes.eachValue = hcl.Traversal{hcl.TraverseRoot{Name: "range"}, hcl.TraverseAttr{Name: "value"}}
 		options.Body().SetAttributeRaw("range", forEachExpr)
 	}
 
-	moduleArgs := convertBody(sources, scopes, path, moduleCall.Config)
+	moduleArgs := convertBody(state, scopes, path, moduleCall.Config)
 	for _, arg := range moduleArgs {
 		blockBody.SetAttributeRaw(arg.Name, arg.Value)
 	}
@@ -2148,20 +2182,20 @@ func convertModuleCall(
 	scopes.countIndex = nil
 	scopes.eachKey = nil
 	scopes.eachValue = nil
-	leading, trailing := getTrivia(sources, moduleCall.DeclRange, false)
+	leading, trailing := getTrivia(state.sources, moduleCall.DeclRange, false)
 	return leading, block, trailing
 }
 
-func convertOutput(sources map[string][]byte, scopes *scopes,
+func convertOutput(state *convertState, scopes *scopes,
 	output *configs.Output) (hclwrite.Tokens, *hclwrite.Block, hclwrite.Tokens) {
 	labels := []string{scopes.roots["output."+output.Name].Name}
 	block := hclwrite.NewBlock("output", labels)
 	blockBody := block.Body()
-	leading, _ := getTrivia(sources, getAttributeRange(sources, output.Expr.Range()), true)
+	leading, _ := getTrivia(state.sources, getAttributeRange(state.sources, output.Expr.Range()), true)
 	blockBody.AppendUnstructuredTokens(leading)
-	blockBody.SetAttributeRaw("value", convertExpression(sources, true, scopes, "", output.Expr))
+	blockBody.SetAttributeRaw("value", convertExpression(state, true, scopes, "", output.Expr))
 
-	leading, trailing := getTrivia(sources, output.DeclRange, false)
+	leading, trailing := getTrivia(state.sources, output.DeclRange, false)
 	return leading, block, trailing
 }
 
@@ -2307,7 +2341,10 @@ func translateModuleSourceCode(
 
 	scopes := newScopes(info)
 
-	diagnostics := hcl.Diagnostics{}
+	state := &convertState{
+		sources:     sources,
+		diagnostics: hcl.Diagnostics{},
+	}
 
 	// First go through and add everything to the items list so we can sort it by source order
 	items := make(terraformItems, 0)
@@ -2363,7 +2400,7 @@ func translateModuleSourceCode(
 
 				providerInfo, err := info.GetProviderInfo("", "", provider, "")
 				if err != nil {
-					diagnostics = append(diagnostics, &hcl.Diagnostic{
+					state.appendDiagnostic(&hcl.Diagnostic{
 						Subject:  &dataResource.DeclRange,
 						Severity: hcl.DiagWarning,
 						Summary:  "Failed to get provider info",
@@ -2389,7 +2426,7 @@ func translateModuleSourceCode(
 			provider := impliedProvider(managedResource.Type)
 			providerInfo, err := info.GetProviderInfo("", "", provider, "")
 			if err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
+				state.appendDiagnostic(&hcl.Diagnostic{
 					Subject:  &managedResource.DeclRange,
 					Severity: hcl.DiagWarning,
 					Summary:  "Failed to get provider info",
@@ -2442,13 +2479,12 @@ func translateModuleSourceCode(
 						if path == destinationPath {
 							// We ought to do better than this, and try and find a uniuqe path but just
 							// erroring for now is fine.
-							return hcl.Diagnostics{
-								&hcl.Diagnostic{
-									Severity: hcl.DiagError,
-									Summary:  "Duplicate module path",
-									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
-								},
-							}
+							state.appendDiagnostic(&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Duplicate module path",
+								Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+							})
+							return state.diagnostics
 						}
 					}
 					modules[moduleKey] = destinationPath
@@ -2461,8 +2497,9 @@ func translateModuleSourceCode(
 						destinationRoot,
 						destinationPath,
 						info)
+					state.diagnostics = append(state.diagnostics, diags...)
 					if diags.HasErrors() {
-						return diags
+						return state.diagnostics
 					}
 
 				case addrs.ModuleSourceRemote:
@@ -2474,13 +2511,12 @@ func translateModuleSourceCode(
 						if path == destinationPath {
 							// We ought to do better than this, and try and find a uniuqe path but just
 							// erroring for now is fine.
-							return hcl.Diagnostics{
-								&hcl.Diagnostic{
-									Severity: hcl.DiagError,
-									Summary:  "Duplicate module path",
-									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
-								},
-							}
+							state.appendDiagnostic(&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Duplicate module path",
+								Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+							})
+							return state.diagnostics
 						}
 					}
 					modules[moduleKey] = destinationPath
@@ -2493,7 +2529,7 @@ func translateModuleSourceCode(
 						destinationPath,
 						info)
 					if diags.HasErrors() {
-						return diags
+						return state.diagnostics
 					}
 
 				case addrs.ModuleSourceRegistry:
@@ -2503,26 +2539,24 @@ func translateModuleSourceCode(
 					regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(addr.Package)
 					resp, err := reg.ModuleVersions(context.TODO(), regsrcAddr)
 					if err != nil {
-						return hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Error accessing remote module registry",
-								Detail:   fmt.Sprintf("Failed to retrieve available versions for %s: %s", addr, err),
-							},
-						}
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Error accessing remote module registry",
+							Detail:   fmt.Sprintf("Failed to retrieve available versions for %s: %s", addr, err),
+						})
+						return state.diagnostics
 					}
 					modMeta := resp.Modules[0]
 					var latestVersion *version.Version
 					for _, mv := range modMeta.Versions {
 						v, err := version.NewVersion(mv.Version)
 						if err != nil {
-							return hcl.Diagnostics{
-								&hcl.Diagnostic{
-									Severity: hcl.DiagError,
-									Summary:  "Error accessing remote module registry",
-									Detail:   fmt.Sprintf("Failed to parse version %q for %s: %s", mv.Version, addr, err),
-								},
-							}
+							state.appendDiagnostic(&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Error accessing remote module registry",
+								Detail:   fmt.Sprintf("Failed to parse version %q for %s: %s", mv.Version, addr, err),
+							})
+							return state.diagnostics
 						}
 						if v.Prerelease() != "" {
 							continue
@@ -2533,36 +2567,33 @@ func translateModuleSourceCode(
 					}
 
 					if latestVersion == nil {
-						return hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Error accessing remote module registry",
-								Detail:   fmt.Sprintf("Failed to find version for %s that matched %s", addr, moduleCall.Version.Required),
-							},
-						}
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Error accessing remote module registry",
+							Detail:   fmt.Sprintf("Failed to find version for %s that matched %s", addr, moduleCall.Version.Required),
+						})
+						return state.diagnostics
 					}
 
 					realAddrRaw, err := reg.ModuleLocation(context.TODO(), regsrcAddr, latestVersion.String())
 					if err != nil {
-						return hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Error accessing remote module registry",
-								Detail:   fmt.Sprintf("Failed to retrieve a download URL for %s %s: %s", addr, latestVersion, err),
-							},
-						}
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Error accessing remote module registry",
+							Detail:   fmt.Sprintf("Failed to retrieve a download URL for %s %s: %s", addr, latestVersion, err),
+						})
+						return state.diagnostics
 					}
 					realAddr, err := addrs.ParseModuleSource(realAddrRaw)
 					if err != nil {
-						return hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Invalid package location from module registry",
-								Detail: fmt.Sprintf(
-									"Module registry returned invalid source location %q for %s %s: %s.",
-									realAddrRaw, addr, latestVersion, err),
-							},
-						}
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Invalid package location from module registry",
+							Detail: fmt.Sprintf(
+								"Module registry returned invalid source location %q for %s %s: %s.",
+								realAddrRaw, addr, latestVersion, err),
+						})
+						return state.diagnostics
 					}
 					var remoteAddr addrs.ModuleSourceRemote
 					switch realAddr := realAddr.(type) {
@@ -2573,16 +2604,15 @@ func translateModuleSourceCode(
 					case addrs.ModuleSourceRemote:
 						remoteAddr = realAddr
 					default:
-						return hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Invalid package location from module registry",
-								Detail: fmt.Sprintf(
-									"Module registry returned invalid source location %q for %s %s: "+
-										"must be a direct remote package address.",
-									realAddrRaw, addr, latestVersion),
-							},
-						}
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "Invalid package location from module registry",
+							Detail: fmt.Sprintf(
+								"Module registry returned invalid source location %q for %s %s: "+
+									"must be a direct remote package address.",
+								realAddrRaw, addr, latestVersion),
+						})
+						return state.diagnostics
 					}
 					// Maintain the subdir from the original module call.
 					remoteAddr.Subdir = addr.Subdir
@@ -2594,13 +2624,12 @@ func translateModuleSourceCode(
 						if path == destinationPath {
 							// We ought to do better than this, and try and find a uniuqe path but just
 							// erroring for now is fine.
-							return hcl.Diagnostics{
-								&hcl.Diagnostic{
-									Severity: hcl.DiagError,
-									Summary:  "Duplicate module path",
-									Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
-								},
-							}
+							state.appendDiagnostic(&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "Duplicate module path",
+								Detail:   fmt.Sprintf("The module path %q is already taken by another module", destinationPath),
+							})
+							return state.diagnostics
 						}
 					}
 					modules[moduleKey] = destinationPath
@@ -2614,7 +2643,7 @@ func translateModuleSourceCode(
 						info)
 
 					if diags.HasErrors() {
-						return diags
+						return state.diagnostics
 					}
 				}
 			}
@@ -2634,7 +2663,7 @@ func translateModuleSourceCode(
 
 			// If an alias is set just warn and ignore this, we can't support this yet
 			if provider.Alias != "" {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
+				state.appendDiagnostic(&hcl.Diagnostic{
 					Subject:  &provider.DeclRange,
 					Severity: hcl.DiagWarning,
 					Summary:  "Provider alias not supported",
@@ -2657,7 +2686,7 @@ func translateModuleSourceCode(
 			// Try to grab the info for this provider config
 			providerInfo, err := info.GetProviderInfo("", "", provider.Name, "")
 			if err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
+				state.appendDiagnostic(&hcl.Diagnostic{
 					Subject:  &provider.DeclRange,
 					Severity: hcl.DiagWarning,
 					Summary:  "Failed to get provider info",
@@ -2672,7 +2701,7 @@ func translateModuleSourceCode(
 			cfg := pulumiYaml.Config
 
 			attrs, diags := provider.Config.JustAttributes()
-			diagnostics = append(diagnostics, diags...)
+			state.diagnostics = append(state.diagnostics, diags...)
 			// We need to iterate over the attributes in a stable order to ensure we get the same output
 			attrKeys := make([]string, 0, len(attrs))
 			for name := range attrs {
@@ -2690,20 +2719,20 @@ func translateModuleSourceCode(
 				value := attrs[attrKey]
 				val, diags := scopes.EvalExpr(value.Expr)
 				if diags.HasErrors() {
-					diagnostics = append(diagnostics, &hcl.Diagnostic{
+					state.appendDiagnostic(&hcl.Diagnostic{
 						Subject:  &provider.DeclRange,
 						Severity: hcl.DiagWarning,
 						Summary:  "Failed to evaluate provider config",
 						Detail:   fmt.Sprintf("Could not evaluate expression for %s:%s", provider.Name, attrKey),
 					})
 					// If we couldn't eval the config we'll emit an obvious TODO to the config for it
-					val = cty.StringVal("TODO: " + sourceCode(sources, value.Expr.Range()))
+					val = cty.StringVal("TODO: " + state.sourceCode(value.Expr.Range()))
 				}
 
 				// Simplest way to get a cty type into YAML is to roundtrip it through JSON
 				buffer, err := json.Marshal(ctyjson.SimpleJSONValue{Value: val})
 				if err != nil {
-					diagnostics = append(diagnostics, &hcl.Diagnostic{
+					state.appendDiagnostic(&hcl.Diagnostic{
 						Subject:  &provider.DeclRange,
 						Severity: hcl.DiagError,
 						Summary:  "Failed to marshal provider config",
@@ -2714,7 +2743,7 @@ func translateModuleSourceCode(
 				var yamlValue interface{}
 				err = json.Unmarshal(buffer, &yamlValue)
 				if err != nil {
-					diagnostics = append(diagnostics, &hcl.Diagnostic{
+					state.appendDiagnostic(&hcl.Diagnostic{
 						Subject:  &provider.DeclRange,
 						Severity: hcl.DiagError,
 						Summary:  "Failed to marshal provider config",
@@ -2758,39 +2787,39 @@ func translateModuleSourceCode(
 
 		// First handle any inputs, these will be picked up by the "vars" scope
 		if item.variable != nil {
-			leading, block, trailing := convertVariable(sources, scopes, item.variable)
+			leading, block, trailing := convertVariable(state, scopes, item.variable)
 			body.AppendUnstructuredTokens(leading)
 			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Next handle any locals, these will be picked up by the "locals" scope
 		if item.local != nil {
-			leading, name, value, trailing := convertLocal(sources, scopes, item.local)
+			leading, name, value, trailing := convertLocal(state, scopes, item.local)
 			body.AppendUnstructuredTokens(leading)
 			body.SetAttributeRaw(name, value)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Next handle any data sources
 		if item.data != nil {
-			leading, name, value, trailing := convertDataResource(sources, info, scopes, item.data)
+			leading, name, value, trailing := convertDataResource(state, info, scopes, item.data)
 			body.AppendUnstructuredTokens(leading)
 			body.SetAttributeRaw(name, value)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Next handle any resources
 		if item.resource != nil {
-			convertManagedResources(sources, info, scopes, item.resource, body)
+			convertManagedResources(state, info, scopes, item.resource, body)
 		}
 		// Next handle any modules
 		if item.moduleCall != nil {
-			leading, block, trailing := convertModuleCall(sources, scopes, modules, destinationDirectory, item.moduleCall)
+			leading, block, trailing := convertModuleCall(state, scopes, modules, destinationDirectory, item.moduleCall)
 			body.AppendUnstructuredTokens(leading)
 			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
 		}
 		// Finally handle any outputs
 		if item.output != nil {
-			leading, block, trailing := convertOutput(sources, scopes, item.output)
+			leading, block, trailing := convertOutput(state, scopes, item.output)
 			body.AppendUnstructuredTokens(leading)
 			body.AppendBlock(block)
 			body.AppendUnstructuredTokens(trailing)
@@ -2802,30 +2831,33 @@ func translateModuleSourceCode(
 		buffer := &bytes.Buffer{}
 		_, err := file.WriteTo(buffer)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not write pcl to memory buffer: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 
 		fullpath := filepath.Join(destinationDirectory, key)
 		keyDirectory := filepath.Dir(fullpath)
 		err = destinationRoot.MkdirAll(keyDirectory, 0755)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not create destination directory for pcl: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 
 		// Reformat to canonical style
 		formatted := hclwrite.Format(buffer.Bytes())
 		err = afero.WriteFile(destinationRoot, fullpath, formatted, 0644)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not write pcl to destination: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 	}
 
@@ -2835,30 +2867,33 @@ func translateModuleSourceCode(
 		keyDirectory := filepath.Dir(fullpath)
 		err := destinationRoot.MkdirAll(keyDirectory, 0755)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not create destination directory for project YAML: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 
 		formatted, err := yaml.Marshal(pulumiYaml)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not format project YAML: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 
 		err = afero.WriteFile(destinationRoot, fullpath, formatted, 0644)
 		if err != nil {
-			return hcl.Diagnostics{&hcl.Diagnostic{
+			state.appendDiagnostic(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("could not write project YAML to destination: %s", err),
-			}}
+			})
+			return state.diagnostics
 		}
 	}
 
-	return diagnostics
+	return state.diagnostics
 }
 
 func TranslateModule(
