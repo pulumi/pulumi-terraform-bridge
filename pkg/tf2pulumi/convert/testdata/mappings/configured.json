@@ -18,6 +18,19 @@
             "renamed_config": {
                 "type": 4,
                 "optional": true
+            },
+            "object_config": {
+                "type": 5,
+                "optional": true,
+                "maxItems": 1,
+                "element": {
+                    "resource": {
+                        "inner_string": {
+                            "type": 4,
+                            "optional": true
+                        }
+                    }
+                }
             }
         },
         "dataSources": {

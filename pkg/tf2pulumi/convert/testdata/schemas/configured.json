@@ -26,9 +26,30 @@
           "type": "string"
         }
       },
+      "objectConfig": {
+        "$ref": "#/types/configured:config/objectConfig:objectConfig"
+      },
       "stringConfig": {
         "type": "string"
       }
+    }
+  },
+  "types": {
+    "configured:config/objectConfig:objectConfig": {
+      "properties": {
+        "innerString": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "configured:index/ProviderObjectConfig:ProviderObjectConfig": {
+      "properties": {
+        "innerString": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     }
   },
   "provider": {
@@ -43,6 +64,9 @@
           "type": "string"
         }
       },
+      "objectConfig": {
+        "$ref": "#/types/configured:index/ProviderObjectConfig:ProviderObjectConfig"
+      },
       "stringConfig": {
         "type": "string"
       }
@@ -56,6 +80,9 @@
         "items": {
           "type": "string"
         }
+      },
+      "objectConfig": {
+        "$ref": "#/types/configured:index/ProviderObjectConfig:ProviderObjectConfig"
       },
       "stringConfig": {
         "type": "string"

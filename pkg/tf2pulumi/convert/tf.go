@@ -1558,10 +1558,7 @@ func expressionTypePath(expr hcl.Expression) string {
 	return path
 }
 
-// Convert a hcl.Body treating sub-bodies as attributes
-func convertBody(state *convertState, scopes *scopes, fullyQualifiedPath string, body hcl.Body) bodyAttrsTokens {
-	contract.Assertf(fullyQualifiedPath != "", "fullyQualifiedPath should not be empty")
-
+func bodyContent(body hcl.Body) *hcl.BodyContent {
 	// We want to exclude any hidden blocks and attributes, and the only way to do that with hcl.Body is to
 	// give it a schema. JustAttributes() will return all non-hidden attributes, but will error if there's
 	// any blocks, and there's no equivalent to get non-hidden attributes and blocks.
@@ -1586,7 +1583,14 @@ func convertBody(state *convertState, scopes *scopes, fullyQualifiedPath string,
 	}
 	content, diagnostics := body.Content(hclSchema)
 	contract.Assertf(len(diagnostics) == 0, "diagnostics was not empty: %s", diagnostics.Error())
+	return content
+}
 
+// Convert a hcl.Body treating sub-bodies as attributes
+func convertBody(state *convertState, scopes *scopes, fullyQualifiedPath string, body hcl.Body) bodyAttrsTokens {
+	contract.Assertf(fullyQualifiedPath != "", "fullyQualifiedPath should not be empty")
+
+	content := bodyContent(body)
 	newAttributes := make(bodyAttrsTokens, 0)
 
 	// If we see blocks we turn those into lists (unless maxItems==1)
@@ -2700,23 +2704,33 @@ func translateModuleSourceCode(
 			}
 			cfg := pulumiYaml.Config
 
-			attrs, diags := provider.Config.JustAttributes()
-			state.diagnostics = append(state.diagnostics, diags...)
+			content := bodyContent(provider.Config)
+
+			// There might be blocks for "dynamic" or just object attributes, for now we just warn that they're being skipped
+			for _, block := range content.Blocks {
+				state.appendDiagnostic(&hcl.Diagnostic{
+					Subject:  &block.DefRange,
+					Severity: hcl.DiagWarning,
+					Summary:  "Provider config not supported",
+					Detail:   fmt.Sprintf("Blocks in provider config are not supported, ignoring %s:%s", provider.Name, block.Type),
+				})
+			}
+
 			// We need to iterate over the attributes in a stable order to ensure we get the same output
-			attrKeys := make([]string, 0, len(attrs))
-			for name := range attrs {
+			attrKeys := make([]string, 0, len(content.Attributes))
+			for name := range content.Attributes {
 				attrKeys = append(attrKeys, name)
 			}
 			sort.Slice(attrKeys, func(i, j int) bool {
-				ia := attrs[attrKeys[i]]
-				ja := attrs[attrKeys[j]]
+				ia := content.Attributes[attrKeys[i]]
+				ja := content.Attributes[attrKeys[j]]
 
 				return ia.Range.Start.Line < ja.Range.Start.Line
 			})
 
 			for _, attrKey := range attrKeys {
 				// Evauluate and marshal the attribute to a YAML like value for Pulumi config
-				value := attrs[attrKey]
+				value := content.Attributes[attrKey]
 				val, diags := scopes.EvalExpr(value.Expr)
 				if diags.HasErrors() {
 					state.appendDiagnostic(&hcl.Diagnostic{
