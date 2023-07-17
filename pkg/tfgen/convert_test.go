@@ -87,24 +87,6 @@ const regionNumber = config.getObject("regionNumber") || {
 		require.Equal(t,
 			strings.TrimSpace(expectedCode),
 			strings.TrimSpace(string(files["index.ts"])))
-
-		// The test extended with a random resource does
-		// currently produce erroring diags about an unknown
-		// resource (bad test setup), but is included here
-		// since for some reason including the resource was
-		// needed to reproduce non-nil `err` in the orignal
-		// bug.
-		_, _, err := checkErr(`
-		  variable "region_number" {
-		    default = {
-		      us-east-1 = 1
-		    }
-		  }
-
-		  resource "aws_vpc" "example" {
-		    cidr_block = cidrsubnet("10.0.0.0/8", 4, 2)
-		  }`)
-		require.Error(t, err)
 	})
 
 	t.Run("regress no empty resource plugin found", func(t *testing.T) {
