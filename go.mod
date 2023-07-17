@@ -54,7 +54,7 @@ require (
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.11.0
 	golang.org/x/text v0.10.0
-	google.golang.org/grpc v1.56.0
+	google.golang.org/grpc v1.56.1
 	google.golang.org/protobuf v1.30.0
 	pgregory.net/rapid v0.6.1
 )
@@ -202,8 +202,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.74.0
-	github.com/pulumi/pulumi/sdk/v3 v3.74.0
+	github.com/pulumi/pulumi/pkg/v3 v3.75.0
+	github.com/pulumi/pulumi/sdk/v3 v3.75.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
