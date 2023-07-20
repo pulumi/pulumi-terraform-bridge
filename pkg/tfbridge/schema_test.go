@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -268,6 +269,140 @@ func TestTerraformInputs(t *testing.T) {
 				nil, /* ps */
 			)
 			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	typeString := (&schema.Schema{
+		Type: shim.TypeString,
+	}).Shim()
+
+	tests := map[string]struct {
+		maxItemsOne bool
+		oldState    resource.PropertyValue
+		newState    resource.PropertyValue
+		tfs         *schema.Schema
+		tfValue     interface{}
+	}{
+		// Scalars: The pulumi type is String.
+		// The TF type is [String] (either [n; T] or [1; T]).
+		"scalar-adding-max-items-one": {
+			// The TF type has changed from [n; T] to [1; T], changing the
+			// pulumi type from [T] -> T.
+			maxItemsOne: true,
+			oldState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			newState: resource.NewStringProperty("sc"),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}{"sc"},
+		},
+		"scalar-removing-max-items-one": {
+			// The TF type has changed from [1; T] to [n; T], changing the
+			// pulumi type from T -> [T].
+			maxItemsOne: false,
+			oldState:    resource.NewStringProperty("sc"),
+			newState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			tfs: &schema.Schema{
+				Type: shim.TypeList,
+				Elem: typeString,
+			},
+			tfValue: []interface{}{"sc"},
+		},
+
+		// Scalars: The pulumi type is String.
+		// The TF type is [String] (either [n; T] or [1; T]).
+		//
+		// Here we have empty values, which are handled differently.
+		"scalar-adding-null-max-items-one": {
+			// The TF type has changed from [n; T] to [1; T], changing the
+			// pulumi type from [T] -> T.
+			maxItemsOne: true,
+			oldState:    resource.NewNullProperty(),
+			newState:    resource.NewNullProperty(),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}(nil),
+		},
+		"scalar-removing-null-max-items-one": {
+			// The TF type has changed from [1; T] to [n; T], changing the
+			// pulumi type from T -> [T].
+			maxItemsOne: false,
+			oldState:    resource.NewArrayProperty([]resource.PropertyValue{}),
+			newState:    resource.NewArrayProperty([]resource.PropertyValue{}),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}(nil),
+		},
+		// // Lists: The pulumi type is [String].
+		// // The TF type is [[String]] (either [m; [n; T]] or [1; [n; T]]).
+		// //
+		// // This is different because we can't know the type of an empty list. It
+		// // could be of type [T] or [[T]]. In this case, we don't make an attempt
+		// // at promotion.
+		"list-adding-max-items-one": {
+			// The TF type has changed from [m; [n; T]] to [1; [n; T]], changing the
+			// pulumi type from [[T]] -> [T].
+			maxItemsOne: true,
+			oldState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("sc"),
+				})}),
+			newState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				MaxItems: 1,
+				Elem: (&schema.Schema{
+					Type: shim.TypeList,
+					Elem: typeString,
+				}).Shim(),
+			},
+			tfValue: []interface{}{[]interface{}{"sc"}},
+		},
+	}
+	for name, tt := range tests {
+		tt := tt
+		t.Run(name, func(t *testing.T) {
+			olds := resource.PropertyMap{
+				"element": tt.oldState,
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			}
+			news := resource.PropertyMap{
+				"element": tt.newState,
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			}
+			tfs := schema.SchemaMap{"element": tt.tfs.Shim()}
+			result, _, err := makeTerraformInputs(
+				olds, news, tfs, nil /* ps */)
+			require.NoError(t, err)
+			assert.Equal(t, map[string]interface{}{
+				"element": tt.tfValue,
+			}, result)
 		})
 	}
 }
