@@ -309,19 +309,36 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.PropertyValue,
 	tfs shim.Schema, ps *SchemaInfo, rawNames bool) (interface{}, error) {
 
-	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, and need to wrap it
-	// into a single-element array before passing to Terraform.
+	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
+	// nested value, and need to wrap it into a single-element array before passing to
+	// Terraform.
 	if IsMaxItemsOne(tfs, ps) {
-		if old.IsNull() {
-			old = resource.NewArrayProperty([]resource.PropertyValue{})
-		} else {
-			old = resource.NewArrayProperty([]resource.PropertyValue{old})
+		wrap := func(val resource.PropertyValue) resource.PropertyValue {
+			if val.IsNull() {
+				return resource.NewArrayProperty([]resource.PropertyValue{})
+			}
+
+			// If we are expecting a value of type `[T]` where `T != TypeList`
+			// and we already see `[T]`, we see that `v` is already the right
+			// shape and return as is.
+			//
+			// This is possible when the old state is from a previous version
+			// with `MaxItemsOne=false` but the new state has
+			// `MaxItemsOne=true`.
+			if elem := tfs.Elem(); elem != nil {
+				if elem, ok := elem.(shim.Schema); ok &&
+					// If the underlying type is not a list or set,
+					// but the value is a list, we just return as is.
+					!(elem.Type() == shim.TypeList || elem.Type() == shim.TypeSet) &&
+					val.IsArray() {
+					return val
+				}
+			}
+
+			return resource.NewArrayProperty([]resource.PropertyValue{val})
 		}
-		if v.IsNull() {
-			v = resource.NewArrayProperty([]resource.PropertyValue{})
-		} else {
-			v = resource.NewArrayProperty([]resource.PropertyValue{v})
-		}
+		old = wrap(old)
+		v = wrap(v)
 	}
 
 	// If there is a custom transform for this value, run it before processing the value.

@@ -60,6 +60,27 @@ const (
 	TypeSet
 )
 
+func (i ValueType) String() string {
+	switch i {
+	case TypeBool:
+		return "Bool"
+	case TypeInt:
+		return "Int"
+	case TypeFloat:
+		return "Float"
+	case TypeString:
+		return "String"
+	case TypeList:
+		return "List"
+	case TypeMap:
+		return "Map"
+	case TypeSet:
+		return "Set"
+	default:
+		return ""
+	}
+}
+
 type SchemaDefaultFunc func() (interface{}, error)
 
 type SchemaStateFunc func(interface{}) string
