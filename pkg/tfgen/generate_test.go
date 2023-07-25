@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -280,4 +281,86 @@ func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
+}
+
+func TestModulePlacementForType(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		pkg    tokens.Package
+		path   paths.TypePath
+		expect tokens.Module
+	}
+
+	prop := paths.PropertyName{Key: "prop", Name: "prop"}
+
+	testCases := []testCase{
+		// Resource in top-level module mymod is placed to myprov:mymod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewResourcePath(
+				"myprov_myres",
+				"myprov:mymod:MyRes",
+				false, /*isProvider*/
+			).Inputs(), prop),
+			"myprov:mymod",
+		},
+		// Resource in second-level module mymod is placed to parent myprov:mymod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewResourcePath(
+				"myprov_myres",
+				"myprov:mymod/mysubmod:MyRes",
+				false, /*isProvider*/
+			).Inputs(), prop),
+			"myprov:mymod",
+		},
+		// Resource in third-level module mymod is placed to parent myprov:mymod/mysubmod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewResourcePath(
+				"myprov_myres",
+				"myprov:mymod/mysubmod/mysubsubmod:MyRes",
+				false, /*isProvider*/
+			).Inputs(), prop),
+			"myprov:mymod/mysubmod",
+		},
+		// Datasource in top-level module mymod is placed to myprov:mymod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewDataSourcePath(
+				"myprov_myds",
+				"myprov:mymod:MyFn",
+			).Args(), prop),
+			"myprov:mymod",
+		},
+		// Datasource in second-level module mymod is placed to parent myprov:mymod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewDataSourcePath(
+				"myprov_myds",
+				"myprov:mymod/mysubmod:MyFn",
+			).Args(), prop),
+			"myprov:mymod",
+		},
+		// Datasource in third-level module mymod is placed to parent myprov:mymod/mysubmod.
+		{
+			"myprov",
+			paths.NewProperyPath(paths.NewDataSourcePath(
+				"myprov_ds",
+				"myprov:mymod/mysubmod/mysubsubmod:MyFn",
+			).Args(), prop),
+			"myprov:mymod/mysubmod",
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("testCase-%d", i), func(t *testing.T) {
+			t.Parallel()
+			mod := modulePlacementForType(tc.pkg, tc.path)
+			assert.Equal(t, tc.expect, mod)
+		})
+	}
+
 }
