@@ -1002,14 +1002,15 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 			// root module).
 			return res.Token().Module()
 		}
-		// Supplementary types are defined one level up from
-		// the module defining the resource.
-		return parentModule(res.Token().Module())
+		// Supplementary types are typically defined one level up from the module defining the resource, but may
+		// also be defined in the same module.
+		m := res.Token().Module()
+		return parentModuleOrDefault(m, m)
 	case *paths.DataSourceMemberPath:
-		dataSourceModule := pp.DataSourcePath.Token().Module()
-		// Supplementary types are defined one level up from
-		// the module defining the data source.
-		return parentModule(dataSourceModule)
+		// Supplementary types are typically defined one level up from the module defining the data source, but
+		// may also be defined in the same module.
+		m := pp.DataSourcePath.Token().Module()
+		return parentModuleOrDefault(m, m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
 	default:
@@ -1018,8 +1019,18 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 	}
 }
 
-func parentModule(m tokens.Module) tokens.Module {
-	return tokens.NewModuleToken(m.Package(), parentModuleName(m.Name()))
+func parentModuleOrDefault(m tokens.Module, def tokens.Module) tokens.Module {
+	if m, ok := parentModule(m); ok {
+		return m
+	}
+	return def
+}
+
+func parentModule(m tokens.Module) (tokens.Module, bool) {
+	if !strings.Contains(string(m.Name()), tokens.QNameDelimiter) {
+		return "", false
+	}
+	return tokens.NewModuleToken(m.Package(), parentModuleName(m.Name())), true
 }
 
 func parentModuleName(m tokens.ModuleName) tokens.ModuleName {
