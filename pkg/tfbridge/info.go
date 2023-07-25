@@ -514,6 +514,7 @@ type CSharpInfo struct {
 	PackageReferences map[string]string // NuGet package reference information.
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
+	PackageName       string            // Name of the .NET package to generate
 	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
 }
 
