@@ -1005,12 +1005,12 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 		// Supplementary types are typically defined one level up from the module defining the resource, but may
 		// also be defined in the same module.
 		m := res.Token().Module()
-		return parentModuleOrDefault(m, m)
+		return parentModuleOrSelf(m)
 	case *paths.DataSourceMemberPath:
 		// Supplementary types are typically defined one level up from the module defining the data source, but
 		// may also be defined in the same module.
 		m := pp.DataSourcePath.Token().Module()
-		return parentModuleOrDefault(m, m)
+		return parentModuleOrSelf(m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
 	default:
@@ -1019,11 +1019,11 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 	}
 }
 
-func parentModuleOrDefault(m tokens.Module, def tokens.Module) tokens.Module {
-	if m, ok := parentModule(m); ok {
+func parentModuleOrSelf(self tokens.Module) tokens.Module {
+	if m, ok := parentModule(self); ok {
 		return m
 	}
-	return def
+	return self
 }
 
 func parentModule(m tokens.Module) (tokens.Module, bool) {
