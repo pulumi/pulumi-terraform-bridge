@@ -836,7 +836,7 @@ func (b *tf12binder) bindResource(r *resource) hcl.Diagnostics {
 		}
 	} else if forEach, hasForEach := r.syntax.Body.Attributes["for_each"]; hasForEach {
 		forEachExpr, _ := model.BindExpression(forEach.Expr, b.root, b.tokens, b.hcl2Options...)
-		keyType, valueType, diags := model.GetCollectionTypes(forEachExpr.Type(), forEach.Expr.Range())
+		keyType, valueType, diags := model.GetCollectionTypes(forEachExpr.Type(), forEach.Expr.Range(), true /* strict */)
 		diagnostics = append(diagnostics, diags...)
 
 		rangeDef = forEach

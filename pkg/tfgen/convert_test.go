@@ -78,7 +78,7 @@ func TestConvert(t *testing.T) {
 import * as pulumi from "@pulumi/pulumi";
 
 const config = new pulumi.Config();
-const regionNumber = config.getObject("regionNumber") || {
+const regionNumber = config.getObject<{us-east-1?: number}>("regionNumber") || {
     "us-east-1": 1,
 };`
 
