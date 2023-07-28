@@ -365,11 +365,27 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	if goi := g.info.Golang; goi != nil {
-		spec.Language["go"] = rawMessage(map[string]interface{}{
-			"importBasePath":                 goi.ImportBasePath,
-			"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
-			"generateExtraInputTypes":        true,
-		})
+		if goi.GoPackageInfo != nil {
+			confl := func(prop string) error {
+				return fmt.Errorf("PackageInfo.Golang.%[1]s conflicts "+
+					"with PackageInfo.Golang.GoPackageInfo, "+
+					"please use PackageInfo.Golang.GoPackageInfo.%[1]s instead",
+					prop)
+			}
+			if goi.ImportBasePath != "" {
+				return pschema.PackageSpec{}, confl("ImportBasePath")
+			}
+			if goi.GenerateResourceContainerTypes {
+				return pschema.PackageSpec{}, confl("GenerateResourceContainerTypes")
+			}
+			spec.Language["go"] = rawMessage(goi.GoPackageInfo)
+		} else {
+			spec.Language["go"] = rawMessage(map[string]interface{}{
+				"importBasePath":                 goi.ImportBasePath,
+				"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
+				"generateExtraInputTypes":        true,
+			})
+		}
 	}
 
 	if javai := g.info.Java; javai != nil {

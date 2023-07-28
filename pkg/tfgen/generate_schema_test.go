@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"testing"
 	"text/template"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -283,4 +285,31 @@ func TestGetDefaultReadme(t *testing.T) {
 		tfbridge.MPL20LicenseType, "https://www.mozilla.org/en-US/MPL/2.0/", "github.com",
 		"https://github.com/pulumi/pulumi-aws")
 	assert.Equal(t, expected, actual)
+}
+
+func TestPropagateLanguageOptions(t *testing.T) {
+	provider := testprovider.ProviderMiniRandom() // choice of provider is arbitrary here
+	require.Nil(t, provider.Golang)
+
+	provider.Golang = &tfbridge.GolangInfo{
+		GoPackageInfo: &gogen.GoPackageInfo{
+			RespectSchemaVersion:          true,
+			DisableFunctionOutputVersions: true,
+		},
+	}
+
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/test-propagate-language-options.json", schema)
+
+	t.Run("golang", func(t *testing.T) {
+		actualGo := gogen.GoPackageInfo{}
+		err = json.Unmarshal(schema.Language["go"], &actualGo)
+		require.NoError(t, err)
+		assert.Equal(t, true, actualGo.RespectSchemaVersion)
+		assert.Equal(t, true, actualGo.DisableFunctionOutputVersions)
+	})
 }

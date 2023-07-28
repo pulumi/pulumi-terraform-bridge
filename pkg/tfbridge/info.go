@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"golang.org/x/net/context"
 
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -507,6 +508,14 @@ type GolangInfo struct {
 	GenerateResourceContainerTypes bool         // Generate container types for resources e.g. arrays, maps, pointers etc.
 	ImportBasePath                 string       // Base import path for package.
 	Overlay                        *OverlayInfo // optional overlay information for augmented code-generation.
+
+	// Configures language-specific extensions for Go in the generated Pulumi Package Schema.
+	//
+	// See also https://www.pulumi.com/docs/using-pulumi/pulumi-packages/schema/#language-specific-extensions
+	//
+	// Note that for GoPackageInfo conflicts with setting GenerateResourceContainerTypes and ImportBasePath, please
+	// set nested properties such as GoPackageInfo.ImportBasePath instead..
+	GoPackageInfo *gogen.GoPackageInfo
 }
 
 // CSharpInfo contains optional overlay information for C# code-generation.
