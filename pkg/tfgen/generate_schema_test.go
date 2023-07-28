@@ -313,8 +313,14 @@ func TestPropagateLanguageOptions(t *testing.T) {
 	}
 
 	require.Nil(t, provider.CSharp)
+
 	provider.CSharp = &tfbridge.CSharpInfo{
 		RespectSchemaVersion: true,
+	}
+
+	require.Nil(t, provider.Java)
+	provider.Java = &tfbridge.JavaInfo{
+		BuildFiles: "gradle",
 	}
 
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -353,5 +359,12 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		err = json.Unmarshal(schema.Language["csharp"], &actual)
 		require.NoError(t, err)
 		assert.True(t, actual.RespectSchemaVersion)
+	})
+
+	t.Run("java", func(t *testing.T) {
+		actual := map[string]any{}
+		err = json.Unmarshal(schema.Language["java"], &actual)
+		require.NoError(t, err)
+		assert.Equal(t, "gradle", actual["buildFiles"])
 	})
 }

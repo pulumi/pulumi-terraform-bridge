@@ -630,6 +630,8 @@ type CSharpInfo struct {
 	RespectSchemaVersion bool
 }
 
+// See https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
+// supported options.
 type JavaInfo struct {
 	BasePackage string // the Base package for the Java SDK
 
@@ -641,6 +643,10 @@ type JavaInfo struct {
 	// given version of io.github.gradle-nexus.publish-plugin in
 	// the generated Gradle build files.
 	GradleNexusPublishPluginVersion string
+
+	Packages     map[string]string `json:"packages,omitempty"`
+	Dependencies map[string]string `json:"dependencies,omitempty"`
+	GradleTest   string            `json:"gradleTest"`
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure

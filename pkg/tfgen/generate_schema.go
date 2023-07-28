@@ -341,12 +341,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		spec.Language["go"] = goLanguageExtensions(&g.info)
 	}
 
-	if javai := g.info.Java; javai != nil {
-		spec.Language["java"] = rawMessage(map[string]interface{}{
-			"basePackage":                     javai.BasePackage,
-			"buildFiles":                      javai.BuildFiles,
-			"gradleNexusPublishPluginVersion": javai.GradleNexusPublishPluginVersion,
-		})
+	if g.info.Java != nil {
+		spec.Language["java"] = javaLanguageExtensions(&g.info)
 	}
 
 	// Validate the schema.
@@ -359,6 +355,32 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	return spec, nil
+}
+
+func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+	// The definition is copied here to avoid linking the dependency in directly, see:
+	// https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1
+	type PackageInfo struct {
+		Packages                        map[string]string `json:"packages,omitempty"`
+		BasePackage                     string            `json:"basePackage"`
+		BuildFiles                      string            `json:"buildFiles"`
+		Dependencies                    map[string]string `json:"dependencies,omitempty"`
+		GradleNexusPublishPluginVersion string            `json:"gradleNexusPublishPluginVersion"`
+		GradleTest                      string            `json:"gradleTest"`
+	}
+	j := providerInfo.Java
+	if j == nil {
+		j = &tfbridge.JavaInfo{}
+	}
+	info := &PackageInfo{
+		Packages:                        j.Packages,
+		BasePackage:                     j.BasePackage,
+		BuildFiles:                      j.BuildFiles,
+		Dependencies:                    j.Dependencies,
+		GradleNexusPublishPluginVersion: j.GradleNexusPublishPluginVersion,
+		GradleTest:                      j.GradleTest,
+	}
+	return rawMessage(info)
 }
 
 func csharpLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
