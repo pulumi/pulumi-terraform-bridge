@@ -508,7 +508,7 @@ type JavaScriptInfo struct {
 	ExtraTypeScriptFiles []string
 
 	// Determines whether to make single-return-value methods return an output object or the single value.
-	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+	LiftSingleValueMethodReturns bool
 
 	// Respect the Pkg.Version field in the schema
 	RespectSchemaVersion bool
@@ -537,7 +537,7 @@ type PythonInfo struct {
 	ModuleNameOverrides map[string]string
 
 	// Determines whether to make single-return-value methods return an output object or the single value.
-	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+	LiftSingleValueMethodReturns bool
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool
