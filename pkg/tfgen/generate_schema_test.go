@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -294,19 +295,20 @@ func TestPropagateLanguageOptions(t *testing.T) {
 	require.Nil(t, provider.Golang)
 
 	provider.Golang = &tfbridge.GolangInfo{
-		GoPackageInfo: &gogen.GoPackageInfo{
-			RespectSchemaVersion:          true,
-			DisableFunctionOutputVersions: true,
-		},
+		RespectSchemaVersion:          true,
+		DisableFunctionOutputVersions: true,
 	}
 
 	require.Nil(t, provider.Python)
 
 	provider.Python = &tfbridge.PythonInfo{
-		PythonPackageInfo: &pygen.PackageInfo{
-			RespectSchemaVersion: true,
-			Readme:               "MY README",
-		},
+		RespectSchemaVersion: true,
+	}
+
+	require.Nil(t, provider.JavaScript)
+
+	provider.JavaScript = &tfbridge.JavaScriptInfo{
+		RespectSchemaVersion: true,
 	}
 
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -321,18 +323,23 @@ func TestPropagateLanguageOptions(t *testing.T) {
 	})
 
 	t.Run("golang", func(t *testing.T) {
-		actualGo := gogen.GoPackageInfo{}
-		err = json.Unmarshal(schema.Language["go"], &actualGo)
+		actual := gogen.GoPackageInfo{}
+		err = json.Unmarshal(schema.Language["go"], &actual)
 		require.NoError(t, err)
-		expected := provider.Golang.GoPackageInfo
-		assert.Equal(t, expected, &actualGo)
+		assert.True(t, actual.RespectSchemaVersion)
 	})
 
 	t.Run("python", func(t *testing.T) {
-		actualPython := pygen.PackageInfo{}
-		err = json.Unmarshal(schema.Language["python"], &actualPython)
-		require.NoError(t, err)
-		expected := provider.Python.PythonPackageInfo
-		assert.Equal(t, expected, &actualPython)
+		actual := pygen.PackageInfo{}
+		err = json.Unmarshal(schema.Language["python"], &actual)
+		assert.True(t, actual.RespectSchemaVersion)
 	})
+
+	t.Run("typescript", func(t *testing.T) {
+		actual := tsgen.NodePackageInfo{}
+		err = json.Unmarshal(schema.Language["nodejs"], &actual)
+		require.NoError(t, err)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
+
 }
