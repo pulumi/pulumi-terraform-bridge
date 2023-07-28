@@ -13,6 +13,10 @@
     "moduleFormat": "(.*)(?:/[^/]*)"
   },
   "language": {
+    "csharp": {
+      "compatibility": "tfbridge20",
+      "respectSchemaVersion": true
+    },
     "go": {
       "disableFunctionOutputVersions": true,
       "generateExtraInputTypes": true,

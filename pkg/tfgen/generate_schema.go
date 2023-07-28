@@ -31,6 +31,7 @@ import (
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -333,15 +334,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	spec.Language["python"] = pythonLanguageExtensions(&g.info, readme)
 
 	if csi := g.info.CSharp; csi != nil {
-		dotnetData := map[string]interface{}{
-			"compatibility":     tfbridge20,
-			"packageReferences": csi.PackageReferences,
-			"namespaces":        csi.Namespaces,
-		}
-		if rootNamespace := csi.RootNamespace; rootNamespace != "" {
-			dotnetData["rootNamespace"] = rootNamespace
-		}
-		spec.Language["csharp"] = rawMessage(dotnetData)
+		spec.Language["csharp"] = csharpLanguageExtensions(&g.info)
 	}
 
 	if goi := g.info.Golang; goi != nil {
@@ -366,6 +359,24 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	return spec, nil
+}
+
+func csharpLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+	c := providerInfo.CSharp
+	if c == nil {
+		c = &tfbridge.CSharpInfo{}
+	}
+	info := &csgen.CSharpPackageInfo{
+		Compatibility:                tfbridge20,
+		PackageReferences:            c.PackageReferences,
+		Namespaces:                   c.Namespaces,
+		RootNamespace:                c.RootNamespace,
+		DictionaryConstructors:       c.DictionaryConstructors,
+		ProjectReferences:            c.ProjectReferences,
+		LiftSingleValueMethodReturns: c.LiftSingleValueMethodReturns,
+		RespectSchemaVersion:         c.RespectSchemaVersion,
+	}
+	return rawMessage(info)
 }
 
 func goLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {

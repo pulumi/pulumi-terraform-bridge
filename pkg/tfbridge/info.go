@@ -618,6 +618,16 @@ type CSharpInfo struct {
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
 	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
+
+	Compatibility          string
+	DictionaryConstructors bool
+	ProjectReferences      []string
+
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool
+
+	// Allow the Pkg.Version field to filter down to emitted code.
+	RespectSchemaVersion bool
 }
 
 type JavaInfo struct {

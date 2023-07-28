@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -311,6 +312,11 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		RespectSchemaVersion: true,
 	}
 
+	require.Nil(t, provider.CSharp)
+	provider.CSharp = &tfbridge.CSharpInfo{
+		RespectSchemaVersion: true,
+	}
+
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
@@ -342,4 +348,10 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		assert.True(t, actual.RespectSchemaVersion)
 	})
 
+	t.Run("csharp", func(t *testing.T) {
+		actual := csgen.CSharpPackageInfo{}
+		err = json.Unmarshal(schema.Language["csharp"], &actual)
+		require.NoError(t, err)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
 }
