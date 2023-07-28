@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -289,12 +290,22 @@ func TestGetDefaultReadme(t *testing.T) {
 
 func TestPropagateLanguageOptions(t *testing.T) {
 	provider := testprovider.ProviderMiniRandom() // choice of provider is arbitrary here
+
 	require.Nil(t, provider.Golang)
 
 	provider.Golang = &tfbridge.GolangInfo{
 		GoPackageInfo: &gogen.GoPackageInfo{
 			RespectSchemaVersion:          true,
 			DisableFunctionOutputVersions: true,
+		},
+	}
+
+	require.Nil(t, provider.Python)
+
+	provider.Python = &tfbridge.PythonInfo{
+		PythonPackageInfo: &pygen.PackageInfo{
+			RespectSchemaVersion: true,
+			Readme:               "MY README",
 		},
 	}
 
@@ -313,7 +324,15 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		actualGo := gogen.GoPackageInfo{}
 		err = json.Unmarshal(schema.Language["go"], &actualGo)
 		require.NoError(t, err)
-		assert.Equal(t, true, actualGo.RespectSchemaVersion)
-		assert.Equal(t, true, actualGo.DisableFunctionOutputVersions)
+		expected := provider.Golang.GoPackageInfo
+		assert.Equal(t, expected, &actualGo)
+	})
+
+	t.Run("python", func(t *testing.T) {
+		actualPython := pygen.PackageInfo{}
+		err = json.Unmarshal(schema.Language["python"], &actualPython)
+		require.NoError(t, err)
+		expected := provider.Python.PythonPackageInfo
+		assert.Equal(t, expected, &actualPython)
 	})
 }

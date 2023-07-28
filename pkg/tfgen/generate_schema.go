@@ -31,12 +31,17 @@ import (
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
+)
+
+const (
+	tfbridge20 = "tfbridge20"
 )
 
 type schemaGenerator struct {
@@ -316,8 +321,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
 
-	const tfbridge20 = "tfbridge20"
-
 	readme := ""
 	if downstreamLicense != tfbridge.UnlicensedLicenseType {
 		readme = getDefaultReadme(g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
@@ -340,17 +343,11 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 	spec.Language["nodejs"] = rawMessage(nodeData)
 
-	pythonData := map[string]interface{}{
-		"compatibility": tfbridge20,
-		"readme":        readme,
+	python, err := pythonLanguageExtensions(g.info.Python, readme)
+	if err != nil {
+		return pschema.PackageSpec{}, err
 	}
-	if pi := g.info.Python; pi != nil {
-		pythonData["requires"] = pi.Requires
-		if pyPackageName := pi.PackageName; pyPackageName != "" {
-			pythonData["packageName"] = pyPackageName
-		}
-	}
-	spec.Language["python"] = rawMessage(pythonData)
+	spec.Language["python"] = python
 
 	if csi := g.info.CSharp; csi != nil {
 		dotnetData := map[string]interface{}{
@@ -365,27 +362,11 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	if goi := g.info.Golang; goi != nil {
-		if goi.GoPackageInfo != nil {
-			confl := func(prop string) error {
-				return fmt.Errorf("PackageInfo.Golang.%[1]s conflicts "+
-					"with PackageInfo.Golang.GoPackageInfo, "+
-					"please use PackageInfo.Golang.GoPackageInfo.%[1]s instead",
-					prop)
-			}
-			if goi.ImportBasePath != "" {
-				return pschema.PackageSpec{}, confl("ImportBasePath")
-			}
-			if goi.GenerateResourceContainerTypes {
-				return pschema.PackageSpec{}, confl("GenerateResourceContainerTypes")
-			}
-			spec.Language["go"] = rawMessage(goi.GoPackageInfo)
-		} else {
-			spec.Language["go"] = rawMessage(map[string]interface{}{
-				"importBasePath":                 goi.ImportBasePath,
-				"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
-				"generateExtraInputTypes":        true,
-			})
+		goext, err := goLanguageExtensions(goi)
+		if err != nil {
+			return pschema.PackageSpec{}, err
 		}
+		spec.Language["go"] = goext
 	}
 
 	if javai := g.info.Java; javai != nil {
@@ -406,6 +387,57 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	return spec, nil
+}
+
+func conflict(prop, subProp, finalProp string) error {
+	return fmt.Errorf("ProviderInfo.%[1]s.%[3]s conflicts "+
+		"with ProviderInfo.%[1]s.%[2]s, "+
+		"please use ProviderInfo.%[1]s.%[2]s.%[3]s instead",
+		prop, subProp, finalProp)
+}
+
+func goLanguageExtensions(goi *tfbridge.GolangInfo) (pschema.RawMessage, error) {
+	if goi.GoPackageInfo != nil {
+		if goi.ImportBasePath != "" {
+			return nil, conflict("Golang", "GoPackageInfo", "ImportBasePath")
+		}
+		if goi.GenerateResourceContainerTypes {
+			return nil, conflict("Golang", "GoPackageInfo", "GenerateResourceContainerTypes")
+		}
+		return rawMessage(goi.GoPackageInfo), nil
+	}
+	return rawMessage(map[string]interface{}{
+		"importBasePath":                 goi.ImportBasePath,
+		"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
+		"generateExtraInputTypes":        true,
+	}), nil
+}
+
+func pythonLanguageExtensions(pi *tfbridge.PythonInfo, readme string) (pschema.RawMessage, error) {
+	info := pi.PythonPackageInfo
+	if info != nil {
+		if pi.PackageName != "" {
+			return nil, conflict("Python", "PythonPackageInfo", "PackageName")
+		}
+		if pi.Overlay != nil {
+			return nil, conflict("Python", "PythonPackageInfo", "Overlay")
+		}
+		if len(pi.Requires) > 0 {
+			return nil, conflict("Python", "PythonPackageInfo", "Requires")
+		}
+		if pi.UsesIOClasses {
+			return nil, conflict("Python", "PythonPackageInfo", "UsesIOClasses")
+		}
+	} else {
+		info = &pygen.PackageInfo{}
+	}
+	if info.Compatibility == "" {
+		info.Compatibility = tfbridge20
+	}
+	if info.Readme == "" {
+		info.Readme = readme
+	}
+	return rawMessage(info), nil
 }
 
 func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,

@@ -24,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -501,6 +502,14 @@ type PythonInfo struct {
 	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
 	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
 	PackageName   string            // Name of the Python package to generate
+
+	// Configures language-specific extensions for Python in the generated Pulumi Package Schema.
+	//
+	// See also https://www.pulumi.com/docs/using-pulumi/pulumi-packages/schema/#language-specific-extensions
+	//
+	// Note that for PythonPackageInfo conflicts with setting top-level properties such as PackageName. Use nested
+	// properties such as PythonPackageInfo.PackageName instead.
+	PythonPackageInfo *pygen.PackageInfo
 }
 
 // GolangInfo contains optional overlay information for Golang code-generation.
