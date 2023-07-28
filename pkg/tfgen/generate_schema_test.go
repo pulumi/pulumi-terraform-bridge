@@ -301,9 +301,13 @@ func TestPropagateLanguageOptions(t *testing.T) {
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
-
 	assert.NoError(t, err)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/test-propagate-language-options.json", schema)
+
+	t.Run("all-languages", func(t *testing.T) {
+		// If this test fails, you may run the test with PULUMI_ACCEPT=1 environment variable to reset expected
+		// schema file with the actually generated schema.
+		bridgetesting.AssertEqualsJSONFile(t, "test_data/test-propagate-language-options.json", schema)
+	})
 
 	t.Run("golang", func(t *testing.T) {
 		actualGo := gogen.GoPackageInfo{}
