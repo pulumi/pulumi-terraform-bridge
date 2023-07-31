@@ -248,8 +248,35 @@ type AutoNameOptions struct {
 	PostTransform func(res *PulumiResource, name string) (string, error)
 }
 
-// AutoName creates custom schema for a Terraform name property which is automatically populated
-// from the resource's URN name, and transformed based on the provided options.
+// AutoName configures a property to automatically populate with auto-computed names when no values are given to it by
+// the user program.
+//
+// The auto-computed names will be based on the resource name extracted from the resource URN, and have a random suffix.
+// The lifecycle of automatic names is tied to the Pulumi resource lifecycle, so the automatic name will not change
+// during normal updates and will persist until the resource is replaced.
+//
+// If a required property is configured with AutoName, it becomes optional in the Pulumi Package Schema. Therefore
+// removing AutoName from a required property is a breaking change.
+//
+// For a quick example, consider aws.ec2.Keypair that has this code in its definition:
+//
+//	ResourceInfo{
+//	    	Fields: map[string]*SchemaInfo{
+//	    		"key_name": AutoName("keyName", 255, "-"),
+//	    	},
+//	}
+//
+// Deploying a KeyPair allocates an automatic keyName without the user having to specify it:
+//
+//	const deployer = new aws.ec2.KeyPair("deployer", {publicKey: pubKey});
+//	export const keyName = deployer.keyName;
+//
+// Running this example produces:
+//
+//	Outputs:
+//	   keyName: "deployer-6587896"
+//
+// Note how the automatic name combines the resource name from the program with a random suffix.
 func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 	return &SchemaInfo{
 		Name: name,
@@ -264,8 +291,7 @@ func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 	}
 }
 
-// AutoNameWithCustomOptions creates a custom schema for a Terraform name property and allows setting options to allow
-// transforms, custom separators and maxLength combinations.
+// AutoNameWithCustomOptions is similar to [AutoName] but exposes more options for configuring the generated names.
 func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo {
 	return &SchemaInfo{
 		Name: name,

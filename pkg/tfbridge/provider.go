@@ -1234,9 +1234,20 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 	return fmt.Sprintf("%s.%s.%s", packageName, moduleName, moduleMemberName)
 }
 
-// SetAutonaming will loop all resources with a name property, and will add an auto-name property.  It will skip
-// those that already have a name mapping entry, since those may have custom overrides set in the resource
-// declaration (e.g., for length).
+// SetAutonaming auto-names all resource properties that are literally called "name".
+//
+// The effect is identical to configuring each matching property with [AutoName]. Pulumi will propose an auto-computed
+// value for these properties when no value is given by the user program. If a property was required before auto-naming,
+// it becomes optional.
+//
+// The maxLength and separator parameters configure how AutoName generates default values. See [AutoNameOptions].
+//
+// SetAutonaming will skip properties that already have a [SchemaInfo] entry in [ResourceInfo.Fields], assuming those
+// are already customized by the user. If those properties need AutoName functionality, please use AutoName directly to
+// populate their SchemaInfo entry.
+//
+// Note that when constructing a ProviderInfo incrementally, some care is required to make sure SetAutonaming is called
+// after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
 func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 	if p.P == nil {
 		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
