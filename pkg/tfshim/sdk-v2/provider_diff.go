@@ -79,14 +79,22 @@ func (p v2Provider) simpleDiff(
 
 	switch diffStrat {
 	case ClassicDiff:
-		if s.RawPlan.IsNull() {
+		state := s.DeepCopy()
+		if state.RawPlan.IsNull() {
 			// SimpleDiff may read RawPlan and panic if it is nil; while in the case of ClassicDiff we do
 			// not yet do what TF CLI does (that is PlanState), it is better to approximate and assume that
 			// the RawPlan is the same as RawConfig than to have the code panic.
-			rawPlan := rawConfigVal
-			return res.SimpleDiff(ctx, instanceStateWithUpdatedRawPlan(s, rawPlan), c, meta)
+			state.RawConfig = rawConfigVal
 		}
-		return res.SimpleDiff(ctx, s, c, meta)
+		if state.RawState.IsNull() {
+			// Same trick as for nil RawPlan.
+			priorStateVal, err := state.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+			if err != nil {
+				return nil, err
+			}
+			state.RawState = priorStateVal
+		}
+		return res.SimpleDiff(ctx, state, c, meta)
 	case PlanState:
 		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
 	case TryPlanState:
@@ -128,15 +136,6 @@ func (p v2Provider) simpleDiff(
 	}
 }
 
-func instanceStateWithUpdatedRawPlan(
-	s *terraform.InstanceState,
-	rawPlan hcty.Value,
-) *terraform.InstanceState {
-	c := s.DeepCopy()
-	c.RawPlan = rawPlan
-	return c
-}
-
 func simpleDiffViaPlanState(
 	ctx context.Context,
 	res *schema.Resource,
@@ -154,7 +153,12 @@ func simpleDiffViaPlanState(
 	}
 
 	planned := terraform.NewResourceConfigShimmed(proposedNewStateVal, res.CoreConfigSchema())
-	return res.SimpleDiff(ctx, instanceStateWithUpdatedRawPlan(s, proposedNewStateVal), planned, meta)
+	state := s.DeepCopy()
+	state.RawPlan = proposedNewStateVal
+	if state.RawState.IsNull() {
+		state.RawState = priorStateVal
+	}
+	return res.SimpleDiff(ctx, state, planned, meta)
 }
 
 func showDiffChangeType(b byte) string {

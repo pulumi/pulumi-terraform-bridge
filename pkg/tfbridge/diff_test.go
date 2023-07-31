@@ -2,6 +2,7 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -142,6 +143,47 @@ func TestCustomizeDiff(t *testing.T) {
 		}
 		assert.Equal(t, changes, pulumirpc.DiffResponse_DIFF_NONE)
 		assert.Equal(t, expectedDiff, diff)
+	})
+
+	t.Run("CustomDiffDoesNotPanicOnGetRawState", func(t *testing.T) {
+		for _, diffStrat := range []shimv2.DiffStrategy{shimv2.PlanState, shimv2.ClassicDiff} {
+			diffStrat := diffStrat
+			t.Run(fmt.Sprintf("%v", diffStrat), func(t *testing.T) {
+				customDiffRes := &v2Schema.Resource{
+					Schema: tfs,
+					CustomizeDiff: func(_ context.Context, diff *v2Schema.ResourceDiff, _ interface{}) error {
+						rawStateType := diff.GetRawState().Type()
+						if !rawStateType.HasAttribute("outp") {
+							return fmt.Errorf("Expected rawState type to have attribute: outp")
+						}
+						return nil
+					},
+				}
+
+				v2Provider := &v2Schema.Provider{
+					ResourcesMap: map[string]*v2Schema.Resource{
+						"resource": customDiffRes,
+					},
+				}
+
+				provider := shimv2.NewProvider(v2Provider, shimv2.WithDiffStrategy(diffStrat))
+
+				// Convert the inputs and state to TF config and resource attributes.
+				r := Resource{
+					TF:     shimv2.NewResource(customDiffRes),
+					Schema: &ResourceInfo{Fields: info},
+				}
+				tfState, err := MakeTerraformState(r, "id", stateMap)
+				assert.NoError(t, err)
+
+				config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+				assert.NoError(t, err)
+
+				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
+				_, err = provider.Diff("resource", tfState, config)
+				assert.NoError(t, err)
+			})
+		}
 	})
 }
 
