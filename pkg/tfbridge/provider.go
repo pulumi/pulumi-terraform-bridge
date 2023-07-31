@@ -567,6 +567,13 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
+	if check := res.Schema.XCustomCheck; check != nil {
+		news, err = check(ctx, news, p.configValues.Copy())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
