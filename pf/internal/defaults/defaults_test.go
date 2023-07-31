@@ -185,14 +185,21 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
 						From: func(res *tfbridge.PulumiResource) (interface{}, error) {
-							return resource.NewStringProperty("OK"), nil
+							n := string(res.URN.Name()) + "-"
+							a := []rune("12345")
+							unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
+							return resource.NewStringProperty(unique), err
 						},
 					},
 				},
 			},
-			resourceInstance: &tfbridge.PulumiResource{},
+			resourceInstance: &tfbridge.PulumiResource{
+				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+				Properties: resource.PropertyMap{},
+				Seed:       []byte(`123`),
+			},
 			expected: resource.PropertyMap{
-				"stringProp": resource.NewStringProperty("OK"),
+				"stringProp": resource.NewStringProperty("n1-453"),
 			},
 		},
 		{
