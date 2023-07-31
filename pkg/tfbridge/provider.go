@@ -1236,9 +1236,9 @@ func generateResourceName(packageName tokens.Package, moduleName string, moduleM
 
 // SetAutonaming auto-names all resource properties that are literally called "name".
 //
-// The effect is identical to replacing each matching property with an [AutoName] property. Pulumi will propose an
-// auto-computed value for these properties when no value is given by the user program. If a property was required
-// before auto-naming, it becomes optional.
+// The effect is identical to configuring each matching property with [AutoName]. Pulumi will propose an auto-computed
+// value for these properties when no value is given by the user program. If a property was required before auto-naming,
+// it becomes optional.
 //
 // The maxLength and separator parameters configure how AutoName generates default values. See [AutoNameOptions].
 //

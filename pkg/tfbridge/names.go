@@ -255,6 +255,9 @@ type AutoNameOptions struct {
 // The lifecycle of automatic names is tied to the Pulumi resource lifecycle, so the automatic name will not change
 // during normal updates and will persist until the resource is replaced.
 //
+// If a required property is configured with AutoName, it becomes optional in the Pulumi Package Schema. Therefore
+// removing AutoName from a required property is a breaking change.
+//
 // For a quick example, consider aws.ec2.Keypair that has this code in its definition:
 //
 //	ResourceInfo{
