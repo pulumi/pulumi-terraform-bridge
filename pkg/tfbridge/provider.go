@@ -825,7 +825,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 	}
 
-	newstate, err := p.tf.Refresh(res.TFName, state)
+	config, _, err := MakeTerraformConfig(p, oldInputs, res.TF.Schema(), res.Schema.Fields)
+	if err != nil {
+		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+	}
+
+	newstate, err := p.tf.Refresh(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
 	}

@@ -98,7 +98,7 @@ func (p v1Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 	return stateToShim(state), err
 }
 
-func (p v1Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p v1Provider) Refresh(t string, s shim.InstanceState, _ shim.ResourceConfig) (shim.InstanceState, error) {
 	state, err := p.tf.Refresh(instanceInfo(t), stateFromShim(s))
 	return stateToShim(state), err
 }
