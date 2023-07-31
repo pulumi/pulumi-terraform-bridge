@@ -1102,13 +1102,15 @@ func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.I
 			return nil, err
 		}
 	} else if res.TF.SchemaVersion() > 0 {
-		// If there was no metadata in the inputs and this resource has a non-zero schema version, return a meta bag
-		// with the current schema version. This helps avoid migration issues.
+		// If there was no metadata in the inputs and this resource has a non-zero
+		// schema version, return a meta bag with the current schema version. This
+		// helps avoid migration issues.
 		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.TF.SchemaVersion())}
 	}
 
-	// Turn the resource properties into a map. For the most part, this is a straight Mappable, but we use MapReplace
-	// because we use float64s and Terraform uses ints, to represent numbers.
+	// Turn the resource properties into a map. For the most part, this is a straight
+	// Mappable, but we use MapReplace because we use float64s and Terraform uses
+	// ints, to represent numbers.
 	ctx := &conversionContext{}
 	inputs, err := ctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
 	if err != nil {
