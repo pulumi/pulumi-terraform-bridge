@@ -248,8 +248,7 @@ type AutoNameOptions struct {
 	PostTransform func(res *PulumiResource, name string) (string, error)
 }
 
-// AutoName creates custom schema for a Terraform name property which is automatically populated
-// from the resource's URN name, and transformed based on the provided options.
+// The most common form of [AutoNameWithCustomOptions].
 func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 	return &SchemaInfo{
 		Name: name,
@@ -264,8 +263,16 @@ func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 	}
 }
 
-// AutoNameWithCustomOptions creates a custom schema for a Terraform name property and allows setting options to allow
-// transforms, custom separators and maxLength combinations.
+// AutoNameWithCustomOptions defines a Terraform Property that automatically populates with auto-computed names when no
+// values are given to it by the user program.
+//
+// The auto-computed names will be based on the resource name extracted from the resource URN, and have a random suffix.
+// See [AutoNameOptions] that allows customizing the name generation. The lifecycle of automatic names is tied to the
+// Pulumi resource lifecycle, so the automatic name will not change during normal updates and will persist until the
+// resource is replaced.
+//
+// If a property was required before auto-naming, auto-naming makes it optional in the Pulumi Package Schema. Removing
+// auto-naming on a Required property is therefore a breaking change for consumers of the provider.
 func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo {
 	return &SchemaInfo{
 		Name: name,
