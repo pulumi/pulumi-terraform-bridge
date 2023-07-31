@@ -51,19 +51,26 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	}
 
 	type testCase struct {
-		name             string
-		env              map[string]string
-		resourceInstance *tfbridge.PulumiResource
-		props            resource.PropertyMap
-		expected         resource.PropertyMap
-		fieldInfos       map[string]*tfbridge.SchemaInfo
-		providerConfig   resource.PropertyMap
+		name                  string
+		env                   map[string]string
+		computeDefaultOptions tfbridge.ComputeDefaultOptions
+		props                 resource.PropertyMap
+		expected              resource.PropertyMap
+		fieldInfos            map[string]*tfbridge.SchemaInfo
+		providerConfig        resource.PropertyMap
 	}
 
 	testFrom := func(res *tfbridge.PulumiResource) (interface{}, error) {
 		n := string(res.URN.Name()) + "-"
 		a := []rune("12345")
 		unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
+		return resource.NewStringProperty(unique), err
+	}
+
+	testComputeDefaults := func(opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+		n := string(opts.URN.Name()) + "-"
+		a := []rune("12345")
+		unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
 		return resource.NewStringProperty(unique), err
 	}
 
@@ -187,6 +194,24 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			},
 		},
 		{
+			name: "ComputeDefaults function can compute defaults",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"string_prop": {
+					Default: &tfbridge.DefaultInfo{
+						ComputeDefault: testComputeDefaults,
+					},
+				},
+			},
+			computeDefaultOptions: tfbridge.ComputeDefaultOptions{
+				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+				Properties: resource.PropertyMap{},
+				Seed:       []byte(`123`),
+			},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("n1-453"),
+			},
+		},
+		{
 			name: "From function can compute defaults",
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
@@ -195,13 +220,43 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 					},
 				},
 			},
-			resourceInstance: &tfbridge.PulumiResource{
+			computeDefaultOptions: tfbridge.ComputeDefaultOptions{
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("n1-453"),
+			},
+		},
+		{
+			name: "ComputeDefaults function can compute nested defaults",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"object_prop": {
+					Fields: map[string]*tfbridge.SchemaInfo{
+						"y_prop": {
+							Default: &tfbridge.DefaultInfo{
+								ComputeDefault: testComputeDefaults,
+							},
+						},
+					},
+				},
+			},
+			props: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+				}),
+			},
+			computeDefaultOptions: tfbridge.ComputeDefaultOptions{
+				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+				Properties: resource.PropertyMap{},
+				Seed:       []byte(`123`),
+			},
+			expected: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+					"yProp": resource.NewStringProperty("n1-453"),
+				}),
 			},
 		},
 		{
@@ -222,7 +277,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 					"xProp": resource.NewStringProperty("X"),
 				}),
 			},
-			resourceInstance: &tfbridge.PulumiResource{
+			computeDefaultOptions: tfbridge.ComputeDefaultOptions{
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
@@ -275,11 +330,11 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			}
 			ctx := context.Background()
 			actual := ApplyDefaultInfoValues(ctx, ApplyDefaultInfoValuesArgs{
-				SchemaMap:        schemaMap,
-				SchemaInfos:      tc.fieldInfos,
-				ResourceInstance: tc.resourceInstance,
-				PropertyMap:      tc.props,
-				ProviderConfig:   tc.providerConfig,
+				SchemaMap:             schemaMap,
+				SchemaInfos:           tc.fieldInfos,
+				ComputeDefaultOptions: tc.computeDefaultOptions,
+				PropertyMap:           tc.props,
+				ProviderConfig:        tc.providerConfig,
 			})
 			assert.Equal(t, tc.expected, actual)
 		})

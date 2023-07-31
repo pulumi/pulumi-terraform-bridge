@@ -40,8 +40,8 @@ type ApplyDefaultInfoValuesArgs struct {
 	// Toplevel SchemaInfo configuration matching TopSchemaMap.
 	SchemaInfos map[string]*tfbridge.SchemaInfo
 
-	// Optional. Note that ResourceInstance need not be specified for Invoke or Configure processing.
-	ResourceInstance *tfbridge.PulumiResource
+	// Note that URN need not be specified for Invoke or Configure processing.
+	ComputeDefaultOptions tfbridge.ComputeDefaultOptions
 
 	// Optional. If known, these are the provider-level configuration values, to support DefaultInfo.Config.
 	ProviderConfig resource.PropertyMap
@@ -60,10 +60,10 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 	}
 
 	t := &defaultsTransform{
-		resourceInstance: args.ResourceInstance,
-		topSchemaMap:     args.SchemaMap,
-		topFieldInfos:    args.SchemaInfos,
-		providerConfig:   args.ProviderConfig,
+		computeDefaultOptions: args.ComputeDefaultOptions,
+		topSchemaMap:          args.SchemaMap,
+		topFieldInfos:         args.SchemaInfos,
+		providerConfig:        args.ProviderConfig,
 	}
 	result := t.withDefaults(ctx, make(resource.PropertyPath, 0), resource.NewObjectProperty(args.PropertyMap))
 	contract.Assertf(result.IsObject(), "defaultsTransform.withDefaults returned a non-object value")
@@ -73,7 +73,7 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 func getDefaultValue(
 	ctx context.Context,
 	property resource.PropertyKey,
-	res *tfbridge.PulumiResource,
+	cdOptions tfbridge.ComputeDefaultOptions,
 	fieldSchema shim.Schema,
 	defaultInfo *tfbridge.DefaultInfo,
 	providerConfig resource.PropertyMap,
@@ -133,8 +133,26 @@ func getDefaultValue(
 				"property": string(property),
 			})
 		return recoverDefaultValue(defaultInfo.Value), true
-	} else if defaultInfo.From != nil && res != nil {
-		raw, err := defaultInfo.From(res)
+	} else if defaultInfo.ComputeDefault != nil {
+		raw, err := defaultInfo.ComputeDefault(cdOptions)
+		if err != nil {
+			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",
+				string(property), err)
+			tflog.Error(ctx, msg.Error())
+			return na, false
+		}
+		if raw == nil {
+			return na, false
+		}
+		tflog.Trace(ctx, "DefaultInfo.ComputeDefault applied a computed default value",
+			map[string]any{"property": string(property)})
+		return recoverDefaultValue(raw), true
+	} else if defaultInfo.From != nil {
+		raw, err := defaultInfo.From(&tfbridge.PulumiResource{
+			URN:        cdOptions.URN,
+			Properties: cdOptions.Properties,
+			Seed:       cdOptions.Seed,
+		})
 		if err != nil {
 			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",
 				string(property), err)
@@ -190,10 +208,10 @@ func recoverDefaultValue(defaultValue any) resource.PropertyValue {
 }
 
 type defaultsTransform struct {
-	topSchemaMap     shim.SchemaMap
-	topFieldInfos    map[string]*tfbridge.SchemaInfo // optional
-	resourceInstance *tfbridge.PulumiResource        // optional
-	providerConfig   resource.PropertyMap            // optional
+	topSchemaMap          shim.SchemaMap
+	topFieldInfos         map[string]*tfbridge.SchemaInfo // optional
+	computeDefaultOptions tfbridge.ComputeDefaultOptions
+	providerConfig        resource.PropertyMap // optional
 }
 
 // Returns matching object schema for a context determined by the PropertyPath, if any.
@@ -264,7 +282,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		// using default value for empty property
 		pv, gotDefault := getDefaultValue(ctx,
 			pk,
-			du.resourceInstance,
+			du.computeDefaultOptions,
 			fieldSchema,
 			fld.Default,
 			du.providerConfig)

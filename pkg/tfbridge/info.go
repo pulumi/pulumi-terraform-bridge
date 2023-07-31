@@ -455,13 +455,33 @@ type DefaultInfo struct {
 	AutoNamed bool
 	// Config uses a configuration variable from this package as the default value.
 	Config string
-	// From applies a transformation from other resource properties.
+
+	// Deprecated. Use ComputeDefault.
 	From func(res *PulumiResource) (interface{}, error)
+
+	// ComputeDefault specifies how to compute a default value for the given property by consulting other properties
+	// such as the resource's URN. See [ComputeDefaultOptions] for all available information.
+	ComputeDefault func(opts ComputeDefaultOptions) (interface{}, error)
+
 	// Value injects a raw literal value as the default.
 	Value interface{}
 	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)
 	// will be used as the default.
 	EnvVars []string
+}
+
+// Configures [DefaultInfo.ComputeDefault].
+type ComputeDefaultOptions struct {
+	// URN identifying the Resource. Set when computing default properties for a Resource, and unset for functions.
+	URN resource.URN
+
+	// Property map before computing the defaults.
+	Properties resource.PropertyMap
+
+	// The engine provides a stable seed useful for generating random values consistently. This guarantees, for
+	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
+	// consistent. This currently is only available for resource changes.
+	Seed []byte
 }
 
 // PulumiResource is just a little bundle that carries URN, seed and properties around.
@@ -908,7 +928,7 @@ func MarshalDefaultInfo(d *DefaultInfo) *MarshallableDefaultInfo {
 
 	return &MarshallableDefaultInfo{
 		AutoNamed: d.AutoNamed,
-		IsFunc:    d.From != nil,
+		IsFunc:    d.From != nil || d.ComputeDefault != nil,
 		Value:     d.Value,
 		EnvVars:   d.EnvVars,
 	}
@@ -920,19 +940,18 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 		return nil
 	}
 
-	var f func(*PulumiResource) (interface{}, error)
-	if m.IsFunc {
-		f = func(*PulumiResource) (interface{}, error) {
-			panic("transforms cannot be run on unmarshaled DefaultInfo values")
-		}
-	}
-
-	return &DefaultInfo{
+	defInfo := &DefaultInfo{
 		AutoNamed: m.AutoNamed,
-		From:      f,
 		Value:     m.Value,
 		EnvVars:   m.EnvVars,
 	}
+
+	if m.IsFunc {
+		defInfo.ComputeDefault = func(_ ComputeDefaultOptions) (interface{}, error) {
+			panic("transforms cannot be run on unmarshaled DefaultInfo values")
+		}
+	}
+	return defInfo
 }
 
 // MarshallableResourceInfo is the JSON-marshallable form of a Pulumi ResourceInfo value.

@@ -278,15 +278,18 @@ type AutoNameOptions struct {
 //
 // Note how the automatic name combines the resource name from the program with a random suffix.
 func AutoName(name string, maxlength int, separator string) *SchemaInfo {
+	autoNameOptions := AutoNameOptions{
+		Separator: separator,
+		Maxlen:    maxlength,
+		Randlen:   7,
+	}
 	return &SchemaInfo{
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			From: FromName(AutoNameOptions{
-				Separator: separator,
-				Maxlen:    maxlength,
-				Randlen:   7,
-			}),
+			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(autoNameOptions, opts)
+			},
 		},
 	}
 }
@@ -297,7 +300,9 @@ func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			From:      FromName(options),
+			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(options, opts)
+			},
 		},
 	}
 }
@@ -307,16 +312,19 @@ func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo
 // transformation function. This makes it easy to propagate the Pulumi resource's URN name part as the Terraform name
 // as a convenient default, while still permitting it to be overridden.
 func AutoNameTransform(name string, maxlen int, transform func(string) string) *SchemaInfo {
+	autoNameOptions := AutoNameOptions{
+		Separator: "-",
+		Maxlen:    maxlen,
+		Randlen:   7,
+		Transform: transform,
+	}
 	return &SchemaInfo{
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			From: FromName(AutoNameOptions{
-				Separator: "-",
-				Maxlen:    maxlen,
-				Randlen:   7,
-				Transform: transform,
-			}),
+			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(autoNameOptions, opts)
+			},
 		},
 	}
 }
@@ -324,22 +332,37 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 // FromName automatically propagates a resource's URN onto the resulting default info.
 func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
 	return func(res *PulumiResource) (interface{}, error) {
-		// Take the URN name part, transform it if required, and then append some unique characters if requested.
-		vs := string(res.URN.Name())
-		if options.Transform != nil {
-			vs = options.Transform(vs)
-		}
-		if options.Randlen > 0 {
-			uniqueHex, err := resource.NewUniqueName(
-				res.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
-			if err != nil {
-				return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", res.URN.Type())
-			}
-			vs = uniqueHex
-		}
-		if options.PostTransform != nil {
-			return options.PostTransform(res, vs)
-		}
-		return vs, nil
+		return ComputeAutoNameDefault(options, ComputeDefaultOptions{
+			URN:        res.URN,
+			Properties: res.Properties,
+			Seed:       res.Seed,
+		})
 	}
+}
+
+func ComputeAutoNameDefault(options AutoNameOptions, defaultOptions ComputeDefaultOptions) (interface{}, error) {
+	if defaultOptions.URN == "" {
+		return nil, fmt.Errorf("AutoName is onnly supported for resources, expected Resource URN to be set")
+	}
+	// Take the URN name part, transform it if required, and then append some unique characters if requested.
+	vs := string(defaultOptions.URN.Name())
+	if options.Transform != nil {
+		vs = options.Transform(vs)
+	}
+	if options.Randlen > 0 {
+		uniqueHex, err := resource.NewUniqueName(
+			defaultOptions.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
+		if err != nil {
+			return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", defaultOptions.URN.Type())
+		}
+		vs = uniqueHex
+	}
+	if options.PostTransform != nil {
+		return options.PostTransform(&PulumiResource{
+			URN:        defaultOptions.URN,
+			Properties: defaultOptions.Properties,
+			Seed:       defaultOptions.Seed,
+		}, vs)
+	}
+	return vs, nil
 }
