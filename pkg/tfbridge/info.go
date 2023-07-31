@@ -492,6 +492,32 @@ type JavaScriptInfo struct {
 	// different from the package name.  The version of the plugin, which might be
 	// different from the version of the package.
 	PluginVersion string
+
+	// A map containing overrides for module names to package names.
+	ModuleToPackage map[string]string
+
+	// An indicator for whether the package contains enums.
+	ContainsEnums bool
+
+	// A map allowing you to map the name of a provider to the name of the module encapsulating the provider.
+	ProviderNameToModuleName map[string]string
+
+	// Additional files to include in TypeScript compilation. These paths are added to the `files` section of the
+	// generated `tsconfig.json`. A typical use case for this is compiling hand-authored unit test files that check
+	// the generated code.
+	ExtraTypeScriptFiles []string
+
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool
+
+	// Respect the Pkg.Version field in the schema
+	RespectSchemaVersion bool
+
+	// Experimental flag that permits `import type *` style code to be generated to optimize startup time of
+	// programs consuming the provider by minimizing the set of Node modules loaded at startup. Turning this on may
+	// currently generate non-compiling code for some providers; but if the code compiles it is safe to use. Also,
+	// turning this on requires TypeScript 3.8 or higher to compile the generated code.
+	UseTypeOnlyReferences bool
 }
 
 // PythonInfo contains optional overlay information for Python code-generation.
@@ -500,6 +526,26 @@ type PythonInfo struct {
 	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
 	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
 	PackageName   string            // Name of the Python package to generate
+
+	// PythonRequires determines the Python versions that the generated provider supports
+	PythonRequires string
+
+	// Optional overrides for Pulumi module names
+	//
+	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
+	//
+	ModuleNameOverrides map[string]string
+
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool
+
+	// If enabled, a pyproject.toml file will be generated.
+	PyProject struct {
+		Enabled bool
+	}
 }
 
 // GolangInfo contains optional overlay information for Golang code-generation.
@@ -507,6 +553,63 @@ type GolangInfo struct {
 	GenerateResourceContainerTypes bool         // Generate container types for resources e.g. arrays, maps, pointers etc.
 	ImportBasePath                 string       // Base import path for package.
 	Overlay                        *OverlayInfo // optional overlay information for augmented code-generation.
+
+	// Module path for go.mod
+	//
+	//   go get github.com/pulumi/pulumi-aws-native/sdk/go/aws@v0.16.0
+	//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+	//                                                  ~~~~~~ package path - can be any number of path parts
+	//                                                         ~~~~~~~ version
+	ModulePath string
+
+	// Explicit package name, which may be different to the import path.
+	RootPackageName string
+
+	// Map from module -> package name
+	//
+	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
+	//
+	ModuleToPackage map[string]string
+
+	// Map from package name -> package alias
+	//
+	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
+	//
+	PackageImportAliases map[string]string
+
+	// The version of the Pulumi SDK used with this provider, e.g. 3.
+	// Used to generate doc links for pulumi builtin types. If omitted, the latest SDK version is used.
+	PulumiSDKVersion int
+
+	// Feature flag to disable generating `$fnOutput` invoke
+	// function versions to save space.
+	DisableFunctionOutputVersions bool
+
+	// Determines whether to make single-return-value methods return an output struct or the value.
+	LiftSingleValueMethodReturns bool
+
+	// Feature flag to disable generating input type registration. This is a
+	// space saving measure.
+	DisableInputTypeRegistrations bool
+
+	// Feature flag to disable generating Pulumi object default functions. This is a
+	// space saving measure.
+	DisableObjectDefaults bool
+
+	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
+	// all plain types, instead of for only types that are used as input/output types.
+	GenerateExtraInputTypes bool
+
+	// omitExtraInputTypes determines whether the code generator generates input (and output) types
+	// for all plain types, instead of for only types that are used as input/output types.
+	OmitExtraInputTypes bool
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool
+
+	// InternalDependencies are blank imports that are emitted in the SDK so that `go mod tidy` does not remove the
+	// associated module dependencies from the SDK's go.mod.
+	InternalDependencies []string
 }
 
 // CSharpInfo contains optional overlay information for C# code-generation.
@@ -515,8 +618,20 @@ type CSharpInfo struct {
 	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
 	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
 	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
+
+	Compatibility          string
+	DictionaryConstructors bool
+	ProjectReferences      []string
+
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool
+
+	// Allow the Pkg.Version field to filter down to emitted code.
+	RespectSchemaVersion bool
 }
 
+// See https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
+// supported options.
 type JavaInfo struct {
 	BasePackage string // the Base package for the Java SDK
 
@@ -528,6 +643,10 @@ type JavaInfo struct {
 	// given version of io.github.gradle-nexus.publish-plugin in
 	// the generated Gradle build files.
 	GradleNexusPublishPluginVersion string
+
+	Packages     map[string]string `json:"packages,omitempty"`
+	Dependencies map[string]string `json:"dependencies,omitempty"`
+	GradleTest   string            `json:"gradleTest"`
 }
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure

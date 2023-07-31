@@ -15,13 +15,15 @@
   },
   "language": {
     "nodejs": {
+      "packageDescription": "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues).",
       "compatibility": "tfbridge20",
-      "disableUnionOutputTypes": true,
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues)."
+      "disableUnionOutputTypes": true
     },
     "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues).",
       "compatibility": "tfbridge20",
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/phillipedwards/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/hashicorp/terraform-provider-aws/issues)."
+      "pyproject": {}
     }
   },
   "config": {

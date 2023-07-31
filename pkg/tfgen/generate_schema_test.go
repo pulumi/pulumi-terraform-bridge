@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"testing"
 	"text/template"
@@ -28,6 +29,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -283,4 +288,83 @@ func TestGetDefaultReadme(t *testing.T) {
 		tfbridge.MPL20LicenseType, "https://www.mozilla.org/en-US/MPL/2.0/", "github.com",
 		"https://github.com/pulumi/pulumi-aws")
 	assert.Equal(t, expected, actual)
+}
+
+func TestPropagateLanguageOptions(t *testing.T) {
+	provider := testprovider.ProviderMiniRandom() // choice of provider is arbitrary here
+
+	require.Nil(t, provider.Golang)
+
+	provider.Golang = &tfbridge.GolangInfo{
+		RespectSchemaVersion:          true,
+		DisableFunctionOutputVersions: true,
+	}
+
+	require.Nil(t, provider.Python)
+
+	provider.Python = &tfbridge.PythonInfo{
+		RespectSchemaVersion: true,
+	}
+
+	require.Nil(t, provider.JavaScript)
+
+	provider.JavaScript = &tfbridge.JavaScriptInfo{
+		RespectSchemaVersion: true,
+	}
+
+	require.Nil(t, provider.CSharp)
+
+	provider.CSharp = &tfbridge.CSharpInfo{
+		RespectSchemaVersion: true,
+	}
+
+	require.Nil(t, provider.Java)
+	provider.Java = &tfbridge.JavaInfo{
+		BuildFiles: "gradle",
+	}
+
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+
+	t.Run("all-languages", func(t *testing.T) {
+		// If this test fails, you may run the test with PULUMI_ACCEPT=1 environment variable to reset expected
+		// schema file with the actually generated schema.
+		bridgetesting.AssertEqualsJSONFile(t, "test_data/test-propagate-language-options.json", schema)
+	})
+
+	t.Run("golang", func(t *testing.T) {
+		actual := gogen.GoPackageInfo{}
+		err = json.Unmarshal(schema.Language["go"], &actual)
+		require.NoError(t, err)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
+
+	t.Run("python", func(t *testing.T) {
+		actual := pygen.PackageInfo{}
+		err = json.Unmarshal(schema.Language["python"], &actual)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
+
+	t.Run("typescript", func(t *testing.T) {
+		actual := tsgen.NodePackageInfo{}
+		err = json.Unmarshal(schema.Language["nodejs"], &actual)
+		require.NoError(t, err)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
+
+	t.Run("csharp", func(t *testing.T) {
+		actual := csgen.CSharpPackageInfo{}
+		err = json.Unmarshal(schema.Language["csharp"], &actual)
+		require.NoError(t, err)
+		assert.True(t, actual.RespectSchemaVersion)
+	})
+
+	t.Run("java", func(t *testing.T) {
+		actual := map[string]any{}
+		err = json.Unmarshal(schema.Language["java"], &actual)
+		require.NoError(t, err)
+		assert.Equal(t, "gradle", actual["buildFiles"])
+	})
 }

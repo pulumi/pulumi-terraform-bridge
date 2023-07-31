@@ -14,41 +14,38 @@
     },
     "language": {
         "csharp": {
-            "compatibility": "tfbridge20",
+            "packageReferences": {
+                "Pulumi": "3.*"
+            },
             "namespaces": {
                 "tls": "Tls"
             },
-            "packageReferences": {
-                "Pulumi": "3.*"
-            }
+            "compatibility": "tfbridge20"
         },
         "go": {
-            "generateExtraInputTypes": true,
+            "importBasePath": "github.com/pulumi/pulumi-tls/sdk/v4/go/tls",
             "generateResourceContainerTypes": true,
-            "importBasePath": "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
+            "generateExtraInputTypes": true
         },
         "nodejs": {
-            "compatibility": "tfbridge20",
+            "packageDescription": "A Pulumi package to create TLS resources in Pulumi programs.",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
             "dependencies": {
                 "@pulumi/pulumi": "^3.0.0"
             },
             "devDependencies": {
                 "@types/node": "^10.0.0"
             },
-            "disableUnionOutputTypes": true,
-            "packageDescription": "A Pulumi package to create TLS resources in Pulumi programs.",
-            "packageName": "",
-            "pluginName": "",
-            "pluginVersion": "",
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
-            "typescriptVersion": ""
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true
         },
         "python": {
-            "compatibility": "tfbridge20",
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
             "requires": {
                 "pulumi": "\u003e=3.0.0,\u003c4.0.0"
-            }
+            },
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
+            "compatibility": "tfbridge20",
+            "pyproject": {}
         }
     },
     "config": {
