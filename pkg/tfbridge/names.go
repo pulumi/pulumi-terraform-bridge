@@ -252,9 +252,8 @@ type AutoNameOptions struct {
 // the user program.
 //
 // The auto-computed names will be based on the resource name extracted from the resource URN, and have a random suffix.
-// See [AutoNameOptions] that allows customizing the name generation. The lifecycle of automatic names is tied to the
-// Pulumi resource lifecycle, so the automatic name will not change during normal updates and will persist until the
-// resource is replaced.
+// The lifecycle of automatic names is tied to the Pulumi resource lifecycle, so the automatic name will not change
+// during normal updates and will persist until the resource is replaced.
 //
 // For a quick example, consider aws.ec2.Keypair that has this code in its definition:
 //
