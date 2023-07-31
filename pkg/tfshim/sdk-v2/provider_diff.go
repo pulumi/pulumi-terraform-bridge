@@ -84,7 +84,7 @@ func (p v2Provider) simpleDiff(
 			// SimpleDiff may read RawPlan and panic if it is nil; while in the case of ClassicDiff we do
 			// not yet do what TF CLI does (that is PlanState), it is better to approximate and assume that
 			// the RawPlan is the same as RawConfig than to have the code panic.
-			state.RawConfig = rawConfigVal
+			state.RawPlan = rawConfigVal
 		}
 		if state.RawState.IsNull() {
 			// Same trick as for nil RawPlan.
