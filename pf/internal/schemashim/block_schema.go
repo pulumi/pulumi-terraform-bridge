@@ -120,7 +120,7 @@ func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
 }
 
 func (*blockSchema) DefaultValue() (interface{}, error) {
-	panic("DefaultValue() should not be called during schema generation")
+	return nil, nil
 }
 
 func (*blockSchema) ExactlyOneOf() []string {

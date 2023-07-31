@@ -20,11 +20,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 type testnest struct{}
 
 var _ resource.Resource = &testnest{}
+var _ resource.ResourceWithImportState = &testnest{}
 
 func newTestnest() resource.Resource {
 	return &testnest{}
@@ -32,6 +36,14 @@ func newTestnest() resource.Resource {
 
 func (*testnest) schema() rschema.Schema {
 	return rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"id": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+		},
 		Blocks: map[string]schema.Block{
 			"rules": schema.ListNestedBlock{
 				MarkdownDescription: "List of rules to apply to the ruleset.",
@@ -97,4 +109,23 @@ func (e *testnest) Update(ctx context.Context, req resource.UpdateRequest, resp 
 
 func (e *testnest) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	panic("unimplemented")
+}
+
+// ImportState is called when the provider must import the state of a resource instance. This method must return enough
+// state so the Read method can properly refresh the full resource.
+//
+// If setting an attribute with the import identifier, it is recommended to use the ImportStatePassthroughID() call in
+// this method.
+func (e *testnest) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	type ruleModel struct{}
+
+	type model struct {
+		ID    types.String `tfsdk:"id"`
+		Rules []ruleModel  `tfsdk:"rules"`
+	}
+
+	resp.Diagnostics = resp.State.Set(ctx, &model{
+		ID:    types.StringValue(req.ID),
+		Rules: []ruleModel{},
+	})
 }
