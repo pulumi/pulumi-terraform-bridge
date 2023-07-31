@@ -60,6 +60,13 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 		providerConfig   resource.PropertyMap
 	}
 
+	testFrom := func(res *tfbridge.PulumiResource) (interface{}, error) {
+		n := string(res.URN.Name()) + "-"
+		a := []rune("12345")
+		unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
+		return resource.NewStringProperty(unique), err
+	}
+
 	testCases := []testCase{
 		{
 			name: "simple top-level string",
@@ -184,12 +191,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
-						From: func(res *tfbridge.PulumiResource) (interface{}, error) {
-							n := string(res.URN.Name()) + "-"
-							a := []rune("12345")
-							unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
-							return resource.NewStringProperty(unique), err
-						},
+						From: testFrom,
 					},
 				},
 			},
@@ -200,6 +202,36 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("n1-453"),
+			},
+		},
+		{
+			name: "From function can compute nested defaults",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"object_prop": {
+					Fields: map[string]*tfbridge.SchemaInfo{
+						"y_prop": {
+							Default: &tfbridge.DefaultInfo{
+								From: testFrom,
+							},
+						},
+					},
+				},
+			},
+			props: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+				}),
+			},
+			resourceInstance: &tfbridge.PulumiResource{
+				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+				Properties: resource.PropertyMap{},
+				Seed:       []byte(`123`),
+			},
+			expected: resource.PropertyMap{
+				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+					"xProp": resource.NewStringProperty("X"),
+					"yProp": resource.NewStringProperty("n1-453"),
+				}),
 			},
 		},
 		{

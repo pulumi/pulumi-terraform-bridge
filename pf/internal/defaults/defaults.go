@@ -196,15 +196,6 @@ type defaultsTransform struct {
 	providerConfig   resource.PropertyMap            // optional
 }
 
-// Returns a non-nil resourceInstance only if the defaults are being applied to a resource at the top level.
-func (du *defaultsTransform) resourceByPath(path resource.PropertyPath) *tfbridge.PulumiResource {
-	var res *tfbridge.PulumiResource
-	if len(path) == 0 {
-		res = du.resourceInstance
-	}
-	return res
-}
-
 // Returns matching object schema for a context determined by the PropertyPath, if any.
 func (du *defaultsTransform) lookupSchemaByContext(
 	path resource.PropertyPath,
@@ -273,7 +264,7 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		// using default value for empty property
 		pv, gotDefault := getDefaultValue(ctx,
 			pk,
-			du.resourceByPath(path),
+			du.resourceInstance,
 			fieldSchema,
 			fld.Default,
 			du.providerConfig)
