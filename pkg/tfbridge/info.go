@@ -294,9 +294,12 @@ type ResourceInfo struct {
 	PreStateUpgradeHook PreStateUpgradeHook
 
 	// An experimental way to augment the Check function in the Pulumi life cycle.
-	// TODO This is currently only supported by SDK based providers.
-	XCustomCheck func(ctx context.Context, config resource.PropertyMap, meta resource.PropertyMap) (resource.PropertyMap, error)
+	XCustomCheck XCustomCheck
 }
+
+type XCustomCheck = func(
+	ctx context.Context, config resource.PropertyMap, meta resource.PropertyMap,
+) (resource.PropertyMap, error)
 
 // GetTok returns a resource type token
 func (info *ResourceInfo) GetTok() tokens.Token { return tokens.Token(info.Tok) }
