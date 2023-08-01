@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -684,11 +685,15 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if compute := info.Default.ComputeDefault; compute != nil {
-				v, err := compute(ComputeDefaultOptions{
-					URN:        ctx.Instance.URN,
-					Properties: ctx.Instance.Properties,
-					Seed:       ctx.Instance.Seed,
-				})
+				v, err := compute(
+					// Getting the correct context needs to refactor public methods such as
+					// MakeTerraformInput to MakeTerraformInputWithContext.
+					context.TODO(),
+					ComputeDefaultOptions{
+						URN:        ctx.Instance.URN,
+						Properties: ctx.Instance.Properties,
+						Seed:       ctx.Instance.Seed,
+					})
 				if err != nil {
 					return err
 				}

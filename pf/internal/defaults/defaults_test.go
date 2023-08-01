@@ -67,7 +67,10 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 		return resource.NewStringProperty(unique), err
 	}
 
-	testComputeDefaults := func(opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+	testComputeDefaults := func(
+		_ context.Context,
+		opts tfbridge.ComputeDefaultOptions,
+	) (interface{}, error) {
 		n := string(opts.URN.Name()) + "-"
 		a := []rune("12345")
 		unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)

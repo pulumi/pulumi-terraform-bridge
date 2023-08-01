@@ -134,7 +134,7 @@ func getDefaultValue(
 			})
 		return recoverDefaultValue(defaultInfo.Value), true
 	} else if defaultInfo.ComputeDefault != nil {
-		raw, err := defaultInfo.ComputeDefault(cdOptions)
+		raw, err := defaultInfo.ComputeDefault(ctx, cdOptions)
 		if err != nil {
 			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",
 				string(property), err)

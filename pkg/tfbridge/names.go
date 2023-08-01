@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
 	"unicode"
 
@@ -287,8 +288,8 @@ func AutoName(name string, maxlength int, separator string) *SchemaInfo {
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
-				return ComputeAutoNameDefault(autoNameOptions, opts)
+			ComputeDefault: func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(ctx, autoNameOptions, opts)
 			},
 		},
 	}
@@ -300,8 +301,8 @@ func AutoNameWithCustomOptions(name string, options AutoNameOptions) *SchemaInfo
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
-				return ComputeAutoNameDefault(options, opts)
+			ComputeDefault: func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(ctx, options, opts)
 			},
 		},
 	}
@@ -322,8 +323,8 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 		Name: name,
 		Default: &DefaultInfo{
 			AutoNamed: true,
-			ComputeDefault: func(opts ComputeDefaultOptions) (interface{}, error) {
-				return ComputeAutoNameDefault(autoNameOptions, opts)
+			ComputeDefault: func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+				return ComputeAutoNameDefault(ctx, autoNameOptions, opts)
 			},
 		},
 	}
@@ -332,7 +333,7 @@ func AutoNameTransform(name string, maxlen int, transform func(string) string) *
 // FromName automatically propagates a resource's URN onto the resulting default info.
 func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, error) {
 	return func(res *PulumiResource) (interface{}, error) {
-		return ComputeAutoNameDefault(options, ComputeDefaultOptions{
+		return ComputeAutoNameDefault(context.Background(), options, ComputeDefaultOptions{
 			URN:        res.URN,
 			Properties: res.Properties,
 			Seed:       res.Seed,
@@ -340,7 +341,11 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 	}
 }
 
-func ComputeAutoNameDefault(options AutoNameOptions, defaultOptions ComputeDefaultOptions) (interface{}, error) {
+func ComputeAutoNameDefault(
+	ctx context.Context,
+	options AutoNameOptions,
+	defaultOptions ComputeDefaultOptions,
+) (interface{}, error) {
 	if defaultOptions.URN == "" {
 		return nil, fmt.Errorf("AutoName is onnly supported for resources, expected Resource URN to be set")
 	}

@@ -461,7 +461,7 @@ type DefaultInfo struct {
 
 	// ComputeDefault specifies how to compute a default value for the given property by consulting other properties
 	// such as the resource's URN. See [ComputeDefaultOptions] for all available information.
-	ComputeDefault func(opts ComputeDefaultOptions) (interface{}, error)
+	ComputeDefault func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error)
 
 	// Value injects a raw literal value as the default.
 	Value interface{}
@@ -947,7 +947,7 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 	}
 
 	if m.IsFunc {
-		defInfo.ComputeDefault = func(ComputeDefaultOptions) (interface{}, error) {
+		defInfo.ComputeDefault = func(context.Context, ComputeDefaultOptions) (interface{}, error) {
 			panic("transforms cannot be run on unmarshaled DefaultInfo values")
 		}
 	}
