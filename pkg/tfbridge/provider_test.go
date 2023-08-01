@@ -824,6 +824,7 @@ func TestCheck(t *testing.T) {
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
 		computeStringDefault := func(_ context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+			require.Equal(t, resource.PropertyPath{"stringPropertyValue"}, opts.PropertyPath)
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
 				return v.StringValue() + "!", nil
 			}
@@ -853,7 +854,7 @@ func TestCheck(t *testing.T) {
 		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
 		    "olds": {
                       "__defaults": [],
-		     "stringPropertyValue": "oldString"
+		      "stringPropertyValue": "oldString"
 		    },
 		    "news": {
 		      "arrayPropertyValues": []

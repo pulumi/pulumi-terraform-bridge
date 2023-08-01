@@ -307,7 +307,7 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 		ApplyDefaults:         true,
 		Assets:                AssetTable{},
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false, resource.PropertyPath{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -318,7 +318,7 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 // use by Terraform.  Note that this function may have side effects, for instance if it is necessary to spill an asset
 // to disk in order to create a name out of it.  Please take care not to call it superfluously!
 func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.PropertyValue,
-	tfs shim.Schema, ps *SchemaInfo, rawNames bool) (interface{}, error) {
+	tfs shim.Schema, ps *SchemaInfo, rawNames bool, path resource.PropertyPath) (interface{}, error) {
 
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
 	// nested value, and need to wrap it into a single-element array before passing to
@@ -388,7 +388,8 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 				oldElem = oldArr[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := ctx.MakeTerraformInput(elemName, oldElem, elem, etfs, eps, rawNames)
+			subPath := append(path, i)
+			e, err := ctx.MakeTerraformInput(elemName, oldElem, elem, etfs, eps, rawNames, subPath)
 			if err != nil {
 				return nil, err
 			}
@@ -443,7 +444,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 		}
 
 		input, err := ctx.MakeTerraformInputs(oldObject, v.ObjectValue(),
-			tfflds, psflds, rawNames || useRawNames(tfs))
+			tfflds, psflds, rawNames || useRawNames(tfs), path)
 		if err != nil {
 			return nil, err
 		}
@@ -472,8 +473,13 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 // to prepare it for use by Terraform.  Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take
 // care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) (map[string]interface{}, error) {
+func (ctx *conversionContext) MakeTerraformInputs(
+	olds, news resource.PropertyMap,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	rawNames bool,
+	path resource.PropertyPath,
+) (map[string]interface{}, error) {
 
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
@@ -519,7 +525,8 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 		}
 
 		// And then translate the property value.
-		v, err := ctx.MakeTerraformInput(name, old, value, tfi, psi, rawNames)
+		subPath := append(path, string(key))
+		v, err := ctx.MakeTerraformInput(name, old, value, tfi, psi, rawNames, subPath)
 		if err != nil {
 			return nil, err
 		}
@@ -528,7 +535,7 @@ func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMa
 	}
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
-	if err := ctx.applyDefaults(result, olds, news, tfs, ps, rawNames); err != nil {
+	if err := ctx.applyDefaults(result, olds, news, tfs, ps, rawNames, path); err != nil {
 		return nil, err
 	}
 
@@ -596,8 +603,14 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
-func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
+func (ctx *conversionContext) applyDefaults(
+	result map[string]interface{},
+	olds, news resource.PropertyMap,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	rawNames bool,
+	path resource.PropertyPath,
+) error {
 
 	if !ctx.ApplyDefaults {
 		return nil
@@ -643,8 +656,13 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 
 			// If we already have a default value from a previous version of this resource, use that instead.
 			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+
+			subPath := append(path, string(key))
+			fmt.Println("APPLY DEFAULTS", "hasDefault", subPath, key)
+
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
-				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
+				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{},
+					old, tfi, psi, rawNames, subPath)
 				if err != nil {
 					return err
 				}
@@ -686,7 +704,8 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 				defaultValue, source = v, "env vars"
 			} else if configKey := info.Default.Config; configKey != "" {
 				if v := ctx.ProviderConfig[resource.PropertyKey(configKey)]; !v.IsNull() {
-					tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+					tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{},
+						v, tfi, psi, rawNames, subPath)
 					if err != nil {
 						return err
 					}
@@ -695,11 +714,13 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if compute := info.Default.ComputeDefault; compute != nil {
+				cdOpts := ctx.ComputeDefaultOptions
+				cdOpts.PropertyPath = subPath
 				v, err := compute(
 					// Getting the correct context needs to refactor public methods such as
 					// MakeTerraformInput to MakeTerraformInputWithContext.
 					context.TODO(),
-					ctx.ComputeDefaultOptions,
+					cdOpts,
 				)
 				if err != nil {
 					return err
@@ -790,8 +811,11 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+				subPath := append(path, string(key))
+
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
+					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi,
+						rawNames, subPath)
 					if err != nil {
 						valueErr = err
 						return false
@@ -1064,7 +1088,7 @@ func MakeTerraformConfig(p *Provider, m resource.PropertyMap,
 		ProviderConfig: p.configValues,
 		Assets:         AssetTable{},
 	}
-	inputs, err := ctx.MakeTerraformInputs(nil, m, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(nil, m, tfs, ps, false, resource.PropertyPath{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1137,7 +1161,8 @@ func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.I
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
 	ctx := &conversionContext{}
-	inputs, err := ctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
+	inputs, err := ctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields,
+		false, resource.PropertyPath{})
 	if err != nil {
 		return nil, err
 	}
