@@ -658,7 +658,6 @@ func (ctx *conversionContext) applyDefaults(
 			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 
 			subPath := append(path, string(key))
-			fmt.Println("APPLY DEFAULTS", "hasDefault", subPath, key)
 
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
 				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{},
