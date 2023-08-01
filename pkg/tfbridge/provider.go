@@ -567,7 +567,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
-	if check := res.Schema.XCustomCheck; check != nil {
+	if check := res.Schema.PreCheckCallback; check != nil {
 		news, err = check(ctx, news, p.configValues.Copy())
 		if err != nil {
 			return nil, err
