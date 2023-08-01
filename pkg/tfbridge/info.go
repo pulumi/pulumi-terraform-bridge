@@ -947,7 +947,7 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 	}
 
 	if m.IsFunc {
-		defInfo.ComputeDefault = func(_ ComputeDefaultOptions) (interface{}, error) {
+		defInfo.ComputeDefault = func(ComputeDefaultOptions) (interface{}, error) {
 			panic("transforms cannot be run on unmarshaled DefaultInfo values")
 		}
 	}
