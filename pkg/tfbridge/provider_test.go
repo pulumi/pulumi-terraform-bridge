@@ -825,7 +825,7 @@ func TestCheck(t *testing.T) {
 		}
 		computeStringDefault := func(_ context.Context, opts ComputeDefaultOptions) (interface{}, error) {
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
-				return v.StringValue(), nil
+				return v.StringValue() + "!", nil
 			}
 			return nil, nil
 		}
@@ -852,6 +852,7 @@ func TestCheck(t *testing.T) {
 		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
 		    "olds": {
+                      "__defaults": [],
 		     "stringPropertyValue": "oldString"
 		    },
 		    "news": {
@@ -862,7 +863,29 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": ["stringPropertyValue"],
 		      "arrayPropertyValues": [],
-		      "stringPropertyValue": "oldString"
+		      "stringPropertyValue": "oldString!"
+		    }
+		  }
+		}
+                `)
+		// If old value is missing it is ignored.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+                      "__defaults": []
+		    },
+		    "news": {
+		      "arrayPropertyValues": []
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": [],
+		      "arrayPropertyValues": []
 		    }
 		  }
 		}
