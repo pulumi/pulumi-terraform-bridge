@@ -59,7 +59,7 @@ func (p *provider) CheckWithContext(
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
 		SchemaInfos: rh.pulumiResourceInfo.Fields,
-		ResourceInstance: &tfbridge.PulumiResource{
+		ComputeDefaultOptions: tfbridge.ComputeDefaultOptions{
 			URN:        urn,
 			Properties: checkedInputs,
 			Seed:       randomSeed,
