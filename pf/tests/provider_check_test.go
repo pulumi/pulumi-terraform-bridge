@@ -38,7 +38,10 @@ func TestCheck(t *testing.T) {
 		schema      schema.Schema
 		replay      string
 		replayMulti string
-		callback    tfbridge0.PreCheckCallback
+
+		callback tfbridge0.PreCheckCallback
+
+		customizeResource func(*tfbridge0.ResourceInfo)
 	}
 
 	testCases := []testCase{
@@ -257,6 +260,44 @@ func TestCheck(t *testing.T) {
 				return config, nil
 			},
 		},
+		{
+			name: "default application can consult prior state",
+			schema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{Computed: true},
+					"s":  schema.StringAttribute{Optional: true},
+				},
+			},
+			customizeResource: func(info *tfbridge0.ResourceInfo) {
+				info.Fields["s"] = &tfbridge0.SchemaInfo{
+					Default: &tfbridge0.DefaultInfo{
+						ComputeDefault: func(
+							_ context.Context,
+							opts tfbridge0.ComputeDefaultOptions,
+						) (any, error) {
+							return opts.PriorState["s"].StringValue(), nil
+						},
+					},
+				}
+			},
+			replay: `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+			    "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			    "olds": {
+                               "s": "oldString"
+                            },
+			    "news": {},
+			    "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			  },
+			  "response": {
+			    "inputs": {
+                              "s": "oldString"
+                            }
+			  }
+			}`,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -278,23 +319,27 @@ func TestCheck(t *testing.T) {
 					ResourceSchema: tc.schema,
 				}},
 			}
+			res := tfbridge0.ResourceInfo{
+				Tok: "testprovider:index/res:Res",
+				Docs: &tfbridge0.DocInfo{
+					Markdown: []byte("OK"),
+				},
+				PreCheckCallback: tc.callback,
+				Fields:           map[string]*tfbridge0.SchemaInfo{},
+			}
+			if tc.customizeResource != nil {
+				tc.customizeResource(&res)
+			}
 			info := tfbridge0.ProviderInfo{
 				Name:         "testprovider",
 				P:            tfbridge.ShimProvider(testProvider),
 				Version:      "0.0.1",
 				MetadataInfo: &tfbridge0.MetadataInfo{},
 				Resources: map[string]*tfbridge0.ResourceInfo{
-					"testprovider_res": {
-						Tok: "testprovider:index/res:Res",
-						Docs: &tfbridge0.DocInfo{
-							Markdown: []byte("OK"),
-						},
-						PreCheckCallback: tc.callback,
-					},
+					"testprovider_res": &res,
 				},
 			}
 			s := newProviderServer(t, info)
-
 			if tc.replay != "" {
 				testutils.Replay(t, s, tc.replay)
 			}
