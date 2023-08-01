@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -68,13 +69,16 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	}
 
 	testComputeDefaults := func(
-		_ context.Context,
-		opts tfbridge.ComputeDefaultOptions,
-	) (interface{}, error) {
-		n := string(opts.URN.Name()) + "-"
-		a := []rune("12345")
-		unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
-		return resource.NewStringProperty(unique), err
+		t *testing.T,
+		expectPath resource.PropertyPath,
+	) func(tfbridge.ComputeDefaultOptions) (interface{}, error) {
+		return func(_ context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+			require.Equal(t, expectPath, opts.PropertyPath)
+			n := string(opts.URN.Name()) + "-"
+			a := []rune("12345")
+			unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
+			return resource.NewStringProperty(unique), err
+		}
 	}
 
 	testCases := []testCase{
@@ -201,7 +205,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
-						ComputeDefault: testComputeDefaults,
+						ComputeDefault: testComputeDefaults(t, resource.PropertyPath{"stringProp"}),
 					},
 				},
 			},
@@ -239,7 +243,8 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 					Fields: map[string]*tfbridge.SchemaInfo{
 						"y_prop": {
 							Default: &tfbridge.DefaultInfo{
-								ComputeDefault: testComputeDefaults,
+								ComputeDefault: testComputeDefaults(t,
+									resource.PropertyPath{"objectProp", "yProp"}),
 							},
 						},
 					},
