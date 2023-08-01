@@ -271,7 +271,10 @@ func TestCheck(t *testing.T) {
 			customizeResource: func(info *tfbridge0.ResourceInfo) {
 				info.Fields["s"] = &tfbridge0.SchemaInfo{
 					Default: &tfbridge0.DefaultInfo{
-						ComputeDefault: func(opts tfbridge0.ComputeDefaultOptions) (any, error) {
+						ComputeDefault: func(
+							_ context.Context,
+							opts tfbridge0.ComputeDefaultOptions,
+						) (any, error) {
 							return opts.PriorState["s"].StringValue(), nil
 						},
 					},

@@ -823,7 +823,7 @@ func TestCheck(t *testing.T) {
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
-		computeStringDefault := func(opts ComputeDefaultOptions1) (interface{}, error) {
+		computeStringDefault := func(_ context.Context, opts ComputeDefaultOptions) (interface{}, error) {
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
 				return v.StringValue(), nil
 			}
