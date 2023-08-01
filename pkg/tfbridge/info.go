@@ -485,6 +485,12 @@ type ComputeDefaultOptions struct {
 	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
 	// consistent. This currently is only available for resource changes.
 	Seed []byte
+
+	// Path to the sub-property where the default application is happening. For example,
+	// resource.PropertyPath{"propName"} indicates applying defaults to a top-level property, and
+	// resource.PropertyPath{"propName", 1, "subProp"} indicates applying defaults to the "subProp" property of the
+	// second element of the array found under "propName".
+	PropertyPath resource.PropertyPath
 }
 
 // PulumiResource is just a little bundle that carries URN, seed and properties around.

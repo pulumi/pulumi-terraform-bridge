@@ -2,6 +2,7 @@
     "renames": {
         "resources": {
             "testbridge:index/testnest:Testnest": "testbridge_testnest",
+            "testbridge:index/testres:AutoNameRes": "testbridge_autoname_res",
             "testbridge:index/testres:Privst": "testbridge_privst",
             "testbridge:index/testres:TestConfigRes": "testbridge_testconfigres",
             "testbridge:index/testres:TestDefaultInfoRes": "testbridge_test_default_info_res",

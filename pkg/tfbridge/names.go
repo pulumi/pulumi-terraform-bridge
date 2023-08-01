@@ -344,6 +344,22 @@ func ComputeAutoNameDefault(options AutoNameOptions, defaultOptions ComputeDefau
 	if defaultOptions.URN == "" {
 		return nil, fmt.Errorf("AutoName is onnly supported for resources, expected Resource URN to be set")
 	}
+
+	// Reuse the value from prior state if available. Note that this code currently only runs for Plugin Framework
+	// resources, as SDKv2 based resources avoid calling ComputedDefaults in the first place in update situations.
+	// To do that SDKv2 based resources track __defaults meta-key to distinguish between values originating from
+	// defaulting machinery from values originating from user code. Unfortunately Plugin Framework cannot reliably
+	// disinguish default values, therefore it always calls ComputedDefaults. To compensate, this code block avoids
+	// re-generating the auto-name if it is located in PriorState and reuses the old one; this avoids generating a
+	// fresh random value and causing a replace plan.
+	if defaultOptions.PriorState != nil && defaultOptions.PropertyPath != nil {
+		prior := resource.NewObjectProperty(defaultOptions.PriorState)
+		oldV, gotOldV := defaultOptions.PropertyPath.Get(prior)
+		if oldV.IsString() && gotOldV {
+			return oldV.StringValue(), nil
+		}
+	}
+
 	// Take the URN name part, transform it if required, and then append some unique characters if requested.
 	vs := string(defaultOptions.URN.Name())
 	if options.Transform != nil {

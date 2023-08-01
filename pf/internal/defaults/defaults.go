@@ -40,7 +40,8 @@ type ApplyDefaultInfoValuesArgs struct {
 	// Toplevel SchemaInfo configuration matching TopSchemaMap.
 	SchemaInfos map[string]*tfbridge.SchemaInfo
 
-	// Note that URN need not be specified for Invoke or Configure processing.
+	// Note that URN need not be specified for Invoke or Configure processing. Do not set PropertyPath as this
+	// module will set it based on recursive traversal.
 	ComputeDefaultOptions tfbridge.ComputeDefaultOptions
 
 	// Optional. If known, these are the provider-level configuration values, to support DefaultInfo.Config.
@@ -52,6 +53,8 @@ type ApplyDefaultInfoValuesArgs struct {
 // These values are specified at the bridged provider configuration level, and are applied before any Terraform
 // processing; therefore the function works at Pulumi level (transforming a PropertyMap).
 func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs) resource.PropertyMap {
+	contract.Assertf(args.ComputeDefaultOptions.PropertyPath == nil,
+		"Expected args.ComputeDefaultOptions.PropertyPath == nil as this code will set it")
 
 	// Can short-circuit the entire processing if there are no matching SchemaInfo entries, and therefore no
 	// matching DefaultInfo entries at all.
@@ -279,10 +282,13 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 			continue
 		}
 
+		defaultOptionsCopy := du.computeDefaultOptions
+		defaultOptionsCopy.PropertyPath = append(path, string(pk))
+
 		// using default value for empty property
 		pv, gotDefault := getDefaultValue(ctx,
 			pk,
-			du.computeDefaultOptions,
+			defaultOptionsCopy,
 			fieldSchema,
 			fld.Default,
 			du.providerConfig)
