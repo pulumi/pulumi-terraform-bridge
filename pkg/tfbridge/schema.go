@@ -281,20 +281,30 @@ func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
 }
 
 type conversionContext struct {
-	Instance       *PulumiResource
-	ProviderConfig resource.PropertyMap
-	ApplyDefaults  bool
-	Assets         AssetTable
+	ComputeDefaultOptions ComputeDefaultOptions
+	ProviderConfig        resource.PropertyMap
+	ApplyDefaults         bool
+	Assets                AssetTable
 }
 
 func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
+	cdOptions := ComputeDefaultOptions{}
+	if instance != nil {
+		cdOptions = ComputeDefaultOptions{
+			PriorState: olds,
+			Properties: instance.Properties,
+			Seed:       instance.Seed,
+			URN:        instance.URN,
+		}
+	}
+
 	ctx := &conversionContext{
-		Instance:       instance,
-		ProviderConfig: config,
-		ApplyDefaults:  true,
-		Assets:         AssetTable{},
+		ComputeDefaultOptions: cdOptions,
+		ProviderConfig:        config,
+		ApplyDefaults:         true,
+		Assets:                AssetTable{},
 	}
 	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
 	if err != nil {
@@ -684,17 +694,17 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if compute := info.Default.ComputeDefault; compute != nil {
-				v, err := compute(ComputeDefaultOptions{
-					URN:        ctx.Instance.URN,
-					Properties: ctx.Instance.Properties,
-					Seed:       ctx.Instance.Seed,
-				})
+				v, err := compute(ctx.ComputeDefaultOptions)
 				if err != nil {
 					return err
 				}
 				defaultValue, source = v, "func"
 			} else if from := info.Default.From; from != nil {
-				v, err := from(ctx.Instance)
+				v, err := from(&PulumiResource{
+					URN:        ctx.ComputeDefaultOptions.URN,
+					Properties: ctx.ComputeDefaultOptions.Properties,
+					Seed:       ctx.ComputeDefaultOptions.Seed,
+				})
 				if err != nil {
 					return err
 				}

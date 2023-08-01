@@ -478,6 +478,9 @@ type ComputeDefaultOptions struct {
 	// Property map before computing the defaults.
 	Properties resource.PropertyMap
 
+	// Property map representing prior state, only set for non-Create Resource operations.
+	PriorState resource.PropertyMap
+
 	// The engine provides a stable seed useful for generating random values consistently. This guarantees, for
 	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
 	// consistent. This currently is only available for resource changes.

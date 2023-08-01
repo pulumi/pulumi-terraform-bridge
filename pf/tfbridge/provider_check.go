@@ -54,6 +54,7 @@ func (p *provider) CheckWithContext(
 			URN:        urn,
 			Properties: checkedInputs,
 			Seed:       randomSeed,
+			PriorState: priorState,
 		},
 		PropertyMap:    checkedInputs,
 		ProviderConfig: p.lastKnownProviderConfig,
