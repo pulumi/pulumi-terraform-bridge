@@ -1294,7 +1294,7 @@ func TestRefresh(t *testing.T) {
 		"string_with_bad_interpolation": cty.StringVal("some ${interpolated:value} with syntax errors"),
 	}
 
-	state, err = p.Refresh("example_resource", state)
+	state, err = p.Refresh("example_resource", state, nil)
 	require.NoError(t, err)
 
 	expectedObject, err := ctyToGo(cty.ObjectVal(expected))

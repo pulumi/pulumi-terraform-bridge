@@ -64,7 +64,7 @@ func (ProviderShim) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (ProviderShim) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 

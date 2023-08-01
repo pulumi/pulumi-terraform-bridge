@@ -571,14 +571,19 @@ func TestProviderCheck(t *testing.T) {
 	}
 }
 
-func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
+func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, checkRawConfig bool) {
 	urn := resource.NewURN("stack", "project", "", typeName, "name")
+	props, err := structpb.NewStruct(map[string]interface{}{
+		"rawConfigValue": "fromRawConfig",
+	})
+	require.NoError(t, err)
 	readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
 		Id:         string("resource-id"),
 		Urn:        string(urn),
 		Properties: nil,
+		Inputs:     props,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotNil(t, readResp.GetInputs())
 	assert.NotNil(t, readResp.GetProperties())
@@ -612,6 +617,19 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 		}), ins["setPropertyValues"])
 	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"),
 		ins["stringWithBadInterpolation"])
+
+	if checkRawConfig {
+		readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
+			Id:     string("set-raw-config-id"),
+			Urn:    string(urn),
+			Inputs: props,
+		})
+		require.NoError(t, err)
+		outs, err := plugin.UnmarshalProperties(readResp.GetProperties(),
+			plugin.MarshalOptions{KeepUnknowns: true})
+		require.NoError(t, err)
+		assert.Equal(t, "fromRawConfig", outs["stringPropertyValue"].StringValue())
+	}
 
 	// Read again with the ID that results in all the optinal fields not being set
 	readResp, err = provider.Read(context.Background(), &pulumirpc.ReadRequest{
@@ -653,7 +671,7 @@ func TestProviderReadV1(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource")
+	testProviderRead(t, provider, "ExampleResource", false /* CheckRawConfig */)
 }
 
 func TestProviderReadV2(t *testing.T) {
@@ -669,7 +687,7 @@ func TestProviderReadV2(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource")
+	testProviderRead(t, provider, "ExampleResource", true /* CheckRawConfig */)
 }
 
 func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {

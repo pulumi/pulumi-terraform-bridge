@@ -16,13 +16,16 @@ package schemashim
 
 import (
 	"context"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 type SchemaOnlyProvider struct {
+	util.UnimplementedProvider
 	ctx context.Context
 	tf  pfprovider.Provider
 }
@@ -57,69 +60,4 @@ func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 		panic(err)
 	}
 	return &schemaOnlyDataSourceMap{dataSources}
-}
-
-func (p *SchemaOnlyProvider) Validate(c shim.ResourceConfig) ([]string, []error) {
-	panic("schemaOnlyProvider does not implement runtime operation Validate")
-}
-
-func (p *SchemaOnlyProvider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
-	panic("schemaOnlyProvider does not implement runtime operation ValidateResource")
-}
-
-func (p *SchemaOnlyProvider) ValidateDataSource(
-	t string, c shim.ResourceConfig) ([]string, []error) {
-	panic("schemaOnlyProvider does not implement runtime operation ValidateDataSource")
-}
-
-func (p *SchemaOnlyProvider) Configure(c shim.ResourceConfig) error {
-	panic("schemaOnlyProvider does not implement runtime operation Configure")
-}
-
-func (p *SchemaOnlyProvider) Diff(t string, s shim.InstanceState,
-	c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	panic("schemaOnlyProvider does not implement runtime operation Diff")
-}
-
-func (p *SchemaOnlyProvider) Apply(t string, s shim.InstanceState,
-	d shim.InstanceDiff) (shim.InstanceState, error) {
-	panic("schemaOnlyProvider does not implement runtime operation Apply")
-}
-
-func (p *SchemaOnlyProvider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
-	panic("schemaOnlyProvider does not implement runtime operation Refresh")
-}
-
-func (p *SchemaOnlyProvider) ReadDataDiff(t string,
-	c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	panic("schemaOnlyProvider does not implement runtime operation ReadDataDiff")
-}
-
-func (p *SchemaOnlyProvider) ReadDataApply(t string,
-	d shim.InstanceDiff) (shim.InstanceState, error) {
-	panic("schemaOnlyProvider does not implement runtime operation ReadDataApply")
-}
-
-func (p *SchemaOnlyProvider) Meta() interface{} {
-	panic("schemaOnlyProvider does not implement runtime operation Meta")
-}
-
-func (p *SchemaOnlyProvider) Stop() error {
-	panic("schemaOnlyProvider does not implement runtime operation Stop")
-}
-
-func (p *SchemaOnlyProvider) InitLogging() {
-	panic("schemaOnlyProvider does not implement runtime operation InitLogging")
-}
-
-func (p *SchemaOnlyProvider) NewDestroyDiff() shim.InstanceDiff {
-	panic("schemaOnlyProvider does not implement runtime operation NewDestroyDiff")
-}
-
-func (p *SchemaOnlyProvider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
-	panic("schemaOnlyProvider does not implement runtime operation ReourceConfig")
-}
-
-func (p *SchemaOnlyProvider) IsSet(v interface{}) ([]interface{}, bool) {
-	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }
