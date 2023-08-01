@@ -817,6 +817,59 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
 }
 
+func TestCheck(t *testing.T) {
+	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		computeStringDefault := func(opts ComputeDefaultOptions1) (interface{}, error) {
+			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
+				return v.StringValue(), nil
+			}
+			return nil, nil
+		}
+		provider.resources = map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+					Fields: map[string]*SchemaInfo{
+						"string_property_value": {
+							Default: &DefaultInfo{
+								ComputeDefault: computeStringDefault,
+							},
+						},
+					},
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+		     "stringPropertyValue": "oldString"
+		    },
+		    "news": {
+		      "arrayPropertyValues": []
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": ["stringPropertyValue"],
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": "oldString"
+		    }
+		  }
+		}
+                `)
+	})
+}
+
 func TestCheckConfig(t *testing.T) {
 	t.Run("minimal", func(t *testing.T) {
 		// Ensure the method is minimally implemented. Pulumi will be passing a provider version. Make sure it
