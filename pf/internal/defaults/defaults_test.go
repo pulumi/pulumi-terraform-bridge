@@ -71,7 +71,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	testComputeDefaults := func(
 		t *testing.T,
 		expectPath resource.PropertyPath,
-	) func(tfbridge.ComputeDefaultOptions) (interface{}, error) {
+	) func(context.Context, tfbridge.ComputeDefaultOptions) (interface{}, error) {
 		return func(_ context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
 			require.Equal(t, expectPath, opts.PropertyPath)
 			n := string(opts.URN.Name()) + "-"
