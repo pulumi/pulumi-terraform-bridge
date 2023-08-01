@@ -733,9 +733,10 @@ func TestCheck(t *testing.T) {
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
-		computeStringDefault := func(opts ComputeDefaultOptions1) (interface{}, error) {
+		computeStringDefault := func(opts ComputeDefaultOptions) (interface{}, error) {
+			require.Equal(t, resource.PropertyPath{"stringPropertyValue"}, opts.PropertyPath)
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
-				return v.StringValue(), nil
+				return v.StringValue() + "!", nil
 			}
 			return nil, nil
 		}
@@ -762,6 +763,7 @@ func TestCheck(t *testing.T) {
 		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
 		    "olds": {
+                     "__defaults": [],
 		     "stringPropertyValue": "oldString"
 		    },
 		    "news": {
@@ -772,7 +774,7 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": ["stringPropertyValue"],
 		      "arrayPropertyValues": [],
-		      "stringPropertyValue": "oldString"
+		      "stringPropertyValue": "oldString!"
 		    }
 		  }
 		}

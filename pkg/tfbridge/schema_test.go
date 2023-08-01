@@ -44,7 +44,7 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{Assets: AssetTable{}}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false, resource.PropertyPath{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -58,7 +58,7 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 		Assets:        AssetTable{},
 		ApplyDefaults: true,
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false, resource.PropertyPath{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,7 +67,8 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
-	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false,
+		resource.PropertyPath{})
 }
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
