@@ -46,6 +46,15 @@ func (p *provider) CheckWithContext(
 		return checkedInputs, []plugin.CheckFailure{}, err
 	}
 
+	if info := rh.pulumiResourceInfo; info != nil {
+		if check := info.PreCheckCallback; check != nil {
+			checkedInputs, err := check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
+			if err != nil {
+				return checkedInputs, []plugin.CheckFailure{}, err
+			}
+		}
+	}
+
 	// Transform checkedInputs to apply Pulumi-level defaults.
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
