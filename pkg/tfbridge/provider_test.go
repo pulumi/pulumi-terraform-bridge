@@ -495,25 +495,10 @@ func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) [
 		News: pulumiIns,
 	})
 	assert.NoError(t, err)
-	assert.Len(t, checkResp.Failures, 3)
 	return checkResp.Failures
 }
 
-func TestProviderCheck(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"SecondResource": {
-			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["second_resource"]),
-			TFName: "second_resource",
-			Schema: &ResourceInfo{Tok: "SecondResource"},
-		},
-	}
-
-	failures := testCheckFailures(t, provider, "SecondResource")
-	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2."+
 		" Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
@@ -524,21 +509,7 @@ func TestProviderCheck(t *testing.T) {
 	assert.Equal(t, "", failures[2].Property)
 }
 
-func TestProviderCheckV2(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"SecondResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["second_resource"]),
-			TFName: "second_resource",
-			Schema: &ResourceInfo{Tok: "SecondResource"},
-		},
-	}
-
-	failures := testCheckFailures(t, provider, "SecondResource")
-	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
 	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
@@ -548,6 +519,107 @@ func TestProviderCheckV2(t *testing.T) {
 	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
 		", but no definition was found.. Examine values at 'name.arrayPropertyValues'.", failures[2].Reason)
 	assert.Equal(t, "", failures[2].Property)
+}
+
+func TestProviderCheck(t *testing.T) {
+	testFailures := map[string]func(*testing.T, []*pulumirpc.CheckFailure){
+		"v1": testCheckFailuresV1,
+		"v2": testCheckFailuresV2,
+	}
+	for _, f := range factories {
+		provider := &Provider{
+			tf:     f.NewTestProvider(),
+			config: f.NewTestProvider().Schema(),
+		}
+
+		provider.resources = map[tokens.Type]Resource{
+			"SecondResource": {
+				TF:     provider.tf.ResourcesMap().Get("second_resource"),
+				TFName: "second_resource",
+				Schema: &ResourceInfo{Tok: "SecondResource"},
+			},
+		}
+
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			t.Run("failures", func(t *testing.T) {
+				failures := testCheckFailures(t, provider, "SecondResource")
+				assert.Len(t, failures, 3)
+				sort.SliceStable(failures, func(i, j int) bool {
+					return failures[i].Reason < failures[j].Reason
+				})
+				testFailures[f.SDKVersion()](t, failures)
+			})
+		})
+	}
+}
+
+func TestCheckCallback(t *testing.T) {
+	t.Parallel()
+	test := func(t *testing.T, p *Provider) {
+		testutils.ReplaySequence(t, p, `
+			[
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Configure",
+			    "request": {
+			      "args": {
+				"prop": "global"
+			      },
+			      "variables": {
+				"prop": "global"
+			      }
+			    },
+			    "response": {
+			      "supportsPreview": true
+			    }
+			  },
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Check",
+			    "request": {
+			      "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			      "olds": {},
+			      "news": {},
+			      "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			    },
+			    "response": {
+			      "inputs": {
+				"__defaults": [],
+				"arrayPropertyValues": ["global"]
+			      }
+			    }
+			  }
+			]`)
+	}
+
+	callback := func(
+		_ context.Context, config, meta resource.PropertyMap,
+	) (resource.PropertyMap, error) {
+		config["arrayPropertyValues"] = resource.NewArrayProperty(
+			[]resource.PropertyValue{meta["prop"]},
+		)
+		return config, nil
+	}
+
+	for _, f := range factories {
+		f := f
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			t.Parallel()
+			p := &Provider{
+				tf:     f.NewTestProvider(),
+				config: f.NewTestProvider().Schema(),
+			}
+			p.resources = map[tokens.Type]Resource{
+				"testprovider:index/res:Res": {
+					TF:     p.tf.ResourcesMap().Get("example_resource"),
+					TFName: "example_resource",
+					Schema: &ResourceInfo{
+						Tok:              "testprovider:index/res:Res",
+						PreCheckCallback: callback,
+					},
+				},
+			}
+			test(t, p)
+		})
+	}
 }
 
 func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, checkRawConfig bool) {
