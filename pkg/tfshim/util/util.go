@@ -44,7 +44,7 @@ func (UnimplementedProvider) Diff(t string, s shim.InstanceState, c shim.Resourc
 func (UnimplementedProvider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
 	panic("unimplemented")
 }
-func (UnimplementedProvider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (UnimplementedProvider) Refresh(string, shim.InstanceState, shim.ResourceConfig) (shim.InstanceState, error) {
 	panic("unimplemented")
 }
 

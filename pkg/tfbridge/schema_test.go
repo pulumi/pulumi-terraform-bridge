@@ -641,7 +641,7 @@ func TestMetaProperties(t *testing.T) {
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
@@ -655,7 +655,7 @@ func TestMetaProperties(t *testing.T) {
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state)
+			read2, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -716,7 +716,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
@@ -730,7 +730,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state)
+			read2, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -821,7 +821,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			res := prov.ResourcesMap().Get("example_resource")
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
