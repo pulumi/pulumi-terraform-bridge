@@ -15,6 +15,7 @@ type v1Resource struct {
 	tf *schema.Resource
 }
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func NewResource(r *schema.Resource) shim.Resource {
 	return v1Resource{r}
 }

@@ -13,12 +13,15 @@ var _ = shim.SchemaMap(v1SchemaMap{})
 // representing a variable whose value is not known at some particular time. The value is duplicated here in
 // order to prevent an additional dependency - it is unlikely to ever change upstream since that would break
 // rather a lot of things.
+
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 const UnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
 
 type v1Schema struct {
 	tf *schema.Schema
 }
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func NewSchema(s *schema.Schema) shim.Schema {
 	return v1Schema{s}
 }
@@ -186,6 +189,7 @@ func (s v1Schema) SetHash(v interface{}) int {
 
 type v1SchemaMap map[string]*schema.Schema
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func NewSchemaMap(m map[string]*schema.Schema) shim.SchemaMap {
 	return v1SchemaMap(m)
 }

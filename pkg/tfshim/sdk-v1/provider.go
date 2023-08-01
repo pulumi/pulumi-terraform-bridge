@@ -52,6 +52,7 @@ type v1Provider struct {
 	tf *schema.Provider
 }
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func NewProvider(p *schema.Provider) shim.Provider {
 	return v1Provider{p}
 }

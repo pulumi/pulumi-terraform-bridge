@@ -16,10 +16,12 @@ type v1InstanceState struct {
 	diff *terraform.InstanceDiff
 }
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
 	return v1InstanceState{s, nil}
 }
 
+// Deprecated: shimv1 will be dropped in future versions. Please upgrade to shimv2.
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {
 	if is, ok := s.(v1InstanceState); ok {
 		return is.tf, true
