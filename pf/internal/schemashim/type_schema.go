@@ -93,7 +93,9 @@ func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
 }
 
 func (*typeSchema) DefaultValue() (interface{}, error) {
-	panic("DefaultValue() should not be called during schema generation")
+	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
+	// returning nil is better than a panic.
+	return nil, nil
 }
 
 func (*typeSchema) Description() string {
