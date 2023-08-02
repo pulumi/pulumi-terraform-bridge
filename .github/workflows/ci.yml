@@ -93,4 +93,4 @@ jobs:
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
           use-provider-dir: true
-          replacements: github.com/pulumi/pulumi-terraform-bridge/v3=pulumi-terraform-bridge,github.com/pulumi/pulumi-terraform-bridge/x/muxer=pulumi-terraform-bridge/x/muxer
+          replacements: github.com/pulumi/pulumi-terraform-bridge/v3=pulumi-terraform-bridge,github.com/pulumi/pulumi-terraform-bridge/x/muxer=pulumi-terraform-bridge/x/muxer,github.com/pulumi/pulumi-terraform-bridge/pf=pulumi-terraform-bridge/pf
