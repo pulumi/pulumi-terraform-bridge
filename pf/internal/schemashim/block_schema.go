@@ -120,6 +120,8 @@ func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
 }
 
 func (*blockSchema) DefaultValue() (interface{}, error) {
+	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
+	// returning nil is better than a panic.
 	return nil, nil
 }
 
