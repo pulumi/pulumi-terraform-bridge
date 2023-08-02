@@ -27,12 +27,11 @@ import (
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -1407,7 +1406,12 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 }
 
 func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
-	if dv, _ := tfs.DefaultValue(); dv != nil {
+	if dv, err := tfs.DefaultValue(); dv != nil {
+		if err != nil {
+			// Log error output but continue otherwise.
+			// This avoids a panic on preview such as https://github.com/pulumi/pulumi-cloudflare/issues/460.
+			glog.V(9).Infof(err.Error())
+		}
 		return dv
 	}
 	// TODO: We should inspect SchemaInfo.Default for the default value as well

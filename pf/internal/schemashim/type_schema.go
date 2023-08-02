@@ -15,6 +15,7 @@
 package schemashim
 
 import (
+	"fmt"
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -95,7 +96,7 @@ func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
 func (*typeSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
 	// returning nil is better than a panic.
-	return nil, nil
+	return nil, fmt.Errorf("default values not supported")
 }
 
 func (*typeSchema) Description() string {
