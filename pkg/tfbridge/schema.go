@@ -472,8 +472,12 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 // to prepare it for use by Terraform.  Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take
 // care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInputs(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) (map[string]interface{}, error) {
+func (ctx *conversionContext) MakeTerraformInputs(
+	olds, news resource.PropertyMap,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	rawNames bool,
+) (map[string]interface{}, error) {
 
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
@@ -596,8 +600,13 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
-func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawNames bool) error {
+func (ctx *conversionContext) applyDefaults(
+	result map[string]interface{},
+	olds, news resource.PropertyMap,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	rawNames bool,
+) error {
 
 	if !ctx.ApplyDefaults {
 		return nil
@@ -643,8 +652,10 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 
 			// If we already have a default value from a previous version of this resource, use that instead.
 			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
-				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
+				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{},
+					old, tfi, psi, rawNames)
 				if err != nil {
 					return err
 				}
@@ -695,11 +706,15 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 			} else if info.Default.Value != nil {
 				defaultValue, source = info.Default.Value, "Pulumi schema"
 			} else if compute := info.Default.ComputeDefault; compute != nil {
+				cdOpts := ctx.ComputeDefaultOptions
+				if old, hasold := olds[key]; hasold {
+					cdOpts.PriorValue = old
+				}
 				v, err := compute(
 					// Getting the correct context needs to refactor public methods such as
 					// MakeTerraformInput to MakeTerraformInputWithContext.
 					context.TODO(),
-					ctx.ComputeDefaultOptions,
+					cdOpts,
 				)
 				if err != nil {
 					return err
@@ -790,6 +805,7 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 
 				// Next, if we already have a default value from a previous version of this resource, use that instead.
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
 					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
 					if err != nil {

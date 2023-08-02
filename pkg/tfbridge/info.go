@@ -488,6 +488,10 @@ type ComputeDefaultOptions struct {
 	// Property map representing prior state, only set for non-Create Resource operations.
 	PriorState resource.PropertyMap
 
+	// PriorValue represents the last value of the current property in PriorState. It will have zero value if there
+	// is no PriorState or if the property did not have a value in PriorState.
+	PriorValue resource.PropertyValue
+
 	// The engine provides a stable seed useful for generating random values consistently. This guarantees, for
 	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
 	// consistent. This currently is only available for resource changes.

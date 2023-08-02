@@ -212,6 +212,33 @@
                 "type": "object"
             }
         },
+        "testbridge:index/testres:AutoNameRes": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "inputProperties": {
+                "name": {
+                    "type": "string",
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering AutoNameRes resources.\n",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testres:Privst": {
             "properties": {
                 "observedPrivateStateAfter": {

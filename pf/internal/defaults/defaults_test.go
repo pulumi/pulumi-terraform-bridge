@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -68,13 +69,16 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	}
 
 	testComputeDefaults := func(
-		_ context.Context,
-		opts tfbridge.ComputeDefaultOptions,
-	) (interface{}, error) {
-		n := string(opts.URN.Name()) + "-"
-		a := []rune("12345")
-		unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
-		return resource.NewStringProperty(unique), err
+		t *testing.T,
+		expectPriorValue resource.PropertyValue,
+	) func(context.Context, tfbridge.ComputeDefaultOptions) (interface{}, error) {
+		return func(_ context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+			require.Equal(t, expectPriorValue, opts.PriorValue)
+			n := string(opts.URN.Name()) + "-"
+			a := []rune("12345")
+			unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
+			return resource.NewStringProperty(unique), err
+		}
 	}
 
 	testCases := []testCase{
@@ -201,7 +205,8 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
-						ComputeDefault: testComputeDefaults,
+						ComputeDefault: testComputeDefaults(t,
+							resource.NewStringProperty("oldString")),
 					},
 				},
 			},
@@ -209,6 +214,9 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
+				PriorState: resource.PropertyMap{
+					"stringProp": resource.NewStringProperty("oldString"),
+				},
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("n1-453"),
@@ -239,7 +247,8 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 					Fields: map[string]*tfbridge.SchemaInfo{
 						"y_prop": {
 							Default: &tfbridge.DefaultInfo{
-								ComputeDefault: testComputeDefaults,
+								ComputeDefault: testComputeDefaults(t,
+									resource.NewStringProperty("oldY")),
 							},
 						},
 					},
@@ -254,6 +263,12 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
+				PriorState: resource.PropertyMap{
+					"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+						"xProp": resource.NewStringProperty("oldX"),
+						"yProp": resource.NewStringProperty("oldY"),
+					}),
+				},
 			},
 			expected: resource.PropertyMap{
 				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
