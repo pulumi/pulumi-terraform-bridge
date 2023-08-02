@@ -365,12 +365,26 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 	case v.IsNull():
 		return nil, nil
 	case v.IsBool():
+		if tfs != nil && tfs.Type() == shim.TypeString {
+			if v.BoolValue() {
+				return "true", nil
+			}
+			return "false", nil
+		}
 		return v.BoolValue(), nil
 	case v.IsNumber():
-		if tfs != nil && tfs.Type() == shim.TypeFloat {
-			return v.NumberValue(), nil
+		var typ shim.ValueType
+		if tfs != nil {
+			typ = tfs.Type()
 		}
-		return int(v.NumberValue()), nil // convert floats to ints.
+		switch typ {
+		case shim.TypeFloat:
+			return v.NumberValue(), nil
+		case shim.TypeString:
+			return strconv.FormatFloat(v.NumberValue(), 'f', -1, 64), nil
+		default: // By default, we return ints
+			return int(v.NumberValue()), nil
+		}
 	case v.IsString():
 		return v.StringValue(), nil
 	case v.IsArray():
