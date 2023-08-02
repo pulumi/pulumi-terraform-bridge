@@ -824,7 +824,7 @@ func TestCheck(t *testing.T) {
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
 		computeStringDefault := func(_ context.Context, opts ComputeDefaultOptions) (interface{}, error) {
-			require.Equal(t, resource.PropertyPath{"stringPropertyValue"}, opts.PropertyPath)
+			require.Equal(t, resource.NewStringProperty("oldString"), opts.PriorValue)
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
 				return v.StringValue() + "!", nil
 			}

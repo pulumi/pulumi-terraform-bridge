@@ -53,8 +53,8 @@ type ApplyDefaultInfoValuesArgs struct {
 // These values are specified at the bridged provider configuration level, and are applied before any Terraform
 // processing; therefore the function works at Pulumi level (transforming a PropertyMap).
 func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs) resource.PropertyMap {
-	contract.Assertf(args.ComputeDefaultOptions.PropertyPath == nil,
-		"Expected args.ComputeDefaultOptions.PropertyPath == nil as this code will set it")
+	contract.Assertf(args.ComputeDefaultOptions.PriorValue.V == nil,
+		"Expected args.ComputeDefaultOptions.PriorValue.V == nil as this code will set it")
 
 	// Can short-circuit the entire processing if there are no matching SchemaInfo entries, and therefore no
 	// matching DefaultInfo entries at all.
@@ -283,7 +283,14 @@ func (du *defaultsTransform) extendPropertyMapWithDefaults(
 		}
 
 		defaultOptionsCopy := du.computeDefaultOptions
-		defaultOptionsCopy.PropertyPath = append(path, string(pk))
+
+		subPath := append(path, pulumiName)
+
+		if defaultOptionsCopy.PriorState != nil {
+			if priorV, ok := subPath.Get(resource.NewObjectProperty(defaultOptionsCopy.PriorState)); ok {
+				defaultOptionsCopy.PriorValue = priorV
+			}
+		}
 
 		// using default value for empty property
 		pv, gotDefault := getDefaultValue(ctx,
