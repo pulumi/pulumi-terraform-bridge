@@ -117,7 +117,6 @@ func (e *testnestattr) Delete(ctx context.Context, req resource.DeleteRequest, r
 // If setting an attribute with the import identifier, it is recommended to use the ImportStatePassthroughID() call in
 // this method.
 func (e *testnestattr) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	type ruleModel struct{}
 
 	type model struct {
 		ID       types.String   `tfsdk:"id"`
