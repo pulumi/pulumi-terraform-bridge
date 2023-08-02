@@ -70,10 +70,10 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 
 	testComputeDefaults := func(
 		t *testing.T,
-		expectPath resource.PropertyPath,
+		expectPriorValue resource.PropertyValue,
 	) func(context.Context, tfbridge.ComputeDefaultOptions) (interface{}, error) {
 		return func(_ context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
-			require.Equal(t, expectPath, opts.PropertyPath)
+			require.Equal(t, expectPriorValue, opts.PriorValue)
 			n := string(opts.URN.Name()) + "-"
 			a := []rune("12345")
 			unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
@@ -205,7 +205,8 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			fieldInfos: map[string]*tfbridge.SchemaInfo{
 				"string_prop": {
 					Default: &tfbridge.DefaultInfo{
-						ComputeDefault: testComputeDefaults(t, resource.PropertyPath{"stringProp"}),
+						ComputeDefault: testComputeDefaults(t,
+							resource.NewStringProperty("oldString")),
 					},
 				},
 			},
@@ -213,6 +214,9 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
+				PriorState: resource.PropertyMap{
+					"stringProp": resource.NewStringProperty("oldString"),
+				},
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("n1-453"),
@@ -244,7 +248,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 						"y_prop": {
 							Default: &tfbridge.DefaultInfo{
 								ComputeDefault: testComputeDefaults(t,
-									resource.PropertyPath{"objectProp", "yProp"}),
+									resource.NewStringProperty("oldY")),
 							},
 						},
 					},
@@ -259,6 +263,12 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
 				Properties: resource.PropertyMap{},
 				Seed:       []byte(`123`),
+				PriorState: resource.PropertyMap{
+					"objectProp": resource.NewObjectProperty(resource.PropertyMap{
+						"xProp": resource.NewStringProperty("oldX"),
+						"yProp": resource.NewStringProperty("oldY"),
+					}),
+				},
 			},
 			expected: resource.PropertyMap{
 				"objectProp": resource.NewObjectProperty(resource.PropertyMap{

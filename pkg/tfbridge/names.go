@@ -357,11 +357,9 @@ func ComputeAutoNameDefault(
 	// disinguish default values, therefore it always calls ComputedDefaults. To compensate, this code block avoids
 	// re-generating the auto-name if it is located in PriorState and reuses the old one; this avoids generating a
 	// fresh random value and causing a replace plan.
-	if defaultOptions.PriorState != nil && defaultOptions.PropertyPath != nil {
-		prior := resource.NewObjectProperty(defaultOptions.PriorState)
-		oldV, gotOldV := defaultOptions.PropertyPath.Get(prior)
-		if oldV.IsString() && gotOldV {
-			return oldV.StringValue(), nil
+	if defaultOptions.PriorState != nil && defaultOptions.PriorValue.V != nil {
+		if defaultOptions.PriorValue.IsString() {
+			return defaultOptions.PriorValue.StringValue(), nil
 		}
 	}
 
