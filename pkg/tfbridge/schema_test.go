@@ -928,6 +928,10 @@ func TestDefaults(t *testing.T) {
 				"x1of1": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault("x1of1-value")},
 				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
+
+				// Default value application across types
+				"x2stringxbool": {Type: shim.TypeString},
+				"x2stringxint":  {Type: shim.TypeString},
 			})
 			ps := map[string]*SchemaInfo{
 				"eee": {Default: &DefaultInfo{Value: "EEE"}},
@@ -945,6 +949,12 @@ func TestDefaults(t *testing.T) {
 				"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
 				"www": {Default: &DefaultInfo{Value: "PSW"}},
 				"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+
+				// Default applications where the Default.Value doesn't
+				// match all possible types because Pulumi and TF have
+				// different types.
+				"x2stringxbool": {Type: "bool", Default: &DefaultInfo{Value: true}},
+				"x2stringxint":  {Type: "int", Default: &DefaultInfo{Value: 1}},
 			}
 			olds := resource.PropertyMap{
 				defaultsKey: resource.NewPropertyValue([]interface{}{
@@ -977,8 +987,12 @@ func TestDefaults(t *testing.T) {
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
+
 					"x1of1",
+
+					"x2stringxbool", "x2stringxint",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -1006,6 +1020,9 @@ func TestDefaults(t *testing.T) {
 
 				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
 				"x1of1": "x1of1-value",
+
+				"x2stringxbool": true,
+				"x2stringxint":  1,
 			}), outputs)
 
 			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
@@ -1013,14 +1030,23 @@ func TestDefaults(t *testing.T) {
 			delete(olds, defaultsKey)
 			inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 			assert.NoError(t, err)
+
+			// Assert that types match their TF equivalent when in a TF shape.
+			assert.Equal(t, "true", inputs["x2stringxbool"])
+			assert.Equal(t, "1", inputs["x2stringxint"])
+
 			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
 			//sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
+
 					"x1of1",
+
+					"x2stringxbool", "x2stringxint",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -1048,8 +1074,12 @@ func TestDefaults(t *testing.T) {
 				// xyz is NOT set as it has ExactlyOneOf with abc
 				"zzz": asset,
 
-				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
+				// x1of1 is set as it UNIQUELY has a default value in its
+				// ExactlyOneOf set (x1of1, x1of2, x1of3)
 				"x1of1": "x1of1-value",
+
+				"x2stringxbool": true,
+				"x2stringxint":  1,
 			}), outputs)
 		})
 	}

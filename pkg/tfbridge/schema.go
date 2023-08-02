@@ -707,7 +707,12 @@ func (ctx *conversionContext) applyDefaults(result map[string]interface{}, olds,
 					defaultValue, source = tv, "config"
 				}
 			} else if info.Default.Value != nil {
-				defaultValue, source = info.Default.Value, "Pulumi schema"
+				v := resource.NewPropertyValue(info.Default.Value)
+				tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+				if err != nil {
+					return err
+				}
+				defaultValue, source = tv, "Pulumi schema"
 			} else if compute := info.Default.ComputeDefault; compute != nil {
 				v, err := compute(
 					// Getting the correct context needs to refactor public methods such as
