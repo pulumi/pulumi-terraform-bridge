@@ -16,6 +16,7 @@ package schemashim
 
 import (
 	"fmt"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -58,7 +59,7 @@ func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
 func (*attrSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
 	// returning nil is better than a panic.
-	return nil, fmt.Errorf("default values not supported")
+	return nil, bridge.ErrSchemaDefaultValue
 }
 
 func (s *attrSchema) Description() string {

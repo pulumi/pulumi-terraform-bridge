@@ -189,6 +189,10 @@ const defaultsKey = "__defaults"
 // marshaled back to assets by MakeTerraformOutputs.
 type AssetTable map[*SchemaInfo]resource.PropertyValue
 
+// ErrSchemaDefaultValue is used internally to avoid a panic in pf/schemashim.DefaultValue().
+// See https://github.com/pulumi/pulumi-cloudflare/issues/460
+var ErrSchemaDefaultValue = fmt.Errorf("default values not supported")
+
 // nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
 // property with a value that was not populated by the autonamer.
 func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.PropertyMap,
@@ -1406,14 +1410,20 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 }
 
 func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
-	if dv, err := tfs.DefaultValue(); dv != nil {
-		if err != nil {
+	dv, err := tfs.DefaultValue()
+	if err != nil {
+		if errors.Is(err, ErrSchemaDefaultValue) {
 			// Log error output but continue otherwise.
 			// This avoids a panic on preview such as https://github.com/pulumi/pulumi-cloudflare/issues/460.
 			glog.V(9).Infof(err.Error())
+		} else {
+			return err
 		}
+	}
+	if dv != nil {
 		return dv
 	}
+
 	// TODO: We should inspect SchemaInfo.Default for the default value as well
 	// if ps != nil {
 	// 	return ps.Default
