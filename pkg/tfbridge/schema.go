@@ -27,12 +27,11 @@ import (
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -189,6 +188,10 @@ const defaultsKey = "__defaults"
 // AssetTable is used to record which properties in a call to MakeTerraformInputs were assets so that they can be
 // marshaled back to assets by MakeTerraformOutputs.
 type AssetTable map[*SchemaInfo]resource.PropertyValue
+
+// ErrSchemaDefaultValue is used internally to avoid a panic in pf/schemashim.DefaultValue().
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1329
+var ErrSchemaDefaultValue = fmt.Errorf("default values not supported")
 
 // nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
 // property with a value that was not populated by the autonamer.
@@ -1426,9 +1429,20 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 }
 
 func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
-	if dv, _ := tfs.DefaultValue(); dv != nil {
+	dv, err := tfs.DefaultValue()
+	if err != nil {
+		if errors.Is(err, ErrSchemaDefaultValue) {
+			// Log error output but continue otherwise.
+			// This avoids a panic on preview. See https://github.com/pulumi/pulumi-terraform-bridge/issues/1329.
+			glog.V(9).Infof(err.Error())
+		} else {
+			return err
+		}
+	}
+	if dv != nil {
 		return dv
 	}
+
 	// TODO: We should inspect SchemaInfo.Default for the default value as well
 	// if ps != nil {
 	// 	return ps.Default

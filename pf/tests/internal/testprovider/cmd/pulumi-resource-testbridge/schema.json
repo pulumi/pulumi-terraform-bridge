@@ -75,6 +75,84 @@
             },
             "type": "object"
         },
+        "testbridge:index/TestnestService:TestnestService": {
+            "properties": {
+                "intport": {
+                    "type": "integer"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestServicePort:TestnestServicePort"
+                    }
+                },
+                "protocol": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestnestServicePort:TestnestServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "port": {
+                    "type": "integer"
+                }
+            },
+            "type": "object",
+            "required": [
+                "port"
+            ]
+        },
+        "testbridge:index/TestnestattrService:TestnestattrService": {
+            "properties": {
+                "intport": {
+                    "type": "integer"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrServicePort:TestnestattrServicePort"
+                    }
+                },
+                "protocol": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestnestattrServicePort:TestnestattrServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "port": {
+                    "type": "integer"
+                }
+            },
+            "type": "object",
+            "required": [
+                "port"
+            ]
+        },
         "testbridge:index/TestresService:TestresService": {
             "properties": {
                 "intport": {
@@ -187,6 +265,13 @@
                         "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                     },
                     "description": "List of rules to apply to the ruleset.\n"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
                 }
             },
             "inputProperties": {
@@ -196,6 +281,13 @@
                         "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                     },
                     "description": "List of rules to apply to the ruleset.\n"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
                 }
             },
             "stateInputs": {
@@ -207,6 +299,46 @@
                             "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                         },
                         "description": "List of rules to apply to the ruleset.\n"
+                    },
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testnestattr:Testnestattr": {
+            "properties": {
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "inputProperties": {
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testnestattr resources.\n",
+                "properties": {
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
                     }
                 },
                 "type": "object"
