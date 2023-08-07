@@ -190,7 +190,7 @@ const defaultsKey = "__defaults"
 type AssetTable map[*SchemaInfo]resource.PropertyValue
 
 // ErrSchemaDefaultValue is used internally to avoid a panic in pf/schemashim.DefaultValue().
-// See https://github.com/pulumi/pulumi-cloudflare/issues/460
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1329
 var ErrSchemaDefaultValue = fmt.Errorf("default values not supported")
 
 // nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
@@ -1414,7 +1414,7 @@ func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
 	if err != nil {
 		if errors.Is(err, ErrSchemaDefaultValue) {
 			// Log error output but continue otherwise.
-			// This avoids a panic on preview such as https://github.com/pulumi/pulumi-cloudflare/issues/460.
+			// This avoids a panic on preview. See https://github.com/pulumi/pulumi-terraform-bridge/issues/1329.
 			glog.V(9).Infof(err.Error())
 		} else {
 			return err
