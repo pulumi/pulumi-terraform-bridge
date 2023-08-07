@@ -145,7 +145,7 @@ func TestCustomizeDiff(t *testing.T) {
 		assert.Equal(t, expectedDiff, diff)
 	})
 
-	t.Run("CustomDiffDoesNotPanicOnGetRawState", func(t *testing.T) {
+	t.Run("CustomDiffDoesNotPanicOnGetRawStateOrRawConfig", func(t *testing.T) {
 		for _, diffStrat := range []shimv2.DiffStrategy{shimv2.PlanState, shimv2.ClassicDiff} {
 			diffStrat := diffStrat
 			t.Run(fmt.Sprintf("%v", diffStrat), func(t *testing.T) {
@@ -155,6 +155,10 @@ func TestCustomizeDiff(t *testing.T) {
 						rawStateType := diff.GetRawState().Type()
 						if !rawStateType.HasAttribute("outp") {
 							return fmt.Errorf("Expected rawState type to have attribute: outp")
+						}
+						rawConfigType := diff.GetRawConfig().Type()
+						if !rawConfigType.HasAttribute("outp") {
+							return fmt.Errorf("Expected rawConfig type to have attribute: outp")
 						}
 						return nil
 					},

@@ -94,6 +94,10 @@ func (p v2Provider) simpleDiff(
 			}
 			state.RawState = priorStateVal
 		}
+		if state.RawConfig.IsNull() {
+			// Same trick as above.
+			state.RawConfig = rawConfigVal
+		}
 		return res.SimpleDiff(ctx, state, c, meta)
 	case PlanState:
 		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
@@ -157,6 +161,9 @@ func simpleDiffViaPlanState(
 	state.RawPlan = proposedNewStateVal
 	if state.RawState.IsNull() {
 		state.RawState = priorStateVal
+	}
+	if state.RawConfig.IsNull() {
+		state.RawConfig = rawConfigVal
 	}
 	return res.SimpleDiff(ctx, state, planned, meta)
 }
