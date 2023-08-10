@@ -141,11 +141,6 @@ type Log interface {
 }
 
 // Get access to the [Logger] associated with this context.
-//
-// If called on a context that does not have an associated [Logger], GetLogger will panic.
-//
-// Currently, only the context from [ResourceInfo.PreCheckCallback] and
-// [ProviderInfo.PreConfigureCallback] have an associated [Logger].
 func GetLogger(ctx context.Context) Logger {
 	logger, ok := ctx.Value(logging.CtxKey).(Logger)
 	if !ok {
