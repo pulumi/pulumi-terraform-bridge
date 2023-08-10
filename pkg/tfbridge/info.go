@@ -31,6 +31,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 const (
@@ -119,6 +120,38 @@ type ProviderInfo struct {
 	// the bridge completed its original version based on the TF schema.
 	// A hook to enable custom schema modifications specific to a provider.
 	SchemaPostProcessor func(spec *pschema.PackageSpec)
+}
+
+// Send logs or status logs to the user.
+//
+// Logged messages are pre-associated with the resource they are called from.
+type Logger interface {
+	Log
+
+	// Convert to sending ephemeral status logs to the user.
+	Status() Log
+}
+
+// The set of logs available to show to the user
+type Log interface {
+	Debug(msg string)
+	Info(msg string)
+	Warn(msg string)
+	Error(msg string)
+}
+
+// Get access to the [Logger] associated with this context.
+//
+// If called on a context that does not have an associated [Logger], GetLogger will panic.
+//
+// Currently, only the context from [ResourceInfo.PreCheckCallback] and
+// [ProviderInfo.PreConfigureCallback] have an associated [Logger].
+func GetLogger(ctx context.Context) Logger {
+	logger, ok := ctx.Value(logging.CtxKey).(Logger)
+	if !ok {
+		panic("Cannot call GetLogger on a context that is not equipped with a Logger")
+	}
+	return logger
 }
 
 func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {

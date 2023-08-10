@@ -142,9 +142,10 @@ func TestParseUrnFromRawString(t *testing.T) {
 }
 
 type log struct {
-	sev diag.Severity
-	urn resource.URN
-	msg string
+	sev       diag.Severity
+	urn       resource.URN
+	msg       string
+	ephemeral bool
 }
 
 type testLogSink struct {
@@ -158,6 +159,16 @@ func (sink *testLogSink) Log(context context.Context, sev diag.Severity, urn res
 		sev: sev,
 		urn: urn,
 		msg: msg,
+	})
+	return nil
+}
+
+func (sink *testLogSink) LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	sink.logs = append(sink.logs, log{
+		sev:       sev,
+		urn:       urn,
+		msg:       msg,
+		ephemeral: true,
 	})
 	return nil
 }
