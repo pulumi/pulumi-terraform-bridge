@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
@@ -56,7 +57,11 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 		ctx = tflog.SetField(ctx, "provider", p)
 	}
 
-	return ctx
+	return context.WithValue(ctx, logging.CtxKey,
+		logging.NewHost(ctx, opts.LogSink, opts.URN,
+			func(l *logging.Host[tfbridge.Log]) tfbridge.Log {
+				return l
+			}))
 }
 
 // See InitLogging.
