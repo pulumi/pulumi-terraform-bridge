@@ -157,7 +157,7 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
 	}
-	p.setLoggingContext(ctx)
+	p.loggingContext(ctx, "")
 	p.initResourceMaps()
 	return p
 }
@@ -181,7 +181,7 @@ func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) 
 	return &pbempty.Empty{}, nil
 }
 
-func (p *Provider) setLoggingContext(ctx context.Context) {
+func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context.Context {
 	if p.host != nil {
 		log.SetOutput(&LogRedirector{
 			writers: map[string]func(string) error{
@@ -193,6 +193,8 @@ func (p *Provider) setLoggingContext(ctx context.Context) {
 			},
 		})
 	}
+
+	return ctxWithHostLogger(ctx, p.host, urn)
 }
 
 func (p *Provider) label() string {
@@ -509,7 +511,7 @@ func (p *Provider) Configure(ctx context.Context,
 		p.supportsSecrets = true
 	}
 
-	p.setLoggingContext(ctx)
+	p.loggingContext(ctx, "")
 
 	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
@@ -539,7 +541,7 @@ func (p *Provider) Configure(ctx context.Context,
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -609,7 +611,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -705,7 +707,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -792,7 +794,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 // Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties.
 func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -880,7 +882,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -982,7 +984,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
 	res, has := p.resources[t]
@@ -1023,7 +1025,7 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 
 // Invoke dynamically executes a built-in function in the provider.
 func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	p.setLoggingContext(ctx)
+	ctx = p.loggingContext(ctx, "")
 	tok := tokens.ModuleMember(req.GetTok())
 	ds, has := p.dataSources[tok]
 	if !has {
