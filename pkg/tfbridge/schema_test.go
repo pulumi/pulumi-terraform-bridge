@@ -636,6 +636,7 @@ func TestMetaProperties(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "example_resource"
 			res := prov.ResourcesMap().Get(resName)
@@ -649,7 +650,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -663,7 +664,7 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -698,7 +699,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -711,6 +712,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "second_resource"
 			res := prov.ResourcesMap().Get(resName)
@@ -724,7 +726,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -738,7 +740,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -775,7 +777,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -816,6 +818,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "example_resource"
 			res := prov.ResourcesMap().Get("example_resource")
@@ -829,7 +832,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -1187,7 +1190,9 @@ func TestOverridingTFSchema(t *testing.T) {
 		assert.Equal(t, tfOutputs, result)
 	})
 	t.Run("MakeTerraformInputs", func(t *testing.T) {
+		ctx := context.Background()
 		result, _, err := MakeTerraformInputs(
+			ctx,
 			nil,
 			nil,
 			nil,

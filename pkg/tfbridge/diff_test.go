@@ -50,6 +50,7 @@ func TestCustomizeDiff(t *testing.T) {
 	var ignores []string
 
 	t.Run("CustomDiffCausesAddReplace", func(t *testing.T) {
+		ctx := context.Background()
 		// expected diff
 		expected := map[string]DiffKind{
 			"outp": AR,
@@ -82,20 +83,20 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(customDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(r, "id", stateMap)
+		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
 		assert.NoError(t, err)
 
-		config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
 		tfDiff, err := provider.Diff("resource", tfState, config)
 		assert.NoError(t, err)
 
 		// ProcessIgnoreChanges
-		doIgnoreChanges(sch, info, stateMap, inputsMap, ignores, tfDiff)
+		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
-		diff, changes := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
 		for k, v := range expected {
 			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
@@ -105,6 +106,7 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 
 	t.Run("NoCustomDiffCausesNoDiff", func(t *testing.T) {
+		ctx := context.Background()
 		// expected diff
 		expected := map[string]DiffKind{}
 
@@ -123,20 +125,20 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(noCustomDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(r, "id", stateMap)
+		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
 		assert.NoError(t, err)
 
-		config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
 		tfDiff, err := provider.Diff("resource", tfState, config)
 		assert.NoError(t, err)
 
 		// ProcessIgnoreChanges
-		doIgnoreChanges(sch, info, stateMap, inputsMap, ignores, tfDiff)
+		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
-		diff, changes := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
 		for k, v := range expected {
 			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
@@ -149,6 +151,7 @@ func TestCustomizeDiff(t *testing.T) {
 		for _, diffStrat := range []shimv2.DiffStrategy{shimv2.PlanState, shimv2.ClassicDiff} {
 			diffStrat := diffStrat
 			t.Run(fmt.Sprintf("%v", diffStrat), func(t *testing.T) {
+				ctx := context.Background()
 				customDiffRes := &v2Schema.Resource{
 					Schema: tfs,
 					CustomizeDiff: func(_ context.Context, diff *v2Schema.ResourceDiff, _ interface{}) error {
@@ -177,10 +180,10 @@ func TestCustomizeDiff(t *testing.T) {
 					TF:     shimv2.NewResource(customDiffRes),
 					Schema: &ResourceInfo{Fields: info},
 				}
-				tfState, err := MakeTerraformState(r, "id", stateMap)
+				tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
 				assert.NoError(t, err)
 
-				config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 				assert.NoError(t, err)
 
 				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
@@ -195,6 +198,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
 	ignoreChanges ...string) {
+	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
 	stateMap := resource.NewPropertyMapFromMap(state)
@@ -219,20 +223,20 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
-	tfState, err := MakeTerraformState(r, "id", stateMap)
+	tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
 	assert.NoError(t, err)
 
-	config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, info)
+	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 	assert.NoError(t, err)
 
 	tfDiff, err := provider.Diff("resource", tfState, config)
 	assert.NoError(t, err)
 
 	// ProcessIgnoreChanges
-	doIgnoreChanges(sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
 
 	// Convert the diff to a detailed diff and check the result.
-	diff, changes := makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+	diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 	expectedDiff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range expected {
 		expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
@@ -244,9 +248,9 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	for k := range expected {
 		ignoreChanges = append(ignoreChanges, k)
 	}
-	doIgnoreChanges(sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
 
-	diff, changes = makeDetailedDiff(sch, info, stateMap, inputsMap, tfDiff)
+	diff, changes = makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 	assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
 	assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
 }
@@ -2143,6 +2147,7 @@ func TestXComputedInput(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			res := &v2Schema.Resource{
 				Schema:        tfs,
 				CustomizeDiff: tc.customizeDiff,
@@ -2161,17 +2166,17 @@ func TestXComputedInput(t *testing.T) {
 				},
 			}
 
-			tfState, err := MakeTerraformState(r, "id", tc.stateMap)
+			tfState, err := MakeTerraformState(ctx, r, "id", tc.stateMap)
 			assert.NoError(t, err)
 
-			config, _, err := MakeTerraformConfig(&Provider{tf: provider}, inputsMap, sch, nil)
+			config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, nil)
 			assert.NoError(t, err)
 
 			tfDiff, err := provider.Diff("resource", tfState, config)
 			assert.NoError(t, err)
 
 			// Convert the diff to a detailed diff and check the result.
-			diff, changes := makeDetailedDiff(sch, r.Schema.Fields, tc.stateMap, inputsMap, tfDiff)
+			diff, changes := makeDetailedDiff(ctx, sch, r.Schema.Fields, tc.stateMap, inputsMap, tfDiff)
 			assert.Equal(t, tc.expectedDiffChanges, changes)
 			assert.Equal(t, tc.expectedDiffLength, len(diff))
 		})

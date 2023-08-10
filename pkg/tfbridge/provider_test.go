@@ -213,7 +213,8 @@ func TestBuildConfig(t *testing.T) {
 		"configValue": resource.NewStringProperty("foo"),
 		"version":     resource.NewStringProperty("0.0.1"),
 	}
-	configOut, err := buildTerraformConfig(provider, configIn)
+	ctx := context.Background()
+	configOut, err := buildTerraformConfig(ctx, provider, configIn)
 	assert.NoError(t, err)
 
 	expected := provider.tf.NewResourceConfig(map[string]interface{}{

@@ -305,7 +305,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
 
-	config, validationErrors := buildTerraformConfig(p, news)
+	config, validationErrors := buildTerraformConfig(ctx, p, news)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
 	}
@@ -354,7 +354,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}, nil
 }
 
-func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
+func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
 	tfVars := make(resource.PropertyMap)
 	ignoredKeys := map[string]bool{"version": true, "pluginDownloadURL": true}
 	for k, v := range vars {
@@ -367,7 +367,7 @@ func buildTerraformConfig(p *Provider, vars resource.PropertyMap) (shim.Resource
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func (p *Provider) Configure(ctx context.Context,
 	// them later on for purposes of (e.g.) config-based defaults.
 	p.configValues = configMap
 
-	config, err := buildTerraformConfig(p, configMap)
+	config, err := buildTerraformConfig(ctx, p, configMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not marshal config state")
 	}
@@ -579,7 +579,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
-	inputs, assets, err := MakeTerraformInputs(
+	inputs, assets, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
 		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
@@ -628,7 +628,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := MakeTerraformState(res, req.GetId(), olds)
+	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -638,7 +638,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	config, _, err := MakeTerraformConfig(p, news, res.TF.Schema(), res.Schema.Fields)
+	config, _, err := MakeTerraformConfig(ctx, p, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -648,8 +648,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	doIgnoreChanges(res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
-	detailedDiff, changes := makeDetailedDiff(res.TF.Schema(), res.Schema.Fields, olds, news, diff)
+	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
+	detailedDiff, changes := makeDetailedDiff(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, diff)
 
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
@@ -720,7 +720,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	config, assets, err := UnmarshalTerraformConfig(
+	config, assets, err := UnmarshalTerraformConfig(ctx,
 		p, req.GetProperties(), res.TF.Schema(), res.Schema.Fields,
 		fmt.Sprintf("%s.news", label))
 	if err != nil {
@@ -812,7 +812,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := UnmarshalTerraformState(res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
+	state, err := UnmarshalTerraformState(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -834,7 +834,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 	}
 
-	config, _, err := MakeTerraformConfig(p, oldInputs, res.TF.Schema(), res.Schema.Fields)
+	config, _, err := MakeTerraformConfig(ctx, p, oldInputs, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -899,7 +899,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	state, err := MakeTerraformState(res, req.GetId(), olds)
+	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -909,7 +909,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	config, assets, err := MakeTerraformConfig(p, news, res.TF.Schema(), res.Schema.Fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -928,7 +928,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	// Apply any ignoreChanges before we check that the diff doesn't require replacement or deletion since we may be
 	// ignoring changes to the keys that would result in replacement/deletion.
-	doIgnoreChanges(res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
+	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 
 	contract.Assertf(!diff.Destroy() && !diff.RequiresNew(),
 		"Expected diff to not require deletion or replacement during Update of %s", urn)
@@ -996,7 +996,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	glog.V(9).Infof("%s executing", label)
 
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := UnmarshalTerraformState(res, req.GetId(), req.GetProperties(), label)
+	state, err := UnmarshalTerraformState(ctx, res, req.GetId(), req.GetProperties(), label)
 	if err != nil {
 		return nil, err
 	}
@@ -1045,6 +1045,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// First, create the inputs.
 	tfname := ds.TFName
 	inputs, _, err := MakeTerraformInputs(
+		ctx,
 		&PulumiResource{Properties: args},
 		p.configValues,
 		nil, args,
