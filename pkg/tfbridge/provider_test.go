@@ -592,8 +592,11 @@ func TestCheckCallback(t *testing.T) {
 	}
 
 	callback := func(
-		_ context.Context, config, meta resource.PropertyMap,
+		ctx context.Context, config, meta resource.PropertyMap,
 	) (resource.PropertyMap, error) {
+		// We test that we have access to the logger in this callback.
+		GetLogger(ctx).Status().Info("Did not panic")
+
 		config["arrayPropertyValues"] = resource.NewArrayProperty(
 			[]resource.PropertyValue{meta["prop"]},
 		)
@@ -824,7 +827,10 @@ func TestCheck(t *testing.T) {
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
-		computeStringDefault := func(_ context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+		computeStringDefault := func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+			// We check that we have access to the logger when computing a default value.
+			GetLogger(ctx).Status().Info("Did not panic")
+
 			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
 				require.Equal(t, resource.NewStringProperty("oldString"), opts.PriorValue)
 				return v.StringValue() + "!", nil
@@ -1522,6 +1528,9 @@ func TestPreConfigureCallback(t *testing.T) {
 					vars resource.PropertyMap,
 					config shim.ResourceConfig,
 				) error {
+					// We check that we have access to the logger in this callback.
+					GetLogger(ctx).Status().Info("Did not panic")
+
 					if cv, ok := vars["configValue"]; ok {
 						// This used to panic when cv is a resource.Computed.
 						cv.StringValue()
