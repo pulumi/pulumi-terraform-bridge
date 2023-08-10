@@ -285,14 +285,17 @@ func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
 }
 
 type conversionContext struct {
+	Ctx                   context.Context
 	ComputeDefaultOptions ComputeDefaultOptions
 	ProviderConfig        resource.PropertyMap
 	ApplyDefaults         bool
 	Assets                AssetTable
 }
 
-func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
+func MakeTerraformInputs(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
 
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -304,17 +307,18 @@ func MakeTerraformInputs(instance *PulumiResource, config resource.PropertyMap, 
 		}
 	}
 
-	ctx := &conversionContext{
+	cctx := &conversionContext{
+		Ctx:                   ctx,
 		ComputeDefaultOptions: cdOptions,
 		ProviderConfig:        config,
 		ApplyDefaults:         true,
 		Assets:                AssetTable{},
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := cctx.MakeTerraformInputs(olds, news, tfs, ps, false)
 	if err != nil {
 		return nil, nil, err
 	}
-	return inputs, ctx.Assets, err
+	return inputs, cctx.Assets, err
 }
 
 // MakeTerraformInput takes a single property plus custom schema info and does whatever is necessary to prepare it for
@@ -560,7 +564,6 @@ func (ctx *conversionContext) MakeTerraformInputs(
 	}
 
 	return result, nil
-
 }
 
 func buildExactlyOneOfsWith(result map[string]interface{}, tfs shim.SchemaMap) map[string]struct{} {
@@ -732,12 +735,7 @@ func (ctx *conversionContext) applyDefaults(
 				if old, hasold := olds[key]; hasold {
 					cdOpts.PriorValue = old
 				}
-				v, err := compute(
-					// Getting the correct context needs to refactor public methods such as
-					// MakeTerraformInput to MakeTerraformInputWithContext.
-					context.TODO(),
-					cdOpts,
-				)
+				v, err := compute(ctx.Ctx, cdOpts)
 				if err != nil {
 					return err
 				}
@@ -1094,23 +1092,24 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 }
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
-func MakeTerraformConfig(p *Provider, m resource.PropertyMap,
+func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 
 	// Convert the resource bag into an untyped map, and then create the resource config object.
-	ctx := conversionContext{
+	cctx := conversionContext{
+		Ctx:            ctx,
 		ProviderConfig: p.configValues,
 		Assets:         AssetTable{},
 	}
-	inputs, err := ctx.MakeTerraformInputs(nil, m, tfs, ps, false)
+	inputs, err := cctx.MakeTerraformInputs(nil, m, tfs, ps, false)
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformConfigFromInputs(p.tf, inputs), ctx.Assets, nil
+	return MakeTerraformConfigFromInputs(p.tf, inputs), cctx.Assets, nil
 }
 
 // UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
-func UnmarshalTerraformConfig(p *Provider, m *pbstruct.Struct,
+func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 	label string) (shim.ResourceConfig, AssetTable, error) {
 
@@ -1119,7 +1118,7 @@ func UnmarshalTerraformConfig(p *Provider, m *pbstruct.Struct,
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformConfig(p, props, tfs, ps)
+	return MakeTerraformConfig(ctx, p, props, tfs, ps)
 }
 
 // makeConfig is a helper for MakeTerraformConfigFromInputs that performs a deep-ish copy of its input, recursively
@@ -1157,7 +1156,9 @@ func MakeTerraformConfigFromInputs(p shim.Provider, inputs map[string]interface{
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.InstanceState, error) {
+func MakeTerraformState(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap,
+) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
@@ -1174,8 +1175,8 @@ func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.I
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
-	ctx := &conversionContext{}
-	inputs, err := ctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
+	cctx := &conversionContext{Ctx: ctx}
+	inputs, err := cctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,7 +1185,9 @@ func MakeTerraformState(res Resource, id string, m resource.PropertyMap) (shim.I
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-func UnmarshalTerraformState(r Resource, id string, m *pbstruct.Struct, l string) (shim.InstanceState, error) {
+func UnmarshalTerraformState(
+	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
+) (shim.InstanceState, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
 		Label:     fmt.Sprintf("%s.state", l),
 		SkipNulls: true,
@@ -1192,7 +1195,7 @@ func UnmarshalTerraformState(r Resource, id string, m *pbstruct.Struct, l string
 	if err != nil {
 		return nil, err
 	}
-	return MakeTerraformState(r, id, props)
+	return MakeTerraformState(ctx, r, id, props)
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project

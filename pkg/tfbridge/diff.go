@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -66,8 +67,9 @@ type propertyVisitor func(attributeKey, propertyPath string, value resource.Prop
 //
 // To solve this problem, we recurse through each element in the given property value, compute its path, and
 // check to see if the InstanceDiff has an entry for that path.
-func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-	rawNames bool, visitor propertyVisitor) {
+func visitPropertyValue(
+	ctx context.Context, name, path string, v resource.PropertyValue, tfs shim.Schema,
+	ps *SchemaInfo, rawNames bool, visitor propertyVisitor) {
 
 	if IsMaxItemsOne(tfs, ps) {
 		if v.IsNull() {
@@ -99,7 +101,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 				// forms part of the key. We round-trip through a config field reader so that TF has the opportunity to
 				// fill in default values for empty fields (note that this is a property of the field reader, not of
 				// the schema) as it does when computing the hash code for a set element.
-				ctx := &conversionContext{}
+				ctx := &conversionContext{Ctx: ctx}
 				ev, err := ctx.MakeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
 				if err != nil {
 					return
@@ -124,7 +126,7 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 			}
 
 			en := name + "." + ti
-			visitPropertyValue(en, ep, e, etfs, eps, rawNames, visitor)
+			visitPropertyValue(ctx, en, ep, e, etfs, eps, rawNames, visitor)
 		}
 	case v.IsObject():
 		var tfflds shim.SchemaMap
@@ -148,12 +150,12 @@ func visitPropertyValue(name, path string, v resource.PropertyValue, tfs shim.Sc
 			}
 
 			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawElementNames)
-			visitPropertyValue(name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
+			visitPropertyValue(ctx, name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
 		}
 	}
 }
 
-func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
+func makePropertyDiff(ctx context.Context, name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
 	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
 	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
 
@@ -239,11 +241,11 @@ func makePropertyDiff(name, path string, v resource.PropertyValue, tfDiff shim.I
 		return false
 	}
 
-	visitPropertyValue(name, path, v, tfs, ps, rawNames, visitor)
+	visitPropertyValue(ctx, name, path, v, tfs, ps, rawNames, visitor)
 }
 
-func doIgnoreChanges(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news resource.PropertyMap,
-	ignoredPaths []string, tfDiff shim.InstanceDiff) {
+func doIgnoreChanges(ctx context.Context, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap, ignoredPaths []string, tfDiff shim.InstanceDiff) {
 
 	if tfDiff == nil {
 		return
@@ -263,11 +265,11 @@ func doIgnoreChanges(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news r
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, useRawNames(etf), visitor)
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(en, string(k), v, etf, eps, useRawNames(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, useRawNames(etf), visitor)
 	}
 
 	tfDiff.IgnoreChanges(ignoredKeySet)
@@ -277,6 +279,7 @@ func doIgnoreChanges(tfs shim.SchemaMap, ps map[string]*SchemaInfo, olds, news r
 //
 // See makePropertyDiff for more details.
 func makeDetailedDiff(
+	ctx context.Context,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	olds, news resource.PropertyMap,
@@ -299,15 +302,15 @@ func makeDetailedDiff(
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE
