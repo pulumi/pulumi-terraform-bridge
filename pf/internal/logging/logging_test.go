@@ -26,6 +26,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestLogging(t *testing.T) {
@@ -82,6 +84,29 @@ func TestLogging(t *testing.T) {
 			},
 			logs: []log{{sev: diag.Warning, msg: `provider\=random@4.12.0`}},
 		},
+		{
+			name: "User Logging",
+			opts: LogOptions{URN: urn},
+			emit: func(ctx context.Context) {
+				log := tfbridge.GetLogger(ctx)
+				log.Warn("warn")
+				log.Status().Info("info - status")
+
+			},
+			logs: []log{
+				{
+					urn: urn,
+					msg: "warn",
+					sev: diag.Warning,
+				},
+				{
+					urn:       urn,
+					msg:       "info - status",
+					sev:       diag.Info,
+					ephemeral: true,
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -100,6 +125,7 @@ func TestLogging(t *testing.T) {
 			for i := range c.logs {
 				assert.Equal(t, c.logs[i].sev, s.logs[i].sev)
 				assert.Equal(t, c.logs[i].urn, s.logs[i].urn)
+				assert.Equal(t, c.logs[i].ephemeral, s.logs[i].ephemeral)
 				assert.Regexp(t, c.logs[i].msg, s.logs[i].msg)
 			}
 		})
