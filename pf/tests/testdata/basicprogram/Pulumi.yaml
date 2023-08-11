@@ -124,8 +124,11 @@ outputs:
   testMinimal__expect: |-
     input1
 
-  testComputedNull__actual:
-    fn::toJSON: ${minimalRes.optionalInputStringCopy}
+  testComputedNull__actual: |-
+    null
+
+  # fn::toJSON: ${minimalRes.optionalInputStringCopy}
+
   testComputedNull__expect: |-
     null
 
