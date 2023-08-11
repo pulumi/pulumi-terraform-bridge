@@ -66,8 +66,14 @@ func upgradeResourceState(p *schema.Provider, res *schema.Resource,
 	if err != nil {
 		return nil, err
 	}
-	// Normalize the value and fill in any missing blocks.
-	v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
+
+	// Opt-out of normalization under a flag. Normalization replaces nulls with empty blocks for the state value,
+	// but when processing config the codebase calls NewResourceConfigShimmed which in turn calls
+	// ConfigValueFromHCL2Block which removes empty blocks. This leads to non-empty diffs.
+	if GetInstanceStateStrategy(v2Resource{res}) != CtyInstanceState {
+		// Normalize the value and fill in any missing blocks.
+		v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
+	}
 
 	// Convert the value back to an InstanceState.
 	newState, err := res.ShimInstanceStateFromValue(v)
