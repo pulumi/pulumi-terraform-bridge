@@ -83,8 +83,14 @@ func ResourceWebACL() *schema.Resource {
 				name := idParts[1]
 				scope := idParts[2]
 				d.SetId(id)
-				d.Set("name", name)
-				d.Set("scope", scope)
+				err := d.Set("name", name)
+				if err != nil {
+					return nil, err
+				}
+				err = d.Set("scope", scope)
+				if err != nil {
+					return nil, err
+				}
 				return []*schema.ResourceData{d}, nil
 			},
 		},

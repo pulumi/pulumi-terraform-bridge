@@ -47,31 +47,6 @@ func ruleLabelsSchema() *schema.Schema {
 	}
 }
 
-func ruleGroupRootStatementSchema(level int) *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
-		Required: true,
-		MaxItems: 1,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"and_statement":                         statementSchema(level - 1),
-				"byte_match_statement":                  byteMatchStatementSchema(),
-				"geo_match_statement":                   geoMatchStatementSchema(),
-				"ip_set_reference_statement":            ipSetReferenceStatementSchema(),
-				"label_match_statement":                 labelMatchStatementSchema(),
-				"not_statement":                         statementSchema(level - 1),
-				"or_statement":                          statementSchema(level - 1),
-				"rate_based_statement":                  rateBasedStatementSchema(level - 1),
-				"regex_match_statement":                 regexMatchStatementSchema(),
-				"regex_pattern_set_reference_statement": regexPatternSetReferenceStatementSchema(),
-				"size_constraint_statement":             sizeConstraintSchema(),
-				"sqli_match_statement":                  sqliMatchStatementSchema(),
-				"xss_match_statement":                   xssMatchStatementSchema(),
-			},
-		},
-	}
-}
-
 func statementSchema(level int) *schema.Schema {
 	if level > 1 {
 		return &schema.Schema{
