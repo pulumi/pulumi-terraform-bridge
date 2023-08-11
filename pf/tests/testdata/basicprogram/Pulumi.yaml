@@ -127,7 +127,12 @@ outputs:
   testComputedNull__actual: |-
     null
 
-  # fn::toJSON: ${minimalRes.optionalInputStringCopy}
+  # TODO: https://github.com/pulumi/pulumi-yaml/issues/492
+  # The `null` above should be this:
+  #
+  #     fn::toJSON: ${minimalRes.optionalInputStringCopy}
+  #
+  # We should re-enable the test when pulumi-yaml#492 is closed.
 
   testComputedNull__expect: |-
     null
