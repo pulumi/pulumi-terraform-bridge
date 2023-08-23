@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -97,7 +96,7 @@ type Main struct {
 	GetMappingHandler map[string]MultiMappingHandler
 }
 
-func (m Main) Server(host *provider.HostClient, module, version string) (pulumirpc.ResourceProviderServer, error) {
+func (m Main) Server(host *provider.HostClient, module, version string) (rpc.ResourceProviderServer, error) {
 	servers := make([]rpc.ResourceProviderServer, len(m.Servers))
 	for i, s := range m.Servers {
 		var err error
