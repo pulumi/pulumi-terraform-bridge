@@ -21,14 +21,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Main launches the tfbridge plugin for a given package pkg and provider prov.
-func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte, opts ...Option) {
+func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
 
@@ -69,20 +67,7 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte, op
 	// Initialize Terraform logging.
 	prov.P.InitLogging()
 
-	if err := Serve(pkg, version, prov, pulumiSchema, opts...); err != nil {
+	if err := Serve(pkg, version, prov, pulumiSchema); err != nil {
 		cmdutil.ExitError(err.Error())
-	}
-}
-
-type Option func(*opts)
-
-type opts struct {
-	muxWith []func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error)
-}
-
-// This is an experimental API.
-func MuxWith(s func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error)) Option {
-	return func(opts *opts) {
-		opts.muxWith = append(opts.muxWith, s)
 	}
 }
