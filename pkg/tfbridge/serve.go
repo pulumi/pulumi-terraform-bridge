@@ -26,15 +26,10 @@ import (
 
 // Serve fires up a Pulumi resource provider listening to inbound gRPC traffic,
 // and translates calls from Pulumi into actions against the provided Terraform Provider.
-func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte, options ...Option) error {
-	opts := opts{}
-	for _, applyOption := range options {
-		applyOption(&opts)
-	}
-
+func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte) error {
 	// Create a new resource provider server and listen for and serve incoming connections.
 	return provider.Main(module, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		if len(opts.muxWith) > 0 {
+		if info.MuxWith != nil && len(info.MuxWith) > 0 {
 			// If we have multiple providers to serve, Mux them together.
 
 			var mapping muxer.DispatchTable
@@ -51,8 +46,8 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 					return NewProvider(context.Background(), host, module, version, info.P, info, pulumiSchema), nil
 				},
 			}}
-			for _, f := range opts.muxWith {
-				servers = append(servers, muxer.Endpoint{Server: f})
+			for _, f := range info.MuxWith {
+				servers = append(servers, muxer.Endpoint{Server: f.GetInstance})
 			}
 
 			return muxer.Main{
