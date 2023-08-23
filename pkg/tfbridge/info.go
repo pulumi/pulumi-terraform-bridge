@@ -32,6 +32,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 const (
@@ -120,6 +121,8 @@ type ProviderInfo struct {
 	// the bridge completed its original version based on the TF schema.
 	// A hook to enable custom schema modifications specific to a provider.
 	SchemaPostProcessor func(spec *pschema.PackageSpec)
+
+	MuxWith []muxer.Provider
 
 	// Disables validation of provider-level configuration for Plugin Framework based providers.
 	// Hybrid providers that utilize a mixture of Plugin Framework and SDKv2 based resources may
