@@ -47,6 +47,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
@@ -864,6 +865,27 @@ func (g *Generator) Generate() error {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
+	if g.info.MuxWith != nil {
+		g.debug("Creating muxed schema from MuxWith setting %+v", g.info.MuxWith)
+		muxSchemas := make([]pschema.PackageSpec, len(g.info.MuxWith)+1)
+		muxSchemas[0] = pulumiPackageSpec
+		for i, v := range g.info.MuxWith {
+			spec, err := v.GetSpec()
+			if err != nil {
+				return err
+			}
+			muxSchemas[i+1] = spec
+		}
+		dispatchTable, muxSpec, err := muxer.MergeSchemasAndComputeDispatchTable(muxSchemas)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create muxer schema")
+		}
+		err = metadata.Set(g.info.MetadataInfo.Data, "muxer", dispatchTable)
+		if err != nil {
+			return fmt.Errorf("[pkg/tfgen] failed to add muxer to MetadataInfo.Data: %w", err)
+		}
+		pulumiPackageSpec = muxSpec
+	}
 	// Apply schema post-processing if defined in the provider.
 	if g.info.SchemaPostProcessor != nil {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
