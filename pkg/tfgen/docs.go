@@ -1050,6 +1050,17 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 }
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
+	var token string
+	if p.info != nil && p.info.GetTok() != "" {
+		token = p.info.GetTok().String()
+	}
+	defer func() {
+		contract.Assertf(!strings.Contains(p.ret.Import, "erraform"),
+			"parseImports(token=%q) should not render the string 'erraform' in its emitted markdown.\n"+
+				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
+			token, strings.Join(subsection, "\n"), p.ret.Import)
+	}()
+
 	// check for import overwrites
 	info := p.info
 	if info != nil {
@@ -1063,12 +1074,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 	}
 
-	var token string
-	if p.info != nil && p.info.GetTok() != "" {
-		token = p.info.GetTok().String()
-	}
-
-	if i, ok, err := tryParseV2Imports(token, subsection); ok && err == nil {
+	if i, ok := tryParseV2Imports(token, subsection); ok {
 		p.ret.Import = i
 		return
 	}
@@ -1118,8 +1124,8 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 				}
 			}
 			var tok string
-			if p.info != nil && p.info.GetTok() != "" {
-				tok = p.info.GetTok().String()
+			if token != "" {
+				tok = token
 			} else {
 				tok = "MISSING_TOK"
 			}
@@ -1140,22 +1146,19 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	}
 }
 
-var (
-	forceRecognize        = os.Getenv("PULUMI_FORCE_RECOGNIZE_IMPORT") == "true"
-	forceRecognizeCounter = 0
-)
-
 // Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
 // recognized, patches up instructoins to make sense for the Pulumi projection.
-func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, error) {
+func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) {
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "## Import\n\n")
 
 	markdown := strings.Join(markdownLines, "\n")
 	pn := parseNode(markdown)
 	if pn == nil {
-		return "", false, nil
+		return "", false
 	}
+
+	foundCode := false
 
 	for {
 		recognized := false
@@ -1178,6 +1181,7 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 				if ok, _ /* TFtype */, name, id := parseImportCode(code); ok {
 					emitImportCodeBlock(&out, typeToken, name, id)
 					recognized = ok
+					foundCode = true
 				}
 			}
 		case bf.Heading:
@@ -1196,23 +1200,17 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 			}
 		}
 		if !recognized {
-			if forceRecognize {
-				err := os.WriteFile(fmt.Sprintf("/tmp/forcereq-%d", forceRecognizeCounter),
-					[]byte(markdown), 0755)
-				forceRecognizeCounter++
-				if err != nil {
-					panic(err)
-				}
-			}
-			return "", false, nil
+			return "", false
 		}
 		pn = pn.Next
 		if pn == nil {
 			break
 		}
 	}
-
-	return out.String(), true, nil
+	if !foundCode {
+		return "", false
+	}
+	return out.String(), true
 }
 
 func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
