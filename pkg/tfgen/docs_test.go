@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
@@ -808,9 +809,10 @@ func TestOverlayArgsToArgs(t *testing.T) {
 
 func TestParseImports_NoOverrides(t *testing.T) {
 	var tests = []struct {
-		input    []string
-		token    tokens.Token
-		expected string
+		input        []string
+		token        tokens.Token
+		expected     string
+		expectedFile string
 	}{
 		{
 			input: []string{
@@ -840,31 +842,33 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			expected: "## Import\n\n<break><break>```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
 		},
 		{
-			input:    readlines(t, "test_data/parse-imports/accessanalyzer.md"),
-			token:    "aws:accessanalyzer/analyzer:Analyzer",
-			expected: readfile(t, "test_data/parse-imports/accessanalyzer-expected.md"),
+			input:        readlines(t, "test_data/parse-imports/accessanalyzer.md"),
+			token:        "aws:accessanalyzer/analyzer:Analyzer",
+			expectedFile: "test_data/parse-imports/accessanalyzer-expected.md",
 		},
 		{
-			input:    readlines(t, "test_data/parse-imports/gameliftconfig.md"),
-			token:    "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
-			expected: readfile(t, "test_data/parse-imports/gameliftconfig-expected.md"),
+			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
+			token:        "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
+			expectedFile: "test_data/parse-imports/gameliftconfig-expected.md",
 		},
 		{
-			input:    readlines(t, "test_data/parse-imports/gameliftconfig.md"),
-			token:    "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
-			expected: readfile(t, "test_data/parse-imports/gameliftconfig-expected.md"),
+			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
+			token:        "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
+			expectedFile: "test_data/parse-imports/gameliftconfig-expected.md",
 		},
 		{
-			input:    readlines(t, "test_data/parse-imports/lambdalayer.md"),
-			token:    "aws:lambda/layerVersion:LayerVersion",
-			expected: readfile(t, "test_data/parse-imports/lambdalayer-expected.md"),
+			input:        readlines(t, "test_data/parse-imports/lambdalayer.md"),
+			token:        "aws:lambda/layerVersion:LayerVersion",
+			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
 		},
 		{
-			input:    readlines(t, "test_data/parse-imports/networkfirewall.md"),
-			token:    "aws:networkfirewall/resourcePolicy:ResourcePolicy",
-			expected: readfile(t, "test_data/parse-imports/networkfirewall-expected.md"),
+			input:        readlines(t, "test_data/parse-imports/networkfirewall.md"),
+			token:        "aws:networkfirewall/resourcePolicy:ResourcePolicy",
+			expectedFile: "test_data/parse-imports/networkfirewall-expected.md",
 		},
 	}
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
 	for _, tt := range tests {
 		parser := tfMarkdownParser{
@@ -873,8 +877,14 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			},
 		}
 		parser.parseImports(tt.input)
-
-		assert.Equal(t, tt.expected, parser.ret.Import)
+		actual := parser.ret.Import
+		if tt.expectedFile != "" {
+			if accept {
+				writefile(t, tt.expectedFile, []byte(actual))
+			}
+			tt.expected = readfile(t, tt.expectedFile)
+		}
+		assert.Equal(t, tt.expected, actual)
 	}
 }
 
@@ -1112,6 +1122,12 @@ func readfile(t *testing.T, file string) string {
 	bytes, err := os.ReadFile(file)
 	require.NoError(t, err)
 	return string(bytes)
+}
+
+func writefile(t *testing.T, file string, bytes []byte) {
+	t.Helper()
+	err := os.WriteFile(file, bytes, 0755)
+	require.NoError(t, err)
 }
 
 func readlines(t *testing.T, file string) []string {

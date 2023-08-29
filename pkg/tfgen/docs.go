@@ -1216,9 +1216,9 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 }
 
 func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
-	fmt.Fprintf(w, "```sh\n")
+	fmt.Fprintf(w, "```sh<break>\n")
 	fmt.Fprintf(w, "$ pulumi import %s %s %s\n", typeToken, name, id)
-	fmt.Fprintf(w, "```\n")
+	fmt.Fprintf(w, "<break>```<break>\n")
 }
 
 var importCodePattern = regexp.MustCompile(
