@@ -1222,7 +1222,7 @@ func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
 }
 
 var importCodePattern = regexp.MustCompile(
-	`^[%$] (?:pulumi|terraform) import ([^.]+)[.]([^\s]+)\s*([^\s]+)\s*$`)
+	`^[%$] (?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //

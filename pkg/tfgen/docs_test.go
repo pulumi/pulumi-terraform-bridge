@@ -849,6 +849,16 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:    "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
 			expected: readfile(t, "test_data/parse-imports/gameliftconfig-expected.md"),
 		},
+		{
+			input:    readlines(t, "test_data/parse-imports/gameliftconfig.md"),
+			token:    "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
+			expected: readfile(t, "test_data/parse-imports/gameliftconfig-expected.md"),
+		},
+		{
+			input:    readlines(t, "test_data/parse-imports/lambdalayer.md"),
+			token:    "aws:lambda/layerVersion:LayerVersion",
+			expected: readfile(t, "test_data/parse-imports/lambdalayer-expected.md"),
+		},
 	}
 
 	for _, tt := range tests {
