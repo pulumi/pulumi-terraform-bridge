@@ -16,6 +16,7 @@
 package tfgen
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"os"
@@ -838,6 +839,11 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:    "snowflake:index/apiIntegration:ApiIntegration",
 			expected: "## Import\n\n<break><break>```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
 		},
+		{
+			input:    readlines(t, "test_data/parse-imports/accessanalyzer.md"),
+			token:    "aws:accessanalyzer/analyzer:Analyzer",
+			expected: readfile(t, "test_data/parse-imports/accessanalyzer-expected.md"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -1079,4 +1085,26 @@ func (r *mockResource) GetDocs() *tfbridge.DocInfo {
 
 func (r *mockResource) GetTok() tokens.Token {
 	return r.token
+}
+
+func readfile(t *testing.T, file string) string {
+	t.Helper()
+	bytes, err := os.ReadFile(file)
+	require.NoError(t, err)
+	return string(bytes)
+}
+
+func readlines(t *testing.T, file string) []string {
+	t.Helper()
+	f, err := os.Open(file)
+	require.NoError(t, err)
+	defer f.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	return lines
 }
