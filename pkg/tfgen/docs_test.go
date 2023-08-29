@@ -1126,7 +1126,7 @@ func readfile(t *testing.T, file string) string {
 
 func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
-	err := os.WriteFile(file, bytes, 0755)
+	err := os.WriteFile(file, bytes, 0600)
 	require.NoError(t, err)
 }
 
