@@ -1222,7 +1222,15 @@ func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
 }
 
 var importCodePattern = regexp.MustCompile(
-	`^[%$] (?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+	`^[%$] (?:pulumi|terraform) import` +
+		`[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+
+// Data correction: ignore the first of two acidentally repeated tokens such as:
+//
+//	% pulumi import aws_n_policy.example aws_n_policy.example id
+var importCodePattern2 = regexp.MustCompile(
+	`^[%$] (?:pulumi|terraform) import[\\\s]+[^\s]+` +
+		`[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //
@@ -1236,6 +1244,10 @@ var importCodePattern = regexp.MustCompile(
 func parseImportCode(code string) (bool, string, string, string) {
 	if importCodePattern.MatchString(code) {
 		matches := importCodePattern.FindStringSubmatch(code)
+		return true, matches[1], matches[2], matches[3]
+	}
+	if importCodePattern2.MatchString(code) {
+		matches := importCodePattern2.FindStringSubmatch(code)
 		return true, matches[1], matches[2], matches[3]
 	}
 	return false, "", "", ""

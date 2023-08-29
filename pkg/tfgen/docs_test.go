@@ -859,6 +859,11 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:    "aws:lambda/layerVersion:LayerVersion",
 			expected: readfile(t, "test_data/parse-imports/lambdalayer-expected.md"),
 		},
+		{
+			input:    readlines(t, "test_data/parse-imports/networkfirewall.md"),
+			token:    "aws:networkfirewall/resourcePolicy:ResourcePolicy",
+			expected: readfile(t, "test_data/parse-imports/networkfirewall-expected.md"),
+		},
 	}
 
 	for _, tt := range tests {
