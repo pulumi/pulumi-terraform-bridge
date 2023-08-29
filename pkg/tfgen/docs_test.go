@@ -844,6 +844,11 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:    "aws:accessanalyzer/analyzer:Analyzer",
 			expected: readfile(t, "test_data/parse-imports/accessanalyzer-expected.md"),
 		},
+		{
+			input:    readlines(t, "test_data/parse-imports/gameliftconfig.md"),
+			token:    "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
+			expected: readfile(t, "test_data/parse-imports/gameliftconfig-expected.md"),
+		},
 	}
 
 	for _, tt := range tests {

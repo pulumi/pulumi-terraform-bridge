@@ -1141,13 +1141,15 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 }
 
 var (
-	forceRecognize = os.Getenv("PULUMI_FORCE_RECOGNIZE_IMPORT") == "true"
+	forceRecognize        = os.Getenv("PULUMI_FORCE_RECOGNIZE_IMPORT") == "true"
+	forceRecognizeCounter = 0
 )
 
 // Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
 // recognized, patches up instructoins to make sense for the Pulumi projection.
 func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, error) {
 	var out bytes.Buffer
+	fmt.Fprintf(&out, "## Import\n\n")
 
 	markdown := strings.Join(markdownLines, "\n")
 	pn := parseNode(markdown)
@@ -1171,7 +1173,7 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 				// }
 				// ```
 				recognized = true
-			case "console":
+			case "console", "":
 				// Recognize import example codeblocks.
 				if ok, _ /* TFtype */, name, id := parseImportCode(code); ok {
 					emitImportCodeBlock(&out, typeToken, name, id)
@@ -1181,8 +1183,7 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 		case bf.Heading:
 			if pn.FirstChild != nil && pn.FirstChild.Type == bf.Text {
 				if string(pn.FirstChild.Literal) == "Import" {
-					// Propagate "## Import" heading.
-					fmt.Fprintf(&out, "## Import\n\n")
+					// Skip "## Import" heading.
 					recognized = true
 				}
 			}
@@ -1196,7 +1197,12 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool, 
 		}
 		if !recognized {
 			if forceRecognize {
-				panic("UNRECOGNIZED NODE " + fmt.Sprintf("%v", pn.Type))
+				err := os.WriteFile(fmt.Sprintf("/tmp/forcereq-%d", forceRecognizeCounter),
+					[]byte(markdown), 0755)
+				forceRecognizeCounter++
+				if err != nil {
+					panic(err)
+				}
 			}
 			return "", false, nil
 		}
@@ -1215,7 +1221,8 @@ func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
 	fmt.Fprintf(w, "```\n")
 }
 
-var importCodePattern = regexp.MustCompile(`^[%] pulumi import (\w+)[.](\w+)\s*(\w+)\s*`)
+var importCodePattern = regexp.MustCompile(
+	`^[%$] (?:pulumi|terraform) import ([^.]+)[.]([^\s]+)\s*([^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //
