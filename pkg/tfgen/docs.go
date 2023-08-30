@@ -1178,8 +1178,8 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) 
 				recognized = true
 			case "console", "":
 				// Recognize import example codeblocks.
-				if ok, _ /* TFtype */, name, id := parseImportCode(code); ok {
-					emitImportCodeBlock(&out, typeToken, name, id)
+				if parsed, ok := parseImportCode(code); ok {
+					emitImportCodeBlock(&out, typeToken, parsed.Name, parsed.ID)
 					recognized = ok
 					foundCode = true
 				}
@@ -1232,23 +1232,29 @@ var importCodePattern2 = regexp.MustCompile(
 
 // Recognize import example codeblocks.
 //
-// I.E, given:
+// Example:
 //
-//	s := "% pulumi import aws_accessanalyzer_analyzer.example example"
-//
-// Returns this:
-//
-//	parseImportCode(s) == (true, "aws_accessanalyzer_analyzer", "example", "example")
-func parseImportCode(code string) (bool, string, string, string) {
+//	s := "% pulumi import aws_accessanalyzer_analyzer.example exampleID"
+//	v, ok := parseImportCode(s)
+//	v.Name == "example"
+//	v.ID == "exampleID"
+func parseImportCode(code string) (struct {
+	Name string
+	ID   string
+}, bool) {
+	type ret struct {
+		Name string
+		ID   string
+	}
 	if importCodePattern.MatchString(code) {
 		matches := importCodePattern.FindStringSubmatch(code)
-		return true, matches[1], matches[2], matches[3]
+		return ret{Name: matches[2], ID: matches[3]}, true
 	}
 	if importCodePattern2.MatchString(code) {
 		matches := importCodePattern2.FindStringSubmatch(code)
-		return true, matches[1], matches[2], matches[3]
+		return ret{Name: matches[2], ID: matches[3]}, true
 	}
-	return false, "", "", ""
+	return ret{}, false
 }
 
 func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
