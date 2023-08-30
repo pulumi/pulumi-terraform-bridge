@@ -1,0 +1,24 @@
+name: autoname-program
+runtime: yaml
+resources:
+
+  autonamedResource:
+    type: testbridge:index/testres:AutoNameRes
+
+  manuallyNamedResource:
+    type: testbridge:index/testres:AutoNameRes
+    properties:
+      name: "manualName"
+
+outputs:
+
+  test_autoname_starts_with_resource_name__actual:
+    fn::select:
+      - 0
+      - fn::split:
+        - "-"
+        - ${autonamedResource.name}
+  test_autoname_starts_with_resource_name__expect: "autonamedResource"
+
+  test_autoname_respects_manual__actual: ${manuallyNamedResource.name}
+  test_autoname_respects_manual__expect: "manualName"

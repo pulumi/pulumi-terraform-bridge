@@ -34,7 +34,7 @@ var testBridgeMetadata []byte
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
 func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
-	return tfbridge.ProviderInfo{
+	info := tfbridge.ProviderInfo{
 		Name:        "testbridge",
 		P:           tfpf.ShimProvider(&syntheticProvider{}),
 		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
@@ -79,6 +79,9 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 					},
 				},
 			},
+			"testbridge_testnestattr": {
+				Tok: "testbridge:index/testnestattr:Testnestattr",
+			},
 			"testbridge_testcompres":   {Tok: "testbridge:index/testres:Testcompres"},
 			"testbridge_testconfigres": {Tok: "testbridge:index/testres:TestConfigRes"},
 
@@ -93,7 +96,8 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 				},
 			},
 
-			"testbridge_privst": {Tok: "testbridge:index/testres:Privst"},
+			"testbridge_privst":       {Tok: "testbridge:index/testres:Privst"},
+			"testbridge_autoname_res": {Tok: "testbridge:index/testres:AutoNameRes"},
 		},
 
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -115,6 +119,10 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
+
+	info.SetAutonaming(255, "-")
+
+	return info
 }
 
 type syntheticProvider struct{}
@@ -194,9 +202,11 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 	return []func() resource.Resource{
 		newTestres,
 		newTestnest,
+		newTestnestattr,
 		newTestCompRes,
 		newTestConfigRes,
 		newTestDefaultInfoRes,
 		newPrivst,
+		newAutoNameRes,
 	}
 }

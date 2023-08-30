@@ -398,8 +398,10 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 	if err != nil {
 		return nil, err
 	}
-	if err := m.host.Close(); err != nil {
-		return nil, err
+	if m.host != nil {
+		if err := m.host.Close(); err != nil {
+			return nil, err
+		}
 	}
 	// Here we override the underlying host. This should replace the host instance of
 	// each subsidiary provider.

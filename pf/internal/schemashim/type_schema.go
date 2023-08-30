@@ -17,8 +17,8 @@ package schemashim
 import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -93,7 +93,9 @@ func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
 }
 
 func (*typeSchema) DefaultValue() (interface{}, error) {
-	panic("DefaultValue() should not be called during schema generation")
+	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
+	// returning nil is better than a panic.
+	return nil, bridge.ErrSchemaDefaultValue
 }
 
 func (*typeSchema) Description() string {

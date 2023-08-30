@@ -60,6 +60,27 @@ const (
 	TypeSet
 )
 
+func (i ValueType) String() string {
+	switch i {
+	case TypeBool:
+		return "Bool"
+	case TypeInt:
+		return "Int"
+	case TypeFloat:
+		return "Float"
+	case TypeString:
+		return "String"
+	case TypeList:
+		return "List"
+	case TypeMap:
+		return "Map"
+	case TypeSet:
+		return "Set"
+	default:
+		return ""
+	}
+}
+
 type SchemaDefaultFunc func() (interface{}, error)
 
 type SchemaStateFunc func(interface{}) string
@@ -173,7 +194,7 @@ type Provider interface {
 	Configure(c ResourceConfig) error
 	Diff(t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
 	Apply(t string, s InstanceState, d InstanceDiff) (InstanceState, error)
-	Refresh(t string, s InstanceState) (InstanceState, error)
+	Refresh(t string, s InstanceState, c ResourceConfig) (InstanceState, error)
 
 	ReadDataDiff(t string, c ResourceConfig) (InstanceDiff, error)
 	ReadDataApply(t string, d InstanceDiff) (InstanceState, error)

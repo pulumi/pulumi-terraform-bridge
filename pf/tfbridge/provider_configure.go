@@ -29,6 +29,8 @@ import (
 func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
+	p.lastKnownProviderConfig = inputs
+
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
 	if err != nil {
 		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)

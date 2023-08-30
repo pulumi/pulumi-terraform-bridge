@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -41,7 +42,8 @@ func TestRegress940(t *testing.T) {
 		}),
 	}
 
-	result, _, err := tfbridge.MakeTerraformInputs(instance, config, olds, news, shimmedR.Schema(), map[string]*tfbridge.SchemaInfo{})
+	ctx := context.Background()
+	result, _, err := tfbridge.MakeTerraformInputs(ctx, instance, config, olds, news, shimmedR.Schema(), map[string]*tfbridge.SchemaInfo{})
 
 	t.Run("no error with empty keys", func(t *testing.T) {
 		assert.NoError(t, err)

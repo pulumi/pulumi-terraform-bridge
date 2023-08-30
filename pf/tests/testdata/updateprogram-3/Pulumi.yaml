@@ -58,5 +58,5 @@ outputs:
   pseudoRandomNumberUpdated__actual: ${pseudoRandomNumber.suggestionUpdated}
   pseudoRandomNumberUpdated__expect: true
 
-  unfairRandomNumberFair__actual: ${unfairoRandomNumber.fair}
+  unfairRandomNumberFair__actual: ${unfairRandomNumber.fair}
   unfairRandomNumberFair__expect: false

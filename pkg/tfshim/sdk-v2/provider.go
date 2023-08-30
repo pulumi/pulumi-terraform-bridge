@@ -101,15 +101,26 @@ func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 	return stateToShim(r, state), errors(diags)
 }
 
-func (p v2Provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p v2Provider) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
+	opts, err := getProviderOptions(p.opts)
+	if err != nil {
+		return nil, err
+	}
+
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
+
 	state, err := upgradeResourceState(p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
+
+	if c != nil {
+		state.RawConfig = makeResourceRawConfig(opts.diffStrategy, configFromShim(c), r)
+	}
+
 	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
 	return stateToShim(r, state), errors(diags)
 }

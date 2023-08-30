@@ -421,7 +421,7 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p *provider) Refresh(t string, s shim.InstanceState, _ shim.ResourceConfig) (shim.InstanceState, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")

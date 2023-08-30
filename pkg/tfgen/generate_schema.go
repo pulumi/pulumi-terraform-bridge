@@ -31,12 +31,20 @@ import (
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
+)
+
+const (
+	tfbridge20 = "tfbridge20"
 )
 
 type schemaGenerator struct {
@@ -316,68 +324,25 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	downstreamLicense := g.info.GetTFProviderLicense()
 	licenseTypeURL := getLicenseTypeURL(downstreamLicense)
 
-	const tfbridge20 = "tfbridge20"
-
 	readme := ""
 	if downstreamLicense != tfbridge.UnlicensedLicenseType {
 		readme = getDefaultReadme(g.pkg, g.info.Name, g.info.GetGitHubOrg(), downstreamLicense, licenseTypeURL,
 			g.info.GetGitHubHost(), g.info.Repository)
 	}
 
-	nodeData := map[string]interface{}{
-		"compatibility":           tfbridge20,
-		"readme":                  readme,
-		"disableUnionOutputTypes": true,
-	}
-	if jsi := g.info.JavaScript; jsi != nil {
-		nodeData["packageName"] = jsi.PackageName
-		nodeData["packageDescription"] = generateManifestDescription(g.info)
-		nodeData["dependencies"] = jsi.Dependencies
-		nodeData["devDependencies"] = jsi.DevDependencies
-		nodeData["typescriptVersion"] = jsi.TypeScriptVersion
-		nodeData["pluginName"] = jsi.PluginName
-		nodeData["pluginVersion"] = jsi.PluginVersion
-	}
-	spec.Language["nodejs"] = rawMessage(nodeData)
-
-	pythonData := map[string]interface{}{
-		"compatibility": tfbridge20,
-		"readme":        readme,
-	}
-	if pi := g.info.Python; pi != nil {
-		pythonData["requires"] = pi.Requires
-		if pyPackageName := pi.PackageName; pyPackageName != "" {
-			pythonData["packageName"] = pyPackageName
-		}
-	}
-	spec.Language["python"] = rawMessage(pythonData)
+	spec.Language["nodejs"] = nodeLanguageExtensions(&g.info, readme)
+	spec.Language["python"] = pythonLanguageExtensions(&g.info, readme)
 
 	if csi := g.info.CSharp; csi != nil {
-		dotnetData := map[string]interface{}{
-			"compatibility":     tfbridge20,
-			"packageReferences": csi.PackageReferences,
-			"namespaces":        csi.Namespaces,
-		}
-		if rootNamespace := csi.RootNamespace; rootNamespace != "" {
-			dotnetData["rootNamespace"] = rootNamespace
-		}
-		spec.Language["csharp"] = rawMessage(dotnetData)
+		spec.Language["csharp"] = csharpLanguageExtensions(&g.info)
 	}
 
 	if goi := g.info.Golang; goi != nil {
-		spec.Language["go"] = rawMessage(map[string]interface{}{
-			"importBasePath":                 goi.ImportBasePath,
-			"generateResourceContainerTypes": goi.GenerateResourceContainerTypes,
-			"generateExtraInputTypes":        true,
-		})
+		spec.Language["go"] = goLanguageExtensions(&g.info)
 	}
 
-	if javai := g.info.Java; javai != nil {
-		spec.Language["java"] = rawMessage(map[string]interface{}{
-			"basePackage":                     javai.BasePackage,
-			"buildFiles":                      javai.BuildFiles,
-			"gradleNexusPublishPluginVersion": javai.GradleNexusPublishPluginVersion,
-		})
+	if g.info.Java != nil {
+		spec.Language["java"] = javaLanguageExtensions(&g.info)
 	}
 
 	// Validate the schema.
@@ -390,6 +355,123 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	return spec, nil
+}
+
+func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+	// The definition is copied here to avoid linking the dependency in directly, see:
+	// https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1
+	type PackageInfo struct {
+		Packages                        map[string]string `json:"packages,omitempty"`
+		BasePackage                     string            `json:"basePackage"`
+		BuildFiles                      string            `json:"buildFiles"`
+		Dependencies                    map[string]string `json:"dependencies,omitempty"`
+		GradleNexusPublishPluginVersion string            `json:"gradleNexusPublishPluginVersion"`
+		GradleTest                      string            `json:"gradleTest"`
+	}
+	j := providerInfo.Java
+	if j == nil {
+		j = &tfbridge.JavaInfo{}
+	}
+	info := &PackageInfo{
+		Packages:                        j.Packages,
+		BasePackage:                     j.BasePackage,
+		BuildFiles:                      j.BuildFiles,
+		Dependencies:                    j.Dependencies,
+		GradleNexusPublishPluginVersion: j.GradleNexusPublishPluginVersion,
+		GradleTest:                      j.GradleTest,
+	}
+	return rawMessage(info)
+}
+
+func csharpLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+	c := providerInfo.CSharp
+	if c == nil {
+		c = &tfbridge.CSharpInfo{}
+	}
+	info := &csgen.CSharpPackageInfo{
+		Compatibility:                tfbridge20,
+		PackageReferences:            c.PackageReferences,
+		Namespaces:                   c.Namespaces,
+		RootNamespace:                c.RootNamespace,
+		DictionaryConstructors:       c.DictionaryConstructors,
+		ProjectReferences:            c.ProjectReferences,
+		LiftSingleValueMethodReturns: c.LiftSingleValueMethodReturns,
+		RespectSchemaVersion:         c.RespectSchemaVersion,
+	}
+	return rawMessage(info)
+}
+
+func goLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+	g := providerInfo.Golang
+	if g == nil {
+		g = &tfbridge.GolangInfo{}
+	}
+	info := &gogen.GoPackageInfo{
+		ImportBasePath:                 g.ImportBasePath,
+		GenerateResourceContainerTypes: g.GenerateResourceContainerTypes,
+		GenerateExtraInputTypes:        true,
+		ModulePath:                     g.ModulePath,
+		RootPackageName:                g.RootPackageName,
+		ModuleToPackage:                g.ModuleToPackage,
+		PackageImportAliases:           g.PackageImportAliases,
+		PulumiSDKVersion:               g.PulumiSDKVersion,
+		DisableFunctionOutputVersions:  g.DisableFunctionOutputVersions,
+		LiftSingleValueMethodReturns:   g.LiftSingleValueMethodReturns,
+		DisableInputTypeRegistrations:  g.DisableInputTypeRegistrations,
+		DisableObjectDefaults:          g.DisableObjectDefaults,
+		OmitExtraInputTypes:            g.OmitExtraInputTypes,
+		RespectSchemaVersion:           g.RespectSchemaVersion,
+		InternalDependencies:           g.InternalDependencies,
+	}
+	return rawMessage(info)
+}
+
+func pythonLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) pschema.RawMessage {
+	p := providerInfo.Python
+	if p == nil {
+		p = &tfbridge.PythonInfo{}
+	}
+	info := &pygen.PackageInfo{
+		Compatibility:                tfbridge20,
+		Readme:                       readme,
+		PackageName:                  p.PackageName,
+		PythonRequires:               p.PythonRequires,
+		Requires:                     p.Requires,
+		ModuleNameOverrides:          p.ModuleNameOverrides,
+		LiftSingleValueMethodReturns: p.LiftSingleValueMethodReturns,
+		RespectSchemaVersion:         p.RespectSchemaVersion,
+	}
+	info.PyProject.Enabled = p.PyProject.Enabled
+	return rawMessage(info)
+}
+
+func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) pschema.RawMessage {
+	j := providerInfo.JavaScript
+	if j == nil {
+		j = &tfbridge.JavaScriptInfo{}
+	}
+	info := &tsgen.NodePackageInfo{
+		Compatibility:                tfbridge20,
+		Readme:                       readme,
+		DisableUnionOutputTypes:      true,
+		PackageDescription:           generateManifestDescription(*providerInfo),
+		PackageName:                  j.PackageName,
+		Dependencies:                 j.Dependencies,
+		DevDependencies:              j.DevDependencies,
+		PeerDependencies:             j.PeerDependencies,
+		Resolutions:                  j.Resolutions,
+		TypeScriptVersion:            j.TypeScriptVersion,
+		ModuleToPackage:              j.ModuleToPackage,
+		ContainsEnums:                j.ContainsEnums,
+		ProviderNameToModuleName:     j.ProviderNameToModuleName,
+		PluginName:                   j.PluginName,
+		PluginVersion:                j.PluginVersion,
+		ExtraTypeScriptFiles:         j.ExtraTypeScriptFiles,
+		LiftSingleValueMethodReturns: j.LiftSingleValueMethodReturns,
+		RespectSchemaVersion:         j.RespectSchemaVersion,
+		UseTypeOnlyReferences:        j.UseTypeOnlyReferences,
+	}
+	return rawMessage(info)
 }
 
 func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,
@@ -1002,14 +1084,15 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 			// root module).
 			return res.Token().Module()
 		}
-		// Supplementary types are defined one level up from
-		// the module defining the resource.
-		return parentModule(res.Token().Module())
+		// Supplementary types are typically defined one level up from the module defining the resource, but may
+		// also be defined in the same module.
+		m := res.Token().Module()
+		return parentModuleOrSelf(m)
 	case *paths.DataSourceMemberPath:
-		dataSourceModule := pp.DataSourcePath.Token().Module()
-		// Supplementary types are defined one level up from
-		// the module defining the data source.
-		return parentModule(dataSourceModule)
+		// Supplementary types are typically defined one level up from the module defining the data source, but
+		// may also be defined in the same module.
+		m := pp.DataSourcePath.Token().Module()
+		return parentModuleOrSelf(m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
 	default:
@@ -1018,8 +1101,18 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 	}
 }
 
-func parentModule(m tokens.Module) tokens.Module {
-	return tokens.NewModuleToken(m.Package(), parentModuleName(m.Name()))
+func parentModuleOrSelf(self tokens.Module) tokens.Module {
+	if m, ok := parentModule(self); ok {
+		return m
+	}
+	return self
+}
+
+func parentModule(m tokens.Module) (tokens.Module, bool) {
+	if !strings.Contains(string(m.Name()), tokens.QNameDelimiter) {
+		return "", false
+	}
+	return tokens.NewModuleToken(m.Package(), parentModuleName(m.Name())), true
 }
 
 func parentModuleName(m tokens.ModuleName) tokens.ModuleName {

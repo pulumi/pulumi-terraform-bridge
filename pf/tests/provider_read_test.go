@@ -179,3 +179,52 @@ func TestImportRandomPassword(t *testing.T) {
 	}`
 	testutils.Replay(t, server, testCase)
 }
+
+func TestImportingResourcesWithBlocks(t *testing.T) {
+	// Importing a resource that has blocks such as Testnest resource used to panic. Ensure that it minimally
+	// succeeds.
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Read",
+	  "request": {
+	    "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+	    "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+	    "properties": {}
+	  },
+	  "response": {
+            "id": "*",
+            "inputs": "*",
+            "properties": {
+               	"id": "*",
+               	"rules": [],
+				"services": []
+            }
+          }
+	}`
+	testutils.Replay(t, server, testCase)
+}
+
+func TestImportingResourcesWithNestedAttributes(t *testing.T) {
+	// Importing a resource that has attribute blocks such as Testnest resource used to panic. Ensure that it minimally
+	// succeeds.
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Read",
+	  "request": {
+	    "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+	    "urn": "urn:pulumi:testing::testing::testbridge:index/testnestattr:Testnestattr::someresource",
+	    "properties": {}
+	  },
+	  "response": {
+		"id": "*",
+		"inputs": "*",
+		"properties": {
+			"id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+			"services": []
+		}
+      }
+	}`
+	testutils.Replay(t, server, testCase)
+}
