@@ -1368,6 +1368,7 @@ github.com/mattn/go-isatty v0.0.10/go.mod h1:qgIWMr58cqv1PHHyhnkY9lrL7etaEgOFcME
 github.com/mattn/go-isatty v0.0.11/go.mod h1:PhnuNfih5lzO57/f3n+odYbM4JtupLOxQOAqxQCu2WE=
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
+github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
 github.com/mattn/go-isatty v0.0.18 h1:DOKFKCQ7FNG2L1rbrmstDN4QVRdS89Nkh85u68Uwp98=
 github.com/mattn/go-isatty v0.0.18/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
@@ -1644,8 +1645,8 @@ github.com/pulumi/pulumi/sdk/v3 v3.76.1 h1:ItfwcLvxAyX+Pl+BPgx+J5mhKF3/LWOMls/vn
 github.com/pulumi/pulumi/sdk/v3 v3.76.1/go.mod h1:HiE9Wf+DVrg8Em1D6bxRCdDMsNkj8//vLCST73xH2Hc=
 github.com/pulumi/schema-tools v0.1.2 h1:Fd9xvUjgck4NA+7/jSk7InqCUT4Kj940+EcnbQKpfZo=
 github.com/pulumi/schema-tools v0.1.2/go.mod h1:62lgj52Tzq11eqWTIaKd+EVyYAu5dEcDJxMhTjvMO/k=
-github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9 h1:VHeasqoSdMgpxw8Rx46TybHixfnBlCk0i0JLDusNn4Y=
-github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9/go.mod h1:w029Faz4rGcWSr4gPHWjlzU7CdvbxwQNjgiYWBC0FzU=
+github.com/pulumi/terraform v1.4.0 h1:AqK+sODtmmogkVypm5zJB6M3c9NprC1qAur+rNuRKcY=
+github.com/pulumi/terraform v1.4.0/go.mod h1:w029Faz4rGcWSr4gPHWjlzU7CdvbxwQNjgiYWBC0FzU=
 github.com/pulumi/terraform-diff-reader v0.0.2 h1:kTE4nEXU3/SYXESvAIem+wyHMI3abqkI3OhJ0G04LLI=
 github.com/rakyll/embedmd v0.0.0-20171029212350-c8060a0752a2/go.mod h1:7jOTMgqac46PZcF54q6l2hkLEG8op93fZu61KmxWDV4=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
@@ -2312,6 +2313,7 @@ golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220731174439-a90be440212d/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.3.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
