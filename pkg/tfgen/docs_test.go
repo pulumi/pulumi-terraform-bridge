@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"text/template"
@@ -808,6 +809,9 @@ func TestOverlayArgsToArgs(t *testing.T) {
 }
 
 func TestParseImports_NoOverrides(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
+	}
 	var tests = []struct {
 		input        []string
 		token        tokens.Token
