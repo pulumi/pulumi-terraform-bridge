@@ -1062,7 +1062,9 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 				" 'terraform' in its emitted markdown.\n"+
 				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
 				token, strings.Join(subsection, "\n"), p.ret.Import)
-			p.sink.warn(message)
+			if p.sink != nil {
+				p.sink.warn(message)
+			}
 		}
 	}()
 
@@ -1224,16 +1226,17 @@ func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
 	fmt.Fprintf(w, "<break>```<break>\n")
 }
 
-var importCodePattern = regexp.MustCompile(
-	`^[%$] (?:pulumi|terraform) import` +
-		`[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
-
-// Data correction: ignore the first of two acidentally repeated tokens such as:
+// Parses import example codeblocks.
 //
-//	% pulumi import aws_n_policy.example aws_n_policy.example id
-var importCodePattern2 = regexp.MustCompile(
-	`^[%$] (?:pulumi|terraform) import[\\\s]+[^\s]+` +
-		`[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+// Example matching strings:
+//
+//	% pulumi import some_resource.name someID
+//	$ terraform import some_resource.name <some-ID>
+//	$ terraform import \
+//	      some_resource.name \
+//	      <some-ID>
+var importCodePattern = regexp.MustCompile(
+	`^[%$] (?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //
@@ -1253,10 +1256,6 @@ func parseImportCode(code string) (struct {
 	}
 	if importCodePattern.MatchString(code) {
 		matches := importCodePattern.FindStringSubmatch(code)
-		return ret{Name: matches[2], ID: matches[3]}, true
-	}
-	if importCodePattern2.MatchString(code) {
-		matches := importCodePattern2.FindStringSubmatch(code)
 		return ret{Name: matches[2], ID: matches[3]}, true
 	}
 	return ret{}, false

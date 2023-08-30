@@ -865,11 +865,6 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:        "aws:lambda/layerVersion:LayerVersion",
 			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
 		},
-		{
-			input:        readlines(t, "test_data/parse-imports/networkfirewall.md"),
-			token:        "aws:networkfirewall/resourcePolicy:ResourcePolicy",
-			expectedFile: "test_data/parse-imports/networkfirewall-expected.md",
-		},
 	}
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
