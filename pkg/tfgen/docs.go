@@ -1055,10 +1055,15 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		token = p.info.GetTok().String()
 	}
 	defer func() {
-		contract.Assertf(!strings.Contains(p.ret.Import, "erraform"),
-			"parseImports(token=%q) should not render the string 'erraform' in its emitted markdown.\n"+
+		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
+		containsTerraform := strings.Contains(strings.ToLower(p.ret.Import), "terraform")
+		if containsTerraform {
+			message := fmt.Sprintf("parseImports %q should not render the string"+
+				" 'terraform' in its emitted markdown.\n"+
 				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
-			token, strings.Join(subsection, "\n"), p.ret.Import)
+				token, strings.Join(subsection, "\n"), p.ret.Import)
+			p.sink.warn(message)
+		}
 	}()
 
 	// check for import overwrites
