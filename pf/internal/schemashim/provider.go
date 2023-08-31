@@ -86,7 +86,7 @@ func (p *SchemaOnlyProvider) Apply(t string, s shim.InstanceState,
 	panic("schemaOnlyProvider does not implement runtime operation Apply")
 }
 
-func (p *SchemaOnlyProvider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
+func (p *SchemaOnlyProvider) Refresh(string, shim.InstanceState, shim.ResourceConfig) (shim.InstanceState, error) {
 	panic("schemaOnlyProvider does not implement runtime operation Refresh")
 }
 

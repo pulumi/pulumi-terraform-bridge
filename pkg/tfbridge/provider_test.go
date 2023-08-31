@@ -213,7 +213,8 @@ func TestBuildConfig(t *testing.T) {
 		"configValue": resource.NewStringProperty("foo"),
 		"version":     resource.NewStringProperty("0.0.1"),
 	}
-	configOut, err := buildTerraformConfig(provider, configIn)
+	ctx := context.Background()
+	configOut, err := buildTerraformConfig(ctx, provider, configIn)
 	assert.NoError(t, err)
 
 	expected := provider.tf.NewResourceConfig(map[string]interface{}{
@@ -495,25 +496,10 @@ func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) [
 		News: pulumiIns,
 	})
 	assert.NoError(t, err)
-	assert.Len(t, checkResp.Failures, 3)
 	return checkResp.Failures
 }
 
-func TestProviderCheck(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"SecondResource": {
-			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["second_resource"]),
-			TFName: "second_resource",
-			Schema: &ResourceInfo{Tok: "SecondResource"},
-		},
-	}
-
-	failures := testCheckFailures(t, provider, "SecondResource")
-	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 	assert.Equal(t, "\"conflicting_property\": conflicts with conflicting_property2."+
 		" Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
@@ -524,21 +510,7 @@ func TestProviderCheck(t *testing.T) {
 	assert.Equal(t, "", failures[2].Property)
 }
 
-func TestProviderCheckV2(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"SecondResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["second_resource"]),
-			TFName: "second_resource",
-			Schema: &ResourceInfo{Tok: "SecondResource"},
-		},
-	}
-
-	failures := testCheckFailures(t, provider, "SecondResource")
-	sort.SliceStable(failures, func(i, j int) bool { return failures[i].Reason < failures[j].Reason })
+func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
 	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
@@ -550,14 +522,123 @@ func TestProviderCheckV2(t *testing.T) {
 	assert.Equal(t, "", failures[2].Property)
 }
 
-func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
+func TestProviderCheck(t *testing.T) {
+	testFailures := map[string]func(*testing.T, []*pulumirpc.CheckFailure){
+		"v1": testCheckFailuresV1,
+		"v2": testCheckFailuresV2,
+	}
+	for _, f := range factories {
+		provider := &Provider{
+			tf:     f.NewTestProvider(),
+			config: f.NewTestProvider().Schema(),
+		}
+
+		provider.resources = map[tokens.Type]Resource{
+			"SecondResource": {
+				TF:     provider.tf.ResourcesMap().Get("second_resource"),
+				TFName: "second_resource",
+				Schema: &ResourceInfo{Tok: "SecondResource"},
+			},
+		}
+
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			t.Run("failures", func(t *testing.T) {
+				failures := testCheckFailures(t, provider, "SecondResource")
+				assert.Len(t, failures, 3)
+				sort.SliceStable(failures, func(i, j int) bool {
+					return failures[i].Reason < failures[j].Reason
+				})
+				testFailures[f.SDKVersion()](t, failures)
+			})
+		})
+	}
+}
+
+func TestCheckCallback(t *testing.T) {
+	t.Parallel()
+	test := func(t *testing.T, p *Provider) {
+		testutils.ReplaySequence(t, p, `
+			[
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Configure",
+			    "request": {
+			      "args": {
+				"prop": "global"
+			      },
+			      "variables": {
+				"prop": "global"
+			      }
+			    },
+			    "response": {
+			      "supportsPreview": true
+			    }
+			  },
+			  {
+			    "method": "/pulumirpc.ResourceProvider/Check",
+			    "request": {
+			      "urn": "urn:pulumi:st::pg::testprovider:index/res:Res::r",
+			      "olds": {},
+			      "news": {},
+			      "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+			    },
+			    "response": {
+			      "inputs": {
+				"__defaults": [],
+				"arrayPropertyValues": ["global"]
+			      }
+			    }
+			  }
+			]`)
+	}
+
+	callback := func(
+		ctx context.Context, config, meta resource.PropertyMap,
+	) (resource.PropertyMap, error) {
+		// We test that we have access to the logger in this callback.
+		GetLogger(ctx).Status().Info("Did not panic")
+
+		config["arrayPropertyValues"] = resource.NewArrayProperty(
+			[]resource.PropertyValue{meta["prop"]},
+		)
+		return config, nil
+	}
+
+	for _, f := range factories {
+		f := f
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			t.Parallel()
+			p := &Provider{
+				tf:     f.NewTestProvider(),
+				config: f.NewTestProvider().Schema(),
+			}
+			p.resources = map[tokens.Type]Resource{
+				"testprovider:index/res:Res": {
+					TF:     p.tf.ResourcesMap().Get("example_resource"),
+					TFName: "example_resource",
+					Schema: &ResourceInfo{
+						Tok:              "testprovider:index/res:Res",
+						PreCheckCallback: callback,
+					},
+				},
+			}
+			test(t, p)
+		})
+	}
+}
+
+func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, checkRawConfig bool) {
 	urn := resource.NewURN("stack", "project", "", typeName, "name")
+	props, err := structpb.NewStruct(map[string]interface{}{
+		"rawConfigValue": "fromRawConfig",
+	})
+	require.NoError(t, err)
 	readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
 		Id:         string("resource-id"),
 		Urn:        string(urn),
 		Properties: nil,
+		Inputs:     props,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotNil(t, readResp.GetInputs())
 	assert.NotNil(t, readResp.GetProperties())
@@ -591,6 +672,19 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type) {
 		}), ins["setPropertyValues"])
 	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"),
 		ins["stringWithBadInterpolation"])
+
+	if checkRawConfig {
+		readResp, err := provider.Read(context.Background(), &pulumirpc.ReadRequest{
+			Id:     string("set-raw-config-id"),
+			Urn:    string(urn),
+			Inputs: props,
+		})
+		require.NoError(t, err)
+		outs, err := plugin.UnmarshalProperties(readResp.GetProperties(),
+			plugin.MarshalOptions{KeepUnknowns: true})
+		require.NoError(t, err)
+		assert.Equal(t, "fromRawConfig", outs["stringPropertyValue"].StringValue())
+	}
 
 	// Read again with the ID that results in all the optinal fields not being set
 	readResp, err = provider.Read(context.Background(), &pulumirpc.ReadRequest{
@@ -632,7 +726,7 @@ func TestProviderReadV1(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource")
+	testProviderRead(t, provider, "ExampleResource", false /* CheckRawConfig */)
 }
 
 func TestProviderReadV2(t *testing.T) {
@@ -648,7 +742,7 @@ func TestProviderReadV2(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource")
+	testProviderRead(t, provider, "ExampleResource", true /* CheckRawConfig */)
 }
 
 func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {
@@ -725,6 +819,86 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 	}
 
 	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
+}
+
+func TestCheck(t *testing.T) {
+	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		}
+		computeStringDefault := func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+			// We check that we have access to the logger when computing a default value.
+			GetLogger(ctx).Status().Info("Did not panic")
+
+			if v, ok := opts.PriorState["stringPropertyValue"]; ok {
+				require.Equal(t, resource.NewStringProperty("oldString"), opts.PriorValue)
+				return v.StringValue() + "!", nil
+			}
+			return nil, nil
+		}
+		provider.resources = map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+					Fields: map[string]*SchemaInfo{
+						"string_property_value": {
+							Default: &DefaultInfo{
+								ComputeDefault: computeStringDefault,
+							},
+						},
+					},
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+                      "__defaults": [],
+		      "stringPropertyValue": "oldString"
+		    },
+		    "news": {
+		      "arrayPropertyValues": []
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": ["stringPropertyValue"],
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": "oldString!"
+		    }
+		  }
+		}
+                `)
+		// If old value is missing it is ignored.
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+		      "__defaults": []
+		    },
+		    "news": {
+		      "arrayPropertyValues": []
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "__defaults": [],
+		      "arrayPropertyValues": []
+		    }
+		  }
+		}
+		`)
+	})
 }
 
 func TestCheckConfig(t *testing.T) {
@@ -1354,6 +1528,9 @@ func TestPreConfigureCallback(t *testing.T) {
 					vars resource.PropertyMap,
 					config shim.ResourceConfig,
 				) error {
+					// We check that we have access to the logger in this callback.
+					GetLogger(ctx).Status().Info("Did not panic")
+
 					if cv, ok := vars["configValue"]; ok {
 						// This used to panic when cv is a resource.Computed.
 						cv.StringValue()

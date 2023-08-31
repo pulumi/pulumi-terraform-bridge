@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -272,6 +273,140 @@ func TestTerraformInputs(t *testing.T) {
 	}
 }
 
+func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	typeString := (&schema.Schema{
+		Type: shim.TypeString,
+	}).Shim()
+
+	tests := map[string]struct {
+		maxItemsOne bool
+		oldState    resource.PropertyValue
+		newState    resource.PropertyValue
+		tfs         *schema.Schema
+		tfValue     interface{}
+	}{
+		// Scalars: The pulumi type is String.
+		// The TF type is [String] (either [n; T] or [1; T]).
+		"scalar-adding-max-items-one": {
+			// The TF type has changed from [n; T] to [1; T], changing the
+			// pulumi type from [T] -> T.
+			maxItemsOne: true,
+			oldState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			newState: resource.NewStringProperty("sc"),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}{"sc"},
+		},
+		"scalar-removing-max-items-one": {
+			// The TF type has changed from [1; T] to [n; T], changing the
+			// pulumi type from T -> [T].
+			maxItemsOne: false,
+			oldState:    resource.NewStringProperty("sc"),
+			newState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			tfs: &schema.Schema{
+				Type: shim.TypeList,
+				Elem: typeString,
+			},
+			tfValue: []interface{}{"sc"},
+		},
+
+		// Scalars: The pulumi type is String.
+		// The TF type is [String] (either [n; T] or [1; T]).
+		//
+		// Here we have empty values, which are handled differently.
+		"scalar-adding-null-max-items-one": {
+			// The TF type has changed from [n; T] to [1; T], changing the
+			// pulumi type from [T] -> T.
+			maxItemsOne: true,
+			oldState:    resource.NewNullProperty(),
+			newState:    resource.NewNullProperty(),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}(nil),
+		},
+		"scalar-removing-null-max-items-one": {
+			// The TF type has changed from [1; T] to [n; T], changing the
+			// pulumi type from T -> [T].
+			maxItemsOne: false,
+			oldState:    resource.NewArrayProperty([]resource.PropertyValue{}),
+			newState:    resource.NewArrayProperty([]resource.PropertyValue{}),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				Elem:     typeString,
+				MaxItems: 1,
+			},
+			tfValue: []interface{}(nil),
+		},
+		// // Lists: The pulumi type is [String].
+		// // The TF type is [[String]] (either [m; [n; T]] or [1; [n; T]]).
+		// //
+		// // This is different because we can't know the type of an empty list. It
+		// // could be of type [T] or [[T]]. In this case, we don't make an attempt
+		// // at promotion.
+		"list-adding-max-items-one": {
+			// The TF type has changed from [m; [n; T]] to [1; [n; T]], changing the
+			// pulumi type from [[T]] -> [T].
+			maxItemsOne: true,
+			oldState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("sc"),
+				})}),
+			newState: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("sc"),
+			}),
+			tfs: &schema.Schema{
+				Type:     shim.TypeList,
+				MaxItems: 1,
+				Elem: (&schema.Schema{
+					Type: shim.TypeList,
+					Elem: typeString,
+				}).Shim(),
+			},
+			tfValue: []interface{}{[]interface{}{"sc"}},
+		},
+	}
+	for name, tt := range tests {
+		tt := tt
+		t.Run(name, func(t *testing.T) {
+			olds := resource.PropertyMap{
+				"element": tt.oldState,
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			}
+			news := resource.PropertyMap{
+				"element": tt.newState,
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			}
+			tfs := schema.SchemaMap{"element": tt.tfs.Shim()}
+			result, _, err := makeTerraformInputs(
+				olds, news, tfs, nil /* ps */)
+			require.NoError(t, err)
+			assert.Equal(t, map[string]interface{}{
+				"element": tt.tfValue,
+			}, result)
+		})
+	}
+}
+
 type MyString string
 
 // TestTerraformOutputsWithSecretsSupported verifies that we translate Terraform outputs into Pulumi outputs and
@@ -501,12 +636,13 @@ func TestMetaProperties(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "example_resource"
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
@@ -514,13 +650,13 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state)
+			read2, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -528,7 +664,7 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -563,7 +699,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -576,12 +712,13 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "second_resource"
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
@@ -589,13 +726,13 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state)
+			read2, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -603,7 +740,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -640,7 +777,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -681,12 +818,13 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
+			ctx := context.Background()
 
 			const resName = "example_resource"
 			res := prov.ResourcesMap().Get("example_resource")
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state)
+			read, err := prov.Refresh(resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
@@ -694,7 +832,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = MakeTerraformState(ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -793,6 +931,10 @@ func TestDefaults(t *testing.T) {
 				"x1of1": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault("x1of1-value")},
 				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
+
+				// Default value application across types
+				"x2stringxbool": {Type: shim.TypeString},
+				"x2stringxint":  {Type: shim.TypeString},
 			})
 			ps := map[string]*SchemaInfo{
 				"eee": {Default: &DefaultInfo{Value: "EEE"}},
@@ -810,6 +952,12 @@ func TestDefaults(t *testing.T) {
 				"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
 				"www": {Default: &DefaultInfo{Value: "PSW"}},
 				"zzz": {Asset: &AssetTranslation{Kind: FileAsset}},
+
+				// Default applications where the Default.Value doesn't
+				// match all possible types because Pulumi and TF have
+				// different types.
+				"x2stringxbool": {Type: "bool", Default: &DefaultInfo{Value: true}},
+				"x2stringxint":  {Type: "int", Default: &DefaultInfo{Value: 1}},
 			}
 			olds := resource.PropertyMap{
 				defaultsKey: resource.NewPropertyValue([]interface{}{
@@ -842,8 +990,12 @@ func TestDefaults(t *testing.T) {
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
+
 					"x1of1",
+
+					"x2stringxbool", "x2stringxint",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -871,6 +1023,9 @@ func TestDefaults(t *testing.T) {
 
 				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
 				"x1of1": "x1of1-value",
+
+				"x2stringxbool": true,
+				"x2stringxint":  1,
 			}), outputs)
 
 			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
@@ -878,14 +1033,23 @@ func TestDefaults(t *testing.T) {
 			delete(olds, defaultsKey)
 			inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 			assert.NoError(t, err)
+
+			// Assert that types match their TF equivalent when in a TF shape.
+			assert.Equal(t, "true", inputs["x2stringxbool"])
+			assert.Equal(t, "1", inputs["x2stringxint"])
+
 			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
 			//sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll", "mm2", "mmm", "oo2", "uuu", "vvv", "www",
+					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
+
 					"x1of1",
+
+					"x2stringxbool", "x2stringxint",
 				},
 				"abc": "ABC",
 				"bbb": "BBB",
@@ -913,8 +1077,12 @@ func TestDefaults(t *testing.T) {
 				// xyz is NOT set as it has ExactlyOneOf with abc
 				"zzz": asset,
 
-				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
+				// x1of1 is set as it UNIQUELY has a default value in its
+				// ExactlyOneOf set (x1of1, x1of2, x1of3)
 				"x1of1": "x1of1-value",
+
+				"x2stringxbool": true,
+				"x2stringxint":  1,
 			}), outputs)
 		})
 	}
@@ -959,57 +1127,95 @@ func TestInvalidAsset(t *testing.T) {
 }
 
 func TestOverridingTFSchema(t *testing.T) {
-	result := MakeTerraformOutputs(
-		shimv1.NewProvider(testTFProvider),
-		map[string]interface{}{
-			"pulumi_override_tf_string_to_boolean":    MyString("true"),
-			"pulumi_override_tf_string_to_bool":       MyString("true"),
-			"pulumi_empty_tf_override":                MyString("true"),
-			"pulumi_override_tf_string_to_int":        MyString("1"),
-			"pulumi_override_tf_string_to_integer":    MyString("1"),
-			"tf_empty_string_to_pulumi_bool_override": MyString(""),
+
+	tfInputs := map[string]interface{}{
+		"pulumi_override_tf_string_to_boolean":    MyString("true"),
+		"pulumi_override_tf_string_to_bool":       MyString("true"),
+		"pulumi_empty_tf_override":                MyString("true"),
+		"pulumi_override_tf_string_to_int":        MyString("1"),
+		"pulumi_override_tf_string_to_integer":    MyString("1"),
+		"tf_empty_string_to_pulumi_bool_override": MyString(""),
+	}
+
+	tfSchema := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+		"pulumi_override_tf_string_to_boolean":    {Type: schemav1.TypeString},
+		"pulumi_override_tf_string_to_bool":       {Type: schemav1.TypeString},
+		"pulumi_empty_tf_override":                {Type: schemav1.TypeString},
+		"pulumi_override_tf_string_to_int":        {Type: schemav1.TypeString},
+		"pulumi_override_tf_string_to_integer":    {Type: schemav1.TypeString},
+		"tf_empty_string_to_pulumi_bool_override": {Type: schemav1.TypeString},
+	})
+
+	typeOverrides := map[string]*SchemaInfo{
+		"pulumi_override_tf_string_to_boolean": {
+			Type: "boolean",
 		},
-		shimv1.NewSchemaMap(map[string]*schemav1.Schema{
-			"pulumi_override_tf_string_to_boolean":    {Type: schemav1.TypeString},
-			"pulumi_override_tf_string_to_bool":       {Type: schemav1.TypeString},
-			"pulumi_empty_tf_override":                {Type: schemav1.TypeString},
-			"pulumi_override_tf_string_to_int":        {Type: schemav1.TypeString},
-			"pulumi_override_tf_string_to_integer":    {Type: schemav1.TypeString},
-			"tf_empty_string_to_pulumi_bool_override": {Type: schemav1.TypeString},
-		}),
-		map[string]*SchemaInfo{
-			"pulumi_override_tf_string_to_boolean": {
-				Type: "boolean",
-			},
-			"pulumi_override_tf_string_to_bool": {
-				Type: "bool",
-			},
-			"pulumi_empty_tf_override": {
-				Type: "",
-			},
-			"pulumi_override_tf_string_to_int": {
-				Type: "int",
-			},
-			"pulumi_override_tf_string_to_integer": {
-				Type: "integer",
-			},
-			"tf_empty_string_to_pulumi_bool_override": {
-				Type:           "boolean",
-				MarkAsOptional: boolPointer(true),
-			},
+		"pulumi_override_tf_string_to_bool": {
+			Type: "bool",
 		},
-		nil,   /* assets */
-		false, /*useRawNames*/
-		true,
-	)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"pulumi_empty_tf_override": {
+			Type: "",
+		},
+		"pulumi_override_tf_string_to_int": {
+			Type: "int",
+		},
+		"pulumi_override_tf_string_to_integer": {
+			Type: "integer",
+		},
+		"tf_empty_string_to_pulumi_bool_override": {
+			Type:           "boolean",
+			MarkAsOptional: boolPointer(true),
+		},
+	}
+
+	tfOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"pulumiOverrideTfStringToBoolean":   true,
 		"pulumiOverrideTfStringToBool":      true,
 		"pulumiEmptyTfOverride":             "true",
 		"pulumiOverrideTfStringToInt":       1,
 		"pulumiOverrideTfStringToInteger":   1,
 		"tfEmptyStringToPulumiBoolOverride": nil,
-	}), result)
+	})
+
+	t.Run("MakeTerraformOutputs", func(t *testing.T) {
+		result := MakeTerraformOutputs(
+			shimv1.NewProvider(testTFProvider),
+			tfInputs,
+			tfSchema,
+			typeOverrides,
+			nil,   /* assets */
+			false, /*useRawNames*/
+			true,
+		)
+		assert.Equal(t, tfOutputs, result)
+	})
+	t.Run("MakeTerraformInputs", func(t *testing.T) {
+		ctx := context.Background()
+		result, _, err := MakeTerraformInputs(
+			ctx,
+			nil,
+			nil,
+			nil,
+			tfOutputs,
+			tfSchema,
+			typeOverrides,
+		)
+		require.NoError(t, err)
+		expected := map[string]interface{}{
+			// SDKv2 Providers have __defaults included.
+			"__defaults": []interface{}{},
+		}
+		for k, v := range tfInputs {
+			// We don't transform nil values because terraform distinguished
+			// between nil and "" values.
+			if s := string(v.(MyString)); s == "" {
+				expected[k] = nil
+			} else {
+				expected[k] = s
+			}
+		}
+		assert.Equal(t, expected, result)
+	})
 }
 
 func TestArchiveAsAsset(t *testing.T) {

@@ -81,8 +81,8 @@ func (p *FilteringProvider) Apply(t string, s shim.InstanceState, d shim.Instanc
 	return p.Provider.Apply(t, s, d)
 }
 
-func (p *FilteringProvider) Refresh(t string, s shim.InstanceState) (shim.InstanceState, error) {
-	return p.Provider.Refresh(t, s)
+func (p *FilteringProvider) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
+	return p.Provider.Refresh(t, s, c)
 }
 
 func (p *FilteringProvider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {

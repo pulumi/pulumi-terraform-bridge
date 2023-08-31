@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/hashicorp/go-multierror"
+	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1049,6 +1050,24 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 }
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
+	var token string
+	if p.info != nil && p.info.GetTok() != "" {
+		token = p.info.GetTok().String()
+	}
+	defer func() {
+		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
+		containsTerraform := strings.Contains(strings.ToLower(p.ret.Import), "terraform")
+		if containsTerraform {
+			message := fmt.Sprintf("parseImports %q should not render the string"+
+				" 'terraform' in its emitted markdown.\n"+
+				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
+				token, strings.Join(subsection, "\n"), p.ret.Import)
+			if p.sink != nil {
+				p.sink.warn(message)
+			}
+		}
+	}()
+
 	// check for import overwrites
 	info := p.info
 	if info != nil {
@@ -1060,6 +1079,11 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 				return
 			}
 		}
+	}
+
+	if i, ok := tryParseV2Imports(token, subsection); ok {
+		p.ret.Import = i
+		return
 	}
 
 	var importDocString []string
@@ -1107,8 +1131,8 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 				}
 			}
 			var tok string
-			if p.info != nil && p.info.GetTok() != "" {
-				tok = p.info.GetTok().String()
+			if token != "" {
+				tok = token
 			} else {
 				tok = "MISSING_TOK"
 			}
@@ -1127,6 +1151,114 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	if len(importDocString) > 0 {
 		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(importDocString, " "))
 	}
+}
+
+// Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
+// recognized, patches up instructoins to make sense for the Pulumi projection.
+func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) {
+	var out bytes.Buffer
+	fmt.Fprintf(&out, "## Import\n\n")
+
+	markdown := strings.Join(markdownLines, "\n")
+	pn := parseNode(markdown)
+	if pn == nil {
+		return "", false
+	}
+
+	foundCode := false
+
+	for {
+		recognized := false
+		switch pn.Type {
+		case bf.CodeBlock:
+			code := string(pn.Literal)
+			switch string(pn.CodeBlockData.Info) {
+			case "terraform":
+				// Ignore terraform blocks such as:
+				//
+				// ```terraform
+				// import {
+				// 	to = aws_accessanalyzer_analyzer.example
+				// 	id = "example"
+				// }
+				// ```
+				recognized = true
+			case "console", "":
+				// Recognize import example codeblocks.
+				if parsed, ok := parseImportCode(code); ok {
+					emitImportCodeBlock(&out, typeToken, parsed.Name, parsed.ID)
+					recognized = ok
+					foundCode = true
+				}
+			}
+		case bf.Heading:
+			if pn.FirstChild != nil && pn.FirstChild.Type == bf.Text {
+				if string(pn.FirstChild.Literal) == "Import" {
+					// Skip "## Import" heading.
+					recognized = true
+				}
+			}
+		case bf.Paragraph:
+			// Propagate paragraphs to output.
+			paraMD, err := parseTextSeq(pn.FirstChild, false)
+			if err == nil {
+				fmt.Fprintf(&out, "%s\n\n", paraMD)
+				recognized = true
+			}
+		}
+		if !recognized {
+			return "", false
+		}
+		pn = pn.Next
+		if pn == nil {
+			break
+		}
+	}
+	if !foundCode {
+		return "", false
+	}
+	return out.String(), true
+}
+
+func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
+	fmt.Fprintf(w, "```sh<break>\n")
+	fmt.Fprintf(w, "$ pulumi import %s %s %s\n", typeToken, name, id)
+	fmt.Fprintf(w, "<break>```<break>\n")
+}
+
+// Parses import example codeblocks.
+//
+// Example matching strings:
+//
+//	% pulumi import some_resource.name someID
+//	$ terraform import some_resource.name <some-ID>
+//	$ terraform import \
+//	      some_resource.name \
+//	      <some-ID>
+var importCodePattern = regexp.MustCompile(
+	`^[%$] (?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+
+// Recognize import example codeblocks.
+//
+// Example:
+//
+//	s := "% pulumi import aws_accessanalyzer_analyzer.example exampleID"
+//	v, ok := parseImportCode(s)
+//	v.Name == "example"
+//	v.ID == "exampleID"
+func parseImportCode(code string) (struct {
+	Name string
+	ID   string
+}, bool) {
+	type ret struct {
+		Name string
+		ID   string
+	}
+	if importCodePattern.MatchString(code) {
+		matches := importCodePattern.FindStringSubmatch(code)
+		return ret{Name: matches[2], ID: matches[3]}, true
+	}
+	return ret{}, false
 }
 
 func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {

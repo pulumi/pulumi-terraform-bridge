@@ -24,10 +24,14 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
+
+type LogSink = logging.Sink
 
 // Sets up Context-scoped loggers to route Terraform logs to the Pulumi CLI process so they are visible to the user.
 //
@@ -53,7 +57,11 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 		ctx = tflog.SetField(ctx, "provider", p)
 	}
 
-	return ctx
+	return context.WithValue(ctx, logging.CtxKey,
+		logging.NewHost(ctx, opts.LogSink, opts.URN,
+			func(l *logging.Host[tfbridge.Log]) tfbridge.Log {
+				return l
+			}))
 }
 
 // See InitLogging.
@@ -63,14 +71,6 @@ type LogOptions struct {
 	ProviderVersion string
 	URN             resource.URN
 }
-
-// Abstracts the logging interface to HostClient. This is the interface providers use to report logging information back
-// to the Pulumi CLI over gRPC.
-type LogSink interface {
-	Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
-}
-
-var _ LogSink = (*rprovider.HostClient)(nil)
 
 // Directs any logs written using the tflog API in the given Context to the given output.
 func setupRootLoggers(ctx context.Context, output io.Writer) context.Context {

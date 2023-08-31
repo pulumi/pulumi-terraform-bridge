@@ -567,7 +567,12 @@ func ProviderV2() *schemav2.Provider {
 						MustSetIfUnset(data, "bool_property_value", false)
 						MustSetIfUnset(data, "number_property_value", 42)
 						MustSetIfUnset(data, "float_property_value", 99.6767932)
-						MustSetIfUnset(data, "string_property_value", "ognirts")
+						if data.Id() == "set-raw-config-id" {
+							v := data.GetRawConfig().AsValueMap()["raw_config_value"]
+							MustSet(data, "string_property_value", v.AsString())
+						} else {
+							MustSetIfUnset(data, "string_property_value", "ognirts")
+						}
 						MustSetIfUnset(data, "array_property_value", []interface{}{"an array"})
 						MustSetIfUnset(data, "object_property_value", map[string]interface{}{
 							"property_a": "a",
