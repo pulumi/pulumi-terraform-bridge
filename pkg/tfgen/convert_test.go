@@ -74,13 +74,18 @@ func TestConvert(t *testing.T) {
                     }
                   }`)
 
-		expectedCode := `
+		generic := "<{us-east-1?: number}>"
+		if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+			generic = ""
+		}
+
+		expectedCode := fmt.Sprintf(`
 import * as pulumi from "@pulumi/pulumi";
 
 const config = new pulumi.Config();
-const regionNumber = config.getObject<{us-east-1?: number}>("regionNumber") || {
+const regionNumber = config.getObject%s("regionNumber") || {
     "us-east-1": 1,
-};`
+};`, generic)
 
 		require.False(t, diags.All.HasErrors())
 
