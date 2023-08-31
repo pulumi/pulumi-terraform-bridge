@@ -72,7 +72,7 @@ func TestTranslateState(t *testing.T) {
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				actualImportBytes, err := json.MarshalIndent(actualImport, "", "  ")
 				require.NoError(t, err)
-				err = os.WriteFile(filepath.Join(tt.path, "import.json"), actualImportBytes, 0644)
+				err = os.WriteFile(filepath.Join(tt.path, "import.json"), actualImportBytes, 0600)
 				require.NoError(t, err)
 			}
 

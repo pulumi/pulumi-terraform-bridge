@@ -287,7 +287,7 @@ func TestEject(t *testing.T) {
 				if len(project.Config) > 0 {
 					buffer, err := yaml.Marshal(project)
 					require.NoError(t, err, "failed to marshal project config")
-					err = afero.WriteFile(fs, "/Pulumi.yaml", buffer, 0644)
+					err = afero.WriteFile(fs, "/Pulumi.yaml", buffer, 0600)
 					require.NoError(t, err, "failed to write Pulumi.yaml")
 				}
 			}
