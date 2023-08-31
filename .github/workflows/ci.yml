@@ -75,7 +75,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20.x
+          go-version: 1.21.x
           cache-dependency-path: |
             **/go.sum
       # Required to pin Gradle < 8.0 until downstram tests upgrade to compatible pulumi-java release.
