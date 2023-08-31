@@ -61,7 +61,7 @@ func TestTranslateState(t *testing.T) {
 		tt := tt // avoid capturing loop variable in the closure
 
 		t.Run(tt.name, func(t *testing.T) {
-			//t.Parallel()
+			t.Parallel()
 
 			statePath := filepath.Join(tt.path, "tfstate.json")
 
