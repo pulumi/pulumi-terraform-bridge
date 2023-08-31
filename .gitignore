@@ -4,3 +4,6 @@
 *.iml
 .DS_Store
 /bin
+coverage.txt
+pkg/tests/coverage.txt
+testing/coverage.txt
