@@ -1,7 +1,25 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This script assists the rollout of the new example converter across bridged providers by
+// computing the difference in example generation metrics. It will run `make tfgen` twice, capture
+// example metrics, print them, and print a detailed comparison on degraded examples.
 package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,9 +28,14 @@ import (
 )
 
 func main() {
+	keep := flag.Bool("keep", false, "set to true to keep the temp file")
+	flag.Parse()
+
 	tmpdir, err := os.MkdirTemp("", "example-coverage-metrics")
 	noerr(err)
-	defer os.RemoveAll(tmpdir)
+	if !*keep {
+		defer os.RemoveAll(tmpdir)
+	}
 
 	baselinedir := filepath.Join(tmpdir, "baseline")
 	experimentaldir := filepath.Join(tmpdir, "experimental")
