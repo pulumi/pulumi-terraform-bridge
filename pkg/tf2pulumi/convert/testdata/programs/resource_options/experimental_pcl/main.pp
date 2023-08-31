@@ -1,4 +1,5 @@
 resource "aResource" "simple:index:resource" {
-  inputOne = "hello"
-  inputTwo = true
+  __logicalName = "a_resource"
+  inputOne      = "hello"
+  inputTwo      = true
 }

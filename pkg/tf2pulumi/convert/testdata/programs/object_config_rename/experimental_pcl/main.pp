@@ -30,14 +30,17 @@ config "objectMapConfigEmpty" "map(object({firstMember=number, secondMember=stri
 }
 
 resource "usingSimpleObjectConfig" "simple:index:resource" {
-  inputOne = simpleObjectConfig.firstMember
+  __logicalName = "using_simple_object_config"
+  inputOne      = simpleObjectConfig.firstMember
 }
 
 resource "usingListObjectConfig" "simple:index:resource" {
-  inputOne = objectListConfig[0].firstMember
+  __logicalName = "using_list_object_config"
+  inputOne      = objectListConfig[0].firstMember
 }
 
 resource "usingListObjectConfigForEach" "simple:index:resource" {
+  __logicalName = "using_list_object_config_for_each"
   options {
     range = objectListConfig
   }
@@ -45,10 +48,12 @@ resource "usingListObjectConfigForEach" "simple:index:resource" {
 }
 
 resource "usingMapObjectConfig" "simple:index:resource" {
-  inputOne = objectMapConfig["hello"].firstMember
+  __logicalName = "using_map_object_config"
+  inputOne      = objectMapConfig["hello"].firstMember
 }
 
 resource "usingMapObjectConfigForEach" "simple:index:resource" {
+  __logicalName = "using_map_object_config_for_each"
   options {
     range = objectMapConfig
   }
@@ -56,12 +61,14 @@ resource "usingMapObjectConfigForEach" "simple:index:resource" {
 }
 
 resource "usingDynamic" "blocks:index/index:resource" {
+  __logicalName = "using_dynamic"
   aListOfResources = [for entry in entries(objectMapConfig) : {
     innerString = entry.value.firstMember
   }]
 }
 
 resource "usingDynamicIterator" "blocks:index/index:resource" {
+  __logicalName = "using_dynamic_iterator"
   aListOfResources = [for entry in entries(objectMapConfig) : {
     innerString = entry.value.firstMember
   }]

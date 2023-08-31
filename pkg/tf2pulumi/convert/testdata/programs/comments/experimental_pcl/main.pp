@@ -33,8 +33,9 @@ aDataSource = invoke("complex:index/index:data_source", {
 
 // Check that we keep resource comments
 resource "aResource" "complex:index/index:resource" {
-  aBool   = true
-  aNumber = 2.3 // Trailing comments on properties
+  __logicalName = "a_resource"
+  aBool         = true
+  aNumber       = 2.3 // Trailing comments on properties
 
   aString     = "hello world"
   aListOfInts = [1, 2, 3]

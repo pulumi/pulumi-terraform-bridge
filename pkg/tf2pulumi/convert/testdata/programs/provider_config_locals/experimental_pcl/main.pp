@@ -5,5 +5,6 @@ staticLocal = invoke("std:index:title", {
 }).result
 
 resource "aDefaultResource" "configured:index:resource" {
-  inputOne = staticLocal
+  __logicalName = "a_default_resource"
+  inputOne      = staticLocal
 }

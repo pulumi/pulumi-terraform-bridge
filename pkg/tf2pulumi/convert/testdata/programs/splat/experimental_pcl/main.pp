@@ -1,4 +1,5 @@
 resource "aResourceWithCount" "simple:index:resource" {
+  __logicalName = "a_resource_with_count"
   options {
     range = 4
   }
@@ -11,6 +12,7 @@ output "someOutputA" {
 }
 
 resource "aResourceWithForeachMap" "simple:index:resource" {
+  __logicalName = "a_resource_with_foreach_map"
   options {
     range = {
       cruel = "world"

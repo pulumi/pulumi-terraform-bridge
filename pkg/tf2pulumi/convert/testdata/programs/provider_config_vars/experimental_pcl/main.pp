@@ -3,5 +3,6 @@ config "region" "string" {
 }
 
 resource "aDefaultResource" "configured:index:resource" {
-  inputOne = region
+  __logicalName = "a_default_resource"
+  inputOne      = region
 }

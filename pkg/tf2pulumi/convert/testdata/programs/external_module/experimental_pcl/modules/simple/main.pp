@@ -2,8 +2,9 @@ config "input" "string" {
 }
 
 resource "aResource" "simple:index:resource" {
-  inputOne = input
-  inputTwo = true
+  __logicalName = "a_resource"
+  inputOne      = input
+  inputTwo      = true
 }
 
 output "output" {

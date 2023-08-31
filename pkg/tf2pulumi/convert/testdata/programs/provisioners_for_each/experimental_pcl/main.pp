@@ -9,6 +9,7 @@ config "echoData" "map(string)" {
 }
 
 resource "localExecResource" "simple:index:resource" {
+  __logicalName = "local_exec_resource"
   options {
     range = echoData
   }

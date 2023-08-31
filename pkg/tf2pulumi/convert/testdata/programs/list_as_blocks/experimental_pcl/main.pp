@@ -7,6 +7,7 @@ aDataSource = invoke("blocks:index/index:data_source", {
 })
 
 resource "aResource" "blocks:index/index:resource" {
+  __logicalName = "a_resource"
   aListOfResources = [{
     innerString = "hi"
     }, {

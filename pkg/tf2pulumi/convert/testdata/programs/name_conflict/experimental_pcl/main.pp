@@ -3,8 +3,9 @@ config "aThing" {
 myaThing = true
 
 resource "aThingResource" "simple:index:resource" {
-  inputOne = "Hello ${aThing}"
-  inputTwo = myaThing
+  __logicalName = "a_thing"
+  inputOne      = "Hello ${aThing}"
+  inputTwo      = myaThing
 }
 
 aThingData = invoke("simple:index:data_source", {

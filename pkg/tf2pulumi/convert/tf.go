@@ -2087,6 +2087,12 @@ func convertManagedResources(state *convertState,
 	block := hclwrite.NewBlock("resource", labels)
 	blockBody := block.Body()
 
+	// If the pulumi name differs from the terraform name we should set __logicalName so that we don't change
+	// the name of the resource in state.
+	if pulumiName != managedResource.Name {
+		blockBody.SetAttributeRaw("__logicalName", hclwrite.TokensForValue(cty.StringVal(managedResource.Name)))
+	}
+
 	// Does this resource have a count? If so set the "range" attribute
 	if managedResource.Count != nil {
 		options := blockBody.AppendNewBlock("options", nil)

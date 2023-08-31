@@ -1,4 +1,5 @@
 
 resource "aDefaultResource" "configured:index:resource" {
-  inputOne = "hi"
+  __logicalName = "a_default_resource"
+  inputOne      = "hi"
 }

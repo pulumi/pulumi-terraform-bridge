@@ -1,5 +1,6 @@
 resource "aResource" "renames:index/index:resource" {
-  theNumber = 1
+  __logicalName = "a_resource"
+  theNumber     = 1
   theResource = {
     theInnerString = "hello"
   }
@@ -34,6 +35,7 @@ output "someOutputC" {
 // The above doesn't convert correctly
 // unknown property 'theInnerString' among [innerString];
 resource "manyResource" "renames:index/index:resource" {
+  __logicalName = "many_resource"
   options {
     range = 2
   }

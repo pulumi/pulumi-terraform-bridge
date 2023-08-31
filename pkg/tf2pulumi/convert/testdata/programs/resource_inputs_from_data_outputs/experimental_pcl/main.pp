@@ -4,8 +4,9 @@ example = invoke("simple:index:data_source", {
 })
 
 resource "exampleResource" "simple:index:resource" {
-  inputOne = example.inputOne
-  inputTwo = example.inputTwo
+  __logicalName = "example"
+  inputOne      = example.inputOne
+  inputTwo      = example.inputTwo
 }
 
 output "example" {

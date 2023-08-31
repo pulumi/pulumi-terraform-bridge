@@ -31,6 +31,7 @@ config "name" "string" {
 
 # The `matchkeys` example makes use of a resource with `count`.
 resource "aResourceWithCount" "simple:index:resource" {
+  __logicalName = "a_resource_with_count"
   options {
     range = 4
   }
