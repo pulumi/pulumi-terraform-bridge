@@ -1,0 +1,9 @@
+{
+  "resources": [
+    {
+      "type": "simple:index:resource",
+      "name": "a_resource",
+      "id": "abc123"
+    }
+  ]
+}

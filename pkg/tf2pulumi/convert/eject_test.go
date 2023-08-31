@@ -167,7 +167,7 @@ func TestEject(t *testing.T) {
 	// You can regenerate the test data by running "PULUMI_ACCEPT=1 go test" in this folder (pkg/tf2pulumi/convert).
 	testDir, err := filepath.Abs(filepath.Join("testdata"))
 	require.NoError(t, err)
-	infos, err := os.ReadDir(testDir)
+	infos, err := os.ReadDir(filepath.Join(testDir, "programs"))
 	require.NoError(t, err)
 
 	tests := make([]struct {
@@ -175,14 +175,13 @@ func TestEject(t *testing.T) {
 		path string
 	}, 0)
 	for _, info := range infos {
-		// Skip the "schemas" directory, that's for test schemas not for tests themselves
-		if info.IsDir() && info.Name() != "schemas" && info.Name() != "mappings" && info.Name() != "modules" {
+		if info.IsDir() {
 			tests = append(tests, struct {
 				name string
 				path string
 			}{
 				name: info.Name(),
-				path: filepath.Join(testDir, info.Name()),
+				path: filepath.Join(testDir, "programs", info.Name()),
 			})
 		}
 	}
