@@ -15,13 +15,13 @@
 package convert
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/terraform/pkg/states/statefile"
-	"github.com/zclconf/go-cty/cty"
 )
 
 func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertStateResponse, error) {
@@ -42,23 +42,30 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 			instance := resource.Instances[nil]
 			if instance.HasCurrent() {
 				current := instance.Current
-				// We only care about the id value
-				attrTypes := map[string]cty.Type{
-					"id": cty.String,
-				}
-				typ := cty.Object(attrTypes)
-				obj, err := current.Decode(typ)
+
+				// We assume AttrsJSON is set, this will be true for all recent tfstate files
+				var obj map[string]interface{}
+				err := json.Unmarshal(current.AttrsJSON, &obj)
 				if err != nil {
 					return nil, err
 				}
-				id := obj.Value.GetAttr("id")
+				// We only care about the id value
+				id, ok := obj["id"]
+				if !ok {
+					return nil, fmt.Errorf("failed to find id attribute in %s", resource.Addr.Resource)
+				}
+				// And we expect id to be a string
+				idStr, ok := id.(string)
+				if !ok {
+					return nil, fmt.Errorf("id attribute for %s was not a string", resource.Addr.Resource)
+				}
 
 				// Try to grab the info for this resource type
 				tfType := resource.Addr.Resource.Type
 				provider := impliedProvider(tfType)
 				providerInfo, err := info.GetProviderInfo("", "", provider, "")
 				if err != nil {
-					return nil, fmt.Errorf("Failed to get provider info for %q: %v", tfType, err)
+					return nil, fmt.Errorf("failed to get provider info for %q: %v", tfType, err)
 				}
 
 				// Get the pulumi type of this resource
@@ -70,7 +77,7 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 				resources = append(resources, plugin.ResourceImport{
 					Type: pulumiType,
 					Name: resource.Addr.Resource.Name,
-					ID:   id.AsString(),
+					ID:   idStr,
 				})
 			}
 		}

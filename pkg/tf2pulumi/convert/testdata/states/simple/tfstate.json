@@ -9,7 +9,10 @@
             "instances": [
                 {
                     "attributes": {
-                        "id": "abc123"
+                        "id": "abc123",
+                        "input_one": "hello",
+                        "input_two": 42,
+                        "result": "hello42"
                     }
                 }
             ]
