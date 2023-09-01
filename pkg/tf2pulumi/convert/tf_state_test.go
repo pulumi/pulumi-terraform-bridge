@@ -22,7 +22,7 @@ import (
 
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,7 +77,7 @@ func TestTranslateState(t *testing.T) {
 
 			expectedImportBytes, err := os.ReadFile(filepath.Join(tt.path, "import.json"))
 			require.NoError(t, err)
-			var expectedImport pulumirpc.ConvertStateResponse
+			var expectedImport plugin.ConvertStateResponse
 			err = json.Unmarshal(expectedImportBytes, &expectedImport)
 			require.NoError(t, err)
 

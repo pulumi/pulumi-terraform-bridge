@@ -19,12 +19,12 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/terraform/pkg/states/statefile"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TranslateState(info il.ProviderInfoSource, path string) (*pulumirpc.ConvertStateResponse, error) {
+func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertStateResponse, error) {
 	stateFile, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func TranslateState(info il.ProviderInfoSource, path string) (*pulumirpc.Convert
 	}
 
 	state := file.State
-	var resources []*pulumirpc.ResourceImport
+	var resources []plugin.ResourceImport
 	for _, mod := range state.Modules {
 		for _, resource := range mod.Resources {
 			// TODO: Currently we just expect one instance
@@ -67,16 +67,16 @@ func TranslateState(info il.ProviderInfoSource, path string) (*pulumirpc.Convert
 					pulumiType = providerInfo.Resources[tfType].Tok.String()
 				}
 
-				resources = append(resources, &pulumirpc.ResourceImport{
+				resources = append(resources, plugin.ResourceImport{
 					Type: pulumiType,
 					Name: resource.Addr.Resource.Name,
-					Id:   id.AsString(),
+					ID:   id.AsString(),
 				})
 			}
 		}
 	}
 
-	return &pulumirpc.ConvertStateResponse{
+	return &plugin.ConvertStateResponse{
 		Resources: resources,
 	}, nil
 }
