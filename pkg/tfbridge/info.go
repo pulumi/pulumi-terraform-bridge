@@ -323,6 +323,13 @@ type ResourceInfo struct {
 
 	// An experimental way to augment the Check function in the Pulumi life cycle.
 	PreCheckCallback PreCheckCallback
+
+	// Resource operations such as Create, Read, and Update return the resource outputs to be
+	// recored in Pulumi statefile. TransformOutputs provides the last chance to edit these
+	// outputs before they are stored. In particular, it can be used as a last resort hook to
+	// make corrections in the default translation of the resource state from TF to Pulumi.
+	// Should be used sparingly.
+	TransformOutputs func(ctx context.Context, outputs resource.PropertyMap) (resource.PropertyMap, error)
 }
 
 type PreCheckCallback = func(
