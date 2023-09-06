@@ -65,7 +65,7 @@ func (p *provider) ReadWithContext(
 		return result, ignoredStatus, err
 	}
 
-	if result.Outputs != nil {
+	if result.Outputs != nil && rh.pulumiResourceInfo.TransformOutputs != nil {
 		var err error
 		result.Outputs, err = rh.pulumiResourceInfo.TransformOutputs(ctx, result.Outputs)
 		if err != nil {
