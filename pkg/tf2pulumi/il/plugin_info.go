@@ -20,12 +20,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -179,7 +182,10 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	tfProviderName := name
 	pluginName := GetPulumiProviderName(tfProviderName)
 
-	path, err := workspace.GetPluginPath(workspace.ResourcePlugin, pluginName, nil, nil)
+	diag := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+		Color: colors.Never,
+	})
+	path, err := workspace.GetPluginPath(diag, workspace.ResourcePlugin, pluginName, nil, nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {

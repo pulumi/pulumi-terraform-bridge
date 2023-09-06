@@ -464,8 +464,6 @@ func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) 
 		ModuleToPackage:              j.ModuleToPackage,
 		ContainsEnums:                j.ContainsEnums,
 		ProviderNameToModuleName:     j.ProviderNameToModuleName,
-		PluginName:                   j.PluginName,
-		PluginVersion:                j.PluginVersion,
 		ExtraTypeScriptFiles:         j.ExtraTypeScriptFiles,
 		LiftSingleValueMethodReturns: j.LiftSingleValueMethodReturns,
 		RespectSchemaVersion:         j.RespectSchemaVersion,
