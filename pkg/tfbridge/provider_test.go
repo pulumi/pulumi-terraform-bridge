@@ -1627,3 +1627,168 @@ func TestInvoke(t *testing.T) {
 		}`)
 	})
 }
+
+func TestTransformOutputs(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+		resources: map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+					TransformOutputs: func(
+						ctx context.Context,
+						pm resource.PropertyMap,
+					) (resource.PropertyMap, error) {
+						p := pm.Copy()
+						p["stringPropertyValue"] = resource.NewStringProperty("TRANSFORMED")
+						return p, nil
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Create preview", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Create",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "properties": {
+		      "__defaults": [],
+		      "stringPropertyValue": "SOME"
+		    },
+		    "preview": true
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "",
+		      "stringPropertyValue": "TRANSFORMED"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Create", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Create",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "properties": {
+		      "__defaults": [],
+		      "boolPropertyValue": true
+		    }
+		  },
+		  "response": {
+		    "id": "*",
+		    "properties": {
+		      "id": "*",
+                      "stringPropertyValue": "TRANSFORMED",
+		      "boolPropertyValue": "*",
+		      "__meta": "*",
+		      "objectPropertyValue": "*",
+		      "floatPropertyValue": "*",
+		      "stringPropertyValue": "*",
+		      "arrayPropertyValues": "*",
+		      "nestedResources": "*",
+		      "numberPropertyValue": "*",
+		      "setPropertyValues": "*",
+		      "stringWithBadInterpolation": "*"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Update preview", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+		    },
+                    "preview": true
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "*",
+                      "stringPropertyValue": "TRANSFORMED",
+		      "__meta": "*",
+		      "arrayPropertyValues": "*",
+		      "nestedResources": "*",
+		      "setPropertyValues": "*"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+		    }
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "*",
+		      "stringPropertyValue": "TRANSFORMED",
+		      "boolPropertyValue": "*",
+		      "__meta": "*",
+		      "objectPropertyValue": "*",
+		      "floatPropertyValue": "*",
+		      "arrayPropertyValues": "*",
+		      "nestedResources": "*",
+		      "numberPropertyValue": "*",
+		      "setPropertyValues": "*",
+		      "stringWithBadInterpolation": "*"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Read to import", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+                    "properties": {}
+		  },
+		  "response": {
+                    "id": "0",
+                    "inputs": "*",
+		    "properties": {
+			"id": "*",
+			"stringPropertyValue": "TRANSFORMED",
+			"boolPropertyValue": "*",
+			"__meta": "*",
+			"objectPropertyValue": "*",
+			"floatPropertyValue": "*",
+			"arrayPropertyValues": "*",
+			"nestedResources": "*",
+			"numberPropertyValue": "*",
+			"setPropertyValues": "*",
+			"stringWithBadInterpolation": "*"
+		    }
+		  }
+		}`)
+	})
+}
