@@ -148,10 +148,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d h1:OjHMocIBmWuY13luNE7okcyRu1bxNdXP6kPSW0p6x84=
 github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d/go.mod h1:slt4v0erbPg9FCxmbQFc6SA6toGtqfdSsQPihRMktBU=
-github.com/pulumi/pulumi/pkg/v3 v3.80.0 h1:Rw+c87RH8xDwP3jvoTjc8A04E2aNdlIuTNwwr54oWDw=
-github.com/pulumi/pulumi/pkg/v3 v3.80.0/go.mod h1:Hndd/WMKdr+PwIg9JfIcscjegIDcbc8dFDOBwmlo1n8=
-github.com/pulumi/pulumi/sdk/v3 v3.80.0 h1:4UfNidAAl7X6/G6+USvh0eRiiURtsfsJY9GWK2REH5E=
-github.com/pulumi/pulumi/sdk/v3 v3.80.0/go.mod h1:RMilNNVMlmK1h4Nl/qylb9vzbgh4F3mufZoUOnPy98o=
+github.com/pulumi/pulumi/pkg/v3 v3.81.0 h1:6rf2farQLszi8inHCu9YdJtDvK0fqNguix51b3FEDRQ=
+github.com/pulumi/pulumi/pkg/v3 v3.81.0/go.mod h1:URXozJB/abhxb2yOwa5ywHjT2dqt9SmAX2iLkdcOOl0=
+github.com/pulumi/pulumi/sdk/v3 v3.81.0 h1:d711GUpjZK1beNpIKFReC1LBmHXYE684sYWntJWQ4Q0=
+github.com/pulumi/pulumi/sdk/v3 v3.81.0/go.mod h1:RMilNNVMlmK1h4Nl/qylb9vzbgh4F3mufZoUOnPy98o=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
