@@ -900,14 +900,6 @@ func TestParseImports_WithOverride(t *testing.T) {
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
-
-func TestFindRepoPath(t *testing.T) {
-	env := "domain.test/foo/bar=./baz,github.com/foo/terraform-provider-bar=./terraform-provider-bar,"
-	actual := findRepoPath(env, "github.com/foo/terraform-provider-bar")
-
-	assert.Equal(t, "./terraform-provider-bar", actual)
-}
-
 func TestExampleGeneration(t *testing.T) {
 	info := testprovider.ProviderMiniRandom()
 
