@@ -271,109 +271,79 @@ func TestEject(t *testing.T) {
 				}
 			}
 
-			project, program, ejectErr := ejectWithOpts(hclPath, loader, mapper, setOpts)
+			project, program, err := ejectWithOpts(hclPath, loader, mapper, setOpts)
+			require.NoError(t, err)
+			// Assert the project name is as expected (the directory name)
+			assert.Equal(t, tokens.PackageName(tt.name), project.Name)
 
-			// Check if this is an error test
-			var expectedError string
-			expectedErrorPath := filepath.Join(pclPath, "error.txt")
+			// Assert every pcl file is seen
+			_, err = os.ReadDir(pclPath)
+			if !os.IsNotExist(err) && !assert.NoError(t, err) {
+				// If the directory was not found then the expected pcl results are the empty set, but if the
+				// directory could not be read because of filesystem issues than just error out.
+				assert.FailNow(t, "Could not read expected pcl results")
+			}
 
-			// If PULUMI_ACCEPT is set write the errors to the folder
+			writeToFileSystem := func(fs afero.Fs) {
+				err = program.WriteSource(fs)
+				require.NoError(t, err, "failed to write program source files")
+				// If the project has any config write that to the memory file system
+				if len(project.Config) > 0 {
+					buffer, err := yaml.Marshal(project)
+					require.NoError(t, err, "failed to marshal project config")
+					err = afero.WriteFile(fs, "/Pulumi.yaml", buffer, 0600)
+					require.NoError(t, err, "failed to write Pulumi.yaml")
+				}
+			}
+
+			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
+			pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
 			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
-				// If ejectErr is nil write nothing
-				if ejectErr != nil {
-					errorText := ejectErr.Error()
-					// Replace any instances of the temp directory with a fixed string
-					errorText = strings.ReplaceAll(errorText, tempDir, "<tempDir>")
-					err = os.WriteFile(expectedErrorPath, []byte(errorText), 0600)
-					require.NoError(t, err, "failed to write error")
-				}
+				writeToFileSystem(pclFs)
 			}
 
-			expectedErrorBytes, err := os.ReadFile(expectedErrorPath)
-			if !os.IsNotExist(err) {
-				require.NoError(t, err)
-				expectedError = string(expectedErrorBytes)
-			}
+			// Write the program to a memory file system
+			pclMemFs := afero.NewMemMapFs()
+			writeToFileSystem(pclMemFs)
 
-			if expectedError != "" {
-				errorText := ejectErr.Error()
-				// Again replace any instances of the temp directory with a fixed string
-				errorText = strings.ReplaceAll(errorText, tempDir, "<tempDir>")
-				assert.Equal(t, expectedError, errorText)
-			} else {
-				require.NoError(t, ejectErr)
-				// Assert the project name is as expected (the directory name)
-				assert.Equal(t, tokens.PackageName(tt.name), project.Name)
-
-				// Assert every pcl file is seen
-				_, err = os.ReadDir(pclPath)
-				if !os.IsNotExist(err) && !assert.NoError(t, err) {
-					// If the directory was not found then the expected pcl results are the empty set, but if the
-					// directory could not be read because of filesystem issues than just error out.
-					assert.FailNow(t, "Could not read expected pcl results")
+			// compare the generated files with files on disk
+			err = afero.Walk(pclMemFs, "/", func(path string, info fs.FileInfo, err error) error {
+				if err != nil {
+					return err
 				}
-
-				writeToFileSystem := func(fs afero.Fs) {
-					err = program.WriteSource(fs)
-					require.NoError(t, err, "failed to write program source files")
-					// If the project has any config write that to the memory file system
-					if len(project.Config) > 0 {
-						buffer, err := yaml.Marshal(project)
-						require.NoError(t, err, "failed to marshal project config")
-						err = afero.WriteFile(fs, "/Pulumi.yaml", buffer, 0600)
-						require.NoError(t, err, "failed to write Pulumi.yaml")
-					}
-				}
-
-				// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
-				pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
-				if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
-					writeToFileSystem(pclFs)
-				}
-
-				// Write the program to a memory file system
-				pclMemFs := afero.NewMemMapFs()
-				writeToFileSystem(pclMemFs)
-
-				// compare the generated files with files on disk
-				err = afero.Walk(pclMemFs, "/", func(path string, info fs.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					if info == nil || info.IsDir() {
-						// ignore directories
-						return nil
-					}
-
-					sourceOnDisk, err := afero.ReadFile(pclFs, path)
-					assert.NoError(t, err, "generated source file must be on disk")
-					sourceInMemory, err := afero.ReadFile(pclMemFs, path)
-					assert.NoError(t, err, "should be able to read %s", path)
-					expectedPcl := strings.Replace(string(sourceOnDisk), "\r\n", "\n", -1)
-					actualPcl := strings.Replace(string(sourceInMemory), "\r\n", "\n", -1)
-					assert.Equal(t, expectedPcl, actualPcl)
+				if info == nil || info.IsDir() {
+					// ignore directories
 					return nil
-				})
-				require.NoError(t, err, "failed to check written files")
-
-				// make sure _all_ files on disk are also generated in the source
-				err = afero.Walk(pclFs, "/", func(path string, info fs.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					if info == nil || info.IsDir() {
-						// ignore directories and non-PCL files
-						return nil
-					}
-
-					_, err = afero.ReadFile(pclMemFs, path)
-					assert.NoError(t, err, "file on disk was not generated in memory: %s", path)
-					return nil
-				})
-				// It's ok for the pcl directory to just not exist, this happens for the empty tests.
-				if !errors.Is(err, fs.ErrNotExist) {
-					require.NoError(t, err, "failed to check saved files")
 				}
+
+				sourceOnDisk, err := afero.ReadFile(pclFs, path)
+				assert.NoError(t, err, "generated source file must be on disk")
+				sourceInMemory, err := afero.ReadFile(pclMemFs, path)
+				assert.NoError(t, err, "should be able to read %s", path)
+				expectedPcl := strings.Replace(string(sourceOnDisk), "\r\n", "\n", -1)
+				actualPcl := strings.Replace(string(sourceInMemory), "\r\n", "\n", -1)
+				assert.Equal(t, expectedPcl, actualPcl)
+				return nil
+			})
+			require.NoError(t, err, "failed to check written files")
+
+			// make sure _all_ files on disk are also generated in the source
+			err = afero.Walk(pclFs, "/", func(path string, info fs.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info == nil || info.IsDir() {
+					// ignore directories and non-PCL files
+					return nil
+				}
+
+				_, err = afero.ReadFile(pclMemFs, path)
+				assert.NoError(t, err, "file on disk was not generated in memory: %s", path)
+				return nil
+			})
+			// It's ok for the pcl directory to just not exist, this happens for the empty tests.
+			if !errors.Is(err, fs.ErrNotExist) {
+				require.NoError(t, err, "failed to check saved files")
 			}
 		})
 	}
