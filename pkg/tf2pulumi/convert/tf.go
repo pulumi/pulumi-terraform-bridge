@@ -1197,9 +1197,10 @@ func rewriteTraversal(
 				state.appendDiagnostic(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  `Reference to "count" in non-counted context`,
-					Detail:   `The "count" object can only be used in "module", "resource", and "data" blocks, and only when the "count" argument is set.`,
-					Context:  &subjectRange,
-					Subject:  &contextRange,
+					Detail: `The "count" object can only be used in "module", "resource", and "data" blocks, ` +
+						`and only when the "count" argument is set.`,
+					Context: &subjectRange,
+					Subject: &contextRange,
 				})
 				return nil
 			}
@@ -1218,9 +1219,10 @@ func rewriteTraversal(
 						state.appendDiagnostic(&hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  `Reference to "each" in context without for_each`,
-							Detail:   `The "each" object can be used only in "module" or "resource" blocks, and only when the "for_each" argument is set.`,
-							Context:  &subjectRange,
-							Subject:  &contextRange,
+							Detail: `The "each" object can be used only in "module" or "resource" blocks, ` +
+								`and only when the "for_each" argument is set.`,
+							Context: &subjectRange,
+							Subject: &contextRange,
 						})
 						return nil
 					}
