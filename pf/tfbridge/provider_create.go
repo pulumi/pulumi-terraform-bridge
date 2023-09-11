@@ -66,6 +66,16 @@ func (p *provider) CreateWithContext(
 		if err != nil {
 			return "", nil, 0, err
 		}
+
+		if rh.pulumiResourceInfo.TransformOutputs != nil {
+			var err error
+			plannedStatePropertyMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx,
+				plannedStatePropertyMap)
+			if err != nil {
+				return "", nil, 0, err
+			}
+		}
+
 		return "", plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
@@ -102,6 +112,14 @@ func (p *provider) CreateWithContext(
 	createdStateMap, err := createdState.ToPropertyMap(&rh)
 	if err != nil {
 		return "", nil, 0, err
+	}
+
+	if rh.pulumiResourceInfo.TransformOutputs != nil {
+		var err error
+		createdStateMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx, createdStateMap)
+		if err != nil {
+			return "", nil, 0, err
+		}
 	}
 
 	createdID, err := createdState.ExtractID(&rh)

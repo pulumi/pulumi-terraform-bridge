@@ -323,6 +323,13 @@ type ResourceInfo struct {
 
 	// An experimental way to augment the Check function in the Pulumi life cycle.
 	PreCheckCallback PreCheckCallback
+
+	// Resource operations such as Create, Read, and Update return the resource outputs to be
+	// recored in Pulumi statefile. TransformOutputs provides the last chance to edit these
+	// outputs before they are stored. In particular, it can be used as a last resort hook to
+	// make corrections in the default translation of the resource state from TF to Pulumi.
+	// Should be used sparingly.
+	TransformOutputs func(ctx context.Context, outputs resource.PropertyMap) (resource.PropertyMap, error)
 }
 
 type PreCheckCallback = func(
@@ -436,13 +443,6 @@ type SchemaInfo struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
-
-	// experimental workaround to treat this as a computed input for the purpose of diff, i.e.: should
-	// trigger an update even if it appears only as an output property.
-	//
-	// used to address pulumi/pulumi-aws#1655 - however we may need to refine the behavior in the
-	// future, and so we will not reserve the field name ComputedInput at this time.
-	XComputedInput bool
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.

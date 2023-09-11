@@ -30,6 +30,8 @@ type testCompRes struct{}
 
 var _ resource.Resource = &testCompRes{}
 
+var _ resource.ResourceWithImportState = &testCompRes{}
+
 func newTestCompRes() resource.Resource {
 	return &testCompRes{}
 }
@@ -89,9 +91,14 @@ func (e *testCompRes) Read(ctx context.Context, req resource.ReadRequest, resp *
 }
 
 func (e *testCompRes) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	panic("TODO Update")
+	resp.State.Raw = req.Plan.Raw.Copy()
 }
 
 func (e *testCompRes) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	panic("TODO Delete")
+}
+
+func (e *testCompRes) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resp.State.SetAttribute(ctx, path.Root("id"), "someID")
+	resp.State.SetAttribute(ctx, path.Root("ecdsacurve"), "P384")
 }

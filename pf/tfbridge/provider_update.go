@@ -77,6 +77,16 @@ func (p *provider) UpdateWithContext(
 		if err != nil {
 			return nil, 0, err
 		}
+
+		if rh.pulumiResourceInfo.TransformOutputs != nil {
+			var err error
+			plannedStatePropertyMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx,
+				plannedStatePropertyMap)
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
@@ -110,6 +120,14 @@ func (p *provider) UpdateWithContext(
 	updatedStateMap, err := updatedState.ToPropertyMap(&rh)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	if rh.pulumiResourceInfo.TransformOutputs != nil {
+		var err error
+		updatedStateMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx, updatedStateMap)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return updatedStateMap, resource.StatusOK, nil

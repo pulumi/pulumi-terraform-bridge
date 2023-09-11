@@ -776,6 +776,14 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
 
+	if res.Schema.TransformOutputs != nil {
+		var err error
+		props, err = res.Schema.TransformOutputs(ctx, props)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 		Label:        fmt.Sprintf("%s.outs", label),
 		KeepUnknowns: req.GetPreview(),
@@ -788,6 +796,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	if len(reasons) != 0 {
 		return nil, initializationError(newstate.ID(), mprops, reasons)
 	}
+
 	return &pulumirpc.CreateResponse{Id: newstate.ID(), Properties: mprops}, nil
 }
 
@@ -850,6 +859,14 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
+		}
+
+		if res.Schema.TransformOutputs != nil {
+			var err error
+			props, err = res.Schema.TransformOutputs(ctx, props)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -967,6 +984,15 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
+
+	if res.Schema.TransformOutputs != nil {
+		var err error
+		props, err = res.Schema.TransformOutputs(ctx, props)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 		Label:        fmt.Sprintf("%s.outs", label),
 		KeepUnknowns: req.GetPreview(),
