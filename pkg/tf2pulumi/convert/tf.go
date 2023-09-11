@@ -1129,7 +1129,13 @@ func rewriteTraversal(
 		}
 	}
 
+	contextRange := traversal.SourceRange()
 	if root, ok := traversal[0].(hcl.TraverseRoot); ok {
+		subjectRange := contextRange
+		// If we hit an error it will be with the first attribute, not the root.
+		if maybeFirstAttr != nil {
+			subjectRange = maybeFirstAttr.SourceRange()
+		}
 
 		matches := func(rootName, attrName string) bool {
 			return root.Name == rootName && maybeFirstAttr != nil && maybeFirstAttr.Name == attrName
@@ -1140,6 +1146,13 @@ func rewriteTraversal(
 			matches("path", "module") ||
 			matches("path", "root") {
 			// If this is one of the builtin terraform inputs we just rewrite it to notImplemented.
+			state.appendDiagnostic(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Summary:  "Terraform input not yet implemented",
+				Detail:   root.Name,
+				Context:  &subjectRange,
+				Subject:  &contextRange,
+			})
 			return notImplemented(state, getTraversalRange(traversal))
 		} else if root.Name == "var" && maybeFirstAttr != nil {
 			// This is a lookup of a var etc, we need to rewrite this traversal such that the root is now the
@@ -1165,9 +1178,30 @@ func rewriteTraversal(
 			if maybeFirstAttr.Name == "index" && scopes.countIndex != nil {
 				newTraversal = append(newTraversal, scopes.countIndex...)
 				newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
+			} else if maybeFirstAttr.Name != "index" {
+				// Saw some other attribute on count, this is an error
+				state.appendDiagnostic(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  `Invalid "count" attribute`,
+					Detail: fmt.Sprintf(
+						`The "count" object does not have an attribute named %q. `+
+							`The only supported attribute is count.index, `+
+							`which is the index of each instance of a resource block that has the "count" argument set.`,
+						maybeFirstAttr.Name),
+					Context: &subjectRange,
+					Subject: &contextRange,
+				})
+				return nil
 			} else {
 				// We didn't have a count_index set but saw count.index!
-				contract.Failf("count.index seen during expression conversion, but index scope not set")
+				state.appendDiagnostic(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  `Reference to "count" in non-counted context`,
+					Detail:   `The "count" object can only be used in "module", "resource", and "data" blocks, and only when the "count" argument is set.`,
+					Context:  &subjectRange,
+					Subject:  &contextRange,
+				})
+				return nil
 			}
 		} else if root.Name == "each" && maybeFirstAttr != nil {
 			// This _might_ be the special "each" value or it might just be a local, check the latter first
@@ -1181,17 +1215,43 @@ func rewriteTraversal(
 						newTraversal = append(newTraversal, scopes.eachKey...)
 						newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 					} else {
-						contract.Failf("each.key seen during expression conversion, but each scope not set")
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  `Reference to "each" in context without for_each`,
+							Detail:   `The "each" object can be used only in "module" or "resource" blocks, and only when the "for_each" argument is set.`,
+							Context:  &subjectRange,
+							Subject:  &contextRange,
+						})
+						return nil
 					}
-				}
-
-				if maybeFirstAttr.Name == "value" {
+				} else if maybeFirstAttr.Name == "value" {
 					if scopes.eachValue != nil {
 						newTraversal = append(newTraversal, scopes.eachValue...)
 						newTraversal = append(newTraversal, rewriteRelativeTraversal(scopes, "", traversal[2:])...)
 					} else {
-						contract.Failf("each.value seen during expression conversion, but each scope not set")
+						state.appendDiagnostic(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  `each.value cannot be used in this context`,
+							Detail: `A reference to "each.value" has been used in a context in which it is unavailable, ` +
+								`such as when the configuration no longer contains the value in its "for_each" expression. ` +
+								`Remove this reference to each.value in your configuration to work around this error.`,
+							Context: &subjectRange,
+							Subject: &contextRange,
+						})
+						return nil
 					}
+				} else {
+					state.appendDiagnostic(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  `Invalid "each" attribute`,
+						Detail: fmt.Sprintf(
+							`The "each" object does not have an attribute named %q. `+
+								`The supported attributes are each.key and each.value, `+
+								`the current key and value pair of the "for_each" attribute set.`, maybeFirstAttr.Name),
+						Context: &subjectRange,
+						Subject: &contextRange,
+					})
+					return nil
 				}
 			}
 		} else if maybeFirstAttr != nil {

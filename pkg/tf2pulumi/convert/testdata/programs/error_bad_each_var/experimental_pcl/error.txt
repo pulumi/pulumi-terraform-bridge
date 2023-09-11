@@ -1,0 +1,1 @@
+failed to convert Terraform configuration, <tempDir>/error_bad_each_var/main.tf:2,17-25: Reference to "each" in context without for_each; The "each" object can be used only in "module" or "resource" blocks, and only when the "for_each" argument is set., and 1 other diagnostic(s)
