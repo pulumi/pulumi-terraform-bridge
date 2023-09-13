@@ -442,13 +442,13 @@ output "funcDistinct" {
 
 # Examples for element
 output "funcElement0" {
-  value = notImplemented("element([\"a\",\"b\",\"c\"],1)")
+  value = element(["a", "b", "c"], 1)
 }
 output "funcElement1" {
-  value = notImplemented("element([\"a\",\"b\",\"c\"],3)")
+  value = element(["a", "b", "c"], 3)
 }
 output "funcElement2" {
-  value = notImplemented("element([\"a\",\"b\",\"c\"],length([\"a\",\"b\",\"c\"])-1)")
+  value = element(["a", "b", "c"], length(["a", "b", "c"]) - 1)
 }
 
 
@@ -1066,6 +1066,15 @@ output "funcPathexpand1" {
 
 
 
+# Examples for plantimestamp
+output "funcPlantimestamp" {
+  value = notImplemented("plantimestamp()")
+}
+
+
+
+
+
 # Examples for pow
 output "funcPow0" {
   value = invoke("std:index:pow", {
@@ -1364,6 +1373,18 @@ output "funcStartswith1" {
     input  = "hello world"
     prefix = "world"
   }).result
+}
+
+
+
+
+
+# Examples for strcontains
+output "funcStrcontains0" {
+  value = notImplemented("strcontains(\"hello world\",\"wor\")")
+}
+output "funcStrcontains1" {
+  value = notImplemented("strcontains(\"hello world\",\"wod\")")
 }
 
 

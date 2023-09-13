@@ -102,6 +102,7 @@ experimental = {
     "one",
     "parseint",
     "pathexpand",
+    "plantimestamp",
     "pow",
     "range",
     "regex",
@@ -120,6 +121,7 @@ experimental = {
     "slice",
     "sort",
     "startswith",
+    "strcontains",
     "strrev",
     "substr",
     "sum",
@@ -267,6 +269,6 @@ resource "simple_resource" "a_resource_with_count" {
             hcl += "\n"
 
 
-        targetFile = os.path.join(os.path.dirname(__file__), "..", "pkg", "tf2pulumi", "convert", "testdata", "builtin_functions", "main.tf")
+        targetFile = os.path.join(os.path.dirname(__file__), "..", "pkg", "tf2pulumi", "convert", "testdata", "programs", "builtin_functions", "main.tf")
         with open(targetFile, "w") as f:
             f.write(hcl)

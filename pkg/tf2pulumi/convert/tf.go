@@ -394,11 +394,13 @@ func projectListToSingleton(tokens hclwrite.Tokens) hclwrite.Tokens {
 // 1. The `list` function just gets translated into a tuple
 // 2. Just a simple rename, e.g. "file" => "readFile"
 // 3. A translation to an std invoke
-// 4. Left exactly as is (e.g. length), we assume this for now but really we should probably be explicit.
+// 4. Left exactly as is (e.g. length), this is a no-op rename.
+// 5. Assumed to be not supported.
 var tfFunctionRenames = map[string]string{
 	"sensitive":  "secret",
 	"jsonencode": "toJSON",
 	"length":     "length",
+	"element":    "element",
 }
 
 var tfFunctionStd = map[string]struct {

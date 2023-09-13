@@ -935,6 +935,16 @@ output "funcPathexpand1" {
 
 #if EXPERIMENTAL
 
+# Examples for plantimestamp
+output "funcPlantimestamp" {
+  value = plantimestamp()
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
 # Examples for pow
 output "funcPow0" {
   value = pow(3, 2)
@@ -1186,6 +1196,19 @@ output "funcStartswith0" {
 }
 output "funcStartswith1" {
   value = startswith("hello world", "world")
+}
+
+#endif
+
+
+#if EXPERIMENTAL
+
+# Examples for strcontains
+output "funcStrcontains0" {
+  value = strcontains("hello world", "wor")
+}
+output "funcStrcontains1" {
+  value = strcontains("hello world", "wod")
 }
 
 #endif
