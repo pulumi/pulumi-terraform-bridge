@@ -78,8 +78,9 @@ func (gh *gitRepoSource) getFile(
 		var err error
 		repoPath, err = getRepoPath(gh.githost, gh.org, gh.provider, gh.providerModuleVersion)
 		if err != nil {
-			return nil, fmt.Errorf("get file for %q (%q): %w",
-				rawname, kind, err)
+			fmt.Printf("Failed to get file for %q (%q): %s", rawname, kind, err.Error())
+			return nil, nil // fmt.Errorf("get file for %q (%q): %w",
+			// rawname, kind, err)
 		}
 	}
 
