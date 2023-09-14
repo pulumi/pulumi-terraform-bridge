@@ -16,6 +16,8 @@ package tfgen
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -87,10 +89,21 @@ func (gh *gitRepoSource) getFile(
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
 	}
 
-	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
-	if !found {
-		return nil, nil
-	}
+	return readMarkdown(repoPath, kind, possibleMarkdownNames)
+}
 
-	return &DocFile{markdownBytes, markdownFileName}, nil
+// readMarkdown searches all possible locations for the markdown content
+func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFile, error) {
+	locationPrefix := getDocsPath(repo, kind)
+
+	for _, name := range possibleLocations {
+		location := filepath.Join(locationPrefix, name)
+		markdownBytes, err := os.ReadFile(location)
+		if err == nil {
+			return &DocFile{markdownBytes, name}, nil
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	return nil, nil
 }

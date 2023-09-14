@@ -432,20 +432,6 @@ func getDocsPath(repo string, kind DocKind) string {
 	return filepath.Join(repo, "docs", kindString)
 }
 
-// readMarkdown searches all possible locations for the markdown content
-func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, string, bool) {
-	locationPrefix := getDocsPath(repo, kind)
-
-	for _, name := range possibleLocations {
-		location := filepath.Join(locationPrefix, name)
-		markdownBytes, err := os.ReadFile(location)
-		if err == nil {
-			return markdownBytes, name, true
-		}
-	}
-	return nil, "", false
-}
-
 //nolint:lll
 var (
 	// For example:
