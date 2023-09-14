@@ -26,8 +26,8 @@ type flattenedEncoder struct {
 	elementEncoder Encoder
 }
 
-func (enc *flattenedEncoder) fromPropertyValue(v resource.PropertyValue) (tftypes.Value, error) {
-	encoded, err := enc.elementEncoder.fromPropertyValue(v)
+func (enc *flattenedEncoder) fromPropertyValue(ctx convertCtx, v resource.PropertyValue) (tftypes.Value, error) {
+	encoded, err := enc.elementEncoder.fromPropertyValue(ctx, v)
 	if err != nil {
 		return tftypes.Value{}, nil
 	}

@@ -99,7 +99,7 @@ func (p *provider) readViaReadResource(
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, error) {
 
-	currentStateRaw, err := parseResourceState(rh, currentStateMap)
+	currentStateRaw, err := parseResourceState(ctx, rh, currentStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}

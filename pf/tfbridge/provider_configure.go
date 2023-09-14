@@ -31,7 +31,8 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 
 	p.lastKnownProviderConfig = inputs
 
-	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
+	config, err := convert.EncodePropertyMapToDynamic(ctx, p.configEncoder,
+		p.configType, inputs)
 	if err != nil {
 		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)
 	}

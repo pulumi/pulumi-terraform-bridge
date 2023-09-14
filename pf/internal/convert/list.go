@@ -44,7 +44,7 @@ func newListDecoder(elementDecoder Decoder) (Decoder, error) {
 	}, nil
 }
 
-func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *listEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	listTy := tftypes.List{ElementType: enc.elementType}
 
 	if propertyValueIsUnkonwn(p) {
@@ -59,7 +59,7 @@ func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Val
 	}
 	var values []tftypes.Value
 	for i, pv := range p.ArrayValue() {
-		v, err := enc.elementEncoder.fromPropertyValue(pv)
+		v, err := enc.elementEncoder.fromPropertyValue(ctx.visit(i), pv)
 		if err != nil {
 			return tftypes.NewValue(listTy, nil),
 				fmt.Errorf("encList failed while encoding element %d (%v): %w",

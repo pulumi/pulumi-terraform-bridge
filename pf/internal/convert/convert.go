@@ -19,6 +19,7 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -54,15 +55,16 @@ func NewResourceLocalPropertyNames(resource string,
 }
 
 type Encoder interface {
-	fromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
+	fromPropertyValue(convertCtx, resource.PropertyValue) (tftypes.Value, error)
 }
 
 type Decoder interface {
 	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
 }
 
-func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, error) {
-	return enc.fromPropertyValue(propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
+func EncodePropertyMap(ctx context.Context, enc Encoder, pmap resource.PropertyMap) (tftypes.Value, error) {
+	return enc.fromPropertyValue(newConvertCtx(ctx),
+		propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
 }
 
 func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
@@ -76,9 +78,10 @@ func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, erro
 	return pv.ObjectValue(), nil
 }
 
-func EncodePropertyMapToDynamic(enc Encoder, objectType tftypes.Object,
-	pmap resource.PropertyMap) (*tfprotov6.DynamicValue, error) {
-	v, err := EncodePropertyMap(enc, pmap)
+func EncodePropertyMapToDynamic(ctx context.Context, enc Encoder,
+	objectType tftypes.Object, pmap resource.PropertyMap,
+) (*tfprotov6.DynamicValue, error) {
+	v, err := EncodePropertyMap(ctx, enc, pmap)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(ctx, &rh, priorStateMap)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -67,7 +67,7 @@ func (p *provider) DiffWithContext(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(ctx, rh.encoder, checkedInputs)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}

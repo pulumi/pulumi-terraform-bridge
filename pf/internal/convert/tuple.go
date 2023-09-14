@@ -50,7 +50,7 @@ func tuplePropertyName(i int) string {
 	return fmt.Sprintf("t%d", i)
 }
 
-func (enc *tupleEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *tupleEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	typ := tftypes.Tuple{ElementTypes: enc.types}
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(typ, tftypes.UnknownValue), nil
@@ -70,7 +70,7 @@ func (enc *tupleEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Va
 		if err != nil {
 			return tftypes.Value{}, fmt.Errorf("could not parse tuple key as location: %w", err)
 		}
-		values[i], err = enc.encoders[i].fromPropertyValue(pv)
+		values[i], err = enc.encoders[i].fromPropertyValue(ctx.visit(k), pv)
 		if err != nil {
 			return tftypes.NewValue(typ, nil),
 				fmt.Errorf("failed to encode '%v' into tuple[%d] (%v): %w",

@@ -51,7 +51,7 @@ func (p *provider) UpdateWithContext(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(ctx, &rh, priorStateMap)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -61,7 +61,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(ctx, rh.encoder, checkedInputs)
 	if err != nil {
 		return nil, 0, err
 	}

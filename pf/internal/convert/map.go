@@ -44,7 +44,7 @@ func newMapDecoder(elementDecoder Decoder) (Decoder, error) {
 	}, nil
 }
 
-func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *mapEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	mapTy := tftypes.Map{ElementType: enc.elementType}
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(mapTy, tftypes.UnknownValue), nil
@@ -58,7 +58,7 @@ func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	}
 	values := map[string]tftypes.Value{}
 	for key, pv := range p.ObjectValue() {
-		v, err := enc.elementEncoder.fromPropertyValue(pv)
+		v, err := enc.elementEncoder.fromPropertyValue(ctx.visit(key), pv)
 		if err != nil {
 			return tftypes.NewValue(mapTy, nil),
 				fmt.Errorf("encMap failed on %v", pv)

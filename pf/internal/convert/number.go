@@ -34,7 +34,7 @@ func newNumberDecoder() Decoder {
 	return &numberDecoder{}
 }
 
-func (*numberEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (*numberEncoder) fromPropertyValue(_ convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.Number, tftypes.UnknownValue), nil
 	}

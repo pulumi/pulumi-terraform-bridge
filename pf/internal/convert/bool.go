@@ -33,7 +33,7 @@ func newBoolDecoder() Decoder {
 	return &boolDecoder{}
 }
 
-func (*boolEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (*boolEncoder) fromPropertyValue(_ convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue), nil
 	}

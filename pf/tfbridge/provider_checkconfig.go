@@ -100,7 +100,7 @@ func (p *provider) validateProviderConfig(
 	urn resource.URN,
 	inputs resource.PropertyMap,
 ) ([]plugin.CheckFailure, error) {
-	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
+	config, err := convert.EncodePropertyMapToDynamic(ctx, p.configEncoder, p.configType, inputs)
 	if err != nil {
 		err = fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
 		return nil, err

@@ -14,6 +14,7 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -25,6 +26,24 @@ import (
 type encoding struct {
 	SchemaOnlyProvider shim.Provider
 	ProviderInfo       *tfbridge.ProviderInfo // only SchemaInfo for fields is required
+}
+
+type convertCtx struct {
+	ctx  context.Context
+	path string
+}
+
+func (c convertCtx) warn(msg string) {
+	tfbridge.GetLogger(c.ctx).Warn(c.path + ": " + msg)
+}
+
+func (w convertCtx) visit(segment any) convertCtx {
+	w.path += fmt.Sprintf("[%v]", segment)
+	return w
+}
+
+func newConvertCtx(ctx context.Context) convertCtx {
+	return convertCtx{ctx: ctx}
 }
 
 var _ Encoding = (*encoding)(nil)

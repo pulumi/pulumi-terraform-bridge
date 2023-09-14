@@ -33,7 +33,7 @@ func newStringDecoder() Decoder {
 	return &stringDecoder{}
 }
 
-func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (*stringEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.String, tftypes.UnknownValue), nil
 	}
@@ -72,8 +72,10 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	// unable to distinguish between the two.
 
 	case p.IsBool():
+		ctx.warn("converting from bool to string")
 		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.BoolValue())), nil
 	case p.IsNumber():
+		ctx.warn("converting from number to string")
 		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.NumberValue())), nil
 
 	case p.IsString():

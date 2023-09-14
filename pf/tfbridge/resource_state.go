@@ -79,7 +79,9 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	}
 }
 
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
+func parseResourceState(
+	ctx context.Context, rh *resourceHandle, props resource.PropertyMap,
+) (*resourceState, error) {
 	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
@@ -105,7 +107,7 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 		}
 	}
 
-	value, err := convert.EncodePropertyMap(rh.encoder, props)
+	value, err := convert.EncodePropertyMap(ctx, rh.encoder, props)
 	if err != nil {
 		return nil, err
 	}

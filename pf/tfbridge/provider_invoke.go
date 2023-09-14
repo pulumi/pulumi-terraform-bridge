@@ -54,7 +54,7 @@ func (p *provider) InvokeWithContext(
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
-	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, argsWithDefaults)
+	config, err := convert.EncodePropertyMapToDynamic(ctx, handle.encoder, typ, argsWithDefaults)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
 			handle.terraformDataSourceName, err)

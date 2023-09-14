@@ -44,7 +44,7 @@ func (p *provider) CreateWithContext(
 
 	priorState := newResourceState(ctx, &rh, nil /*private state*/)
 
-	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
+	checkedInputsValue, err := convert.EncodePropertyMap(ctx, rh.encoder, checkedInputs)
 	if err != nil {
 		return "", nil, 0, err
 	}

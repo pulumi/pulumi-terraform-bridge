@@ -57,7 +57,7 @@ func newObjectDecoder(objectType tftypes.Object,
 	}, nil
 }
 
-func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *objectEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(enc.objectType, tftypes.UnknownValue), nil
 	}
@@ -75,7 +75,7 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 		key := enc.propertyNames.PropertyKey(attr, t)
 		pv, gotPV := pulumiMap[key]
 		if gotPV {
-			v, err := attrEncoder.fromPropertyValue(pv)
+			v, err := attrEncoder.fromPropertyValue(ctx.visit(key), pv)
 			if err != nil {
 				return tftypes.NewValue(enc.objectType, nil),
 					fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)

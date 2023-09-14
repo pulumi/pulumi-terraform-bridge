@@ -44,7 +44,7 @@ func newSetDecoder(elementDecoder Decoder) (Decoder, error) {
 	}, nil
 }
 
-func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (enc *setEncoder) fromPropertyValue(ctx convertCtx, p resource.PropertyValue) (tftypes.Value, error) {
 	setTy := tftypes.Set{ElementType: enc.elementType}
 
 	if propertyValueIsUnkonwn(p) {
@@ -64,7 +64,7 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	}
 	var values []tftypes.Value
 	for i, pv := range p.ArrayValue() {
-		v, err := enc.elementEncoder.fromPropertyValue(pv)
+		v, err := enc.elementEncoder.fromPropertyValue(ctx.visit(i), pv)
 		if err != nil {
 			return tftypes.NewValue(setTy, nil),
 				retErr("encoding element %d (%v): %w", i, pv, err)

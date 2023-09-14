@@ -91,7 +91,7 @@ func (p *provider) validateResourceConfig(
 
 	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
 
-	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)
+	encodedInputs, err := convert.EncodePropertyMapToDynamic(ctx, rh.encoder, tfType, inputs)
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
 	}
