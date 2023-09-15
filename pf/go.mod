@@ -2,10 +2,6 @@ module github.com/pulumi/pulumi-terraform-bridge/pf
 
 go 1.19
 
-replace github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
-
-replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
-
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.3
@@ -15,8 +11,8 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.10.0
 	github.com/hashicorp/terraform-plugin-go v0.16.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.56.1
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.59.0
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.6
 	github.com/stretchr/testify v1.8.3
 	google.golang.org/grpc v1.57.0
 )
