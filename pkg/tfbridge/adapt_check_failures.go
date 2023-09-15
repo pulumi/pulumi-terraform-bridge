@@ -91,7 +91,7 @@ func parseCheckError(
 		return pp, failType, s
 	}
 	// If there is no way to identify a propertyPath, still report a generic CheckFailure.
-	return nil, MiscFailure, d.Error()
+	return nil, MiscFailure, err.Error()
 }
 
 // Best effort path converter; may return nil.
