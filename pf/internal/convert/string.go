@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -74,7 +75,7 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	case p.IsBool():
 		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.BoolValue())), nil
 	case p.IsNumber():
-		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.NumberValue())), nil
+		return tftypes.NewValue(tftypes.String, strconv.FormatFloat(p.NumberValue(), 'f', -1, 64)), nil
 
 	case p.IsString():
 		return tftypes.NewValue(tftypes.String, p.StringValue()), nil

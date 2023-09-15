@@ -49,7 +49,35 @@ func TestConvertTurnaround(t *testing.T) {
 			panic(err)
 		}
 		return resource.NewNumberProperty(v)
-	}, "0", "8.3").withNormProp(func(p resource.PropertyValue) any { return fmt.Sprintf("%v", p.V) })...)
+	}, "0", "8.3", "601234567890").withNormProp(func(p resource.PropertyValue) any {
+		switch {
+		case p.IsOutput():
+			v := p.OutputValue()
+			if !v.Known {
+				return "unknown"
+			}
+			p = v.Element
+			fallthrough
+
+		// When converting back from a number, we specify that we have the same
+		// visual representation.
+		case p.IsNumber():
+			switch p.NumberValue() {
+			case 0:
+				return "0"
+			case 8.3:
+				return "8.3"
+			case 601234567890:
+				return "601234567890"
+			default:
+				panic("unexpected test input")
+			}
+		case p.IsNull():
+			return ""
+		default:
+			return p.StringValue()
+		}
+	})...)
 	cases = append(cases, convertTurnaroundTestCases(tftypes.Bool, resource.NewBoolProperty, false, true)...)
 	cases = append(cases, convertTurnaroundTestCases(tftypes.Number, resource.NewNumberProperty, float64(0), 42, 3.12)...)
 
