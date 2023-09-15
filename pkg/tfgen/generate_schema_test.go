@@ -417,7 +417,7 @@ go 1.20
 %s
 `, strings.Join(deps, "\n"))
 	t.Logf("file: %q", goModBytes)
-	err := os.WriteFile(goMod, []byte(goModBytes), 0700)
+	err := os.WriteFile(goMod, []byte(goModBytes), 0600)
 	require.NoError(t, err)
 
 	changeDir(t, dir)

@@ -98,6 +98,7 @@ func Test_ForceNew(t *testing.T) {
 	}
 
 	for _, test := range cases {
+		test := test
 		t.Run(test.Name, func(t *testing.T) {
 			v := &test.Var
 			actuallyForcesNew := v.forceNew()
