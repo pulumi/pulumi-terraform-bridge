@@ -38,6 +38,12 @@ func (p *provider) detectCheckFailure(
 	schemaInfos map[string]*tfbridge.SchemaInfo,
 	diag *tfprotov6.Diagnostic,
 ) *plugin.CheckFailure {
+	// For anything less critical than Error, refuse to treat it as a CheckFailure. Doing so
+	// would cause Pulumi program to fail-fast on a warning.
+	if diag.Severity > tfprotov6.DiagnosticSeverityError {
+		return nil
+	}
+
 	if diag.Attribute == nil || len(diag.Attribute.Steps()) < 1 {
 		return nil
 	}
