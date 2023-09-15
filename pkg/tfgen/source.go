@@ -44,6 +44,17 @@ func NewGitRepoDocsSource(g *Generator) DocsSource {
 	}
 }
 
+func NewNullSource() DocsSource { return nullSource{} }
+
+type nullSource struct{}
+
+func (nullSource) getResource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+	return nil, nil
+}
+func (nullSource) getDatasource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+	return nil, nil
+}
+
 type gitRepoSource struct {
 	docRules              *tfbridge.DocRuleInfo
 	upstreamRepoPath      string
@@ -78,9 +89,8 @@ func (gh *gitRepoSource) getFile(
 		var err error
 		repoPath, err = getRepoPath(gh.githost, gh.org, gh.provider, gh.providerModuleVersion)
 		if err != nil {
-			fmt.Printf("Failed to get file for %q (%q): %s", rawname, kind, err.Error())
-			return nil, nil // fmt.Errorf("get file for %q (%q): %w",
-			// rawname, kind, err)
+			return nil, fmt.Errorf("get file for %q (%q): %w",
+				rawname, kind, err)
 		}
 	}
 

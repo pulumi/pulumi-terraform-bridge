@@ -54,13 +54,14 @@ func TLSProvider() tfbridge.ProviderInfo {
 	}
 
 	return tfbridge.ProviderInfo{
-		Name:        "tls",
-		P:           tfpf.ShimProvider(tlsshim.NewProvider()),
-		Description: "A Pulumi package to create TLS resources in Pulumi programs.",
-		Keywords:    []string{"pulumi", "tls"},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-tls",
+		Name:             "tls",
+		P:                tfpf.ShimProvider(tlsshim.NewProvider()),
+		Description:      "A Pulumi package to create TLS resources in Pulumi programs.",
+		Keywords:         []string{"pulumi", "tls"},
+		License:          "Apache-2.0",
+		Homepage:         "https://pulumi.io",
+		Repository:       "https://github.com/pulumi/pulumi-tls",
+		UpstreamRepoPath: ".",
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"tls_cert_request":        {Tok: tlsResource(tlsMod, "CertRequest")},
 			"tls_locally_signed_cert": {Tok: tlsResource(tlsMod, "LocallySignedCert")},

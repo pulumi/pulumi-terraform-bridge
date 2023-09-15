@@ -62,14 +62,15 @@ func RandomProvider() tfbridge.ProviderInfo {
 	}
 
 	return tfbridge.ProviderInfo{
-		Name:        "random",
-		P:           tfpf.ShimProvider(randomshim.NewProvider()),
-		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
-		Keywords:    []string{"pulumi", "random"},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-random",
-		Version:     "4.8.2",
+		Name:             "random",
+		P:                tfpf.ShimProvider(randomshim.NewProvider()),
+		Description:      "A Pulumi package to safely use randomness in Pulumi programs.",
+		Keywords:         []string{"pulumi", "random"},
+		License:          "Apache-2.0",
+		Homepage:         "https://pulumi.io",
+		Repository:       "https://github.com/pulumi/pulumi-random",
+		Version:          "4.8.2",
+		UpstreamRepoPath: ".",
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"random_id":       {Tok: randomResource(randomMod, "RandomId")},
 			"random_password": {Tok: randomResource(randomMod, "RandomPassword")},
@@ -138,13 +139,15 @@ func MuxedRandomProvider() tfbridge.ProviderInfo {
 	pf := RandomProvider()
 
 	info := tfbridge.ProviderInfo{
-		Name:        "muxedrandom",
-		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
-		Keywords:    []string{"pulumi", "random"},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-random",
-		Version:     "4.8.2",
+		Name:             "muxedrandom",
+		Description:      "A Pulumi package to safely use randomness in Pulumi programs.",
+		Keywords:         []string{"pulumi", "random"},
+		License:          "Apache-2.0",
+		Homepage:         "https://pulumi.io",
+		Repository:       "https://github.com/pulumi/pulumi-random",
+		Version:          "4.8.2",
+		UpstreamRepoPath: ".",
+		ResourcePrefix:   "random",
 		P: tfpf.MuxShimWithPF(context.Background(),
 			sdkv2.NewProvider(sdkv2randomprovider.New()),
 			randomshim.NewProvider()),

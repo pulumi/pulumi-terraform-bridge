@@ -82,7 +82,7 @@ func TestMuxedGetMapping(t *testing.T) {
 		resp, err := server.GetMapping(req(key))
 		assert.NoError(t, err)
 
-		assert.Equal(t, "muxedrandom", resp.Provider)
+		assert.Equal(t, "random", resp.Provider)
 
 		var info tfbridge0.MarshallableProviderInfo
 		err = json.Unmarshal(resp.Data, &info)

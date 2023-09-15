@@ -35,14 +35,15 @@ var testBridgeMetadata []byte
 // features of tfbridge and is the core of pulumi-resource-testbridge.
 func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 	info := tfbridge.ProviderInfo{
-		Name:        "testbridge",
-		P:           tfpf.ShimProvider(&syntheticProvider{}),
-		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
-		Keywords:    []string{},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
-		Version:     "0.0.1",
+		Name:             "testbridge",
+		P:                tfpf.ShimProvider(&syntheticProvider{}),
+		Description:      "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
+		Keywords:         []string{},
+		License:          "Apache-2.0",
+		Homepage:         "https://pulumi.io",
+		Repository:       "https://github.com/pulumi/pulumi-terraform-bridge",
+		Version:          "0.0.1",
+		UpstreamRepoPath: ".",
 
 		Config: map[string]*tfbridge.SchemaInfo{
 			"string_defaultinfo_config_prop": {

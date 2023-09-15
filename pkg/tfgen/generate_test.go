@@ -111,8 +111,7 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 	// mapping files in tf2pulumi/convert/testdata/mappings. Add in the use of PULUMI_ACCEPT and it means you
 	// don't have to manually write schemas, just mappings for tests.
 
-	testDir, err := filepath.Abs(filepath.Join("..", "tf2pulumi", "convert", "testdata"))
-	require.NoError(t, err)
+	testDir := abs(t, "..", "tf2pulumi", "convert", "testdata")
 	mappingsPath := filepath.Join(testDir, "mappings")
 	schemasPath := filepath.Join(testDir, "schemas")
 	mapper := &bridgetesting.TestFileMapper{Path: mappingsPath}
@@ -130,6 +129,7 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 			// Strip off the .json part to make the package name
 			pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
 			provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
+			(*provInfo).UpstreamRepoPath = "."
 			require.NoError(t, err)
 
 			schema, err := GenerateSchema(*provInfo, nilSink)

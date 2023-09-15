@@ -17,7 +17,11 @@ package tfgen
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -41,24 +45,36 @@ import (
 // To update the contents of test_data/regress-611-schema.json run the test with env var PULUMI_ACCEPT set to "true".
 func TestRegress611(t *testing.T) {
 	provider := testprovider.ProviderRegress611()
+	expectedFile := abs(t, "test_data/regress-611-schema.json")
+
+	enterProviderModule(t,
+		"github.com/hashicorp/terraform-provider-aws v1.0.0")
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
 	assert.NoError(t, err)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-611-schema.json", schema)
+	bridgetesting.AssertEqualsJSONFile(t, expectedFile, schema)
 }
 
 func TestRegressMiniRandom(t *testing.T) {
 	provider := testprovider.ProviderMiniRandom()
+	expectedFile := abs(t, "test_data/regress-minirandom-schema.json")
+	enterProviderModule(t,
+		"github.com/terraform-providers/terraform-provider-random v1.0.0")
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
 	assert.NoError(t, err)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minirandom-schema.json", schema)
+	bridgetesting.AssertEqualsJSONFile(t, expectedFile, schema)
 }
 
 func TestNestedMaxItemsOne(t *testing.T) {
 	provider := testprovider.ProviderMiniCloudflare()
+
+	expectedFile := abs(t, "test_data/regress-minicloudflare-schema.json")
+	enterProviderModule(t,
+		"github.com/terraform-providers/terraform-provider-cloudflare v1.0.0")
+
 	meta, err := metadata.New(nil)
 	require.NoError(t, err)
 	provider.MetadataInfo = &tfbridge.MetadataInfo{
@@ -71,7 +87,7 @@ func TestNestedMaxItemsOne(t *testing.T) {
 		Color: colors.Never,
 	}))
 	assert.NoError(t, err)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minicloudflare-schema.json", schema)
+	bridgetesting.AssertEqualsJSONFile(t, expectedFile, schema)
 
 	// We will now remove manual MaxItemsOne and assert that AutoAliasing re-applies them.
 	provider = testprovider.ProviderMiniCloudflare()
@@ -367,4 +383,44 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "gradle", actual["buildFiles"])
 	})
+}
+
+func abs(t *testing.T, path ...string) string {
+	abs, err := filepath.Abs(filepath.Join(path...))
+	require.NoError(t, err)
+	return abs
+}
+
+func changeDir(t *testing.T, target string) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	err = os.Chdir(target)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Chdir(cwd)
+		require.NoError(t, err)
+	})
+}
+
+func enterProviderModule(t *testing.T, deps ...string) string {
+	dir := t.TempDir()
+	goMod := filepath.Join(dir, "go.mod")
+	for i, v := range deps {
+		deps[i] = "require " + v
+	}
+
+	goModBytes := fmt.Sprintf(`
+module github.com/some/go/mod
+
+go 1.20
+
+%s
+`, strings.Join(deps, "\n"))
+	t.Logf("file: %q", goModBytes)
+	err := os.WriteFile(goMod, []byte(goModBytes), 0700)
+	require.NoError(t, err)
+
+	changeDir(t, dir)
+
+	return dir
 }

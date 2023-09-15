@@ -152,15 +152,22 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 		return "", fmt.Errorf("error finding current working directory: %w", err)
 	}
 	if filepath.Base(curWd) != "provider" {
-		curWd = filepath.Join(curWd, "provider")
+		provDir := filepath.Join(curWd, "provider")
+		info, err := os.Stat(provDir)
+		if err == nil && info.IsDir() {
+			curWd = provDir
+		} else if err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
 	}
 
 	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
 	command.Dir = curWd
 	output, err := command.CombinedOutput()
 	if err != nil {
-		msg := "error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s"
-		return "", fmt.Errorf(msg, curWd, err, output)
+		return "", fmt.Errorf("error running '%s' in %q dir for module: %w\n\nOutput: %s",
+			strings.Join(command.Args, " "), curWd, err, output)
 	}
 
 	target := struct {
@@ -174,7 +181,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (s
 	}
 
 	if target.Error != "" {
-		return "", fmt.Errorf("error from 'go mod download -json' for module: %s", target.Error)
+		return "", fmt.Errorf("error from '%s' for module: %s",
+			strings.Join(command.Args, " "), target.Error)
 	}
 
 	repoPaths.Store(moduleCoordinates, target.Dir)
