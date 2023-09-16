@@ -47,8 +47,6 @@ func TestRegress611(t *testing.T) {
 	provider := testprovider.ProviderRegress611()
 	expectedFile := abs(t, "test_data/regress-611-schema.json")
 
-	enterProviderModule(t,
-		"github.com/hashicorp/terraform-provider-aws v1.0.0")
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
