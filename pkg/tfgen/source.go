@@ -15,9 +15,12 @@
 package tfgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -59,7 +62,7 @@ type gitRepoSource struct {
 	docRules              *tfbridge.DocRuleInfo
 	upstreamRepoPath      string
 	org                   string
-	provider              string // provider name?
+	provider              string
 	resourcePrefix        string
 	providerModuleVersion string
 	githost               string
@@ -71,6 +74,19 @@ func (gh *gitRepoSource) getResource(rawname string, info tfbridge.ResourceOrDat
 
 func (gh *gitRepoSource) getDatasource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
 	return gh.getFile(rawname, info, DataSourceDocs)
+}
+
+type GetRepoPathErr struct {
+	Expected   string
+	Underlying error
+}
+
+func (e GetRepoPathErr) Error() string {
+	return fmt.Sprintf("Unable to access repository at %s: %s", e.Expected, e.Underlying.Error())
+}
+
+func (e GetRepoPathErr) Unwrap() error {
+	return e.Underlying
 }
 
 func (gh *gitRepoSource) getFile(
@@ -92,6 +108,8 @@ func (gh *gitRepoSource) getFile(
 			return nil, fmt.Errorf("get file for %q (%q): %w",
 				rawname, kind, err)
 		}
+	} else if _, err := os.Stat(repoPath); err != nil {
+		return nil, GetRepoPathErr{Expected: repoPath, Underlying: err}
 	}
 
 	possibleMarkdownNames := getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
@@ -117,4 +135,64 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFi
 		}
 	}
 	return nil, nil
+}
+
+func getRepoPath(gitHost string, org string, provider string, version string) (_ string, err error) {
+	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
+	if version != "" {
+		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
+	}
+
+	if path, ok := repoPaths.Load(moduleCoordinates); ok {
+		return path.(string), nil
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+		err = GetRepoPathErr{Expected: moduleCoordinates, Underlying: err}
+	}()
+
+	curWd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("error finding current working directory: %w", err)
+	}
+	if filepath.Base(curWd) != "provider" {
+		provDir := filepath.Join(curWd, "provider")
+		info, err := os.Stat(provDir)
+		if err == nil && info.IsDir() {
+			curWd = provDir
+		} else if err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
+	}
+
+	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
+	command.Dir = curWd
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("error running '%s' in %q dir for module: %w\n\nOutput: %s",
+			strings.Join(command.Args, " "), curWd, err, output)
+	}
+
+	target := struct {
+		Version string
+		Dir     string
+		Error   string
+	}{}
+
+	if err := json.Unmarshal(output, &target); err != nil {
+		return "", fmt.Errorf("error parsing output of 'go mod download -json' for module: %w", err)
+	}
+
+	if target.Error != "" {
+		return "", fmt.Errorf("error from '%s' for module: %s",
+			strings.Join(command.Args, " "), target.Error)
+	}
+
+	repoPaths.Store(moduleCoordinates, target.Dir)
+
+	return target.Dir, nil
 }

@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
@@ -136,59 +135,6 @@ const (
 )
 
 var repoPaths sync.Map
-
-func getRepoPath(gitHost string, org string, provider string, version string) (string, error) {
-	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
-	if version != "" {
-		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
-	}
-
-	if path, ok := repoPaths.Load(moduleCoordinates); ok {
-		return path.(string), nil
-	}
-
-	curWd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("error finding current working directory: %w", err)
-	}
-	if filepath.Base(curWd) != "provider" {
-		provDir := filepath.Join(curWd, "provider")
-		info, err := os.Stat(provDir)
-		if err == nil && info.IsDir() {
-			curWd = provDir
-		} else if err != nil && !os.IsNotExist(err) {
-			return "", err
-		}
-
-	}
-
-	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
-	command.Dir = curWd
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("error running '%s' in %q dir for module: %w\n\nOutput: %s",
-			strings.Join(command.Args, " "), curWd, err, output)
-	}
-
-	target := struct {
-		Version string
-		Dir     string
-		Error   string
-	}{}
-
-	if err := json.Unmarshal(output, &target); err != nil {
-		return "", fmt.Errorf("error parsing output of 'go mod download -json' for module: %w", err)
-	}
-
-	if target.Error != "" {
-		return "", fmt.Errorf("error from '%s' for module: %s",
-			strings.Join(command.Args, " "), target.Error)
-	}
-
-	repoPaths.Store(moduleCoordinates, target.Dir)
-
-	return target.Dir, nil
-}
 
 func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
 	possibleMarkdownNames := []string{
