@@ -48,7 +48,8 @@ func (p *provider) CheckWithContext(
 
 	if info := rh.pulumiResourceInfo; info != nil {
 		if check := info.PreCheckCallback; check != nil {
-			checkedInputs, err := check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
+			var err error
+			checkedInputs, err = check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
 			if err != nil {
 				return checkedInputs, []plugin.CheckFailure{}, err
 			}

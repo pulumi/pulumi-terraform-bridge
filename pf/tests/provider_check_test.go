@@ -256,8 +256,9 @@ func TestCheck(t *testing.T) {
 				_ context.Context, config, meta resource.PropertyMap,
 			) (resource.PropertyMap, error) {
 				t.Logf("Meta: %#v", meta)
-				config["prop"] = meta["prop"]
-				return config, nil
+				result := config.Copy()
+				result["prop"] = meta["prop"]
+				return result, nil
 			},
 		},
 		{
