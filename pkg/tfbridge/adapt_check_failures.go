@@ -77,8 +77,7 @@ func parseCheckError(
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
 		return &pp, MiscFailure, err.Error()
 	}
-	var d *diagnostics.ValidationError
-	if errors.As(err, &d) {
+	if d := (*diagnostics.ValidationError)(nil); errors.As(err, &d) {
 		failType := MiscFailure
 		if strings.Contains(d.Summary, "Invalid or unknown key") {
 			failType = InvalidKey
