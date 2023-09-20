@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
@@ -124,6 +125,47 @@ func TestCheckConfig(t *testing.T) {
 		    "inputs": {
 	              "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 	              "scopes": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("unknown_config_value_with_validators", func(t *testing.T) {
+		// Regress interaction of unknowns and custom type validators.
+		schema := schema.Schema{
+			Blocks: map[string]schema.Block{
+				"assume_role": schema.ListNestedBlock{
+					Validators: []validator.List{
+						listvalidator.SizeAtMost(1),
+					},
+					NestedObject: schema.NestedBlockObject{
+						Attributes: map[string]schema.Attribute{
+							"duration": schema.StringAttribute{
+								CustomType: DurationType,
+								Optional:   true,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		assert.Equal(t, "04da6b54-80e4-46f7-96ec-b56ff0331ba9", plugin.UnknownStringValue)
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+	              "assumeRole": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+	              "assumeRole": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 		      "version": "6.54.0"
 		    }
 		  }
@@ -694,4 +736,18 @@ func makeProviderServer(
 		c(&info)
 	}
 	return newProviderServer(t, info)
+}
+
+type customValidator struct {
+}
+
+func (*customValidator) Description(_ context.Context) string         { return "" }
+func (*customValidator) MarkdownDescription(_ context.Context) string { return "" }
+
+func (*customValidator) ValidateString(
+	_ context.Context,
+	req validator.StringRequest,
+	resp *validator.StringResponse,
+) {
+	panic(req.Config.Raw.String())
 }

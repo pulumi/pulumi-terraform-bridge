@@ -83,9 +83,13 @@ func (p *provider) CheckConfigWithContext(
 	// Store for use in subsequent ApplyDefaultInfoValues.
 	p.lastKnownProviderConfig = news
 
-	checkFailures, err := p.validateProviderConfig(ctx, urn, news)
-	if err != nil {
-		return nil, nil, err
+	var checkFailures []plugin.CheckFailure
+	if !news.ContainsUnknowns() {
+		var err error
+		checkFailures, err = p.validateProviderConfig(ctx, urn, news)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Ensure propreties marked secret in the schema have secret values.
