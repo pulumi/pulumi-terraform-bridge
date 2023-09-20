@@ -365,3 +365,8 @@ func TestModulePlacementForType(t *testing.T) {
 	}
 
 }
+
+func TestWithoutPackageName(t *testing.T) {
+	assert.Equal(t, "http", withoutPackageName("http", "http"))
+	assert.Equal(t, "s3_bucket", withoutPackageName("aws", "aws_s3_bucket"))
+}
