@@ -224,13 +224,18 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		return entityDocs{}, nil
 	}
 
+	var docInfo *tfbridge.DocInfo
+	if info != nil {
+		docInfo = info.GetDocs()
+	}
+
 	var docFile *DocFile
 	var err error
 	switch kind {
 	case ResourceDocs:
-		docFile, err = source.getResource(rawname, info)
+		docFile, err = source.getResource(rawname, docInfo)
 	case DataSourceDocs:
-		docFile, err = source.getDatasource(rawname, info)
+		docFile, err = source.getDatasource(rawname, docInfo)
 	default:
 		panic("unknown docs kind")
 	}
@@ -264,18 +269,14 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		return entityDocs{}, err
 	}
 
-	var docinfo *tfbridge.DocInfo
-	if info != nil {
-		docinfo = info.GetDocs()
-	}
-	if docinfo != nil {
+	if docInfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
 			return getDocsForResource(g, source, kind, sourceFrom, nil)
 		}
 
-		if docinfo.IncludeAttributesFrom != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFrom)
+		if docInfo.IncludeAttributesFrom != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeAttributesFrom)
 			if err != nil {
 				return doc, err
 			}
@@ -283,8 +284,8 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 			overlayAttributesToAttributes(sourceDocs, doc)
 		}
 
-		if docinfo.IncludeAttributesFromArguments != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFromArguments)
+		if docInfo.IncludeAttributesFromArguments != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeAttributesFromArguments)
 			if err != nil {
 				return doc, err
 			}
@@ -292,8 +293,8 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 			overlayArgsToAttributes(sourceDocs, doc)
 		}
 
-		if docinfo.IncludeArgumentsFrom != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeArgumentsFrom)
+		if docInfo.IncludeArgumentsFrom != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeArgumentsFrom)
 			if err != nil {
 				return doc, err
 			}

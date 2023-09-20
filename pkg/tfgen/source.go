@@ -30,14 +30,10 @@ import (
 // A source of documentation bytes.
 type DocsSource interface {
 	// Get the bytes for a resource with TF token rawname.
-	getResource(
-		rawname string, info tfbridge.ResourceOrDataSourceInfo,
-	) (*DocFile, error)
+	getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
 
 	// Get the bytes for a datasource with TF token rawname.
-	getDatasource(
-		rawname string, info tfbridge.ResourceOrDataSourceInfo,
-	) (*DocFile, error)
+	getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
 }
 
 type DocFile struct {
@@ -69,24 +65,20 @@ type gitRepoSource struct {
 	githost               string
 }
 
-func (gh *gitRepoSource) getResource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+func (gh *gitRepoSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return gh.getFile(rawname, info, ResourceDocs)
 }
 
-func (gh *gitRepoSource) getDatasource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+func (gh *gitRepoSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return gh.getFile(rawname, info, DataSourceDocs)
 }
 
 // getFile implements the private logic necessary to get a file from a TF Git repo's website section.
 func (gh *gitRepoSource) getFile(
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
+	rawname string, info *tfbridge.DocInfo, kind DocKind,
 ) (*DocFile, error) {
-	var docinfo *tfbridge.DocInfo
-	if info != nil {
-		docinfo = info.GetDocs()
-	}
-	if docinfo != nil && len(docinfo.Markdown) != 0 {
-		return &DocFile{Content: docinfo.Markdown}, nil
+	if info != nil && len(info.Markdown) != 0 {
+		return &DocFile{Content: info.Markdown}, nil
 	}
 
 	repoPath := gh.upstreamRepoPath
@@ -102,8 +94,8 @@ func (gh *gitRepoSource) getFile(
 
 	possibleMarkdownNames := getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
 
-	if docinfo != nil && docinfo.Source != "" {
-		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
+	if info != nil && info.Source != "" {
+		possibleMarkdownNames = append(possibleMarkdownNames, info.Source)
 	}
 
 	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
