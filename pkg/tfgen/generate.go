@@ -75,6 +75,10 @@ type Generator struct {
 	editRules        editRules
 
 	convertedCode map[string][]byte
+
+	// Set if we can't find the docs repo and we have already printed a warning
+	// message.
+	noDocsRepo bool
 }
 
 type Language string
@@ -1207,10 +1211,11 @@ func (g *Generator) gatherResource(rawname string,
 	if !isProvider {
 		source := NewGitRepoDocsSource(g)
 		pd, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
-		if err != nil {
+		if err == nil {
+			entityDocs = pd
+		} else if !g.checkNoDocsError(err) {
 			return nil, err
 		}
-		entityDocs = pd
 	} else {
 		entityDocs.Description = fmt.Sprintf(
 			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
@@ -1400,7 +1405,7 @@ func (g *Generator) gatherDataSource(rawname string,
 	// Collect documentation information for this data source.
 	source := NewGitRepoDocsSource(g)
 	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info)
-	if err != nil {
+	if err != nil && !g.checkNoDocsError(err) {
 		return nil, err
 	}
 
@@ -1535,6 +1540,49 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 	}
 
 	return modules, nil
+}
+
+func (g *Generator) checkNoDocsError(err error) bool {
+	var e GetRepoPathErr
+	if !errors.As(err, &e) {
+		// Not the right kind of error
+		return false
+	}
+
+	// If we have already warned, we can just discard the message
+	if !g.noDocsRepo {
+		g.logMissingRepoPath(e)
+	}
+	g.noDocsRepo = true
+	return true
+}
+
+func (g *Generator) logMissingRepoPath(err GetRepoPathErr) {
+	msg := `Unable to find the upstream provider's documentation:
+The upstream repository is expected to be at %q.
+%s
+The original error is: %s`
+
+	var correction string
+	if g.info.UpstreamRepoPath != "" {
+		correction = fmt.Sprintf(`
+The upstream repository path has been overridden, but the specified path is invalid.
+You should check the value of:
+tfbridge.ProviderInfo{
+	UpstreamRepoPath: %q,
+}`, g.info.UpstreamRepoPath)
+	} else {
+		correction = fmt.Sprintf(`
+If the expected path is not correct, you should check the values of these fields (current values shown):
+tfbridge.ProviderInfo{
+	GitHubHost:              %q,
+	GitHubOrg:               %q,
+	Name:                    %q,
+	TFProviderModuleVersion: %q,
+}`, g.info.GetGitHubHost(), g.info.GetGitHubOrg(), g.info.Name, g.info.GetProviderModuleVersion())
+	}
+
+	g.sink.Warningf(&diag.Diag{Message: msg}, err.Expected, correction, err.Underlying)
 }
 
 // emitProjectMetadata emits the Pulumi.yaml project file into the package's root directory.
