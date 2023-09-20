@@ -16,13 +16,12 @@ package tfgen
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -43,7 +42,6 @@ type DocFile struct {
 
 func NewGitRepoDocsSource(g *Generator) DocsSource {
 	return &gitRepoSource{
-		sink:                  g.sink,
 		docRules:              g.info.DocRules,
 		upstreamRepoPath:      g.info.UpstreamRepoPath,
 		org:                   g.info.GetGitHubOrg(),
@@ -55,7 +53,6 @@ func NewGitRepoDocsSource(g *Generator) DocsSource {
 }
 
 type gitRepoSource struct {
-	sink                  diag.Sink
 	docRules              *tfbridge.DocRuleInfo
 	upstreamRepoPath      string
 	org                   string
@@ -86,9 +83,7 @@ func (gh *gitRepoSource) getFile(
 		var err error
 		repoPath, err = getRepoPath(gh.githost, gh.org, gh.provider, gh.providerModuleVersion)
 		if err != nil {
-			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-			gh.sink.Debugf(&diag.Diag{Message: msg}, rawname, gh.githost, gh.org, gh.provider, gh.providerModuleVersion, err)
-			return nil, nil
+			return nil, fmt.Errorf("repo for token %q: %w", rawname, err)
 		}
 	}
 
@@ -98,21 +93,40 @@ func (gh *gitRepoSource) getFile(
 		possibleMarkdownNames = append(possibleMarkdownNames, info.Source)
 	}
 
-	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
-	if !found {
-		return nil, nil
-	}
+	return readMarkdown(repoPath, kind, possibleMarkdownNames)
+}
 
-	return &DocFile{Content: markdownBytes, FileName: markdownFileName}, nil
+// An error that represents a missing repo path directory.
+type GetRepoPathErr struct {
+	Expected   string
+	Underlying error
+}
+
+func (e GetRepoPathErr) Error() string {
+	return fmt.Sprintf("Unable to access repository at %s: %s", e.Expected, e.Underlying.Error())
+}
+
+func (e GetRepoPathErr) Unwrap() error {
+	return e.Underlying
 }
 
 var repoPaths sync.Map
 
-func getRepoPath(gitHost string, org string, provider string, version string) (string, error) {
+func getRepoPath(gitHost string, org string, provider string, version string) (_ string, err error) {
 	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
 	if version != "" {
 		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
 	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+		err = GetRepoPathErr{
+			Expected:   moduleCoordinates,
+			Underlying: err,
+		}
+	}()
 
 	if path, ok := repoPaths.Load(moduleCoordinates); ok {
 		return path.(string), nil
@@ -178,15 +192,24 @@ func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRul
 }
 
 // readMarkdown searches all possible locations for the markdown content
-func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, string, bool) {
+func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFile, error) {
 	locationPrefix := getDocsPath(repo, kind)
 
 	for _, name := range possibleLocations {
 		location := filepath.Join(locationPrefix, name)
 		markdownBytes, err := os.ReadFile(location)
 		if err == nil {
-			return markdownBytes, name, true
+			return &DocFile{markdownBytes, name}, nil
+		} else if !os.IsNotExist(err) && !errors.Is(err, &os.PathError{}) {
+			// Missing doc files are expected and OK.
+			//
+			// If the file we expect is actually a directory (PathError), that
+			// is also OK.
+			//
+			// Other errors (such as permission errors) indicate a problem
+			// with the host system, and should be reported.
+			return nil, fmt.Errorf("%s: %w", location, err)
 		}
 	}
-	return nil, "", false
+	return nil, nil
 }
