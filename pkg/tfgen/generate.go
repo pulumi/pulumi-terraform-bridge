@@ -1648,9 +1648,15 @@ func resourceName(provider string, rawname string,
 
 // withoutPackageName strips off the package prefix from a raw name.
 func withoutPackageName(pkg string, rawname string) string {
-	contract.Assertf(strings.HasPrefix(rawname, pkg+"_"), `strings.HasPrefix(rawname, pkg+"_")`)
-	name := rawname[len(pkg)+1:] // strip off the pkg prefix.
-	return name
+	// Providers almost always have function and resource names prefixed with the package name,
+	// but every rule has an exception! In HTTP provider the "http" datasource intentionally
+	// does not do that, as noted in:
+	//
+	///nolint:lll
+	// https://github.com/hashicorp/terraform-provider-http/blob/0eeb9818e8114631a3c7dc61e750f11180ca987b/internal/provider/data_source_http.go#L47
+	//
+	// Therefore the code trims the prefix if it finds it, but leaves as-is otherwise.
+	return strings.TrimPrefix(rawname, pkg+"_")
 }
 
 func stableResources(resources shim.ResourceMap) []string {
