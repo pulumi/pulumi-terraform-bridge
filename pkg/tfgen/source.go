@@ -27,31 +27,80 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
-	resourcePrefix string, kind DocKind, rawName string,
-	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
-	globalInfo *tfbridge.DocRuleInfo,
-) ([]byte, string, bool) {
+// A source of documentation bytes.
+type DocsSource interface {
+	// Get the bytes for a resource with TF token rawname.
+	getResource(
+		rawname string, info tfbridge.ResourceOrDataSourceInfo,
+	) (*DocFile, error)
 
+	// Get the bytes for a datasource with TF token rawname.
+	getDatasource(
+		rawname string, info tfbridge.ResourceOrDataSourceInfo,
+	) (*DocFile, error)
+}
+
+type DocFile struct {
+	Content  []byte
+	FileName string
+}
+
+func NewGitRepoDocsSource(g *Generator) DocsSource {
+	return &gitRepoSource{
+		sink:                  g.sink,
+		docRules:              g.info.DocRules,
+		upstreamRepoPath:      g.info.UpstreamRepoPath,
+		org:                   g.info.GetGitHubOrg(),
+		provider:              g.info.Name,
+		resourcePrefix:        g.info.GetResourcePrefix(),
+		providerModuleVersion: g.info.GetProviderModuleVersion(),
+		githost:               g.info.GetGitHubHost(),
+	}
+}
+
+type gitRepoSource struct {
+	sink                  diag.Sink
+	docRules              *tfbridge.DocRuleInfo
+	upstreamRepoPath      string
+	org                   string
+	provider              string
+	resourcePrefix        string
+	providerModuleVersion string
+	githost               string
+}
+
+func (gh *gitRepoSource) getResource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+	return gh.getFile(rawname, info, ResourceDocs)
+}
+
+func (gh *gitRepoSource) getDatasource(rawname string, info tfbridge.ResourceOrDataSourceInfo) (*DocFile, error) {
+	return gh.getFile(rawname, info, DataSourceDocs)
+}
+
+// getFile implements the private logic necessary to get a file from a TF Git repo's website section.
+func (gh *gitRepoSource) getFile(
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
+) (*DocFile, error) {
 	var docinfo *tfbridge.DocInfo
 	if info != nil {
 		docinfo = info.GetDocs()
 	}
 	if docinfo != nil && len(docinfo.Markdown) != 0 {
-		return docinfo.Markdown, "", true
+		return &DocFile{Content: docinfo.Markdown}, nil
 	}
 
+	repoPath := gh.upstreamRepoPath
 	if repoPath == "" {
 		var err error
-		repoPath, err = getRepoPath(githost, org, provider, providerModuleVersion)
+		repoPath, err = getRepoPath(gh.githost, gh.org, gh.provider, gh.providerModuleVersion)
 		if err != nil {
 			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
-			return nil, "", false
+			gh.sink.Debugf(&diag.Diag{Message: msg}, rawname, gh.githost, gh.org, gh.provider, gh.providerModuleVersion, err)
+			return nil, nil
 		}
 	}
 
-	possibleMarkdownNames := getMarkdownNames(resourcePrefix, rawName, globalInfo)
+	possibleMarkdownNames := getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
 
 	if docinfo != nil && docinfo.Source != "" {
 		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
@@ -59,10 +108,10 @@ func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
 
 	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
 	if !found {
-		return nil, "", false
+		return nil, nil
 	}
 
-	return markdownBytes, markdownFileName, true
+	return &DocFile{Content: markdownBytes, FileName: markdownFileName}, nil
 }
 
 var repoPaths sync.Map

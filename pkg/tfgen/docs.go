@@ -217,17 +217,29 @@ func formatEntityName(rawname string) string {
 
 // getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForResource(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
-	githost string) (entityDocs, error) {
+func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
 
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
-		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
-	if !found {
+	var docFile *DocFile
+	var err error
+	switch kind {
+	case ResourceDocs:
+		docFile, err = source.getResource(rawname, info)
+	case DataSourceDocs:
+		docFile, err = source.getDatasource(rawname, info)
+	default:
+		panic("unknown docs kind")
+	}
+
+	if err != nil {
+		return entityDocs{}, fmt.Errorf("get docs for token %s: %w", rawname, err)
+	}
+
+	if docFile == nil {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
@@ -245,7 +257,9 @@ func getDocsForResource(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, resourcePrefix, rawname)
+	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
+
+	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -257,7 +271,7 @@ func getDocsForResource(g *Generator, org string, provider string, resourcePrefi
 	if docinfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
-			return getDocsForResource(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
+			return getDocsForResource(g, source, kind, sourceFrom, nil)
 		}
 
 		if docinfo.IncludeAttributesFrom != "" {
@@ -387,7 +401,7 @@ func splitGroupLines(s, sep string) [][]string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown []byte, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
+	markdown []byte, markdownFileName, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
 		sink:             g,
