@@ -422,6 +422,7 @@ func goLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessag
 		OmitExtraInputTypes:            g.OmitExtraInputTypes,
 		RespectSchemaVersion:           g.RespectSchemaVersion,
 		InternalDependencies:           g.InternalDependencies,
+		Generics:                       g.Generics,
 	}
 	return rawMessage(info)
 }
