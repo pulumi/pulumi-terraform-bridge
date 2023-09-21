@@ -39,8 +39,7 @@ func (d *Data) Marshal() []byte {
 	if d == nil {
 		d = &Data{m: make(map[string]*json.RawMessage)}
 	}
-	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-	bytes, err := jsoni.MarshalIndent(d.m, "", "    ")
+	bytes, err := json.MarshalIndent(d.m, "", "    ")
 	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
 	// it is asked to serialize an unmarshalable type (complex, function or channel)
 	// or a cyclic data structure. Because `string` and `json.RawMessage` are
