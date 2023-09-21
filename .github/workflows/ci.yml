@@ -33,6 +33,8 @@ jobs:
             **/go.sum
       - name: Build
         run: make build
+      - name: Build PF
+        run: cd pf && make build
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
