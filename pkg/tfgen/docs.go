@@ -47,31 +47,24 @@ import (
 type argumentDocs struct {
 	// The description for this argument.
 	description string
-
-	// (Optional) The names and descriptions for each argument of this argument.
-	arguments map[string]string
-
-	// Whether this argument was derived from a nested object. Used to determine
-	// whether to append descriptions that have continued to the following line
-	isNested bool
 }
 
 // Included for testing convenience.
 func (ad argumentDocs) MarshalJSON() ([]byte, error) {
-	j, err := json.Marshal(struct {
-		Description string
-		Arguments   map[string]string
-		IsNested    bool
+	return json.Marshal(struct {
+		Description string `json:"description"`
 	}{
 		Description: ad.description,
-		Arguments:   ad.arguments,
-		IsNested:    ad.isNested,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return j, nil
 }
+
+type docsPath string
+
+func (d docsPath) nested() bool                 { return strings.Contains(string(d), ".") }
+func (d docsPath) leaf() string                 { s := d.parts(); return s[len(s)-1] }
+func (d docsPath) join(segment string) docsPath { return docsPath(string(d) + "." + segment) }
+func (d docsPath) parts() []string              { return strings.Split(string(d), ".") }
+func (d docsPath) withOutRoot() docsPath        { s := d.parts(); return docsPath(strings.Join(s[1:], ".")) }
 
 // entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
 type entityDocs struct {
@@ -100,7 +93,7 @@ type entityDocs struct {
 	//  	- isNested: true
 	// "index_document" is recorded like a top level argument since sometimes object names in
 	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
-	Arguments map[string]*argumentDocs
+	Arguments map[docsPath]*argumentDocs
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
@@ -109,18 +102,13 @@ type entityDocs struct {
 	Import string
 }
 
-func (ed *entityDocs) getOrCreateArgumentDocs(argumentName string) (*argumentDocs, bool) {
+func (ed *entityDocs) ensure() {
 	if ed.Arguments == nil {
-		ed.Arguments = make(map[string]*argumentDocs)
+		ed.Arguments = map[docsPath]*argumentDocs{}
 	}
-	var created bool
-	args, has := ed.Arguments[argumentName]
-	if !has {
-		args = &argumentDocs{arguments: make(map[string]string)}
-		ed.Arguments[argumentName] = args
-		created = true
+	if ed.Attributes == nil {
+		ed.Attributes = map[string]string{}
 	}
-	return args, created
 }
 
 // DocKind indicates what kind of entity's documentation is being requested.
@@ -299,11 +287,64 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 				return doc, err
 			}
 
-			overlayArgsToArgs(sourceDocs, doc)
+			overlayArgsToArgs(sourceDocs, &doc)
 		}
 	}
 
 	return doc, nil
+}
+
+type expandedArguments map[string]*argumentNode
+type argumentNode struct {
+	docs     *argumentDocs
+	children expandedArguments
+}
+
+func (a *argumentNode) get(seg string) *argumentNode {
+	if a.children == nil {
+		a.children = expandedArguments{}
+	}
+	v, ok := a.children[seg]
+	if !ok {
+		v = &argumentNode{}
+		a.children[seg] = v
+	}
+	return v
+}
+
+func argumentTree(m map[docsPath]*argumentDocs) expandedArguments {
+	topLevel := &argumentNode{}
+	for k, v := range m {
+		a := topLevel
+		for _, segment := range k.parts() {
+			a = a.get(segment)
+		}
+		a.docs = v
+	}
+	return topLevel.children
+}
+
+func (t expandedArguments) collapse() map[docsPath]*argumentDocs {
+	m := make(map[docsPath]*argumentDocs, len(t))
+
+	var set func(docsPath, expandedArguments)
+	set = func(path docsPath, args expandedArguments) {
+		for k, v := range args {
+			p := path.join(k)
+			if v.docs != nil {
+				m[p] = v.docs
+			}
+			set(p, v.children)
+		}
+	}
+
+	for k, v := range t {
+		if v.docs != nil {
+			m[docsPath(k)] = v.docs
+		}
+		set(docsPath(k), v.children)
+	}
+	return m
 }
 
 func overlayAttributesToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
@@ -314,25 +355,17 @@ func overlayAttributesToAttributes(sourceDocs entityDocs, targetDocs entityDocs)
 
 func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
 	for k, v := range sourceDocs.Arguments {
-		targetDocs.Attributes[k] = v.description
-		for kk, vv := range v.arguments {
-			targetDocs.Attributes[kk] = vv
-		}
+		targetDocs.Attributes[k.leaf()] = v.description
 	}
 }
 
-func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
-	for k, v := range sourceDocs.Arguments { // string -> argument
-		arguments := sourceDocs.Arguments[k].arguments
-		docArguments := make(map[string]string)
-		for kk, vv := range arguments {
-			docArguments[kk] = vv
-		}
-		docs.Arguments[k] = &argumentDocs{
-			description: v.description,
-			arguments:   docArguments,
-		}
+func overlayArgsToArgs(sourceDocs entityDocs, docs *entityDocs) {
+	docsArgs := argumentTree(docs.Arguments)
+
+	for k, v := range argumentTree(sourceDocs.Arguments) { // string -> argument
+		docsArgs[k] = v
 	}
+	docs.Arguments = docsArgs.collapse()
 }
 
 // checkIfNewDocsExist checks if the new docs root exists
@@ -466,7 +499,7 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 
 func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	p.ret = entityDocs{
-		Arguments:  make(map[string]*argumentDocs),
+		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
 	var err error
@@ -700,7 +733,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			p.parseImports(reformattedH3Section)
 		default:
 			// Determine if this is a nested argument section.
-			_, isArgument := p.ret.Arguments[header]
+			_, isArgument := p.ret.Arguments[docsPath(header)]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
 				parseArgReferenceSection(reformattedH3Section, &p.ret)
 				continue
@@ -814,36 +847,22 @@ func getNestedBlockName(line string) string {
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	var lastMatch, nested string
+	var lastMatch string
+	var nested docsPath
 
 	addNewHeading := func(name, desc, line string) {
 		// found a property bullet, extract the name and description
 		if nested != "" {
 			// We found this line within a nested field. We should record it as such.
 			if ret.Arguments[nested] == nil {
-				ret.Arguments[nested] = &argumentDocs{
-					arguments: make(map[string]string),
-				}
 				totalArgumentsFromDocs++
-			} else if ret.Arguments[nested].arguments == nil {
-				ret.Arguments[nested].arguments = make(map[string]string)
 			}
-			ret.Arguments[nested].arguments[name] = desc
-
-			// Also record this as a top-level argument just in case, since sometimes the recorded nested
-			// argument doesn't match the resource's argument.
-			// For example, see `cors_rule` in s3_bucket.html.markdown.
-			if ret.Arguments[name] == nil {
-				ret.Arguments[name] = &argumentDocs{
-					description: desc,
-					isNested:    true, // Mark that this argument comes from a nested field.
-				}
-			}
+			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
 			}
-			ret.Arguments[name] = &argumentDocs{description: desc}
+			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
 			totalArgumentsFromDocs++
 		}
 	}
@@ -851,19 +870,14 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	extendExistingHeading := func(line string) {
 		line = "\n" + strings.TrimSpace(line)
 		if nested != "" {
-			ret.Arguments[nested].arguments[lastMatch] += line
-
-			// Also update the top-level argument if we took it from a nested field.
-			if ret.Arguments[lastMatch].isNested {
-				ret.Arguments[lastMatch].description += line
-			}
+			ret.Arguments[nested.join(lastMatch)].description += line
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				lastMatch = ""
 				nested = ""
 				return
 			}
-			ret.Arguments[lastMatch].description += line
+			ret.Arguments[docsPath(lastMatch)].description += line
 		}
 	}
 
@@ -879,12 +893,12 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// heading is over.
 			lastMatch = ""
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			nested = nestedBlockCurrentLine
+			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
 			extendExistingHeading(line)
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
-			nested = nestedBlockCurrentLine
+			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if lastMatch != "" {
 			extendExistingHeading(line)
@@ -894,9 +908,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
-		for k, d := range v.arguments {
-			v.arguments[k] = strings.TrimRightFunc(d, unicode.IsSpace)
-		}
 	}
 }
 
@@ -1718,36 +1729,29 @@ func cleanupDoc(
 	footerLinks map[string]string,
 ) (entityDocs, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
+	newargs := make(map[docsPath]*argumentDocs, len(doc.Arguments))
 
 	for k, v := range doc.Arguments {
-		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
+		if k.nested() {
+			g.debug("Cleaning up text for nested argument [%v] in [%v]", k, name)
+		} else {
+			g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
+		}
 		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
-			elidedArguments++
-			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
-				"the Pulumi provider.", k, name)
+			if k.nested() {
+				elidedNestedArguments++
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
+					"dropped in the Pulumi provider.", k, name)
+			} else {
+				elidedArguments++
+				g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
+					"the Pulumi provider.", k, name)
+			}
 			elidedDoc = true
 		}
 
-		newargs[k] = &argumentDocs{
-			description: cleanedText,
-			arguments:   make(map[string]string, len(v.arguments)),
-			isNested:    v.isNested,
-		}
-
-		// Clean nested arguments (if any)
-		for kk, vv := range v.arguments {
-			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := reformatText(infoCtx, vv, footerLinks)
-			if elided {
-				elidedNestedArguments++
-				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
-					"dropped in the Pulumi provider.", kk, name)
-				elidedDoc = true
-			}
-			newargs[k].arguments[kk] = cleanedText
-		}
+		newargs[k] = &argumentDocs{description: cleanedText}
 	}
 
 	newattrs := make(map[string]string, len(doc.Attributes))

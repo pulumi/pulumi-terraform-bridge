@@ -375,7 +375,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	// Handle single-nested blocks next.
 	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
-		return g.makeObjectPropertyType(typePath, objectName, blockType, elemInfo, out, entityDocs)
+		return g.makeObjectPropertyType(typePath, docsPath(objectName), blockType, elemInfo, out, entityDocs)
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
@@ -400,7 +400,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		element = g.makeObjectPropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
+		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
 	}
 
 	if flatten {
@@ -422,7 +422,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 }
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
-	objectName string, res shim.Resource, info *tfbridge.SchemaInfo,
+	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
@@ -447,7 +447,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
 		// This seems wrong, so we ignore the second return value here for now.
-		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
 
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
@@ -1814,20 +1814,29 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 // attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
 func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) (string, bool) {
-	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
+	return getNestedDescriptionFromParsedDocs(entityDocs, docsPath(arg))
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
-func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) (string, bool) {
-	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
-		return res.arguments[arg], false
-	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
-		return res.description, false
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (string, bool) {
+	// Check if we have any path that matches, removing the root segment after each failed attempt.
+	//
+	// For example: ruleset.rules.type will check against:
+	//
+	// 1. ruleset.rules.type
+	// 2. rules.type
+	// 3. type
+	for p := path; p != ""; {
+		// See if we have an appropriately nested argument:
+		if v, ok := entityDocs.Arguments[p]; ok {
+			return v.description, false
+		}
+		p = p.withOutRoot()
 	}
 
-	attribute := entityDocs.Attributes[arg]
+	attribute := entityDocs.Attributes[path.leaf()]
 
 	if attribute != "" {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition

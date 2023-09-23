@@ -4,12 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/stretchr/testify/assert"
 )
+
+var pulumiAccept = func() bool {
+	b, _ := strconv.ParseBool(os.Getenv("PULUMI_ACCEPT"))
+	return b
+}()
 
 func TestParseTextSeq(t *testing.T) {
 	turnaround := func(src string) {
@@ -119,15 +125,29 @@ func TestParseNestedSchemaIntoDoc(t *testing.T) {
 		}
 		return bf.GoToNext
 	})
-	actual, err := json.MarshalIndent(out.Arguments, "  ", "")
+	actual, err := json.MarshalIndent(out.Arguments, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.JSONEq(t, readTestFile(t, "mini.json"), string(actual))
+	compareTestFile(t, "mini.json", string(actual), assert.JSONEq)
 }
 
+func compareTestFile(
+	t *testing.T, path, actual string,
+	comp func(t assert.TestingT, expected string, actual string, msgAndArgs ...interface{}) bool,
+) {
+	if pulumiAccept {
+		err := os.WriteFile(testFilePath(path), []byte(actual), 0600)
+		assert.NoError(t, err)
+	} else {
+		comp(t, readTestFile(t, path), actual)
+	}
+}
+
+func testFilePath(name string) string { return fmt.Sprintf("test_data/%s", name) }
+
 func readTestFile(t *testing.T, name string) string {
-	bytes, err := os.ReadFile(fmt.Sprintf("test_data/%s", name))
+	bytes, err := os.ReadFile(testFilePath(name))
 	if err != nil {
 		t.Fatal(err)
 	}

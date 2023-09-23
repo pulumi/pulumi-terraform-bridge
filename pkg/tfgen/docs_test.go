@@ -88,7 +88,7 @@ func TestURLRewrite(t *testing.T) {
 func TestArgumentRegex(t *testing.T) {
 	tests := []struct {
 		input    []string
-		expected map[string]*argumentDocs
+		expected map[docsPath]*argumentDocs
 	}{
 		{
 			input: []string{
@@ -98,7 +98,7 @@ func TestArgumentRegex(t *testing.T) {
 				"* `ipv6_addresses` - (Optional) Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
 				"* `tags` - (Optional) A mapping of tags to assign to the resource.",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"iam_instance_profile": {
 					description: "The IAM Instance Profile to" + "\n" +
 						"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
@@ -124,22 +124,16 @@ func TestArgumentRegex(t *testing.T) {
 				"* `audience` - (Optional) A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
 				"* `issuer` - (Optional) The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"jwt_configuration": {
 					description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
 						"Supported only for HTTP APIs.",
-					arguments: map[string]string{
-						"audience": "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-						"issuer":   "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-					},
 				},
-				"audience": {
+				"jwt_configuration.audience": {
 					description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-					isNested:    true,
 				},
-				"issuer": {
+				"jwt_configuration.issuer": {
 					description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-					isNested:    true,
 				},
 			},
 		},
@@ -154,24 +148,17 @@ func TestArgumentRegex(t *testing.T) {
 				"* `routing_rules` - (Optional) A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)",
 				"describing redirect behavior and when redirects are applied.",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"website": {
 					description: "A website object (documented below)." + "\n" +
 						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
-					arguments: map[string]string{
-						"index_document": "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-						"routing_rules": "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-							"describing redirect behavior and when redirects are applied.",
-					},
 				},
-				"index_document": {
+				"website.index_document": {
 					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-					isNested:    true,
 				},
-				"routing_rules": {
+				"website.routing_rules": {
 					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
 						"describing redirect behavior and when redirects are applied.",
-					isNested: true,
 				},
 			},
 		},
@@ -183,7 +170,7 @@ func TestArgumentRegex(t *testing.T) {
 				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
 			},
 			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				},
@@ -201,7 +188,7 @@ func TestArgumentRegex(t *testing.T) {
 				"",
 				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"priority": {
 					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
 				},
@@ -215,7 +202,7 @@ func TestArgumentRegex(t *testing.T) {
 				"---",
 				"* `retention_policy` supports the following:",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"retention_policy": {
 					description: "A `retention_policy` block as documented below.",
 				},
@@ -244,7 +231,7 @@ func TestArgumentRegex(t *testing.T) {
 				"  the cheapest Spot pools and evenly allocates your target Spot capacity across",
 				"  the number of Spot pools that you specify.",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"launch_template_config": {
 					description: "Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
 				},
@@ -281,7 +268,7 @@ func TestArgumentRegex(t *testing.T) {
 				"- `always_use_https` - (Optional) Boolean of whether this action is enabled. Default: false.",
 				"",
 			},
-			expected: map[string]*argumentDocs{
+			expected: map[docsPath]*argumentDocs{
 				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
 				"target":  {description: "The URL pattern to target with the page rule."},
 				"actions": {description: "The actions taken by the page rule, options given below."},
@@ -293,21 +280,24 @@ func TestArgumentRegex(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ret := entityDocs{
-			Arguments: make(map[string]*argumentDocs),
-		}
-		parseArgReferenceSection(tt.input, &ret)
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			ret := entityDocs{
+				Arguments: make(map[docsPath]*argumentDocs),
+			}
+			parseArgReferenceSection(tt.input, &ret)
 
-		assert.Equal(t, tt.expected, ret.Arguments)
+			assert.Equal(t, tt.expected, ret.Arguments)
 
-		//assert.Len(t, parser.ret.Arguments, len(tt.expected))
-		//for k, v := range tt.expected {
-		//	actualArg := parser.ret.Arguments[k]
-		//	assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
-		//	assert.Equal(t, v.description, actualArg.description)
-		//	assert.Equal(t, v.isNested, actualArg.isNested)
-		//	assert.Equal(t, v.arguments, actualArg.arguments)
-		//}
+			//assert.Len(t, parser.ret.Arguments, len(tt.expected))
+			//for k, v := range tt.expected {
+			//	actualArg := parser.ret.Arguments[k]
+			//	assert.NotNil(t, actualArg, fmt.Sprintf("%s should not be nil", k))
+			//	assert.Equal(t, v.description, actualArg.description)
+			//	assert.Equal(t, v.isNested, actualArg.isNested)
+			//	assert.Equal(t, v.arguments, actualArg.arguments)
+			//}
+		})
 	}
 }
 
@@ -651,7 +641,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 
 func TestParseAttributesReferenceSection(t *testing.T) {
 	ret := entityDocs{
-		Arguments:  make(map[string]*argumentDocs),
+		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
 	parseAttributesReferenceSection([]string{
@@ -720,7 +710,7 @@ func TestOverlayAttributesToAttributes(t *testing.T) {
 
 func TestOverlayArgsToAttributes(t *testing.T) {
 	source := entityDocs{
-		Arguments: map[string]*argumentDocs{
+		Arguments: map[docsPath]*argumentDocs{
 			"overwrite_me": {
 				description: "overwritten_desc",
 			},
@@ -752,58 +742,37 @@ func TestOverlayArgsToAttributes(t *testing.T) {
 
 func TestOverlayArgsToArgs(t *testing.T) {
 	source := entityDocs{
-		Arguments: map[string]*argumentDocs{
-			"overwrite_me": {
-				description: "overwritten_desc",
-				arguments: map[string]string{
-					"nested_source_only":  "nested_source_only_desc",
-					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
-				},
-			},
-			"source_only": {
-				description: "source_only_desc",
-				arguments:   map[string]string{},
-			},
+		Arguments: map[docsPath]*argumentDocs{
+			"overwrite_me":                     {description: "overwritten_desc"},
+			"overwrite_me.nested_source_only":  {description: "nested_source_only_desc"},
+			"overwrite_me.nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
+
+			"source_only": {description: "source_only_desc"},
 		},
 	}
 
 	dest := entityDocs{
-		Arguments: map[string]*argumentDocs{
-			"overwrite_me": {
-				description: "original_desc",
-				arguments: map[string]string{
-					"nested_dest_only":    "should not appear",
-					"nested_overwrite_me": "nested_overwrite_me original desc",
-				},
-			},
-			"dest_only": {
-				description: "dest_only_desc",
-				arguments:   map[string]string{},
-			},
+		Arguments: map[docsPath]*argumentDocs{
+			"overwrite_me":                     {description: "original_desc"},
+			"overwrite_me.nested_dest_only":    {description: "should not appear"},
+			"overwrite_me.nested_overwrite_me": {description: "nested_overwrite_me original desc"},
+
+			"dest_only": {description: "dest_only_desc"},
 		},
 	}
 
 	expected := entityDocs{
-		Arguments: map[string]*argumentDocs{
-			"overwrite_me": {
-				description: "overwritten_desc",
-				arguments: map[string]string{
-					"nested_source_only":  "nested_source_only_desc",
-					"nested_overwrite_me": "nested_overwrite_me_overwritten_desc",
-				},
-			},
-			"source_only": {
-				description: "source_only_desc",
-				arguments:   map[string]string{},
-			},
-			"dest_only": {
-				description: "dest_only_desc",
-				arguments:   map[string]string{},
-			},
+		Arguments: map[docsPath]*argumentDocs{
+			"overwrite_me":                     {description: "overwritten_desc"},
+			"overwrite_me.nested_source_only":  {description: "nested_source_only_desc"},
+			"overwrite_me.nested_overwrite_me": {description: "nested_overwrite_me_overwritten_desc"},
+
+			"source_only": {description: "source_only_desc"},
+			"dest_only":   {description: "dest_only_desc"},
 		},
 	}
 
-	overlayArgsToArgs(source, dest)
+	overlayArgsToArgs(source, &dest)
 
 	assert.Equal(t, expected, dest)
 }
@@ -969,7 +938,7 @@ func TestParseTFMarkdown(t *testing.T) {
 
 			fileName: "mod1_res1.md",
 			expected: entityDocs{
-				Arguments:  map[string]*argumentDocs{},
+				Arguments:  map[docsPath]*argumentDocs{},
 				Attributes: map[string]string{},
 			},
 		}
@@ -1025,26 +994,21 @@ This is a test for CUSTOM_REPLACES.`)
 			c.expected = entityDocs{
 				Import:      "## Import\n\nSQL Firewall Rules can be imported using the `resource id`, e.g. <break><break>```sh<break> $ pulumi import MISSING_TOK rule1 /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myresourcegroup/providers/Microsoft.Sql/servers/myserver/firewallRules/rule1 <break>```<break><break>",
 				Description: "Allows you to manage an Azure SQL Firewall Rule.\n\n> **Note:** The `azurerm_sql_firewall_rule` resource is deprecated in version 3.0 of the AzureRM provider and will be removed in version 4.0. Please use the `azurerm_mssql_firewall_rule` resource instead.\n\n## Example Usage\n\n```hcl\nresource \"azurerm_resource_group\" \"example\" {\n  name     = \"example-resources\"\n  location = \"West Europe\"\n}\n\nresource \"azurerm_sql_server\" \"example\" {\n  name                         = \"mysqlserver\"\n  resource_group_name          = azurerm_resource_group.example.name\n  location                     = azurerm_resource_group.example.location\n  version                      = \"12.0\"\n  administrator_login          = \"4dm1n157r470r\"\n  administrator_login_password = \"4-v3ry-53cr37-p455w0rd\"\n}\n\nresource \"azurerm_sql_firewall_rule\" \"example\" {\n  name                = \"FirewallRule1\"\n  resource_group_name = azurerm_resource_group.example.name\n  server_name         = azurerm_sql_server.example.name\n  start_ip_address    = \"10.0.17.62\"\n  end_ip_address      = \"10.0.17.62\"\n}\n```",
-				Arguments: map[string]*argumentDocs{
+				Arguments: map[docsPath]*argumentDocs{
 					"name": {
 						description: "The name of the firewall rule. Changing this forces a new resource to be created.",
-						arguments:   map[string]string{},
 					},
 					"resource_group_name": {
 						description: "The name of the resource group in which to create the SQL Server. Changing this forces a new resource to be created.",
-						arguments:   map[string]string{},
 					},
 					"server_name": {
 						description: "The name of the SQL Server on which to create the Firewall Rule. Changing this forces a new resource to be created.",
-						arguments:   map[string]string{},
 					},
 					"start_ip_address": {
 						description: "The starting IP address to allow through the firewall for this rule.",
-						arguments:   map[string]string{},
 					},
 					"end_ip_address": {
 						description: "The ending IP address to allow through the firewall for this rule.\n\n> **NOTE:** The Azure feature `Allow access to Azure services` can be enabled by setting `start_ip_address` and `end_ip_address` to `0.0.0.0` which ([is documented in the Azure API Docs](https://docs.microsoft.com/rest/api/sql/firewallrules/createorupdate)).",
-						arguments:   map[string]string{},
 					},
 				},
 				Attributes: map[string]string{
