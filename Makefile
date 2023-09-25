@@ -48,5 +48,6 @@ tidy::
 	cd pf/tests/testdatagen/genrandom && go mod tidy
 	cd pkg/tests && go mod tidy
 	cd x/muxer && go mod tidy
+	cd x/muxer/tests && go mod tidy
 	cd testing && go mod tidy
 	go mod tidy
