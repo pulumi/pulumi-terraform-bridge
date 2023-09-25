@@ -18,6 +18,7 @@ package tfgen
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -918,57 +919,41 @@ func TestParseTFMarkdown(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		info                    tfbridge.ResourceOrDataSourceInfo
-		providerInfo            tfbridge.ProviderInfo
-		kind                    DocKind
-		resourcePrefix, rawName string
+		// The name of the test case.
+		//
+		// The name of the folder for input and expected output is derived from
+		// `name`.
+		name string
 
-		fileName     string
-		fileContents []byte
+		info         tfbridge.ResourceOrDataSourceInfo
+		providerInfo tfbridge.ProviderInfo
+		kind         DocKind
+		rawName      string
 
-		expected entityDocs
+		fileName string
 	}
 
-	// A pre-configured test case
-	tc := func(configure func(tc *testCase)) testCase {
+	// Assert that file contents match the expected description.
+	test := func(name string, configure ...func(tc *testCase)) testCase {
 		tc := testCase{
-			kind:           ResourceDocs,
-			resourcePrefix: "pkg_",
-			rawName:        "pkg_mod1_res1",
+			name:    name,
+			kind:    ResourceDocs,
+			rawName: "pkg_mod1_res1",
 
 			fileName: "mod1_res1.md",
-			expected: entityDocs{
-				Arguments:  map[docsPath]*argumentDocs{},
-				Attributes: map[string]string{},
-			},
 		}
-		configure(&tc)
+		for _, c := range configure {
+			c(&tc)
+		}
 		return tc
-	}
-	// Assert that file contents match the expected description.
-	desc := func(fileContents, expected string) testCase {
-		return tc(func(c *testCase) {
-			c.fileContents = []byte(fileContents)
-			c.expected.Description = expected
-		})
 	}
 
 	tests := []testCase{
-		desc(`
-This is a document for the pkg_mod1_res1 resource. To create this resource, run "terraform plan" then "terraform apply".
-`, `##`+" " /* Extra whitespace is generated. TODO Remove extra whitespace */ +`
+		test("simple"),
+		test("link"),
+		test("azurerm-sql-firewall-rule"),
 
-This is a document for the pkg_mod1_res1 resource. To create this resource, run "pulumi preview" then "pulumi up".`,
-		),
-
-		desc(`
-This is a test that we [correctly](https://www.terraform.io/docs/pkg/some-resource) strip TF doc links.
-`, "## \n\nThis is a test that we correctly strip TF doc links."),
-
-		tc(func(c *testCase) {
-			c.fileContents = []byte(`
-This is a test for CUSTOM_REPLACES.`)
-			c.expected.Description = "## \n\nThis is a test for checking custom replaces."
+		test("custom-replaces", func(tc *testCase) {
 			rule := tfbridge.DocsEdit{
 				Path: "*",
 				Edit: func(path string, content []byte) ([]byte, error) {
@@ -979,40 +964,9 @@ This is a test for CUSTOM_REPLACES.`)
 				},
 			}
 
-			c.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
 				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
 					return append([]tfbridge.DocsEdit{rule}, defaults...)
-				},
-			}
-		}),
-
-		tc(func(c *testCase) {
-			var err error
-			c.fileContents, err = os.ReadFile(filepath.Join("test_data", "azurerm-sql-firewall-rule.md"))
-			require.NoError(t, err)
-
-			c.expected = entityDocs{
-				Import:      "## Import\n\nSQL Firewall Rules can be imported using the `resource id`, e.g. <break><break>```sh<break> $ pulumi import MISSING_TOK rule1 /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myresourcegroup/providers/Microsoft.Sql/servers/myserver/firewallRules/rule1 <break>```<break><break>",
-				Description: "Allows you to manage an Azure SQL Firewall Rule.\n\n> **Note:** The `azurerm_sql_firewall_rule` resource is deprecated in version 3.0 of the AzureRM provider and will be removed in version 4.0. Please use the `azurerm_mssql_firewall_rule` resource instead.\n\n## Example Usage\n\n```hcl\nresource \"azurerm_resource_group\" \"example\" {\n  name     = \"example-resources\"\n  location = \"West Europe\"\n}\n\nresource \"azurerm_sql_server\" \"example\" {\n  name                         = \"mysqlserver\"\n  resource_group_name          = azurerm_resource_group.example.name\n  location                     = azurerm_resource_group.example.location\n  version                      = \"12.0\"\n  administrator_login          = \"4dm1n157r470r\"\n  administrator_login_password = \"4-v3ry-53cr37-p455w0rd\"\n}\n\nresource \"azurerm_sql_firewall_rule\" \"example\" {\n  name                = \"FirewallRule1\"\n  resource_group_name = azurerm_resource_group.example.name\n  server_name         = azurerm_sql_server.example.name\n  start_ip_address    = \"10.0.17.62\"\n  end_ip_address      = \"10.0.17.62\"\n}\n```",
-				Arguments: map[docsPath]*argumentDocs{
-					"name": {
-						description: "The name of the firewall rule. Changing this forces a new resource to be created.",
-					},
-					"resource_group_name": {
-						description: "The name of the resource group in which to create the SQL Server. Changing this forces a new resource to be created.",
-					},
-					"server_name": {
-						description: "The name of the SQL Server on which to create the Firewall Rule. Changing this forces a new resource to be created.",
-					},
-					"start_ip_address": {
-						description: "The starting IP address to allow through the firewall for this rule.",
-					},
-					"end_ip_address": {
-						description: "The ending IP address to allow through the firewall for this rule.\n\n> **NOTE:** The Azure feature `Allow access to Azure services` can be enabled by setting `start_ip_address` and `end_ip_address` to `0.0.0.0` which ([is documented in the Azure API Docs](https://docs.microsoft.com/rest/api/sql/firewallrules/createorupdate)).",
-					},
-				},
-				Attributes: map[string]string{
-					"id": "The SQL Firewall Rule ID.",
 				},
 			}
 		}),
@@ -1020,7 +974,11 @@ This is a test for CUSTOM_REPLACES.`)
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("", func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.NotZero(t, tt.name)
+			input := testFilePath(tt.name, "input.md")
+			expected := filepath.Join(tt.name, "expected.json")
 			p := &tfMarkdownParser{
 				sink:             mockSink{t},
 				info:             tt.info,
@@ -1036,9 +994,17 @@ This is a test for CUSTOM_REPLACES.`)
 				editRules: getEditRules(tt.providerInfo.DocRules),
 			}
 
-			actual, err := p.parse(tt.fileContents)
+			inputBytes, err := os.ReadFile(input)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, actual)
+
+			actual, err := p.parse(inputBytes)
+			require.NoError(t, err)
+
+			actualBytes, err := json.MarshalIndent(actual, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			compareTestFile(t, expected, string(actualBytes), assert.JSONEq)
 		})
 	}
 }

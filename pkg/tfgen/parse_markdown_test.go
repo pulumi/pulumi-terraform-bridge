@@ -2,8 +2,8 @@ package tfgen
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -144,7 +144,9 @@ func compareTestFile(
 	}
 }
 
-func testFilePath(name string) string { return fmt.Sprintf("test_data/%s", name) }
+func testFilePath(path ...string) string {
+	return filepath.Join(append([]string{"test_data"}, path...)...)
+}
 
 func readTestFile(t *testing.T, name string) string {
 	bytes, err := os.ReadFile(testFilePath(name))
