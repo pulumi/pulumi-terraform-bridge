@@ -952,6 +952,7 @@ func TestParseTFMarkdown(t *testing.T) {
 		test("simple"),
 		test("link"),
 		test("azurerm-sql-firewall-rule"),
+		test("address_map"),
 
 		test("custom-replaces", func(tc *testCase) {
 			rule := tfbridge.DocsEdit{
