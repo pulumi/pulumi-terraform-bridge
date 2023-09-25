@@ -1836,9 +1836,25 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		p = p.withOutRoot()
 	}
 
-	attribute := entityDocs.Attributes[path.leaf()]
+	// To maintain old behavior, we also check if the last segment of `path` matches
+	// with some other last segment of any other entity.
+	//
+	// For example, this will match `production_branch.status` with
+	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
+	// to incorrect docs.
+	keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
+	leaf := path.leaf()
+	for k := range entityDocs.Arguments {
+		if k.leaf() == leaf {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) > 0 {
+		docsPathArr(keys).Sort()
+		return entityDocs.Arguments[keys[0]].description, false
+	}
 
-	if attribute != "" {
+	if attribute := entityDocs.Attributes[path.leaf()]; attribute != "" {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
 		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).

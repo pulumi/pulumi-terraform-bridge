@@ -66,6 +66,15 @@ func (d docsPath) join(segment string) docsPath { return docsPath(string(d) + ".
 func (d docsPath) parts() []string              { return strings.Split(string(d), ".") }
 func (d docsPath) withOutRoot() docsPath        { s := d.parts(); return docsPath(strings.Join(s[1:], ".")) }
 
+type docsPathArr []docsPath
+
+var _ = (sort.Interface)((docsPathArr)(nil))
+
+func (a docsPathArr) Len() int           { return len(a) }
+func (a docsPathArr) Less(i, j int) bool { return a[i] < a[j] }
+func (a docsPathArr) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a docsPathArr) Sort()              { sort.Sort(a) }
+
 // entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
 type entityDocs struct {
 	// Description is the description of the resource
