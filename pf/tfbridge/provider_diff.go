@@ -44,15 +44,19 @@ func (p *provider) DiffWithContext(
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
-
-	checkedInputs, err := applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
-	if err != nil {
-		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
-	}
-
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return plugin.DiffResult{}, err
+	}
+
+	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	checkedInputs, err = applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	if err != nil {
+		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
 	rawPriorState, err := parseResourceState(&rh, priorStateMap)

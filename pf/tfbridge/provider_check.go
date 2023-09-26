@@ -46,6 +46,11 @@ func (p *provider) CheckWithContext(
 		return checkedInputs, []plugin.CheckFailure{}, err
 	}
 
+	priorState, err = transformFromState(ctx, rh, priorState)
+	if err != nil {
+		return checkedInputs, []plugin.CheckFailure{}, err
+	}
+
 	if info := rh.pulumiResourceInfo; info != nil {
 		if check := info.PreCheckCallback; check != nil {
 			var err error
