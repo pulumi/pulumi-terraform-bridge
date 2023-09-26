@@ -18,9 +18,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestTransformOutputs(t *testing.T) {
@@ -136,6 +143,164 @@ func TestTransformOutputs(t *testing.T) {
 		    "properties": {
 			"id": "*",
                         "ecdsacurve": "TRANSFORMED"
+		    }
+		  }
+		}`)
+	})
+}
+
+func TestTransformFromState(t *testing.T) {
+	provider := func(t *testing.T) pulumirpc.ResourceProviderServer {
+		p := testprovider.AssertProvider(func(config tfsdk.Config, old, new *tfsdk.State) {
+			// GetRawState is not available during deletes.
+			ctx := context.Background()
+			path := path.Root("string_property_value")
+			if raw := old.Raw; !raw.IsNull() {
+				var s string
+				old.GetAttribute(ctx, path, &s)
+				assert.Equal(t, "TRANSFORMED", s)
+			}
+			err := new.SetAttribute(ctx, path, "SET")
+			require.Zero(t, err)
+		})
+		var called bool
+		t.Cleanup(func() { assert.True(t, called, "Transform was not called") })
+
+		p.Resources["assert_echo"] = &tfbridge.ResourceInfo{
+			Tok: "assert:index/echo:Echo",
+			TransformFromState: func(
+				ctx context.Context,
+				pm resource.PropertyMap,
+			) (resource.PropertyMap, error) {
+				p := pm.Copy()
+				assert.Equal(t, "OLD", p["stringPropertyValue"].StringValue())
+				p["stringPropertyValue"] =
+					resource.NewStringProperty("TRANSFORMED")
+				called = true
+				return p, nil
+			},
+		}
+
+		return newProviderServer(t, p)
+	}
+
+	t.Run("Check", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+                    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "stringPropertyValue": "NEW"
+                    }
+		  }
+		}`)
+	})
+
+	t.Run("Update preview", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+                    },
+                    "preview": true
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "*",
+                      "stringPropertyValue": "NEW"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+		    }
+		  },
+		  "response": {
+		    "properties": {
+		      "stringPropertyValue": "SET"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Diff", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "TRANSFORMED"
+		    }
+		  },
+		  "response": {
+		    "changes": "DIFF_NONE"
+		  }
+               }`)
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Delete",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+		    "properties": {
+		      "stringPropertyValue": "OLD"
+		    }
+		  },
+		  "response": {}
+               }`)
+	})
+
+	t.Run("Read (Refresh)", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
+	            "properties": {
+	           	"stringPropertyValue": "OLD"
+	            }
+		  },
+		  "response": {
+	            "inputs": "*",
+		    "properties": {
+			"stringPropertyValue": "SET"
 		    }
 		  }
 		}`)
