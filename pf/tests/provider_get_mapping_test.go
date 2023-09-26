@@ -36,26 +36,35 @@ func TestGetMapping(t *testing.T) {
 	assert.NoError(t, err)
 
 	{
-		m, p, err := p.GetMapping("unknown-key")
+		m, p, err := p.GetMapping("unknown-key", "")
+		assert.NoError(t, err)
+		assert.Empty(t, m)
+		assert.Empty(t, p)
+	}
+
+	{
+		m, p, err := p.GetMapping("terraform", "unknown-provider")
 		assert.NoError(t, err)
 		assert.Empty(t, m)
 		assert.Empty(t, p)
 	}
 
 	for _, key := range []string{"tf", "terraform"} {
-		m, p, err := p.GetMapping(key)
-		assert.NoError(t, err)
+		for _, provider := range []string{"", "random"} {
+			m, p, err := p.GetMapping(key, provider)
+			assert.NoError(t, err)
 
-		assert.Equal(t, "random", p)
+			assert.Equal(t, "random", p)
 
-		var info tfbridge0.MarshallableProviderInfo
-		err = json.Unmarshal(m, &info)
-		assert.NoError(t, err)
+			var info tfbridge0.MarshallableProviderInfo
+			err = json.Unmarshal(m, &info)
+			assert.NoError(t, err)
 
-		assert.Equal(t, "random", info.Name)
-		assert.Contains(t, info.Resources, "random_integer")
-		assert.Equal(t, "random:index/randomInteger:RandomInteger",
-			string(info.Resources["random_integer"].Tok))
+			assert.Equal(t, "random", info.Name)
+			assert.Contains(t, info.Resources, "random_integer")
+			assert.Equal(t, "random:index/randomInteger:RandomInteger",
+				string(info.Resources["random_integer"].Tok))
+		}
 	}
 }
 
@@ -72,31 +81,40 @@ func TestMuxedGetMapping(t *testing.T) {
 	}
 
 	t.Run("unknown-key", func(t *testing.T) {
-		resp, err := server.GetMapping(req("unknown-key"))
+		resp, err := server.GetMapping(req("unknown-key"), "")
+		assert.NoError(t, err)
+		assert.Empty(t, resp.Data)
+		assert.Empty(t, resp.Provider)
+	})
+
+	t.Run("unknown-provider", func(t *testing.T) {
+		resp, err := server.GetMapping(req("terraform"), "unknown-provider")
 		assert.NoError(t, err)
 		assert.Empty(t, resp.Data)
 		assert.Empty(t, resp.Provider)
 	})
 
 	for _, key := range []string{"tf", "terraform"} {
-		resp, err := server.GetMapping(req(key))
-		assert.NoError(t, err)
+		for _, provider := range []string{"", "muxedrandom"} {
+			resp, err := server.GetMapping(req(key) provider)
+			assert.NoError(t, err)
 
-		assert.Equal(t, "muxedrandom", resp.Provider)
+			assert.Equal(t, "muxedrandom", resp.Provider)
 
-		var info tfbridge0.MarshallableProviderInfo
-		err = json.Unmarshal(resp.Data, &info)
-		assert.NoError(t, err)
+			var info tfbridge0.MarshallableProviderInfo
+			err = json.Unmarshal(resp.Data, &info)
+			assert.NoError(t, err)
 
-		assert.Equal(t, "muxedrandom", info.Name)
-		assert.Contains(t, info.Resources, "random_integer")
-		assert.Contains(t, info.Resources, "random_human_number")
+			assert.Equal(t, "muxedrandom", info.Name)
+			assert.Contains(t, info.Resources, "random_integer")
+			assert.Contains(t, info.Resources, "random_human_number")
 
-		// A PF based resource
-		assert.Equal(t, "muxedrandom:index/randomInteger:RandomInteger",
-			string(info.Resources["random_integer"].Tok))
-		// An SDK bases resource
-		assert.Equal(t, "muxedrandom:index/randomHumanNumber:RandomHumanNumber",
-			string(info.Resources["random_human_number"].Tok))
+			// A PF based resource
+			assert.Equal(t, "muxedrandom:index/randomInteger:RandomInteger",
+				string(info.Resources["random_integer"].Tok))
+			// An SDK bases resource
+			assert.Equal(t, "muxedrandom:index/randomHumanNumber:RandomHumanNumber",
+				string(info.Resources["random_human_number"].Tok))
+		}
 	}
 }
