@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/terraform/pkg/addrs"
 	"github.com/pulumi/terraform/pkg/states/statefile"
 )
 
@@ -38,6 +39,11 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 	var resources []plugin.ResourceImport
 	for _, mod := range state.Modules {
 		for _, resource := range mod.Resources {
+			// We only care about managed resources, we can't import data sources
+			if resource.Addr.Resource.Mode != addrs.ManagedResourceMode {
+				continue
+			}
+
 			// TODO: Currently we just expect one instance
 			instance := resource.Instances[nil]
 			if instance.HasCurrent() {
@@ -71,7 +77,12 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 				// Get the pulumi type of this resource
 				pulumiType := impliedToken(tfType)
 				if providerInfo != nil {
-					pulumiType = providerInfo.Resources[tfType].Tok.String()
+					resourceInfo := providerInfo.Resources[tfType]
+					if resourceInfo != nil {
+						pulumiType = resourceInfo.Tok.String()
+					} else {
+						return nil, fmt.Errorf("failed to get resource info for %q", tfType)
+					}
 				}
 
 				resources = append(resources, plugin.ResourceImport{
