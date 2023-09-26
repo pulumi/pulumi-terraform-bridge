@@ -76,19 +76,22 @@ func TestMuxedGetMapping(t *testing.T) {
 	server, err := tfbridge.MakeMuxedServer(ctx, "muxedrandom", info, genSDKSchema(t, info))(nil)
 	require.NoError(t, err)
 
-	req := func(key string) (context.Context, *pulumirpc.GetMappingRequest) {
-		return ctx, &pulumirpc.GetMappingRequest{Key: key}
+	req := func(key, provider string) (context.Context, *pulumirpc.GetMappingRequest) {
+		return ctx, &pulumirpc.GetMappingRequest{
+			Key:      key,
+			Provider: provider,
+		}
 	}
 
 	t.Run("unknown-key", func(t *testing.T) {
-		resp, err := server.GetMapping(req("unknown-key"), "")
+		resp, err := server.GetMapping(req("unknown-key", ""))
 		assert.NoError(t, err)
 		assert.Empty(t, resp.Data)
 		assert.Empty(t, resp.Provider)
 	})
 
 	t.Run("unknown-provider", func(t *testing.T) {
-		resp, err := server.GetMapping(req("terraform"), "unknown-provider")
+		resp, err := server.GetMapping(req("terraform", "unknown-provider"))
 		assert.NoError(t, err)
 		assert.Empty(t, resp.Data)
 		assert.Empty(t, resp.Provider)
@@ -96,7 +99,7 @@ func TestMuxedGetMapping(t *testing.T) {
 
 	for _, key := range []string{"tf", "terraform"} {
 		for _, provider := range []string{"", "muxedrandom"} {
-			resp, err := server.GetMapping(req(key) provider)
+			resp, err := server.GetMapping(req(key, provider))
 			assert.NoError(t, err)
 
 			assert.Equal(t, "muxedrandom", resp.Provider)
