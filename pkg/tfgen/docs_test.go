@@ -31,6 +31,9 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -239,12 +242,11 @@ func TestArgumentRegex(t *testing.T) {
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				},
+				"action.type": {description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`"},
 				"override_action": {
 					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
 				},
-				"type": {
-					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-				},
+				"override_action.type": {description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`"},
 			},
 		},
 		{
@@ -316,7 +318,7 @@ func TestArgumentRegex(t *testing.T) {
 					description: "Indicates how to allocate the target capacity across\nthe Spot pools specified by the Spot fleet request. The default is\n`lowestPrice`.",
 				},
 				"instance_pools_to_use_count": {
-					description: "\nThe number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
+					description: "The number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
 				},
 			},
 		},
@@ -337,9 +339,9 @@ func TestArgumentRegex(t *testing.T) {
 				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
 				"target":  {description: "The URL pattern to target with the page rule."},
 				"actions": {description: "The actions taken by the page rule, options given below."},
-				// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
-				// because it doesn't correspond to a top level resource property.
-				"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+				"actions.always_use_https": {
+					description: "Boolean of whether this action is enabled. Default: false.",
+				},
 			},
 		},
 	}
@@ -719,27 +721,34 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 }
 
 func TestGetNestedBlockName(t *testing.T) {
-	var tests = []struct {
-		input, expected string
-	}{
+	var tests = []struct{ input, expected string }{
 		{"", ""},
 		{"The `website` object supports the following:", "website"},
 		{"The optional `settings.location_preference` subblock supports:", "location_preference"},
 		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", "authorized_networks"},
+		// This is a common starting line of base arguments, so should result in zero value:
+		{"The following arguments are supported:", ""},
+		{"* `kms_key_id` - ...", ""},
+		{"## Import", ""},
+
+		// Heading arguments
 		{"#### result_configuration Argument Reference", "result_configuration"},
 		{"### advanced_security_options", "advanced_security_options"},
 		{"### `server_side_encryption`", "server_side_encryption"},
 		{"### Failover Routing Policy", "failover_routing_policy"},
 		{"##### `log_configuration`", "log_configuration"},
 		{"### data_format_conversion_configuration", "data_format_conversion_configuration"},
-		// This is a common starting line of base arguments, so should result in zero value:
-		{"The following arguments are supported:", ""},
-		{"* `kms_key_id` - ...", ""},
-		{"## Import", ""},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
+		if strings.HasPrefix(tt.input, "#") {
+			src := []byte(tt.input)
+			parsed := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			assert.Equal(t, tt.expected, isHeadingTarget(src, parsed.FirstChild().(*ast.Heading)))
+		} else {
+			assert.Equal(t, tt.expected, getNestedBlockName([]byte(tt.input)))
+		}
 	}
 }
 
