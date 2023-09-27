@@ -17,10 +17,12 @@ package convert
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/terraform/pkg/addrs"
 	"github.com/pulumi/terraform/pkg/states/statefile"
 )
@@ -45,51 +47,64 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 			}
 
 			// TODO: Currently we just expect one instance
-			instance := resource.Instances[nil]
-			if instance.HasCurrent() {
-				current := instance.Current
+			for instanceAddr, instance := range resource.Instances {
+				if instance.HasCurrent() {
+					current := instance.Current
 
-				// We assume AttrsJSON is set, this will be true for all recent tfstate files
-				var obj map[string]interface{}
-				err := json.Unmarshal(current.AttrsJSON, &obj)
-				if err != nil {
-					return nil, err
-				}
-				// We only care about the id value
-				id, ok := obj["id"]
-				if !ok {
-					return nil, fmt.Errorf("failed to find id attribute in %s", resource.Addr.Resource)
-				}
-				// And we expect id to be a string
-				idStr, ok := id.(string)
-				if !ok {
-					return nil, fmt.Errorf("id attribute for %s was not a string", resource.Addr.Resource)
-				}
-
-				// Try to grab the info for this resource type
-				tfType := resource.Addr.Resource.Type
-				provider := impliedProvider(tfType)
-				providerInfo, err := info.GetProviderInfo("", "", provider, "")
-				if err != nil {
-					return nil, fmt.Errorf("failed to get provider info for %q: %v", tfType, err)
-				}
-
-				// Get the pulumi type of this resource
-				pulumiType := impliedToken(tfType)
-				if providerInfo != nil {
-					resourceInfo := providerInfo.Resources[tfType]
-					if resourceInfo != nil {
-						pulumiType = resourceInfo.Tok.String()
-					} else {
-						return nil, fmt.Errorf("failed to get resource info for %q", tfType)
+					// We assume AttrsJSON is set, this will be true for all recent tfstate files
+					var obj map[string]interface{}
+					err := json.Unmarshal(current.AttrsJSON, &obj)
+					if err != nil {
+						return nil, err
 					}
-				}
+					// We only care about the id value
+					id, ok := obj["id"]
+					if !ok {
+						return nil, fmt.Errorf("failed to find id attribute in %s", resource.Addr.Resource)
+					}
+					// And we expect id to be a string
+					idStr, ok := id.(string)
+					if !ok {
+						return nil, fmt.Errorf("id attribute for %s was not a string", resource.Addr.Resource)
+					}
 
-				resources = append(resources, plugin.ResourceImport{
-					Type: pulumiType,
-					Name: resource.Addr.Resource.Name,
-					ID:   idStr,
-				})
+					// Try to grab the info for this resource type
+					tfType := resource.Addr.Resource.Type
+					provider := impliedProvider(tfType)
+					providerInfo, err := info.GetProviderInfo("", "", provider, "")
+					if err != nil {
+						return nil, fmt.Errorf("failed to get provider info for %q: %v", tfType, err)
+					}
+
+					// Get the pulumi type of this resource
+					pulumiType := impliedToken(tfType)
+					if providerInfo != nil {
+						resourceInfo := providerInfo.Resources[tfType]
+						if resourceInfo != nil {
+							pulumiType = resourceInfo.Tok.String()
+						} else {
+							return nil, fmt.Errorf("failed to get resource info for %q", tfType)
+						}
+					}
+
+					// Add a suffix to the name if there is more than one instance
+					name := resource.Addr.Resource.Name
+					switch instanceAddr.(type) {
+					case addrs.IntKey:
+						flt := instanceAddr.Value().AsBigFloat()
+						i, a := flt.Int64()
+						contract.Assertf(a == big.Exact, "expected exact conversion to int64")
+						name = fmt.Sprintf("%s-%d", name, i)
+					case addrs.StringKey:
+						name = fmt.Sprintf("%s-%s", name, instanceAddr.Value().AsString())
+					}
+
+					resources = append(resources, plugin.ResourceImport{
+						Type: pulumiType,
+						Name: name,
+						ID:   idStr,
+					})
+				}
 			}
 		}
 	}
