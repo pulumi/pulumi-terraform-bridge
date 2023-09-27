@@ -1792,3 +1792,171 @@ func TestTransformOutputs(t *testing.T) {
 		}`)
 	})
 }
+
+func TestTransformFromState(t *testing.T) {
+	provider := func(t *testing.T) *Provider {
+		p := testprovider.AssertProvider(func(data *schema.ResourceData) {
+			// GetRawState is not available during deletes.
+			if raw := data.GetRawState(); !raw.IsNull() {
+				assert.Equal(t, "TRANSFORMED", raw.AsValueMap()["string_property_value"].AsString())
+			}
+			testprovider.MustSet(data, "string_property_value", "SET")
+		})
+		var called bool
+		t.Cleanup(func() { assert.True(t, called, "Transform was not called") })
+		return &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			resources: map[tokens.Type]Resource{
+				"Echo": {
+					TF:     shimv2.NewResource(p.ResourcesMap["echo"]),
+					TFName: "echo",
+					Schema: &ResourceInfo{
+						Tok: "Echo",
+						TransformFromState: func(
+							ctx context.Context,
+							pm resource.PropertyMap,
+						) (resource.PropertyMap, error) {
+							p := pm.Copy()
+							assert.Equal(t, "OLD", p["stringPropertyValue"].StringValue())
+							p["stringPropertyValue"] =
+								resource.NewStringProperty("TRANSFORMED")
+							called = true
+							return p, nil
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("Check", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+                    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": [],
+                      "stringPropertyValue": "NEW"
+                    }
+		  }
+		}`)
+	})
+
+	t.Run("Update preview", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+                    },
+                    "preview": true
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "*",
+                      "stringPropertyValue": "NEW",
+		      "__meta": "*"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Update",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "NEW"
+		    }
+		  },
+		  "response": {
+		    "properties": {
+		      "id": "*",
+		      "stringPropertyValue": "SET",
+		      "__meta": "*"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("Diff", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+		    "olds": {
+		      "stringPropertyValue": "OLD"
+		    },
+		    "news": {
+		      "stringPropertyValue": "TRANSFORMED"
+		    }
+		  },
+		  "response": {
+		    "changes": "DIFF_NONE",
+		    "hasDetailedDiff": true
+		  }
+               }`)
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Delete",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+		    "properties": {
+		      "stringPropertyValue": "OLD"
+		    }
+		  },
+		  "response": {}
+               }`)
+	})
+
+	t.Run("Read (Refresh)", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::Echo::exres",
+	            "properties": {
+                   	"stringPropertyValue": "OLD"
+                    }
+		  },
+		  "response": {
+	            "id": "0",
+	            "inputs": "*",
+		    "properties": {
+			"id": "*",
+			"stringPropertyValue": "SET",
+			"__meta": "*"
+		    }
+		  }
+		}`)
+	})
+}

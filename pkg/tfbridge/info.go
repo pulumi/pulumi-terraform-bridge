@@ -329,8 +329,16 @@ type ResourceInfo struct {
 	// outputs before they are stored. In particular, it can be used as a last resort hook to
 	// make corrections in the default translation of the resource state from TF to Pulumi.
 	// Should be used sparingly.
-	TransformOutputs func(ctx context.Context, outputs resource.PropertyMap) (resource.PropertyMap, error)
+	TransformOutputs PropertyTransform
+
+	// Check, Diff, Read, Update and Delete refer to old inputs sourced from the
+	// Pulumi statefile. TransformFromState lets providers edit these outputs before they
+	// are accessed by other provider functions or by terraform. In particular, it can
+	// be used to perform upgrades on old pulumi state.  Should be used sparingly.
+	TransformFromState PropertyTransform
 }
+
+type PropertyTransform = func(context.Context, resource.PropertyMap) (resource.PropertyMap, error)
 
 type PreCheckCallback = func(
 	ctx context.Context, config resource.PropertyMap, meta resource.PropertyMap,

@@ -95,3 +95,20 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeName)
 	return result, nil
 }
+
+func transformFromState(
+	ctx context.Context, rh resourceHandle, state pulumiresource.PropertyMap,
+) (pulumiresource.PropertyMap, error) {
+	if rh.pulumiResourceInfo == nil {
+		return state, nil
+	}
+	f := rh.pulumiResourceInfo.TransformFromState
+	if f == nil {
+		return state, nil
+	}
+	o, err := f(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("transforming from state: %w", err)
+	}
+	return o, err
+}

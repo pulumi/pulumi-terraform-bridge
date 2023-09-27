@@ -57,6 +57,13 @@ func (p *provider) ReadWithContext(
 	var result plugin.ReadResult
 
 	if isRefresh {
+		// If we are in a refresh, then currentStateMap was read from the state
+		// and should be transformed.
+		currentStateMap, err = transformFromState(ctx, rh, currentStateMap)
+		if err != nil {
+			return plugin.ReadResult{}, 0, err
+		}
+
 		result, err = p.readViaReadResource(ctx, &rh, id, oldInputs, currentStateMap)
 	} else {
 		result, err = p.readViaImportResourceState(ctx, &rh, id)

@@ -1195,6 +1195,12 @@ func UnmarshalTerraformState(
 	if err != nil {
 		return nil, err
 	}
+
+	props, err = transformFromState(ctx, r.Schema, props)
+	if err != nil {
+		return nil, err
+	}
+
 	return MakeTerraformState(ctx, r, id, props)
 }
 
