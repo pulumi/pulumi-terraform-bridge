@@ -1,0 +1,6 @@
+{
+  "Description": "## \n\n\t\tThis is a document for the pkg_mod1_res1 resource. To create this resource, run \"pulumi preview\" then \"pulumi up\".",
+  "Arguments": {},
+  "Attributes": {},
+  "Import": ""
+}
