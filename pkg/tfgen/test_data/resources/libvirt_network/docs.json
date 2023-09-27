@@ -1,0 +1,75 @@
+{
+  "Description": "Manages a VM network resource within libvirt. For more information see\n[the official documentation](https://libvirt.org/formatnetwork.html).\n\n## Example Usage\n\n```hcl\nresource \"libvirt_network\" \"kube_network\" {\n  # the name used by libvirt\n  name = \"k8snet\"\n\n  # mode can be: \"nat\" (default), \"none\", \"route\", \"open\", \"bridge\"\n  mode = \"nat\"\n\n  #  the domain used by the DNS server in this network\n  domain = \"k8s.local\"\n\n  #  list of subnets the addresses allowed for domains connected\n  # also derived to define the host addresses\n  # also derived to define the addresses served by the DHCP server\n  addresses = [\"10.17.3.0/24\", \"2001:db8:ca2:2::1/64\"]\n\n  # (optional) the bridge device defines the name of a bridge device\n  # which will be used to construct the virtual network.\n  # (only necessary in \"bridge\" mode)\n  # bridge = \"br7\"\n\n  # (optional) the MTU for the network. If not supplied, the underlying device's\n  # default is used (usually 1500)\n  # mtu = 9000\n\n  # (Optional) DNS configuration\n  dns {\n    # (Optional, default false)\n    # Set to true, if no other option is specified and you still want to \n    # enable dns.\n    enabled = true\n    # (Optional, default false)\n    # true: DNS requests under this domain will only be resolved by the\n    # virtual network's own DNS server\n    # false: Unresolved requests will be forwarded to the host's\n    # upstream DNS server if the virtual network's DNS server does not\n    # have an answer.\n￼   local_only = true\n\n    # (Optional) one or more DNS forwarder entries.  One or both of\n    # \"address\" and \"domain\" must be specified.  The format is:\n    # forwarders {\n    #     address = \"my address\"\n    #     domain = \"my domain\"\n    #  } \n    # \n\n    # (Optional) one or more DNS host entries.  Both of\n    # \"ip\" and \"hostname\" must be specified.  The format is:\n    # hosts  {\n    #     hostname = \"my_hostname\"\n    #     ip = \"my.ip.address.1\"\n    #   }\n    # hosts {\n    #     hostname = \"my_hostname\"\n    #     ip = \"my.ip.address.2\"\n    #   }\n    # \n\n    # (Optional) one or more static routes.\n    # \"cidr\" and \"gateway\" must be specified. The format is:\n    # routes {\n    #     cidr = \"10.17.0.0/16\"\n    #     gateway = \"10.18.0.2\"\n    #   }\n  }\n\n  # (Optional) Dnsmasq options configuration\n  dnsmasq_options {\n    # (Optional) one or more option entries.\n    # \"option_name\" muast be specified while \"option_value\" is\n\t# optional to also support value-less options.  The format is:\n    # options  {\n    #     option_name = \"server\"\n    #     option_value = \"/base.domain/my.ip.address.1\"\n    #   }\n    # options  {\n    #     option_name = \"no-hosts\"\n    #   }\n    # options {\n    #     option_name = \"address\"\n    #     ip = \"/.api.base.domain/my.ip.address.2\"\n    #   }\n    #\n  }\n\n}\n```",
+  "Arguments": {
+    "addresses": {
+      "description": "A list of (0 or 1) IPv4 and (0 or 1) IPv6 subnets in\nCIDR notation.  This defines the subnets associated to that network.\nThis argument is also used to define the address on the real host.\nIf `dhcp {  enabled = true }` addresses is also used to define the address range served by\nthe DHCP server.\nNo DHCP server will be started if `addresses` is omitted."
+    },
+    "altering_libvirt.xslt": {
+      "description": ""
+    },
+    "autostart": {
+      "description": "Set to `true` to start the network on host boot up.\nIf not specified `false` is assumed."
+    },
+    "bridge": {
+      "description": "The bridge device defines the name of a bridge\ndevice which will be used to construct the virtual network (when not provided,\nit will be automatically obtained by libvirt in `none`, `nat`, `route` and `open` modes)."
+    },
+    "dns": {
+      "description": "configuration of DNS specific settings for the network"
+    },
+    "dns.dhcp": {
+      "description": "DHCP configuration. \nYou need to use it in conjuction with the adresses variable."
+    },
+    "dns.dnsmasq_options": {
+      "description": "configuration of Dnsmasq options for the network\nYou need to provide a list of option name and value pairs."
+    },
+    "dns.enabled": {
+      "description": "when false, disable the DHCP server\n```hcl\nresource \"libvirt_network\" \"test_net\" {\nname      = \"networktest\"\nmode      = \"nat\"\ndomain    = \"k8s.local\"\naddresses = [\"10.17.3.0/24\"]\ndhcp {\nenabled = true\n}\n```"
+    },
+    "dns.forwarders": {
+      "description": "Either `address`, `domain`, or both must be set"
+    },
+    "dns.hosts": {
+      "description": "a DNS host entry block. You can have one or more of these\nblocks in your DNS definition. You must specify both `ip` and `hostname`.\n\nAn advanced example of round-robin DNS (using DNS host templates) follows:\n\n```hcl\nresource \"libvirt_network\" \"my_network\" {\n...\ndns {\nhosts { flatten(data.libvirt_network_dns_host_template.hosts.*.rendered) }\n}\n...\n}\n\ndata \"libvirt_network_dns_host_template\" \"hosts\" {\ncount    = var.host_count\nip       = var.host_ips[count.index]\nhostname = \"my_host\"\n}\n```\n\nAn advanced example of setting up multiple SRV records using DNS SRV templates is:\n\n```hcl\ndata \"libvirt_network_dns_srv_template\" \"etcd_cluster\" {\ncount    = var.etcd_count\nservice  = \"etcd-server\"\nprotocol = \"tcp\"\ndomain   = var.discovery_domain\ntarget   = \"${var.cluster_name}-etcd-${count.index}.${discovery_domain}\"\n}\n\nresource \"libvirt_network\" \"k8snet\" {\n...\ndns {\nsrvs = [ flatten(data.libvirt_network_dns_srv_template.etcd_cluster.*.rendered) ]\n}\n...\n}\n```"
+    },
+    "dns.local_only": {
+      "description": "true/false: true means 'do not forward unresolved requests for this domain to the part DNS server"
+    },
+    "dns.options": {
+      "description": "a Dnsmasq option entry block. You can have one or more of these\nblocks in your definition. You must specify `option_name` while `option_value` is\noptional to support value-less options.\n\nAn example of setting Dnsmasq options (using Dnsmasq option templates) follows:\n\n```hcl\nresource \"libvirt_network\" \"my_network\" {\n...\ndnsmasq_options {\noptions { flatten(data.libvirt_network_dnsmasq_options_template.options.*.rendered) }\n}\n...\n}\n\ndata \"libvirt_network_dnsmasq_options_template\" \"options\" {\ncount = length(var.libvirt_dnsmasq_options)\noption_name = keys(var.libvirt_dnsmasq_options)[count.index]\noption_value = values(var.libvirt_dnsmasq_options)[count.index]\n}\n```"
+    },
+    "dns.srvs": {
+      "description": "a DNS SRV entry block. You can have one or more of these blocks\nin your DNS definition. You must specify `service` and `protocol`."
+    },
+    "domain": {
+      "description": "The domain used by the DNS server."
+    },
+    "mode": {
+      "description": "One of:"
+    },
+    "mtu": {
+      "description": "The MTU to set for the underlying network interfaces. When\nnot supplied, libvirt will use the default for the interface, usually 1500.\nLibvirt version 5.1 and greater will advertise this value to nodes via DHCP."
+    },
+    "name": {
+      "description": "A unique name for the resource, required by libvirt.\nChanging this forces a new resource to be created."
+    },
+    "nat": {
+      "description": "it is the default network mode. This is a configuration that\nallows guest OS to get outbound connectivity regardless of whether the host\nuses ethernet, wireless, dialup, or VPN networking without requiring any\nspecific admin configuration. In the absence of host networking, it at\nleast allows guests to talk directly to each other."
+    },
+    "none": {
+      "description": "the guests can talk to each other and the host OS, but cannot reach\nany other machines on the LAN."
+    },
+    "open": {
+      "description": "similar to `route`, but no firewall rules are added."
+    },
+    "route": {
+      "description": "this is a variant on the default network which routes traffic from\nthe virtual network to the LAN **without applying any NAT**. It requires that\nthe IP address range be pre-configured in the routing tables of the router\non the host network."
+    },
+    "routes": {
+      "description": "a list of static routes. A `cidr` and a `gateway` must\nbe provided. The `gateway` must be reachable via the bridge interface."
+    }
+  },
+  "Attributes": {
+    "id": "a unique identifier for the resource"
+  },
+  "Import": ""
+}
