@@ -1137,12 +1137,12 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	for _, r := range stableResources(resources) {
 		info := g.info.Resources[r]
 		if info == nil {
-			if ignoreMappingError(g.info.IgnoreMappings, r) {
+			if sliceContains(g.info.IgnoreMappings, r) {
 				g.debug("TF resource %q not found in provider map", r)
 				continue
 			}
 
-			if !ignoreMappingError(g.info.IgnoreMappings, r) && !skipFailBuildOnMissingMapError {
+			if !sliceContains(g.info.IgnoreMappings, r) && !skipFailBuildOnMissingMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("TF resource %q not mapped to the Pulumi provider", r))
 			} else {
@@ -1335,7 +1335,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	for _, ds := range stableResources(sources) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
-			if ignoreMappingError(g.info.IgnoreMappings, ds) {
+			if sliceContains(g.info.IgnoreMappings, ds) {
 				g.debug("TF data source %q not found in provider map but ignored", ds)
 				continue
 			}
@@ -1903,9 +1903,9 @@ func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
 	return nil
 }
 
-func ignoreMappingError(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+func sliceContains[T comparable](slice []T, target T) bool {
+	for _, v := range slice {
+		if v == target {
 			return true
 		}
 	}
