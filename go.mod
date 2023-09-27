@@ -49,6 +49,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
+	github.com/yuin/goldmark v1.4.13
 	github.com/zclconf/go-cty v1.13.2
 	golang.org/x/crypto v0.10.0
 	golang.org/x/mod v0.10.0
