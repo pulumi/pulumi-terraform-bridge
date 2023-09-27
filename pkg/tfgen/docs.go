@@ -58,6 +58,17 @@ func (ad argumentDocs) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// docsPath represents the path to a (possibly nested) TF property.
+//
+// These are all valid `docsPath`s:
+//
+// "foo"
+// "foo.bar"
+// "foo.a.b.c.bar"
+//
+// Because document parsing is heuristic, it is possible that a docsPath will end up in an
+// unexpected state, such as "foo...". Methods should not panic in this scenario, but they
+// may return unexpected results.
 type docsPath string
 
 func (d docsPath) nested() bool                 { return strings.Contains(string(d), ".") }
