@@ -1,0 +1,18 @@
+{
+  "Resources": [
+    {
+      "Type": "simple:index:resource",
+      "Name": "a_resource-0",
+      "ID": "abc123",
+      "Version": "",
+      "PluginDownloadURL": ""
+    },
+    {
+      "Type": "simple:index:resource",
+      "Name": "a_resource-1",
+      "ID": "def456",
+      "Version": "",
+      "PluginDownloadURL": ""
+    }
+  ]
+}
