@@ -34,11 +34,69 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
+
+func TestEntityDocsParsing(t *testing.T) {
+	t.Parallel()
+	baseDir := filepath.Join("test_data", "resources")
+
+	dir, err := os.ReadDir(baseDir)
+	require.NoError(t, err)
+
+	for _, d := range dir {
+		if !d.IsDir() {
+			continue
+		}
+		source := filepath.Join(baseDir, d.Name(), "upstream.md")
+		expect := filepath.Join(baseDir, d.Name(), "docs.json")
+		t.Run(d.Name(), func(t *testing.T) {
+			sourceBytes, err := os.ReadFile(source)
+			require.NoError(t, err)
+
+			nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+				Color: colors.Never,
+			})
+
+			entityDocs, err := getDocsForResource(&Generator{
+				sink: nilSink,
+			}, simpleSource{
+				d.Name(): sourceBytes,
+			}, ResourceDocs, d.Name(), &tfbridge.ResourceInfo{})
+			require.NoError(t, err)
+
+			actualBytes, err := json.MarshalIndent(entityDocs, "", "  ")
+			require.NoError(t, err)
+			if pulumiAccept {
+				err := os.WriteFile(expect, actualBytes, 0600)
+				assert.NoError(t, err)
+			} else {
+				expectedBytes, err := os.ReadFile(expect)
+				require.NoError(t, err)
+				assert.JSONEq(t, string(expectedBytes), string(actualBytes))
+			}
+		})
+	}
+}
+
+type simpleSource map[string][]byte
+
+func (s simpleSource) getResource(name string, _ *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := s[name]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  f,
+		FileName: name,
+	}, nil
+}
+
+func (s simpleSource) getDatasource(name string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return s.getResource(name, info)
+}
 
 type testcase struct {
 	Input    string
@@ -283,9 +341,7 @@ func TestArgumentRegex(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run("", func(t *testing.T) {
-			ret := entityDocs{
-				Arguments: make(map[docsPath]*argumentDocs),
-			}
+			ret := entityDocs{Arguments: make(map[docsPath]*argumentDocs)}
 			parseArgReferenceSection(tt.input, &ret)
 
 			assert.Equal(t, tt.expected, ret.Arguments)
@@ -837,8 +893,6 @@ func TestParseImports_NoOverrides(t *testing.T) {
 		},
 	}
 
-	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-
 	for _, tt := range tests {
 		parser := tfMarkdownParser{
 			info: &mockResource{
@@ -848,7 +902,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 		parser.parseImports(tt.input)
 		actual := parser.ret.Import
 		if tt.expectedFile != "" {
-			if accept {
+			if pulumiAccept {
 				writefile(t, tt.expectedFile, []byte(actual))
 			}
 			tt.expected = readfile(t, tt.expectedFile)
