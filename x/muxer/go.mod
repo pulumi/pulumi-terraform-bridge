@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/x/muxer
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/go-multierror v1.1.1
