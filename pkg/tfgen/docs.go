@@ -32,6 +32,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -822,40 +825,46 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	regexp.MustCompile("`([a-z_]+)`.*following"),
 
 	// For example:
-	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-
-	// For example:
-	// elasticsearch_domain.html.markdown: "### advanced_security_options"
-	regexp.MustCompile("###+ ([a-z_]+).*"),
-
-	// For example:
-	// dynamodb_table.html.markdown: "### `server_side_encryption`"
-	regexp.MustCompile("###+ `([a-z_]+).*`"),
-
-	// For example:
-	// route53_record.html.markdown: "### Failover Routing Policy"
-	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
-
-	// For example:
 	// sql_database_instance.html.markdown:
 	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 }
 
-// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
-// describes. If the line does not describe a nested block, an empty string is returned.
-//
-// Examples of nested blocks include (but are not limited to):
-//
-// - "The `private_cluster_config` block supports:" -> "private_cluster_config"
-// - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) string {
+var nestedHeadingRegexps = []*regexp.Regexp{
+	// For example:
+	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+	regexp.MustCompile("(?i)([a-z_]+).* argument reference"),
+
+	// For example:
+	// elasticsearch_domain.html.markdown: "### advanced_security_options"
+	regexp.MustCompile("^([a-z_]+)"),
+
+	// For example:
+	// dynamodb_table.html.markdown: "### `server_side_encryption`"
+	regexp.MustCompile("`([a-z_]+).*`"),
+
+	// For example:
+	// lb_listner_rule.html.markdown: "### Action Blocks"
+	regexp.MustCompile("([a-zA-Z_ ]+?) (Blocks)"),
+
+	// For example:
+	// route53_record.html.markdown: "### Failover Routing Policy"
+	regexp.MustCompile("([a-zA-Z_ ]+)(Blocks)?"),
+}
+
+func isHeadingTarget(src []byte, n *ast.Heading) string {
+	if n.Level <= 2 {
+		return ""
+	}
+	return findNestingTarget(nestedHeadingRegexps, n.Text(src))
+}
+
+func findNestingTarget(typ []*regexp.Regexp, text []byte) string {
 	nested := ""
-	for _, match := range nestedObjectRegexps {
-		matches := match.FindStringSubmatch(line)
+	for _, match := range typ {
+		matches := match.FindSubmatch(text)
 		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
+			nested = strings.ToLower(string(matches[1]))
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
 			parts := strings.Split(nested, ".")
@@ -867,69 +876,259 @@ func getNestedBlockName(line string) string {
 	return nested
 }
 
+// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
+// describes. If the line does not describe a nested block, an empty string is returned.
+//
+// Examples of nested blocks include (but are not limited to):
+//
+// - "The `private_cluster_config` block supports:" -> "private_cluster_config"
+// - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
+func getNestedBlockName(line []byte) string { return findNestingTarget(nestedObjectRegexps, line) }
+
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	var lastMatch string
-	var nested docsPath
+	ret.ensure()
+	src := []byte(strings.Join(subsection, "\n"))
+	node := goldmark.New().Parser().Parse(
+		text.NewReader(src))
 
-	addNewHeading := func(name, desc, line string) {
-		// found a property bullet, extract the name and description
-		if nested != "" {
-			// We found this line within a nested field. We should record it as such.
-			if ret.Arguments[nested] == nil {
-				totalArgumentsFromDocs++
+	type namedNode struct {
+		node     ast.Node
+		name     string
+		writable bool
+	}
+	var parent, child, latest, latestParent *namedNode
+	setLatest := func() { latest, latestParent = child, parent }
+
+	skipPrint := map[ast.Node]bool{}
+
+	baked := map[docsPath]struct{}{}
+	unbaked := map[docsPath]struct{}{}
+
+	// The algorithm for this parse works on a single descend + ascend pass.
+	//
+	// During descent, significant nodes such as new headings are marked. During
+	// ascent, nodes are written to ret.
+
+	descend := func(node ast.Node) ast.WalkStatus {
+		switch node.Kind() {
+		case ast.KindThematicBreak:
+			for k := range unbaked {
+				baked[k] = struct{}{}
 			}
-			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
-		} else {
-			if genericNestedRegexp.MatchString(line) {
-				return
+			unbaked = map[docsPath]struct{}{}
+		case ast.KindListItem:
+			// We have entered a new item
+			if name := nodeItemName(src, node); name != "" && child == nil {
+				var key docsPath
+				if parent == nil {
+					child = nil
+					parent = &namedNode{node, name, true}
+					key = docsPath(name)
+				} else {
+					child = &namedNode{node, name, true}
+					key = docsPath(parent.name).join(name)
+				}
+				setLatest()
+
+				_, isBaked := baked[key]
+				if v, ok := ret.Arguments[key]; ok && !isBaked {
+					v.description = ""
+				}
+				unbaked[key] = struct{}{}
 			}
-			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
-			totalArgumentsFromDocs++
+		case ast.KindHeading:
+			target := isHeadingTarget(src, node.(*ast.Heading))
+			if target != "" {
+				child = &namedNode{node, target, true}
+				parent = child
+				setLatest()
+				return ast.WalkSkipChildren
+			}
+		case ast.KindCodeSpan, ast.KindCodeBlock:
+			if nxt := node.NextSibling(); nxt != nil && nxt.Kind() == ast.KindText {
+				// Observe annotations like:
+				//
+				//	Inside of `dns` section the following argument are supported:
+				//
+				// When we find these, it overrides the current node.
+				txt := fmt.Sprintf("`%s` %s", string(node.Text(src)),
+					string(nxt.Text(src)))
+				target := getNestedBlockName([]byte(txt))
+				if target != "" {
+					// Setting both child an parent effectively sets
+					// this until the list ends (and we reset).
+					p := node.Parent()
+					child = &namedNode{p, target, false}
+					parent = child
+					setLatest()
+					return ast.WalkSkipChildren
+				}
+			}
+		case ast.KindText:
+			if genericNestedRegexp.Match(node.Text(src)) {
+				if latestParent != nil {
+					latestParent.writable = false
+					parent = latestParent
+				}
+				skipPrint[node.Parent()] = true
+				return ast.WalkSkipChildren
+			}
+		}
+		return ast.WalkContinue
+	}
+
+	write := func(node ast.Node) ast.WalkStatus {
+		// If we are not able to serialize node, exit early
+		switch node.(type) {
+		case *ast.Paragraph, *ast.TextBlock, *ast.FencedCodeBlock, *ast.ThematicBreak, *ast.Heading:
+		default:
+			return ast.WalkContinue
+		}
+
+		var key docsPath
+		if child != nil && parent != child {
+			if child.writable {
+				key = docsPath(parent.name).join(child.name)
+			}
+		} else if latest != nil && parent == nil {
+			if latest.writable {
+				key = docsPath(latestParent.name).join(latest.name)
+			}
+		} else if parent != nil {
+			if parent.writable {
+				key = docsPath(parent.name)
+			}
+		} else if latestParent != nil {
+			if latestParent.writable {
+				key = docsPath(latestParent.name)
+			}
+		}
+
+		if key == "" {
+			return ast.WalkContinue
+		}
+
+		desc := string(renderMdNode(src, node))
+
+		arg := ret.Arguments[key]
+		if arg == nil {
+			arg = &argumentDocs{}
+			ret.Arguments[key] = arg
+		}
+		arg.description += desc
+		return ast.WalkContinue
+	}
+
+	// Identify the transition points between arguments.
+	err := ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering {
+			return descend(node), nil
+		}
+
+		if node.Kind() == ast.KindList {
+			// When we exit a list, clear our current state
+			if !entering {
+				parent = nil
+				child = nil
+			}
+			return ast.WalkContinue, nil
+		}
+
+		defer func() {
+			if child != nil && child.node == node {
+				child = nil
+			} else if parent != nil && parent.node == node {
+				parent = nil
+			}
+		}()
+
+		// Write the state on exit:
+
+		// There are several early exit conditions:
+		if (latest == nil && latestParent == nil) || // Don't have a node to write to
+			node == latestParent.node && latestParent == child ||
+			skipPrint[node] { // Is a marker node
+			return ast.WalkContinue, nil
+		}
+
+		return write(node), nil
+	})
+	contract.AssertNoErrorf(err, "An error is never returned")
+
+	for k, v := range ret.Arguments {
+		v.description = cleanDescription(k, v.description)
+	}
+}
+
+func renderMdNode(src []byte, n ast.Node) []byte {
+	var b bytes.Buffer
+	b.WriteString("\n\n")
+	switch n := n.(type) {
+	case *ast.Paragraph, *ast.TextBlock:
+		for i := 0; i < n.Lines().Len(); i++ {
+			line := n.Lines().At(i)
+			b.Write(line.Value(src))
+		}
+	case *ast.FencedCodeBlock:
+		b.WriteString("```")
+		b.Write(n.Language(src))
+		b.WriteRune('\n')
+		for i := 0; i < n.Lines().Len(); i++ {
+			line := n.Lines().At(i)
+			b.Write(line.Value(src))
+		}
+		b.WriteString("```")
+	case *ast.ThematicBreak:
+		b.WriteRune('\n')
+	case *ast.Heading:
+		b.WriteString(strings.Repeat("#", n.Level) + " ")
+		b.Write(n.Text(src))
+	default:
+		n.Dump(src, 0)
+		panic(n)
+	}
+	return b.Bytes()
+}
+
+var cleanDescriptionPrefixes = []*regexp.Regexp{
+	regexp.MustCompile(`^[:-]`),
+	regexp.MustCompile(`^\(Optional.*?\)`),
+	regexp.MustCompile(`^\(Required.*?\)`),
+}
+
+func cleanDescription(path docsPath, desc string) string {
+	name := path.leaf()
+	valid := append(cleanDescriptionPrefixes, regexp.MustCompile("^"+regexp.QuoteMeta("`"+name+"`")))
+	changed := true
+	desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
+	for changed {
+		changed = false
+		for _, c := range valid {
+			if found := len(c.FindString(desc)); found > 0 {
+				desc = desc[found:]
+				desc = strings.TrimLeftFunc(desc,
+					unicode.IsSpace)
+				changed = true
+			}
 		}
 	}
+	return strings.TrimRightFunc(desc, unicode.IsSpace)
+}
 
-	extendExistingHeading := func(line string) {
-		line = "\n" + strings.TrimSpace(line)
-		if nested != "" {
-			ret.Arguments[nested.join(lastMatch)].description += line
-		} else {
-			if genericNestedRegexp.MatchString(line) {
-				lastMatch = ""
-				nested = ""
-				return
-			}
-			ret.Arguments[docsPath(lastMatch)].description += line
+func nodeItemName(src []byte, node ast.Node) string {
+	if node == nil {
+		return ""
+	}
+	var name string
+	contract.AssertNoErrorf(ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if node.Kind() == ast.KindCodeSpan {
+			name = string(node.Text(src))
+			return ast.WalkStop, nil
 		}
-	}
+		return ast.WalkContinue, nil
+	}), "We don't return an error")
 
-	var hadSpace bool
-	for _, line := range subsection {
-		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
-			// We have found a new
-			addNewHeading(name, desc, line)
-			lastMatch = name
-		} else if strings.TrimSpace(line) == "---" {
-			// --- is a markdown section break. This probably indicates the
-			// section is over, but we take it to mean that the current
-			// heading is over.
-			lastMatch = ""
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
-			lastMatch = ""
-		} else if !isBlank(line) && lastMatch != "" {
-			extendExistingHeading(line)
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
-			lastMatch = ""
-		} else if lastMatch != "" {
-			extendExistingHeading(line)
-		}
-		hadSpace = isBlank(line)
-	}
-
-	for _, v := range ret.Arguments {
-		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
-	}
+	return name
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {

@@ -89,7 +89,7 @@
       "description": "The value of query parameter"
     },
     "condition": {
-      "description": "A Condition block. Multiple condition blocks of different types can be set and all must be satisfied for the rule to match. Condition blocks are documented below."
+      "description": "A Condition block. Multiple condition blocks of different types can be set and all must be satisfied for the rule to match. Condition blocks are documented below.\n\nOne or more condition blocks can be set per rule. Most condition types can only be specified once per rule except for `http-header` and `query-string` which can be specified multiple times."
     },
     "condition.host_header": {
       "description": "Contains a single `values` item which is a list of host header patterns to match. The maximum size of each pattern is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied."
@@ -143,7 +143,7 @@
       "description": "Query string value pattern to match."
     },
     "query_string.values": {
-      "description": "Query string pairs or values to match. Query String Value blocks documented below. Multiple `values` blocks can be specified, see example above. Maximum size of each string is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). To search for a literal '\\*' or '?' character in a query string, escape the character with a backslash (\\\\). Only one pair needs to match for the condition to be satisfied.\n\nQuery String Value Blocks (for `query_string.values`) support the following:"
+      "description": "Query string pairs or values to match. Query String Value blocks documented below. Multiple `values` blocks can be specified, see example above. Maximum size of each string is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). To search for a literal '\\*' or '?' character in a query string, escape the character with a backslash (\\\\). Only one pair needs to match for the condition to be satisfied."
     },
     "redirect.host": {
       "description": "The hostname. This component is not percent-encoded. The hostname can contain `#{host}`. Defaults to `#{host}`."
