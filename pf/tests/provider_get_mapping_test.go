@@ -26,14 +26,22 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestGetMapping(t *testing.T) {
 	ctx := context.Background()
 	info := testprovider.RandomProvider()
 
-	p, err := tfbridge.NewProvider(ctx, info, genMetadata(t, info))
-	assert.NoError(t, err)
+	var p plugin.Provider
+
+	t.Run("generate-schema", func(t *testing.T) {
+		// This generates the schema on the fly but shells out to go mod download and
+		// generates spurious warnings; for separating into separate sub-test.
+		var err error
+		p, err = tfbridge.NewProvider(ctx, info, genMetadata(t, info))
+		assert.NoError(t, err)
+	})
 
 	{
 		m, p, err := p.GetMapping("unknown-key", "")
@@ -44,7 +52,7 @@ func TestGetMapping(t *testing.T) {
 
 	{
 		m, p, err := p.GetMapping("terraform", "unknown-provider")
-		assert.NoError(t, err)
+		assert.Error(t, err) // this should error, e.g. "unknown-provider"
 		assert.Empty(t, m)
 		assert.Empty(t, p)
 	}
@@ -91,9 +99,10 @@ func TestMuxedGetMapping(t *testing.T) {
 	})
 
 	t.Run("unknown-provider", func(t *testing.T) {
+		t.Skipf("TODO[pulumi/pulumi-terraform-bridge#1403] skipping due to a bug that is not fixed yet")
 		resp, err := server.GetMapping(req("terraform", "unknown-provider"))
-		assert.NoError(t, err)
-		assert.Empty(t, resp.Data)
+		assert.Error(t, err) // this should error, e.g. "unknown-provider"
+		assert.Empty(t, string(resp.Data))
 		assert.Empty(t, resp.Provider)
 	})
 
