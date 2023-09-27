@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
@@ -257,7 +258,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
-		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			g.error(msg)
 			return entityDocs{}, fmt.Errorf(msg)
 		}

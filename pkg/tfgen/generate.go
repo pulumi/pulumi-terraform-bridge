@@ -1124,9 +1124,9 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
-		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-	skipFailBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var resourceMappingErrors error
@@ -1303,7 +1303,7 @@ func (g *Generator) gatherResource(rawname string,
 			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
 
-			if isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
 				return nil, fmt.Errorf(msg)
 			}
 
@@ -1322,9 +1322,9 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
-		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
@@ -1901,10 +1901,6 @@ func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
 	}
 
 	return nil
-}
-
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
 }
 
 func ignoreMappingError(s []string, str string) bool {
