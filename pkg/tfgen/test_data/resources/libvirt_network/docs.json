@@ -4,9 +4,6 @@
     "addresses": {
       "description": "A list of (0 or 1) IPv4 and (0 or 1) IPv6 subnets in\nCIDR notation.  This defines the subnets associated to that network.\nThis argument is also used to define the address on the real host.\nIf `dhcp {  enabled = true }` addresses is also used to define the address range served by\nthe DHCP server.\nNo DHCP server will be started if `addresses` is omitted."
     },
-    "altering_libvirt": {
-      "description": "The optional `xml` block relates to the generated network XML.\n\nCurrently the following attributes are supported:"
-    },
     "altering_libvirt.xslt": {
       "description": ""
     },
