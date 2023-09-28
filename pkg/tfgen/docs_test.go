@@ -44,10 +44,6 @@ import (
 	"os/exec"
 )
 
-var (
-	accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-)
-
 func TestEntityDocsParsing(t *testing.T) {
 	t.Parallel()
 	baseDir := filepath.Join("test_data", "resources")
@@ -150,6 +146,64 @@ func TestURLRewrite(t *testing.T) {
 	for _, test := range tests {
 		text, _ := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
+	}
+}
+
+func TestCleanDescription(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		path     docsPath
+		desc     string
+		expected string
+	}{
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional, [Beta](https://terraform.io/docs/providers/google/guides/provider_versions.html))
+  Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional) Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Required (Optimal (Actual))) Match versions (only versions) by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions (only versions) by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  () (Optional) versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "() (Optional) versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path:     "foo",
+			desc:     "`foo` - (Optional (Required) Enclosed.",
+			expected: "(Optional (Required) Enclosed.",
+		},
+		{
+			path:     "foo",
+			desc:     "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			actual := cleanDescription(tt.path, tt.desc)
+			assert.Equal(t, tt.expected, actual)
+		})
 	}
 }
 
@@ -997,7 +1051,7 @@ func TestConvertExamples(t *testing.T) {
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
-			if accept {
+			if pulumiAccept {
 				err = os.WriteFile(out, []byte(result), 0600)
 				require.NoError(t, err)
 			}
