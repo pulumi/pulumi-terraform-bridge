@@ -1,0 +1,48 @@
+{
+  "Description": "## +---\n\nsubcategory: \"Cloud Bigtable\"\ndescription: |-\n  Creates a Google Bigtable instance.\n---\n\n# google_bigtable_instance\n\nCreates a Google Bigtable instance. For more information see:\n\n* [API documentation](https://cloud.google.com/bigtable/docs/reference/admin/rest/v2/projects.instances.clusters)\n* How-to Guides\n    * [Official Documentation](https://cloud.google.com/bigtable/docs)\n\n## Example Usage\n\n### Simple Instance\n\n```hcl\nresource \"google_bigtable_instance\" \"production-instance\" {\n  name = \"tf-instance\"\n\n  cluster {\n    cluster_id   = \"tf-instance-cluster\"\n    num_nodes    = 1\n    storage_type = \"HDD\"\n  }\n\n  labels = {\n    my-label = \"prod-label\"\n  }\n}\n```\n\n### Replicated Instance\n\n```hcl\nresource \"google_bigtable_instance\" \"production-instance\" {\n  name = \"tf-instance\"\n\n  # A cluster with fixed number of nodes.\n  cluster {\n    cluster_id   = \"tf-instance-cluster1\"\n    num_nodes    = 1\n    storage_type = \"HDD\"\n    zone    = \"us-central1-c\"\n  }\n\n  # a cluster with auto scaling.\n  cluster {\n    cluster_id   = \"tf-instance-cluster2\"\n    storage_type = \"HDD\"\n    zone    = \"us-central1-b\"\n    autoscaling_config {\n      min_nodes = 1\n      max_nodes = 3\n      cpu_target = 50\n    }\n  }\n\n  labels = {\n    my-label = \"prod-label\"\n  }\n}\n```",
+  "Arguments": {
+    "cluster": {
+      "description": "A block of cluster configuration options. This can be specified at least once, and up \nto as many as possible within 8 cloud regions. Removing the field entirely from the config will cause the provider\nto default to the backend value. See structure below."
+    },
+    "cluster.autoscaling_config": {
+      "description": "[Autoscaling](https://cloud.google.com/bigtable/docs/autoscaling#parameters) config for the cluster, contains the following arguments:\n\n`min_nodes` - (Required) The minimum number of nodes for autoscaling.\n\n`max_nodes` - (Required) The maximum number of nodes for autoscaling.\n\n`cpu_target` - (Required) The target CPU utilization for autoscaling, in percentage. Must be between 10 and 80.\n\n`storage_target` - The target storage utilization for autoscaling, in GB, for each node in a cluster. This number is limited between 2560 (2.5TiB) and 5120 (5TiB) for a SSD cluster and between 8192 (8TiB) and 16384 (16 TiB) for an HDD cluster. If not set, whatever is already set for the cluster will not change, or if the cluster is just being created, it will use the default value of 2560 for SSD clusters and 8192 for HDD clusters.\n\n!\u003e **Warning**: Only one of `autoscaling_config` or `num_nodes` should be set for a cluster. If both are set, `num_nodes` is ignored. If none is set, autoscaling will be disabled and sized to the current node count."
+    },
+    "cluster.cluster_id": {
+      "description": "The ID of the Cloud Bigtable cluster. Must be 6-30 characters and must only contain hyphens, lowercase letters and numbers."
+    },
+    "cluster.num_nodes": {
+      "description": "The number of nodes in the cluster.\nIf no value is set, Cloud Bigtable automatically allocates nodes based on your data footprint and optimized for 50% storage utilization."
+    },
+    "cluster.zone": {
+      "description": "The zone to create the Cloud Bigtable cluster in. If it not\nspecified, the provider zone is used. Each cluster must have a different zone in the same region. Zones that support\nBigtable instances are noted on the [Cloud Bigtable locations page](https://cloud.google.com/bigtable/docs/locations)."
+    },
+    "deletion_protection": {
+      "description": "Whether or not to allow this provider to destroy the instance. Unless this field is set to false\nin the statefile, a `pulumi destroy` or `pulumi up` that would delete the instance will fail."
+    },
+    "display_name": {
+      "description": "The human-readable display name of the Bigtable instance. Defaults to the instance `name`."
+    },
+    "instance_type": {
+      "description": "The instance type to create. One of `\"DEVELOPMENT\"` or `\"PRODUCTION\"`. Defaults to `\"PRODUCTION\"`.\nIt is recommended to leave this field unspecified since the distinction between `\"DEVELOPMENT\"` and `\"PRODUCTION\"` instances is going away,\nand all instances will become `\"PRODUCTION\"` instances. This means that new and existing `\"DEVELOPMENT\"` instances will be converted to\n`\"PRODUCTION\"` instances. It is recommended for users to use `\"PRODUCTION\"` instances in any case, since a 1-node `\"PRODUCTION\"` instance\nis functionally identical to a `\"DEVELOPMENT\"` instance, but without the accompanying restrictions."
+    },
+    "kms_key_name": {
+      "description": "Describes the Cloud KMS encryption key that will be used to protect the destination Bigtable cluster. The requirements for this key are: 1) The Cloud Bigtable service account associated with the project that contains this cluster must be granted the `cloudkms.cryptoKeyEncrypterDecrypter` role on the CMEK key. 2) Only regional keys can be used and the region of the CMEK key must match the region of the cluster.\n\n\u003e **Note**: Removing the field entirely from the config will cause the provider to default to the backend value.\n\n!\u003e **Warning**: Modifying this field will cause the provider to delete/recreate the entire resource.\n\n!\u003e **Warning:** Modifying the `storage_type`, `zone` or `kms_key_name` of an existing cluster (by\n`cluster_id`) will cause the provider to delete/recreate the entire\n`google_bigtable_instance` resource. If these values are changing, use a new\n`cluster_id`."
+    },
+    "labels": {
+      "description": "A set of key/value label pairs to assign to the resource. Label keys must follow the requirements at https://cloud.google.com/resource-manager/docs/creating-managing-labels#requirements."
+    },
+    "name": {
+      "description": "The name (also called Instance Id in the Cloud Console) of the Cloud Bigtable instance. Must be 6-33 characters and must only contain hyphens, lowercase letters and numbers."
+    },
+    "project": {
+      "description": "The ID of the project in which the resource belongs. If it\nis not provided, the provider project is used."
+    },
+    "storage_type": {
+      "description": "The storage type to use. One of `\"SSD\"` or\n`\"HDD\"`. Defaults to `\"SSD\"`."
+    }
+  },
+  "Attributes": {
+    "id": "an identifier for the resource with format `projects/{{project}}/instances/{{name}}`"
+  },
+  "Import": "## Import\n\nBigtable Instances can be imported using any of these accepted formats: \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default projects/{{project}}/instances/{{name}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default {{project}}/{{name}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default {{name}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e"
+}
