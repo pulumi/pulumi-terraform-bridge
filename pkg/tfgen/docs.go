@@ -906,7 +906,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			unbaked = map[docsPath]struct{}{}
 		case ast.KindListItem:
 			// We have entered a new item
-			if name := nodeItemName(src, node); name != "" {
+			if name := nodeItemName(src, node.(*ast.ListItem)); name != "" {
 				current = append(current, &namedNode{node, name, true})
 				key := keyOf(current)
 				setLatest()
@@ -1121,14 +1121,17 @@ func cleanDescription(path docsPath, desc string) string {
 	return strings.TrimRightFunc(desc, unicode.IsSpace)
 }
 
-func nodeItemName(src []byte, node ast.Node) string {
+func nodeItemName(src []byte, node *ast.ListItem) string {
 	if node == nil {
 		return ""
 	}
 	var name string
 	contract.AssertNoErrorf(ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
-		if node.Kind() == ast.KindCodeSpan {
+		switch node := node.(type) {
+		case *ast.CodeSpan:
 			name = string(node.Text(src))
+			return ast.WalkStop, nil
+		case *ast.Text:
 			return ast.WalkStop, nil
 		}
 		return ast.WalkContinue, nil

@@ -108,6 +108,46 @@ type testcase struct {
 	Expected string
 }
 
+func TestNodeItemName(t *testing.T) {
+	t.Parallel()
+	tests := []struct{ listItem, expected string }{
+		{
+			listItem: "- <a name=\"schema\"></a>`schema` - (Optional) A JSON schema for the table.",
+			expected: "schema",
+		},
+		{
+			listItem: "* `reference_file_schema_uri` - (Optional) When creating an external table, the user can provide a reference file with",
+			expected: "reference_file_schema_uri",
+		},
+		{
+			listItem: "- foo `bar`",
+			expected: "",
+		},
+		{
+			listItem: " *   `fizz` buzz",
+			expected: "fizz",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			src := []byte(tt.listItem)
+			node := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			assert.NoError(t, ast.Walk(node, func(node ast.Node, _ bool) (ast.WalkStatus, error) {
+				if node, ok := node.(*ast.ListItem); ok {
+					actual := nodeItemName(src, node)
+					assert.Equal(t, tt.expected, actual)
+					return ast.WalkStop, nil
+				}
+				return ast.WalkContinue, nil
+			}))
+		})
+	}
+}
+
 func TestURLRewrite(t *testing.T) {
 	tests := []testcase{
 		{

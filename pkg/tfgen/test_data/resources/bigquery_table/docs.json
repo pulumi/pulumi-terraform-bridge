@@ -116,10 +116,7 @@
       "description": "The number of rows at the top of the sheet\nthat BigQuery will skip when reading the data. At least one of `range` or\n`skip_leading_rows` must be set."
     },
     "hive_partitioning_options.mode": {
-      "description": "When set, what mode of hive partitioning to use when\nreading data. The following modes are supported.\n\nAUTO: automatically infer partition key name(s) and type(s).\n\nSTRINGS: automatically infer partition key name(s). All types are\nNot all storage formats support hive partitioning. Requesting hive\npartitioning on an unsupported format will lead to an error.\nCurrently supported formats are: JSON, CSV, ORC, Avro and Parquet."
-    },
-    "hive_partitioning_options.mode.CUSTOM": {
-      "description": "CUSTOM: when set to `CUSTOM`, you must encode the partition key schema within the `source_uri_prefix` by setting `source_uri_prefix` to `gs://bucket/path_to_table/{key1:TYPE1}/{key2:TYPE2}/{key3:TYPE3}`."
+      "description": "When set, what mode of hive partitioning to use when\nreading data. The following modes are supported.\n\nAUTO: automatically infer partition key name(s) and type(s).\n\nSTRINGS: automatically infer partition key name(s). All types are\nNot all storage formats support hive partitioning. Requesting hive\npartitioning on an unsupported format will lead to an error.\nCurrently supported formats are: JSON, CSV, ORC, Avro and Parquet.\n\nCUSTOM: when set to `CUSTOM`, you must encode the partition key schema within the `source_uri_prefix` by setting `source_uri_prefix` to `gs://bucket/path_to_table/{key1:TYPE1}/{key2:TYPE2}/{key3:TYPE3}`."
     },
     "json_options.encoding": {
       "description": "The character encoding of the data. The supported values are UTF-8, UTF-16BE, UTF-16LE, UTF-32BE, and UTF-32LE. The default value is UTF-8."
