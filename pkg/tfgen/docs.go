@@ -872,10 +872,26 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	type namedNode struct {
 		node     ast.Node
 		name     string
-		writable bool
+		listItem bool
 	}
-	var parent, child, latest, latestParent *namedNode
-	setLatest := func() { latest, latestParent = child, parent }
+	var current []*namedNode
+	var latest []*namedNode
+	setLatest := func() {
+		latest = current[:0] // Zero out latest without re-allocation
+		for _, n := range current {
+			latest = append(latest, n)
+		}
+	}
+	keyOf := func(path []*namedNode) docsPath {
+		if len(path) == 0 {
+			return ""
+		}
+		key := docsPath(path[0].name)
+		for _, n := range path[1:] {
+			key = key.join(n.name)
+		}
+		return key
+	}
 
 	skipPrint := map[ast.Node]bool{}
 
@@ -896,16 +912,9 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			unbaked = map[docsPath]struct{}{}
 		case ast.KindListItem:
 			// We have entered a new item
-			if name := nodeItemName(src, node); name != "" && child == nil {
-				var key docsPath
-				if parent == nil {
-					child = nil
-					parent = &namedNode{node, name, true}
-					key = docsPath(name)
-				} else {
-					child = &namedNode{node, name, true}
-					key = docsPath(parent.name).join(name)
-				}
+			if name := nodeItemName(src, node); name != "" {
+				current = append(current, &namedNode{node, name, true})
+				key := keyOf(current)
 				setLatest()
 
 				_, isBaked := baked[key]
@@ -917,8 +926,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		case ast.KindHeading:
 			target := isHeadingTarget(src, node.(*ast.Heading))
 			if target != "" {
-				child = &namedNode{node, target, true}
-				parent = child
+				current = append(current[:0], &namedNode{node, target, false})
+				skipPrint[node] = true
 				setLatest()
 				return ast.WalkSkipChildren
 			}
@@ -936,17 +945,18 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 					// Setting both child an parent effectively sets
 					// this until the list ends (and we reset).
 					p := node.Parent()
-					child = &namedNode{p, target, false}
-					parent = child
+					current = append(current[:0], &namedNode{p, target, false})
+					skipPrint[node.Parent()] = true
 					setLatest()
 					return ast.WalkSkipChildren
 				}
 			}
 		case ast.KindText:
 			if genericNestedRegexp.Match(node.Text(src)) {
-				if latestParent != nil {
-					latestParent.writable = false
-					parent = latestParent
+				if len(latest) > 0 {
+					parent := *latest[0]
+					parent.listItem = false
+					current = append(latest[:0], &parent)
 				}
 				skipPrint[node.Parent()] = true
 				return ast.WalkSkipChildren
@@ -964,22 +974,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		}
 
 		var key docsPath
-		if child != nil && parent != child {
-			if child.writable {
-				key = docsPath(parent.name).join(child.name)
-			}
-		} else if latest != nil && parent == nil {
-			if latest.writable {
-				key = docsPath(latestParent.name).join(latest.name)
-			}
-		} else if parent != nil {
-			if parent.writable {
-				key = docsPath(parent.name)
-			}
-		} else if latestParent != nil {
-			if latestParent.writable {
-				key = docsPath(latestParent.name)
-			}
+		if len(latest) > len(current) {
+			key = keyOf(latest)
+		} else {
+			key = keyOf(current)
 		}
 
 		if key == "" {
@@ -1006,25 +1004,21 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		if node.Kind() == ast.KindList {
 			// When we exit a list, clear our current state
 			if !entering {
-				parent = nil
-				child = nil
+				current = current[:0]
 			}
 			return ast.WalkContinue, nil
 		}
 
 		defer func() {
-			if child != nil && child.node == node {
-				child = nil
-			} else if parent != nil && parent.node == node {
-				parent = nil
+			if l := len(current); l > 0 && current[l-1].node == node && current[l-1].listItem {
+				current = current[:l-1]
 			}
 		}()
 
 		// Write the state on exit:
 
 		// There are several early exit conditions:
-		if (latest == nil && latestParent == nil) || // Don't have a node to write to
-			node == latestParent.node && latestParent == child ||
+		if len(latest) == 0 || // Don't have a node to write to
 			skipPrint[node] { // Is a marker node
 			return ast.WalkContinue, nil
 		}

@@ -5,7 +5,19 @@
       "description": "A block of cluster configuration options. This can be specified at least once, and up \nto as many as possible within 8 cloud regions. Removing the field entirely from the config will cause the provider\nto default to the backend value. See structure below."
     },
     "cluster.autoscaling_config": {
-      "description": "[Autoscaling](https://cloud.google.com/bigtable/docs/autoscaling#parameters) config for the cluster, contains the following arguments:\n\n`min_nodes` - (Required) The minimum number of nodes for autoscaling.\n\n`max_nodes` - (Required) The maximum number of nodes for autoscaling.\n\n`cpu_target` - (Required) The target CPU utilization for autoscaling, in percentage. Must be between 10 and 80.\n\n`storage_target` - The target storage utilization for autoscaling, in GB, for each node in a cluster. This number is limited between 2560 (2.5TiB) and 5120 (5TiB) for a SSD cluster and between 8192 (8TiB) and 16384 (16 TiB) for an HDD cluster. If not set, whatever is already set for the cluster will not change, or if the cluster is just being created, it will use the default value of 2560 for SSD clusters and 8192 for HDD clusters.\n\n!\u003e **Warning**: Only one of `autoscaling_config` or `num_nodes` should be set for a cluster. If both are set, `num_nodes` is ignored. If none is set, autoscaling will be disabled and sized to the current node count."
+      "description": "[Autoscaling](https://cloud.google.com/bigtable/docs/autoscaling#parameters) config for the cluster, contains the following arguments:"
+    },
+    "cluster.autoscaling_config.cpu_target": {
+      "description": "The target CPU utilization for autoscaling, in percentage. Must be between 10 and 80."
+    },
+    "cluster.autoscaling_config.max_nodes": {
+      "description": "The maximum number of nodes for autoscaling."
+    },
+    "cluster.autoscaling_config.min_nodes": {
+      "description": "The minimum number of nodes for autoscaling."
+    },
+    "cluster.autoscaling_config.storage_target": {
+      "description": "The target storage utilization for autoscaling, in GB, for each node in a cluster. This number is limited between 2560 (2.5TiB) and 5120 (5TiB) for a SSD cluster and between 8192 (8TiB) and 16384 (16 TiB) for an HDD cluster. If not set, whatever is already set for the cluster will not change, or if the cluster is just being created, it will use the default value of 2560 for SSD clusters and 8192 for HDD clusters.\n\n!\u003e **Warning**: Only one of `autoscaling_config` or `num_nodes` should be set for a cluster. If both are set, `num_nodes` is ignored. If none is set, autoscaling will be disabled and sized to the current node count."
     },
     "cluster.cluster_id": {
       "description": "The ID of the Cloud Bigtable cluster. Must be 6-30 characters and must only contain hyphens, lowercase letters and numbers."
