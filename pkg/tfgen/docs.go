@@ -896,14 +896,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		name     string
 		listItem bool
 	}
-	var current []*namedNode
-	var latest []*namedNode
-	setLatest := func() {
-		latest = current[:0] // Zero out latest without re-allocation
-		for _, n := range current {
-			latest = append(latest, n)
-		}
-	}
+	var current, latest []*namedNode
+	setLatest := func() { latest = append(latest[:0], current...) }
 	keyOf := func(path []*namedNode) docsPath {
 		if len(path) == 0 {
 			return ""
@@ -995,14 +989,15 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			return ast.WalkContinue
 		}
 
-		var key docsPath
+		var stack []*namedNode
 		if len(latest) > len(current) {
-			key = keyOf(latest)
+			stack = latest
 		} else {
-			key = keyOf(current)
+			stack = current
 		}
 
-		if key == "" {
+		key := keyOf(stack)
+		if key == "" || !stack[len(stack)-1].listItem {
 			return ast.WalkContinue
 		}
 
