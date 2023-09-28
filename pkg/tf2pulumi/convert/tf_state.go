@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,6 +27,20 @@ import (
 	"github.com/pulumi/terraform/pkg/addrs"
 	"github.com/pulumi/terraform/pkg/states/statefile"
 )
+
+// Looks up a given attribute and returns it as a string. If the attribute is not found, or is not a string, an error is
+// returned.
+func getString(addr addrs.Resource, obj map[string]interface{}, key string) (string, error) {
+	attr, ok := obj[key]
+	if !ok {
+		return "", fmt.Errorf("failed to find %s attribute in %s", key, addr)
+	}
+	str, ok := attr.(string)
+	if !ok {
+		return "", fmt.Errorf("%s attribute for %s was not a string", key, addr)
+	}
+	return str, nil
+}
 
 func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertStateResponse, error) {
 	stateFile, err := os.Open(path)
@@ -57,15 +72,77 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 					if err != nil {
 						return nil, err
 					}
-					// We only care about the id value
-					id, ok := obj["id"]
-					if !ok {
-						return nil, fmt.Errorf("failed to find id attribute in %s", resource.Addr.Resource)
-					}
-					// And we expect id to be a string
-					idStr, ok := id.(string)
-					if !ok {
-						return nil, fmt.Errorf("id attribute for %s was not a string", resource.Addr.Resource)
+					var id string
+					// Most resources can be imported by passing their `id`, but a few need to be imported using some
+					// other property of the resource.  This table includes any of these exceptions.  If you get errors
+					// or warnings about resources not being able to be found or the format of resource ids being
+					// incorrect, add a mapping here that constructs the correct id format based on the property values
+					// in the Terraform state file.
+					//
+					// TODO(https://github.com/pulumi/pulumi-terraform-bridge/issues/1406): This table should somehow be
+					// expressed via the mapping file, rather than hardcoding for each provider here.
+					switch resource.Addr.Resource.Type {
+					case "aws_ecs_cluster":
+						id, err = getString(resource.Addr.Resource, obj, "name")
+						if err != nil {
+							return nil, err
+						}
+					case "aws_ecs_service":
+						cluster, err := getString(resource.Addr.Resource, obj, "cluster")
+						if err != nil {
+							return nil, err
+						}
+						name, err := getString(resource.Addr.Resource, obj, "name")
+						if err != nil {
+							return nil, err
+						}
+
+						parts := strings.Split(cluster, "/")
+						id = fmt.Sprintf("%s/%s", parts[len(parts)-1], name)
+					case "aws_ecs_task_definition":
+						id, err = getString(resource.Addr.Resource, obj, "arn")
+						if err != nil {
+							return nil, err
+						}
+					case "aws_route":
+						routeTable, err := getString(resource.Addr.Resource, obj, "route_table_id")
+						if err != nil {
+							return nil, err
+						}
+						destinationCidr, err := getString(resource.Addr.Resource, obj, "destination_cidr_block")
+						if err != nil {
+							return nil, err
+						}
+
+						id = fmt.Sprintf("%s_%s", routeTable, destinationCidr)
+					case "aws_route_table_association":
+						subnet, err := getString(resource.Addr.Resource, obj, "subnet_id")
+						if err != nil {
+							return nil, err
+						}
+						routeTable, err := getString(resource.Addr.Resource, obj, "route_table_id")
+						if err != nil {
+							return nil, err
+						}
+
+						id = fmt.Sprintf("%s/%s", subnet, routeTable)
+					case "aws_iam_role_policy_attachment":
+						role, err := getString(resource.Addr.Resource, obj, "role")
+						if err != nil {
+							return nil, err
+						}
+						policy, err := getString(resource.Addr.Resource, obj, "policy_arn")
+						if err != nil {
+							return nil, err
+						}
+
+						id = fmt.Sprintf("%s/%s", role, policy)
+					default:
+						// We only care about the id value
+						id, err = getString(resource.Addr.Resource, obj, "id")
+						if err != nil {
+							return nil, err
+						}
 					}
 
 					// Try to grab the info for this resource type
@@ -102,7 +179,7 @@ func TranslateState(info il.ProviderInfoSource, path string) (*plugin.ConvertSta
 					resources = append(resources, plugin.ResourceImport{
 						Type: pulumiType,
 						Name: name,
-						ID:   idStr,
+						ID:   id,
 					})
 				}
 			}
