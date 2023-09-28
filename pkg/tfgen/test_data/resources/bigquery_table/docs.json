@@ -1,0 +1,256 @@
+{
+  "Description": "Creates a table resource in a dataset for Google BigQuery. For more information see\n[the official documentation](https://cloud.google.com/bigquery/docs/) and\n[API](https://cloud.google.com/bigquery/docs/reference/rest/v2/tables).\n\n\u003e **Note**: On newer versions of the provider, you must explicitly set `deletion_protection=false`\n(and run `pulumi update` to write the field to state) in order to destroy an instance.\nIt is recommended to not set this field (or set it to true) until you're ready to destroy.\n\n## Example Usage\n\n```hcl\nresource \"google_bigquery_dataset\" \"default\" {\n  dataset_id                  = \"foo\"\n  friendly_name               = \"test\"\n  description                 = \"This is a test description\"\n  location                    = \"EU\"\n  default_table_expiration_ms = 3600000\n\n  labels = {\n    env = \"default\"\n  }\n}\n\nresource \"google_bigquery_table\" \"default\" {\n  dataset_id = google_bigquery_dataset.default.dataset_id\n  table_id   = \"bar\"\n\n  time_partitioning {\n    type = \"DAY\"\n  }\n\n  labels = {\n    env = \"default\"\n  }\n\n  schema = \u003c\u003cEOF\n[\n  {\n    \"name\": \"permalink\",\n    \"type\": \"STRING\",\n    \"mode\": \"NULLABLE\",\n    \"description\": \"The Permalink\"\n  },\n  {\n    \"name\": \"state\",\n    \"type\": \"STRING\",\n    \"mode\": \"NULLABLE\",\n    \"description\": \"State where the head office is located\"\n  }\n]\nEOF\n\n}\n\nresource \"google_bigquery_table\" \"sheet\" {\n  dataset_id = google_bigquery_dataset.default.dataset_id\n  table_id   = \"sheet\"\n\n  external_data_configuration {\n    autodetect    = true\n    source_format = \"GOOGLE_SHEETS\"\n\n    google_sheets_options {\n      skip_leading_rows = 1\n    }\n\n    source_uris = [\n      \"https://docs.google.com/spreadsheets/d/123456789012345\",\n    ]\n  }\n}\n```",
+  "Arguments": {
+    "avro_options.use_avro_logical_types": {
+      "description": "If is set to true, indicates whether\nto interpret logical types as the corresponding BigQuery data type\n(for example, TIMESTAMP), instead of using the raw type (for example, INTEGER)."
+    },
+    "clustering": {
+      "description": "Specifies column names to use for data clustering.\nUp to four top-level columns are allowed, and should be specified in\ndescending priority order."
+    },
+    "column_references.referenced_column": {
+      "description": "The column in the primary key that are\nreferenced by the referencingColumn"
+    },
+    "column_references.referencing_column": {
+      "description": "The column that composes the foreign key."
+    },
+    "csv_options.allow_jagged_rows": {
+      "description": "Indicates if BigQuery should accept rows\nthat are missing trailing optional columns."
+    },
+    "csv_options.allow_quoted_newlines": {
+      "description": "Indicates if BigQuery should allow\nquoted data sections that contain newline characters in a CSV file.\nThe default value is false."
+    },
+    "csv_options.encoding": {
+      "description": "The character encoding of the data. The supported\nvalues are UTF-8 or ISO-8859-1."
+    },
+    "csv_options.field_delimiter": {
+      "description": "The separator for fields in a CSV file."
+    },
+    "csv_options.quote": {
+      "description": "The value that is used to quote data sections in a\nCSV file. If your data does not contain quoted sections, set the\nproperty value to an empty string. If your data contains quoted newline\ncharacters, you must also set the `allow_quoted_newlines` property to true.\nThe API-side default is `\"`, specified in the provider escaped as `\\\"`. Due to\nlimitations with default values, this value is required to be\nexplicitly set."
+    },
+    "csv_options.skip_leading_rows": {
+      "description": "The number of rows at the top of a CSV\nfile that BigQuery will skip when reading the data."
+    },
+    "dataset_id": {
+      "description": "The dataset ID to create the table in.\nChanging this forces a new resource to be created."
+    },
+    "deletion_protection": {
+      "description": "Whether or not to allow the provider to destroy the instance. Unless this field is set to false\nin state, a `=destroy` or `=update` that would delete the instance will fail."
+    },
+    "description": {
+      "description": "The field description."
+    },
+    "encryption_configuration": {
+      "description": "Specifies how the table should be encrypted.\nIf left blank, the table will be encrypted with a Google-managed key; that process\nis transparent to the user.  Structure is documented below."
+    },
+    "encryption_configuration.kms_key_name": {
+      "description": "The self link or full name of a key which should be used to\nencrypt this table.  Note that the default bigquery service account will need to have\nencrypt/decrypt permissions on this key - you may want to see the\n`google_bigquery_default_service_account` datasource and the\n`google_kms_crypto_key_iam_binding` resource."
+    },
+    "expiration_time": {
+      "description": "The time when this table expires, in\nmilliseconds since the epoch. If not present, the table will persist\nindefinitely. Expired tables will be deleted and their storage\nreclaimed."
+    },
+    "external_data_configuration": {
+      "description": "Describes the data format,\nlocation, and other properties of a table stored outside of BigQuery.\nBy defining these properties, the data source can then be queried as\nif it were a standard BigQuery table. Structure is documented below."
+    },
+    "external_data_configuration.autodetect": {
+      "description": "Let BigQuery try to autodetect the schema\nand format of the table."
+    },
+    "external_data_configuration.avro_options": {
+      "description": "Additional options if `source_format` is set to\n\"AVRO\".  Structure is documented below."
+    },
+    "external_data_configuration.compression": {
+      "description": "The compression type of the data source.\nValid values are \"NONE\" or \"GZIP\"."
+    },
+    "external_data_configuration.connection_id": {
+      "description": "The connection specifying the credentials to be used to read\nexternal storage, such as Azure Blob, Cloud Storage, or S3. The `connection_id` can have\nthe form `{{project}}.{{location}}.{{connection_id}}`\nor `projects/{{project}}/locations/{{location}}/connections/{{connection_id}}`.\n\n~\u003e**NOTE:** If you set `external_data_configuration.connection_id`, the\ntable schema must be specified using the top-level `schema` field\ndocumented above."
+    },
+    "external_data_configuration.csv_options": {
+      "description": "Additional properties to set if\n`source_format` is set to \"CSV\". Structure is documented below."
+    },
+    "external_data_configuration.file_set_spec_type": {
+      "description": "Specifies how source URIs are interpreted for constructing the file set to load.\nBy default source URIs are expanded against the underlying storage.\nOther options include specifying manifest files. Only applicable to object storage systems. Docs"
+    },
+    "external_data_configuration.google_sheets_options": {
+      "description": "Additional options if\n`source_format` is set to \"GOOGLE_SHEETS\". Structure is\ndocumented below."
+    },
+    "external_data_configuration.hive_partitioning_options": {
+      "description": "When set, configures hive partitioning\nsupport. Not all storage formats support hive partitioning -- requesting hive\npartitioning on an unsupported format will lead to an error, as will providing\nan invalid specification. Structure is documented below."
+    },
+    "external_data_configuration.ignore_unknown_values": {
+      "description": "Indicates if BigQuery should\nallow extra values that are not represented in the table schema.\nIf true, the extra values are ignored. If false, records with\nextra columns are treated as bad records, and if there are too\nmany bad records, an invalid error is returned in the job result.\nThe default value is false."
+    },
+    "external_data_configuration.json_options": {
+      "description": "Additional properties to set if\n`source_format` is set to \"JSON\". Structure is documented below."
+    },
+    "external_data_configuration.max_bad_records": {
+      "description": "The maximum number of bad records that\nBigQuery can ignore when reading data."
+    },
+    "external_data_configuration.parquet_options": {
+      "description": "Additional properties to set if\n`source_format` is set to \"PARQUET\". Structure is documented below."
+    },
+    "external_data_configuration.schema": {
+      "description": "A JSON schema for the external table. Schema is required\nfor CSV and JSON formats if autodetect is not on. Schema is disallowed\nfor Google Cloud Bigtable, Cloud Datastore backups, Avro, Iceberg, ORC and Parquet formats.\n~\u003e**NOTE:** Because this field expects a JSON string, any changes to the\nstring will create a diff, even if the JSON itself hasn't changed.\nFurthermore drift for this field cannot not be detected because BigQuery\nonly uses this schema to compute the effective schema for the table, therefore\nany changes on the configured value will force the table to be recreated.\nThis schema is effectively only applied when creating a table from an external\ndatasource, after creation the computed schema will be stored in\n`google_bigquery_table.schema`\n\n~\u003e**NOTE:** If you set `external_data_configuration.connection_id`, the\ntable schema must be specified using the top-level `schema` field\ndocumented above."
+    },
+    "external_data_configuration.source_format": {
+      "description": "The data format. Please see sourceFormat under\n[ExternalDataConfiguration](https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#externaldataconfiguration)\nin Bigquery's public API documentation for supported formats. To use \"GOOGLE_SHEETS\"\nthe `scopes` must include \"https://www.googleapis.com/auth/drive.readonly\"."
+    },
+    "external_data_configuration.source_uris": {
+      "description": "A list of the fully-qualified URIs that point to\nyour data in Google Cloud."
+    },
+    "foreign_keys.column_references": {
+      "description": "The pair of the foreign key column and primary key column.\nStructure is documented below."
+    },
+    "foreign_keys.name": {
+      "description": "Set only if the foreign key constraint is named."
+    },
+    "foreign_keys.referenced_table": {
+      "description": "The table that holds the primary key\nand is referenced by this foreign key.\nStructure is documented below."
+    },
+    "friendly_name": {
+      "description": "A descriptive name for the table."
+    },
+    "google_sheets_options.range": {
+      "description": "Range of a sheet to query from. Only used when\nnon-empty. At least one of `range` or `skip_leading_rows` must be set.\nTypical format: \"sheet_name!top_left_cell_id:bottom_right_cell_id\"\nFor example: \"sheet1!A1:B20\""
+    },
+    "google_sheets_options.skip_leading_rows": {
+      "description": "The number of rows at the top of the sheet\nthat BigQuery will skip when reading the data. At least one of `range` or\n`skip_leading_rows` must be set."
+    },
+    "hive_partitioning_options.mode": {
+      "description": "When set, what mode of hive partitioning to use when\nreading data. The following modes are supported.\n\nAUTO: automatically infer partition key name(s) and type(s).\n\nSTRINGS: automatically infer partition key name(s). All types are\nNot all storage formats support hive partitioning. Requesting hive\npartitioning on an unsupported format will lead to an error.\nCurrently supported formats are: JSON, CSV, ORC, Avro and Parquet."
+    },
+    "hive_partitioning_options.mode.CUSTOM": {
+      "description": "CUSTOM: when set to `CUSTOM`, you must encode the partition key schema within the `source_uri_prefix` by setting `source_uri_prefix` to `gs://bucket/path_to_table/{key1:TYPE1}/{key2:TYPE2}/{key3:TYPE3}`."
+    },
+    "json_options.encoding": {
+      "description": "The character encoding of the data. The supported values are UTF-8, UTF-16BE, UTF-16LE, UTF-32BE, and UTF-32LE. The default value is UTF-8."
+    },
+    "labels": {
+      "description": "A mapping of labels to assign to the resource."
+    },
+    "materialized_view": {
+      "description": "If specified, configures this table as a materialized view.\nStructure is documented below."
+    },
+    "materialized_view.allow_non_incremental_definition": {
+      "description": "Allow non incremental materialized view definition.\nThe default value is false."
+    },
+    "materialized_view.enable_refresh": {
+      "description": "Specifies whether to use BigQuery's automatic refresh for this materialized view when the base table is updated.\nThe default value is true."
+    },
+    "materialized_view.query": {
+      "description": "A query whose result is persisted."
+    },
+    "materialized_view.refresh_interval_ms": {
+      "description": "The maximum frequency at which this materialized view will be refreshed.\nThe default value is 1800000"
+    },
+    "max_staleness": {
+      "description": "The maximum staleness of data that could be returned when the table (or stale MV) is queried. Staleness encoded as a string encoding of sql IntervalValue type."
+    },
+    "parquet_options.enable_list_inference": {
+      "description": "Indicates whether to use schema inference specifically for Parquet LIST logical type."
+    },
+    "parquet_options.enum_as_string": {
+      "description": "Indicates whether to infer Parquet ENUM logical type as STRING instead of BYTES by default."
+    },
+    "primary_key.columns": {
+      "description": "The columns that are composed of the primary key constraint."
+    },
+    "project": {
+      "description": "The ID of the project in which the resource belongs. If it\nis not provided, the provider project is used."
+    },
+    "range.end": {
+      "description": "End of the range partitioning, exclusive."
+    },
+    "range.interval": {
+      "description": "The width of each range within the partition."
+    },
+    "range.start": {
+      "description": "Start of the range partitioning, inclusive."
+    },
+    "range_partitioning": {
+      "description": "If specified, configures range-based\npartitioning for this table. Structure is documented below."
+    },
+    "range_partitioning.field": {
+      "description": "The field used to determine how to create a range-based\npartition."
+    },
+    "range_partitioning.range": {
+      "description": "Information required to partition based on ranges.\nStructure is documented below."
+    },
+    "external_data_configuration.reference_file_schema_uri": {
+      "description": "When creating an external table, the user can provide a reference file with the table schema. This is enabled for the following formats: AVRO, PARQUET, ORC."
+    },
+    "external_data_configuration.metadata_cache_mode": {
+      "description": "Metadata Cache Mode for the table. Set this to enable caching of metadata from external data source. Valid values are `AUTOMATIC` and `MANUAL`."
+    },
+    "external_data_configuration.object_metadata": {
+      "description": "Object Metadata is used to create Object Tables. Object Tables contain a listing of objects (with their metadata) found at the sourceUris. If `object_metadata` is set, `source_format` should be omitted."
+    },
+    "referenced_table.dataset_id": {
+      "description": "The ID of the dataset containing this table."
+    },
+    "referenced_table.project_id": {
+      "description": "The ID of the project containing this table."
+    },
+    "referenced_table.table_id": {
+      "description": "The ID of the table. The ID must contain only\nletters (a-z, A-Z), numbers (0-9), or underscores (_). The maximum\nlength is 1,024 characters. Certain operations allow suffixing of\nthe table ID with a partition decorator, such as\nsample_table$20190123."
+    },
+    "require_partition_filter": {
+      "description": "If set to true, queries over this table\nrequire a partition filter that can be used for partition elimination to be\nspecified."
+    },
+    "schema": {
+      "description": "\u003ca name=\"schema\"\u003e\u003c/a\u003e`schema` - (Optional) A JSON schema for the table.\n\n~\u003e**NOTE:** Because this field expects a JSON string, any changes to the\nstring will create a diff, even if the JSON itself hasn't changed.\nIf the API returns a different value for the same schema, e.g. it\nswitched the order of values or replaced `STRUCT` field type with `RECORD`\nfield type, we currently cannot suppress the recurring diff this causes.\nAs a workaround, we recommend using the schema as returned by the API.\n\n~\u003e**NOTE:**  If you use `external_data_configuration`\ndocumented below and do **not** set\n`external_data_configuration.connection_id`, schemas must be specified\nwith `external_data_configuration.schema`. Otherwise, schemas must be\nspecified with this top-level field."
+    },
+    "source_uri_prefix": {
+      "description": "When hive partition detection is requested,\na common for all source uris must be required. The prefix must end immediately\nbefore the partition key encoding begins. For example, consider files following\nthis data layout. `gs://bucket/path_to_table/dt=2019-06-01/country=USA/id=7/file.avro`\n`gs://bucket/path_to_table/dt=2019-05-31/country=CA/id=3/file.avro` When hive\npartitioning is requested with either AUTO or STRINGS detection, the common prefix\ncan be either of `gs://bucket/path_to_table` or `gs://bucket/path_to_table/`.\nNote that when `mode` is set to `CUSTOM`, you must encode the partition key schema within the `source_uri_prefix` by setting `source_uri_prefix` to `gs://bucket/path_to_table/{key1:TYPE1}/{key2:TYPE2}/{key3:TYPE3}`."
+    },
+    "table_constraints": {
+      "description": "Defines the primary key and foreign keys. \nStructure is documented below."
+    },
+    "table_constraints.foreign_keys": {
+      "description": "Present only if the table has a foreign key.\nThe foreign key is not enforced.\nStructure is documented below."
+    },
+    "table_constraints.primary_key": {
+      "description": "Represents the primary key constraint\non a table's columns. Present only if the table has a primary key.\nThe primary key is not enforced.\nStructure is documented below."
+    },
+    "table_id": {
+      "description": "A unique ID for the resource.\nChanging this forces a new resource to be created."
+    },
+    "time_partitioning": {
+      "description": "If specified, configures time-based\npartitioning for this table. Structure is documented below."
+    },
+    "time_partitioning.expiration_ms": {
+      "description": "Number of milliseconds for which to keep the\nstorage for a partition."
+    },
+    "time_partitioning.field": {
+      "description": "The field used to determine how to create a time-based\npartition. If time-based partitioning is enabled without this value, the\ntable is partitioned based on the load time."
+    },
+    "time_partitioning.require_partition_filter": {
+      "description": "If set to true, queries over this table\nrequire a partition filter that can be used for partition elimination to be\nspecified."
+    },
+    "time_partitioning.type": {
+      "description": "The supported types are DAY, HOUR, MONTH, and YEAR,\nwhich will generate one partition per day, hour, month, and year, respectively."
+    },
+    "view": {
+      "description": "If specified, configures this table as a view.\nStructure is documented below."
+    },
+    "view.query": {
+      "description": "A query that BigQuery executes when the view is referenced."
+    },
+    "view.use_legacy_sql": {
+      "description": "Specifies whether to use BigQuery's legacy SQL for this view.\nThe default value is true. If set to false, the view will use BigQuery's standard SQL."
+    }
+  },
+  "Attributes": {
+    "creation_time": "The time when this table was created, in milliseconds since the epoch.",
+    "etag": "A hash of the resource.",
+    "id": "an identifier for the resource with format `projects/{{project}}/datasets/{{dataset}}/tables/{{name}}`",
+    "kms_key_version": "The self link or full name of the kms key version used to encrypt this table.",
+    "last_modified_time": "The time when this table was last modified, in milliseconds since the epoch.",
+    "location": "The geographic location where the table resides. This value is inherited from the dataset.",
+    "num_bytes": "The size of this table in bytes, excluding any data in the streaming buffer.",
+    "num_long_term_bytes": "The number of bytes in the table that are considered \"long-term storage\".",
+    "num_rows": "The number of rows of data in this table, excluding any data in the streaming buffer.",
+    "self_link": "The URI of the created resource.",
+    "type": "Describes the table type."
+  },
+  "Import": "## Import\n\nBigQuery tables imported using any of these accepted formats: \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default projects/{{project}}/datasets/{{dataset_id}}/tables/{{table_id}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default {{project}}/{{dataset_id}}/{{table_id}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e \u003cbreak\u003e\u003cbreak\u003e```sh\u003cbreak\u003e $ pulumi import MISSING_TOK default {{dataset_id}}/{{table_id}} \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e"
+}
