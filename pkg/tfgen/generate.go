@@ -1225,6 +1225,8 @@ func (g *Generator) gatherResource(rawname string,
 			g.info.Name)
 	}
 
+	collapseUnused(entityDocs, schema.Schema())
+
 	// Create an empty module and associated resource type.
 	res := newResourceType(resourcePath, mod, name, entityDocs, schema, info, isProvider)
 
@@ -1914,4 +1916,42 @@ func ignoreMappingError(s []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func collapseUnused(docs *entityDocs, schema shim.SchemaMap) {
+	args := argumentTree(docs.Arguments)
+
+	var walk func(string, shim.Schema) bool
+	walk = func(k string, v shim.Schema) bool {
+		// Restore args when this function finishes
+		defer func(e expandedArguments) { args = e }(args)
+
+		subArg, ok := args[k]
+		if !ok {
+			// There is no documentation for this key, so we have nothing left
+			// to do.
+			return false
+		}
+		switch elem := v.Elem().(type) {
+		// Nested object. Recurse into the object.
+		case shim.Resource:
+			args = subArg.children
+			elem.Schema().Range(walk)
+
+		// There is no nested object here, so all documentation should apply to
+		// this node.
+		default:
+			desc := subArg.docs.description + "\n\n" + joinDocsTree(subArg.children)
+			subArg.docs.description = strings.TrimSpace(desc)
+
+		}
+		return true
+	}
+	schema.Range(walk)
+	docs.Arguments = args.collapse()
+}
+
+func joinDocsTree(tree expandedArguments) string {
+	var result string
+	return result
 }
