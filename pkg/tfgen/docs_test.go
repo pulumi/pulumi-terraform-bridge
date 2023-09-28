@@ -147,6 +147,64 @@ func TestURLRewrite(t *testing.T) {
 	}
 }
 
+func TestCleanDescription(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		path     docsPath
+		desc     string
+		expected string
+	}{
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional, [Beta](https://terraform.io/docs/providers/google/guides/provider_versions.html))
+  Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional) Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Required (Optimal (Actual))) Match versions (only versions) by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions (only versions) by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  () (Optional) versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "() (Optional) versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path:     "foo",
+			desc:     "`foo` - (Optional (Required) Enclosed.",
+			expected: "(Optional (Required) Enclosed.",
+		},
+		{
+			path:     "foo",
+			desc:     "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			actual := cleanDescription(tt.path, tt.desc)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestArgumentRegex(t *testing.T) {
 	tests := []struct {
 		input    []string
@@ -933,6 +991,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
+
 func TestExampleGeneration(t *testing.T) {
 	info := testprovider.ProviderMiniRandom()
 

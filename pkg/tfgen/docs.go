@@ -1090,25 +1090,64 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 	return b.Bytes()
 }
 
-var cleanDescriptionPrefixes = []*regexp.Regexp{
-	regexp.MustCompile(`^[:-]`),
-	regexp.MustCompile(`^\(Optional.*?\)`),
-	regexp.MustCompile(`^\(Required.*?\)`),
+func nestedParensMatcher(trigger string) func(string) int {
+	trigger = "(" + trigger
+	return func(s string) int {
+		if !strings.HasPrefix(s, trigger) {
+			return 0
+		}
+
+		depth := 1
+		for i := len(trigger); i < len(s); i++ {
+			switch s[i] {
+			case '(':
+				depth++
+			case ')':
+				depth--
+				if depth == 0 {
+					return i + 1
+				}
+			}
+		}
+		// No matching paren was found, so return nothing found
+		return 0
+	}
+}
+
+var cleanDescriptionPrefixFns = []func(string) int{
+	// Cut Leading ':' and '-'
+	func(s string) int {
+		var i int
+		for i < len(s) && (s[i] == ':' || s[i] == '-') {
+			i++
+		}
+		return i
+	},
+	// Cut leading "(Optional.*)"
+	//
+	// This needs to be a function and not a regex because we want the final ')' cut
+	// to balance with the first '('.
+	nestedParensMatcher("Optional"),
+	nestedParensMatcher("Required"),
 }
 
 func cleanDescription(path docsPath, desc string) string {
-	name := path.leaf()
-	valid := append(cleanDescriptionPrefixes, regexp.MustCompile("^"+regexp.QuoteMeta("`"+name+"`")))
+	name := "`" + path.leaf() + "`"
+	valid := append(cleanDescriptionPrefixFns, func(s string) int {
+		if strings.HasPrefix(s, name) {
+			return len(name)
+		}
+		return 0
+	})
 	changed := true
 	desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
 	for changed {
 		changed = false
 		for _, c := range valid {
-			if found := len(c.FindString(desc)); found > 0 {
-				desc = desc[found:]
-				desc = strings.TrimLeftFunc(desc,
-					unicode.IsSpace)
+			if cut := c(desc); cut != 0 {
 				changed = true
+				desc = desc[cut:]
+				desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
 			}
 		}
 	}
