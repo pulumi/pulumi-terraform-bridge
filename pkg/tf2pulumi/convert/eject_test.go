@@ -204,7 +204,7 @@ func TestEject(t *testing.T) {
 			if isExperimental {
 				pclPath = filepath.Join(tt.path, "experimental_pcl")
 			}
-			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				err := os.RemoveAll(pclPath)
 				require.NoError(t, err, "failed to remove existing files at %s", pclPath)
 				err = os.MkdirAll(pclPath, 0700)
@@ -300,7 +300,7 @@ func TestEject(t *testing.T) {
 
 			// If PULUMI_ACCEPT is set then clear the PCL folder and write the generated files out
 			pclFs := afero.NewBasePathFs(afero.NewOsFs(), pclPath)
-			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				writeToFileSystem(pclFs)
 			}
 

@@ -20,7 +20,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -107,7 +107,7 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 
 	// The new converter understands Root as the root of the file system, the old converter understands Root
 	// as the root of the terraform module. We need to handle that correctly here based on if the user set Root or not.
-	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
 		if opts.Root != nil {
 			// The user overrode Root, assume the old semantics of this being the root of the terraform module.
 			dir = "/"
@@ -141,10 +141,6 @@ func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Map
 	return project, program, nil
 }
 
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
-}
-
 func internalEject(
 	dir string, opts EjectOptions,
 ) (*workspace.Project, []*syntax.File, *pcl.Program, hcl.Diagnostics, error) {
@@ -158,7 +154,7 @@ func internalEject(
 	}
 
 	// If experimental use the new Terraform-based converter
-	if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
 		project, files, program, tfDiagnostics, err := convertTerraform(dir, opts)
 		if project == nil {
 			project = defaultProject
