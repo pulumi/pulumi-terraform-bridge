@@ -1099,14 +1099,16 @@ func prefixMatcher(prefix string) func(string) int {
 var cleanDescriptionPrefixFns = []func(string) int{
 	// Cut Leading ':' and '-'
 	prefixMatcher("-"),
-	prefixMatcher(":"),
 	prefixMatcher("–"), // This is an en-dash (Unicode 8211)
+	prefixMatcher(":"),
 	// Cut leading "(Optional.*)"
 	//
 	// This needs to be a function and not a regex because we want the final ')' cut
 	// to balance with the first '('.
 	nestedParensMatcher("Optional"),
 	nestedParensMatcher("Required"),
+	nestedParensMatcher("Computed"),
+	nestedParensMatcher("Forces new resource"),
 }
 
 func cleanDescription(path docsPath, desc string) string {

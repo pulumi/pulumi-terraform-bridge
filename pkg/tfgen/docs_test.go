@@ -251,6 +251,16 @@ func TestCleanDescription(t *testing.T) {
 			desc:     "`foo.bar` - (Required) ;)",
 			expected: ";)",
 		},
+		{
+			path:     "bar",
+			desc:     "`bar` - (Computed) is computed",
+			expected: "is computed",
+		},
+		{
+			path:     "bar",
+			desc:     "`bar` - (Forces new resource) replace",
+			expected: "replace",
+		},
 	}
 
 	for _, tt := range tests {
