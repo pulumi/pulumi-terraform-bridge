@@ -363,8 +363,7 @@ func (cc *cliConverter) convertPCL(
 		return "", diagnostics, nil
 	}
 
-	opts := cc.opts
-	if opts == nil {
+	if cc.opts == nil {
 		var opts []pcl.BindOption
 		opts = append(opts, pcl.AllowMissingProperties)
 		opts = append(opts, pcl.AllowMissingVariables)
@@ -372,7 +371,6 @@ func (cc *cliConverter) convertPCL(
 		if cc.pluginHost != nil {
 			opts = append(opts, pcl.PluginHost(cc.pluginHost))
 			loader := newLoader(cc.pluginHost)
-			//loader.BindCurrentPackage(*spec, cc.packageName)
 			opts = append(opts, pcl.Loader(loader))
 		}
 		if cc.packageCache != nil {
@@ -381,7 +379,7 @@ func (cc *cliConverter) convertPCL(
 		cc.opts = opts
 	}
 
-	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, opts...)
+	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, cc.opts...)
 	if err != nil {
 		return "", diagnostics, fmt.Errorf("pcl.BindProgram failed: %w", err)
 	}
