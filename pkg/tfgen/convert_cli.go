@@ -175,7 +175,7 @@ func (cc *cliConverter) Convert(hclCode string, lang string) (string, hcl.Diagno
 		return "", example.Diagnostics, nil
 	}
 	source, diags, err := cc.convertPCL(cc.currentPackageSpec, example.PCL, lang)
-	return source, diags.Extend(example.Diagnostics), err
+	return source, cc.removeFileName(diags).Extend(example.Diagnostics), err
 }
 
 // Convert all observed HCL snippets from cc.hcls to PCL in one pass, populate cc.pcls.
@@ -183,15 +183,20 @@ func (cc *cliConverter) bulkConvert() error {
 	examples := map[string]string{}
 	n := 0
 	for hcl := range cc.hcls {
-		examples[fmt.Sprintf("e%d", n)] = hcl
+		fileName := fmt.Sprintf("e%d", n)
+		examples[fileName] = hcl
 		n++
 	}
 	result, err := cc.convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{cc.info})
 	if err != nil {
 		return err
 	}
-	for k, hcl := range examples {
-		cc.pcls[hcl] = result[k]
+	for fileName, hcl := range examples {
+		r := result[fileName]
+		cc.pcls[hcl] = translatedExample{
+			PCL:         r.PCL,
+			Diagnostics: cc.removeFileName(r.Diagnostics),
+		}
 	}
 	return nil
 }
@@ -432,4 +437,22 @@ func (cc *cliConverter) recordHCL(
 	h := cc.hcls
 	h[hcl] = struct{}{}
 	return "{convertHCL}", nil
+}
+
+func (cc *cliConverter) removeFileName(diag hcl.Diagnostics) hcl.Diagnostics {
+	var out []*hcl.Diagnostic
+	for _, d := range diag {
+		if d == nil {
+			continue
+		}
+		copy := *d
+		if copy.Subject != nil {
+			copy.Subject.Filename = ""
+		}
+		if copy.Context != nil {
+			copy.Context.Filename = ""
+		}
+		out = append(out, &copy)
+	}
+	return out
 }
