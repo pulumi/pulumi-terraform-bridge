@@ -39,6 +39,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	"os/exec"
 )
 
 var (
@@ -894,6 +895,8 @@ func TestConvertExamples(t *testing.T) {
 		path examplePath
 
 		stripSubsectionWithErrors bool
+
+		needsProviders map[string]string
 	}
 
 	testCases := []testCase{
@@ -904,11 +907,19 @@ func TestConvertExamples(t *testing.T) {
 				token:    "wavefront:index/dashboardJson:DashboardJson",
 			},
 			stripSubsectionWithErrors: true,
+			needsProviders: map[string]string{
+				"wavefront": "3.0.0",
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
+
+		t.Run(fmt.Sprintf("%s/setup", tc.name), func(t *testing.T) {
+			ensureProvidersInstalled(t, tc.needsProviders)
+		})
+
 		t.Run(tc.name, func(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
@@ -925,6 +936,56 @@ func TestConvertExamples(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, string(expect), result)
 		})
+	}
+}
+
+func ensureProvidersInstalled(t *testing.T, needsProviders map[string]string) {
+	pulumi, err := exec.LookPath("pulumi")
+	require.NoError(t, err)
+
+	t.Logf("pulumi plugin ls --json")
+	cmd := exec.Command(pulumi, "plugin", "ls", "--json")
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	type plugin struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+
+	var installedPlugins []plugin
+	err = json.Unmarshal(buf.Bytes(), &installedPlugins)
+	require.NoError(t, err)
+
+	for name, ver := range needsProviders {
+		count := 0
+		matched := false
+
+		for _, p := range installedPlugins {
+			if p.Name == name {
+				count++
+			}
+			if p.Name == name && p.Version == ver {
+				matched = true
+			}
+		}
+
+		alreadyInstalled := count == 1 && matched
+		if alreadyInstalled {
+			continue
+		}
+
+		if count > 0 {
+			t.Logf("pulumi plugin rm resource %s", name)
+			err = exec.Command(pulumi, "plugin", "rm", "resource", name).Run()
+			require.NoError(t, err)
+		}
+
+		t.Logf("pulumi plugin install resource %s %s", name, ver)
+		err = exec.Command(pulumi, "plugin", "install", "resource", name, ver).Run()
+		require.NoError(t, err)
 	}
 }
 
