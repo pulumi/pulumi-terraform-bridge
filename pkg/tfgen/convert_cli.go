@@ -311,16 +311,20 @@ func (*cliConverter) convertViaPulumiCLI(
 		mappingsArgs = append(mappingsArgs, "--mappings", mappingsFile(m.name))
 	}
 
-	cmd := exec.Command(pulumiPath, append([]string{"convert",
+	cmdArgs := []string{
+		"convert",
 		"--from", "terraform",
 		"--language", "pcl",
 		"--out", outDir,
 		"--generate-only",
-	}, mappingsArgs...)...)
+	}
+
+	cmdArgs = append(cmdArgs, mappingsArgs...)
+	cmdArgs = append(cmdArgs, "--", "--convert-examples", filepath.Base(examplesJSON.Name()))
+
+	cmd := exec.Command(pulumiPath, cmdArgs...)
 
 	cmd.Dir = filepath.Dir(examplesJSON.Name())
-	cmd.Env = append(os.Environ(),
-		"PULUMI_CONVERT_EXAMPLES="+filepath.Base(examplesJSON.Name()))
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
