@@ -82,7 +82,8 @@ func TestTranslateState(t *testing.T) {
 			err = json.Unmarshal(expectedImportBytes, &expectedImport)
 			require.NoError(t, err)
 
-			assert.Equal(t, expectedImport.Resources, actualImport.Resources)
+			// We don't actually care about order here, just that the "set" of resources is the same.
+			assert.ElementsMatch(t, expectedImport.Resources, actualImport.Resources)
 		})
 	}
 }
