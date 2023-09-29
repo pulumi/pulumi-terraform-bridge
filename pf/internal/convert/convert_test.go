@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -27,17 +28,56 @@ import (
 )
 
 type convertTurnaroundTestCase struct {
-	name    string
-	ty      tftypes.Type
-	val     tftypes.Value
-	prop    resource.PropertyValue
-	normVal func(tftypes.Value) interface{}
+	name     string
+	ty       tftypes.Type
+	val      tftypes.Value
+	prop     resource.PropertyValue
+	normVal  func(tftypes.Value) any
+	normProp func(resource.PropertyValue) any
 }
 
 func TestConvertTurnaround(t *testing.T) {
 	t.Parallel()
 
 	cases := convertTurnaroundTestCases(tftypes.String, resource.NewStringProperty, "", "test-string")
+	cases = append(cases, convertTurnaroundTestCases(tftypes.String, func(x string) resource.PropertyValue {
+		if x == "" {
+			return resource.NewNullProperty()
+		}
+		v, err := strconv.ParseFloat(x, 64)
+		if err != nil {
+			panic(err)
+		}
+		return resource.NewNumberProperty(v)
+	}, "0", "8.3", "601234567890").withNormProp(func(p resource.PropertyValue) any {
+		switch {
+		case p.IsOutput():
+			v := p.OutputValue()
+			if !v.Known {
+				return "unknown"
+			}
+			p = v.Element
+			fallthrough
+
+		// When converting back from a number, we specify that we have the same
+		// visual representation.
+		case p.IsNumber():
+			switch p.NumberValue() {
+			case 0:
+				return "0"
+			case 8.3:
+				return "8.3"
+			case 601234567890:
+				return "601234567890"
+			default:
+				panic("unexpected test input")
+			}
+		case p.IsNull():
+			return ""
+		default:
+			return p.StringValue()
+		}
+	})...)
 	cases = append(cases, convertTurnaroundTestCases(tftypes.Bool, resource.NewBoolProperty, false, true)...)
 	cases = append(cases, convertTurnaroundTestCases(tftypes.Number, resource.NewNumberProperty, float64(0), 42, 3.12)...)
 
@@ -162,7 +202,11 @@ func TestConvertTurnaround(t *testing.T) {
 			actual, err := decoder.toPropertyValue(testcase.val)
 			require.NoError(t, err)
 
-			assert.Equal(t, testcase.prop, actual)
+			if f := testcase.normProp; f != nil {
+				assert.Equal(t, f(testcase.prop), f(actual))
+			} else {
+				assert.Equal(t, testcase.prop, actual)
+			}
 		})
 
 		t.Run(testcase.name+"/pu2tf", func(t *testing.T) {
@@ -171,8 +215,8 @@ func TestConvertTurnaround(t *testing.T) {
 			actual, err := encoder.fromPropertyValue(testcase.prop)
 			require.NoError(t, err)
 
-			if testcase.normVal != nil {
-				assert.Equal(t, testcase.normVal(testcase.val), testcase.normVal(actual))
+			if f := testcase.normVal; f != nil {
+				assert.Equal(t, f(testcase.val), f(actual))
 			} else {
 				assert.Equal(t, testcase.val, actual)
 			}
@@ -198,9 +242,20 @@ func convertTurnaroundNilTestCase(ty tftypes.Type) convertTurnaroundTestCase {
 	}
 }
 
+type convertTurnaroundTestCaseSet []convertTurnaroundTestCase
+
+func (c convertTurnaroundTestCaseSet) withNormProp(norm func(resource.PropertyValue) any) convertTurnaroundTestCaseSet {
+	n := make([]convertTurnaroundTestCase, len(c))
+	for i, v := range c {
+		v.normProp = norm
+		n[i] = v
+	}
+	return n
+}
+
 func convertTurnaroundTestCases[T any](
 	ty tftypes.Type, topv func(x T) resource.PropertyValue, vals ...T,
-) []convertTurnaroundTestCase {
+) convertTurnaroundTestCaseSet {
 	var zero T
 	zeroValue := topv(zero)
 	cases := []convertTurnaroundTestCase{

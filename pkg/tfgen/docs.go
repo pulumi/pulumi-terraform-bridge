@@ -22,13 +22,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"sort"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/hashicorp/go-multierror"
@@ -38,8 +36,8 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
@@ -50,31 +48,44 @@ import (
 type argumentDocs struct {
 	// The description for this argument.
 	description string
-
-	// (Optional) The names and descriptions for each argument of this argument.
-	arguments map[string]string
-
-	// Whether this argument was derived from a nested object. Used to determine
-	// whether to append descriptions that have continued to the following line
-	isNested bool
 }
 
 // Included for testing convenience.
 func (ad argumentDocs) MarshalJSON() ([]byte, error) {
-	j, err := json.Marshal(struct {
-		Description string
-		Arguments   map[string]string
-		IsNested    bool
+	return json.Marshal(struct {
+		Description string `json:"description"`
 	}{
 		Description: ad.description,
-		Arguments:   ad.arguments,
-		IsNested:    ad.isNested,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return j, nil
 }
+
+// docsPath represents the path to a (possibly nested) TF property.
+//
+// These are all valid `docsPath`s:
+//
+// "foo"
+// "foo.bar"
+// "foo.a.b.c.bar"
+//
+// Because document parsing is heuristic, it is possible that a docsPath will end up in an
+// unexpected state, such as "foo...". Methods should not panic in this scenario, but they
+// may return unexpected results.
+type docsPath string
+
+func (d docsPath) nested() bool                 { return strings.Contains(string(d), ".") }
+func (d docsPath) leaf() string                 { s := d.parts(); return s[len(s)-1] }
+func (d docsPath) join(segment string) docsPath { return docsPath(string(d) + "." + segment) }
+func (d docsPath) parts() []string              { return strings.Split(string(d), ".") }
+func (d docsPath) withOutRoot() docsPath        { s := d.parts(); return docsPath(strings.Join(s[1:], ".")) }
+
+type docsPathArr []docsPath
+
+var _ = (sort.Interface)((docsPathArr)(nil))
+
+func (a docsPathArr) Len() int           { return len(a) }
+func (a docsPathArr) Less(i, j int) bool { return a[i] < a[j] }
+func (a docsPathArr) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a docsPathArr) Sort()              { sort.Sort(a) }
 
 // entityDocs represents the documentation for a resource or datasource as extracted from TF markdown.
 type entityDocs struct {
@@ -103,7 +114,7 @@ type entityDocs struct {
 	//  	- isNested: true
 	// "index_document" is recorded like a top level argument since sometimes object names in
 	// the TF markdown are inconsistent. For example, see `cors_rule` in s3_bucket.html.markdown.
-	Arguments map[string]*argumentDocs
+	Arguments map[docsPath]*argumentDocs
 
 	// Attributes includes the names and descriptions for each attribute of the resource
 	Attributes map[string]string
@@ -112,18 +123,13 @@ type entityDocs struct {
 	Import string
 }
 
-func (ed *entityDocs) getOrCreateArgumentDocs(argumentName string) (*argumentDocs, bool) {
+func (ed *entityDocs) ensure() {
 	if ed.Arguments == nil {
-		ed.Arguments = make(map[string]*argumentDocs)
+		ed.Arguments = map[docsPath]*argumentDocs{}
 	}
-	var created bool
-	args, has := ed.Arguments[argumentName]
-	if !has {
-		args = &argumentDocs{arguments: make(map[string]string)}
-		ed.Arguments[argumentName] = args
-		created = true
+	if ed.Attributes == nil {
+		ed.Attributes = map[string]string{}
 	}
-	return args, created
 }
 
 // DocKind indicates what kind of entity's documentation is being requested.
@@ -135,115 +141,6 @@ const (
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
 )
-
-var repoPaths sync.Map
-
-func getRepoPath(gitHost string, org string, provider string, version string) (string, error) {
-	moduleCoordinates := fmt.Sprintf("%s/%s/terraform-provider-%s", gitHost, org, provider)
-	if version != "" {
-		moduleCoordinates = fmt.Sprintf("%s/%s", moduleCoordinates, version)
-	}
-
-	if path, ok := repoPaths.Load(moduleCoordinates); ok {
-		return path.(string), nil
-	}
-
-	curWd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("error finding current working directory: %w", err)
-	}
-	if filepath.Base(curWd) != "provider" {
-		curWd = filepath.Join(curWd, "provider")
-	}
-
-	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
-	command.Dir = curWd
-	output, err := command.CombinedOutput()
-	if err != nil {
-		msg := "error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s"
-		return "", fmt.Errorf(msg, curWd, err, output)
-	}
-
-	target := struct {
-		Version string
-		Dir     string
-		Error   string
-	}{}
-
-	if err := json.Unmarshal(output, &target); err != nil {
-		return "", fmt.Errorf("error parsing output of 'go mod download -json' for module: %w", err)
-	}
-
-	if target.Error != "" {
-		return "", fmt.Errorf("error from 'go mod download -json' for module: %s", target.Error)
-	}
-
-	repoPaths.Store(moduleCoordinates, target.Dir)
-
-	return target.Dir, nil
-}
-
-func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
-	possibleMarkdownNames := []string{
-		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(packagePrefix, rawName) + ".html.markdown",
-		withoutPackageName(packagePrefix, rawName) + ".markdown",
-		withoutPackageName(packagePrefix, rawName) + ".html.md",
-		withoutPackageName(packagePrefix, rawName) + ".md",
-		// But for some providers, the prefix is included in the name of the doc file
-		rawName + ".html.markdown",
-		rawName + ".markdown",
-		rawName + ".html.md",
-		rawName + ".md",
-	}
-
-	if globalInfo != nil && globalInfo.AlternativeNames != nil {
-		// We look at user generated names before we look at default names
-		possibleMarkdownNames = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
-			TfToken: rawName,
-		}), possibleMarkdownNames...)
-	}
-
-	return possibleMarkdownNames
-}
-
-func getMarkdownDetails(sink diag.Sink, repoPath, org, provider string,
-	resourcePrefix string, kind DocKind, rawName string,
-	info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string, githost string,
-	globalInfo *tfbridge.DocRuleInfo,
-) ([]byte, string, bool) {
-
-	var docinfo *tfbridge.DocInfo
-	if info != nil {
-		docinfo = info.GetDocs()
-	}
-	if docinfo != nil && len(docinfo.Markdown) != 0 {
-		return docinfo.Markdown, "", true
-	}
-
-	if repoPath == "" {
-		var err error
-		repoPath, err = getRepoPath(githost, org, provider, providerModuleVersion)
-		if err != nil {
-			msg := "Skip getMarkdownDetails(rawname=%q) because getRepoPath(%q, %q, %q, %q) failed: %v"
-			sink.Debugf(&diag.Diag{Message: msg}, rawName, githost, org, provider, providerModuleVersion, err)
-			return nil, "", false
-		}
-	}
-
-	possibleMarkdownNames := getMarkdownNames(resourcePrefix, rawName, globalInfo)
-
-	if docinfo != nil && docinfo.Source != "" {
-		possibleMarkdownNames = append(possibleMarkdownNames, docinfo.Source)
-	}
-
-	markdownBytes, markdownFileName, found := readMarkdown(repoPath, kind, possibleMarkdownNames)
-	if !found {
-		return nil, "", false
-	}
-
-	return markdownBytes, markdownFileName, true
-}
 
 // Create a regexp based replace rule that is bounded by non-ascii letter text.
 //
@@ -329,22 +226,39 @@ func formatEntityName(rawname string) string {
 
 // getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
-func getDocsForResource(g *Generator, org string, provider string, resourcePrefix string, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo, providerModuleVersion string,
-	githost string) (entityDocs, error) {
+func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
 
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
 
-	markdownBytes, markdownFileName, found := getMarkdownDetails(g.sink, g.info.UpstreamRepoPath, org, provider,
-		resourcePrefix, kind, rawname, info, providerModuleVersion, githost, g.info.DocRules)
-	if !found {
+	var docInfo *tfbridge.DocInfo
+	if info != nil {
+		docInfo = info.GetDocs()
+	}
+
+	var docFile *DocFile
+	var err error
+	switch kind {
+	case ResourceDocs:
+		docFile, err = source.getResource(rawname, docInfo)
+	case DataSourceDocs:
+		docFile, err = source.getDatasource(rawname, docInfo)
+	default:
+		panic("unknown docs kind")
+	}
+
+	if err != nil {
+		return entityDocs{}, fmt.Errorf("get docs for token %s: %w", rawname, err)
+	}
+
+	if docFile == nil {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
-		if isTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			g.error(msg)
 			return entityDocs{}, fmt.Errorf(msg)
 		}
@@ -357,23 +271,21 @@ func getDocsForResource(g *Generator, org string, provider string, resourcePrefi
 		return entityDocs{}, nil
 	}
 
-	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, resourcePrefix, rawname)
+	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
+
+	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
 
-	var docinfo *tfbridge.DocInfo
-	if info != nil {
-		docinfo = info.GetDocs()
-	}
-	if docinfo != nil {
+	if docInfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
-			return getDocsForResource(g, org, provider, resourcePrefix, kind, sourceFrom, nil, providerModuleVersion, githost)
+			return getDocsForResource(g, source, kind, sourceFrom, nil)
 		}
 
-		if docinfo.IncludeAttributesFrom != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFrom)
+		if docInfo.IncludeAttributesFrom != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeAttributesFrom)
 			if err != nil {
 				return doc, err
 			}
@@ -381,8 +293,8 @@ func getDocsForResource(g *Generator, org string, provider string, resourcePrefi
 			overlayAttributesToAttributes(sourceDocs, doc)
 		}
 
-		if docinfo.IncludeAttributesFromArguments != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeAttributesFromArguments)
+		if docInfo.IncludeAttributesFromArguments != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeAttributesFromArguments)
 			if err != nil {
 				return doc, err
 			}
@@ -390,17 +302,70 @@ func getDocsForResource(g *Generator, org string, provider string, resourcePrefi
 			overlayArgsToAttributes(sourceDocs, doc)
 		}
 
-		if docinfo.IncludeArgumentsFrom != "" {
-			sourceDocs, err := getSourceDocs(docinfo.IncludeArgumentsFrom)
+		if docInfo.IncludeArgumentsFrom != "" {
+			sourceDocs, err := getSourceDocs(docInfo.IncludeArgumentsFrom)
 			if err != nil {
 				return doc, err
 			}
 
-			overlayArgsToArgs(sourceDocs, doc)
+			overlayArgsToArgs(sourceDocs, &doc)
 		}
 	}
 
 	return doc, nil
+}
+
+type expandedArguments map[string]*argumentNode
+type argumentNode struct {
+	docs     *argumentDocs
+	children expandedArguments
+}
+
+func (a *argumentNode) get(seg string) *argumentNode {
+	if a.children == nil {
+		a.children = expandedArguments{}
+	}
+	v, ok := a.children[seg]
+	if !ok {
+		v = &argumentNode{}
+		a.children[seg] = v
+	}
+	return v
+}
+
+func argumentTree(m map[docsPath]*argumentDocs) expandedArguments {
+	topLevel := &argumentNode{}
+	for k, v := range m {
+		a := topLevel
+		for _, segment := range k.parts() {
+			a = a.get(segment)
+		}
+		a.docs = v
+	}
+	return topLevel.children
+}
+
+func (t expandedArguments) collapse() map[docsPath]*argumentDocs {
+	m := make(map[docsPath]*argumentDocs, len(t))
+
+	var set func(docsPath, expandedArguments)
+	set = func(path docsPath, args expandedArguments) {
+		for k, v := range args {
+			p := path.join(k)
+			if v.docs != nil {
+				m[p] = v.docs
+			}
+			set(p, v.children)
+		}
+	}
+
+	for k, v := range t {
+		if v.docs != nil {
+			m[docsPath(k)] = v.docs
+		}
+		set(docsPath(k), v.children)
+	}
+	return m
 }
 
 func overlayAttributesToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
@@ -411,25 +376,17 @@ func overlayAttributesToAttributes(sourceDocs entityDocs, targetDocs entityDocs)
 
 func overlayArgsToAttributes(sourceDocs entityDocs, targetDocs entityDocs) {
 	for k, v := range sourceDocs.Arguments {
-		targetDocs.Attributes[k] = v.description
-		for kk, vv := range v.arguments {
-			targetDocs.Attributes[kk] = vv
-		}
+		targetDocs.Attributes[k.leaf()] = v.description
 	}
 }
 
-func overlayArgsToArgs(sourceDocs entityDocs, docs entityDocs) {
-	for k, v := range sourceDocs.Arguments { // string -> argument
-		arguments := sourceDocs.Arguments[k].arguments
-		docArguments := make(map[string]string)
-		for kk, vv := range arguments {
-			docArguments[kk] = vv
-		}
-		docs.Arguments[k] = &argumentDocs{
-			description: v.description,
-			arguments:   docArguments,
-		}
+func overlayArgsToArgs(sourceDocs entityDocs, docs *entityDocs) {
+	docsArgs := argumentTree(docs.Arguments)
+
+	for k, v := range argumentTree(sourceDocs.Arguments) { // string -> argument
+		docsArgs[k] = v
 	}
+	docs.Arguments = docsArgs.collapse()
 }
 
 // checkIfNewDocsExist checks if the new docs root exists
@@ -454,20 +411,6 @@ func getDocsPath(repo string, kind DocKind) string {
 	// Otherwise use the new location path.
 	kindString := string(kind)
 	return filepath.Join(repo, "docs", kindString)
-}
-
-// readMarkdown searches all possible locations for the markdown content
-func readMarkdown(repo string, kind DocKind, possibleLocations []string) ([]byte, string, bool) {
-	locationPrefix := getDocsPath(repo, kind)
-
-	for _, name := range possibleLocations {
-		location := filepath.Join(locationPrefix, name)
-		markdownBytes, err := os.ReadFile(location)
-		if err == nil {
-			return markdownBytes, name, true
-		}
-	}
-	return nil, "", false
 }
 
 //nolint:lll
@@ -513,7 +456,7 @@ func splitGroupLines(s, sep string) [][]string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown []byte, markdownFileName, resourcePrefix, rawname string) (entityDocs, error) {
+	markdown []byte, markdownFileName, rawname string) (entityDocs, error) {
 
 	p := &tfMarkdownParser{
 		sink:             g,
@@ -577,7 +520,7 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 
 func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	p.ret = entityDocs{
-		Arguments:  make(map[string]*argumentDocs),
+		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
 	}
 	var err error
@@ -811,7 +754,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			p.parseImports(reformattedH3Section)
 		default:
 			// Determine if this is a nested argument section.
-			_, isArgument := p.ret.Arguments[header]
+			_, isArgument := p.ret.Arguments[docsPath(header)]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
 				parseArgReferenceSection(reformattedH3Section, &p.ret)
 				continue
@@ -925,36 +868,22 @@ func getNestedBlockName(line string) string {
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	var lastMatch, nested string
+	var lastMatch string
+	var nested docsPath
 
 	addNewHeading := func(name, desc, line string) {
 		// found a property bullet, extract the name and description
 		if nested != "" {
 			// We found this line within a nested field. We should record it as such.
 			if ret.Arguments[nested] == nil {
-				ret.Arguments[nested] = &argumentDocs{
-					arguments: make(map[string]string),
-				}
 				totalArgumentsFromDocs++
-			} else if ret.Arguments[nested].arguments == nil {
-				ret.Arguments[nested].arguments = make(map[string]string)
 			}
-			ret.Arguments[nested].arguments[name] = desc
-
-			// Also record this as a top-level argument just in case, since sometimes the recorded nested
-			// argument doesn't match the resource's argument.
-			// For example, see `cors_rule` in s3_bucket.html.markdown.
-			if ret.Arguments[name] == nil {
-				ret.Arguments[name] = &argumentDocs{
-					description: desc,
-					isNested:    true, // Mark that this argument comes from a nested field.
-				}
-			}
+			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
 			}
-			ret.Arguments[name] = &argumentDocs{description: desc}
+			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
 			totalArgumentsFromDocs++
 		}
 	}
@@ -962,19 +891,14 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	extendExistingHeading := func(line string) {
 		line = "\n" + strings.TrimSpace(line)
 		if nested != "" {
-			ret.Arguments[nested].arguments[lastMatch] += line
-
-			// Also update the top-level argument if we took it from a nested field.
-			if ret.Arguments[lastMatch].isNested {
-				ret.Arguments[lastMatch].description += line
-			}
+			ret.Arguments[nested.join(lastMatch)].description += line
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				lastMatch = ""
 				nested = ""
 				return
 			}
-			ret.Arguments[lastMatch].description += line
+			ret.Arguments[docsPath(lastMatch)].description += line
 		}
 	}
 
@@ -990,12 +914,12 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// heading is over.
 			lastMatch = ""
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			nested = nestedBlockCurrentLine
+			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
 			extendExistingHeading(line)
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
-			nested = nestedBlockCurrentLine
+			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if lastMatch != "" {
 			extendExistingHeading(line)
@@ -1005,9 +929,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
-		for k, d := range v.arguments {
-			v.arguments[k] = strings.TrimRightFunc(d, unicode.IsSpace)
-		}
 	}
 }
 
@@ -1829,36 +1750,29 @@ func cleanupDoc(
 	footerLinks map[string]string,
 ) (entityDocs, bool) {
 	elidedDoc := false
-	newargs := make(map[string]*argumentDocs, len(doc.Arguments))
+	newargs := make(map[docsPath]*argumentDocs, len(doc.Arguments))
 
 	for k, v := range doc.Arguments {
-		g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
+		if k.nested() {
+			g.debug("Cleaning up text for nested argument [%v] in [%v]", k, name)
+		} else {
+			g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
+		}
 		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
-			elidedArguments++
-			g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
-				"the Pulumi provider.", k, name)
+			if k.nested() {
+				elidedNestedArguments++
+				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
+					"dropped in the Pulumi provider.", k, name)
+			} else {
+				elidedArguments++
+				g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
+					"the Pulumi provider.", k, name)
+			}
 			elidedDoc = true
 		}
 
-		newargs[k] = &argumentDocs{
-			description: cleanedText,
-			arguments:   make(map[string]string, len(v.arguments)),
-			isNested:    v.isNested,
-		}
-
-		// Clean nested arguments (if any)
-		for kk, vv := range v.arguments {
-			g.debug("Cleaning up text for nested argument [%v] in [%v]", kk, name)
-			cleanedText, elided := reformatText(infoCtx, vv, footerLinks)
-			if elided {
-				elidedNestedArguments++
-				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
-					"dropped in the Pulumi provider.", kk, name)
-				elidedDoc = true
-			}
-			newargs[k].arguments[kk] = cleanedText
-		}
+		newargs[k] = &argumentDocs{description: cleanedText}
 	}
 
 	newattrs := make(map[string]string, len(doc.Attributes))

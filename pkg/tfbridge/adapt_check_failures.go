@@ -77,8 +77,7 @@ func parseCheckError(
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
 		return &pp, MiscFailure, err.Error()
 	}
-	var d *diagnostics.ValidationError
-	if errors.As(err, &d) {
+	if d := (*diagnostics.ValidationError)(nil); errors.As(err, &d) {
 		failType := MiscFailure
 		if strings.Contains(d.Summary, "Invalid or unknown key") {
 			failType = InvalidKey
@@ -91,7 +90,7 @@ func parseCheckError(
 		return pp, failType, s
 	}
 	// If there is no way to identify a propertyPath, still report a generic CheckFailure.
-	return nil, MiscFailure, d.Error()
+	return nil, MiscFailure, err.Error()
 }
 
 // Best effort path converter; may return nil.

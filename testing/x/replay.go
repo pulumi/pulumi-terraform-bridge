@@ -148,6 +148,9 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	case "/pulumirpc.ResourceProvider/GetMapping":
 		replay(t, entry, new(pulumirpc.GetMappingRequest), server.GetMapping)
 
+	case "/pulumirpc.ResourceProvider/GetMappings":
+		replay(t, entry, new(pulumirpc.GetMappingsRequest), server.GetMappings)
+
 	default:
 		t.Errorf("Unknown method: %s", entry.Method)
 	}

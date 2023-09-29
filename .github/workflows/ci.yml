@@ -15,7 +15,7 @@ jobs:
         #
         # When we decide to bump our minimum go version, we need to remember to bump the
         # go version in our go.mod files.
-        go-version: [1.19.x, 1.20.x]
+        go-version: [1.20.x, 1.21.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -33,6 +33,8 @@ jobs:
             **/go.sum
       - name: Build
         run: make build
+      - name: Build PF
+        run: cd pf && make build
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:

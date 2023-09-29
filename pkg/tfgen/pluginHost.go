@@ -55,8 +55,11 @@ func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
 	return p.schema, nil
 }
 
-func (p *inmemoryProvider) GetMapping(key string) ([]byte, string, error) {
-	if key == "tf" {
+func (p *inmemoryProvider) GetMapping(key, provider string) ([]byte, string, error) {
+	if key == "tf" || key == "terraform" {
+		if provider != "" && provider != p.info.Name {
+			return nil, "", fmt.Errorf("unknown provider %q", provider)
+		}
 		info := tfbridge.MarshalProviderInfo(&p.info)
 		mapping, err := json.Marshal(info)
 		if err != nil {
@@ -65,6 +68,13 @@ func (p *inmemoryProvider) GetMapping(key string) ([]byte, string, error) {
 		return mapping, p.info.Name, nil
 	}
 	return nil, "", nil
+}
+
+func (p *inmemoryProvider) GetMappings(key string) ([]string, error) {
+	if key == "tf" || key == "terraform" {
+		return []string{p.info.Name}, nil
+	}
+	return nil, nil
 }
 
 func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {

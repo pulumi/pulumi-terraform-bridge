@@ -30,11 +30,13 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	"github.com/blang/semver"
-	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 )
 
 type testLoader struct {
@@ -195,7 +197,7 @@ func TestEject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			isExperimental := isTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
+			isExperimental := cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
 
 			pclPath := filepath.Join(tt.path, "pcl")
 			// We want to support running this in experimental mode as well as compatibility mode

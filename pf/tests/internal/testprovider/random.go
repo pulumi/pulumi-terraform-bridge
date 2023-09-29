@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider/sdkv2randomprovider"
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
+	sdk2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -115,6 +117,10 @@ func RandomProvider() tfbridge.ProviderInfo {
 }
 
 func MuxedRandomProvider() tfbridge.ProviderInfo {
+	return MuxedRandomProviderWithSdkProvider(sdkv2randomprovider.New())
+}
+
+func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) tfbridge.ProviderInfo {
 	randomPkg := "muxedrandom"
 	randomMod := "index"
 
@@ -146,7 +152,7 @@ func MuxedRandomProvider() tfbridge.ProviderInfo {
 		Repository:  "https://github.com/pulumi/pulumi-random",
 		Version:     "4.8.2",
 		P: tfpf.MuxShimWithPF(context.Background(),
-			sdkv2.NewProvider(sdkv2randomprovider.New()),
+			sdkv2.NewProvider(sdk2provider),
 			randomshim.NewProvider()),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			// "random_human_number": {Tok: randomResource("RandomHumanNumber")},

@@ -17,25 +17,33 @@ package tfbridge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func (p *provider) GetMappingWithContext(ctx context.Context, key string) ([]byte, string, error) {
+func (p *provider) GetMappingWithContext(ctx context.Context, key, provider string) ([]byte, string, error) {
 	// Code and comments follow Provider.GetMapping in pkg/tfbridge/provider.go
+
+	mapped := p.info.ResourcePrefix
+	if mapped == "" {
+		mapped = p.info.Name
+	}
 
 	// The prototype converter uses the key "tf", but the new plugin converter uses "terraform". For now support
 	// both, eventually we can remove the "tf" key.
 	if key == "tf" || key == "terraform" {
+
+		// The provider key should either be empty (old engines) or the name of the provider we support (new engines)
+		if provider != "" && provider != mapped {
+			return nil, "", fmt.Errorf("unknown provider %q", provider)
+		}
+
 		info := p.marshalProviderInfo(ctx)
 		mapping, err := json.Marshal(info)
 		if err != nil {
 			return nil, "", err
-		}
-		mapped := p.info.ResourcePrefix
-		if mapped == "" {
-			mapped = p.info.Name
 		}
 		return mapping, mapped, nil
 	}
@@ -48,4 +56,17 @@ func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.Marshallab
 	var providerInfoCopy tfbridge.ProviderInfo = p.info
 	providerInfoCopy.P = schemashim.ShimSchemaOnlyProvider(ctx, p.tfProvider)
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
+}
+
+func (p *provider) GetMappingsWithContext(ctx context.Context, key string) ([]string, error) {
+	// Code and comments follow Provider.GetMapping in pkg/tfbridge/provider.go
+	if key == "tf" || key == "terraform" {
+		mapped := p.info.ResourcePrefix
+		if mapped == "" {
+			mapped = p.info.Name
+		}
+		return []string{mapped}, nil
+	}
+	// An empty response is valid for GetMappings, it means we don't have a mapping for the given key
+	return nil, nil
 }

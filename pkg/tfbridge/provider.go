@@ -561,6 +561,11 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if err != nil {
 			return nil, err
 		}
+		olds, err = transformFromState(ctx, res.Schema, olds)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
@@ -628,6 +633,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
+	olds, err = transformFromState(ctx, res.Schema, olds)
+	if err != nil {
+		return nil, err
+	}
+
 	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
@@ -916,6 +926,11 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	olds, err = transformFromState(ctx, res.Schema, olds)
+	if err != nil {
+		return nil, err
+	}
+
 	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
@@ -1326,4 +1341,21 @@ func True() *bool {
 func False() *bool {
 	x := false
 	return &x
+}
+
+func transformFromState(
+	ctx context.Context, res *ResourceInfo, inputs resource.PropertyMap,
+) (resource.PropertyMap, error) {
+	if res == nil {
+		return inputs, nil
+	}
+	f := res.TransformFromState
+	if f == nil {
+		return inputs, nil
+	}
+	o, err := f(ctx, inputs)
+	if err != nil {
+		return nil, fmt.Errorf("transforming inputs: %w", err)
+	}
+	return o, nil
 }
