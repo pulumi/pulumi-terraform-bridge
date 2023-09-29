@@ -97,12 +97,10 @@ func (g *Generator) cliConverter() *cliConverter {
 		return g.cliConverterState
 	}
 	packageName := string(g.pkg)
-	infoCopy := g.info
-	infoCopy.Name = packageName // correct "google-beta" to "gcp"
 	g.cliConverterState = &cliConverter{
 		generator:    g,
 		hcls:         map[string]struct{}{},
-		info:         infoCopy,
+		info:         g.info,
 		packageCache: g.packageCache,
 		packageName:  packageName,
 		pluginHost:   g.pluginHost,
@@ -194,7 +192,15 @@ func (cc *cliConverter) bulkConvert() error {
 		examples[fileName] = hcl
 		n++
 	}
-	result, err := cc.convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{cc.info})
+	result, err := cc.convertViaPulumiCLI(examples, []struct {
+		name string
+		info tfbridge.ProviderInfo
+	}{
+		{
+			name: cc.packageName,
+			info: cc.info,
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -220,7 +226,10 @@ func (cc *cliConverter) bulkConvert() error {
 // memory, for example run 4 instances of `pulumi convert` on 25% of examples each.
 func (*cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
-	mappings []tfbridge.ProviderInfo,
+	mappings []struct {
+		name string
+		info tfbridge.ProviderInfo
+	},
 ) (
 	output map[string]translatedExample,
 	finalError error,
@@ -266,8 +275,8 @@ func (*cliConverter) convertViaPulumiCLI(
 
 	mappingsDir := filepath.Join(outDir, "mappings")
 
-	mappingsFile := func(i int, p tfbridge.ProviderInfo) string {
-		return filepath.Join(mappingsDir, fmt.Sprintf("%s.json", p.Name))
+	mappingsFile := func(name string) string {
+		return filepath.Join(mappingsDir, fmt.Sprintf("%s.json", name))
 	}
 
 	// Write out mappings files if necessary.
@@ -278,14 +287,13 @@ func (*cliConverter) convertViaPulumiCLI(
 					"mappings folder: %w", err)
 			}
 		}
-		copy := m
-		mpi := tfbridge.MarshalProviderInfo(&copy)
+		mpi := tfbridge.MarshalProviderInfo(&m.info)
 		bytes, err := json.Marshal(mpi)
 		if err != nil {
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings folder: %w", err)
 		}
-		mf := mappingsFile(i, m)
+		mf := mappingsFile(m.name)
 		if err := os.WriteFile(mf, bytes, 0600); err != nil {
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings file: %w", err)
@@ -299,8 +307,8 @@ func (*cliConverter) convertViaPulumiCLI(
 	}
 
 	var mappingsArgs []string
-	for i, m := range mappings {
-		mappingsArgs = append(mappingsArgs, "--mappings", mappingsFile(i, m))
+	for _, m := range mappings {
+		mappingsArgs = append(mappingsArgs, "--mappings", mappingsFile(m.name))
 	}
 
 	cmd := exec.Command(pulumiPath, append([]string{"convert",
