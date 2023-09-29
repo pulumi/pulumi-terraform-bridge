@@ -85,8 +85,17 @@
     "external_data_configuration.max_bad_records": {
       "description": "The maximum number of bad records that\nBigQuery can ignore when reading data."
     },
+    "external_data_configuration.metadata_cache_mode": {
+      "description": "Metadata Cache Mode for the table. Set this to enable caching of metadata from external data source. Valid values are `AUTOMATIC` and `MANUAL`."
+    },
+    "external_data_configuration.object_metadata": {
+      "description": "Object Metadata is used to create Object Tables. Object Tables contain a listing of objects (with their metadata) found at the sourceUris. If `object_metadata` is set, `source_format` should be omitted."
+    },
     "external_data_configuration.parquet_options": {
       "description": "Additional properties to set if\n`source_format` is set to \"PARQUET\". Structure is documented below."
+    },
+    "external_data_configuration.reference_file_schema_uri": {
+      "description": "When creating an external table, the user can provide a reference file with the table schema. This is enabled for the following formats: AVRO, PARQUET, ORC."
     },
     "external_data_configuration.schema": {
       "description": "A JSON schema for the external table. Schema is required\nfor CSV and JSON formats if autodetect is not on. Schema is disallowed\nfor Google Cloud Bigtable, Cloud Datastore backups, Avro, Iceberg, ORC and Parquet formats.\n~\u003e**NOTE:** Because this field expects a JSON string, any changes to the\nstring will create a diff, even if the JSON itself hasn't changed.\nFurthermore drift for this field cannot not be detected because BigQuery\nonly uses this schema to compute the effective schema for the table, therefore\nany changes on the configured value will force the table to be recreated.\nThis schema is effectively only applied when creating a table from an external\ndatasource, after creation the computed schema will be stored in\n`google_bigquery_table.schema`\n\n~\u003e**NOTE:** If you set `external_data_configuration.connection_id`, the\ntable schema must be specified using the top-level `schema` field\ndocumented above."
@@ -171,15 +180,6 @@
     },
     "range_partitioning.range": {
       "description": "Information required to partition based on ranges.\nStructure is documented below."
-    },
-    "external_data_configuration.reference_file_schema_uri": {
-      "description": "When creating an external table, the user can provide a reference file with the table schema. This is enabled for the following formats: AVRO, PARQUET, ORC."
-    },
-    "external_data_configuration.metadata_cache_mode": {
-      "description": "Metadata Cache Mode for the table. Set this to enable caching of metadata from external data source. Valid values are `AUTOMATIC` and `MANUAL`."
-    },
-    "external_data_configuration.object_metadata": {
-      "description": "Object Metadata is used to create Object Tables. Object Tables contain a listing of objects (with their metadata) found at the sourceUris. If `object_metadata` is set, `source_format` should be omitted."
     },
     "referenced_table.dataset_id": {
       "description": "The ID of the dataset containing this table."

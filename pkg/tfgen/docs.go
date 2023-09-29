@@ -800,7 +800,7 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-	regexp.MustCompile("`([a-z_]+)`.*following"),
+	regexp.MustCompile("`([a-z_]+)`.*following:?"),
 
 	// For example:
 	// sql_database_instance.html.markdown:
@@ -834,14 +834,15 @@ func isHeadingTarget(src []byte, n *ast.Heading) string {
 	if n.Level <= 2 {
 		return ""
 	}
-	return findNestingTarget(nestedHeadingRegexps, n.Text(src))
+	s, _ := findNestingTarget(nestedHeadingRegexps, n.Text(src))
+	return s
 }
 
-func findNestingTarget(typ []*regexp.Regexp, text []byte) string {
-	nested := ""
+func findNestingTarget(typ []*regexp.Regexp, text []byte) (nested string, bytesMatched int) {
 	for _, match := range typ {
 		matches := match.FindSubmatch(text)
 		if len(matches) >= 2 {
+			bytesMatched = len(matches[0])
 			nested = strings.ToLower(string(matches[1]))
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
@@ -851,7 +852,7 @@ func findNestingTarget(typ []*regexp.Regexp, text []byte) string {
 		}
 	}
 
-	return nested
+	return
 }
 
 // getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
@@ -861,7 +862,9 @@ func findNestingTarget(typ []*regexp.Regexp, text []byte) string {
 //
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line []byte) string { return findNestingTarget(nestedObjectRegexps, line) }
+func getNestedBlockName(line []byte) (string, int) {
+	return findNestingTarget(nestedObjectRegexps, line)
+}
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	ret.ensure()
@@ -896,6 +899,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	//
 	// During descent, significant nodes such as new headings are marked. During
 	// ascent, nodes are written to ret.
+
+	inItemNode := func() bool { l := len(current); return l > 0 && current[l-1].listItem }
 
 	descend := func(node ast.Node) ast.WalkStatus {
 		switch node.Kind() {
@@ -934,8 +939,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				// When we find these, it overrides the current node.
 				txt := fmt.Sprintf("`%s` %s", string(node.Text(src)),
 					string(nxt.Text(src)))
-				target := getNestedBlockName([]byte(txt))
-				if target != "" {
+				target, matched := getNestedBlockName([]byte(txt))
+				if target != "" && (matched == len(txt) || !inItemNode()) {
 					// Setting both child an parent effectively sets
 					// this until the list ends (and we reset).
 					p := node.Parent()
@@ -946,7 +951,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				}
 			}
 		case ast.KindText:
-			if genericNestedRegexp.Match(node.Text(src)) {
+			if !inItemNode() && genericNestedRegexp.Match(node.Text(src)) {
 				if len(latest) > 0 {
 					parent := *latest[0]
 					parent.listItem = false

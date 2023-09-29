@@ -841,7 +841,8 @@ func TestGetNestedBlockName(t *testing.T) {
 				text.NewReader(src))
 			assert.Equal(t, tt.expected, isHeadingTarget(src, parsed.FirstChild().(*ast.Heading)))
 		} else {
-			assert.Equal(t, tt.expected, getNestedBlockName([]byte(tt.input)))
+			actual, _ := getNestedBlockName([]byte(tt.input))
+			assert.Equal(t, tt.expected, actual)
 		}
 	}
 }
