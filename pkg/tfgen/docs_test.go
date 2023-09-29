@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,6 +39,10 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+)
+
+var (
+	accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 )
 
 type testcase struct {
@@ -837,8 +842,6 @@ func TestParseImports_NoOverrides(t *testing.T) {
 		},
 	}
 
-	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-
 	for _, tt := range tests {
 		parser := tfMarkdownParser{
 			info: &mockResource{
@@ -870,6 +873,61 @@ func TestParseImports_WithOverride(t *testing.T) {
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
+
+func TestConvertExamples(t *testing.T) {
+	inmem := afero.NewMemMapFs()
+	info := testprovider.ProviderMiniRandom()
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	type testCase struct {
+		name string
+		path examplePath
+
+		stripSubsectionWithErrors bool
+	}
+
+	testCases := []testCase{
+		{
+			name: "wavefront_dashboard_json",
+			path: examplePath{
+				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
+				token:    "wavefront:index/dashboardJson:DashboardJson",
+			},
+			stripSubsectionWithErrors: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s.md", tc.name)))
+			require.NoError(t, err)
+			result := g.convertExamples(string(docs), tc.path, tc.stripSubsectionWithErrors)
+
+			out := filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s_out.md", tc.name))
+			if accept {
+				err = os.WriteFile(out, []byte(result), 0600)
+				require.NoError(t, err)
+			}
+			expect, err := os.ReadFile(out)
+			require.NoError(t, err)
+			assert.Equal(t, string(expect), result)
+		})
+	}
+}
+
 func TestExampleGeneration(t *testing.T) {
 	info := testprovider.ProviderMiniRandom()
 
