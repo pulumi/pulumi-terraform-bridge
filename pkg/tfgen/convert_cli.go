@@ -170,7 +170,14 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 // PCL->lang translation from a pre-computed HCL->PCL translation table cc.pcls.
 func (cc *cliConverter) Convert(hclCode string, lang string) (string, hcl.Diagnostics, error) {
 	example, ok := cc.pcls[hclCode]
-	contract.Assertf(ok, "unexpected new HCL snippet in Convert; should have seen it before")
+	// Cannot assert here because panics are still possible for some reason.
+	// Example: gcp:gameservices/gameServerCluster:GameServerCluster
+	//
+	// Something skips adding failing conversion diagnostics to cc.pcls when pre-converting. The
+	// end-user experience is not affected much, the above example does not regress.
+	if !ok {
+		return "", hcl.Diagnostics{}, fmt.Errorf("unexpected HCL snippet in Convert")
+	}
 	if example.Diagnostics.HasErrors() {
 		return "", example.Diagnostics, nil
 	}
