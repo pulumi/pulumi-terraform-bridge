@@ -212,6 +212,11 @@ func TestCleanDescription(t *testing.T) {
 			expected: "Match versions by tag prefix. Applied on any prefix match.",
 		},
 		{
+			path:     "tag_prefixes",
+			desc:     "`tag_prefixes` - (optional) Match versions by tag prefix.",
+			expected: "Match versions by tag prefix.",
+		},
+		{
 			path: "tag_prefixes",
 			desc: "`tag_prefixes` -" + `
   (Required (Optimal (Actual))) Match versions (only versions) by tag prefix. Applied on any prefix match.

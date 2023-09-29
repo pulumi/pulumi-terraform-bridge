@@ -1064,8 +1064,9 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 
 func nestedParensMatcher(trigger string) func(string) int {
 	trigger = "(" + trigger
+	lower := strings.ToLower(trigger)
 	return func(s string) int {
-		if !strings.HasPrefix(s, trigger) {
+		if !strings.HasPrefix(s, trigger) && !strings.HasPrefix(s, lower) {
 			return 0
 		}
 
