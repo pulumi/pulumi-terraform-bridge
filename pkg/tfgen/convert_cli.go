@@ -227,9 +227,8 @@ func (*cliConverter) convertViaPulumiCLI(
 ) {
 	outDir, err := os.MkdirTemp("", "bridge-examples-output")
 	if err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to create a temp dir "+
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp dir "+
 			" bridge-examples-output: %w", err)
-		return
 	}
 	defer func() {
 		if err := os.RemoveAll(outDir); err != nil {
@@ -242,9 +241,8 @@ func (*cliConverter) convertViaPulumiCLI(
 
 	examplesJSON, err := os.CreateTemp("", "bridge-examples.json")
 	if err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
 			" bridge-examples.json file: %w", err)
-		return
 	}
 	defer func() {
 		if err := os.Remove(examplesJSON.Name()); err != nil {
@@ -258,14 +256,12 @@ func (*cliConverter) convertViaPulumiCLI(
 	// Write example to bridge-examples.json.
 	examplesBytes, err := json.Marshal(examples)
 	if err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to marshal examples "+
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples "+
 			"to JSON: %w", err)
-		return
 	}
-	if err := os.WriteFile(examplesJSON.Name(), examplesBytes, 0655); err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to write a temp "+
+	if err := os.WriteFile(examplesJSON.Name(), examplesBytes, 0600); err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to write a temp "+
 			"bridge-examples.json file: %w", err)
-		return
 	}
 
 	mappingsDir := filepath.Join(outDir, "mappings")
@@ -278,31 +274,28 @@ func (*cliConverter) convertViaPulumiCLI(
 	for i, m := range mappings {
 		if i == 0 {
 			if err := os.MkdirAll(mappingsDir, 0755); err != nil {
-				finalError = fmt.Errorf("convertViaPulumiCLI: failed to write "+
+				return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 					"mappings folder: %w", err)
-				return
 			}
 		}
-		mpi := tfbridge.MarshalProviderInfo(&m)
+		copy := m
+		mpi := tfbridge.MarshalProviderInfo(&copy)
 		bytes, err := json.Marshal(mpi)
 		if err != nil {
-			finalError = fmt.Errorf("convertViaPulumiCLI: failed to write "+
+			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings folder: %w", err)
-			return
 		}
 		mf := mappingsFile(i, m)
-		if err := os.WriteFile(mf, bytes, 0655); err != nil {
-			finalError = fmt.Errorf("convertViaPulumiCLI: failed to write "+
+		if err := os.WriteFile(mf, bytes, 0600); err != nil {
+			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings file: %w", err)
-			return
 		}
 	}
 
 	pulumiPath, err := exec.LookPath("pulumi")
 	if err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: pulumi executalbe not "+
+		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi executalbe not "+
 			"in PATH: %w", err)
-		return
 	}
 
 	var mappingsArgs []string
@@ -325,26 +318,23 @@ func (*cliConverter) convertViaPulumiCLI(
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 
 	if err := cmd.Run(); err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
+		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
 			"Stdout:\n%s\n\n"+
 			"Stderr:\n%s\n\n",
 			err, stdout.String(), stderr.String())
-		return
 	}
 
 	outputFile := filepath.Join(outDir, filepath.Base(examplesJSON.Name()))
 
 	outputFileBytes, err := os.ReadFile(outputFile)
 	if err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w", err)
-		return
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w", err)
 	}
 
 	var result map[string]translatedExample
 	if err := json.Unmarshal(outputFileBytes, &result); err != nil {
-		finalError = fmt.Errorf("convertViaPulumiCLI: failed to unmarshal output "+
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to unmarshal output "+
 			"file: %w", err)
-		return
 	}
 
 	return result, nil
