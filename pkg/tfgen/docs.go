@@ -1087,15 +1087,20 @@ func nestedParensMatcher(trigger string) func(string) int {
 	}
 }
 
+func prefixMatcher(prefix string) func(string) int {
+	return func(s string) int {
+		if strings.HasPrefix(s, prefix) {
+			return len(prefix)
+		}
+		return 0
+	}
+}
+
 var cleanDescriptionPrefixFns = []func(string) int{
 	// Cut Leading ':' and '-'
-	func(s string) int {
-		var i int
-		for i < len(s) && (s[i] == ':' || s[i] == '-') {
-			i++
-		}
-		return i
-	},
+	prefixMatcher("-"),
+	prefixMatcher(":"),
+	prefixMatcher("–"), // This is an en-dash (Unicode 8211)
 	// Cut leading "(Optional.*)"
 	//
 	// This needs to be a function and not a regex because we want the final ')' cut
@@ -1105,13 +1110,9 @@ var cleanDescriptionPrefixFns = []func(string) int{
 }
 
 func cleanDescription(path docsPath, desc string) string {
-	name := "`" + path.leaf() + "`"
-	valid := append(cleanDescriptionPrefixFns, func(s string) int {
-		if strings.HasPrefix(s, name) {
-			return len(name)
-		}
-		return 0
-	})
+	valid := append(cleanDescriptionPrefixFns,
+		prefixMatcher("`"+path.leaf()+"`"),
+		prefixMatcher("`"+string(path)+"`"))
 	changed := true
 	desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
 	for changed {

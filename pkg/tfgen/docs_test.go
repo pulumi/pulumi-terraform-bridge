@@ -240,6 +240,17 @@ func TestCleanDescription(t *testing.T) {
 			desc:     "",
 			expected: "",
 		},
+		{
+			path: "foo",
+			// This is an en-dash, not a hyphen
+			desc:     "`foo` – (Optional) Description",
+			expected: "Description",
+		},
+		{
+			path:     "foo.bar",
+			desc:     "`foo.bar` - (Required) ;)",
+			expected: ";)",
+		},
 	}
 
 	for _, tt := range tests {
