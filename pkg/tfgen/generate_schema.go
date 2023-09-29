@@ -946,6 +946,11 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		path := newExamplePathForFunction(token)
 		spec.Functions[token] = g.convertExamplesInFunctionSpec(path, function)
 	}
+
+	if cliConverterEnabled {
+		return g.cliConverter().FinishConvertingExamples(spec)
+	}
+
 	return spec
 }
 

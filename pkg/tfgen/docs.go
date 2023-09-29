@@ -1302,6 +1302,11 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
 	}
 
+	if cliConverterEnabled {
+		return g.cliConverter().StartConvertingExamples(docs, path,
+			stripSubsectionsWithErrors)
+	}
+
 	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL)
 }
 
@@ -1557,7 +1562,11 @@ func (g *Generator) convertHCLToString(hclCode, path, languageName string) (stri
 	var diags hcl.Diagnostics
 	var err error
 
-	convertedHcl, diags, err = g.legacyConvert(hclCode, fileName, languageName)
+	if cliConverterEnabled {
+		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
+	} else {
+		convertedHcl, diags, err = g.legacyConvert(hclCode, fileName, languageName)
+	}
 
 	// By observation on the GCP provider, convert.Convert() will either panic (in which case the wrapped method above
 	// will return an error) or it will return a non-zero value for diags.
