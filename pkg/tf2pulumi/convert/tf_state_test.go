@@ -23,6 +23,7 @@ import (
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,7 +69,7 @@ func TestTranslateState(t *testing.T) {
 			require.NoError(t, err)
 
 			// If PULUMI_ACCEPT is set then write the expected file
-			if isTruthy(os.Getenv("PULUMI_ACCEPT")) {
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				actualImportBytes, err := json.MarshalIndent(actualImport, "", "  ")
 				require.NoError(t, err)
 				err = os.WriteFile(filepath.Join(tt.path, "import.json"), actualImportBytes, 0600)
@@ -81,7 +82,8 @@ func TestTranslateState(t *testing.T) {
 			err = json.Unmarshal(expectedImportBytes, &expectedImport)
 			require.NoError(t, err)
 
-			assert.Equal(t, expectedImport.Resources, actualImport.Resources)
+			// We don't actually care about order here, just that the "set" of resources is the same.
+			assert.ElementsMatch(t, expectedImport.Resources, actualImport.Resources)
 		})
 	}
 }

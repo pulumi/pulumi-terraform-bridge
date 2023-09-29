@@ -651,9 +651,19 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 func (p *providerServer) GetMapping(ctx context.Context,
 	req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
-	data, provider, err := p.provider.GetMappingWithContext(ctx, req.Key)
+	data, provider, err := p.provider.GetMappingWithContext(ctx, req.Key, req.Provider)
 	if err != nil {
 		return nil, err
 	}
 	return &pulumirpc.GetMappingResponse{Data: data, Provider: provider}, nil
+}
+
+func (p *providerServer) GetMappings(ctx context.Context,
+	req *pulumirpc.GetMappingsRequest,
+) (*pulumirpc.GetMappingsResponse, error) {
+	providers, err := p.provider.GetMappingsWithContext(ctx, req.Key)
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetMappingsResponse{Providers: providers}, nil
 }

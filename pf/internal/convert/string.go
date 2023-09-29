@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -37,20 +38,52 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(tftypes.String, tftypes.UnknownValue), nil
 	}
-	if p.IsNull() {
+
+	switch {
+	case p.IsNull():
 		return tftypes.NewValue(tftypes.String, nil), nil
-	}
 
-	// Special-case to tolerate booleans.
-	if p.IsBool() {
+	// Special-case values that can be converted into strings for backward
+	// comparability with SDKv{1,2} based resources.
+	//
+	// Unfortunately, it is not possible to round trip values that are not string
+	// typed with full fidelity. For example, consider this simple YAML program:
+	//
+	//	resources:
+	//	  r:
+	//	    type: some:simple:Resource
+	//	    properties:
+	//	      stringType: 0x1234
+	//
+	// In YAML, 0x1234 is parsed as the number 4660, so our recourse will receive
+	// `4660` as its output. This problem appears even for simple numbers:
+	//
+	//
+	//	resources:
+	//	  r:
+	//	    type: some:simple:Resource
+	//	    properties:
+	//	      s1: 1
+	//	      s2: 1.0
+	//
+	// Go formats float64(1) as "1", so we get the expected result. float64(1) is
+	// equal to float64(1.0), so we are unable to distinguish between s1 and s2.
+	//
+	// We have the same problems with bools: YAML parses "YES" as true, so we are
+	// unable to distinguish between the two.
+
+	case p.IsBool():
 		return tftypes.NewValue(tftypes.String, fmt.Sprintf("%v", p.BoolValue())), nil
-	}
+	case p.IsNumber():
+		return tftypes.NewValue(tftypes.String, strconv.FormatFloat(p.NumberValue(), 'f', -1, 64)), nil
 
-	if !p.IsString() {
+	case p.IsString():
+		return tftypes.NewValue(tftypes.String, p.StringValue()), nil
+
+	default:
 		return tftypes.NewValue(tftypes.String, nil),
 			fmt.Errorf("Expected a string, got: %v", p)
 	}
-	return tftypes.NewValue(tftypes.String, p.StringValue()), nil
 }
 
 func (*stringDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {

@@ -81,7 +81,9 @@ type ProviderWithContext interface {
 
 	SignalCancellationWithContext(ctx context.Context) error
 
-	GetMappingWithContext(ctx context.Context, key string) ([]byte, string, error)
+	GetMappingWithContext(ctx context.Context, key, provider string) ([]byte, string, error)
+
+	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
 }
 
 func NewProvider(ctx context.Context, p ProviderWithContext) plugin.Provider {
@@ -175,6 +177,10 @@ func (prov *provider) SignalCancellation() error {
 	return prov.ProviderWithContext.SignalCancellationWithContext(prov.ctx)
 }
 
-func (prov *provider) GetMapping(key string) ([]byte, string, error) {
-	return prov.ProviderWithContext.GetMappingWithContext(prov.ctx, key)
+func (prov *provider) GetMapping(key, provider string) ([]byte, string, error) {
+	return prov.ProviderWithContext.GetMappingWithContext(prov.ctx, key, provider)
+}
+
+func (prov *provider) GetMappings(key string) ([]string, error) {
+	return prov.ProviderWithContext.GetMappingsWithContext(prov.ctx, key)
 }

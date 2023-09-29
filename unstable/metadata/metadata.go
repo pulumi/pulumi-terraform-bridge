@@ -16,7 +16,7 @@ package metadata
 
 import (
 	"encoding/json"
-
+	"github.com/json-iterator/go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -26,7 +26,8 @@ type Data struct{ m map[string]*json.RawMessage }
 func New(data []byte) (*Data, error) {
 	m := map[string]*json.RawMessage{}
 	if len(data) > 0 {
-		err := json.Unmarshal(data, &m)
+		jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
+		err := jsoni.Unmarshal(data, &m)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +59,8 @@ func Set(d *Data, key string, value any) error {
 		delete(d.m, key)
 		return nil
 	}
-	data, err := json.Marshal(value)
+	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
+	data, err := jsoni.Marshal(value)
 	if err != nil {
 		return err
 	}
@@ -73,7 +75,8 @@ func Get[T any](d *Data, key string) (T, bool, error) {
 	if !ok {
 		return t, false, nil
 	}
-	err := json.Unmarshal(*data, &t)
+	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
+	err := jsoni.Unmarshal(*data, &t)
 	return t, true, err
 }
 

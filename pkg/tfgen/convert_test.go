@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -75,7 +76,7 @@ func TestConvert(t *testing.T) {
                   }`)
 
 		generic := "<{us-east-1?: number}>"
-		if isTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
 			generic = ""
 		}
 

@@ -98,6 +98,7 @@ func Test_ForceNew(t *testing.T) {
 	}
 
 	for _, test := range cases {
+		test := test
 		t.Run(test.Name, func(t *testing.T) {
 			v := &test.Var
 			actuallyForcesNew := v.forceNew()
@@ -363,4 +364,9 @@ func TestModulePlacementForType(t *testing.T) {
 		})
 	}
 
+}
+
+func TestWithoutPackageName(t *testing.T) {
+	assert.Equal(t, "http", withoutPackageName("http", "http"))
+	assert.Equal(t, "s3_bucket", withoutPackageName("aws", "aws_s3_bucket"))
 }

@@ -17,6 +17,7 @@ package sdkv2randomprovider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,6 +29,18 @@ func New() *schema.Provider {
 			"random_human_number": humanNumber(),
 		},
 	}
+
+	p.ConfigureContextFunc = configure("1.2.3", p)
+
+	return p
+}
+
+func Sized(count int) *schema.Provider {
+	m := make(map[string]*schema.Resource, count)
+	for i := 0; i < count; i++ {
+		m[fmt.Sprintf("random_human_number_%d", i)] = humanNumber()
+	}
+	p := &schema.Provider{ResourcesMap: m}
 
 	p.ConfigureContextFunc = configure("1.2.3", p)
 

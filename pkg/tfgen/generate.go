@@ -75,6 +75,10 @@ type Generator struct {
 	editRules        editRules
 
 	convertedCode map[string][]byte
+
+	// Set if we can't find the docs repo and we have already printed a warning
+	// message.
+	noDocsRepo bool
 }
 
 type Language string
@@ -371,7 +375,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	// Handle single-nested blocks next.
 	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
-		return g.makeObjectPropertyType(typePath, objectName, blockType, elemInfo, out, entityDocs)
+		return g.makeObjectPropertyType(typePath, docsPath(objectName), blockType, elemInfo, out, entityDocs)
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
@@ -396,7 +400,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		element = g.makeObjectPropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
+		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
 	}
 
 	if flatten {
@@ -418,7 +422,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 }
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
-	objectName string, res shim.Resource, info *tfbridge.SchemaInfo,
+	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
 
 	t := &propertyType{
@@ -443,7 +447,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
 		// This seems wrong, so we ignore the second return value here for now.
-		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objectName, key)
+		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
 
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
@@ -1120,9 +1124,9 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
-		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-	skipFailBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var resourceMappingErrors error
@@ -1133,12 +1137,12 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 	for _, r := range stableResources(resources) {
 		info := g.info.Resources[r]
 		if info == nil {
-			if ignoreMappingError(g.info.IgnoreMappings, r) {
+			if sliceContains(g.info.IgnoreMappings, r) {
 				g.debug("TF resource %q not found in provider map", r)
 				continue
 			}
 
-			if !ignoreMappingError(g.info.IgnoreMappings, r) && !skipFailBuildOnMissingMapError {
+			if !sliceContains(g.info.IgnoreMappings, r) && !skipFailBuildOnMissingMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("TF resource %q not mapped to the Pulumi provider", r))
 			} else {
@@ -1205,13 +1209,13 @@ func (g *Generator) gatherResource(rawname string,
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
-		pd, err := getDocsForResource(g, g.info.GetGitHubOrg(), g.info.Name,
-			g.info.GetResourcePrefix(), ResourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
-			g.info.GetGitHubHost())
-		if err != nil {
+		source := NewGitRepoDocsSource(g)
+		pd, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+		if err == nil {
+			entityDocs = pd
+		} else if !g.checkNoDocsError(err) {
 			return nil, err
 		}
-		entityDocs = pd
 	} else {
 		entityDocs.Description = fmt.Sprintf(
 			"The provider type for the %s package. By default, resources use package-wide configuration\n"+
@@ -1299,7 +1303,7 @@ func (g *Generator) gatherResource(rawname string,
 			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
 
-			if isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
 				return nil, fmt.Errorf(msg)
 			}
 
@@ -1318,9 +1322,9 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	skipFailBuildOnMissingMapError := isTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) || isTruthy(os.Getenv(
-		"PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-	failBuildOnExtraMapError := isTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
@@ -1331,7 +1335,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	for _, ds := range stableResources(sources) {
 		dsinfo := g.info.DataSources[ds]
 		if dsinfo == nil {
-			if ignoreMappingError(g.info.IgnoreMappings, ds) {
+			if sliceContains(g.info.IgnoreMappings, ds) {
 				g.debug("TF data source %q not found in provider map but ignored", ds)
 				continue
 			}
@@ -1399,10 +1403,9 @@ func (g *Generator) gatherDataSource(rawname string,
 	g.renamesBuilder.registerDataSource(dataSourcePath)
 
 	// Collect documentation information for this data source.
-	entityDocs, err := getDocsForResource(g, g.info.GetGitHubOrg(), g.info.Name,
-		g.info.GetResourcePrefix(), DataSourceDocs, rawname, info, g.info.GetProviderModuleVersion(),
-		g.info.GetGitHubHost())
-	if err != nil {
+	source := NewGitRepoDocsSource(g)
+	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info)
+	if err != nil && !g.checkNoDocsError(err) {
 		return nil, err
 	}
 
@@ -1539,6 +1542,49 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 	return modules, nil
 }
 
+func (g *Generator) checkNoDocsError(err error) bool {
+	var e GetRepoPathErr
+	if !errors.As(err, &e) {
+		// Not the right kind of error
+		return false
+	}
+
+	// If we have already warned, we can just discard the message
+	if !g.noDocsRepo {
+		g.logMissingRepoPath(e)
+	}
+	g.noDocsRepo = true
+	return true
+}
+
+func (g *Generator) logMissingRepoPath(err GetRepoPathErr) {
+	msg := `Unable to find the upstream provider's documentation:
+The upstream repository is expected to be at %q.
+%s
+The original error is: %s`
+
+	var correction string
+	if g.info.UpstreamRepoPath != "" {
+		correction = fmt.Sprintf(`
+The upstream repository path has been overridden, but the specified path is invalid.
+You should check the value of:
+tfbridge.ProviderInfo{
+	UpstreamRepoPath: %q,
+}`, g.info.UpstreamRepoPath)
+	} else {
+		correction = fmt.Sprintf(`
+If the expected path is not correct, you should check the values of these fields (current values shown):
+tfbridge.ProviderInfo{
+	GitHubHost:              %q,
+	GitHubOrg:               %q,
+	Name:                    %q,
+	TFProviderModuleVersion: %q,
+}`, g.info.GetGitHubHost(), g.info.GetGitHubOrg(), g.info.Name, g.info.GetProviderModuleVersion())
+	}
+
+	g.sink.Warningf(&diag.Diag{Message: msg}, err.Expected, correction, err.Underlying)
+}
+
 // emitProjectMetadata emits the Pulumi.yaml project file into the package's root directory.
 func (g *Generator) emitProjectMetadata(name tokens.Package, language Language) error {
 	w, err := newGenWriter(tfgen, g.root, "Pulumi.yaml")
@@ -1648,9 +1694,15 @@ func resourceName(provider string, rawname string,
 
 // withoutPackageName strips off the package prefix from a raw name.
 func withoutPackageName(pkg string, rawname string) string {
-	contract.Assertf(strings.HasPrefix(rawname, pkg+"_"), `strings.HasPrefix(rawname, pkg+"_")`)
-	name := rawname[len(pkg)+1:] // strip off the pkg prefix.
-	return name
+	// Providers almost always have function and resource names prefixed with the package name,
+	// but every rule has an exception! In HTTP provider the "http" datasource intentionally
+	// does not do that, as noted in:
+	//
+	///nolint:lll
+	// https://github.com/hashicorp/terraform-provider-http/blob/0eeb9818e8114631a3c7dc61e750f11180ca987b/internal/provider/data_source_http.go#L47
+	//
+	// Therefore the code trims the prefix if it finds it, but leaves as-is otherwise.
+	return strings.TrimPrefix(rawname, pkg+"_")
 }
 
 func stableResources(resources shim.ResourceMap) []string {
@@ -1762,22 +1814,47 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 // attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
 func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) (string, bool) {
-	return getNestedDescriptionFromParsedDocs(entityDocs, "", arg)
+	return getNestedDescriptionFromParsedDocs(entityDocs, docsPath(arg))
 }
 
 // getNestedDescriptionFromParsedDocs extracts the nested argument description for the given arg, or the
 // top-level argument description or attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
-func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, objectName string, arg string) (string, bool) {
-	if res := entityDocs.Arguments[objectName]; res != nil && res.arguments != nil && res.arguments[arg] != "" {
-		return res.arguments[arg], false
-	} else if res := entityDocs.Arguments[arg]; res != nil && res.description != "" {
-		return res.description, false
+func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (string, bool) {
+	// Check if we have any path that matches, removing the root segment after each failed attempt.
+	//
+	// For example: ruleset.rules.type will check against:
+	//
+	// 1. ruleset.rules.type
+	// 2. rules.type
+	// 3. type
+	for p := path; p != ""; {
+		// See if we have an appropriately nested argument:
+		if v, ok := entityDocs.Arguments[p]; ok {
+			return v.description, false
+		}
+		p = p.withOutRoot()
 	}
 
-	attribute := entityDocs.Attributes[arg]
+	// To maintain old behavior, we also check if the last segment of `path` matches
+	// with some other last segment of any other entity.
+	//
+	// For example, this will match `production_branch.status` with
+	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
+	// to incorrect docs.
+	keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
+	leaf := path.leaf()
+	for k := range entityDocs.Arguments {
+		if k.leaf() == leaf {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) > 0 {
+		docsPathArr(keys).Sort()
+		return entityDocs.Arguments[keys[0]].description, false
+	}
 
-	if attribute != "" {
+	if attribute := entityDocs.Attributes[path.leaf()]; attribute != "" {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
 		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
@@ -1826,13 +1903,9 @@ func cleanDir(fs afero.Fs, dirPath string, exclusions codegen.StringSet) error {
 	return nil
 }
 
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
-}
-
-func ignoreMappingError(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+func sliceContains[T comparable](slice []T, target T) bool {
+	for _, v := range slice {
+		if v == target {
 			return true
 		}
 	}
