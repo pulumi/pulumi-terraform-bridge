@@ -1163,7 +1163,9 @@ var cleanDescriptionPrefixFns = []func(string) int{
 	nestedParensMatcher("Optional"),
 	nestedParensMatcher("Required"),
 	nestedParensMatcher("Computed"),
+	nestedParensMatcher("Sensitive"),
 	nestedParensMatcher("Forces new resource"),
+	nestedParensMatcher("Requirement"),
 }
 
 func cleanDescription(path docsPath, desc string) string {
