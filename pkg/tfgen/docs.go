@@ -1055,65 +1055,81 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 func renderMdNode(src []byte, n ast.Node) []byte {
 	var b bytes.Buffer
 
-	if _, ok := n.(*ast.FencedCodeBlock); !ok && n.HasBlankPreviousLines() {
-		b.WriteString("\n\n")
-	}
-
-	switch n := n.(type) {
-	case *ast.Paragraph, *ast.TextBlock:
-		for i := 0; i < n.Lines().Len(); i++ {
-			line := n.Lines().At(i)
-			b.Write(line.Value(src))
-		}
-	case *ast.ListItem:
-		var marker byte = '*'
-		if p, ok := n.Parent().(*ast.List); ok {
-			marker = p.Marker
-		}
-		b.WriteRune('\n')
-		b.WriteRune(rune(marker))
-		b.WriteRune(' ')
-		var item bytes.Buffer
-		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			item.Write(renderMdNode(src, c))
+	var render func(ast.Node)
+	render = func(n ast.Node) {
+		if _, ok := n.(*ast.FencedCodeBlock); !ok && n.HasBlankPreviousLines() {
+			b.WriteString("\n\n")
 		}
 
-		// Apply indentation, batching writes by line
-		bytes, written := item.Bytes(), 0
-		for i, c := range bytes {
-			if c == '\n' {
-				b.Write(bytes[written : i+1])
-				b.Write([]byte{' ', ' '})
-				written = i + 1
+		switch n := n.(type) {
+		case *ast.Paragraph, *ast.TextBlock:
+			for i := 0; i < n.Lines().Len(); i++ {
+				line := n.Lines().At(i)
+				b.Write(line.Value(src))
 			}
-		}
-		b.Write(bytes[written:len(bytes)])
-	case *ast.List:
-		isTight := n.IsTight
-		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			if !isTight {
-				b.WriteRune('\n')
+		case *ast.ListItem:
+			var marker byte = '*'
+			if p, ok := n.Parent().(*ast.List); ok {
+				marker = p.Marker
 			}
-			b.Write(renderMdNode(src, c))
+			b.WriteRune('\n')
+			b.WriteRune(rune(marker))
+			b.WriteRune(' ')
+			var item bytes.Buffer
+			item, b = b, item
+
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+			item, b = b, item
+
+			// Apply indentation, batching writes by line
+			bytes, written := item.Bytes(), 0
+			for i, c := range bytes {
+				if c == '\n' {
+					b.Write(bytes[written : i+1])
+					b.Write([]byte{' ', ' '})
+					written = i + 1
+				}
+			}
+			b.Write(bytes[written:len(bytes)])
+		case *ast.List:
+			isTight := n.IsTight
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				if !isTight {
+					b.WriteRune('\n')
+				}
+				render(c)
+			}
+		case *ast.Blockquote:
+			b.WriteRune('>')
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+		case *ast.Document:
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+		case *ast.FencedCodeBlock:
+			b.WriteString("\n\n```")
+			b.Write(n.Language(src))
+			b.WriteRune('\n')
+			for i := 0; i < n.Lines().Len(); i++ {
+				line := n.Lines().At(i)
+				b.Write(line.Value(src))
+			}
+			b.WriteString("```")
+		case *ast.ThematicBreak:
+			b.WriteRune('\n')
+		case *ast.Heading:
+			b.WriteString(strings.Repeat("#", n.Level) + " ")
+			b.Write(n.Text(src))
+		default:
+			n.Dump(src, 0)
+			panic(n)
 		}
-	case *ast.FencedCodeBlock:
-		b.WriteString("\n\n```")
-		b.Write(n.Language(src))
-		b.WriteRune('\n')
-		for i := 0; i < n.Lines().Len(); i++ {
-			line := n.Lines().At(i)
-			b.Write(line.Value(src))
-		}
-		b.WriteString("```")
-	case *ast.ThematicBreak:
-		b.WriteRune('\n')
-	case *ast.Heading:
-		b.WriteString(strings.Repeat("#", n.Level) + " ")
-		b.Write(n.Text(src))
-	default:
-		n.Dump(src, 0)
-		panic(n)
 	}
+	render(n)
 	return b.Bytes()
 }
 
