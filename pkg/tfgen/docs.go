@@ -902,6 +902,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	inItemNode := func() bool { l := len(current); return l > 0 && current[l-1].listItem }
 
+	var write func(ast.Node, bool) ast.WalkStatus
+
 	descend := func(node ast.Node) ast.WalkStatus {
 		switch node.Kind() {
 		case ast.KindThematicBreak:
@@ -921,6 +923,20 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 					v.description = ""
 				}
 				unbaked[key] = struct{}{}
+			} else {
+				// We wright nodes without names eagerly, since normal
+				// writes are written inside out.
+				//
+				// Doing that for a ListItem would render the text inside
+				// an item before the list itself (rendering `\n- foo\n`
+				// as `foo\n- foo\n`.
+				//
+				// Writing them eagerly means that we won't find arguments
+				// inside lists. We have not seen this pattern in the
+				// wild.
+				write(node, true)
+				skipPrint[node] = true
+				return ast.WalkSkipChildren
 			}
 		case ast.KindHeading:
 			target := isHeadingTarget(src, node.(*ast.Heading))
@@ -964,10 +980,14 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		return ast.WalkContinue
 	}
 
-	write := func(node ast.Node) ast.WalkStatus {
+	write = func(node ast.Node, items bool) ast.WalkStatus {
 		// If we are not able to serialize node, exit early
 		switch node.(type) {
 		case *ast.Paragraph, *ast.TextBlock, *ast.FencedCodeBlock, *ast.ThematicBreak, *ast.Heading:
+		case *ast.ListItem:
+			if !items {
+				return ast.WalkContinue
+			}
 		default:
 			return ast.WalkContinue
 		}
@@ -1023,7 +1043,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			return ast.WalkContinue, nil
 		}
 
-		return write(node), nil
+		return write(node, false), nil
 	})
 	contract.AssertNoErrorf(err, "An error is never returned")
 
@@ -1034,15 +1054,50 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 func renderMdNode(src []byte, n ast.Node) []byte {
 	var b bytes.Buffer
-	b.WriteString("\n\n")
+
+	if _, ok := n.(*ast.FencedCodeBlock); !ok && n.HasBlankPreviousLines() {
+		b.WriteString("\n\n")
+	}
+
 	switch n := n.(type) {
 	case *ast.Paragraph, *ast.TextBlock:
 		for i := 0; i < n.Lines().Len(); i++ {
 			line := n.Lines().At(i)
 			b.Write(line.Value(src))
 		}
+	case *ast.ListItem:
+		var marker byte = '*'
+		if p, ok := n.Parent().(*ast.List); ok {
+			marker = p.Marker
+		}
+		b.WriteRune('\n')
+		b.WriteRune(rune(marker))
+		b.WriteRune(' ')
+		var item bytes.Buffer
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			item.Write(renderMdNode(src, c))
+		}
+
+		// Apply indentation, batching writes by line
+		bytes, written := item.Bytes(), 0
+		for i, c := range bytes {
+			if c == '\n' {
+				b.Write(bytes[written : i+1])
+				b.Write([]byte{' ', ' '})
+				written = i + 1
+			}
+		}
+		b.Write(bytes[written:len(bytes)])
+	case *ast.List:
+		isTight := n.IsTight
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			if !isTight {
+				b.WriteRune('\n')
+			}
+			b.Write(renderMdNode(src, c))
+		}
 	case *ast.FencedCodeBlock:
-		b.WriteString("```")
+		b.WriteString("\n\n```")
 		b.Write(n.Language(src))
 		b.WriteRune('\n')
 		for i := 0; i < n.Lines().Len(); i++ {
