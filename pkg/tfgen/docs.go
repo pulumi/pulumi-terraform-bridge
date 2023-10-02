@@ -1057,8 +1057,13 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 
 	var render func(ast.Node)
 	render = func(n ast.Node) {
-		if _, ok := n.(*ast.FencedCodeBlock); !ok && n.HasBlankPreviousLines() {
-			b.WriteString("\n\n")
+		switch n.(type) {
+		case *ast.FencedCodeBlock, *ast.Document, *ast.List:
+			// Do not write any newlines
+		default:
+			if n.Type() == ast.TypeBlock && n.HasBlankPreviousLines() && n.PreviousSibling() != nil {
+				b.WriteString("\n\n")
+			}
 		}
 
 		switch n := n.(type) {
@@ -1092,7 +1097,7 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 					written = i + 1
 				}
 			}
-			b.Write(bytes[written:len(bytes)])
+			b.Write(bytes[written:])
 		case *ast.List:
 			isTight := n.IsTight
 			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
@@ -1103,6 +1108,7 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 			}
 		case *ast.Blockquote:
 			b.WriteRune('>')
+			b.WriteRune(' ')
 			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 				render(c)
 			}

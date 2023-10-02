@@ -189,6 +189,36 @@ func TestURLRewrite(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdown(t *testing.T) {
+	t.Parallel()
+	tests := []string{
+		"\n- foo bar",
+		`
+- top
+- foo
+  bar`,
+		"foo:\n* bar",
+		"\n- > bar",
+		`
+- foo
+  * bar
+    - middle
+  * fizz
+- buzz`,
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			src := []byte(tt)
+			node := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			actual := renderMdNode(src, node)
+			assert.Equal(t, tt, string(actual))
+		})
+	}
+}
+
 func TestCleanDescription(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
