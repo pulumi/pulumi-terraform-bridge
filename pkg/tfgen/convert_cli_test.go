@@ -27,7 +27,6 @@ import (
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
-	t.Skipf("TODO[pulumi/pulumi-converter-terraform#36] enable when converter can accept bulk examples")
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
