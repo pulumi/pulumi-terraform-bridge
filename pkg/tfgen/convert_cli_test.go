@@ -15,8 +15,10 @@
 package tfgen
 
 import (
+	"io"
 	"testing"
 
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,6 +26,8 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
@@ -51,7 +55,11 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 				},
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"simple_data_source": {
+				Tok: "simple:index:dataSource",
+			},
+		},
 	}
 
 	simpleResourceTF := `
@@ -111,4 +119,12 @@ output "someOutput" {
 
 	assert.Empty(t, out["example1"].Diagnostics)
 	assert.Empty(t, out["example2"].Diagnostics)
+
+	t.Run("GenerateSchema", func(t *testing.T) {
+		schema, err := GenerateSchema(p, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}))
+		assert.NoError(t, err)
+		bridgetesting.AssertEqualsJSONFile(t, "test_data/TestConvertViaPulumiCLI/schema.json", schema)
+	})
 }
