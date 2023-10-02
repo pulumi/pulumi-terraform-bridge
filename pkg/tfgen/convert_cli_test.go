@@ -15,18 +15,23 @@
 package tfgen
 
 import (
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
-	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
+	"encoding/json"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -39,6 +44,18 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 		// process cannot access the file because it is being used by another process..
 		t.Skipf("Skipping on Windows due to a test setup issue")
 	}
+	t.Setenv("PULUMI_CONVERT", "1")
+
+	simpleResourceTF := `
+resource "simple_resource" "a_resource" {
+    input_one = "hello"
+    input_two = true
+}
+
+output "some_output" {
+    value = simple_resource.a_resource.result
+}`
+
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
@@ -61,6 +78,13 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 						Name: "renamedInput1",
 					},
 				},
+				Docs: &tfbridge.DocInfo{
+					Markdown: []byte(fmt.Sprintf(
+						"Sample resource.\n## Example Usage\n\n"+
+							"```hcl\n%s\n```\n\n##Extras\n\n",
+						simpleResourceTF,
+					)),
+				},
 			},
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -70,15 +94,6 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 		},
 	}
 
-	simpleResourceTF := `
-resource "simple_resource" "a_resource" {
-    input_one = "hello"
-    input_two = true
-}
-
-output "some_output" {
-    value = simple_resource.a_resource.result
-}`
 	simpleDataSourceTF := `
 data "simple_data_source" "a_data_source" {
     input_one = "hello"
@@ -109,30 +124,53 @@ output "someOutput" {
   value = aDataSource.result
 }
 `
-	cc := &cliConverter{}
 
-	out, err := cc.convertViaPulumiCLI(map[string]string{
-		"example1": simpleResourceTF,
-		"example2": simpleDataSourceTF,
-	}, []struct {
-		name string
-		info tfbridge.ProviderInfo
-	}{{info: p, name: "simple"}})
+	t.Run("convertViaPulumiCLI", func(t *testing.T) {
+		cc := &cliConverter{}
+		out, err := cc.convertViaPulumiCLI(map[string]string{
+			"example1": simpleResourceTF,
+			"example2": simpleDataSourceTF,
+		}, []struct {
+			name string
+			info tfbridge.ProviderInfo
+		}{{info: p, name: "simple"}})
 
-	require.NoError(t, err)
-	assert.Equal(t, 2, len(out))
+		require.NoError(t, err)
+		assert.Equal(t, 2, len(out))
 
-	assert.Equal(t, simpleResourceExpectPCL, out["example1"].PCL)
-	assert.Equal(t, simpleDataSourceExpectPCL, out["example2"].PCL)
+		assert.Equal(t, simpleResourceExpectPCL, out["example1"].PCL)
+		assert.Equal(t, simpleDataSourceExpectPCL, out["example2"].PCL)
 
-	assert.Empty(t, out["example1"].Diagnostics)
-	assert.Empty(t, out["example2"].Diagnostics)
+		assert.Empty(t, out["example1"].Diagnostics)
+		assert.Empty(t, out["example2"].Diagnostics)
+	})
 
 	t.Run("GenerateSchema", func(t *testing.T) {
-		schema, err := GenerateSchema(p, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-			Color: colors.Never,
-		}))
+		info := p
+		tempdir := t.TempDir()
+		fs := afero.NewBasePathFs(afero.NewOsFs(), tempdir)
+
+		g, err := NewGenerator(GeneratorOptions{
+			Package:      info.Name,
+			Version:      info.Version,
+			Language:     Schema,
+			ProviderInfo: info,
+			Root:         fs,
+			Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+				Color: colors.Never,
+			}),
+		})
+		err = g.Generate()
 		assert.NoError(t, err)
-		bridgetesting.AssertEqualsJSONFile(t, "test_data/TestConvertViaPulumiCLI/schema.json", schema)
+
+		d, err := os.ReadFile(filepath.Join(tempdir, "schema.json"))
+		assert.NoError(t, err)
+
+		var schema pschema.PackageSpec
+		err = json.Unmarshal(d, &schema)
+		assert.NoError(t, err)
+
+		bridgetesting.AssertEqualsJSONFile(t,
+			"test_data/TestConvertViaPulumiCLI/schema.json", schema)
 	})
 }

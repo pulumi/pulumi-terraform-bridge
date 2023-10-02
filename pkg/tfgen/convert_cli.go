@@ -41,9 +41,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-var (
-	cliConverterEnabled bool = cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
-)
+func cliConverterEnabled() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
+}
 
 // Integrates with `pulumi convert` command for converting TF examples.
 //

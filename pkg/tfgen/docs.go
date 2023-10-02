@@ -1302,7 +1302,7 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
 	}
 
-	if cliConverterEnabled {
+	if cliConverterEnabled() {
 		return g.cliConverter().StartConvertingExamples(docs, path,
 			stripSubsectionsWithErrors)
 	}
@@ -1562,7 +1562,7 @@ func (g *Generator) convertHCLToString(hclCode, path, languageName string) (stri
 	var diags hcl.Diagnostics
 	var err error
 
-	if cliConverterEnabled {
+	if cliConverterEnabled() {
 		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
 	} else {
 		convertedHcl, diags, err = g.legacyConvert(hclCode, fileName, languageName)
