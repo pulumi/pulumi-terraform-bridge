@@ -160,6 +160,8 @@ output "someOutput" {
 				Color: colors.Never,
 			}),
 		})
+		assert.NoError(t, err)
+
 		err = g.Generate()
 		assert.NoError(t, err)
 
