@@ -340,7 +340,9 @@ func (*cliConverter) convertViaPulumiCLI(
 
 	outputFileBytes, err := os.ReadFile(outputFile)
 	if err != nil {
-		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w", err)
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w, "+
+			"check if your Pulumi CLI version is recent enough to include pulumi-converter-terraform v1.0.9",
+			err)
 	}
 
 	var result map[string]translatedExample
