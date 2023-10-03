@@ -96,13 +96,12 @@ func (g *Generator) cliConverter() *cliConverter {
 	if g.cliConverterState != nil {
 		return g.cliConverterState
 	}
-	packageName := string(g.pkg)
 	g.cliConverterState = &cliConverter{
 		generator:    g,
 		hcls:         map[string]struct{}{},
 		info:         g.info,
 		packageCache: g.packageCache,
-		packageName:  packageName,
+		packageName:  string(g.pkg),
 		pluginHost:   g.pluginHost,
 		pcls:         map[string]translatedExample{},
 	}
@@ -279,14 +278,16 @@ func (*cliConverter) convertViaPulumiCLI(
 		return filepath.Join(mappingsDir, fmt.Sprintf("%s.json", name))
 	}
 
-	// Write out mappings files if necessary.
-	for i, m := range mappings {
-		if i == 0 {
-			if err := os.MkdirAll(mappingsDir, 0755); err != nil {
-				return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
-					"mappings folder: %w", err)
-			}
+	// Prepare mappings folder if necessary.
+	if len(mappings) > 0 {
+		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
+			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
+				"mappings folder: %w", err)
 		}
+	}
+
+	// Write out mappings files if necessary.
+	for _, m := range mappings {
 		mpi := tfbridge.MarshalProviderInfo(&m.info)
 		bytes, err := json.Marshal(mpi)
 		if err != nil {
