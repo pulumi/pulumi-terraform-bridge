@@ -8,8 +8,8 @@ build.tests::
 test::	test.unit test.integration
 
 test.unit::
-	go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} ./...
-	cd tests && go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} # tests have a separte go.mod
+	go test -v -count=1 -cover -coverpkg=./... -coverprofile ./coverage.out -timeout 2h -parallel ${TESTPARALLELISM} ./...
+	cd tests && go test -v -count=1 -cover -coverpkg=./... -coverprofile ./coverage.out -timeout 2h -parallel ${TESTPARALLELISM} # tests have a separte go.mod
 
 test.integration::
 	cd tests/integration && go test -v -count=1 -timeout 2h -parallel ${TESTPARALLELISM}
