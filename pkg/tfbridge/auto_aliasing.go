@@ -175,11 +175,13 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		f()
 	}
 
-	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
-		// Set fails only when `hist` is not serializable. Because `hist` is
-		// composed of marshallable, non-cyclic types, this is impossible.
-		contract.AssertNoErrorf(err, "History failed to serialize")
-	}
+	/*
+		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
+			// Set fails only when `hist` is not serializable. Because `hist` is
+			// composed of marshallable, non-cyclic types, this is impossible.
+			contract.AssertNoErrorf(err, "History failed to serialize")
+		}
+	*/
 
 	return nil
 }
@@ -208,11 +210,13 @@ func aliasResource(
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
-		// It's not in the history, so it must be new. Stick it in the history for
-		// next time.
-		hist[tfToken] = &tokenHistory[tokens.Type]{
-			Current: computed.Tok,
-		}
+		/*
+			// It's not in the history, so it must be new. Stick it in the history for
+			// next time.
+			hist[tfToken] = &tokenHistory[tokens.Type]{
+				Current: computed.Tok,
+			}
+		*/
 	} else {
 		// We don't do this eagerly because aliasResource is called while
 		// iterating over p.Resources which aliasOrRenameResource mutates.
@@ -226,7 +230,7 @@ func aliasResource(
 	// Note: If the user explicitly sets a MaxItemOne value, that value is respected
 	// and overwrites the current history.'
 
-	if res == nil {
+	if res == nil || hist[tfToken] == nil {
 		return
 	}
 
@@ -261,9 +265,11 @@ func applyResourceMaxItemsOneAliasing(
 		hasH = hasH || fieldHasHist
 		hasI = hasI || fieldHasInfo
 
-		if !hasH {
-			delete(*hist, k)
-		}
+		/*
+			if !hasH {
+				delete(*hist, k)
+			}
+		*/
 		if !hasI {
 			delete(*info, k)
 		}
