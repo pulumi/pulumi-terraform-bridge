@@ -16,6 +16,8 @@ package tfbridge
 
 import (
 	"github.com/Masterminds/semver"
+	"runtime/debug"
+	"strings"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -123,6 +125,9 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		return err
 	}
 
+	buildInfo, _ := debug.ReadBuildInfo()
+	isTfgen := buildInfo != nil && strings.Contains(buildInfo.Path, "pulumi-tfgen")
+
 	var currentVersion int
 	// If version is missing, we assume the current version is the most recent major
 	// version in mentioned in history.
@@ -162,7 +167,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	for tfToken, computed := range info.Resources {
 		r, _ := rMap.GetOk(tfToken)
 		aliasResource(info, r, &applyAliases, hist.Resources,
-			computed, tfToken, currentVersion)
+			computed, tfToken, currentVersion, isTfgen)
 	}
 
 	for tfToken, computed := range info.DataSources {
@@ -175,13 +180,13 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		f()
 	}
 
-	/*
+	if isTfgen {
 		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
 			// Set fails only when `hist` is not serializable. Because `hist` is
 			// composed of marshallable, non-cyclic types, this is impossible.
 			contract.AssertNoErrorf(err, "History failed to serialize")
 		}
-	*/
+	}
 
 	return nil
 }
@@ -207,16 +212,17 @@ func aliasResource(
 	applyResourceAliases *[]func(),
 	hist map[string]*tokenHistory[tokens.Type], computed *ResourceInfo,
 	tfToken string, version int,
+	isTfgen bool,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
-		/*
+		if isTfgen {
 			// It's not in the history, so it must be new. Stick it in the history for
 			// next time.
 			hist[tfToken] = &tokenHistory[tokens.Type]{
 				Current: computed.Tok,
 			}
-		*/
+		}
 	} else {
 		// We don't do this eagerly because aliasResource is called while
 		// iterating over p.Resources which aliasOrRenameResource mutates.
@@ -265,11 +271,9 @@ func applyResourceMaxItemsOneAliasing(
 		hasH = hasH || fieldHasHist
 		hasI = hasI || fieldHasInfo
 
-		/*
-			if !hasH {
-				delete(*hist, k)
-			}
-		*/
+		if !hasH {
+			delete(*hist, k)
+		}
 		if !hasI {
 			delete(*info, k)
 		}
