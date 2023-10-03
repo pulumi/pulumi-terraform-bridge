@@ -62,9 +62,9 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 We use git tags and [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
 1. Maintainers will push a new semver [tag](https://github.com/pulumi/pulumi-terraform-bridge/tags) when appropriate
-1. Maintainers will then generate a Release with Changelog using [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), using the tag pushed in the 
+1. Maintainers will then generate a Release with Changelog using [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), using the tag pushed in the
 first step.
-1. Finally, maintainers will roll out bridge updates across Pulumi providers via manually running the [bridge update 
+1. Finally, maintainers will roll out bridge updates across Pulumi providers via manually running the [bridge update
 workflow in CI Management](https://github.com/pulumi/ci-mgmt/actions/workflows/update-bridge-ecosystem-providers.yml).
 
 ### Adapting a New Terraform Provider
@@ -106,3 +106,4 @@ tfgen, the command that generates Pulumi schema/code for a bridged provider supp
 * `PULUMI_SKIP_MISSING_MAPPING_ERROR`: If truthy, tfgen will not fail if a data source or resource in the TF provider is not mapped to the Pulumi provider. Instead, a warning is printed. Default is `false`.
 * `PULUMI_SKIP_EXTRA_MAPPING_ERROR`: If truthy, tfgen will not fail if a mapped data source or resource does not exist in the TF provider. Instead, warning is printed. Default is `false`.
 * `PULUMI_MISSING_DOCS_ERROR`: If truthy, tfgen will fail if docs cannot be found for a data source or resource. Default is `false`.
+* `PULUMI_CONVERT`: If truthy, tfgen will shell out to `pulumi convert` for converting example code from TF HCL to Pulumi PCL

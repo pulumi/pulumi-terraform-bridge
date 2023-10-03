@@ -1,0 +1,49 @@
+{
+  "name": "simple",
+  "attribution": "This Pulumi package is based on the [`simple` Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
+      "compatibility": "tfbridge20",
+      "pyproject": {}
+    }
+  },
+  "config": {},
+  "provider": {
+    "description": "The provider type for the simple package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "simple:index:resource": {
+      "description": "{{% examples %}}\n## Example Usage\n{{% example %}}\n\n```java\npackage generated_program;\n\nimport com.pulumi.Context;\nimport com.pulumi.Pulumi;\nimport com.pulumi.core.Output;\nimport com.pulumi.simple.resource;\nimport com.pulumi.simple.ResourceArgs;\nimport java.util.List;\nimport java.util.ArrayList;\nimport java.util.Map;\nimport java.io.File;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var aResource = new Resource(\"aResource\", ResourceArgs.builder()        \n            .renamedInput1(\"hello\")\n            .inputTwo(true)\n            .build());\n\n        ctx.export(\"someOutput\", aResource.result());\n    }\n}\n```\n```yaml\nresources:\n  a_resource:\n    type: simple:resource\n    properties:\n      renamedInput1: hello\n      inputTwo: true\noutputs:\n  someOutput: ${a_resource.result}\n```\n\n##Extras\n{{% /example %}}\n{{% /examples %}}",
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering resource resources.\n",
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "simple:index:dataSource": {
+      "outputs": {
+        "description": "A collection of values returned by dataSource.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ]
+      }
+    }
+  }
+}

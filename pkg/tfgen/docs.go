@@ -30,6 +30,7 @@ import (
 	"unicode"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/hcl/v2"
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"golang.org/x/text/cases"
@@ -1301,6 +1302,23 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
 	}
 
+	if cliConverterEnabled() {
+		return g.cliConverter().StartConvertingExamples(docs, path,
+			stripSubsectionsWithErrors)
+	}
+
+	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL)
+}
+
+// The inner implementation of examples conversion is parameterized by convertHCL so that it can be
+// executed either normally or in symbolic mode.
+func (g *Generator) convertExamplesInner(
+	docs string,
+	path examplePath,
+	stripSubsectionsWithErrors bool,
+	convertHCL func(hcl, path, exampleTitle string, languages []string) (string, error),
+) (result string) {
+
 	output := &bytes.Buffer{}
 
 	writeTrailingNewline := func(buf *bytes.Buffer) {
@@ -1363,7 +1381,7 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 						}
 
 						langs := genLanguageToSlice(g.language)
-						codeBlock, err := g.convertHCL(hcl, path.String(), exampleTitle, langs)
+						codeBlock, err := convertHCL(hcl, path.String(), exampleTitle, langs)
 
 						if err != nil {
 							skippedExamples = true
@@ -1510,18 +1528,45 @@ func (g *Generator) convert(input afero.Fs, languageName string) (files map[stri
 	return
 }
 
-// convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
-// simplified parameters and return values
-func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, error) {
+func (g *Generator) legacyConvert(
+	hclCode, fileName, languageName string,
+) (string, hcl.Diagnostics, error) {
 	input := afero.NewMemMapFs()
-	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 	f, err := input.Create(fileName)
 	contract.AssertNoErrorf(err, "err != nil")
-	_, err = f.Write([]byte(hcl))
+	_, err = f.Write([]byte(hclCode))
 	contract.AssertNoErrorf(err, "err != nil")
 	contract.IgnoreClose(f)
 
 	files, diags, err := g.convert(input, languageName)
+	if diags.All.HasErrors() || err != nil {
+		return "", diags.All, err
+	}
+
+	contract.Assertf(len(files) == 1, `len(files) == 1`)
+
+	convertedHcl := ""
+	for _, output := range files {
+		convertedHcl = strings.TrimSpace(string(output))
+	}
+	return convertedHcl, diags.All, nil
+}
+
+// convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
+// simplified parameters and return values
+func (g *Generator) convertHCLToString(hclCode, path, languageName string) (string, error) {
+
+	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
+
+	var convertedHcl string
+	var diags hcl.Diagnostics
+	var err error
+
+	if cliConverterEnabled() {
+		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
+	} else {
+		convertedHcl, diags, err = g.legacyConvert(hclCode, fileName, languageName)
+	}
 
 	// By observation on the GCP provider, convert.Convert() will either panic (in which case the wrapped method above
 	// will return an error) or it will return a non-zero value for diags.
@@ -1534,23 +1579,16 @@ func (g *Generator) convertHCLToString(hcl, path, languageName string) (string, 
 		}
 		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 	}
-	if diags.All.HasErrors() {
+	if diags.HasErrors() {
 		// Remove the temp filename from the error, since it will be confusing to users of the bridge who do not know
 		// we write an example to a temp file internally in order to pass to convert.Convert().
 		//
 		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
-		errMsg := strings.ReplaceAll(diags.All.Error(), fileName[1:], "")
+		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
 
 		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
-		g.coverageTracker.languageConversionFailure(languageName, diags.All)
+		g.coverageTracker.languageConversionFailure(languageName, diags)
 		return "", fmt.Errorf(errMsg)
-	}
-
-	contract.Assertf(len(files) == 1, `len(files) == 1`)
-
-	convertedHcl := ""
-	for _, output := range files {
-		convertedHcl = strings.TrimSpace(string(output))
 	}
 
 	g.coverageTracker.languageConversionSuccess(languageName, convertedHcl)

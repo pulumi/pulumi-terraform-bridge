@@ -79,6 +79,8 @@ type Generator struct {
 	// Set if we can't find the docs repo and we have already printed a warning
 	// message.
 	noDocsRepo bool
+
+	cliConverterState *cliConverter
 }
 
 type Language string
