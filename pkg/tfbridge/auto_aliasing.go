@@ -16,8 +16,6 @@ package tfbridge
 
 import (
 	"github.com/Masterminds/semver"
-	"runtime/debug"
-	"strings"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -125,9 +123,6 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		return err
 	}
 
-	buildInfo, _ := debug.ReadBuildInfo()
-	isTfgen := buildInfo != nil && strings.Contains(buildInfo.Path, "pulumi-tfgen")
-
 	var currentVersion int
 	// If version is missing, we assume the current version is the most recent major
 	// version in mentioned in history.
@@ -167,7 +162,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	for tfToken, computed := range info.Resources {
 		r, _ := rMap.GetOk(tfToken)
 		aliasResource(info, r, &applyAliases, hist.Resources,
-			computed, tfToken, currentVersion, isTfgen)
+			computed, tfToken, currentVersion)
 	}
 
 	for tfToken, computed := range info.DataSources {
@@ -180,7 +175,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		f()
 	}
 
-	if isTfgen {
+	if isTfgen() {
 		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
 			// Set fails only when `hist` is not serializable. Because `hist` is
 			// composed of marshallable, non-cyclic types, this is impossible.
@@ -212,11 +207,10 @@ func aliasResource(
 	applyResourceAliases *[]func(),
 	hist map[string]*tokenHistory[tokens.Type], computed *ResourceInfo,
 	tfToken string, version int,
-	isTfgen bool,
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
-		if isTfgen {
+		if isTfgen() {
 			// It's not in the history, so it must be new. Stick it in the history for
 			// next time.
 			hist[tfToken] = &tokenHistory[tokens.Type]{
@@ -271,7 +265,7 @@ func applyResourceMaxItemsOneAliasing(
 		hasH = hasH || fieldHasHist
 		hasI = hasI || fieldHasInfo
 
-		if !hasH {
+		if !hasH && isTfgen() {
 			delete(*hist, k)
 		}
 		if !hasI {
@@ -330,13 +324,15 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 		// MaxItemsOne does not apply, so do nothing
 	} else if info.MaxItemsOne != nil {
 		// The user has overwritten the value, so we will just record that.
-		h.MaxItemsOne = info.MaxItemsOne
-		hasH = true
+		if isTfgen() {
+			h.MaxItemsOne = info.MaxItemsOne
+			hasH = true
+		}
 	} else if h.MaxItemsOne != nil {
 		// If we have a previous value in the history, we keep it as is.
 		info.MaxItemsOne = h.MaxItemsOne
 		hasI = true
-	} else {
+	} else if isTfgen() {
 		// There is no history for this value, so we bake it into the
 		// alias history.
 		h.MaxItemsOne = BoolRef(IsMaxItemsOne(schema, info))
@@ -349,10 +345,12 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	// If the .Elem existed before this function, we mark it as unsafe to cleanup.
 	var hasElemH, hasElemI bool
 	populateElem := func() {
-		if h.Elem == nil {
-			h.Elem = &fieldHistory{}
-		} else {
-			hasElemH = true
+		if isTfgen() {
+			if h.Elem == nil {
+				h.Elem = &fieldHistory{}
+			} else {
+				hasElemH = true
+			}
 		}
 		if info.Elem == nil {
 			info.Elem = &SchemaInfo{}
@@ -367,7 +365,7 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	cleanupElem := func(elemHist, elemInfo bool) {
 		hasElemH = hasElemH || elemHist
 		hasElemI = hasElemI || elemInfo
-		if !hasElemH {
+		if !hasElemH && isTfgen() {
 			h.Elem = nil
 		}
 		if !hasElemI {
@@ -379,11 +377,17 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	switch e := e.(type) {
 	case shim.Resource:
 		populateElem()
-		eHasH, eHasI := applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
+		var eHasH, eHasI bool
+		if h.Elem != nil {
+			eHasH, eHasI = applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
+		}
 		cleanupElem(eHasH, eHasI)
 	case shim.Schema:
 		populateElem()
-		eHasH, eHasI := applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
+		var eHasH, eHasI bool
+		if h.Elem != nil {
+			eHasH, eHasI = applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
+		}
 		cleanupElem(eHasH, eHasI)
 	}
 
@@ -477,7 +481,6 @@ func aliasDataSource(
 	}
 
 	applyResourceMaxItemsOneAliasing(ds, &hist[tfToken].Fields, &computed.Fields)
-
 }
 
 func aliasOrRenameDataSource(
@@ -517,4 +520,8 @@ func aliasOrRenameDataSource(
 			computed.Tok.Module().Name().String(), computed)
 	}
 
+}
+
+func isTfgen() bool {
+	return GetRuntimeStage() != ResourceStage
 }
