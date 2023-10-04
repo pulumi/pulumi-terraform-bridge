@@ -151,8 +151,12 @@ func readstats(dir string) stats {
 }
 
 func tfgen(convert int) {
-	cmd := exec.Command("make", "tfgen",
-		fmt.Sprintf("PULUMI_CONVERT=%d", convert))
+	var cmd *exec.Cmd
+	if convert == 0 {
+		cmd = exec.Command("make", "tfgen", "PULUMI_CONVERT=0")
+	} else {
+		cmd = exec.Command("make", "tfgen", "PULUMI_CONVERT=1")
+	}
 	err := cmd.Run()
 	noerr(err)
 }
