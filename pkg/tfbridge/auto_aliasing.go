@@ -16,8 +16,6 @@ package tfbridge
 
 import (
 	"github.com/Masterminds/semver"
-	"runtime/debug"
-	"strings"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -125,8 +123,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		return err
 	}
 
-	buildInfo, _ := debug.ReadBuildInfo()
-	isTfgen := buildInfo != nil && strings.Contains(buildInfo.Path, "pulumi-tfgen")
+	isTfgen := ReadRuntimeInfo().IsTfgen
 
 	var currentVersion int
 	// If version is missing, we assume the current version is the most recent major
