@@ -40,14 +40,13 @@ func main() {
 	baselinedir := filepath.Join(tmpdir, "baseline")
 	experimentaldir := filepath.Join(tmpdir, "experimental")
 
+	os.Setenv("GOWORK", "off")
+
 	os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
-	os.Setenv("PULUMI_CONVERT", "true")
-	tfgen()
+	tfgen(1)
 
 	os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
-	os.Setenv("PULUMI_CONVERT", "")
-	os.Setenv("GOWORK", "off")
-	tfgen()
+	tfgen(0)
 
 	baselinestats := readstats(baselinedir)
 	fmt.Println("Baseline    ", len(baselinestats.exampleByHCL))
@@ -151,8 +150,9 @@ func readstats(dir string) stats {
 	return s
 }
 
-func tfgen() {
-	cmd := exec.Command("make", "tfgen")
+func tfgen(convert int) {
+	cmd := exec.Command("make", "tfgen",
+		fmt.Sprintf("PULUMI_CONVERT=%d", convert))
 	err := cmd.Run()
 	noerr(err)
 }
