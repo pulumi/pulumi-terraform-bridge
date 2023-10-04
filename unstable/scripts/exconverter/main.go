@@ -41,11 +41,11 @@ func main() {
 	experimentaldir := filepath.Join(tmpdir, "experimental")
 
 	os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
-	os.Setenv("PULUMI_EXPERIMENTAL", "true")
+	os.Setenv("PULUMI_CONVERT", "true")
 	tfgen()
 
 	os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
-	os.Setenv("PULUMI_EXPERIMENTAL", "")
+	os.Setenv("PULUMI_CONVERT", "")
 	os.Setenv("GOWORK", "off")
 	tfgen()
 
