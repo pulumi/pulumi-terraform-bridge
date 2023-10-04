@@ -54,11 +54,13 @@ func main() {
 	}
 
 	baselinestats := readstats(baselinedir)
-	fmt.Println("Baseline    ", len(baselinestats.exampleByHCL))
+	fmt.Println("Baseline     ", len(baselinestats.exampleIDs),
+		"API locations with examples")
 	fmt.Println(baselinestats.shortSummary)
 
 	experimentalstats := readstats(experimentaldir)
-	fmt.Println("Experimental", len(experimentalstats.exampleByHCL))
+	fmt.Println("Experimental ", len(experimentalstats.exampleIDs),
+		"API locations with examples")
 	fmt.Println(experimentalstats.shortSummary)
 
 	for _, e := range baselinestats.newlyFailing(experimentalstats) {
@@ -71,6 +73,8 @@ func main() {
 	for _, e := range baselinestats.dropped(experimentalstats) {
 		fmt.Printf("Example dropped: %v\n", e.ExampleName)
 	}
+
+	giveExamplesForFrequentErrors(experimentaldir, experimentalstats)
 
 	fmt.Println("DONE")
 }
@@ -190,4 +194,49 @@ func noerr(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func giveExamplesForFrequentErrors(dir string, st stats) {
+	f, err := os.Open(filepath.Join(dir, "summary.json"))
+	noerr(err)
+	defer func() {
+		noerr(f.Close())
+	}()
+	type ce struct {
+		Reason string
+		Count  int
+	}
+	type summary struct {
+		ConversionErrors []ce
+	}
+	var s summary
+	dec := json.NewDecoder(f)
+	noerr(dec.Decode(&s))
+
+	for i, ce := range s.ConversionErrors {
+		fmt.Printf("\n# Error %d\n\n", i+1)
+		fmt.Printf("%d examples failed with the following error:\n\n```\n%s\n```\n\n", ce.Count, ce.Reason)
+		if ex := findBad(st, ce.Reason); ex != nil {
+			var languages []string
+			for lang, cr := range ex.ConversionResults {
+				if cr.FailureInfo == ce.Reason {
+					languages = append(languages, lang)
+				}
+			}
+			fmt.Printf("Failures include converting the %q example with the following HCL to %s:\n",
+				ex.ExampleName, strings.Join(languages, ", "))
+			fmt.Printf("\n```\n%s\n```\n\n", ex.OriginalHCL)
+		}
+	}
+}
+
+func findBad(st stats, failure string) *flattenedExample {
+	for _, e := range st.exampleByHCL {
+		for _, cr := range e.ConversionResults {
+			if failure == cr.FailureInfo {
+				return &e
+			}
+		}
+	}
+	return nil
 }
