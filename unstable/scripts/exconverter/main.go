@@ -25,28 +25,33 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
-	keep := flag.Bool("keep", false, "set to true to keep the temp file")
+	dir := flag.String("dir", "", "folder to use for stats; if none given, use a temp folder")
 	flag.Parse()
 
 	tmpdir, err := os.MkdirTemp("", "example-coverage-metrics")
 	noerr(err)
-	if !*keep {
+	if *dir != "" {
+		tmpdir = *dir
+	} else {
 		defer os.RemoveAll(tmpdir)
 	}
 
 	baselinedir := filepath.Join(tmpdir, "baseline")
 	experimentaldir := filepath.Join(tmpdir, "experimental")
 
-	os.Setenv("GOWORK", "off")
+	if !exists(baselinedir) || !exists(experimentaldir) {
+		os.Setenv("GOWORK", "off")
 
-	os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
-	tfgen(1)
+		os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
+		tfgen(1)
 
-	os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
-	tfgen(0)
+		os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
+		tfgen(0)
+	}
 
 	baselinestats := readstats(baselinedir)
 	fmt.Println("Baseline    ", len(baselinestats.exampleByHCL))
@@ -70,15 +75,31 @@ func main() {
 	fmt.Println("DONE")
 }
 
+func exists(dir string) bool {
+	_, err := os.Stat(dir)
+	return err == nil
+}
+
+type exampleID string
+
+func newExampleID(rawExampleID string) exampleID {
+	if i := strings.LastIndex(rawExampleID, "#"); i != -1 && i != 0 {
+		return exampleID(rawExampleID[0:i])
+	}
+	return exampleID(rawExampleID)
+}
+
 type stats struct {
 	shortSummary string
 	exampleByHCL map[string]flattenedExample
+	exampleIDs   map[exampleID]struct{}
 }
 
 func (s stats) dropped(new stats) []flattenedExample {
 	out := []flattenedExample{}
 	for k, v := range s.exampleByHCL {
-		if _, ok := new.exampleByHCL[k]; !ok {
+		e := newExampleID(k)
+		if _, ok := new.exampleIDs[e]; !ok {
 			out = append(out, v)
 		}
 	}
@@ -131,6 +152,7 @@ func readstats(dir string) stats {
 
 	s := stats{
 		exampleByHCL: map[string]flattenedExample{},
+		exampleIDs:   map[exampleID]struct{}{},
 	}
 
 	dec := json.NewDecoder(f)
@@ -142,6 +164,7 @@ func readstats(dir string) stats {
 		}
 
 		s.exampleByHCL[entry.ExampleName] = entry
+		s.exampleIDs[newExampleID(entry.ExampleName)] = struct{}{}
 	}
 
 	ss, err := os.ReadFile(filepath.Join(dir, "shortSummary.txt"))
@@ -157,6 +180,8 @@ func tfgen(convert int) {
 	} else {
 		cmd = exec.Command("make", "tfgen", "PULUMI_CONVERT=1")
 	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	noerr(err)
 }
