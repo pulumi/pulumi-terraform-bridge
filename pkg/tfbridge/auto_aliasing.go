@@ -95,20 +95,75 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 // - Edit [SchemaInfo.MaxItemsOne]
 //
 // The goal is to always maximize backwards compatibility and reduce breaking changes for
-// the users of the Pulumi providers.
+// the users of the Pulumi providers. The basic functionality behind each action is
+// identical; ApplyAutoAliases keeps a record of which TF token maps to which Pulumi
+// token, which fields have MaxItemsOne (true or false), and what version the record is
+// from.
 //
-// Resource aliases help mask TF provider resource renames or changes in mapped tokens so
-// older programs continue to work.  See [ResourceInfo.RenameResourceWithAlias] and
-// [ResourceInfo.Aliases] for more details.
+// For example, this is the (abbreviated & modified) history for GCP's compute autoscalar:
 //
-// [SchemaInfo.MaxItemsOne] changes are also important because they involve flattening and
-// pluralizing names. Collections (lists or sets) marked with MaxItems=1 are projected as
-// scalar types in Pulumi SDKs. Therefore changes to the MaxItems property may be breaking
-// the compilation of programs as the type changes from `T to List[T]` or vice versa. To
-// avoid these breaking changes, this method undoes any upstream changes to MaxItems using
-// [SchemaInfo.MaxItemsOne] overrides. This happens until a major version change is
-// detected, and then overrides are cleared. Effectively this makes sure that upstream
-// MaxItems changes are deferred until the next major version.
+//	"google_compute_autoscaler": {
+//	    "current": "gcp:compute/autoscalar:Autoscalar",
+//	    "past": [
+//	        {
+//	            "name": "gcp:auto/autoscalar:Autoscalar",
+//	            "inCodegen": true,
+//	            "majorVersion": 6
+//	        },
+//	        {
+//	            "name": "gcp:auto/scaler:Scaler",
+//	            "inCodegen": false,
+//	            "majorVersion": 5
+//	        }
+//	    ],
+//	    "majorVersion": 6,
+//	    "fields": {
+//	        "autoscaling_policy": {
+//	            "maxItemsOne": true,
+//	            "elem": {
+//	                "fields": {
+//	                    "cpu_utilization": {
+//	                        "maxItemsOne": false
+//	                    }
+//	                }
+//	            }
+//	        }
+//	    }
+//	}
+//
+// I will address each action as it applies to `"google_compute_autoscaler" in turn:
+//
+// # Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+//
+// "google_compute_autoscaler.majorVersion" tells us that this record was last updated at
+// major version 6. One of the previous names is also at major version 6, so we want to
+// keep full backwards compatibility.
+//
+// ApplyAutoAliases will call [ProviderInfo.RenameResourceWithAlias] to create a SDK entry
+// for the old Pulumi token ("gcp:auto/autoscalar:Autoscalar"). This token will no longer
+// be created when `make tfgen` is run on version 7.
+//
+// # Edit [ResourceInfo.Aliases]
+//
+// In this history, we have recorded two prior names for "google_compute_autoscaler":
+// "gcp:auto/autoscalar:Autoscalar" and "gcp:auto/scaler:Scaler". Since
+// "gcp:auto/scaler:Scaler" was from a previous major version, we don't need to maintain
+// full backwards compatibility. Instead, we will apply a type alias to
+// `.Resources["gcp:compute/autoscalar:Autoscalar"].Aliases`: `AliasInfo{Type:
+// ""gcp:auto/scaler:Scaler"}`. This makes it easy for consumers to upgrade from the old
+// name to the new.
+//
+// # Edit [SchemaInfo.MaxItemsOne]
+//
+// The provider has been shipped with fields that could have `MaxItemsOne` applied. Any
+// change here is breaking to our users, so we prevent it. As long as the provider's major
+// version is 6, ApplyAutoAliases will override the MaxItemsOne status of
+// "autoscaling_policy" (to true) and "autoscaling_policy.elem.cpu_utilization" (to
+// false), regardless of what upstream does. This will be dropped when gcp v7 is
+// released. Effectively this makes sure that upstream MaxItems changes are deferred until
+// the next major version.
+//
+// ---
 //
 // Implementation note: to operate correctly this method needs to keep a persistent track
 // of a database of past decision history. This is currently done by doing reads and
