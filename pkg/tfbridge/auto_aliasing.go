@@ -106,11 +106,15 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 // [ApplyAutoAliases] applies three mitigation strategies: one for each breaking change it
 // is attempting to mitigate.
 //
-// - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+// - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]: This
+// creates a "hard alias", preventing the user from experiencing a breaking change between
+// major versions.
 //
-// - Edit [ResourceInfo.Aliases]
+// - Edit [ResourceInfo.Aliases]: This creates a "soft alias", making it easier for users
+// to move to the new resource when the old resource is removed.
 //
-// - Edit [SchemaInfo.MaxItemsOne]
+// - Edit [SchemaInfo.MaxItemsOne]: This allows us to defer MaxItemsOne changes to the
+// next major release.
 //
 // All mitigations act on [ProviderInfo.Resources] / [ProviderInfo.DataSources]. These
 // mitigations are then propagated to the schema (if during tfgen) or used at runtime (at
@@ -188,9 +192,9 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 // change here is breaking to our users, so we prevent it. As long as the provider's major
 // version is 6, ApplyAutoAliases will override the MaxItemsOne status of
 // "autoscaling_policy" (to true) and "autoscaling_policy.elem.cpu_utilization" (to
-// false), regardless of what upstream does. This will be dropped when gcp v7 is
-// released. Effectively this makes sure that upstream MaxItems changes are deferred until
-// the next major version.
+// false), regardless of what upstream does. We will read new MaxItemsOne values from the
+// provider when the next major version (v7 in this example) is released. Effectively this
+// makes sure that upstream MaxItems changes are deferred until the next major version.
 //
 // ---
 //
