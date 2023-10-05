@@ -88,17 +88,46 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 
 // Automatically applies backwards compatibility best practices.
 //
-// Specifically, [ApplyAutoAliases] may perform the following actions:
+// The goal is to prevent breaking changes from Pulumi maintainers or from the upstream
+// provider from causing breaking changes in minor version bumps. We do this by deferring
+// certain types of breaking changes to major versions.
+//
+// ApplyAutoAliases attempts to mitigate 3 types of unwanted breaking changes:
+//
+// - The token mapping for a resource has changed. For example:
+//
+//	The maintainer is correcting a typo in a manual resource mapping.
+//
+// - The token mapping for a resource has changed, and a major update caused us to remove
+// the old name from the schema.
+//
+// - The upstream provider has added or removed `MaxItems: 1` from a field.
+//
+// [ApplyAutoAliases] applies three mitigation strategies: one for each breaking change it
+// is attempting to mitigate.
 //
 // - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+//
 // - Edit [ResourceInfo.Aliases]
+//
 // - Edit [SchemaInfo.MaxItemsOne]
+//
+// All mitigations act on [ProviderInfo.Resources] / [ProviderInfo.DataSources]. These
+// mitigations are then propagated to the schema (if during tfgen) or used at runtime (at
+// runtime). Conceptually, [ApplyAutoAliases] performs the same kind of mitigations that a
+// careful provider author would perform manually: invoking
+// [ProviderInfo.RenameResourceWithAlias], adding token aliases for resources that have
+// been moved, and fixing MaxItemsOne to avoid backwards compatibility breaks.
 //
 // The goal is to always maximize backwards compatibility and reduce breaking changes for
 // the users of the Pulumi providers. The basic functionality behind each action is
 // identical; ApplyAutoAliases keeps a record of which TF token maps to which Pulumi
 // token, which fields have MaxItemsOne (true or false), and what version the record is
 // from.
+//
+// This records is stored using the
+// github.com/pulumi/pulumi-terraform-bridge/unstable/metadata interface. It is written to
+// at tfgen time and read from when starting up a provider (tfgen time and normal runtime).
 //
 // For example, this is the (abbreviated & modified) history for GCP's compute autoscalar:
 //
