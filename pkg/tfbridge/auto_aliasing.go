@@ -173,8 +173,10 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 // keep full backwards compatibility.
 //
 // ApplyAutoAliases will call [ProviderInfo.RenameResourceWithAlias] to create a SDK entry
-// for the old Pulumi token ("gcp:auto/autoscalar:Autoscalar"). This token will no longer
-// be created when `make tfgen` is run on version 7.
+// for the old Pulumi token
+// ("gcp:auto/autoscalar:Autoscalar"). "gcp:auto/autoscalar:Autoscalar" will no longer be
+// hard aliased when `make tfgen` is run on version 7, since we are then allowed to make
+// breaking changes.
 //
 // # Edit [ResourceInfo.Aliases]
 //
