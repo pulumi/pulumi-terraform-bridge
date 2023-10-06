@@ -55,10 +55,6 @@ func (mapper *mapperProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
 	// TODO: Mapper has been made context aware, but ProviderInfoSource isn't.
-	// TODO: gcp doesn't reply to GetMapping calls correctly so hard code it for now.
-	if name == "google" {
-		name = "gcp"
-	}
 	data, err := mapper.mapper.GetMapping(context.TODO(), name, GetPulumiProviderName(name))
 	if err != nil {
 		return nil, err
