@@ -523,5 +523,5 @@ func aliasOrRenameDataSource(
 }
 
 func isTfgen() bool {
-	return GetRuntimeStage() != ResourceStage
+	return getRuntimeStage() != resourceStage
 }

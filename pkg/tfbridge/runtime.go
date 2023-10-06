@@ -5,44 +5,44 @@ import (
 	"strings"
 )
 
-type RuntimeStage int
+type runtimeStage int
 
 const (
-	UnknownStage RuntimeStage = iota
-	TfgenStage
-	ResourceStage
+	unknownStage runtimeStage = iota
+	tfgenStage
+	resourceStage
 )
 
 // Holds runtime flags
-type RuntimeInfo struct {
-	Stage RuntimeStage
+type runtimeInfo struct {
+	stage runtimeStage
 }
 
 var runtime = initRuntimeInfo()
 
-func initRuntimeInfo() RuntimeInfo {
+func initRuntimeInfo() runtimeInfo {
 	buildInfo, _ := debug.ReadBuildInfo()
-	stage := UnknownStage
+	stage := unknownStage
 	if buildInfo != nil {
 		if strings.Contains(buildInfo.Path, "pulumi-tfgen") {
-			stage = TfgenStage
+			stage = tfgenStage
 		} else if strings.Contains(buildInfo.Path, "pulumi-resource") {
-			stage = ResourceStage
+			stage = resourceStage
 		}
 	}
-	return RuntimeInfo{
-		Stage: stage,
+	return runtimeInfo{
+		stage: stage,
 	}
 }
 
-func ReadRuntimeInfo() RuntimeInfo {
+func readRuntimeInfo() runtimeInfo {
 	return runtime
 }
 
-func GetRuntimeStage() RuntimeStage {
-	return runtime.Stage
+func getRuntimeStage() runtimeStage {
+	return runtime.stage
 }
 
-func SetRuntimeStage(s RuntimeStage) {
-	runtime.Stage = s
+func setRuntimeStage(s runtimeStage) {
+	runtime.stage = s
 }
