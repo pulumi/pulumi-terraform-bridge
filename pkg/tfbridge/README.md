@@ -19,24 +19,24 @@ the old name from the schema.
 
 - The upstream provider has added or removed `MaxItems: 1` from a field.
 
-[ApplyAutoAliases] applies three mitigation strategies: one for each breaking change it
+`ApplyAutoAliases` applies three mitigation strategies: one for each breaking change it
 is attempting to mitigate.
 
-- Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]: This
+- Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`: This
 creates a "hard alias", preventing the user from experiencing a breaking change between
 major versions.
 
-- Edit [ResourceInfo.Aliases]: This creates a "soft alias", making it easier for users
+- Edit `ResourceInfo.Aliases`: This creates a "soft alias", making it easier for users
 to move to the new resource when the old resource is removed.
 
-- Edit [SchemaInfo.MaxItemsOne]: This allows us to defer MaxItemsOne changes to the
+- Edit `SchemaInfo.MaxItemsOne`: This allows us to defer MaxItemsOne changes to the
 next major release.
 
-All mitigations act on [ProviderInfo.Resources] / [ProviderInfo.DataSources]. These
+All mitigations act on `ProviderInfo.Resources` / `ProviderInfo.DataSources`. These
 mitigations are then propagated to the schema (if during tfgen) or used at runtime (at
-runtime). Conceptually, [ApplyAutoAliases] performs the same kind of mitigations that a
+runtime). Conceptually, `ApplyAutoAliases` performs the same kind of mitigations that a
 careful provider author would perform manually: invoking
-[ProviderInfo.RenameResourceWithAlias], adding token aliases for resources that have
+`ProviderInfo.RenameResourceWithAlias`, adding token aliases for resources that have
 been moved, and fixing MaxItemsOne to avoid backwards compatibility breaks.
 
 The goal is to always maximize backwards compatibility and reduce breaking changes for
@@ -106,19 +106,19 @@ For example, this is the (abbreviated & modified) history for GCP's compute auto
 
 I will address each action as it applies to `"google_compute_autoscaler" in turn:
 
-# Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
+# Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`
 
 "google_compute_autoscaler.majorVersion" tells us that this record was last updated at
 major version 6. One of the previous names is also at major version 6, so we want to
 keep full backwards compatibility.
 
-ApplyAutoAliases will call [ProviderInfo.RenameResourceWithAlias] to create a SDK entry
+ApplyAutoAliases will call `ProviderInfo.RenameResourceWithAlias` to create a SDK entry
 for the old Pulumi token
 ("gcp:auto/autoscalar:Autoscalar"). "gcp:auto/autoscalar:Autoscalar" will no longer be
 hard aliased when `make tfgen` is run on version 7, since we are then allowed to make
 breaking changes.
 
-# Edit [ResourceInfo.Aliases]
+# Edit `ResourceInfo.Aliases`
 
 In this history, we have recorded two prior names for "google_compute_autoscaler":
 "gcp:auto/autoscalar:Autoscalar" and "gcp:auto/scaler:Scaler". Since
@@ -128,7 +128,7 @@ full backwards compatibility. Instead, we will apply a type alias to
 ""gcp:auto/scaler:Scaler"}`. This makes it easy for consumers to upgrade from the old
 name to the new.
 
-# Edit [SchemaInfo.MaxItemsOne]
+# Edit `SchemaInfo.MaxItemsOne`
 
 The provider has been shipped with fields that could have `MaxItemsOne` applied. Any
 change here is breaking to our users, so we prevent it. As long as the provider's major
