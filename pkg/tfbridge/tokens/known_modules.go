@@ -26,13 +26,14 @@ import (
 
 func knownModules[T b.ResourceInfo | b.DataSourceInfo](
 	prefix, defaultModule string, modules []string,
-	apply func(string, string, *T) error,
+	apply func(string, string, *T, error) error,
 	moduleTransform func(string) string,
 ) b.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
-			return fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix)
+			return apply("", upperCamelCase(tk), elem,
+				fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix))
 		}
 		mod := defaultModule
 		for _, m := range modules {
@@ -41,10 +42,11 @@ func knownModules[T b.ResourceInfo | b.DataSourceInfo](
 				break
 			}
 		}
+		var err error
 		if mod == "" {
-			return fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
+			err = fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
 		}
-		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem)
+		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem, err)
 	}
 }
 
@@ -67,12 +69,15 @@ func KnownModules(
 	}
 }
 
-func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo) error {
-	return func(mod, tk string, r *b.ResourceInfo) error {
+func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo, err error) error {
+	return func(mod, tk string, r *b.ResourceInfo, err error) error {
 		if r.Tok != "" {
 			return nil
 		}
-		tk, err := finalize(mod, tk)
+		if err != nil {
+			return err
+		}
+		tk, err = finalize(mod, tk)
 		if err != nil {
 			return err
 		}
@@ -81,12 +86,15 @@ func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo) error 
 	}
 }
 
-func knownDataSource(finalize Make) func(mod, tk string, d *b.DataSourceInfo) error {
-	return func(mod, tk string, d *b.DataSourceInfo) error {
+func knownDataSource(finalize Make) func(mod, tk string, d *b.DataSourceInfo, err error) error {
+	return func(mod, tk string, d *b.DataSourceInfo, err error) error {
 		if d.Tok != "" {
 			return nil
 		}
-		tk, err := finalize(mod, "get"+tk)
+		if err != nil {
+			return err
+		}
+		tk, err = finalize(mod, "get"+tk)
 		if err != nil {
 			return err
 		}

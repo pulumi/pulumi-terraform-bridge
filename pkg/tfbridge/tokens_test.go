@@ -117,6 +117,31 @@ func TestTokensKnownModules(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensKnownModulesAlreadyMapped(t *testing.T) {
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_m1_fizz": nil,
+				"pkg_m2_buzz": nil,
+				"not_pkg_res": nil,
+			},
+		}).Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"pkg_m2_buzz": {Tok: "pkg:index:Buzz"},
+			"not_pkg_res": {Tok: "not:pkg:Res"},
+		},
+	}
+
+	err := info.ComputeTokens(tokens.KnownModules(
+		"pkg_", "", []string{"m1"}, tokens.MakeStandard("pkg")))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_m1_fizz": {Tok: "pkg:m1/fizz:Fizz"},
+		"pkg_m2_buzz": {Tok: "pkg:index:Buzz"},
+		"not_pkg_res": {Tok: "not:pkg:Res"},
+	}, info.Resources)
+}
+
 func TestTokensMappedModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
