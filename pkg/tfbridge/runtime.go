@@ -35,14 +35,6 @@ func initRuntimeInfo() runtimeInfo {
 	}
 }
 
-func readRuntimeInfo() runtimeInfo {
-	return runtime
-}
-
 func getRuntimeStage() runtimeStage {
 	return runtime.stage
-}
-
-func setRuntimeStage(s runtimeStage) {
-	runtime.stage = s
 }
