@@ -339,18 +339,21 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 		hasH = true
 	}
 
+	// if h.Elem is null and we're not trying to generate updated history, we're done
+	if h.Elem == nil && !isTfgen() {
+		return hasH, hasI
+	}
+
 	// Ensure that the h.Elem and info.Elem fields are non-nil so they can be
 	// safely recursed on.
 	//
 	// If the .Elem existed before this function, we mark it as unsafe to cleanup.
 	var hasElemH, hasElemI bool
 	populateElem := func() {
-		if isTfgen() {
-			if h.Elem == nil {
-				h.Elem = &fieldHistory{}
-			} else {
-				hasElemH = true
-			}
+		if h.Elem == nil {
+			h.Elem = &fieldHistory{}
+		} else {
+			hasElemH = true
 		}
 		if info.Elem == nil {
 			info.Elem = &SchemaInfo{}
@@ -365,7 +368,7 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	cleanupElem := func(elemHist, elemInfo bool) {
 		hasElemH = hasElemH || elemHist
 		hasElemI = hasElemI || elemInfo
-		if !hasElemH && isTfgen() {
+		if !hasElemH {
 			h.Elem = nil
 		}
 		if !hasElemI {
@@ -377,17 +380,11 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	switch e := e.(type) {
 	case shim.Resource:
 		populateElem()
-		var eHasH, eHasI bool
-		if h.Elem != nil {
-			eHasH, eHasI = applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
-		}
+		eHasH, eHasI := applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
 		cleanupElem(eHasH, eHasI)
 	case shim.Schema:
 		populateElem()
-		var eHasH, eHasI bool
-		if h.Elem != nil {
-			eHasH, eHasI = applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
-		}
+		eHasH, eHasI := applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
 		cleanupElem(eHasH, eHasI)
 	}
 
@@ -520,8 +517,4 @@ func aliasOrRenameDataSource(
 			computed.Tok.Module().Name().String(), computed)
 	}
 
-}
-
-func isTfgen() bool {
-	return getRuntimeStage() != resourceStage
 }

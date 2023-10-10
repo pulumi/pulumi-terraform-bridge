@@ -35,6 +35,6 @@ func initRuntimeInfo() runtimeInfo {
 	}
 }
 
-func getRuntimeStage() runtimeStage {
-	return runtime.stage
+func isTfgen() bool {
+	return runtime.stage != resourceStage
 }
