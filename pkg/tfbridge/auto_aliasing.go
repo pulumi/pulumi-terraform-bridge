@@ -88,34 +88,11 @@ func (info *ProviderInfo) MustApplyAutoAliases() {
 
 // Automatically applies backwards compatibility best practices.
 //
-// Specifically, [ApplyAutoAliases] may perform the following actions:
+// The goal is to prevent breaking changes from Pulumi maintainers or from the upstream
+// provider from causing breaking changes in minor version bumps. We do this by deferring
+// certain types of breaking changes to major versions.
 //
-// - Call [ProviderInfo.RenameResourceWithAlias] or [ProviderInfo.RenameDataSource]
-// - Edit [ResourceInfo.Aliases]
-// - Edit [SchemaInfo.MaxItemsOne]
-//
-// The goal is to always maximize backwards compatibility and reduce breaking changes for
-// the users of the Pulumi providers.
-//
-// Resource aliases help mask TF provider resource renames or changes in mapped tokens so
-// older programs continue to work.  See [ResourceInfo.RenameResourceWithAlias] and
-// [ResourceInfo.Aliases] for more details.
-//
-// [SchemaInfo.MaxItemsOne] changes are also important because they involve flattening and
-// pluralizing names. Collections (lists or sets) marked with MaxItems=1 are projected as
-// scalar types in Pulumi SDKs. Therefore changes to the MaxItems property may be breaking
-// the compilation of programs as the type changes from `T to List[T]` or vice versa. To
-// avoid these breaking changes, this method undoes any upstream changes to MaxItems using
-// [SchemaInfo.MaxItemsOne] overrides. This happens until a major version change is
-// detected, and then overrides are cleared. Effectively this makes sure that upstream
-// MaxItems changes are deferred until the next major version.
-//
-// Implementation note: to operate correctly this method needs to keep a persistent track
-// of a database of past decision history. This is currently done by doing reads and
-// writes to `providerInfo.GetMetadata()`, which is assumed to be persisted across
-// provider releases. The bridge framework keeps this information written out to an opaque
-// `bridge-metadata.json` blob which is expected to be stored in source control to persist
-// across releas
+// For details on the implement ion of this method, go to ./README.md#"Automatic Aliasing"
 func (info *ProviderInfo) ApplyAutoAliases() error {
 	artifact := info.GetMetadata()
 	hist, err := getHistory(artifact)
