@@ -4,7 +4,7 @@
 
 Automatically applies backwards compatibility best practices.
 
-The goal is to prevent breaking changes from Pulumi maintainers or from the upstream
+The goal is to prevent breaking changes by Pulumi maintainers or by the upstream
 provider from causing breaking changes in minor version bumps. We do this by deferring
 certain types of breaking changes to major versions.
 
@@ -23,8 +23,8 @@ the old name from the schema.
 is attempting to mitigate.
 
 - Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`: This
-creates a "hard alias", preventing the user from experiencing a breaking change between
-major versions.
+creates a "hard alias", preventing the user from experiencing a breaking change during
+minor version upgrades.
 
 - Edit `ResourceInfo.Aliases`: This creates a "soft alias", making it easier for users
 to move to the new resource when the old resource is removed.
@@ -61,11 +61,11 @@ flowchart TD
 > (\*)   This gets called anytime Provider() gets called.
 >
 > (\*\*) A "hard alias" is a fully schematized copy of a resource, where we
-> ensure. backwards compatibility for new token names. Mainly used during minor upgrades.
+> ensure backwards compatibility for new token names. Mainly used during minor upgrades.
 >
 > (\*\*\*) A "soft alias" is a plain rename of a token, which requires a user to rename
-> the resource (but not do an stack surgery). Only a resource rename is needed. Acceptable
-> as a result of major upgrades
+> the resource (but not do any stack surgery). Only a resource rename is needed. Acceptable
+> as a result of major upgrades.
 
 This records is stored using the
 github.com/pulumi/pulumi-terraform-bridge/unstable/metadata interface. It is written to
@@ -104,7 +104,7 @@ For example, this is the (abbreviated & modified) history for GCP's compute auto
 	}
 ```
 
-I will address each action as it applies to `"google_compute_autoscaler" in turn:
+Here are the details of each action as it applies to `"google_compute_autoscaler" in turn:
 
 # Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`
 
