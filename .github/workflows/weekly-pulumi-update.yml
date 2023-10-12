@@ -26,8 +26,6 @@ jobs:
         go-version: ${{matrix.goversion}}
         cache-dependency-path: |
             **/go.sum
-    - name: Install latest pulumi
-      uses: pulumi/actions@v4
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
@@ -42,9 +40,13 @@ jobs:
 
         git config --local user.name 'pulumi-bot'
 
+        PULUMI_VERSION=$(go run scripts/build.go latest-pulumi-version)
+
+        echo "Latest Pulumi version is $PULUMI_VERSION"
+
         git checkout -b update-pulumi/${{ github.run_id }}-${{ github.run_number }}
 
-        PULUMI_VERSION=$(pulumi version)
+        # Write some bash code to find the latest Pulumi version.
 
         echo "Update Pulumi dependencies to $PULUMI_VERSION"
 
