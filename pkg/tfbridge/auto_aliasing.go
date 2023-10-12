@@ -152,10 +152,12 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 		f()
 	}
 
-	if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
-		// Set fails only when `hist` is not serializable. Because `hist` is
-		// composed of marshallable, non-cyclic types, this is impossible.
-		contract.AssertNoErrorf(err, "History failed to serialize")
+	if isTfgen() {
+		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
+			// Set fails only when `hist` is not serializable. Because `hist` is
+			// composed of marshallable, non-cyclic types, this is impossible.
+			contract.AssertNoErrorf(err, "History failed to serialize")
+		}
 	}
 
 	return nil
@@ -185,10 +187,12 @@ func aliasResource(
 ) {
 	prev, hasPrev := hist[tfToken]
 	if !hasPrev {
-		// It's not in the history, so it must be new. Stick it in the history for
-		// next time.
-		hist[tfToken] = &tokenHistory[tokens.Type]{
-			Current: computed.Tok,
+		if isTfgen() {
+			// It's not in the history, so it must be new. Stick it in the history for
+			// next time.
+			hist[tfToken] = &tokenHistory[tokens.Type]{
+				Current: computed.Tok,
+			}
 		}
 	} else {
 		// We don't do this eagerly because aliasResource is called while
@@ -203,7 +207,7 @@ func aliasResource(
 	// Note: If the user explicitly sets a MaxItemOne value, that value is respected
 	// and overwrites the current history.'
 
-	if res == nil {
+	if res == nil || hist[tfToken] == nil {
 		return
 	}
 
@@ -238,7 +242,7 @@ func applyResourceMaxItemsOneAliasing(
 		hasH = hasH || fieldHasHist
 		hasI = hasI || fieldHasInfo
 
-		if !hasH {
+		if !hasH && isTfgen() {
 			delete(*hist, k)
 		}
 		if !hasI {
@@ -297,17 +301,24 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 		// MaxItemsOne does not apply, so do nothing
 	} else if info.MaxItemsOne != nil {
 		// The user has overwritten the value, so we will just record that.
-		h.MaxItemsOne = info.MaxItemsOne
-		hasH = true
+		if isTfgen() {
+			h.MaxItemsOne = info.MaxItemsOne
+			hasH = true
+		}
 	} else if h.MaxItemsOne != nil {
 		// If we have a previous value in the history, we keep it as is.
 		info.MaxItemsOne = h.MaxItemsOne
 		hasI = true
-	} else {
+	} else if isTfgen() {
 		// There is no history for this value, so we bake it into the
 		// alias history.
 		h.MaxItemsOne = BoolRef(IsMaxItemsOne(schema, info))
 		hasH = true
+	}
+
+	// if h.Elem is null and we're not trying to generate updated history, we're done
+	if h.Elem == nil && !isTfgen() {
+		return hasH, hasI
 	}
 
 	// Ensure that the h.Elem and info.Elem fields are non-nil so they can be
@@ -444,7 +455,6 @@ func aliasDataSource(
 	}
 
 	applyResourceMaxItemsOneAliasing(ds, &hist[tfToken].Fields, &computed.Fields)
-
 }
 
 func aliasOrRenameDataSource(
