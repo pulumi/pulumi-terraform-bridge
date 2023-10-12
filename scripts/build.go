@@ -146,7 +146,6 @@ func latestPulumiVersion() string {
 		}
 	}
 
-	// Bash code to list package
 	var stdout bytes.Buffer
 
 	{
