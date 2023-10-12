@@ -46,8 +46,6 @@ jobs:
 
         git checkout -b update-pulumi/${{ github.run_id }}-${{ github.run_number }}
 
-        # Write some bash code to find the latest Pulumi version.
-
         echo "Update Pulumi dependencies to $PULUMI_VERSION"
 
         go run scripts/build.go update-pulumi-deps "$PULUMI_VERSION"
