@@ -21,6 +21,8 @@ func main() {
 		lintMain()
 	case "update-pulumi-deps":
 		updatePulumiDeps()
+	case "latest-pulumi-version":
+		fmt.Println(latestPulumiVersion())
 	default:
 		usage()
 	}
@@ -115,4 +117,45 @@ func findGoModuleRoots() (result []string) {
 		result = append(result, d)
 	}
 	return result
+}
+
+func latestPulumiVersion() string {
+	d, err := os.MkdirTemp("", "version-extractor")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(d); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	{
+		cmd := exec.Command("go", "mod", "init", "github.com/pulumi/version-extractor")
+		cmd.Dir = d
+		if err := cmd.Run(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	{
+		cmd := exec.Command("go", "get", "-u", "github.com/pulumi/pulumi/pkg/v3")
+		cmd.Dir = d
+		if err := cmd.Run(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	var stdout bytes.Buffer
+
+	{
+		cmd := exec.Command("go", "list", "-f", "{{.Version}}", "-m", "github.com/pulumi/pulumi/pkg/v3")
+		cmd.Dir = d
+		cmd.Stdout = &stdout
+		if err := cmd.Run(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return strings.TrimSpace(stdout.String())
 }
