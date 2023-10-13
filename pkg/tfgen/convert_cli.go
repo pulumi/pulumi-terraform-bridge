@@ -85,6 +85,12 @@ type cliConverter struct {
 	opts []pcl.BindOption             // options cache; do not set
 }
 
+// Represents mappings that need to be passed to the converter.
+type mapping struct {
+	name string
+	info tfbridge.ProviderInfo
+}
+
 // Represents a partially converted example. PCL is the Pulumi dialect of HCL.
 type translatedExample struct {
 	PCL         string          `json:"pcl"`
@@ -191,10 +197,7 @@ func (cc *cliConverter) bulkConvert() error {
 		examples[fileName] = hcl
 		n++
 	}
-	result, err := cc.convertViaPulumiCLI(examples, []struct {
-		name string
-		info tfbridge.ProviderInfo
-	}{
+	result, err := cc.convertViaPulumiCliBatchedParallel(examples, []mapping{
 		{
 			name: cc.packageName,
 			info: cc.info,
@@ -213,6 +216,34 @@ func (cc *cliConverter) bulkConvert() error {
 	return nil
 }
 
+func (cc *cliConverter) convertViaPulumiCliBatchedParallel(
+	examples map[string]string,
+	mappings []mapping,
+) (
+	map[string]translatedExample,
+	error,
+) {
+	batch := 1000
+	if b, ok := os.LookupEnv("PULUMI_CONVERT_BATCH"); ok {
+		if n, err := strconv.Atoi(b); err == nil {
+			batch = n
+		}
+	}
+
+	workers := -1 // use nCPU
+	if b, ok := os.LookupEnv("PULUMI_CONVERT_WORKERS"); ok {
+		if n, err := strconv.Atoi(b); err == nil {
+			workers = n
+		}
+	}
+
+	transform := func(examples map[string]string) (map[string]translatedExample, error) {
+		return cc.convertViaPulumiCLI(examples, mappings)
+	}
+
+	return parTransformMap(examples, transform, workers, batch)
+}
+
 // Calls pulumi convert to bulk-convert examples.
 //
 // To facilitate high-throughput conversion, an `examples.json` protocol is employed to convert
@@ -225,10 +256,7 @@ func (cc *cliConverter) bulkConvert() error {
 // memory, for example run 4 instances of `pulumi convert` on 25% of examples each.
 func (*cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
-	mappings []struct {
-		name string
-		info tfbridge.ProviderInfo
-	},
+	mappings []mapping,
 ) (
 	output map[string]translatedExample,
 	finalError error,

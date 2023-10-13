@@ -130,10 +130,7 @@ output "someOutput" {
 		out, err := cc.convertViaPulumiCLI(map[string]string{
 			"example1": simpleResourceTF,
 			"example2": simpleDataSourceTF,
-		}, []struct {
-			name string
-			info tfbridge.ProviderInfo
-		}{{info: p, name: "simple"}})
+		}, []mapping{{info: p, name: "simple"}})
 
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(out))
