@@ -223,14 +223,14 @@ func (cc *cliConverter) convertViaPulumiCliBatchedParallel(
 	map[string]translatedExample,
 	error,
 ) {
-	batch := 36
+	batch := 256 // default
 	if b, ok := os.LookupEnv("PULUMI_CONVERT_BATCH"); ok {
 		if n, err := strconv.Atoi(b); err == nil {
 			batch = n
 		}
 	}
 
-	workers := -1 // use nCPU
+	workers := 2 // default
 	if b, ok := os.LookupEnv("PULUMI_CONVERT_WORKERS"); ok {
 		if n, err := strconv.Atoi(b); err == nil {
 			workers = n
