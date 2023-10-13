@@ -46,11 +46,11 @@ func main() {
 	if !exists(baselinedir) || !exists(experimentaldir) {
 		os.Setenv("GOWORK", "off")
 
-		os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
-		tfgen(1)
-
 		os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
 		tfgen(0)
+
+		os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
+		tfgen(1)
 	}
 
 	baselinestats := readstats(baselinedir)
