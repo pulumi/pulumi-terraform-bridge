@@ -16,27 +16,27 @@ package tfgen
 
 import (
 	"fmt"
+	"math"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParTransformMap(t *testing.T) {
-	inputs := map[int]int{
-		1:  2,
-		2:  4,
-		4:  8,
-		8:  16,
-		16: 32,
+
+	mkMap := func(n int) map[int]int {
+		m := map[int]int{}
+		for i := 0; i < n; i++ {
+			m[i] = 2 * i
+		}
+		return m
 	}
 
-	inputsBad := map[int]int{
-		1:  2,
-		2:  4,
-		4:  -8,
-		8:  16,
-		16: 32,
-	}
+	inputs := mkMap(1000)
+
+	inputsBad := mkMap(1000)
+	inputsBad[4] = -8
 
 	type testCase struct {
 		inputs  map[int]int
@@ -68,8 +68,18 @@ func TestParTransformMap(t *testing.T) {
 		tc := tc
 
 		t.Run(fmt.Sprintf("w%d__b%d", tc.workers, tc.batch), func(t *testing.T) {
-			actual, actualErr := parTransformMap(tc.inputs, increment, tc.workers, tc.batch)
+			var ops atomic.Uint64
+
+			inc := func(m map[int]int) (map[int]int, error) {
+				assert.LessOrEqual(t, len(m), tc.batch)
+				ops.Add(1)
+				return increment(m)
+			}
+
+			actual, actualErr := parTransformMap(tc.inputs, inc, tc.workers, tc.batch)
 			expect, expectErr := increment(tc.inputs)
+			assert.Equal(t, int(math.Ceil(float64(len(tc.inputs))/float64(tc.batch))),
+				int(ops.Load()))
 			assert.Equal(t, expectErr, actualErr)
 			assert.Equal(t, expect, actual)
 		})

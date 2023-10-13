@@ -223,7 +223,7 @@ func (cc *cliConverter) convertViaPulumiCliBatchedParallel(
 	map[string]translatedExample,
 	error,
 ) {
-	batch := 1000
+	batch := 36
 	if b, ok := os.LookupEnv("PULUMI_CONVERT_BATCH"); ok {
 		if n, err := strconv.Atoi(b); err == nil {
 			batch = n
@@ -237,8 +237,8 @@ func (cc *cliConverter) convertViaPulumiCliBatchedParallel(
 		}
 	}
 
-	transform := func(examples map[string]string) (map[string]translatedExample, error) {
-		return cc.convertViaPulumiCLI(examples, mappings)
+	transform := func(ex map[string]string) (map[string]translatedExample, error) {
+		return cc.convertViaPulumiCLI(ex, mappings)
 	}
 
 	return parTransformMap(examples, transform, workers, batch)

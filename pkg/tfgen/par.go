@@ -79,10 +79,10 @@ func parTransformMap[K comparable, T any, U any](
 	remainingKeys := keys
 	for len(remainingKeys) > 0 {
 		var keyBatch []K
-		if len(remainingKeys) >= batch {
+		if len(remainingKeys) <= batch {
 			keyBatch, remainingKeys = remainingKeys, nil
 		} else {
-			keyBatch, remainingKeys = keys[:batch], keys[batch:]
+			keyBatch, remainingKeys = remainingKeys[:batch], remainingKeys[batch:]
 		}
 		ch <- keyBatch
 	}
