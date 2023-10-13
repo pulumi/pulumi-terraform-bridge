@@ -15,6 +15,11 @@
 // This script assists the rollout of the new example converter across bridged providers by
 // computing the difference in example generation metrics. It will run `make tfgen` twice, capture
 // example metrics, print them, and print a detailed comparison on degraded examples.
+//
+// How to run:
+//
+//	cd ~/code/pulumi-aws
+//	go run ~/code/pulumi-terraform-bridge/unstable/scripts/exconverter/main.go -dir "$PWD/workspace"
 package main
 
 import (
