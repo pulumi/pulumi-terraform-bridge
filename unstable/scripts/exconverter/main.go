@@ -52,10 +52,10 @@ func main() {
 		os.Setenv("GOWORK", "off")
 
 		os.Setenv("COVERAGE_OUTPUT_DIR", baselinedir)
-		tfgen(0)
+		tfgen(false)
 
 		os.Setenv("COVERAGE_OUTPUT_DIR", experimentaldir)
-		tfgen(1)
+		tfgen(true)
 	}
 
 	baselinestats := readstats(baselinedir)
@@ -182,9 +182,9 @@ func readstats(dir string) stats {
 	return s
 }
 
-func tfgen(convert int) {
+func tfgen(convert bool) {
 	var cmd *exec.Cmd
-	if convert == 0 {
+	if !convert {
 		cmd = exec.Command("make", "tfgen", "PULUMI_CONVERT=0")
 	} else {
 		cmd = exec.Command("make", "tfgen", "PULUMI_CONVERT=1")
