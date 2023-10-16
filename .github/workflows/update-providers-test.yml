@@ -1,4 +1,4 @@
-name: Test the bridge by attemping to update providers
+name: Test the bridge by previewing provider bridge upgrades
 
 on:
 
