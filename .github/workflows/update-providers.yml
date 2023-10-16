@@ -1,5 +1,4 @@
-name: Test the bridge by attemping to update providers
-
+name: Update Providers with new bridge version
 on:
   workflow_dispatch:
     inputs:
@@ -7,73 +6,71 @@ on:
         description: 'Version of Bridge to upgrade to'
         required: true
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Test upgrading ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.event.inputs.bridgeVersion }}
+    name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.event.inputs.bridgeVersion }}
     steps:
-      - name: Trigger upgrade
-        uses: peter-evans/repository-dispatch@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/${{ matrix.provider }}
-          event-type: upgrade-bridge
-          client-payload: |-
-            {
-               "target-bridge-version": ${{ toJSON(github.sha) }},
-               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
-               "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature. DO NOT MERGE.",
-               "automerge": false
-            }
+          repo: pulumi/pulumictl
+      - name: Trigger Update
+        run: pulumictl dispatch -r pulumi/${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
     strategy:
       fail-fast: false
       matrix:
         provider:
           - pulumi-aiven
-          # - pulumi-akamai
-          # - pulumi-alicloud
-          # - pulumi-auth0
-          # - pulumi-aws
-          # - pulumi-azure
-          # - pulumi-azuread
-          # - pulumi-azuredevops
-          # - pulumi-civo
-          # - pulumi-cloudamqp
-          # - pulumi-cloudflare
-          # - pulumi-cloudinit
-          # - pulumi-consul
-          # - pulumi-datadog
-          # - pulumi-digitalocean
-          # - pulumi-dnsimple
-          # - pulumi-docker
-          # - pulumi-equinix-metal
-          # - pulumi-f5bigip
-          # - pulumi-fastly
-          # - pulumi-gcp
-          # - pulumi-github
-          # - pulumi-gitlab
-          # - pulumi-hcloud
-          # - pulumi-kafka
-          # - pulumi-keycloak
-          # - pulumi-kong
-          # - pulumi-linode
-          # - pulumi-mailgun
-          # - pulumi-mongodbatlas
-          # - pulumi-mysql
-          # - pulumi-newrelic
-          # - pulumi-ns1
-          # - pulumi-okta
-          # - pulumi-openstack
-          # - pulumi-pagerduty
-          # - pulumi-postgresql
-          # - pulumi-rabbitmq
-          # - pulumi-rancher2
-          # - pulumi-random
-          # - pulumi-signalfx
-          # - pulumi-splunk
-          # - pulumi-spotinst
-          # - pulumi-tls
-          # - pulumi-vault
-          # - pulumi-venafi
-          # - pulumi-vsphere
-          # - pulumi-wavefront
+          - pulumi-akamai
+          - pulumi-alicloud
+          - pulumi-auth0
+          - pulumi-aws
+          - pulumi-azure
+          - pulumi-azuread
+          - pulumi-azuredevops
+          - pulumi-civo
+          - pulumi-cloudamqp
+          - pulumi-cloudflare
+          - pulumi-cloudinit
+          - pulumi-consul
+          - pulumi-datadog
+          - pulumi-digitalocean
+          - pulumi-dnsimple
+          - pulumi-docker
+          - pulumi-equinix-metal
+          - pulumi-f5bigip
+          - pulumi-fastly
+          - pulumi-gcp
+          - pulumi-github
+          - pulumi-gitlab
+          - pulumi-hcloud
+          - pulumi-kafka
+          - pulumi-keycloak
+          - pulumi-kong
+          - pulumi-linode
+          - pulumi-mailgun
+          - pulumi-mongodbatlas
+          - pulumi-mysql
+          - pulumi-newrelic
+          - pulumi-ns1
+          - pulumi-okta
+          - pulumi-openstack
+          - pulumi-pagerduty
+          - pulumi-postgresql
+          - pulumi-rabbitmq
+          - pulumi-rancher2
+          - pulumi-random
+          - pulumi-signalfx
+          - pulumi-splunk
+          - pulumi-spotinst
+          - pulumi-tls
+          - pulumi-vault
+          - pulumi-venafi
+          - pulumi-vsphere
+          - pulumi-wavefront
