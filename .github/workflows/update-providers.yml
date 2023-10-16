@@ -21,7 +21,7 @@ jobs:
           client-payload: |-
             {
                "target-bridge-version": ${{ toJSON(github.sha) }},
-               "pr-reviewers": ${{ toJSON(github.triggerring_actor && github.triggerring_actor || "t0yv0") }},
+               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
                "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature. DO NOT MERGE.",
                "automerge": false
             }
