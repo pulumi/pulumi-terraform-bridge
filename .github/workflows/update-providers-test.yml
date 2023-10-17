@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
     inputs: {}
 
-  # Alternatively, they can be triggered by opening a feature-* branch. Not having these enabled on
-  # normal branches and PRs is intentional as the checks consume a lot of resources.
-  push:
-    branches:
-    - feature-**
-    paths-ignore:
-    - CHANGELOG.md
-    tags-ignore:
-    - "*"
-    - "**"
+  # # Alternatively, they can be triggered by opening a feature-* branch. Not having these enabled on
+  # # normal branches and PRs is intentional as the checks consume a lot of resources.
+  # push:
+  #   branches:
+  #   - feature-**
+  #   paths-ignore:
+  #   - CHANGELOG.md
+  #   tags-ignore:
+  #   - "*"
+  #   - "**"
 
 jobs:
   build:
@@ -41,50 +41,18 @@ jobs:
       matrix:
         provider:
           - pulumi-aiven
-          # - pulumi-akamai
-          # - pulumi-alicloud
-          # - pulumi-auth0
-          # - pulumi-aws
-          # - pulumi-azure
-          # - pulumi-azuread
-          # - pulumi-azuredevops
-          # - pulumi-civo
-          # - pulumi-cloudamqp
-          # - pulumi-cloudflare
-          # - pulumi-cloudinit
-          # - pulumi-consul
-          # - pulumi-datadog
-          # - pulumi-digitalocean
-          # - pulumi-dnsimple
-          # - pulumi-docker
-          # - pulumi-equinix-metal
-          # - pulumi-f5bigip
-          # - pulumi-fastly
-          # - pulumi-gcp
-          # - pulumi-github
-          # - pulumi-gitlab
-          # - pulumi-hcloud
-          # - pulumi-kafka
-          # - pulumi-keycloak
-          # - pulumi-kong
-          # - pulumi-linode
-          # - pulumi-mailgun
-          # - pulumi-mongodbatlas
-          # - pulumi-mysql
-          # - pulumi-newrelic
-          # - pulumi-ns1
-          # - pulumi-okta
-          # - pulumi-openstack
-          # - pulumi-pagerduty
-          # - pulumi-postgresql
-          # - pulumi-rabbitmq
-          # - pulumi-rancher2
-          # - pulumi-random
-          # - pulumi-signalfx
-          # - pulumi-splunk
-          # - pulumi-spotinst
-          # - pulumi-tls
-          # - pulumi-vault
-          # - pulumi-venafi
-          # - pulumi-vsphere
-          # - pulumi-wavefront
+          - pulumi-auth0
+          - pulumi-aws
+          - pulumi-azure
+          - pulumi-azuread
+          - pulumi-cloudflare
+          - pulumi-datadog
+          - pulumi-digitalocean
+          - pulumi-docker
+          - pulumi-fastly
+          - pulumi-gcp
+          - pulumi-github
+          - pulumi-hcloud
+          - pulumi-okta
+          - pulumi-random
+          - pulumi-tls
