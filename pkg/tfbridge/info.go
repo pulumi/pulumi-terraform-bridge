@@ -120,6 +120,14 @@ type ProviderInfo struct {
 	// the bridge completed its original version based on the TF schema.
 	// A hook to enable custom schema modifications specific to a provider.
 	SchemaPostProcessor func(spec *pschema.PackageSpec)
+
+	// Disables validation of provider-level configuration for Plugin Framework based providers.
+	// Hybrid providers that utilize a mixture of Plugin Framework and SDKv2 based resources may
+	// opt into this to workaround slowdown in PF validators, since their configuration is
+	// already being checked by SDKv2 based validators.
+	//
+	// See also: pulumi/pulumi-terraform-bridge#1448
+	SkipValidateProviderConfigForPluginFramework bool
 }
 
 // Send logs or status logs to the user.
