@@ -29,7 +29,8 @@ func (p *provider) DeleteWithContext(
 	ctx context.Context,
 	urn resource.URN,
 	id resource.ID,
-	props resource.PropertyMap,
+	_ resource.PropertyMap, /* inputs */
+	outputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 
@@ -40,7 +41,7 @@ func (p *provider) DeleteWithContext(
 		return resource.StatusOK, err
 	}
 
-	props, err = transformFromState(ctx, rh, props)
+	props, err := transformFromState(ctx, rh, outputs)
 	if err != nil {
 		return resource.StatusOK, err
 	}

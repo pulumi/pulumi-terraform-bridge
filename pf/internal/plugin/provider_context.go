@@ -59,7 +59,7 @@ type ProviderWithContext interface {
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 
 	DeleteWithContext(ctx context.Context, urn resource.URN, id resource.ID,
-		props resource.PropertyMap, timeout float64) (resource.Status, error)
+		inputs, outputs resource.PropertyMap, timeout float64) (resource.Status, error)
 
 	ConstructWithContext(ctx context.Context, info p.ConstructInfo, typ tokens.Type, name tokens.QName,
 		parent resource.URN, inputs resource.PropertyMap,
@@ -144,9 +144,14 @@ func (prov *provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOut
 		preview)
 }
 
-func (prov *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float64) (resource.Status, error) {
-	return prov.ProviderWithContext.DeleteWithContext(prov.ctx, urn, id, props, timeout)
+func (prov *provider) Delete(
+	urn resource.URN,
+	id resource.ID,
+	inputs, outputs resource.PropertyMap,
+	timeout float64,
+) (resource.Status, error) {
+	return prov.ProviderWithContext.DeleteWithContext(prov.ctx, urn, id, inputs, outputs,
+		timeout)
 }
 
 func (prov *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
