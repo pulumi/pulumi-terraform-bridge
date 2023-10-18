@@ -60,12 +60,7 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 ### Releasing
 
-We use git tags and [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
-1. Maintainers will push a new semver [tag](https://github.com/pulumi/pulumi-terraform-bridge/tags) when appropriate
-1. Maintainers will then generate a Release with Changelog using [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), using the tag pushed in the
-first step.
-1. Finally, maintainers will roll out bridge updates across Pulumi providers via manually running the [bridge update
-workflow in CI Management](https://github.com/pulumi/ci-mgmt/actions/workflows/update-bridge-ecosystem-providers.yml).
+See [playbook](https://github.com/pulumi/platform-providers-team/blob/main/playbooks/releasing-tf-bridge.md).
 
 ### Adapting a New Terraform Provider
 
