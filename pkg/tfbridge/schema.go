@@ -1006,9 +1006,9 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 		switch val.Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(val.Bool())
-		case reflect.Int:
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return resource.NewNumberProperty(float64(val.Int()))
-		case reflect.Float64:
+		case reflect.Float32, reflect.Float64:
 			return resource.NewNumberProperty(val.Float())
 		case reflect.String:
 			// If the string is the special unknown property sentinel, reflect back an unknown computed property.  Note that
