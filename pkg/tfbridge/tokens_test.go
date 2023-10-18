@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func TestTokensSingleModule(t *testing.T) {
@@ -1023,7 +1024,8 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 }
 
 func TestAutoAliasingChangeDataSources(t *testing.T) {
-	provider := func(meta string) *tfbridge.ProviderInfo {
+	provider := func(t *testing.T, meta string, n int) *tfbridge.ProviderInfo {
+		dsName := ptokens.ModuleMember(fmt.Sprintf("pkg:index:getD%d", n))
 		info, err := metadata.New([]byte(meta))
 		require.NoError(t, err)
 
@@ -1035,7 +1037,7 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
 				},
 			}).Shim(),
 			DataSources: map[string]*tfbridge.DataSourceInfo{
-				"pkg_d1": {Tok: "pkg:index:getD2"},
+				"pkg_d1": {Tok: dsName},
 			},
 			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
 		}
@@ -1073,13 +1075,23 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
         }
     }`
 
-	// Confirm that ApplyAutoAliases will update current and append history.
-	p := provider(meta1)
-	require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+	// Test that ApplyAutoAliases will update current and append history.
+	t.Run("confirm-change", func(t *testing.T) {
+		p := provider(t, meta1, 2)
+		require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+	})
 
-	// Confirm that ApplyAutoAliases is idempotent once changes have been applied.
-	p = provider(meta2)
-	require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+	// Test that ApplyAutoAliases is idempotent once changes have been applied.
+	t.Run("idempotent", func(t *testing.T) {
+		p := provider(t, meta2, 2)
+		require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+	})
+
+	// Test that we don't keep redundant history
+	t.Run("reversion", func(t *testing.T) {
+		p := provider(t, meta2, 1)
+		require.JSONEq(t, meta1, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+	})
 }
 
 type Schema struct {
