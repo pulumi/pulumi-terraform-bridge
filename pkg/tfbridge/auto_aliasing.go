@@ -471,18 +471,12 @@ func aliasOrRenameDataSource(
 		return
 	}
 
-	var alreadyPresent bool
-	for _, a := range prev.Past {
-		if a.Name == prev.Current {
-			alreadyPresent = true
-			break
-		}
-	}
-	if !alreadyPresent && ds.Tok != prev.Current {
+	if prev.Current != ds.Tok {
 		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
 			Name:         prev.Current,
 			MajorVersion: currentVersion,
 		})
+		prev.Current = ds.Tok
 	}
 	for _, a := range prev.Past {
 		if a.MajorVersion != currentVersion {

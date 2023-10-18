@@ -1022,6 +1022,66 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 	})
 }
 
+func TestAutoAliasingChangeDataSources(t *testing.T) {
+	provider := func(meta string) *tfbridge.ProviderInfo {
+		info, err := metadata.New([]byte(meta))
+		require.NoError(t, err)
+
+		prov := &tfbridge.ProviderInfo{
+			Version: "1.0.0",
+			P: (&schema.Provider{
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_d1": (&schema.Resource{}).Shim(),
+				},
+			}).Shim(),
+			DataSources: map[string]*tfbridge.DataSourceInfo{
+				"pkg_d1": {Tok: "pkg:index:getD2"},
+			},
+			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
+		}
+		err = prov.ApplyAutoAliases()
+		require.NoError(t, err)
+		return prov
+	}
+
+	meta1 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD1",
+                    "majorVersion": 1
+                }
+            }
+        }
+    }`
+
+	meta2 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD2",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD1",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	// Confirm that ApplyAutoAliases will update current and append history.
+	p := provider(meta1)
+	require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+
+	// Confirm that ApplyAutoAliases is idempotent once changes have been applied.
+	p = provider(meta2)
+	require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+}
+
 type Schema struct {
 	shim.Schema
 	MaxItemsOne bool
