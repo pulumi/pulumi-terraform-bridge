@@ -79,7 +79,8 @@ func printDocStats() {
 		elidedDescriptions, totalDescriptions, getPercentage(elidedDescriptions, totalDescriptions),
 	)
 	fmt.Printf(
-		"\t%d of %d (%.2f%%) entity descriptions contained an <elided> reference and were dropped, but examples were preserved.\n",
+		"\t%d of %d (%.2f%%) entity descriptions contained an <elided> reference and were dropped, "+
+			"but examples were preserved.\n",
 		elidedDescriptionsOnly,
 		totalDescriptions,
 		getPercentage(elidedDescriptionsOnly, totalDescriptions),
@@ -124,8 +125,8 @@ func printDocStats() {
 	fmt.Println("Argument metrics:")
 	fmt.Printf("\t%d argument descriptions were parsed from the upstream docs\n", totalArgumentsFromDocs)
 	fmt.Printf(
-		"\t%d of %d (%.2f%%) top-level input property descriptions came from an upstream attribute (as opposed to an argument). "+
-			"Nested arguments are not included in this count.\n",
+		"\t%d of %d (%.2f%%) top-level input property descriptions came from an upstream attribute "+
+			"(as opposed to an argument). Nested arguments are not included in this count.\n",
 		argumentDescriptionsFromAttributes,
 		totalArgumentsFromDocs,
 		getPercentage(argumentDescriptionsFromAttributes, totalArgumentsFromDocs),
