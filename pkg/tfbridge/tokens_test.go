@@ -1075,23 +1075,72 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
         }
     }`
 
+	meta3 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD1",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD2",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	meta4 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD3",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD1",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        },
+                        {
+                            "name": "pkg:index:getD2",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	test := func(name int, current, expected string) func(t *testing.T) {
+		return func(t *testing.T) {
+			p := provider(t, current, name)
+			require.JSONEq(t, expected,
+				string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+
+			// Regardless of the input and output, once we apply some name to
+			// our state, reapplying the same name to the new state should be
+			// idempotent.
+			t.Run("idempotent", func(t *testing.T) {
+				p := provider(t, expected, name)
+				require.JSONEq(t, expected,
+					string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+			})
+		}
+	}
+
 	// Test that ApplyAutoAliases will update current and append history.
-	t.Run("confirm-change", func(t *testing.T) {
-		p := provider(t, meta1, 2)
-		require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
-	})
+	t.Run("confirm-change", test(2, meta1, meta2))
 
-	// Test that ApplyAutoAliases is idempotent once changes have been applied.
-	t.Run("idempotent", func(t *testing.T) {
-		p := provider(t, meta2, 2)
-		require.JSONEq(t, meta2, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
-	})
+	// Test that we don't keep redundant history.
+	t.Run("reversion", test(1, meta2, meta3))
 
-	// Test that we don't keep redundant history
-	t.Run("reversion", func(t *testing.T) {
-		p := provider(t, meta2, 1)
-		require.JSONEq(t, meta1, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
-	})
+	// Test that adding a name that has already been seen works as expected.
+	t.Run("add-past", test(3, meta2, meta4))
 }
 
 type Schema struct {
