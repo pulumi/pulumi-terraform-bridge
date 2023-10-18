@@ -250,6 +250,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		panic("unknown docs kind")
 	}
 
+	entitiesCount++
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("get docs for token %s: %w", rawname, err)
 	}
@@ -1709,6 +1710,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	if isCompleteFailure {
 		hclAllLangsConversionFailures++
+		hclConversionAttempts++
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
 				"from any generated docs or SDKs.", path, err))
@@ -1751,6 +1753,8 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 		//nolint:ineffassign
 		err = nil
 	}
+
+	hclConversionAttempts++
 
 	return result.String(), nil
 }
@@ -1828,6 +1832,7 @@ func cleanupDoc(
 
 	g.debug("Cleaning up description text for [%v]", name)
 	cleanupText, elided := reformatText(infoCtx, doc.Description, footerLinks)
+	totalDescriptions++
 	if elided {
 		g.debug("Found <elided> in the description. Attempting to extract examples from the description and " +
 			"reformat examples only.")
