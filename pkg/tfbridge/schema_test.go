@@ -2433,7 +2433,15 @@ func TestOutputNumberTypes(t *testing.T) {
 		"fff": float32(50),
 		"ggg": float64(50),
 	}
-	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, map[string]*SchemaInfo{}, AssetTable{}, false, true)
+	outputs := MakeTerraformOutputs(
+		shimv1.NewProvider(testTFProvider),
+		inputs,
+		tfs,
+		map[string]*SchemaInfo{},
+		AssetTable{},
+		false,
+		true,
+	)
 	assert.Equal(t, resource.PropertyMap{
 		"aaa": resource.NewNumberProperty(50),
 		"bbb": resource.NewNumberProperty(50),
