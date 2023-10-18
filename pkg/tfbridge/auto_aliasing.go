@@ -471,18 +471,21 @@ func aliasOrRenameDataSource(
 		return
 	}
 
-	var alreadyPresent bool
-	for _, a := range prev.Past {
-		if a.Name == prev.Current {
-			alreadyPresent = true
-			break
-		}
-	}
-	if !alreadyPresent && ds.Tok != prev.Current {
+	if prev.Current != ds.Tok {
 		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
 			Name:         prev.Current,
 			MajorVersion: currentVersion,
 		})
+		prev.Current = ds.Tok
+
+		duplicates := []int{}
+		for i, v := range prev.Past {
+			if v.Name != prev.Current {
+				continue
+			}
+			duplicates = append(duplicates, i)
+		}
+		prev.Past = removeIndexes(prev.Past, duplicates)
 	}
 	for _, a := range prev.Past {
 		if a.MajorVersion != currentVersion {
@@ -494,4 +497,31 @@ func aliasOrRenameDataSource(
 			computed.Tok.Module().Name().String(), computed)
 	}
 
+}
+
+// Remove elements at indexes from src, then return the resulting array.
+//
+// indexes must be in sorted order from largest to smallest.
+func removeIndexes[T any](src []T, indexes []int) []T {
+	if len(indexes) == 0 {
+		return src
+	}
+	dst := make([]T, len(src)-len(indexes))
+	indexPtr, dstPtr := 0, 0
+	for i, v := range src {
+		if i == indexes[indexPtr] {
+			indexPtr++
+
+			// We are done, so copy the remaining elements in a block.
+			if indexPtr == len(indexes) {
+				copy(dst[dstPtr:], src[i+1:])
+				break
+			}
+
+			continue
+		}
+		dst[dstPtr] = v
+		dstPtr++
+	}
+	return dst
 }

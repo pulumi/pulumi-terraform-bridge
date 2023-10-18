@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func TestTokensSingleModule(t *testing.T) {
@@ -1020,6 +1021,126 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 
 		assertExpected(t, p)
 	})
+}
+
+func TestAutoAliasingChangeDataSources(t *testing.T) {
+	provider := func(t *testing.T, meta string, n int) *tfbridge.ProviderInfo {
+		dsName := ptokens.ModuleMember(fmt.Sprintf("pkg:index:getD%d", n))
+		info, err := metadata.New([]byte(meta))
+		require.NoError(t, err)
+
+		prov := &tfbridge.ProviderInfo{
+			Version: "1.0.0",
+			P: (&schema.Provider{
+				DataSourcesMap: schema.ResourceMap{
+					"pkg_d1": (&schema.Resource{}).Shim(),
+				},
+			}).Shim(),
+			DataSources: map[string]*tfbridge.DataSourceInfo{
+				"pkg_d1": {Tok: dsName},
+			},
+			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
+		}
+		err = prov.ApplyAutoAliases()
+		require.NoError(t, err)
+		return prov
+	}
+
+	meta1 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD1",
+                    "majorVersion": 1
+                }
+            }
+        }
+    }`
+
+	meta2 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD2",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD1",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	meta3 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD1",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD2",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	meta4 := `{
+        "auto-aliasing": {
+            "datasources": {
+                "pkg_d1": {
+                    "current": "pkg:index:getD3",
+                    "majorVersion": 1,
+                    "past": [
+                        {
+                            "name": "pkg:index:getD1",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        },
+                        {
+                            "name": "pkg:index:getD2",
+                            "inCodegen": false,
+                            "majorVersion": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }`
+
+	test := func(name int, current, expected string) func(t *testing.T) {
+		return func(t *testing.T) {
+			p := provider(t, current, name)
+			require.JSONEq(t, expected,
+				string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+
+			// Regardless of the input and output, once we apply some name to
+			// our state, reapplying the same name to the new state should be
+			// idempotent.
+			t.Run("idempotent", func(t *testing.T) {
+				p := provider(t, expected, name)
+				require.JSONEq(t, expected,
+					string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+			})
+		}
+	}
+
+	// Test that ApplyAutoAliases will update current and append history.
+	t.Run("confirm-change", test(2, meta1, meta2))
+
+	// Test that we don't keep redundant history.
+	t.Run("reversion", test(1, meta2, meta3))
+
+	// Test that adding a name that has already been seen works as expected.
+	t.Run("add-past", test(3, meta2, meta4))
 }
 
 type Schema struct {
