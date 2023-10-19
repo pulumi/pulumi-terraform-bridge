@@ -1077,7 +1077,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 			obj := MakeTerraformOutputs(p, outs, tfflds, psflds, assets, rawNames || useRawNames(tfs), supportsSecrets)
 			return resource.NewObjectProperty(obj)
 		default:
-			contract.Failf("Unexpected TF output property value: %#v", v)
+			contract.Failf("Unexpected TF output property value: %#v with type %#T", v, v)
 			return resource.NewNullProperty()
 		}
 	}
