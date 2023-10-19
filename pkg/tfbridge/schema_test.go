@@ -2413,3 +2413,42 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 	})
 	assert.Equal(t, expected, ins)
 }
+
+func TestOutputNumberTypes(t *testing.T) {
+	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+		"aaa": {Type: schemav1.TypeInt},
+		"bbb": {Type: schemav1.TypeInt},
+		"ccc": {Type: schemav1.TypeInt},
+		"ddd": {Type: schemav1.TypeInt},
+		"eee": {Type: schemav1.TypeInt},
+		"fff": {Type: schemav1.TypeFloat},
+		"ggg": {Type: schemav1.TypeFloat},
+	})
+	inputs := map[string]interface{}{
+		"aaa": int8(50),
+		"bbb": int16(50),
+		"ccc": int32(50),
+		"ddd": int64(50),
+		"eee": int(50),
+		"fff": float32(50),
+		"ggg": float64(50),
+	}
+	outputs := MakeTerraformOutputs(
+		shimv1.NewProvider(testTFProvider),
+		inputs,
+		tfs,
+		map[string]*SchemaInfo{},
+		AssetTable{},
+		false,
+		true,
+	)
+	assert.Equal(t, resource.PropertyMap{
+		"aaa": resource.NewNumberProperty(50),
+		"bbb": resource.NewNumberProperty(50),
+		"ccc": resource.NewNumberProperty(50),
+		"ddd": resource.NewNumberProperty(50),
+		"eee": resource.NewNumberProperty(50),
+		"fff": resource.NewNumberProperty(50),
+		"ggg": resource.NewNumberProperty(50),
+	}, outputs)
+}
