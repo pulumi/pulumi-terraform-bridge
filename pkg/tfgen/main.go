@@ -142,10 +142,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			// Creating an item to keep track of example coverage if the
 			// COVERAGE_OUTPUT_DIR env is set
 			var coverageTracker *CoverageTracker
-			coverageOutputDir, coverageTrackingEnabled := os.LookupEnv("COVERAGE_OUTPUT_DIR")
-			if coverageTrackingEnabled {
-				coverageTracker = newCoverageTracker(prov.Name, prov.Version)
-			}
+			coverageOutputDir, coverageTrackingOutputEnabled := os.LookupEnv("COVERAGE_OUTPUT_DIR")
+			coverageTracker = newCoverageTracker(prov.Name, prov.Version)
 
 			opts := GeneratorOptions{
 				Package:         pkg,
@@ -162,9 +160,12 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			err := gen(opts)
 
 			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
-			if coverageTrackingEnabled {
+			if coverageTrackingOutputEnabled {
 				err = coverageTracker.exportResults(coverageOutputDir)
+			} else {
+				fmt.Println("Additional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
 			}
+			fmt.Println(coverageTracker.getShortResultSummary())
 
 			return err
 		}),

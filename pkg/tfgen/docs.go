@@ -255,7 +255,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	}
 
 	if docFile == nil {
-		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
@@ -700,7 +699,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.sink.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
-		ignoredDocHeaders[header]++
 		return nil
 	case "Example Usage":
 		sectionKind = sectionExampleUsage
@@ -740,7 +738,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			!p.info.ReplaceExamplesSection() {
 			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
-			unexpectedSnippets++
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -875,17 +872,12 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	addNewHeading := func(name, desc, line string) {
 		// found a property bullet, extract the name and description
 		if nested != "" {
-			// We found this line within a nested field. We should record it as such.
-			if ret.Arguments[nested] == nil {
-				totalArgumentsFromDocs++
-			}
 			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
 			}
 			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
-			totalArgumentsFromDocs++
 		}
 	}
 
@@ -1708,7 +1700,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
-		hclAllLangsConversionFailures++
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
 				"from any generated docs or SDKs.", path, err))
@@ -1725,18 +1716,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	for lang := range failedLangs {
 		failedLangsStrings = append(failedLangsStrings, lang)
-
-		switch lang {
-		case convert.LanguageTypescript:
-			hclTypeScriptPartialConversionFailures++
-		case convert.LanguagePython:
-			hclPythonPartialConversionFailures++
-		case convert.LanguageCSharp:
-			hclCSharpPartialConversionFailures++
-		case convert.LanguageGo:
-			hclGoPartialConversionFailures++
-		}
-
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
 				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
@@ -1799,11 +1778,9 @@ func cleanupDoc(
 		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
 			if k.nested() {
-				elidedNestedArguments++
 				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
 					"dropped in the Pulumi provider.", k, name)
 			} else {
-				elidedArguments++
 				g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
 					"the Pulumi provider.", k, name)
 			}
@@ -1818,7 +1795,6 @@ func cleanupDoc(
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
-			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
 				"in the Pulumi provider.", k, name)
 			elidedDoc = true
@@ -1838,7 +1814,6 @@ func cleanupDoc(
 		if examples == "" {
 			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
 
-			elidedDescriptions++
 			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the "+
 				"Pulumi provider.", name)
 			elidedDoc = true
@@ -1847,12 +1822,10 @@ func cleanupDoc(
 
 			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
 			if examplesElided {
-				elidedDescriptions++
 				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
 					"the Pulumi provider.", name)
 				elidedDoc = true
 			} else {
-				elidedDescriptionsOnly++
 				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description "+
 					"proper will be dropped in the Pulumi provider.", name)
 				cleanupText = cleanedupExamples

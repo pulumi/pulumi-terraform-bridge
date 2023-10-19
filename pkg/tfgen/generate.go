@@ -47,7 +47,6 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
 const (
@@ -906,7 +905,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	}
 
 	pulumiPackageSpec := genSchemaResult.PackageSpec
-	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
 	var err error
@@ -986,9 +984,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
 		return errors.Wrapf(err, "failed to create project file")
 	}
-
-	// Print out some documentation stats as a summary afterwards.
-	printDocStats()
 
 	// Close the plugin host.
 	g.pluginHost.Close()
@@ -1259,7 +1254,6 @@ func (g *Generator) gatherResource(rawname string,
 		// If an input, generate the input property metadata.
 		if input(propschema, propinfo) {
 			if foundInAttributes && !isProvider {
-				argumentDescriptionsFromAttributes++
 				msg := fmt.Sprintf("Argument desc from attributes: resource, rawname = '%s', property = '%s'", rawname, key)
 				g.debug(msg)
 			}
@@ -1435,7 +1429,6 @@ func (g *Generator) gatherDataSource(rawname string,
 		if input(sch, cust) {
 			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
 			if foundInAttributes {
-				argumentDescriptionsFromAttributes++
 				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
 					rawname, arg)
 				g.debug(msg)

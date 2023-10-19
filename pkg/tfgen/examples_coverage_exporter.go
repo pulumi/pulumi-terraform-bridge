@@ -440,22 +440,20 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 	return os.WriteFile(targetFile, []byte(out), 0600)
 }
 
-// The fourth mode, which simply gives the provider name, and success percentage.
-func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileName string) error {
+// The Coverage Tracker data structure is flattened to gather statistics about each language
+type LanguageStatistic struct {
+	Total     int
+	Successes int
+}
 
-	// The Coverage Tracker data structure is flattened to gather statistics about each language
-	type LanguageStatistic struct {
-		Total     int
-		Successes int
-	}
+type ProviderStatistic struct {
+	Name             string
+	Examples         int
+	TotalConversions int
+	Successes        int
+}
 
-	type ProviderStatistic struct {
-		Name             string
-		Examples         int
-		TotalConversions int
-		Successes        int
-	}
-
+func (ce coverageExportUtil) produceStatistics() (map[string]*LanguageStatistic, ProviderStatistic) {
 	// Main maps for holding the overall provider summary, and each language conversion statistic
 	var allLanguageStatistics = make(map[string]*LanguageStatistic)
 	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName, 0, 0, 0}
@@ -491,10 +489,11 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 		}
 	}
 
-	targetFile, err := createEmptyFile(outputDirectory, fileName)
-	if err != nil {
-		return err
-	}
+	return allLanguageStatistics, providerStatistic
+}
+
+func (ce *coverageExportUtil) produceHumanReadableSummary() string {
+	allLanguageStatistics, providerStatistic := ce.produceStatistics()
 
 	// Forming a string which will eventually be written to the target file
 	fileString := fmt.Sprintf("Provider:     %s\nSuccess rate: %.2f%% (%d/%d)\n\n",
@@ -521,6 +520,17 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 			languageStatistic.Total,
 		)
 	}
+
+	return fileString
+}
+
+// The fourth mode, which simply gives the provider name, and success percentage.
+func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileName string) error {
+	targetFile, err := createEmptyFile(outputDirectory, fileName)
+	if err != nil {
+		return err
+	}
+	fileString := ce.produceHumanReadableSummary()
 
 	return os.WriteFile(targetFile, []byte(fileString), 0600)
 }
