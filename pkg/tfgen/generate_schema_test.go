@@ -368,3 +368,28 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		assert.Equal(t, "gradle", actual["buildFiles"])
 	})
 }
+
+func TestDefaultInfoFails(t *testing.T) {
+	provider := testprovider.ProviderDefaultInfo()
+	meta, err := metadata.New(nil)
+	require.NoError(t, err)
+	provider.MetadataInfo = &tfbridge.MetadataInfo{
+		Path: "non-nil",
+		Data: meta,
+	}
+	err = provider.ApplyAutoAliases()
+	require.NoError(t, err)
+	defer func() {
+		r := recover()
+		if r == nil {
+			assert.FailNow(t, "Expected an error.")
+		}
+		if _, ok := r.(string); !ok {
+			assert.FailNow(t, "Expected a string error.")
+		}
+		assert.Contains(t, r, "Property id has a DefaultInfo Value which is not a scalar")
+	}()
+	_, _ = GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+}
