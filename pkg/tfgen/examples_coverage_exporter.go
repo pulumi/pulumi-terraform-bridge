@@ -441,33 +441,33 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 }
 
 // The Coverage Tracker data structure is flattened to gather statistics about each language
-type LanguageStatistic struct {
+type languageStatistic struct {
 	Total     int
 	Successes int
 }
 
-type ProviderStatistic struct {
+type providerStatistic struct {
 	Name             string
 	Examples         int
 	TotalConversions int
 	Successes        int
 }
 
-func (ce coverageExportUtil) produceStatistics() (map[string]*LanguageStatistic, ProviderStatistic) {
+func (ce coverageExportUtil) produceStatistics() (map[string]*languageStatistic, providerStatistic) {
 	// Main maps for holding the overall provider summary, and each language conversion statistic
-	var allLanguageStatistics = make(map[string]*LanguageStatistic)
-	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName, 0, 0, 0}
+	var allLanguageStatistics = make(map[string]*languageStatistic)
+	var providerStats = providerStatistic{ce.Tracker.ProviderName, 0, 0, 0}
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
 	for _, page := range ce.Tracker.EncounteredPages {
 		for _, example := range page.Examples {
-			providerStatistic.Examples++
+			providerStats.Examples++
 			for languageName, conversionResult := range example.ConversionResults {
-				providerStatistic.TotalConversions++
+				providerStats.TotalConversions++
 
 				// Obtaining the current language we will be creating statistics for
-				var currentLanguage *LanguageStatistic
+				var currentLanguage *languageStatistic
 				if val, ok := allLanguageStatistics[languageName]; ok {
 
 					// Current language already exists in main map
@@ -475,21 +475,21 @@ func (ce coverageExportUtil) produceStatistics() (map[string]*LanguageStatistic,
 				} else {
 
 					// The main map doesn't yet contain this language, and it needs to be added
-					allLanguageStatistics[languageName] = &LanguageStatistic{0, 0}
+					allLanguageStatistics[languageName] = &languageStatistic{0, 0}
 					currentLanguage = allLanguageStatistics[languageName]
 				}
 
 				// The language's entry in the summarized results is updated and any
 				currentLanguage.Total++
 				if conversionResult.FailureSeverity == Success {
-					providerStatistic.Successes++
+					providerStats.Successes++
 					currentLanguage.Successes++
 				}
 			}
 		}
 	}
 
-	return allLanguageStatistics, providerStatistic
+	return allLanguageStatistics, providerStats
 }
 
 func (ce *coverageExportUtil) produceHumanReadableSummary() string {
