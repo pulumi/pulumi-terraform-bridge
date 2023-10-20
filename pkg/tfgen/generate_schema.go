@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -553,13 +554,13 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 			if i, ok := defaultValue.(int); ok {
 				defaultValue = float64(i)
 			}
-			// rt := reflect.TypeOf(defaultValue)
-			// if rt != nil {
-			// 	switch rt.Kind() {
-			// 	case reflect.Array, reflect.Slice, reflect.Map, reflect.Struct:
-			// 		contract.Failf("Property %v has a DefaultInfo Value which is not a scalar %v of type %T", prop.name, prop.info.Default.Value, prop.info.Default.Value)
-			// 	}
-			// }
+			rt := reflect.TypeOf(defaultValue)
+			if rt != nil {
+				switch rt.Kind() {
+				case reflect.Array, reflect.Slice, reflect.Map, reflect.Struct:
+					contract.Failf("Property %v has a DefaultInfo Value which is not a scalar %v of type %T", prop.name, prop.info.Default.Value, prop.info.Default.Value)
+				}
+			}
 
 			if len(defaults.EnvVars) != 0 {
 				defaultInfo = &pschema.DefaultSpec{
