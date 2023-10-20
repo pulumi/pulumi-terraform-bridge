@@ -255,6 +255,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	}
 
 	if docFile == nil {
+		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
@@ -699,6 +700,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	switch header {
 	case "Timeout", "Timeouts", "User Project Override", "User Project Overrides":
 		p.sink.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
+		ignoredDocHeaders[header]++
 		return nil
 	case "Example Usage":
 		sectionKind = sectionExampleUsage
@@ -872,12 +874,17 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	addNewHeading := func(name, desc, line string) {
 		// found a property bullet, extract the name and description
 		if nested != "" {
+			// We found this line within a nested field. We should record it as such.
+			if ret.Arguments[nested] == nil {
+				totalArgumentsFromDocs++
+			}
 			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
 			}
 			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
+			totalArgumentsFromDocs++
 		}
 	}
 
@@ -1778,9 +1785,11 @@ func cleanupDoc(
 		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
 		if elided {
 			if k.nested() {
+				elidedNestedArguments++
 				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
 					"dropped in the Pulumi provider.", k, name)
 			} else {
+				elidedArguments++
 				g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
 					"the Pulumi provider.", k, name)
 			}
@@ -1795,6 +1804,7 @@ func cleanupDoc(
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
+			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
 				"in the Pulumi provider.", k, name)
 			elidedDoc = true

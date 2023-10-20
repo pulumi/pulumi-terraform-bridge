@@ -163,9 +163,10 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 				if coverageTrackingOutputEnabled {
 					err = coverageTracker.exportResults(coverageOutputDir)
 				} else {
-					fmt.Println("Additional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
+					fmt.Println("\nAdditional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
 				}
 				fmt.Println(coverageTracker.getShortResultSummary())
+				printDocStats()
 			}
 
 			return err
