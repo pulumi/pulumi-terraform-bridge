@@ -515,7 +515,8 @@ type DefaultInfo struct {
 	ComputeDefault func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error)
 
 	// Value injects a raw literal value as the default.
-	// Note that this value must be a scalar!
+	// Note that only simple types such as string, int and boolean are currently supported here.
+	// Structs, slices and maps are not yet supported.
 	Value interface{}
 	// EnvVars to use for defaults. If none of these variables have values at runtime, the value of `Value` (if any)
 	// will be used as the default.

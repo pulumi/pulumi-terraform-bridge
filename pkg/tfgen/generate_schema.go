@@ -556,13 +556,43 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 			}
 			rt := reflect.TypeOf(defaultValue)
 			if rt != nil {
-				switch rt.Kind() {
-				case reflect.Array, reflect.Slice, reflect.Map, reflect.Struct:
+				switch kind := rt.Kind(); kind {
+				case
+					reflect.Bool,
+					reflect.Int,
+					reflect.Int8,
+					reflect.Int16,
+					reflect.Int32,
+					reflect.Int64,
+					reflect.Uint,
+					reflect.Uint8,
+					reflect.Uint16,
+					reflect.Uint32,
+					reflect.Uint64,
+					reflect.Float32,
+					reflect.Float64,
+					reflect.String:
+					// These are fine.
+				case
+					reflect.Uintptr,
+					reflect.Complex64,
+					reflect.Complex128,
+					reflect.Array,
+					reflect.Chan,
+					reflect.Func,
+					reflect.Interface,
+					reflect.Map,
+					reflect.Pointer,
+					reflect.Slice,
+					reflect.Struct,
+					reflect.UnsafePointer:
+					fallthrough
+				default:
 					contract.Failf(
-						"Property %v has a DefaultInfo Value which is not a scalar %v of type %T",
+						"Property %v has a DefaultInfo Value %v of kind %v which is not currently supported.",
 						prop.name,
 						prop.info.Default.Value,
-						prop.info.Default.Value,
+						kind.String(),
 					)
 				}
 			}

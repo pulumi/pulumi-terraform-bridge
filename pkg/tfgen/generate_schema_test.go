@@ -377,19 +377,15 @@ func TestDefaultInfoFails(t *testing.T) {
 		Path: "non-nil",
 		Data: meta,
 	}
-	err = provider.ApplyAutoAliases()
 	require.NoError(t, err)
 	defer func() {
 		r := recover()
-		if r == nil {
-			assert.FailNow(t, "Expected an error.")
-		}
-		if _, ok := r.(string); !ok {
-			assert.FailNow(t, "Expected a string error.")
-		}
-		assert.Contains(t, r, "Property id has a DefaultInfo Value which is not a scalar")
+		assert.Contains(
+			t,
+			r,
+			"Property id has a DefaultInfo Value [default_id] of kind slice which is not currently supported.",
+		)
 	}()
-	_, _ = GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	}))
+	// Should panic
+	_, _ = GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}))
 }
