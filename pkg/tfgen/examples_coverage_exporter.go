@@ -496,7 +496,7 @@ func (ce *coverageExportUtil) produceHumanReadableSummary() string {
 	allLanguageStatistics, providerStatistic := ce.produceStatistics()
 
 	// Forming a string which will eventually be written to the target file
-	fileString := fmt.Sprintf("Provider:     %s\nSuccess rate: %.2f%% (%d/%d)\n\n",
+	fileString := fmt.Sprintf("\nProvider:     %s\nSuccess rate: %.2f%% (%d/%d)\n\n",
 		providerStatistic.Name,
 		float64(providerStatistic.Successes)/float64(providerStatistic.TotalConversions)*100.0,
 		providerStatistic.Successes,

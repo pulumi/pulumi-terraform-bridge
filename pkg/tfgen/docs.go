@@ -740,7 +740,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			!p.info.ReplaceExamplesSection() {
 			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
-			unexpectedSnippets++
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -1708,7 +1707,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
-		hclAllLangsConversionFailures++
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
 				"from any generated docs or SDKs.", path, err))
@@ -1725,18 +1723,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	for lang := range failedLangs {
 		failedLangsStrings = append(failedLangsStrings, lang)
-
-		switch lang {
-		case convert.LanguageTypescript:
-			hclTypeScriptPartialConversionFailures++
-		case convert.LanguagePython:
-			hclPythonPartialConversionFailures++
-		case convert.LanguageCSharp:
-			hclCSharpPartialConversionFailures++
-		case convert.LanguageGo:
-			hclGoPartialConversionFailures++
-		}
-
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
 				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
@@ -1838,7 +1824,6 @@ func cleanupDoc(
 		if examples == "" {
 			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
 
-			elidedDescriptions++
 			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the "+
 				"Pulumi provider.", name)
 			elidedDoc = true
@@ -1847,12 +1832,10 @@ func cleanupDoc(
 
 			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
 			if examplesElided {
-				elidedDescriptions++
 				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
 					"the Pulumi provider.", name)
 				elidedDoc = true
 			} else {
-				elidedDescriptionsOnly++
 				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description "+
 					"proper will be dropped in the Pulumi provider.", name)
 				cleanupText = cleanedupExamples

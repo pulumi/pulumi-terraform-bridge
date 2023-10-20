@@ -987,9 +987,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		return errors.Wrapf(err, "failed to create project file")
 	}
 
-	// Print out some documentation stats as a summary afterwards.
-	printDocStats()
-
 	// Close the plugin host.
 	g.pluginHost.Close()
 
