@@ -558,7 +558,12 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 			if rt != nil {
 				switch rt.Kind() {
 				case reflect.Array, reflect.Slice, reflect.Map, reflect.Struct:
-					contract.Failf("Property %v has a DefaultInfo Value which is not a scalar %v of type %T", prop.name, prop.info.Default.Value, prop.info.Default.Value)
+					contract.Failf(
+						"Property %v has a DefaultInfo Value which is not a scalar %v of type %T",
+						prop.name,
+						prop.info.Default.Value,
+						prop.info.Default.Value,
+					)
 				}
 			}
 
