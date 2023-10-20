@@ -27,9 +27,7 @@ var (
 	elidedArguments        int
 	elidedNestedArguments  int
 	elidedAttributes       int
-
-	unexpectedSnippets            int
-	hclAllLangsConversionFailures int // examples that failed to convert in any language
+	unexpectedSnippets     int
 
 	// Arguments metrics:
 	totalArgumentsFromDocs int
