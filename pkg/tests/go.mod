@@ -3,7 +3,6 @@ module github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests
 go 1.20
 
 replace (
-	github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20230912190043-e6d96b3b8f7e
 	github.com/pulumi/pulumi-terraform-bridge/testing => ../../testing
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
