@@ -45,8 +45,8 @@ tidy::
 
 # Ideally, we would have `tidy: pin_upstream_sdk`, but `find` doesn't have the same format
 # on windows.
-pin_upstream_sdk: UpstreamPluginSDK=github.com/pulumi/terraform-plugin-sdk/v2
-pin_upstream_sdk: OutPluginSDK=github.com/pulumi/terraform-plugin-sdk/v2
+pin_upstream_sdk: UpstreamPluginSDK=github.com/hashicorp/terraform-plugin-sdk/v2
+pin_upstream_sdk: OurPluginSDK=github.com/pulumi/terraform-plugin-sdk/v2
 pin_upstream_sdk: PluginSDKVersion=v2.0.0-20230912190043-e6d96b3b8f7e
 pin_upstream_sdk:
 	# /x/muxer doesn't depend on the rest of the bridge or any TF libraries, so it
