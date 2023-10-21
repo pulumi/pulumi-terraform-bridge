@@ -3,7 +3,7 @@ module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 go 1.20
 
 require (
-	github.com/hashicorp/terraform-plugin-framework v1.1.1
+	github.com/hashicorp/terraform-plugin-framework v1.4.1
 	github.com/hashicorp/terraform-plugin-go v0.19.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
