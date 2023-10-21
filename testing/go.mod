@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/testing
 
-go 1.19
+go 1.20
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
 
@@ -26,3 +26,5 @@ require (
 	google.golang.org/grpc v1.57.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20230912190043-e6d96b3b8f7e
