@@ -193,47 +193,61 @@ func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRul
 
 // readMarkdown searches all possible locations for the markdown content
 func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFile, error) {
-	locationPrefix := getDocsPath(repo, kind)
+	locationPrefix, err := getDocsPath(repo, kind)
+	if err != nil {
+		return nil, fmt.Errorf("could not gather location prefix for %q: %w", repo, err)
+	}
 
-	for _, name := range possibleLocations {
-		location := filepath.Join(locationPrefix, name)
-		markdownBytes, err := os.ReadFile(location)
-		if err == nil {
-			return &DocFile{markdownBytes, name}, nil
-		} else if !os.IsNotExist(err) && !errors.Is(err, &os.PathError{}) {
-			// Missing doc files are expected and OK.
-			//
-			// If the file we expect is actually a directory (PathError), that
-			// is also OK.
-			//
-			// Other errors (such as permission errors) indicate a problem
-			// with the host system, and should be reported.
-			return nil, fmt.Errorf("%s: %w", location, err)
+	for _, prefix := range locationPrefix {
+		for _, name := range possibleLocations {
+			location := filepath.Join(prefix, name)
+			markdownBytes, err := os.ReadFile(location)
+			if err == nil {
+				return &DocFile{markdownBytes, name}, nil
+			} else if !os.IsNotExist(err) && !errors.Is(err, &os.PathError{}) {
+				// Missing doc files are expected and OK.
+				//
+				// If the file we expect is actually a directory (PathError), that
+				// is also OK.
+				//
+				// Other errors (such as permission errors) indicate a problem
+				// with the host system, and should be reported.
+				return nil, fmt.Errorf("%s: %w", location, err)
+			}
 		}
 	}
 	return nil, nil
 }
 
-// checkIfNewDocsExist checks if the new docs root exists
-func checkIfNewDocsExist(repo string) bool {
-	// Check if the new docs path exists
-	newDocsPath := filepath.Join(repo, "docs", "resources")
-	_, err := os.Stat(newDocsPath)
-	return !os.IsNotExist(err)
-}
-
 // getDocsPath finds the correct docs path for the repo/kind
-func getDocsPath(repo string, kind DocKind) string {
-	// Check if the new docs path exists
-	newDocsExist := checkIfNewDocsExist(repo)
-
-	if !newDocsExist {
-		// If the new path doesn't exist, use the old docs path.
-		kindString := string([]rune(kind)[0]) // We only want the first letter because the old path uses "r" and "d"
-		return filepath.Join(repo, "website", "docs", kindString)
+func getDocsPath(repo string, kind DocKind) ([]string, error) {
+	var err error
+	exists := func(p string) bool {
+		_, sErr := os.Stat(p)
+		if sErr == nil {
+			return true
+		} else if os.IsNotExist(sErr) {
+			return false
+		}
+		err = sErr
+		return false
 	}
 
-	// Otherwise use the new location path.
-	kindString := string(kind)
-	return filepath.Join(repo, "docs", kindString)
+	var paths []string
+
+	// ${repo}/docs/resources
+	//
+	// This is TF's new and preferred way to describe docs.
+	if p := filepath.Join(repo, "docs", string(kind)); exists(p) {
+		paths = append(paths, p)
+	}
+
+	// ${repo}/website/docs/r
+	//
+	// This is the legacy way to describe docs.
+	if p := filepath.Join(repo, "website", "docs", string(kind)[:1]); exists(p) {
+		paths = append(paths, p)
+	}
+
+	return paths, err
 }
