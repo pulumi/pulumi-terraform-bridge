@@ -368,3 +368,24 @@ func TestPropagateLanguageOptions(t *testing.T) {
 		assert.Equal(t, "gradle", actual["buildFiles"])
 	})
 }
+
+func TestDefaultInfoFails(t *testing.T) {
+	provider := testprovider.ProviderDefaultInfo()
+	meta, err := metadata.New(nil)
+	require.NoError(t, err)
+	provider.MetadataInfo = &tfbridge.MetadataInfo{
+		Path: "non-nil",
+		Data: meta,
+	}
+	require.NoError(t, err)
+	defer func() {
+		r := recover()
+		assert.Contains(
+			t,
+			r,
+			"Property id has a DefaultInfo Value [default_id] of kind slice which is not currently supported.",
+		)
+	}()
+	// Should panic
+	_, _ = GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}))
+}
