@@ -69,7 +69,7 @@ func TestGetDocsPath(t *testing.T) {
 			for _, f := range tt.files {
 				p := filepath.Join(repo, f)
 				require.NoError(t, os.MkdirAll(filepath.Dir(p), 0700))
-				require.NoError(t, os.WriteFile(p, []byte("test"), 0700))
+				require.NoError(t, os.WriteFile(p, []byte("test"), 0600))
 			}
 
 			check := func(expected, actual []string, err error) {
