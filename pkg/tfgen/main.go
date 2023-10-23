@@ -158,15 +158,16 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			}
 
 			err := gen(opts)
-
-			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
-			if coverageTrackingOutputEnabled {
-				err = coverageTracker.exportResults(coverageOutputDir)
-			} else {
-				fmt.Println("\nAdditional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
+			if opts.Language.shouldConvertExamples() {
+				// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
+				if coverageTrackingOutputEnabled {
+					err = coverageTracker.exportResults(coverageOutputDir)
+				} else {
+					fmt.Println("\nAdditional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
+				}
+				fmt.Println(coverageTracker.getShortResultSummary())
+				printDocStats()
 			}
-			fmt.Println(coverageTracker.getShortResultSummary())
-			printDocStats()
 
 			return err
 		}),
