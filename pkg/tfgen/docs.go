@@ -390,30 +390,6 @@ func overlayArgsToArgs(sourceDocs entityDocs, docs *entityDocs) {
 	docs.Arguments = docsArgs.collapse()
 }
 
-// checkIfNewDocsExist checks if the new docs root exists
-func checkIfNewDocsExist(repo string) bool {
-	// Check if the new docs path exists
-	newDocsPath := filepath.Join(repo, "docs", "resources")
-	_, err := os.Stat(newDocsPath)
-	return !os.IsNotExist(err)
-}
-
-// getDocsPath finds the correct docs path for the repo/kind
-func getDocsPath(repo string, kind DocKind) string {
-	// Check if the new docs path exists
-	newDocsExist := checkIfNewDocsExist(repo)
-
-	if !newDocsExist {
-		// If the new path doesn't exist, use the old docs path.
-		kindString := string([]rune(kind)[0]) // We only want the first letter because the old path uses "r" and "d"
-		return filepath.Join(repo, "website", "docs", kindString)
-	}
-
-	// Otherwise use the new location path.
-	kindString := string(kind)
-	return filepath.Join(repo, "docs", kindString)
-}
-
 //nolint:lll
 var (
 	// For example:
