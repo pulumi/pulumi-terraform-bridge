@@ -40,6 +40,10 @@ generate_builtins_test::
 	. ./scripts/venv/*/activate &&  python ./scripts/generate_builtins.py
 
 
+upgrade::
+	find . -name go.mod -execdir go get github.com/pulumi/pulumi/pkg/v3@d658f40b125066735866044ae640269b888d90be \;
+	find . -name go.mod -execdir go get github.com/pulumi/pulumi/sdk/v3@d658f40b125066735866044ae640269b888d90be \;
+
 tidy::
 	find . -name go.mod -execdir go mod tidy \;
 
