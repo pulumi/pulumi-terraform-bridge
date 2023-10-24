@@ -96,7 +96,7 @@ const (
 
 func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case Golang, NodeJS, Python, CSharp, Schema, PCL:
+	case Schema:
 		return true
 	}
 	return false
@@ -986,9 +986,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
 		return errors.Wrapf(err, "failed to create project file")
 	}
-
-	// Print out some documentation stats as a summary afterwards.
-	printDocStats()
 
 	// Close the plugin host.
 	g.pluginHost.Close()

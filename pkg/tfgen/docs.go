@@ -716,7 +716,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			!p.info.ReplaceExamplesSection() {
 			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
 				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
-			unexpectedSnippets++
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -1294,7 +1293,6 @@ func (g *Generator) convertExamplesInner(
 	stripSubsectionsWithErrors bool,
 	convertHCL func(hcl, path, exampleTitle string, languages []string) (string, error),
 ) (result string) {
-
 	output := &bytes.Buffer{}
 
 	writeTrailingNewline := func(buf *bytes.Buffer) {
@@ -1531,7 +1529,6 @@ func (g *Generator) legacyConvert(
 // convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
 // simplified parameters and return values
 func (g *Generator) convertHCLToString(hclCode, path, languageName string) (string, error) {
-
 	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 
 	var convertedHcl string
@@ -1577,7 +1574,6 @@ type languages []string
 func (s languages) Len() int      { return len(s) }
 func (s languages) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s languages) Less(i, j int) bool {
-
 	notFound := -1
 
 	indexOf := func(item string, data []string) int {
@@ -1684,7 +1680,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
-		hclAllLangsConversionFailures++
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
 				"from any generated docs or SDKs.", path, err))
@@ -1701,18 +1696,6 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	for lang := range failedLangs {
 		failedLangsStrings = append(failedLangsStrings, lang)
-
-		switch lang {
-		case convert.LanguageTypescript:
-			hclTypeScriptPartialConversionFailures++
-		case convert.LanguagePython:
-			hclPythonPartialConversionFailures++
-		case convert.LanguageCSharp:
-			hclCSharpPartialConversionFailures++
-		case convert.LanguageGo:
-			hclGoPartialConversionFailures++
-		}
-
 		if exampleTitle == "" {
 			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
 				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
@@ -1794,7 +1777,6 @@ func cleanupDoc(
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
-			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
 				"in the Pulumi provider.", k, name)
 			elidedDoc = true
@@ -1814,7 +1796,6 @@ func cleanupDoc(
 		if examples == "" {
 			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
 
-			elidedDescriptions++
 			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the "+
 				"Pulumi provider.", name)
 			elidedDoc = true
@@ -1823,12 +1804,10 @@ func cleanupDoc(
 
 			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
 			if examplesElided {
-				elidedDescriptions++
 				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
 					"the Pulumi provider.", name)
 				elidedDoc = true
 			} else {
-				elidedDescriptionsOnly++
 				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description "+
 					"proper will be dropped in the Pulumi provider.", name)
 				cleanupText = cleanedupExamples
@@ -1947,7 +1926,6 @@ func extractExamples(description string) string {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
 		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {

@@ -236,3 +236,8 @@ func (ct *CoverageTracker) exportResults(outputDirectory string) error {
 	coverageExportUtil := newCoverageExportUtil(ct)
 	return coverageExportUtil.tryExport(outputDirectory)
 }
+
+func (ct *CoverageTracker) getShortResultSummary() string {
+	coverageExportUtil := newCoverageExportUtil(ct)
+	return coverageExportUtil.produceHumanReadableSummary()
+}
