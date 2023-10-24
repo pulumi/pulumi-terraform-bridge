@@ -21,12 +21,10 @@ import (
 )
 
 var (
-	ignoredDocHeaders      = make(map[string]int)
-	elidedDescriptions     int // i.e., we discard the entire description, including examples
-	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
-	elidedArguments        int
-	elidedNestedArguments  int
-	unexpectedSnippets     int
+	ignoredDocHeaders     = make(map[string]int)
+	elidedArguments       int
+	elidedNestedArguments int
+	unexpectedSnippets    int
 
 	// Arguments metrics:
 	totalArgumentsFromDocs int
