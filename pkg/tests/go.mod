@@ -11,7 +11,9 @@ replace (
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.48.1-0.20230527113951-a0f92e793f31
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi/pkg/v3 v3.90.0
+	github.com/pulumi/pulumi/sdk/v3 v3.90.1-0.20231024162214-d658f40b1250
 	github.com/stretchr/testify v1.8.4
 )
 
@@ -33,6 +35,7 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/pulumi/esc v0.5.6 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.0-00010101000000-000000000000 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
@@ -162,9 +165,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.90.0
-	github.com/pulumi/pulumi/sdk/v3 v3.90.0
 	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect

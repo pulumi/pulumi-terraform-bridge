@@ -41,12 +41,12 @@ func updatePulumiDeps() {
 		edited := false
 		if fileContains(filepath.Join(m, "go.mod"), "github.com/pulumi/pulumi/pkg/v3") {
 			execCommandOrLogFatal(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/pkg/v3")
-			execCommandOrLogFatal(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/pkg/v3@v"+ver)
+			execCommandOrLogFatal(m, "go", "get", "github.com/pulumi/pulumi/pkg/v3@"+ver)
 			edited = true
 		}
 		if fileContains(filepath.Join(m, "go.mod"), "github.com/pulumi/pulumi/sdk/v3") {
 			execCommandOrLogFatal(m, "go", "mod", "edit", "-droprequire", "github.com/pulumi/pulumi/sdk/v3")
-			execCommandOrLogFatal(m, "go", "mod", "edit", "-require", "github.com/pulumi/pulumi/sdk/v3@v"+ver)
+			execCommandOrLogFatal(m, "go", "get", "github.com/pulumi/pulumi/sdk/v3@"+ver)
 			edited = true
 		}
 		if edited {

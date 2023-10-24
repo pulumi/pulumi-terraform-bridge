@@ -2,7 +2,10 @@ module test-bridged-random-provider
 
 go 1.19
 
-require github.com/pulumi/pulumi-random/sdk/v4 v4.8.2
+require (
+	github.com/pulumi/pulumi-random/sdk/v4 v4.8.2
+	github.com/pulumi/pulumi/sdk/v3 v3.90.1-0.20231024162214-d658f40b1250
+)
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
@@ -61,7 +64,6 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.90.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect

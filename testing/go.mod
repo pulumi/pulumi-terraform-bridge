@@ -5,6 +5,7 @@ go 1.20
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../x/muxer
 
 require (
+	github.com/pulumi/pulumi/sdk/v3 v3.90.1-0.20231024162214-d658f40b1250
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.31.0
 )
@@ -19,7 +20,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.90.0
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
