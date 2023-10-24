@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.0.0-00010101000000-000000000000
-	github.com/pulumi/pulumi/pkg/v3 v3.90.0
+	github.com/pulumi/pulumi/pkg/v3 v3.78.2-0.20231024162214-d658f40b1250
 	github.com/pulumi/pulumi/sdk/v3 v3.90.1-0.20231024162214-d658f40b1250
 	github.com/stretchr/testify v1.8.4
 )
