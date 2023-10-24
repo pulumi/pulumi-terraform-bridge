@@ -26,16 +26,13 @@ var (
 	elidedDescriptionsOnly int // we discarded the description proper, but were able to preserve the examples
 	elidedArguments        int
 	elidedNestedArguments  int
-	elidedAttributes       int
 	unexpectedSnippets     int
 
 	// Arguments metrics:
 	totalArgumentsFromDocs int
 	// See comment in getNestedDescriptionFromParsedDocs for why we track this behavior:
 	argumentDescriptionsFromAttributes int
-
-	// General metrics:
-	entitiesMissingDocs int
+	entitiesMissingDocs                int
 
 	schemaStats schemaTools.PulumiSchemaStats
 )
@@ -55,17 +52,6 @@ func printDocStats() {
 			"but may not display correctly in the registry, e.g. lacking tabs.\n", unexpectedSnippets)
 	}
 	fmt.Println("")
-
-	if elidedDescriptions > 0 || elidedDescriptionsOnly > 0 {
-		fmt.Println("Description metrics:")
-		fmt.Printf("\t%d entity descriptions contained an <elided> reference and were dropped, including examples.\n",
-			elidedDescriptions)
-		fmt.Printf(
-			"\t%d entity descriptions contained an <elided> reference and were dropped, but examples were preserved.\n",
-			elidedDescriptionsOnly,
-		)
-		fmt.Println("")
-	}
 
 	fmt.Println("Argument metrics:")
 	fmt.Printf("\t%d argument descriptions were parsed from the upstream docs\n", totalArgumentsFromDocs)
@@ -88,11 +74,4 @@ func printDocStats() {
 		)*100,
 	)
 	fmt.Println("")
-
-	if elidedAttributes > 0 {
-		fmt.Println("Attribute metrics:")
-		fmt.Printf("\t%d attributes contained an <elided> reference and had their descriptions dropped.\n",
-			elidedAttributes)
-		fmt.Println("")
-	}
 }

@@ -1317,7 +1317,6 @@ func (g *Generator) convertExamplesInner(
 	stripSubsectionsWithErrors bool,
 	convertHCL func(hcl, path, exampleTitle string, languages []string) (string, error),
 ) (result string) {
-
 	output := &bytes.Buffer{}
 
 	writeTrailingNewline := func(buf *bytes.Buffer) {
@@ -1554,7 +1553,6 @@ func (g *Generator) legacyConvert(
 // convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
 // simplified parameters and return values
 func (g *Generator) convertHCLToString(hclCode, path, languageName string) (string, error) {
-
 	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 
 	var convertedHcl string
@@ -1600,7 +1598,6 @@ type languages []string
 func (s languages) Len() int      { return len(s) }
 func (s languages) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s languages) Less(i, j int) bool {
-
 	notFound := -1
 
 	indexOf := func(item string, data []string) int {
@@ -1804,7 +1801,6 @@ func cleanupDoc(
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
 		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
 		if elided {
-			elidedAttributes++
 			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
 				"in the Pulumi provider.", k, name)
 			elidedDoc = true
@@ -1954,7 +1950,6 @@ func extractExamples(description string) string {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation that should have been cleaned up in our forks.
 		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
