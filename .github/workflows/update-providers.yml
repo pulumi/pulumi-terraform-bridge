@@ -7,6 +7,7 @@ on:
         required: true
       automerge:
         description: 'Whether to automerge the PRs'
+        type: boolean
         default: false
         required: false
 
