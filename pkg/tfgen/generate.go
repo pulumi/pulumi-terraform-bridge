@@ -96,7 +96,7 @@ const (
 
 func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case Schema:
+	case Golang, NodeJS, Python, CSharp, Schema, PCL:
 		return true
 	}
 	return false
