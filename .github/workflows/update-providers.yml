@@ -5,6 +5,10 @@ on:
       bridgeVersion:
         description: 'Version of Bridge to upgrade to'
         required: true
+      automerge:
+        description: 'Whether to automerge the PRs'
+        default: false
+        required: false
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -14,14 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.event.inputs.bridgeVersion }}
     steps:
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+      - name: Trigger upgrade
+        uses: peter-evans/repository-dispatch@v2
         with:
-          repo: pulumi/pulumictl
-      - name: Trigger Update
-        run: pulumictl dispatch -r pulumi/${{ matrix.provider }} -c update-bridge ${{ github.event.inputs.bridgeVersion }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          repository: pulumi/${{ matrix.provider }}
+          event-type: upgrade-bridge
+          client-payload: |-
+            {
+               "target-bridge-version": ${{ toJSON(github.event.inputs.bridgeVersion) }},
+               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
+               "automerge": ${{ toJSON(github.event.inputs.automerge) }}
+            }
     strategy:
       fail-fast: false
       matrix:
