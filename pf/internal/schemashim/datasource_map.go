@@ -53,3 +53,7 @@ func (m *schemaOnlyDataSourceMap) Range(each func(key string, value shim.Resourc
 func (*schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {
 	panic("Set not supported - is it possible to treat this as immutable?")
 }
+
+func (*schemaOnlyDataSourceMap) AddAlias(alias, target string) {
+	panic("AddAlias not supported")
+}

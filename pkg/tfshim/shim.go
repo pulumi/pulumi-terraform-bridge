@@ -180,6 +180,8 @@ type ResourceMap interface {
 	Range(each func(key string, value Resource) bool)
 
 	Set(key string, value Resource)
+
+	AddAlias(alias, target string)
 }
 
 type Provider interface {

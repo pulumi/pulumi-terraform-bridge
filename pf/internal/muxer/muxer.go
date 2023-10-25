@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	shimUtil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -128,8 +129,8 @@ func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
 
 	data, conflictingDataSources := union(m.dataSources, provider.DataSourcesMap())
 
-	m.resources = res
-	m.dataSources = data
+	m.resources = shimUtil.NewAliasingResourceMap(res)
+	m.dataSources = shimUtil.NewAliasingResourceMap(data)
 	m.MuxedProviders = append(m.MuxedProviders, provider)
 	return conflictingResources, conflictingDataSources
 }
@@ -138,8 +139,8 @@ func newProviderShim(provider shim.Provider) ProviderShim {
 	return ProviderShim{
 		simpleSchemaProvider: simpleSchemaProvider{
 			schema:      provider.Schema(),
-			resources:   provider.ResourcesMap(),
-			dataSources: provider.DataSourcesMap(),
+			resources:   shimUtil.NewAliasingResourceMap(provider.ResourcesMap()),
+			dataSources: shimUtil.NewAliasingResourceMap(provider.DataSourcesMap()),
 		},
 		MuxedProviders: []shim.Provider{provider},
 	}
@@ -238,8 +239,8 @@ func resolveDispatchMap[T interface{ GetTok() tokens.Token }](
 type simpleSchemaProvider struct {
 	schemashim.SchemaOnlyProvider
 	schema      shim.SchemaMap
-	resources   shim.ResourceMap
-	dataSources shim.ResourceMap
+	resources   shimUtil.AliasingResourceMap
+	dataSources shimUtil.AliasingResourceMap
 }
 
 func (p *simpleSchemaProvider) Schema() shim.SchemaMap {
@@ -297,4 +298,10 @@ func copyMap[K comparable, V any](m map[K]V) map[K]V {
 		out[k] = v
 	}
 	return out
+}
+
+type AliasingProviderShim struct {
+	ProviderShim
+	resources   shimUtil.AliasingResourceMap
+	datasources shimUtil.AliasingResourceMap
 }

@@ -140,3 +140,7 @@ func (m resourceMap) Range(each func(key string, value shim.Resource) bool) {
 func (m resourceMap) Set(key string, value shim.Resource) {
 	m[key] = value.(*resource)
 }
+
+func (m resourceMap) AddAlias(alias, target string) {
+	m.Set(alias, m.Get(target))
+}

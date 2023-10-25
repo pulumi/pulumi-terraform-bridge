@@ -1237,7 +1237,7 @@ func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok to
 			currentInfo.Tok.Name().String()))
 	p.Resources[resourceName] = &currentInfo
 	p.Resources[legacyResourceName] = &legacyInfo
-	p.P.ResourcesMap().Set(legacyResourceName, p.P.ResourcesMap().Get(resourceName))
+	p.P.ResourcesMap().AddAlias(legacyResourceName, resourceName)
 }
 
 const (
@@ -1276,7 +1276,7 @@ func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.Mo
 			currentInfo.Tok.Name().String()))
 	p.DataSources[resourceName] = &currentInfo
 	p.DataSources[legacyResourceName] = &legacyInfo
-	p.P.DataSourcesMap().Set(legacyResourceName, p.P.DataSourcesMap().Get(resourceName))
+	p.P.DataSourcesMap().AddAlias(legacyResourceName, resourceName)
 }
 
 func generateResourceName(packageName tokens.Package, moduleName string, moduleMemberName string) string {

@@ -155,3 +155,7 @@ func (m v2ResourceMap) Range(each func(key string, value shim.Resource) bool) {
 func (m v2ResourceMap) Set(key string, value shim.Resource) {
 	m[key] = value.(v2Resource).tf
 }
+
+func (m v2ResourceMap) AddAlias(alias, target string) {
+	m.Set(alias, m.Get(target))
+}

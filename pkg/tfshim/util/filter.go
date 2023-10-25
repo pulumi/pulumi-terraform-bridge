@@ -152,4 +152,8 @@ func (f *filteringMap) Set(key string, value shim.Resource) {
 	f.inner.Set(key, value)
 }
 
+func (f *filteringMap) AddAlias(alias, target string) {
+	f.inner.AddAlias(alias, target)
+}
+
 var _ shim.ResourceMap = (*filteringMap)(nil)

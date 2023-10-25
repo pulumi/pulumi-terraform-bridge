@@ -78,3 +78,7 @@ func (m ResourceMap) Range(each func(key string, value shim.Resource) bool) {
 func (m ResourceMap) Set(key string, value shim.Resource) {
 	m[key] = value
 }
+
+func (m ResourceMap) AddAlias(alias, target string) {
+	m.Set(alias, m.Get(target))
+}
