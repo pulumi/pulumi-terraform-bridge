@@ -15,7 +15,6 @@ jobs:
     steps:
       - id: get-providers
         run: echo "providers=$(jq . <(curl https://raw.githubusercontent.com/pulumi/ci-mgmt/master/provider-ci/providers.json) --compact-output)" >> "$GITHUB_OUTPUT"
-        working-directory: provider-ci
     outputs:
       providers: ${{ steps.get-providers.outputs.providers }}
 
