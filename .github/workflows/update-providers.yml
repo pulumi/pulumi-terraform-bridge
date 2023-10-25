@@ -52,7 +52,6 @@ jobs:
           - pulumi-digitalocean
           - pulumi-dnsimple
           - pulumi-docker
-          - pulumi-equinix-metal
           - pulumi-f5bigip
           - pulumi-fastly
           - pulumi-gcp
