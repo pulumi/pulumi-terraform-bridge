@@ -10,6 +10,15 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  generate-providers-list:
+    runs-on: ubuntu-latest
+    steps:
+      - id: get-providers
+        run: echo "providers=$(jq . <(curl https://raw.githubusercontent.com/pulumi/ci-mgmt/master/provider-ci/providers.json) --compact-output)" >> "$GITHUB_OUTPUT"
+        working-directory: provider-ci
+    outputs:
+      providers: ${{ steps.get-providers.outputs.providers }}
+
   build:
     runs-on: ubuntu-latest
     name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge to the latest version automatically
@@ -18,7 +27,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/${{ matrix.provider }}
+          repository: pulumi/pulumi-${{ matrix.provider }}
           event-type: upgrade-bridge
           # Not specifying target-bridge-version in the payload will make it upgrade to the latest.
           client-payload: |-
@@ -26,54 +35,12 @@ jobs:
                "pr-reviewers": "t0yv0",
                "automerge": true
             }
+    needs: generate-providers-list
     strategy:
-      fail-fast: false
+      # GitHub recommends only issuing 1 API request per second, and never
+      # concurrently.  For more information, see:
+      # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
+      max-parallel: 1
       matrix:
-        provider:
-          - pulumi-aiven
-          - pulumi-akamai
-          - pulumi-alicloud
-          - pulumi-auth0
-          - pulumi-aws
-          - pulumi-azure
-          - pulumi-azuread
-          - pulumi-azuredevops
-          - pulumi-civo
-          - pulumi-cloudamqp
-          - pulumi-cloudflare
-          - pulumi-cloudinit
-          - pulumi-consul
-          - pulumi-datadog
-          - pulumi-digitalocean
-          - pulumi-dnsimple
-          - pulumi-docker
-          - pulumi-f5bigip
-          - pulumi-fastly
-          - pulumi-gcp
-          - pulumi-github
-          - pulumi-gitlab
-          - pulumi-hcloud
-          - pulumi-kafka
-          - pulumi-keycloak
-          - pulumi-kong
-          - pulumi-linode
-          - pulumi-mailgun
-          - pulumi-mongodbatlas
-          - pulumi-mysql
-          - pulumi-newrelic
-          - pulumi-ns1
-          - pulumi-okta
-          - pulumi-openstack
-          - pulumi-pagerduty
-          - pulumi-postgresql
-          - pulumi-rabbitmq
-          - pulumi-rancher2
-          - pulumi-random
-          - pulumi-signalfx
-          - pulumi-splunk
-          - pulumi-spotinst
-          - pulumi-tls
-          - pulumi-vault
-          - pulumi-venafi
-          - pulumi-vsphere
-          - pulumi-wavefront
+        provider: ${{ fromJson(needs.generate-providers-list.outputs.providers ) }}
+      fail-fast: false
