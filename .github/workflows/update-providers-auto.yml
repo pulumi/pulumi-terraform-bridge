@@ -1,21 +1,15 @@
-name: Update Providers with new bridge version
+name: Update Providers with new bridge version upon release
 on:
-  workflow_dispatch:
-    inputs:
-      bridgeVersion:
-        description: 'Version of Bridge to upgrade to'
-        required: true
-      automerge:
-        description: 'Whether to automerge the PRs'
-        type: boolean
-        default: false
-        required: false
+  push:
+    tags:
+      # Typically pf* module is tagged after the main module, so this is a good time to fire off
+      # automatic downstream upgrades.
+      - 'pf/**'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-
   generate-providers-list:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +20,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.event.inputs.bridgeVersion }}
+    name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge to the latest version automatically
     steps:
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v2
@@ -34,11 +28,11 @@ jobs:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: pulumi/pulumi-${{ matrix.provider }}
           event-type: upgrade-bridge
+          # Not specifying target-bridge-version in the payload will make it upgrade to the latest.
           client-payload: |-
             {
-               "target-bridge-version": ${{ toJSON(github.event.inputs.bridgeVersion) }},
-               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
-               "automerge": ${{ toJSON(github.event.inputs.automerge) }}
+               "pr-reviewers": "t0yv0",
+               "automerge": true
             }
     needs: generate-providers-list
     strategy:
