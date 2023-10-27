@@ -19,6 +19,15 @@ on:
   #   - "**"
 
 jobs:
+
+  generate-providers-list:
+    runs-on: ubuntu-latest
+    steps:
+      - id: get-providers
+        run: echo "providers=$(jq . <(curl https://raw.githubusercontent.com/pulumi/ci-mgmt/master/provider-ci/providers.json) --compact-output)" >> "$GITHUB_OUTPUT"
+    outputs:
+      providers: ${{ steps.get-providers.outputs.providers }}
+
   build:
     runs-on: ubuntu-latest
     name: Test upgrading ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.sha }}
@@ -36,23 +45,12 @@ jobs:
                "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/${{github.sha}}\n\nDO NOT MERGE.",
                "automerge": false
             }
+    needs: generate-providers-list
     strategy:
-      fail-fast: false
+      # GitHub recommends only issuing 1 API request per second, and never
+      # concurrently.  For more information, see:
+      # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
+      max-parallel: 1
       matrix:
-        provider:
-          - pulumi-aiven
-          - pulumi-auth0
-          - pulumi-aws
-          - pulumi-azure
-          - pulumi-azuread
-          - pulumi-cloudflare
-          - pulumi-datadog
-          - pulumi-digitalocean
-          - pulumi-docker
-          - pulumi-fastly
-          - pulumi-gcp
-          - pulumi-github
-          - pulumi-hcloud
-          - pulumi-okta
-          - pulumi-random
-          - pulumi-tls
+        provider: ${{ fromJson(needs.generate-providers-list.outputs.providers ) }}
+      fail-fast: false
