@@ -41,7 +41,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/${{ matrix.provider }}
+          repository: pulumi/pulumi-${{ matrix.provider }}
           event-type: upgrade-bridge
           client-payload: |-
             {
