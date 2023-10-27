@@ -11,6 +11,11 @@ on:
         type: string
         default: ""
         required: false
+      bridgeVersion:
+        description: 'Version of Bridge to upgrade to; defaults to current sha'
+        type: string
+        default: ""
+        required: false
 
   # # Alternatively, they can be triggered by opening a feature-* branch. Not having these enabled on
   # # normal branches and PRs is intentional as the checks consume a lot of resources.
@@ -46,7 +51,7 @@ jobs:
           client-payload: |-
             {
                "target-pulumi-version": ${{ toJSON(github.event.inputs.pulumiVersion) }},
-               "target-bridge-version": ${{ toJSON(github.sha) }},
+               "target-bridge-version": ${{ toJSON(github.event.inputs.bridgeVersion != "" && github.event.inputs.bridgeVersion || github.sha) }},
                "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
                "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/commit/${{github.sha}}\n\nDO NOT MERGE.",
                "automerge": false
