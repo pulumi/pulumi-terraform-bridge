@@ -163,8 +163,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.90.1
-	github.com/pulumi/pulumi/sdk/v3 v3.90.1
+	github.com/pulumi/pulumi/pkg/v3 v3.91.1
+	github.com/pulumi/pulumi/sdk/v3 v3.91.1
 	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
