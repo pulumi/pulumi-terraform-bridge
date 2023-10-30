@@ -31,6 +31,7 @@ func TestAttach(t *testing.T) {
 		m := &muxer{}
 		_, err := m.Attach(ctx, req)
 		assert.NoError(t, err)
+		assert.NotZero(t, m.host)
 	})
 
 	t.Run("dispatch", func(t *testing.T) {
@@ -43,6 +44,7 @@ func TestAttach(t *testing.T) {
 		for i, s := range m.servers {
 			assert.Equalf(t, 1, s.(*attach).called, "i = %d", i)
 		}
+		assert.NotZero(t, m.host)
 	})
 }
 

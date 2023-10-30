@@ -403,8 +403,10 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 			return err
 		}
 	}
+	var err error
+	m.host, err = provider.NewHostClient(req.GetAddress())
 
-	return &emptypb.Empty{}, errors.Join(asyncJoin(attach)...)
+	return &emptypb.Empty{}, errors.Join(append(asyncJoin(attach), err)...)
 }
 
 type getMappingArgs struct {
