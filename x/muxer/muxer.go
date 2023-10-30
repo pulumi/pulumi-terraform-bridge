@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/golang/glog"
@@ -60,7 +61,7 @@ type server = rpc.ResourceProviderServer
 type muxer struct {
 	rpc.UnimplementedResourceProviderServer
 
-	host *provider.HostClient
+	host hostClient
 
 	dispatchTable dispatchTable
 
@@ -69,6 +70,12 @@ type muxer struct {
 	servers []server
 
 	getMappingByKey map[string]MultiMappingHandler
+}
+
+// An interface to make *provider.HostClient test-able.
+type hostClient interface {
+	io.Closer
+	Log(context.Context, diag.Severity, urn.URN, string) error
 }
 
 type GetMappingArgs interface {
@@ -403,10 +410,16 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 			return err
 		}
 	}
+
+	var closeErr error
+	if m.host != nil {
+		closeErr = m.host.Close()
+	}
+
 	var err error
 	m.host, err = provider.NewHostClient(req.GetAddress())
 
-	return &emptypb.Empty{}, errors.Join(append(asyncJoin(attach), err)...)
+	return &emptypb.Empty{}, errors.Join(append(asyncJoin(attach), err, closeErr)...)
 }
 
 type getMappingArgs struct {
