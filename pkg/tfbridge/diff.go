@@ -309,9 +309,76 @@ func makeDetailedDiff(
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
 	}
 
+	// In some cases, the terraform diff will have additional attributes not covered by Pulumi's olds and news.
+	// We want to make sure that we do not ignore these changes, if any.
+	// In order to look up whether our attributes have been added to the Pulumi `diff`, we first need to parse the
+	// Terraform diff paths (of the format `foo.0.bars.1.baz[...]`) to Pulumi (of the format `foo[0].bar[1].baz[...]`.
+	for path, _ := range tfDiff.Attributes() {
+
+		pulumiPath, specificDiff := parseTFPath(path, tfs, ps)
+		// Look up the resulting path and register any diffs if not present in Pulumi diff.
+		if _, ok := diff[pulumiPath]; !ok {
+			if specificDiff {
+				// TODO: Using PropertyDiff_ADD is not entirely accurate in every case.
+				// TODO: (cont) We may want to pass on a more generic UPDATE strategy here - less precise, less error prone.
+				diff[pulumiPath] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			} else {
+				diff[pulumiPath] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		}
+	}
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 	if len(diff) > 0 || *forceDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 	return diff, changes
+}
+
+func parseTFPath(path string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (string, bool) {
+	var pulumiPath string
+	specificDiff := false
+	pathFields := strings.Split(path, ".")
+	for _, field := range pathFields {
+		// check if the field is a schema key
+		nestedSchema, found := tfs.GetOk(field)
+		if found {
+			pulumiField := TerraformToPulumiNameV2(field, tfs, ps)
+			// fencepost the first entry in the path
+			if pulumiPath == "" {
+				pulumiPath = pulumiPath + pulumiField
+			} else {
+				pulumiPath = pulumiPath + "." + pulumiField
+			}
+			// reset the schema map to point at the nested schema
+			if nestedSchema != nil {
+				if res, isres := nestedSchema.Elem().(shim.Resource); isres {
+					tfs = res.Schema()
+				}
+			}
+		} else {
+			// check if the field is a number
+			// the error value for strconv.Atoi is 0, so we look at the error.
+			_, err := strconv.Atoi(field) // the error value here is 0, so we look at the error.
+			if err == nil {
+				// we found an index
+				pulumiPath = pulumiPath + "[" + field + "]"
+			} else {
+				// Ignore special characters from Terraform
+				if field != "%" || field != "#" {
+					// These characters denote, in terraform, a schema object (in the case of "%"),
+					// or a list (in the case of "#").
+					// We drop the special character; this case is a no-op.
+					// These chars are also always final.
+					continue
+				} else {
+					// we do not have a number but a user set obj key.
+					// Since this is not a schema-set field, we do not translate to Pulumi here.
+					pulumiPath = pulumiPath + "." + field
+					specificDiff = true
+				}
+			}
+		}
+	}
+	return pulumiPath, specificDiff
+
 }
