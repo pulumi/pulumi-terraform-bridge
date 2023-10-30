@@ -79,8 +79,10 @@ type GetMappingResponse struct {
 	Data     []byte
 }
 
-type getMappingHandler = map[string]MultiMappingHandler
-type MultiMappingHandler = func(GetMappingArgs) (GetMappingResponse, error)
+type (
+	getMappingHandler   = map[string]MultiMappingHandler
+	MultiMappingHandler = func(GetMappingArgs) (GetMappingResponse, error)
+)
 
 func (m *muxer) getFunction(token string) server {
 	i, ok := m.dispatchTable.Functions[token]
@@ -120,8 +122,15 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 	failures := []*rpc.CheckFailure{}
 	uniqueFailures := map[string]struct{}{}
 	var errs multierror.Error
+	uniqueErrors := map[string]struct{}{}
 	for i, r := range asyncJoin(subs) {
 		if err := r.B; err != nil {
+			errString := err.Error()
+			// De-duplicate errors
+			if _, has := uniqueErrors[errString]; has {
+				continue
+			}
+			uniqueErrors[errString] = struct{}{}
 			errs.Errors = append(errs.Errors, err)
 			continue
 		}
@@ -384,7 +393,6 @@ func (m *muxer) Cancel(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, e
 		}
 	}
 	return e, m.muxedErrors(errs)
-
 }
 
 func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.PluginInfo, error) {
@@ -424,7 +432,6 @@ func (a *getMappingArgs) Fetch() []GetMappingResponse {
 }
 
 func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
-
 	// We need to merge multiple mappings
 	combineMapping, found := m.getMappingByKey[req.Key]
 	if !found {
