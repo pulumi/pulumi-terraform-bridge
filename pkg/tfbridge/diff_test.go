@@ -2060,3 +2060,58 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
+
+func TestAddingZeroString(t *testing.T) {
+	t.Skip("TODO currently failing")
+	diffTest(t,
+		// tfs
+		map[string]*schema.Schema{
+			"s":    {Type: schema.TypeString, Optional: true},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		nil,
+		// inputs
+		map[string]interface{}{"s": ""},
+		// state
+		map[string]interface{}{},
+		// expected
+		map[string]DiffKind{"s": A},
+		pulumirpc.DiffResponse_DIFF_SOME,
+	)
+}
+
+func TestAddingZeroStringToMap(t *testing.T) {
+	diffTest(t,
+		// tfs
+		map[string]*schema.Schema{
+			"tags": {
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"outp": {Type: schema.TypeString, Computed: true},
+		},
+		// info
+		nil,
+		// inputs
+		map[string]interface{}{
+			"tags": map[string]interface{}{
+				"x": "s",
+				"y": "",
+			},
+		},
+		// state
+		map[string]interface{}{
+			"tags": map[string]interface{}{
+				"x": "s",
+			},
+		},
+		// expected
+		map[string]DiffKind{
+			"tags.y": A,
+		},
+		pulumirpc.DiffResponse_DIFF_SOME,
+	)
+}

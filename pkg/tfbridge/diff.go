@@ -189,7 +189,17 @@ func makePropertyDiff(ctx context.Context, name, path string, v resource.Propert
 				name += ".%"
 			}
 		}
-		if d := tfDiff.Attribute(name); d != nil && d.Old != d.New {
+
+		if d := tfDiff.Attribute(name); d != nil &&
+			// Additional change detection: normally a non-nil record indicates that
+			// something is indeed changing, however it appears that Pulumi Set support
+			// currently relies on the additional check d.Old != d.New to suppress
+			// spurios set element diffs. Removing this check makes
+			// TestCollectionsWithMultipleItems Set tests to fail. This is preserved for
+			// now, but mitigaged by checking for d.Old == "" to fix adding an empty
+			// string that was not present before. Missing and empty values for strings
+			// are both represented as "".
+			(d.Old == "" || d.Old != d.New) {
 			other, hasOtherDiff := diff[path]
 
 			var arrDiff *shim.ResourceAttrDiff
