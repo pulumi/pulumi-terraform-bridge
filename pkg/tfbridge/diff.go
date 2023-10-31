@@ -364,13 +364,8 @@ func parseTFPath(path string, tfs shim.SchemaMap, ps map[string]*SchemaInfo) (st
 				pulumiPath = pulumiPath + "[" + field + "]"
 			} else {
 				// Ignore special characters from Terraform
-				if field != "%" || field != "#" {
-					// These characters denote, in terraform, a schema object (in the case of "%"),
-					// or a list (in the case of "#").
-					// We drop the special character; this case is a no-op.
-					// These chars are also always final.
-					continue
-				} else {
+				if field != "%" && field != "#" {
+
 					// we do not have a number but a user set obj key.
 					// Since this is not a schema-set field, we do not translate to Pulumi here.
 					pulumiPath = pulumiPath + "." + field
