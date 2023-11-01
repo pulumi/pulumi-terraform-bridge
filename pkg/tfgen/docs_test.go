@@ -1133,11 +1133,91 @@ func TestParseTFMarkdown(t *testing.T) {
 	}
 }
 
+func TestErrorMissingDocs(t *testing.T) {
+	tests := []struct {
+		docs                 tfbridge.DocInfo
+		forbidMissingDocsEnv string
+		source               DocsSource
+		expectErr            bool
+	}{
+		// No Error, since the docs can be found
+		{source: mockSource{"raw_name": "some-docs"}},
+		{
+			source:               mockSource{"raw_name": "some-docs"},
+			forbidMissingDocsEnv: "true",
+		},
+
+		// Docs are missing, but we don't ask to error on missing
+		{source: mockSource{}},
+
+		// Docs are missing, and we ask to error on missing, so error
+		{
+			source:               mockSource{},
+			forbidMissingDocsEnv: "true",
+			expectErr:            true,
+		},
+
+		// Docs are missing and we ask globally to error on missing, but we
+		// override locally, so no error
+		{
+			source:               mockSource{},
+			docs:                 tfbridge.DocInfo{AllowMissing: true},
+			forbidMissingDocsEnv: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			g := &Generator{
+				sink: mockSink{t},
+			}
+			rawName := "raw_name"
+			t.Setenv("PULUMI_MISSING_DOCS_ERROR", tt.forbidMissingDocsEnv)
+			_, err := getDocsForResource(g, tt.source, ResourceDocs, rawName, &mockResource{
+				token: tokens.Token(rawName),
+				docs:  tt.docs,
+			})
+			if tt.expectErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+type mockSource map[string]string
+
+func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := m[rawname]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  []byte(f),
+		FileName: rawname + ".md",
+	}, nil
+}
+func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return nil, nil
+}
+
 type mockSink struct{ t *testing.T }
 
-func (mockSink) warn(string, ...interface{})  {}
-func (mockSink) debug(string, ...interface{}) {}
-func (mockSink) error(string, ...interface{}) {}
+func (mockSink) warn(string, ...interface{})                                  {}
+func (mockSink) debug(string, ...interface{})                                 {}
+func (mockSink) error(string, ...interface{})                                 {}
+func (mockSink) Logf(sev diag.Severity, diag *diag.Diag, args ...interface{}) {}
+func (mockSink) Debugf(diag *diag.Diag, args ...interface{})                  {}
+func (mockSink) Infof(diag *diag.Diag, args ...interface{})                   {}
+func (mockSink) Infoerrf(diag *diag.Diag, args ...interface{})                {}
+func (mockSink) Errorf(diag *diag.Diag, args ...interface{})                  {}
+func (mockSink) Warningf(diag *diag.Diag, args ...interface{})                {}
+
+func (mockSink) Stringify(sev diag.Severity, diag *diag.Diag, args ...interface{}) (string, string) {
+	return "", ""
+}
 
 type mockResource struct {
 	docs  tfbridge.DocInfo
@@ -1145,13 +1225,11 @@ type mockResource struct {
 }
 
 func (r *mockResource) GetFields() map[string]*tfbridge.SchemaInfo {
-	//TODO implement me
-	panic("implement me")
+	return map[string]*tfbridge.SchemaInfo{}
 }
 
 func (r *mockResource) ReplaceExamplesSection() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }
 
 func (r *mockResource) GetDocs() *tfbridge.DocInfo {

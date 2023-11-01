@@ -259,7 +259,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) && !info.GetDocs().AllowMissing {
 			g.error(msg)
 			return entityDocs{}, fmt.Errorf(msg)
 		}
