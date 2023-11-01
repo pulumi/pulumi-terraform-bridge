@@ -313,7 +313,7 @@ func makeDetailedDiff(
 	// We want to make sure that we do not ignore these changes, if any.
 	// In order to look up whether our attributes have been added to the Pulumi `diff`, we first need to parse the
 	// Terraform diff paths (of the format `foo.0.bars.1.baz[...]`) to Pulumi (of the format `foo[0].bar[1].baz[...]`.
-	for path, _ := range tfDiff.Attributes() {
+	for path := range tfDiff.Attributes() {
 
 		pulumiPath, specificDiff := parseTFPath(path, tfs, ps)
 		// Look up the resulting path and register any diffs if not present in Pulumi diff.
