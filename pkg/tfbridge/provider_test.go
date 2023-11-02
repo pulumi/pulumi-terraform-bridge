@@ -1795,7 +1795,7 @@ func TestTransformOutputs(t *testing.T) {
 
 func TestSkipDetailedDiff(t *testing.T) {
 	provider := func(t *testing.T) *Provider {
-		p := testprovider.AssertCustomizedDiffProvider(func(data *schema.ResourceData) {})
+		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
 		return &Provider{
 			tf:     shimv2.NewProvider(p),
 			config: shimv2.NewSchemaMap(p.Schema),

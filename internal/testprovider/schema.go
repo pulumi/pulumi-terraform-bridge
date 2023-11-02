@@ -881,7 +881,7 @@ func AssertProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
 	}
 }
 
-func AssertCustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
+func CustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
 	return &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -890,44 +890,11 @@ func AssertCustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2
 					"labels": {Type: schemav2.TypeString, Optional: true, Computed: true},
 				},
 				SchemaVersion: 1,
-				MigrateState: func(v int, is *terraformv2.InstanceState, p interface{}) (*terraformv2.InstanceState, error) {
-					return is, nil
-				},
-				Create: func(data *schemav2.ResourceData, p interface{}) error {
-					data.SetId("0")
-					f(data)
-					return nil
-				},
-				Read: func(data *schemav2.ResourceData, p interface{}) error {
-					f(data)
-					return nil
-				},
-				Update: func(data *schemav2.ResourceData, p interface{}) error {
-					f(data)
-					return nil
-				},
-				Delete: func(data *schemav2.ResourceData, p interface{}) error {
-					f(data)
-					return nil
-				},
-				Timeouts: &schemav2.ResourceTimeout{
-					Create: Timeout(time.Second * 120),
-				},
-				Importer: &schemav2.ResourceImporter{
-					StateContext: func(_ context.Context, state *schemav2.ResourceData,
-						_ interface{}) ([]*schemav2.ResourceData, error) {
-
-						return []*schemav2.ResourceData{state}, nil
-					},
-				},
 				CustomizeDiff: func(ctx context.Context, diff *schemav2.ResourceDiff, i interface{}) error {
 					err := diff.SetNew("labels", "1")
 					return err
 				},
 			},
-		},
-		ConfigureFunc: func(data *schemav2.ResourceData) (interface{}, error) {
-			return nil, nil
 		},
 	}
 }
