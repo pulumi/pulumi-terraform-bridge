@@ -663,10 +663,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 	// to changes being dropped by Pulumi.
-	// Until we address https://github.com/pulumi/pulumi-terraform-bridge/issues/1501, it is safer to refer
-	// to the Terraform Diff attribute length for setting the DiffResponse.
+	// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
+	// the DiffResponse.
 	// We will still use `detailedDiff` for diff display purposes.
-	if p.info.SkipDetailedDiffForChanges && len(diff.Attributes()) > 0 {
+
+	// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
+	if p.info.XSkipDetailedDiffForChanges && len(diff.Attributes()) > 0 {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 

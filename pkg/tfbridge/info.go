@@ -132,7 +132,7 @@ type ProviderInfo struct {
 	// Disables using detailed diff to determine diff changes and falls back on the length of TF Diff Attributes.
 	//
 	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1501
-	SkipDetailedDiffForChanges bool
+	XSkipDetailedDiffForChanges bool
 }
 
 // Send logs or status logs to the user.
