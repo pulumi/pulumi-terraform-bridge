@@ -880,3 +880,21 @@ func AssertProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
 		},
 	}
 }
+
+func CustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"test_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"labels": {Type: schemav2.TypeString, Optional: true, Computed: true},
+				},
+				SchemaVersion: 1,
+				CustomizeDiff: func(ctx context.Context, diff *schemav2.ResourceDiff, i interface{}) error {
+					err := diff.SetNew("labels", "1")
+					return err
+				},
+			},
+		},
+	}
+}
