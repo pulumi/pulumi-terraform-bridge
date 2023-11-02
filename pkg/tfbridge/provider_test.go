@@ -1793,6 +1793,44 @@ func TestTransformOutputs(t *testing.T) {
 	})
 }
 
+func TestSkipDetailedDiff(t *testing.T) {
+	provider := func(t *testing.T) *Provider {
+		p := testprovider.AssertCustomizedDiffProvider(func(data *schema.ResourceData) {})
+		return &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			resources: map[tokens.Type]Resource{
+				"TestResource": {
+					TF:     shimv2.NewResource(p.ResourcesMap["test_resource"]),
+					TFName: "test_resource",
+					Schema: &ResourceInfo{
+						Tok: "TestResource",
+					},
+				},
+			},
+			info: ProviderInfo{
+				XSkipDetailedDiffForChanges: true,
+			},
+		}
+	}
+	t.Run("Diff", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::TestResource::exres",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "changes": "DIFF_SOME",
+		    "hasDetailedDiff": true
+		  }
+		}`)
+	})
+}
+
 func TestTransformFromState(t *testing.T) {
 	provider := func(t *testing.T) *Provider {
 		p := testprovider.AssertProvider(func(data *schema.ResourceData) {
