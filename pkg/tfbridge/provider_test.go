@@ -899,6 +899,53 @@ func TestCheck(t *testing.T) {
 		}
 		`)
 	})
+
+	t.Run("respect schema secrets", func(t *testing.T) {
+		p2 := testprovider.ProviderV2()
+		p2.ResourcesMap["example_resource"].Schema["string_property_value"].Sensitive = true
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p2),
+			config: shimv2.NewSchemaMap(p2.Schema),
+		}
+
+		provider.resources = map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(p2.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+		      "stringPropertyValue": "oldString"
+		    },
+		    "news": {
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": "newString"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": [],
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "newString"
+                      }
+		    }
+		  }
+		}
+                `)
+	})
 }
 
 func TestCheckConfig(t *testing.T) {
