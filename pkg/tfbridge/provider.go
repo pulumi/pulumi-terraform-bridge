@@ -605,8 +605,12 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)
-	minputs, err := plugin.MarshalProperties(pinputs, plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
+
+	pinputsWithSecrets := MarkSchemaSecrets(ctx, res.TF.Schema(), res.Schema.Fields,
+		resource.NewObjectProperty(pinputs)).ObjectValue()
+
+	minputs, err := plugin.MarshalProperties(pinputsWithSecrets, plugin.MarshalOptions{
+		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true, KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
