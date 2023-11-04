@@ -21,6 +21,8 @@ package tfbridge
 // during manual unrolling. This file provides code to re-roll an unrolled recursive type.
 
 import (
+	"fmt"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -39,7 +41,22 @@ func fixRecursiveResource(tfSchema shim.SchemaMap, info *ResourceInfo) {
 		info.Fields = make(map[string]*SchemaInfo)
 	}
 	tfSchema.Range(func(k string, inner shim.Schema) bool {
-
+		s, ok := inner.Elem().(shim.Resource)
+		if !ok {
+			return true
+		}
+		outer := s.Schema()
+		outer.Range(func(k string, inner shim.Schema) bool {
+			s, ok := inner.Elem().(shim.Resource)
+			if !ok {
+				return true
+			}
+			if isRecursionOf(outer, s.Schema()) {
+				panic(fmt.Sprintf("Detected recursion on %s", k))
+			}
+			return true
+		})
+		return true
 	})
 }
 
@@ -49,17 +66,18 @@ func fixRecursiveResource(tfSchema shim.SchemaMap, info *ResourceInfo) {
 // 2. Object fields are themselves similar, or
 // 3. One type is missing an object field that the other type has (the base case).
 func isRecursionOf(outer, inner shim.SchemaMap) bool {
-	s := make(map[string]struct{}, outer.Len())
+	s := make(map[string]struct{}, inner.Len())
 	similar := true
-	outer.Range(func(k string, schema shim.Schema) bool {
+	inner.Range(func(k string, schema shim.Schema) bool {
 		s[k] = struct{}{}
-		v, ok := inner.GetOk(k)
+		v, ok := outer.GetOk(k)
+		if !ok {
+			similar = false
+			return false
+		}
+
 		switch schema.Type() {
 		case shim.TypeInvalid, shim.TypeBool, shim.TypeInt, shim.TypeFloat, shim.TypeString:
-			if !ok {
-				similar = false
-				return false
-			}
 			similar = shallowEqual(schema, v)
 			return similar
 
@@ -101,13 +119,16 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 		// We have already failed so we return early
 		return false
 	}
-	inner.Range(func(k string, schema shim.Schema) bool {
+	outer.Range(func(k string, schema shim.Schema) bool {
 		if _, ok := s[k]; ok {
 			return true
 		}
 
 		// This could be a base case, so accept it
 		_, similar = schema.Elem().(shim.Resource)
+		if !similar {
+			panic(schema.Elem())
+		}
 		return similar
 	})
 	return similar
