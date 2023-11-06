@@ -24,7 +24,7 @@ import (
 // The store is read-write when the schema is being generated, and is persisted to disk
 // with schema.json. During normal provider operation (pulumi-resource-${PKG}), the store
 // if not persisted (making it effectively read-only).
-type ProviderMetadata *metadata.Data
+type ProviderMetadata = *metadata.Data
 
 // Information necessary to persist and use provider level metadata.
 type MetadataInfo struct {

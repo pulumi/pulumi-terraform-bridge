@@ -16,15 +16,16 @@ package metadata
 
 import (
 	"encoding/json"
-	"github.com/json-iterator/go"
+
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // The underlying value of a metadata blob.
-type Data struct{ m map[string]*json.RawMessage }
+type Data struct{ M map[string]json.RawMessage }
 
 func New(data []byte) (*Data, error) {
-	m := map[string]*json.RawMessage{}
+	m := map[string]json.RawMessage{}
 	if len(data) > 0 {
 		jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
 		err := jsoni.Unmarshal(data, &m)
@@ -37,9 +38,9 @@ func New(data []byte) (*Data, error) {
 
 func (d *Data) Marshal() []byte {
 	if d == nil {
-		d = &Data{m: make(map[string]*json.RawMessage)}
+		d = &Data{M: make(map[string]json.RawMessage)}
 	}
-	bytes, err := json.MarshalIndent(d.m, "", "    ")
+	bytes, err := json.MarshalIndent(d.M, "", "    ")
 	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
 	// it is asked to serialize an unmarshalable type (complex, function or channel)
 	// or a cyclic data structure. Because `string` and `json.RawMessage` are
@@ -56,7 +57,7 @@ func (d *Data) Marshal() []byte {
 // Set errors only if value fails to serialize.
 func Set(d *Data, key string, value any) error {
 	if value == nil {
-		delete(d.m, key)
+		delete(d.M, key)
 		return nil
 	}
 	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
@@ -65,18 +66,18 @@ func Set(d *Data, key string, value any) error {
 		return err
 	}
 	msg := json.RawMessage(data)
-	d.m[key] = &msg
+	d.M[key] = msg
 	return nil
 }
 
 func Get[T any](d *Data, key string) (T, bool, error) {
-	data, ok := d.m[key]
+	data, ok := d.M[key]
 	var t T
 	if !ok {
 		return t, false, nil
 	}
 	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-	err := jsoni.Unmarshal(*data, &t)
+	err := jsoni.Unmarshal(data, &t)
 	return t, true, err
 }
 
@@ -84,10 +85,10 @@ func Clone(data *Data) *Data {
 	if data == nil {
 		return nil
 	}
-	m := make(map[string]*json.RawMessage, len(data.m))
-	for k, v := range data.m {
-		dst := make(json.RawMessage, len(*v))
-		n := copy(dst, *v)
+	m := make(map[string]json.RawMessage, len(data.M))
+	for k, v := range data.M {
+		dst := make(json.RawMessage, len(v))
+		n := copy(dst, v)
 		// According to the documentation for `copy`:
 		//
 		//   Copy returns the number of elements copied, which will be the minimum
@@ -95,9 +96,8 @@ func Clone(data *Data) *Data {
 		//
 		// Since `len(src)` is `len(dst)`, and `copy` cannot copy more bytes the
 		// its source, we know that `n == len(v)`.
-		contract.Assertf(n == len(*v), "failed to perform full copy")
-		m[k] = &dst
+		contract.Assertf(n == len(v), "failed to perform full copy")
+		m[k] = dst
 	}
 	return &Data{m}
-
 }
