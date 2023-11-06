@@ -51,7 +51,7 @@ jobs:
           client-payload: |-
             {
                "target-pulumi-version": ${{ toJSON(github.event.inputs.pulumiVersion) }},
-               "target-bridge-version": ${{ toJSON(github.event.inputs.bridgeVersion != "" && github.event.inputs.bridgeVersion || github.sha) }},
+               "target-bridge-version": ${{ toJSON(github.event.inputs.bridgeVersion != '' && github.event.inputs.bridgeVersion || github.sha) }},
                "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
                "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/commit/${{github.sha}}\n\nDO NOT MERGE.",
                "automerge": false
