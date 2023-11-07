@@ -672,7 +672,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// We will still use `detailedDiff` for diff display purposes.
 
 	// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
-	if p.info.XSkipDetailedDiffForChanges && len(diff.Attributes()) > 0 {
+	if len(diff.Attributes()) > 0 {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
