@@ -48,7 +48,6 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
-	tfProvider    pfprovider.Provider
 	tfServer      tfprotov6.ProviderServer
 	info          tfbridge.ProviderInfo
 	resources     pfutils.Resources
@@ -151,7 +150,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 
 	return &provider{
-		tfProvider:    p,
 		tfServer:      server6,
 		info:          info,
 		resources:     resources,

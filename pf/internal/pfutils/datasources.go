@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 )
 
@@ -28,9 +27,6 @@ type DataSources interface {
 	All() []TypeName
 	Has(TypeName) bool
 	Schema(TypeName) Schema
-	Diagnostics(TypeName) diag.Diagnostics
-	AllDiagnostics() diag.Diagnostics
-	DataSource(TypeName) datasource.DataSource
 }
 
 func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources, error) {
@@ -66,8 +62,4 @@ func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources
 
 type dataSources struct {
 	collection[func() datasource.DataSource]
-}
-
-func (d *dataSources) DataSource(name TypeName) datasource.DataSource {
-	return d.collection[name].t()
 }
