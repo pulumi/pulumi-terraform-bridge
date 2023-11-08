@@ -9,11 +9,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	svchost "github.com/hashicorp/terraform-svchost"
 	"github.com/opentofu/opentofu/shim"
 	tfaddr "github.com/opentofu/registry-address"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/dynamic"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	pfgen "github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
 const (
@@ -45,6 +52,25 @@ func main() {
 
 	resp2, _ := pServer.GetProviderSchema(context.Background(), &tfprotov6.GetProviderSchemaRequest{})
 	fmt.Printf("schema again: %v\n", resp2)
+
+	name, version := providerAddr.Type, ""
+	shimProvider := pfutils.SchemaOnlyProvider(name, version, pServer)
+	info := providerInfo(providerAddr.Type, "", shimProvider)
+	pfgen.Main(providerAddr.Type, info)
+
+}
+
+func providerInfo(name, version string, server provider.Provider) tfbridge.ProviderInfo {
+	prov := tfbridge.ProviderInfo{
+		P:                 pfbridge.ShimProvider(server),
+		Name:              name,
+		Version:           "0.0.1",
+		TFProviderVersion: version,
+		ResourcePrefix:    name,
+		MetadataInfo:      &tfbridge.MetadataInfo{"not nil", nil},
+	}
+	prov.MustComputeTokens(tokens.SingleModule(name, "index", tokens.MakeStandard(name)))
+	return prov
 }
 
 func parseProviderAddr() tfaddr.Provider {
@@ -53,7 +79,7 @@ func parseProviderAddr() tfaddr.Provider {
 		Namespace: "hashicorp",
 		Hostname:  svchost.Hostname("registry.terraform.io"),
 	}
-	if len(os.Args) < 2 {
+	if len(os.Args) < 2 || true {
 		return addr
 	}
 
