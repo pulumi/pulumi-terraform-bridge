@@ -32,7 +32,11 @@ func (p ProviderCache) AllAvailablePackages() map[tfaddr.Provider][]providercach
 }
 
 func (p ProviderCache) GetProviderFactory(addr tfaddr.Provider) providers.Factory {
-	return providerFactory(p.impl.ProviderLatestVersion(addr))
+	cached := p.impl.ProviderLatestVersion(addr)
+	if cached == nil {
+		return nil
+	}
+	return providerFactory(cached)
 }
 
 // providerFactory produces a provider factory that runs up the executable
