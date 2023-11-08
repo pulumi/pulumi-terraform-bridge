@@ -2,8 +2,6 @@ module github.com/opentofu/opentofu/shim
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/hashicorp/go-plugin v1.5.2
 	github.com/hashicorp/terraform-svchost v0.1.1

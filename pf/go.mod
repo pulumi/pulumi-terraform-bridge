@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi-terraform-bridge/pf
 
 go 1.21
 
-toolchain go1.21.3
-
 replace (
 	github.com/opentofu/opentofu/shim => ./dynamic/shim
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
