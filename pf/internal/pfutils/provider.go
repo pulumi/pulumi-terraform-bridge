@@ -11,6 +11,7 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -252,7 +253,18 @@ func convertDataSourceAttributes(attributes []*tfprotov6.SchemaAttribute) map[st
 	return attrs
 }
 
-func convertTftypeToAttrType(ty tftypes.Type) attr.Type { return attrTypeShim{ty} }
+func convertTftypeToAttrType(ty tftypes.Type) attr.Type {
+	switch {
+	case ty.Is(tftypes.Bool):
+		return types.BoolType
+	case ty.Is(tftypes.String):
+		return types.StringType
+	case ty.Is(tftypes.Number):
+		return types.NumberType
+	default:
+		return attrTypeShim{ty}
+	}
+}
 
 type attrTypeShim struct{ tftypes.Type }
 
@@ -268,8 +280,11 @@ func (attrTypeShim) ValueType(context.Context) attr.Value {
 	contract.Failf("attrTypeShim does not implement ValueType")
 	return nil
 }
-func (attrTypeShim) Equal(attr.Type) bool {
-	contract.Failf("attrTypeShim does not implement Equal")
+func (a attrTypeShim) Equal(other attr.Type) bool {
+	b, ok := other.(attrTypeShim)
+	if ok {
+		return a.Type.Equal(b.Type)
+	}
 	return false
 }
 

@@ -67,7 +67,7 @@ func providerInfo(name, version string, server provider.Provider) tfbridge.Provi
 		Version:           "0.0.1",
 		TFProviderVersion: version,
 		ResourcePrefix:    name,
-		MetadataInfo:      &tfbridge.MetadataInfo{"not nil", nil},
+		MetadataInfo:      tfbridge.NewProviderMetadata(nil),
 	}
 	prov.MustComputeTokens(tokens.SingleModule(name, "index", tokens.MakeStandard(name)))
 	return prov
