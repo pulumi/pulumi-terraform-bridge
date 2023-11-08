@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,7 +29,6 @@ import (
 
 type datasourceHandle struct {
 	token                   tokens.ModuleMember
-	makeDataSource          func() datasource.DataSource
 	terraformDataSourceName string
 	schema                  pfutils.Schema
 	encoder                 convert.Encoder
@@ -48,9 +46,6 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 	typeName := pfutils.TypeName(dsName)
 	schema := p.datasources.Schema(typeName)
 
-	makeDataSource := func() datasource.DataSource {
-		return p.datasources.DataSource(typeName)
-	}
 
 	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
 
@@ -68,7 +63,6 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 
 	result := datasourceHandle{
 		token:                   token,
-		makeDataSource:          makeDataSource,
 		terraformDataSourceName: dsName,
 		schema:                  schema,
 		encoder:                 encoder,

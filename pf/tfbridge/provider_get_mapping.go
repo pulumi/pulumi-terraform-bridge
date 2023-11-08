@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -54,7 +53,7 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key, provider stri
 
 func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
 	var providerInfoCopy tfbridge.ProviderInfo = p.info
-	providerInfoCopy.P = schemashim.ShimSchemaOnlyProvider(ctx, p.tfProvider)
+
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
 }
 

@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	//"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
@@ -28,9 +28,6 @@ type Resources interface {
 	All() []TypeName
 	Has(TypeName) bool
 	Schema(TypeName) Schema
-	Diagnostics(TypeName) diag.Diagnostics
-	AllDiagnostics() diag.Diagnostics
-	Resource(TypeName) resource.Resource
 }
 
 // Collects all resources from prov and indexes them by TypeName.
@@ -66,8 +63,4 @@ func GatherResources(ctx context.Context, prov provider.Provider) (Resources, er
 
 type resources struct {
 	collection[func() resource.Resource]
-}
-
-func (r *resources) Resource(name TypeName) resource.Resource {
-	return r.collection[name].t()
 }
