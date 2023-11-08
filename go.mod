@@ -4,6 +4,9 @@ go 1.20
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/testing => ./testing
+	github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge => ./pf/tfbridge
+
+	github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata => ./unstable/metadata
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 )
 

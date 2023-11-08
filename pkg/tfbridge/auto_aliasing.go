@@ -17,37 +17,12 @@ package tfbridge
 import (
 	"github.com/Masterminds/semver"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/history"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-type tokenHistory[T ~string] struct {
-	Current T          `json:"current"`        // the current Pulumi token for the resource
-	Past    []alias[T] `json:"past,omitempty"` // Previous tokens
-
-	MajorVersion int                      `json:"majorVersion,omitempty"`
-	Fields       map[string]*fieldHistory `json:"fields,omitempty"`
-}
-
-type alias[T ~string] struct {
-	Name         T    `json:"name"`         // The previous token.
-	InCodegen    bool `json:"inCodegen"`    // If the alias is a fully generated resource, or just a schema alias.
-	MajorVersion int  `json:"majorVersion"` // The provider's major version when Name was introduced.
-}
-
-type aliasHistory struct {
-	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources,omitempty"`
-	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources,omitempty"`
-}
-
-type fieldHistory struct {
-	MaxItemsOne *bool `json:"maxItemsOne,omitempty"`
-
-	Fields map[string]*fieldHistory `json:"fields,omitempty"`
-	Elem   *fieldHistory            `json:"elem,omitempty"`
-}
 
 // Automatically applies backwards compatibility best practices.
 //
@@ -153,11 +128,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	}
 
 	if isTfgen() {
-		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
-			// Set fails only when `hist` is not serializable. Because `hist` is
-			// composed of marshallable, non-cyclic types, this is impossible.
-			contract.AssertNoErrorf(err, "History failed to serialize")
-		}
+		artifact.AutoAliasing = hist
 	}
 
 	return nil
@@ -165,24 +136,30 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 
 const aliasMetadataKey = "auto-aliasing"
 
-func getHistory(artifact ProviderMetadata) (aliasHistory, error) {
-	hist, ok, err := md.Get[aliasHistory](artifact, aliasMetadataKey)
+func getHistory(artifact ProviderMetadata) (*history.AliasHistory, error) {
+	if artifact.AutoAliasing != nil {
+		return artifact.AutoAliasing, nil
+	}
+	hist, ok, err := md.Get[history.AliasHistory](artifact, aliasMetadataKey)
 	if err != nil {
-		return aliasHistory{}, err
+		return &history.AliasHistory{}, err
 	}
 	if !ok {
-		hist = aliasHistory{
-			Resources:   map[string]*tokenHistory[tokens.Type]{},
-			DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
+		hist = history.AliasHistory{
+			Resources:   map[string]*history.TokenHistory[tokens.Type]{},
+			DataSources: map[string]*history.TokenHistory[tokens.ModuleMember]{},
 		}
 	}
-	return hist, nil
+
+	artifact.AutoAliasing = &hist
+
+	return &hist, nil
 }
 
 func aliasResource(
 	p *ProviderInfo, res shim.Resource,
 	applyResourceAliases *[]func(),
-	hist map[string]*tokenHistory[tokens.Type], computed *ResourceInfo,
+	hist map[string]*history.TokenHistory[tokens.Type], computed *ResourceInfo,
 	tfToken string, version int,
 ) {
 	prev, hasPrev := hist[tfToken]
@@ -190,7 +167,7 @@ func aliasResource(
 		if isTfgen() {
 			// It's not in the history, so it must be new. Stick it in the history for
 			// next time.
-			hist[tfToken] = &tokenHistory[tokens.Type]{
+			hist[tfToken] = &history.TokenHistory[tokens.Type]{
 				Current: computed.Tok,
 			}
 		}
@@ -222,7 +199,7 @@ func aliasResource(
 
 // applyResourceMaxItemsOneAliasing traverses a shim.Resource, applying walk to each field in the resource.
 func applyResourceMaxItemsOneAliasing(
-	r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*SchemaInfo,
+	r shim.Resource, hist *map[string]*history.FieldHistory, info *map[string]*SchemaInfo,
 ) (bool, bool) {
 	if r == nil {
 		return hist != nil, info != nil
@@ -295,7 +272,7 @@ func applyResourceMaxItemsOneAliasing(
 // applyMaxItemsOneAliasing traverses a generic shim.Schema recursively, applying fieldHistory to
 // SchemaInfo and vise versa as necessary to avoid breaking changes in the
 // resulting sdk.
-func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaInfo) (hasH bool, hasI bool) {
+func applyMaxItemsOneAliasing(schema shim.Schema, h *history.FieldHistory, info *SchemaInfo) (hasH bool, hasI bool) {
 	//revive:disable-next-line:empty-block
 	if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
 		// MaxItemsOne does not apply, so do nothing
@@ -328,7 +305,7 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaI
 	var hasElemH, hasElemI bool
 	populateElem := func() {
 		if h.Elem == nil {
-			h.Elem = &fieldHistory{}
+			h.Elem = &history.FieldHistory{}
 		} else {
 			hasElemH = true
 		}
@@ -388,7 +365,7 @@ func getNonNil[K comparable, V any](m *map[K]*V, key K) (_ *V, alreadyThere bool
 func aliasOrRenameResource(
 	p *ProviderInfo,
 	res *ResourceInfo, tfToken string,
-	hist *tokenHistory[tokens.Type], currentVersion int,
+	hist *history.TokenHistory[tokens.Type], currentVersion int,
 ) {
 	var alreadyPresent bool
 	for _, a := range hist.Past {
@@ -400,7 +377,7 @@ func aliasOrRenameResource(
 	if !alreadyPresent && res.Tok != hist.Current {
 		// The resource is in history, but the name has changed. Update the new current name
 		// and add the old name to the history.
-		hist.Past = append(hist.Past, alias[tokens.Type]{
+		hist.Past = append(hist.Past, history.Alias[tokens.Type]{
 			Name:         hist.Current,
 			InCodegen:    true,
 			MajorVersion: currentVersion,
@@ -419,14 +396,13 @@ func aliasOrRenameResource(
 				AliasInfo{Type: (*string)(&legacy)})
 		}
 	}
-
 }
 
 func aliasDataSource(
 	p *ProviderInfo,
 	ds shim.Resource,
 	queue *[]func(),
-	hist map[string]*tokenHistory[tokens.ModuleMember],
+	hist map[string]*history.TokenHistory[tokens.ModuleMember],
 	computed *DataSourceInfo,
 	tfToken string,
 	version int,
@@ -435,7 +411,7 @@ func aliasDataSource(
 	if !hasPrev {
 		// It's not in the history, so it must be new. Stick it in the history for
 		// next time.
-		hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
+		hist[tfToken] = &history.TokenHistory[tokens.ModuleMember]{
 			Current:      computed.Tok,
 			MajorVersion: version,
 		}
@@ -460,7 +436,7 @@ func aliasDataSource(
 func aliasOrRenameDataSource(
 	p *ProviderInfo,
 	ds *DataSourceInfo, tfToken string,
-	prev *tokenHistory[tokens.ModuleMember],
+	prev *history.TokenHistory[tokens.ModuleMember],
 	currentVersion int,
 ) {
 	// re-fetch the resource, to make sure we have the right pointer.
@@ -472,7 +448,7 @@ func aliasOrRenameDataSource(
 	}
 
 	if prev.Current != ds.Tok {
-		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
+		prev.Past = append(prev.Past, history.Alias[tokens.ModuleMember]{
 			Name:         prev.Current,
 			MajorVersion: currentVersion,
 		})
@@ -496,7 +472,6 @@ func aliasOrRenameDataSource(
 			computed.Tok, legacy.Module().Name().String(),
 			computed.Tok.Module().Name().String(), computed)
 	}
-
 }
 
 // Remove elements at indexes from src, then return the resulting array.

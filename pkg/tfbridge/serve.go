@@ -16,9 +16,7 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -37,14 +35,7 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 		if len(opts.muxWith) > 0 {
 			// If we have multiple providers to serve, Mux them together.
 
-			var mapping muxer.DispatchTable
-			if m, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "muxer"); err != nil {
-				return nil, err
-			} else if found {
-				mapping = m
-			} else {
-				return nil, fmt.Errorf("missing pre-computed muxer mapping")
-			}
+			mapping := info.GetMetadata().Mux
 
 			servers := []muxer.Endpoint{{
 				Server: func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {

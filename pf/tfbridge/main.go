@@ -130,13 +130,18 @@ func MakeMuxedServer(
 	_, err := shim.ResolveDispatch(&info)
 	contract.AssertNoErrorf(err, "Failed to re-apply alias mappings")
 	version := info.Version
-	dispatchTable, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux")
-	if err != nil {
-		cmdutil.ExitError(err.Error())
-	}
-	if !found {
-		fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
-		os.Exit(1)
+	dispatchTable := info.GetMetadata().Mux
+	if len(dispatchTable.Resources) == 0 {
+		// try to deserialize
+		dt, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux")
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+		if !found {
+			fmt.Printf("Missing precomputed mapping. Did you run `make tfgen`?")
+			os.Exit(1)
+		}
+		dispatchTable = dt
 	}
 
 	getTFMapping := func(muxer.GetMappingArgs) (muxer.GetMappingResponse, error) {

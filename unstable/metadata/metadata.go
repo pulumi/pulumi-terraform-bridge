@@ -18,14 +18,22 @@ import (
 	"encoding/json"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/history"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // The underlying value of a metadata blob.
-type Data struct{ M map[string]json.RawMessage }
+type Data struct {
+	AutoAliasing *history.AliasHistory `json:"auto-aliasing"`
+	Mux          muxer.DispatchTable   `json:"mux"`
+	Renames      json.RawMessage       `json:"renamed"`
+
+	M map[string]*json.RawMessage
+}
 
 func New(data []byte) (*Data, error) {
-	m := map[string]json.RawMessage{}
+	m := map[string]*json.RawMessage{}
 	if len(data) > 0 {
 		jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
 		err := jsoni.Unmarshal(data, &m)
@@ -33,12 +41,12 @@ func New(data []byte) (*Data, error) {
 			return nil, err
 		}
 	}
-	return &Data{m}, nil
+	return &Data{M: m}, nil
 }
 
 func (d *Data) Marshal() []byte {
 	if d == nil {
-		d = &Data{M: make(map[string]json.RawMessage)}
+		d = &Data{M: make(map[string]*json.RawMessage)}
 	}
 	bytes, err := json.MarshalIndent(d.M, "", "    ")
 	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
@@ -66,7 +74,7 @@ func Set(d *Data, key string, value any) error {
 		return err
 	}
 	msg := json.RawMessage(data)
-	d.M[key] = msg
+	d.M[key] = &msg
 	return nil
 }
 
@@ -77,7 +85,7 @@ func Get[T any](d *Data, key string) (T, bool, error) {
 		return t, false, nil
 	}
 	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-	err := jsoni.Unmarshal(data, &t)
+	err := jsoni.Unmarshal(*data, &t)
 	return t, true, err
 }
 
@@ -85,10 +93,10 @@ func Clone(data *Data) *Data {
 	if data == nil {
 		return nil
 	}
-	m := make(map[string]json.RawMessage, len(data.M))
+	m := make(map[string]*json.RawMessage, len(data.M))
 	for k, v := range data.M {
-		dst := make(json.RawMessage, len(v))
-		n := copy(dst, v)
+		dst := make(json.RawMessage, len(*v))
+		n := copy(dst, *v)
 		// According to the documentation for `copy`:
 		//
 		//   Copy returns the number of elements copied, which will be the minimum
@@ -96,8 +104,8 @@ func Clone(data *Data) *Data {
 		//
 		// Since `len(src)` is `len(dst)`, and `copy` cannot copy more bytes the
 		// its source, we know that `n == len(v)`.
-		contract.Assertf(n == len(v), "failed to perform full copy")
-		m[k] = dst
+		contract.Assertf(n == len(*v), "failed to perform full copy")
+		m[k] = &dst
 	}
-	return &Data{m}
+	return &Data{M: m}
 }
