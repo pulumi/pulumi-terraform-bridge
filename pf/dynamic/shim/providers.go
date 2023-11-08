@@ -1,0 +1,30 @@
+package shim
+
+import (
+	"github.com/opentofu/opentofu/internal/providers"
+)
+
+type Interface = providers.Interface
+type GetProviderSchemaResponse = providers.GetProviderSchemaResponse
+type Schema = providers.Schema
+type ServerCapabilities = providers.ServerCapabilities
+type ValidateProviderConfigRequest = providers.ValidateProviderConfigRequest
+type ValidateProviderConfigResponse = providers.ValidateProviderConfigResponse
+type ValidateResourceConfigRequest = providers.ValidateResourceConfigRequest
+type ValidateResourceConfigResponse = providers.ValidateResourceConfigResponse
+type ValidateDataResourceConfigRequest = providers.ValidateDataResourceConfigRequest
+type ValidateDataResourceConfigResponse = providers.ValidateDataResourceConfigResponse
+type UpgradeResourceStateRequest = providers.UpgradeResourceStateRequest
+type UpgradeResourceStateResponse = providers.UpgradeResourceStateResponse
+type ConfigureProviderRequest = providers.ConfigureProviderRequest
+type ConfigureProviderResponse = providers.ConfigureProviderResponse
+type ReadResourceRequest = providers.ReadResourceRequest
+type PlanResourceChangeRequest = providers.PlanResourceChangeRequest
+type PlanResourceChangeResponse = providers.PlanResourceChangeResponse
+type ApplyResourceChangeRequest = providers.ApplyResourceChangeRequest
+type ApplyResourceChangeResponse = providers.ApplyResourceChangeResponse
+type ImportResourceStateRequest = providers.ImportResourceStateRequest
+type ImportResourceStateResponse = providers.ImportResourceStateResponse
+type ImportedResource = providers.ImportedResource
+type ReadDataSourceRequest = providers.ReadDataSourceRequest
+type ReadDataSourceResponse = providers.ReadDataSourceResponse
