@@ -17,7 +17,7 @@ const (
 )
 
 func main() {
-	providerAddr := dynamic.ParseProviderAddr()
+	providerAddr := dynamic.ProviderAddrFromFlag()
 	fmt.Printf("addr: %v\n", providerAddr)
 	pServer, err := dynamic.LoadProviderServer(providerAddr)
 	if err != nil {
@@ -25,9 +25,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	name, version := providerAddr.Type, ""
+	name, version := providerAddr.Type, "v0.0.1"
 	shimProvider := pfutils.SchemaOnlyProvider(name, version, pServer)
-	info := dynamic.MkProviderInfo(providerAddr.Type, "", shimProvider)
+	info := dynamic.MkProviderInfo(providerAddr.Type, version, shimProvider)
 	pfgen.Main(providerAddr.Type, info)
 
 }

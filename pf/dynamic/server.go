@@ -77,7 +77,7 @@ func (ps *dynamicPfServer) ValidateProviderConfig(c context.Context, req *tfprot
 		return nil, err
 	}
 	pReq := shim.ValidateProviderConfigRequest{
-		Config: *config,
+		Config: config,
 	}
 	pResp := ps.impl.ValidateProviderConfig(pReq)
 	return &tfprotov6.ValidateProviderConfigResponse{
@@ -92,7 +92,7 @@ func (ps *dynamicPfServer) ConfigureProvider(c context.Context, req *tfprotov6.C
 	}
 	pReq := shim.ConfigureProviderRequest{
 		TerraformVersion: req.TerraformVersion,
-		Config:           *config,
+		Config:           config,
 	}
 	pResp := ps.impl.ConfigureProvider(pReq)
 	return &tfprotov6.ConfigureProviderResponse{
@@ -112,7 +112,7 @@ func (ps *dynamicPfServer) ValidateResourceConfig(c context.Context, req *tfprot
 	}
 	pReq := shim.ValidateResourceConfigRequest{
 		TypeName: req.TypeName,
-		Config:   *config,
+		Config:   config,
 	}
 	pResp := ps.impl.ValidateResourceConfig(pReq)
 	return &tfprotov6.ValidateResourceConfigResponse{
@@ -154,8 +154,8 @@ func (ps *dynamicPfServer) ReadResource(c context.Context, req *tfprotov6.ReadRe
 	pReq := shim.ReadResourceRequest{
 		TypeName:     req.TypeName,
 		Private:      req.Private,
-		PriorState:   *currentState,
-		ProviderMeta: *meta,
+		PriorState:   currentState,
+		ProviderMeta: meta,
 	}
 	pResp := ps.impl.ReadResource(pReq)
 	newState, err := marshalToDV(&pResp.NewState)
@@ -193,10 +193,10 @@ func (ps *dynamicPfServer) PlanResourceChange(c context.Context, req *tfprotov6.
 	pReq := shim.PlanResourceChangeRequest{
 		TypeName:         req.TypeName,
 		PriorPrivate:     req.PriorPrivate,
-		PriorState:       *priorState,
-		ProposedNewState: *proposedNewState,
-		Config:           *config,
-		ProviderMeta:     *meta,
+		PriorState:       priorState,
+		ProposedNewState: proposedNewState,
+		Config:           config,
+		ProviderMeta:     meta,
 	}
 	pResp := ps.impl.PlanResourceChange(pReq)
 	plannedState, err := marshalToDV(&pResp.PlannedState)
@@ -214,6 +214,7 @@ func (ps *dynamicPfServer) PlanResourceChange(c context.Context, req *tfprotov6.
 }
 
 func (ps *dynamicPfServer) ApplyResourceChange(c context.Context, req *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {
+
 	priorState, err := unmarshalFromDV(req.PriorState, ps.getResourceType(req.TypeName))
 	if err != nil {
 		return nil, err
@@ -237,10 +238,10 @@ func (ps *dynamicPfServer) ApplyResourceChange(c context.Context, req *tfprotov6
 	pReq := shim.ApplyResourceChangeRequest{
 		TypeName:       req.TypeName,
 		PlannedPrivate: req.PlannedPrivate,
-		PriorState:     *priorState,
-		PlannedState:   *plannedState,
-		Config:         *config,
-		ProviderMeta:   *meta,
+		PriorState:     priorState,
+		PlannedState:   plannedState,
+		Config:         config,
+		ProviderMeta:   meta,
 	}
 	pResp := ps.impl.ApplyResourceChange(pReq)
 	newState, err := marshalToDV(&pResp.NewState)
@@ -280,7 +281,7 @@ func (ps *dynamicPfServer) ValidateDataResourceConfig(c context.Context, req *tf
 	}
 	pReq := shim.ValidateDataResourceConfigRequest{
 		TypeName: req.TypeName,
-		Config:   *config,
+		Config:   config,
 	}
 	pResp := ps.impl.ValidateDataResourceConfig(pReq)
 	return &tfprotov6.ValidateDataResourceConfigResponse{
@@ -301,8 +302,8 @@ func (ps *dynamicPfServer) ReadDataSource(c context.Context, req *tfprotov6.Read
 
 	pReq := shim.ReadDataSourceRequest{
 		TypeName:     req.TypeName,
-		Config:       *config,
-		ProviderMeta: *meta,
+		Config:       config,
+		ProviderMeta: meta,
 	}
 	pResp := ps.impl.ReadDataSource(pReq)
 	state, err := marshalToDV(&pResp.State)

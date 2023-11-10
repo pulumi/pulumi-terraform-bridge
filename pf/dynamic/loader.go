@@ -62,24 +62,35 @@ func LoadProviderServer(addr tfaddr.Provider) (tfprotov6.ProviderServer, error) 
 	return pServer, nil
 }
 
-func ParseProviderAddr() tfaddr.Provider {
+func ProviderAddrFromFlag() tfaddr.Provider {
 	flags := flag.NewFlagSet("dyanamic_provider", flag.ContinueOnError)
 	var providerFlag string
 	flags.StringVarP(
 		&providerFlag, "provider", "p", "", "tf provider to point at")
 	flags.Parse(os.Args)
 
+	return ParseProviderAddr(providerFlag)
+}
+
+func ProviderAddrFromFilename() tfaddr.Provider {
+	path := strings.Split(os.Args[0], "/")
+	name, _ := strings.CutPrefix(path[len(path)-1], "pulumi-resource-")
+
+	return ParseProviderAddr(name)
+}
+
+func ParseProviderAddr(s string) tfaddr.Provider {
 	addr := tfaddr.Provider{
 		Type:      "random",
 		Namespace: "hashicorp",
 		Hostname:  svchost.Hostname("registry.terraform.io"),
 	}
 
-	if providerFlag == "" {
+	if s == "" {
 		return addr
 	}
 
-	segments := strings.Split(providerFlag, "/")
+	segments := strings.Split(s, "/")
 
 	if len(segments) > 0 {
 		addr.Type = segments[len(segments)-1]

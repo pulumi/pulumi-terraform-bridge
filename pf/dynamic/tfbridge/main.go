@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	providerAddr := dynamic.ParseProviderAddr()
+	providerAddr := dynamic.ProviderAddrFromFilename()
 	//fmt.Printf("addr: %v\n", providerAddr)
 	pServer, err := dynamic.LoadProviderServer(providerAddr)
 	if err != nil {

@@ -22,14 +22,17 @@ func marshalToDV(v *cty.Value) (*tfprotov6.DynamicValue, error) {
 	return &dv, nil
 }
 
-func unmarshalFromDV(dv *tfprotov6.DynamicValue, ty cty.Type) (*cty.Value, error) {
+func unmarshalFromDV(dv *tfprotov6.DynamicValue, ty cty.Type) (cty.Value, error) {
+	if dv == nil {
+		return cty.NullVal(ty), nil
+	}
 	tfTy := tftypeFromCtyType(ty)
 	tfVal, err := dv.Unmarshal(tfTy)
 	if err != nil {
-		return nil, err
+		return cty.NullVal(ty), err
 	}
 	val := ctyValueFromTfValue(tfVal)
-	return val, nil
+	return *val, nil
 }
 
 func tftypeFromCtyType(in cty.Type) tftypes.Type {
@@ -131,6 +134,15 @@ func ctyTypeFromTFType(in tftypes.Type) (cty.Type, error) {
 func ctyValueFromTfValue(val tftypes.Value) *cty.Value {
 	in := val.Type()
 
+	if val.IsNull() {
+		v := cty.NullVal(panicIfErr2(ctyTypeFromTFType(in)))
+		return &v
+	}
+	if !val.IsKnown() {
+		v := cty.UnknownVal(panicIfErr2(ctyTypeFromTFType(in)))
+		return &v
+	}
+
 	switch {
 	case in.Is(tftypes.String):
 		var s string
@@ -181,7 +193,8 @@ func ctyValueFromTfValue(val tftypes.Value) *cty.Value {
 		if len(mm) > 0 {
 			mmm = cty.MapVal(mm)
 		} else {
-			ty, _ := ctyTypeFromTFType(in.(tftypes.Map).ElementType)
+			ty, err := ctyTypeFromTFType(in.(tftypes.Map).ElementType)
+			panicIfErr(err)
 			mmm = cty.MapValEmpty(ty)
 		}
 		return &mmm
@@ -212,6 +225,15 @@ func ctyValueFromTfValue(val tftypes.Value) *cty.Value {
 
 func tfValueFromCtyValue(val cty.Value) (*tftypes.Value, error) {
 	typ := val.Type()
+	if val.IsNull() {
+		v := tftypes.NewValue(tftypeFromCtyType(typ), nil)
+		return &v, nil
+	}
+	if !val.IsKnown() {
+		v := tftypes.NewValue(tftypeFromCtyType(typ), tftypes.UnknownValue)
+		return &v, nil
+	}
+
 	switch {
 	case typ.Equals(cty.String):
 		v := tftypes.NewValue(tftypes.String, val.AsString())
@@ -357,4 +379,9 @@ func panicIfErr(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func panicIfErr2[T interface{}](tt T, err error) T {
+	panicIfErr(err)
+	return tt
 }
