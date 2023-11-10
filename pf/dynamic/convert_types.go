@@ -146,7 +146,7 @@ func ctyValueFromTfValue(val tftypes.Value) *cty.Value {
 
 	case in.Is(tftypes.Number):
 		n := big.NewFloat(0)
-		panicIfErr(val.As(&n))
+		panicIfErr(val.As(n))
 		nn := cty.NumberVal(n)
 		return &nn
 
@@ -177,7 +177,13 @@ func ctyValueFromTfValue(val tftypes.Value) *cty.Value {
 		for k, v := range m {
 			mm[k] = *ctyValueFromTfValue(v)
 		}
-		mmm := cty.MapVal(mm)
+		var mmm cty.Value
+		if len(mm) > 0 {
+			mmm = cty.MapVal(mm)
+		} else {
+			ty, _ := ctyTypeFromTFType(in.(tftypes.Map).ElementType)
+			mmm = cty.MapValEmpty(ty)
+		}
 		return &mmm
 
 	case in.Is(tftypes.Tuple{}):

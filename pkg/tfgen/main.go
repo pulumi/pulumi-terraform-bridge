@@ -175,6 +175,11 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 		},
 	}
 
+	//HACK to avoid "unknown flag" error
+	var providerFlag string
+	cmd.PersistentFlags().StringVarP(
+		&providerFlag, "provider","p", "", "tf provider to point at")
+
 	cmd.PersistentFlags().BoolVar(
 		&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().StringVarP(

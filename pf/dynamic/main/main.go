@@ -15,6 +15,7 @@ import (
 	"github.com/opentofu/opentofu/shim"
 	tfaddr "github.com/opentofu/registry-address"
 
+	//"github.com/hashicorp/terraform-svchost/disco"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/dynamic"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
@@ -33,7 +34,19 @@ func main() {
 
 	providerCacheDir := os.Getenv(envPluginCache)
 	providersMap := shim.NewProviderCache(providerCacheDir)
-	fmt.Printf("providers: %v\n", providersMap.AllAvailablePackages())
+	fmt.Printf("cached providers: %v\n", providersMap.AllAvailablePackages())
+
+	/*
+	installer := providersMap.NewInstaller(shim.NewRegistrySource(disco.New()))
+	installer.EnsureProviderVersions(
+		context.Background(),
+		shim.NewLocks(),
+		shim.ProviderRequirements{providerAddr: nil},
+		shim.InstallNewProvidersOnly,
+	)
+
+	fmt.Printf("cached providers after install: %v\n", providersMap.AllAvailablePackages())
+	*/
 
 	providerfactory := providersMap.GetProviderFactory(providerAddr)
 	if providerfactory == nil {
@@ -99,6 +112,9 @@ func parseProviderAddr() tfaddr.Provider {
 	if len(segments) > 3 {
 		panic("invalid provider arg")
 	}
+
+	//Strip this from the args to avoid tripping up the rest of pf
+	os.Args = append(os.Args[:1], os.Args[2:]...)
 
 	return addr
 }

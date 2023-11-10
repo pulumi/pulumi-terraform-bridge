@@ -40,7 +40,7 @@ import (
 func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
 	handleFlags(ctx, prov.Version,
 		func() (*tfbridge.MarshallableProviderInfo, error) {
-			pp, err := newProviderWithContext(ctx, prov, meta)
+			pp, err := newProviderWithContext(ctx, prov, meta, nil)
 			if err != nil {
 				return nil, err
 			}

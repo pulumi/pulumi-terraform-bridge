@@ -7,6 +7,8 @@ import (
 
 	plugin "github.com/hashicorp/go-plugin"
 	svchost "github.com/hashicorp/terraform-svchost"
+	"github.com/opentofu/opentofu/internal/depsfile"
+	"github.com/opentofu/opentofu/internal/getproviders"
 	"github.com/opentofu/opentofu/internal/logging"
 	tfplugin "github.com/opentofu/opentofu/internal/plugin"
 	tfplugin6 "github.com/opentofu/opentofu/internal/plugin6"
@@ -25,6 +27,10 @@ func NewProviderCache(path string) ProviderCache {
 
 type ProviderCache struct {
 	impl *providercache.Dir
+}
+
+func (p ProviderCache) NewInstaller(source getproviders.Source) *providercache.Installer {
+	return providercache.NewInstaller(p.impl, source)
 }
 
 func (p ProviderCache) AllAvailablePackages() map[tfaddr.Provider][]providercache.CachedProvider {
@@ -96,3 +102,17 @@ type ProviderAddr struct {
 	Namespace string
 	Hostname  svchost.Hostname
 }
+
+type InstallMode = providercache.InstallMode
+
+const (
+	InstallNewProvidersOnly  = providercache.InstallNewProvidersOnly
+	InstallNewProvidersForce = providercache.InstallNewProvidersForce
+	InstallUpgrades          = providercache.InstallUpgrades
+)
+
+type ProviderRequirements = getproviders.Requirements
+
+var NewRegistrySource = getproviders.NewRegistrySource
+
+var NewLocks = depsfile.NewLocks

@@ -75,7 +75,7 @@ var _ pl.ProviderWithContext = &provider{}
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
 func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
-	pwc, err := newProviderWithContext(ctx, info, meta)
+	pwc, err := newProviderWithContext(ctx, info, meta, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (pl.ProviderWithContext, error) {
+	meta ProviderMetadata, server tfprotov6.ProviderServer) (pl.ProviderWithContext, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 	if info.P == nil {
 		return nil, fmt.Errorf("%s: cannot be nil", infoPErrMSg)
@@ -104,9 +104,13 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 	p := schemaOnlyProvider.PfProvider()
 
-	server6, err := newProviderServer6(ctx, p)
-	if err != nil {
-		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
+	server6 := server
+	if server6 == nil {
+		var err error
+		server6, err = newProviderServer6(ctx, p)
+		if err != nil {
+			return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
+		}
 	}
 	resources, err := pfutils.GatherResources(ctx, p)
 	if err != nil {
@@ -172,7 +176,26 @@ func NewProviderServer(
 	info tfbridge.ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {
-	p, err := newProviderWithContext(ctx, info, meta)
+	p, err := newProviderWithContext(ctx, info, meta, nil)
+	if err != nil {
+		return nil, err
+	}
+	pp := p.(*provider)
+
+	pp.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
+	return pl.NewProviderServerWithContext(p, configEnc), nil
+}
+
+// Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
+func NewProviderServer2(
+	ctx context.Context,
+	logSink logutils.LogSink,
+	info tfbridge.ProviderInfo,
+	meta ProviderMetadata,
+	server tfprotov6.ProviderServer,
+) (pulumirpc.ResourceProviderServer, error) {
+	p, err := newProviderWithContext(ctx, info, meta, server)
 	if err != nil {
 		return nil, err
 	}

@@ -339,7 +339,7 @@ type schemaOnlyDataSource struct {
 }
 
 func (s schemaOnlyDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + s.name
+	resp.TypeName = s.name
 }
 
 // Schema should return the schema for this data source.
@@ -362,7 +362,7 @@ type schemaOnlyResource struct {
 }
 
 func (s schemaOnlyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + s.name
+	resp.TypeName = s.name
 }
 
 // Schema should return the schema for this resource.
