@@ -15,9 +15,8 @@
 package metadata
 
 import (
-	"encoding/json"
-	"github.com/json-iterator/go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/segmentio/encoding/json"
 )
 
 // The underlying value of a metadata blob.
@@ -26,12 +25,12 @@ type Data struct{ m map[string]*json.RawMessage }
 func New(data []byte) (*Data, error) {
 	m := map[string]*json.RawMessage{}
 	if len(data) > 0 {
-		jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-		err := jsoni.Unmarshal(data, &m)
+		_, err := json.Parse(data, &m, json.ZeroCopy)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return &Data{m}, nil
 }
 
@@ -59,8 +58,7 @@ func Set(d *Data, key string, value any) error {
 		delete(d.m, key)
 		return nil
 	}
-	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-	data, err := jsoni.Marshal(value)
+	data, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
@@ -75,8 +73,7 @@ func Get[T any](d *Data, key string) (T, bool, error) {
 	if !ok {
 		return t, false, nil
 	}
-	jsoni := jsoniter.ConfigCompatibleWithStandardLibrary
-	err := jsoni.Unmarshal(*data, &t)
+	_, err := json.Parse(*data, &t, json.ZeroCopy)
 	return t, true, err
 }
 
