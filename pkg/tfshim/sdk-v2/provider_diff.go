@@ -74,7 +74,7 @@ func (p v2Provider) simpleDiff(
 	c *terraform.ResourceConfig,
 	rawConfigVal hcty.Value,
 	meta interface{},
-) (finalInstanceDiff *terraform.InstanceDiff, finalError error) {
+) (*terraform.InstanceDiff, error) {
 	ctx := context.TODO()
 
 	switch diffStrat {
