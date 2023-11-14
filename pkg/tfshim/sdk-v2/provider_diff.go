@@ -177,9 +177,9 @@ func simpleDiffViaPlanState(
 	//
 	// See https://github.com/hashicorp/terraform-plugin-sdk/blob/28e631776d97f0a5a5942b3524814addbef90875/helper/schema/grpc_provider.go#L797
 	//
-	// In TF this is communicated from PlanResourceChange to ApplyResourceChange; unlike
-	// TF, in the current codebase tpphe InstanceDiff is passed directly to Apply. If
-	// RawPlan is not set on the diff it may cause nil panics in the provider.
+	// In TF this is communicated from PlanResourceChange to ApplyResourceChange; unlike TF, in
+	// the current codebase InstanceDiff is passed directly to Apply. If RawPlan is not set on
+	// the diff it may cause nil panics in the provider.
 	if diff != nil && len(diff.Attributes) == 0 {
 		diff.RawPlan = priorStateVal
 		// TODO[pulumi/pulumi-terraform-bridge#1505] handle private state similar to upstream
