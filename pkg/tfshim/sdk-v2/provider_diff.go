@@ -170,12 +170,13 @@ func simpleDiffViaPlanState(
 		return nil, err
 	}
 
-	// TF gRPC servers compenstate for the fact that SimpleDiff may return
+	// TF gRPC servers compensate for the fact that SimpleDiff may return
 	// terraform.NewInstanceDiff(), nil dropping any available information on RawPlan.
 	//
 	// See for example this code in PlanResourceChange:
 	//
-	// See https://github.com/hashicorp/terraform-plugin-sdk/blob/28e631776d97f0a5a5942b3524814addbef90875/helper/schema/grpc_provider.go#L797
+	// See https://github.com/hashicorp/terraform-plugin-sdk/blob/
+	//         28e631776d97f0a5a5942b3524814addbef90875/helper/schema/grpc_provider.go#L797
 	//
 	// In TF this is communicated from PlanResourceChange to ApplyResourceChange; unlike TF, in
 	// the current codebase InstanceDiff is passed directly to Apply. If RawPlan is not set on
