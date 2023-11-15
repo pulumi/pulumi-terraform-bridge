@@ -62,5 +62,5 @@ func TestRawPlanSet(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.False(t, id.(v2InstanceDiff).tf.RawPlan.IsNull(), "RawPlan should not be Null")
+	assert.False(t, id.(v2InstanceDiff).tf.RawPlan.IsNull(), "RawPlan should not be Null")
 }
