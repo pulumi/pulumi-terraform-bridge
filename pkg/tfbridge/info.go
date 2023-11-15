@@ -133,6 +133,12 @@ type ProviderInfo struct {
 	//
 	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1501
 	XSkipDetailedDiffForChanges bool
+
+	// Enables generation of a trimmed, runtime-only metadata file
+	// to help reduce resource plugin start time
+	//
+	// See also pulumi/pulumi-terraform-bridge#1524
+	GenerateRuntimeMetadata bool
 }
 
 // Send logs or status logs to the user.
