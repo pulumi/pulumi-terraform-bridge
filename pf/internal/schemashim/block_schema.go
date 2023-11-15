@@ -78,7 +78,7 @@ func (s *blockSchema) Elem() interface{} {
 			r, ok := asObjectType(twet.ElementType())
 			if !ok {
 				panic(fmt.Errorf("List-nested block expect an ObjectTypeable "+
-					"block.Type().ElemType, but got %v", twet.ElementType()))
+					"block.Type().ElemType, but got %v", s.block.Type()))
 			}
 			return r
 		}
