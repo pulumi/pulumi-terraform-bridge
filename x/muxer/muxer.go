@@ -150,7 +150,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 			}
 		}
 
-		// Here we de-duplicate errors.
+		// Here we de-duplicate rpc failures.
 		for _, e := range r.A.GetFailures() {
 			s := e.GetProperty() + ":" + e.GetReason()
 			if _, has := uniqueFailures[s]; has {

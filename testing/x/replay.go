@@ -181,8 +181,14 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 	assert.NoError(t, err)
 
 	resp, err := serve(ctx, req)
-	require.NoError(t, err)
-
+	if err != nil && entry.Errors != nil {
+		errList := make([]string, 0)
+		unmarshalErr := json.Unmarshal(entry.Errors, &errList)
+		assert.NoError(t, unmarshalErr)
+		assert.Len(t, errList, 1) // we only expect one error
+		assert.Equal(t, errList[0], err.Error())
+		return
+	}
 	bytes, err := jsonpb.Marshal(resp)
 	assert.NoError(t, err)
 
@@ -236,4 +242,5 @@ type jsonLogEntry struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
+	Errors   json.RawMessage `json:"errors,omitempty"`
 }

@@ -17,6 +17,7 @@ package muxer_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -68,6 +69,20 @@ func TestSimpleDispatch(t *testing.T) {
 	)
 }
 
+func TestCheckConfigErrorNotDuplicated(t *testing.T) {
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+		"test:mod:B": 1,
+	}
+	req := `{}`
+	mux(t, m).replay(
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", req, "{}", `["[\"myerr\"]"]`,
+			part(0, req, "{}", `["myerr"]`),
+			part(1, req, "{}", `["myerr"]`),
+		))
+}
+
 func TestConfigure(t *testing.T) {
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
@@ -84,7 +99,7 @@ func TestConfigure(t *testing.T) {
       }
     }`, `{
       "supportsPreview": true
-  }`,
+  }`, "",
 			part(0, `{
   "args": {
     "a": "1",
@@ -94,7 +109,7 @@ func TestConfigure(t *testing.T) {
 }`, `{
   "acceptSecrets": true,
   "supportsPreview": true
-}`),
+}`, ""),
 			part(1, `{
   "args": {
     "a": "1",
@@ -104,7 +119,7 @@ func TestConfigure(t *testing.T) {
 }`, `{
   "supportsPreview": true,
   "acceptResources": true
-}`),
+}`, ""),
 		))
 }
 
@@ -139,9 +154,9 @@ func TestDivergentCheckConfig(t *testing.T) {
 	  }
 	}`
 	muxedResp := resp0
-	e := exchange("/pulumirpc.ResourceProvider/CheckConfig", req, muxedResp,
-		part(0, req, resp0),
-		part(1, req, resp1))
+	e := exchange("/pulumirpc.ResourceProvider/CheckConfig", req, muxedResp, "",
+		part(0, req, resp0, ""),
+		part(1, req, resp1, ""))
 
 	m := muxer.DispatchTable{}
 	m.Resources = map[string]int{}
@@ -162,17 +177,17 @@ func TestGetMapping(t *testing.T) {
 }`, `{
   "provider": "p1",
   "data": "dw=="`+ /* the base64 encoding of d1 */ `
-}`, part(0, `{
+}`, "", part(0, `{
   "key": "k1"
 }`, `{
   "provider": "p1",
   "data": "d1"
-}`), part(1, `{
+}`, ""), part(1, `{
   "key": "k1"
 }`, `{
   "provider": "",
   "data": ""
-}`)))
+}`, "")))
 	})
 	t.Run("merged-responding-server", func(t *testing.T) {
 		var m muxer.DispatchTable
@@ -199,17 +214,17 @@ func TestGetMapping(t *testing.T) {
 }`, `{
   "provider": "p1",
   "data": "cjE="`+ /* the base64 encoding of r1 */ `
-}`, part(0, `{
+}`, "", part(0, `{
   "key": "k"
 }`, `{
   "provider": "p1",
   "data": "ZDE="`+ /* the base64 encoding of d1*/ `
-}`), part(1, `{
+}`, ""), part(1, `{
   "key": "k"
 }`, `{
   "provider": "p1",
   "data": "ZDI="`+ /* the base64 encoding of d2*/ `
-}`)))
+}`, "")))
 	})
 }
 
@@ -242,6 +257,7 @@ func (m testMuxer) replay(exchanges ...Exchange) {
 				call{
 					incoming: part.Request,
 					response: part.Response,
+					errors:   part.Errors,
 				})
 		}
 	}
@@ -260,6 +276,7 @@ type Exchange struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request"`
 	Response json.RawMessage `json:"response"`
+	Errors   json.RawMessage `json:"errors,omitempty"`
 	Parts    []ExchangePart  `json:"-"`
 }
 
@@ -267,6 +284,7 @@ type ExchangePart struct {
 	Provider int
 	Request  string `json:"request"`
 	Response string `json:"response"`
+	Errors   string `json:"errors,omitempty"`
 }
 
 // A simple exchange is one where only one sub-server is used
@@ -285,20 +303,22 @@ func simpleExchange(provider int, method, request, response string) Exchange {
 	}
 }
 
-func exchange(method, request, response string, parts ...ExchangePart) Exchange {
+func exchange(method, request, response, errors string, parts ...ExchangePart) Exchange {
 	return Exchange{
 		Method:   method,
 		Request:  json.RawMessage(request),
 		Response: json.RawMessage(response),
+		Errors:   json.RawMessage(errors),
 		Parts:    parts,
 	}
 }
 
-func part(provider int, request, response string) ExchangePart {
+func part(provider int, request, response, errors string) ExchangePart {
 	return ExchangePart{
 		provider,
 		request,
 		response,
+		errors,
 	}
 }
 
@@ -340,6 +360,7 @@ type server struct {
 type call struct {
 	incoming string
 	response string
+	errors   string
 }
 
 // Assert that a gRPC call matches the next expected call, then rehydrate and return the
@@ -352,6 +373,10 @@ func handleMethod[T proto.Message, R proto.Message](m *server, req T) (R, error)
 	// value, we need to hydrate the underlying pointer.
 	var r R
 	reflect.ValueOf(&r).Elem().Set(reflect.New(reflect.TypeOf(r).Elem()))
+
+	if next.errors != "" {
+		return r, errors.New(next.errors)
+	}
 
 	marshalled, err := protojson.MarshalOptions{Multiline: true}.Marshal(req)
 	require.NoError(m.t, err)
