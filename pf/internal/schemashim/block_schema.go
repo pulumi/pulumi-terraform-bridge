@@ -16,9 +16,10 @@ package schemashim
 
 import (
 	"fmt"
+
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
@@ -72,24 +73,33 @@ func (s *blockSchema) Elem() interface{} {
 		return r
 	}
 
-	switch tt := s.block.Type().(type) {
-	case types.ListType:
-		r, ok := asObjectType(tt.ElemType)
-		if !ok {
-			panic(fmt.Errorf("List-nested block expect an ObjectTypeable "+
-				"block.Type().ElemType, but got %v", tt.ElemType))
+	if _, ok := s.block.Type().(basetypes.ListTypable); ok {
+		if twet, ok := s.block.Type().(attr.TypeWithElementType); ok {
+			r, ok := asObjectType(twet.ElementType())
+			if !ok {
+				panic(fmt.Errorf("List-nested block expect an ObjectTypeable "+
+					"block.Type().ElemType, but got %v", s.block.Type()))
+			}
+			return r
 		}
-		return r
-	case types.SetType:
-		r, ok := asObjectType(tt.ElemType)
-		if !ok {
-			panic(fmt.Errorf("Set-nested block expect an ObjectTypeable "+
-				"block.Type().ElemType, but got %v", tt.ElemType))
-		}
-		return r
-	default:
-		panic(fmt.Errorf("block.Type()==%v is not supported for blocks", t))
+		panic(fmt.Errorf("List-nested block has a ListTypeable type that does not implement "+
+			"TypeWithElementType: %v", s.block.Type()))
 	}
+
+	if _, ok := s.block.Type().(basetypes.SetTypable); ok {
+		if twet, ok := s.block.Type().(attr.TypeWithElementType); ok {
+			r, ok := asObjectType(twet.ElementType())
+			if !ok {
+				panic(fmt.Errorf("Set-nested block expect an ObjectTypeable "+
+					"block.Type().ElemType, but got %v", twet.ElementType()))
+			}
+			return r
+		}
+		panic(fmt.Errorf("List-nested block has a SetTypeable type that does not implement "+
+			"TypeWithElementType: %v", s.block.Type()))
+	}
+
+	panic(fmt.Errorf("block.Type()==%v is not supported for blocks", t))
 }
 
 func (s *blockSchema) Optional() bool {
