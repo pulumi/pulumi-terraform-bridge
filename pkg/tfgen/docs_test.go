@@ -1164,6 +1164,12 @@ func TestErrorMissingDocs(t *testing.T) {
 			docs:                 tfbridge.DocInfo{AllowMissing: true},
 			forbidMissingDocsEnv: "true",
 		},
+		// DocInfo is nil so we error because docs are missing
+		{
+			source:               mockSource{},
+			forbidMissingDocsEnv: "true",
+			expectErr:            true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1185,6 +1191,18 @@ func TestErrorMissingDocs(t *testing.T) {
 			}
 		})
 	}
+}
+func TestErrorNilDocs(t *testing.T) {
+	t.Run("", func(t *testing.T) {
+		g := &Generator{
+			sink: mockSink{t},
+		}
+		rawName := "nil_docs"
+		t.Setenv("PULUMI_MISSING_DOCS_ERROR", "true")
+		info := mockNilDocsResource{token: tokens.Token(rawName)}
+		_, err := getDocsForResource(g, mockSource{}, ResourceDocs, rawName, &info)
+		assert.NotNil(t, err)
+	})
 }
 
 type mockSource map[string]string
@@ -1238,6 +1256,15 @@ func (r *mockResource) GetDocs() *tfbridge.DocInfo {
 
 func (r *mockResource) GetTok() tokens.Token {
 	return r.token
+}
+
+type mockNilDocsResource struct {
+	token tokens.Token
+	mockResource
+}
+
+func (nr *mockNilDocsResource) GetDocs() *tfbridge.DocInfo {
+	return nil
 }
 
 func readfile(t *testing.T, file string) string {
