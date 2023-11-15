@@ -189,6 +189,7 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 		assert.Equal(t, errList[0], err.Error())
 		return
 	}
+	require.NoError(t, err)
 	bytes, err := jsonpb.Marshal(resp)
 	assert.NoError(t, err)
 
