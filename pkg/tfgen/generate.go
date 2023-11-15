@@ -569,7 +569,7 @@ func (v *variable) optional() bool {
 		return true
 	}
 
-	//if we have an explicit marked as optional then let's return that
+	// if we have an explicit marked as optional then let's return that
 	if v.info != nil && v.info.MarkAsOptional != nil {
 		return *v.info.MarkAsOptional
 	}
@@ -579,6 +579,9 @@ func (v *variable) optional() bool {
 	// Note that config values with custom defaults are _not_ considered optional unless they are marked as such.
 	customDefault := !v.config && v.info != nil && v.info.HasDefault()
 	if v.out {
+		if v.schema != nil && v.schema.Computed() && !customDefault {
+			return true
+		}
 		return v.schema != nil && v.schema.Optional() && !v.schema.Computed() && !customDefault
 	}
 	return (v.schema != nil && v.schema.Optional() || v.schema.Computed()) || customDefault
