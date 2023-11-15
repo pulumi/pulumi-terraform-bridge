@@ -654,7 +654,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -681,14 +681,14 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 
 	// Apply metadata back into the provider again, making sure there isn't a diff
 	autoAliasing(info, metadata)
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 
 	// Validate that overrides work
 
@@ -716,7 +716,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
             }
         }
     }
-}`, string(metadata.Marshal()))
+}`, string(metadata.MarshalIndent()))
 }
 
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
@@ -741,7 +741,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -786,7 +786,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
             }
         }
     }
-}`, string(metadata.Marshal()))
+}`, string(metadata.MarshalIndent()))
 
 }
 
@@ -817,7 +817,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -851,7 +851,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	info = provider(false, true)
 	autoAliasing(info, metadata)
 
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
@@ -919,7 +919,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
                         }
                     }
                 }
-            }`, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+            }`, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
@@ -1000,7 +1000,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
                         }
                     }
                 }
-            }`, string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+            }`, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
@@ -1120,7 +1120,7 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
 		return func(t *testing.T) {
 			p := provider(t, current, name)
 			require.JSONEq(t, expected,
-				string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+				string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 
 			// Regardless of the input and output, once we apply some name to
 			// our state, reapplying the same name to the new state should be
@@ -1128,7 +1128,7 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
 			t.Run("idempotent", func(t *testing.T) {
 				p := provider(t, expected, name)
 				require.JSONEq(t, expected,
-					string((*md.Data)(p.MetadataInfo.Data).Marshal()))
+					string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 			})
 		}
 	}
