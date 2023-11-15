@@ -60,7 +60,7 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 ### Releasing
 
-See [playbook](https://github.com/pulumi/platform-providers-team/blob/main/playbooks/releasing-tf-bridge.md).
+See [playbook](https://github.com/pulumi/platform-providers-team/blob/main/playbooks/Release%3A%20Terraform%20Bridge.md).
 
 ### Adapting a New Terraform Provider
 

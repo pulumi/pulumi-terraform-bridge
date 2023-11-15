@@ -495,6 +495,11 @@ type DocInfo struct {
 	// this document will satisfy the criteria `docs/pulumiToken.md`
 	// The examples need to wrapped in the correct shortcodes
 	ReplaceExamplesSection bool
+
+	// Don't error when this doc is missing.
+	//
+	// This applies when PULUMI_MISSING_DOCS_ERROR="true".
+	AllowMissing bool
 }
 
 // GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.

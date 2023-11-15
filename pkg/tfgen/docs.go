@@ -260,8 +260,10 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
 
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
-			g.error(msg)
-			return entityDocs{}, fmt.Errorf(msg)
+			if docInfo == nil || !docInfo.AllowMissing {
+				g.error(msg)
+				return entityDocs{}, fmt.Errorf(msg)
+			}
 		}
 
 		// Ideally, we would still want to still return an error here and let upstream callers handle it, but at the
