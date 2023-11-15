@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type blockSchema struct {
@@ -40,9 +41,7 @@ var _ shim.Schema = (*blockSchema)(nil)
 func (s *blockSchema) Type() shim.ValueType {
 	ty := s.block.Type()
 	vt, err := convertType(ty)
-	if err != nil {
-		panic(err)
-	}
+	contract.AssertNoErrorf(err, "blockSchema.Type(): unexpected error from convertType()")
 	return vt
 }
 
@@ -76,27 +75,23 @@ func (s *blockSchema) Elem() interface{} {
 	if _, ok := s.block.Type().(basetypes.ListTypable); ok {
 		if twet, ok := s.block.Type().(attr.TypeWithElementType); ok {
 			r, ok := asObjectType(twet.ElementType())
-			if !ok {
-				panic(fmt.Errorf("List-nested block expect an ObjectTypeable "+
-					"block.Type().ElemType, but got %v", s.block.Type()))
-			}
+			contract.Assertf(ok, "List-nested block expect an ObjectTypeable "+
+				"block.Type().ElemType, but got %v", s.block.Type())
 			return r
 		}
-		panic(fmt.Errorf("List-nested block has a ListTypeable type that does not implement "+
-			"TypeWithElementType: %v", s.block.Type()))
+		contract.Assertf(false, "List-nested block has a ListTypeable type that does not implement "+
+			"TypeWithElementType: %v", s.block.Type())
 	}
 
 	if _, ok := s.block.Type().(basetypes.SetTypable); ok {
 		if twet, ok := s.block.Type().(attr.TypeWithElementType); ok {
 			r, ok := asObjectType(twet.ElementType())
-			if !ok {
-				panic(fmt.Errorf("Set-nested block expect an ObjectTypeable "+
-					"block.Type().ElemType, but got %v", twet.ElementType()))
-			}
+			contract.Assertf(ok, "Set-nested block expect an ObjectTypeable "+
+				"block.Type().ElemType, but got %v", twet.ElementType())
 			return r
 		}
-		panic(fmt.Errorf("List-nested block has a SetTypeable type that does not implement "+
-			"TypeWithElementType: %v", s.block.Type()))
+		contract.Assertf(false, "List-nested block has a SetTypeable type that does not implement "+
+			"TypeWithElementType: %v", s.block.Type())
 	}
 
 	panic(fmt.Errorf("block.Type()==%v is not supported for blocks", t))
