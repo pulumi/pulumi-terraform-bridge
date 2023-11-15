@@ -33,5 +33,5 @@ func TestMarshal(t *testing.T) {
         "hello",
         "world"
     ]
-}`, string(data.Marshal()))
+}`, string(data.MarshalIndent()))
 }
