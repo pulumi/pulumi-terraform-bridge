@@ -15,8 +15,6 @@
 package schemashim
 
 import (
-	"fmt"
-
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -94,7 +92,8 @@ func (s *blockSchema) Elem() interface{} {
 			"TypeWithElementType: %v", s.block.Type())
 	}
 
-	panic(fmt.Errorf("block.Type()==%v is not supported for blocks", t))
+	contract.Assertf(false, "block.Type()==%v is not supported for blocks", t)
+	return nil
 }
 
 func (s *blockSchema) Optional() bool {
