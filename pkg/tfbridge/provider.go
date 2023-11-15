@@ -718,6 +718,21 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	deleteBeforeReplace := len(replaces) > 0 &&
 		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, res.TF.Schema(), res.Schema))
 
+	// If the upstream diff object indicates a replace is necessary and we have not
+	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
+	// property. This is known to happen for computed input properties:
+	//
+	// https://github.com/pulumi/pulumi-aws/issues/2971
+	if (diff.RequiresNew() || diff.Destroy()) &&
+		// In theory, we should be safe to set __meta as replaces whenever
+		// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
+		// limit the blast radius of this change to diffs that we know will panic
+		// later on.
+		len(replaces) == 0 {
+		replaces = append(replaces, "__meta")
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+	}
+
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
 		Replaces:            replaces,
@@ -977,8 +992,11 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	// ignoring changes to the keys that would result in replacement/deletion.
 	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 
-	contract.Assertf(!diff.Destroy() && !diff.RequiresNew(),
-		"Expected diff to not require deletion or replacement during Update of %s", urn)
+	if diff.Destroy() || diff.RequiresNew() {
+		return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+
+			" during Update of %s. Found delete=%t, replace=%t. This indicates a bug in provider.",
+			urn, diff.Destroy(), diff.RequiresNew())
+	}
 
 	if req.Timeout != 0 {
 		diff.SetTimeout(req.Timeout, shim.TimeoutUpdate)

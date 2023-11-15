@@ -895,6 +895,19 @@ func CustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provi
 					return err
 				},
 			},
+			"test_replace": {
+				Schema: map[string]*schemav2.Schema{
+					"labels": {Type: schemav2.TypeString, Optional: true, Computed: true},
+				},
+				SchemaVersion: 1,
+				CustomizeDiff: func(ctx context.Context, diff *schemav2.ResourceDiff, i interface{}) error {
+					err := diff.SetNew("labels", "1")
+					if err != nil {
+						return err
+					}
+					return diff.ForceNew("labels")
+				},
+			},
 		},
 	}
 }
