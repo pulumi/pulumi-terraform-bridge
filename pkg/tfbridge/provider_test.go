@@ -899,6 +899,53 @@ func TestCheck(t *testing.T) {
 		}
 		`)
 	})
+
+	t.Run("respect schema secrets", func(t *testing.T) {
+		p2 := testprovider.ProviderV2()
+		p2.ResourcesMap["example_resource"].Schema["string_property_value"].Sensitive = true
+
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p2),
+			config: shimv2.NewSchemaMap(p2.Schema),
+		}
+
+		provider.resources = map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(p2.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Check",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+		    "olds": {
+		      "stringPropertyValue": "oldString"
+		    },
+		    "news": {
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": "newString"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+                      "__defaults": [],
+		      "arrayPropertyValues": [],
+		      "stringPropertyValue": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "value": "newString"
+                      }
+		    }
+		  }
+		}
+                `)
+	})
 }
 
 func TestCheckConfig(t *testing.T) {
@@ -1788,6 +1835,44 @@ func TestTransformOutputs(t *testing.T) {
 			"setPropertyValues": "*",
 			"stringWithBadInterpolation": "*"
 		    }
+		  }
+		}`)
+	})
+}
+
+func TestSkipDetailedDiff(t *testing.T) {
+	provider := func(t *testing.T) *Provider {
+		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
+		return &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			resources: map[tokens.Type]Resource{
+				"TestResource": {
+					TF:     shimv2.NewResource(p.ResourcesMap["test_resource"]),
+					TFName: "test_resource",
+					Schema: &ResourceInfo{
+						Tok: "TestResource",
+					},
+				},
+			},
+			info: ProviderInfo{
+				XSkipDetailedDiffForChanges: true,
+			},
+		}
+	}
+	t.Run("Diff", func(t *testing.T) {
+		testutils.Replay(t, provider(t), `
+                {
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+		    "id": "0",
+		    "urn": "urn:pulumi:dev::teststack::TestResource::exres",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "changes": "DIFF_SOME",
+		    "hasDetailedDiff": true
 		  }
 		}`)
 	})

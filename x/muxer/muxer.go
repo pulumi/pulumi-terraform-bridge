@@ -16,7 +16,9 @@ package muxer
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/golang/glog"
@@ -59,7 +61,7 @@ type server = rpc.ResourceProviderServer
 type muxer struct {
 	rpc.UnimplementedResourceProviderServer
 
-	host *provider.HostClient
+	host hostClient
 
 	dispatchTable dispatchTable
 
@@ -68,6 +70,12 @@ type muxer struct {
 	servers []server
 
 	getMappingByKey map[string]MultiMappingHandler
+}
+
+// An interface to make *provider.HostClient test-able.
+type hostClient interface {
+	io.Closer
+	Log(context.Context, diag.Severity, urn.URN, string) error
 }
 
 type GetMappingArgs interface {
@@ -402,19 +410,24 @@ func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.Plugi
 }
 
 func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
-	host, err := provider.NewHostClient(req.GetAddress())
-	if err != nil {
-		return nil, err
-	}
-	if m.host != nil {
-		if err := m.host.Close(); err != nil {
-			return nil, err
+	attach := make([]func() error, len(m.servers))
+	for i, s := range m.servers {
+		s := s
+		attach[i] = func() error {
+			_, err := s.Attach(ctx, req)
+			return err
 		}
 	}
-	// Here we override the underlying host. This should replace the host instance of
-	// each subsidiary provider.
-	*m.host = *host
-	return &emptypb.Empty{}, nil
+
+	var closeErr error
+	if m.host != nil {
+		closeErr = m.host.Close()
+	}
+
+	var err error
+	m.host, err = provider.NewHostClient(req.GetAddress())
+
+	return &emptypb.Empty{}, errors.Join(append(asyncJoin(attach), err, closeErr)...)
 }
 
 type getMappingArgs struct {
