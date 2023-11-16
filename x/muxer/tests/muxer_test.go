@@ -75,11 +75,36 @@ func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 		"test:mod:A": 0,
 		"test:mod:B": 1,
 	}
-	req := `{}`
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", req, "{}", `["[\"myerr\"]"]`,
-			part(0, req, "{}", `["myerr"]`),
-			part(1, req, "{}", `["myerr"]`),
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", `["[\"myerr\"]"]`,
+			part(0, "{}", "{}", `["myerr"]`),
+			part(1, "{}", "{}", `["myerr"]`),
+		))
+}
+
+func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+		"test:mod:B": 1,
+	}
+	mux(t, m).replay(
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", `["2 errors occurred:\n\t* [\"myerr\"]\n\t* [\"othererr\"]\n\n"]`,
+			part(0, "{}", "{}", `["myerr"]`),
+			part(1, "{}", "{}", `["othererr"]`),
+		))
+}
+
+func TestCheckConfigOneErrorReturned(t *testing.T) {
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+		"test:mod:B": 1,
+	}
+	mux(t, m).replay(
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", `["[\"myerr\"]"]`,
+			part(0, "{}", `{"inputs": {"myurn":"urn"}}`, ""),
+			part(1, "{}", "{}", `["myerr"]`),
 		))
 }
 
