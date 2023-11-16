@@ -531,7 +531,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 	err = AutoAliasing(info, metadata)
 	require.NoError(t, err)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -559,7 +559,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 
 	// Apply metadata back into the provider again, making sure there isn't a diff
 	err = AutoAliasing(info, metadata)
@@ -567,7 +567,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 
 	// Validate that overrides work
 
@@ -596,7 +596,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
             }
         }
     }
-}`, string(metadata.Marshal()))
+}`, string(metadata.MarshalIndent()))
 }
 
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
@@ -623,7 +623,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 	err = AutoAliasing(info, metadata)
 	require.NoError(t, err)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -669,7 +669,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
             }
         }
     }
-}`, string(metadata.Marshal()))
+}`, string(metadata.MarshalIndent()))
 
 }
 
@@ -702,7 +702,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	err = AutoAliasing(info, metadata)
 	require.NoError(t, err)
 
-	v := string(metadata.Marshal())
+	v := string(metadata.MarshalIndent())
 	expected := `{
     "auto-aliasing": {
         "resources": {
@@ -737,7 +737,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	err = AutoAliasing(info, metadata)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected, string(metadata.Marshal()))
+	assert.Equal(t, expected, string(metadata.MarshalIndent()))
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }

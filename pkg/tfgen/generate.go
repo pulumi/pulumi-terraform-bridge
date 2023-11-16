@@ -949,7 +949,11 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		files = map[string][]byte{"schema.json": bytes}
 
 		if info := g.info.MetadataInfo; info != nil {
-			files[info.Path] = (*metadata.Data)(info.Data).Marshal()
+			files[info.Path] = (*metadata.Data)(info.Data).MarshalIndent()
+			if g.info.GenerateRuntimeMetadata {
+				runtimeInfo := info.ExtractRuntimeMetadata()
+				files[runtimeInfo.Path] = (*metadata.Data)(runtimeInfo.Data).Marshal()
+			}
 		}
 	case PCL:
 		if g.skipExamples {

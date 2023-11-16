@@ -36,6 +36,8 @@ jobs:
           pulumi-version: ^3.0.0
       - name: Build
         run: make build
+      - name: Build PF
+        run: cd pf && make build
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -47,6 +49,8 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: Test PF
+        run: cd pf && make test
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         env:

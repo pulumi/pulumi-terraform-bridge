@@ -28,10 +28,34 @@ func TestMarshal(t *testing.T) {
 	err = Set(data, "hi", []string{"hello", "world"})
 	assert.NoError(t, err)
 
+	marshalled := data.MarshalIndent()
 	assert.Equal(t, `{
     "hi": [
         "hello",
         "world"
     ]
-}`, string(data.Marshal()))
+}`, string(marshalled))
+
+	parsed, err := New(marshalled)
+	assert.NoError(t, err)
+	read, _, err := Get[[]string](parsed, "hi")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"hello", "world"}, read)
+}
+
+func TestMarshalIndent(t *testing.T) {
+	data, err := New(nil)
+	require.NoError(t, err)
+
+	err = Set(data, "hi", []string{"hello", "world"})
+	assert.NoError(t, err)
+
+	marshalled := data.Marshal()
+	assert.Equal(t, `{"hi":["hello","world"]}`, string(marshalled))
+
+	parsed, err := New(marshalled)
+	assert.NoError(t, err)
+	read, _, err := Get[[]string](parsed, "hi")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"hello", "world"}, read)
 }
