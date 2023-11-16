@@ -89,7 +89,11 @@ func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
 		"test:mod:B": 1,
 	}
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", `["2 errors occurred:\n\t* [\"myerr\"]\n\t* [\"othererr\"]\n\n"]`,
+		exchange(
+			"/pulumirpc.ResourceProvider/CheckConfig",
+			"{}",
+			"{}",
+			`["2 errors occurred:\n\t* [\"myerr\"]\n\t* [\"othererr\"]\n\n"]`,
 			part(0, "{}", "{}", `["myerr"]`),
 			part(1, "{}", "{}", `["othererr"]`),
 		))
