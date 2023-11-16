@@ -4,6 +4,8 @@ go 1.20
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../
 
+replace github.com/pulumi/pulumi-terraform-bridge/testing => ../../../testing/
+
 require (
 	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.4

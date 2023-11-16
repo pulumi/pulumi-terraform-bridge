@@ -7,3 +7,5 @@
 coverage.txt
 pkg/tests/coverage.txt
 testing/coverage.txt
+go.work
+go.work.sum
