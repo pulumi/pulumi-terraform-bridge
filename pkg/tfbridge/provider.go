@@ -517,7 +517,7 @@ func (p *Provider) Configure(ctx context.Context,
 
 	configMap, err := configEnc.UnmarshalProperties(req.GetArgs())
 	if err != nil {
-		return nil, err
+		return nil, ReplaceErrorProperties(err, p.info)
 	}
 
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
@@ -526,12 +526,12 @@ func (p *Provider) Configure(ctx context.Context,
 
 	config, err := buildTerraformConfig(ctx, p, configMap)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not marshal config state")
+		return nil, errors.Wrap(ReplaceErrorProperties(err, p.info), "could not marshal config state")
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
 	if err = p.tf.Configure(config); err != nil {
-		return nil, err
+		return nil, ReplaceErrorProperties(err, p.info)
 	}
 
 	return &pulumirpc.ConfigureResponse{
