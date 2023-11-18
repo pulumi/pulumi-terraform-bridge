@@ -258,7 +258,7 @@ func TestCleanDescription(t *testing.T) {
 			desc: "`tag_prefixes` -" + `
   () (Optional) versions by tag prefix. Applied on any prefix match.
 `,
-			expected: "() (Optional) versions by tag prefix. Applied on any prefix match.",
+			expected: "versions by tag prefix. Applied on any prefix match.",
 		},
 		{
 			path:     "foo",
@@ -290,6 +290,11 @@ func TestCleanDescription(t *testing.T) {
 			path:     "bar",
 			desc:     "`bar` - (Forces new resource) replace",
 			expected: "replace",
+		},
+		{
+			path:     "bar",
+			desc:     "`bar` - ((some-thing)) bar",
+			expected: "bar",
 		},
 	}
 

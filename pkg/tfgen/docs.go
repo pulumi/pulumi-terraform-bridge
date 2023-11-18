@@ -1139,29 +1139,28 @@ func renderMdNode(src []byte, n ast.Node) []byte {
 	return b.Bytes()
 }
 
-func nestedParensMatcher(trigger string) func(string) int {
-	trigger = "(" + trigger
-	lower := strings.ToLower(trigger)
-	return func(s string) int {
-		if !strings.HasPrefix(s, trigger) && !strings.HasPrefix(s, lower) {
-			return 0
-		}
+func nestedParensMatcher(input string) int {
+	runes := []rune(input)
 
-		depth := 1
-		for i := len(trigger); i < len(s); i++ {
-			switch s[i] {
-			case '(':
-				depth++
-			case ')':
-				depth--
-				if depth == 0 {
-					return i + 1
-				}
-			}
-		}
-		// No matching paren was found, so return nothing found
+	// If input is empty or if we don't have a leading '(', return.
+	if len(runes) == 0 || runes[0] != '(' {
 		return 0
 	}
+
+	depth := 1
+	for i := 1; i < len(runes); i++ {
+		switch runes[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
+		}
+	}
+	// No matching paren was found, so return nothing found
+	return 0
 }
 
 func prefixMatcher(prefix string) func(string) int {
@@ -1178,16 +1177,11 @@ var cleanDescriptionPrefixFns = []func(string) int{
 	prefixMatcher("-"),
 	prefixMatcher("–"), // This is an en-dash (Unicode 8211)
 	prefixMatcher(":"),
-	// Cut leading "(Optional.*)"
+	// Cut leading "(.*)"
 	//
 	// This needs to be a function and not a regex because we want the final ')' cut
 	// to balance with the first '('.
-	nestedParensMatcher("Optional"),
-	nestedParensMatcher("Required"),
-	nestedParensMatcher("Computed"),
-	nestedParensMatcher("Sensitive"),
-	nestedParensMatcher("Forces new resource"),
-	nestedParensMatcher("Requirement"),
+	nestedParensMatcher,
 }
 
 func cleanDescription(path docsPath, desc string) string {
