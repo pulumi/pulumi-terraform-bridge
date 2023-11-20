@@ -71,10 +71,11 @@ func replaceConfigInDiagnostics(
 func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
-	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "Configure",
-		opentracing.Tag{Key: "framework", Value: "plugin-framework"},
+	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.Configure",
 		opentracing.Tag{Key: "provider", Value: p.info.Name},
-		opentracing.Tag{Key: "version", Value: p.version.String()})
+		opentracing.Tag{Key: "version", Value: p.version.String()},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(inputs).String()},
+	)
 	defer configureSpan.Finish()
 
 	p.lastKnownProviderConfig = inputs
