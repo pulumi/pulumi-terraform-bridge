@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
@@ -39,6 +40,12 @@ func (p *provider) CheckConfigWithContext(
 	_ bool, // a flag that is always true, historical artifact, ignore here
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
+
+	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "CheckConfig",
+		opentracing.Tag{Key: "framework", Value: "plugin-framework"},
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version.String()})
+	defer configureSpan.Finish()
 
 	// Transform news to apply Pulumi-level defaults.
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
