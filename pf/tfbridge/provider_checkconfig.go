@@ -99,7 +99,7 @@ func (p *provider) CheckConfigWithContext(
 	secretNews := tfbridge.MarkSchemaSecrets(ctx, p.schemaOnlyProvider.Schema(), p.info.Config,
 		resource.NewObjectProperty(news)).ObjectValue()
 
-	checkConfigSpan.SetTag("checkedInputs", resource.NewObjectProperty(secretNews).String())
+	checkConfigSpan.SetTag("checkedInputs", showMap(secretNews))
 	return secretNews, checkFailures, nil
 }
 
