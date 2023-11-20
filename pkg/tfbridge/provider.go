@@ -531,7 +531,7 @@ func (p *Provider) Configure(ctx context.Context,
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
 	if err = p.tf.Configure(config); err != nil {
-		return nil, ReplaceErrorProperties(err, p.info)
+		return nil, errors.New(ReplaceConfigProperties(err.Error(), p.info.Name, p.info.Config, p.config))
 	}
 
 	return &pulumirpc.ConfigureResponse{

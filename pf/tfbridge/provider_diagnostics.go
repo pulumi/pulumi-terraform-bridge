@@ -17,9 +17,9 @@ package tfbridge
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
 func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error {
@@ -37,7 +37,9 @@ func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error
 			if d.Attribute != nil {
 				prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
 			}
-			return fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
+			summary := tfbridge.ReplaceConfigProperties(d.Summary, p.info.Name, p.info.Config, p.info.P.Schema())
+			detail := tfbridge.ReplaceConfigProperties(d.Detail, p.info.Name, p.info.Config, p.info.P.Schema())
+			return fmt.Errorf("%s%s: %s", prefix, summary, detail)
 		}
 	}
 
