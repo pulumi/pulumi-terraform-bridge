@@ -41,10 +41,11 @@ func (p *provider) CheckConfigWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
+	inputsText := showMap(inputs)
 	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.CheckConfig",
 		opentracing.Tag{Key: "provider", Value: p.info.Name},
 		opentracing.Tag{Key: "version", Value: p.version.String()},
-		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(inputs).String()},
+		opentracing.Tag{Key: "inputs", Value: inputsText},
 		opentracing.Tag{Key: "urn", Value: string(urn)},
 	)
 	defer checkConfigSpan.Finish()
@@ -57,7 +58,10 @@ func (p *provider) CheckConfigWithContext(
 		ProviderConfig: inputs,
 	})
 
-	checkConfigSpan.SetTag("inputsWithPulumiDefaults", resource.NewObjectProperty(inputs).String())
+	newsText := showMap(news)
+	if newsText != inputsText {
+		checkConfigSpan.SetTag("inputsWithPulumiDefaults", newsText)
+	}
 
 	// It is currently a breaking change to call PreConfigureCallback with unknown values. The user code does not
 	// expect them and may panic.
@@ -72,6 +76,10 @@ func (p *provider) CheckConfigWithContext(
 		if err := p.runPreConfigureCallbackWithLogger(ctx, news); err != nil {
 			return nil, nil, err
 		}
+	}
+
+	if n := showMap(news); n != newsText {
+		checkConfigSpan.SetTag("inputsAfterCallbacks", n)
 	}
 
 	// Store for use in subsequent ApplyDefaultInfoValues.
@@ -202,3 +210,7 @@ func (wc *wrappedConfig) IsSet(key string) bool {
 }
 
 var _ shim.ResourceConfig = &wrappedConfig{}
+
+func showMap(pm resource.PropertyMap) string {
+	return resource.NewObjectProperty(pm).String()
+}
