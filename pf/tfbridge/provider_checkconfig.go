@@ -41,13 +41,13 @@ func (p *provider) CheckConfigWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
-	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.CheckConfig",
+	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.CheckConfig",
 		opentracing.Tag{Key: "provider", Value: p.info.Name},
 		opentracing.Tag{Key: "version", Value: p.version.String()},
 		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(inputs).String()},
 		opentracing.Tag{Key: "urn", Value: string(urn)},
 	)
-	defer configureSpan.Finish()
+	defer checkConfigSpan.Finish()
 
 	// Transform news to apply Pulumi-level defaults.
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
@@ -58,7 +58,7 @@ func (p *provider) CheckConfigWithContext(
 	})
 
 	if !news.DeepEquals(inputs) {
-		configureSpan.SetTag("inputsWithPulumiDefaults", resource.NewObjectProperty(inputs).String())
+		checkConfigSpan.SetTag("inputsWithPulumiDefaults", resource.NewObjectProperty(inputs).String())
 	}
 
 	// It is currently a breaking change to call PreConfigureCallback with unknown values. The user code does not
@@ -93,7 +93,7 @@ func (p *provider) CheckConfigWithContext(
 	secretNews := tfbridge.MarkSchemaSecrets(ctx, p.schemaOnlyProvider.Schema(), p.info.Config,
 		resource.NewObjectProperty(news)).ObjectValue()
 
-	configureSpan.SetTag("checkedInputs", resource.NewObjectProperty(secretNews).String())
+	checkConfigSpan.SetTag("checkedInputs", resource.NewObjectProperty(secretNews).String())
 	return secretNews, checkFailures, nil
 }
 

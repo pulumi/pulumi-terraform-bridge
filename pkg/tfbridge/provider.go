@@ -29,6 +29,7 @@ import (
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -306,6 +307,14 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
 
+	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.CheckConfig",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(news).String()},
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer checkConfigSpan.Finish()
+
 	config, validationErrors := buildTerraformConfig(ctx, p, news)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
@@ -318,19 +327,11 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	//
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
-		if p.info.PreConfigureCallback != nil {
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallback(news, config)
-			if validationErrors != nil {
-				return nil, validationErrors
-			}
+		if err := p.preConfigureCallback(ctx, news, config); err != nil {
+			return nil, err
 		}
-		if p.info.PreConfigureCallbackWithLogger != nil {
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
-			if validationErrors != nil {
-				return nil, validationErrors
-			}
+		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
+			return nil, err
 		}
 	}
 
@@ -341,7 +342,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}, nil
 	}
 
-	// Ensure propreties marked secret in the schema have secret values.
+	// Ensure properties marked secret in the schema have secret values.
 	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
 
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
@@ -353,6 +354,34 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	return &pulumirpc.CheckResponse{
 		Inputs: newsStruct,
 	}, nil
+}
+
+func (p *Provider) preConfigureCallback(
+	ctx context.Context,
+	news resource.PropertyMap,
+	config shim.ResourceConfig,
+) error {
+	if p.info.PreConfigureCallback == nil {
+		return nil
+	}
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallback")
+	defer span.Finish()
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallback(news, config)
+}
+
+func (p *Provider) preConfigureCallbackWithLogger(
+	ctx context.Context,
+	news resource.PropertyMap,
+	config shim.ResourceConfig,
+) error {
+	if p.info.PreConfigureCallbackWithLogger == nil {
+		return nil
+	}
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallbackWithLogger")
+	defer span.Finish()
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
 }
 
 func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
@@ -382,6 +411,9 @@ func validateProviderConfig(
 	p *Provider,
 	config shim.ResourceConfig,
 ) []*pulumirpc.CheckFailure {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.ValidateProviderConfig")
+	defer span.Finish()
+
 	schemaMap := p.config
 	schemaInfos := p.info.GetConfig()
 
