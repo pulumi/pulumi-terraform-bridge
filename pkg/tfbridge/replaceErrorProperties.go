@@ -18,7 +18,7 @@ func replaceSubstrings(s string, replacements map[string]string) string {
 }
 
 func getConfigReplacements(providerName string, config map[string]*SchemaInfo, schema shim.SchemaMap) map[string]string {
-	var renames map[string]string = make(map[string]string)
+	renames := make(map[string]string)
 	schema.Range(func(key string, value shim.Schema) bool {
 		renames[key] = providerName + ":" + TerraformToPulumiNameV2(key, schema, config)
 		return true
