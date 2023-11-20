@@ -61,6 +61,7 @@ type Provider struct {
 	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
+	memStats        memStatCollector
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -314,6 +315,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		opentracing.Tag{Key: "urn", Value: string(urn)},
 	)
 	defer checkConfigSpan.Finish()
+	p.memStats.collectMemStats(ctx, checkConfigSpan)
 
 	config, validationErrors := buildTerraformConfig(ctx, p, news)
 	if validationErrors != nil {
@@ -553,6 +555,14 @@ func (p *Provider) Configure(ctx context.Context,
 		return nil, err
 	}
 
+	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Configure",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(configMap).String()},
+	)
+	defer configureSpan.Finish()
+	p.memStats.collectMemStats(ctx, configureSpan)
+
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
 	// them later on for purposes of (e.g.) config-based defaults.
 	p.configValues = configMap
@@ -589,6 +599,12 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Check): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Check",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -671,6 +687,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Diff): %s", urn)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Diff",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -799,6 +821,12 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Create): %s", t)
 	}
 
+	createSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Create",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer createSpan.Finish()
+	p.memStats.collectMemStats(ctx, createSpan)
+
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -894,6 +922,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Read): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Read",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	id := req.GetId()
 	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
@@ -991,6 +1025,12 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Update): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Update",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -1111,6 +1151,12 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Delete): %s", t)
 	}
 
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Delete",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
+
 	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -1150,6 +1196,12 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	if !has {
 		return nil, errors.Errorf("unrecognized data function (Invoke): %s", tok)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Invoke",
+		opentracing.Tag{Key: "token", Value: string(tok)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	glog.V(9).Infof("%s executing", label)
@@ -1239,6 +1291,13 @@ func (p *Provider) StreamInvoke(
 
 // GetPluginInfo implements an RPC call that returns the version of this plugin.
 func (p *Provider) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	getPluginInfoSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.GetPluginInfo",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+	)
+	defer getPluginInfoSpan.Finish()
+	p.memStats.collectMemStats(ctx, getPluginInfoSpan)
+
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
@@ -1252,6 +1311,12 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 func (p *Provider) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.GetMapping",
+		opentracing.Tag{Key: "key", Value: string(req.Key)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
+
 	// The prototype converter used the key "tf", but the new plugin converter uses "terraform". For now
 	// support both, eventually we can remove the "tf" key.
 	if req.Key == "tf" || req.Key == "terraform" {
