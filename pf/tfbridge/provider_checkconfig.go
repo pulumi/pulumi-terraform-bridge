@@ -57,9 +57,7 @@ func (p *provider) CheckConfigWithContext(
 		ProviderConfig: inputs,
 	})
 
-	if !news.DeepEquals(inputs) {
-		checkConfigSpan.SetTag("inputsWithPulumiDefaults", resource.NewObjectProperty(inputs).String())
-	}
+	checkConfigSpan.SetTag("inputsWithPulumiDefaults", resource.NewObjectProperty(inputs).String())
 
 	// It is currently a breaking change to call PreConfigureCallback with unknown values. The user code does not
 	// expect them and may panic.
