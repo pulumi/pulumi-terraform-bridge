@@ -17,16 +17,22 @@ func replaceSubstrings(s string, replacements map[string]string) string {
 	return s
 }
 
-func getConfigReplacements(providerName string, config map[string]*SchemaInfo, schema shim.SchemaMap) map[string]string {
+func getConfigReplacements(
+	providerName string,
+	config map[string]*SchemaInfo,
+	schema shim.SchemaMap,
+) map[string]string {
 	renames := make(map[string]string)
 	schema.Range(func(key string, value shim.Schema) bool {
-		renames[key] = providerName + ":" + TerraformToPulumiNameV2(key, schema, config)
+		pulumiName := TerraformToPulumiNameV2(key, schema, config)
+		renames[key] = providerName + ":" + pulumiName
 		return true
 	})
 	return renames
 }
 
-// ReplaceConfigProperties replaces all Terraform config property names in the given message with their Pulumi equivalents.
+// ReplaceConfigProperties replaces all Terraform config property names
+// in the given message with their Pulumi equivalents.
 // This only works for top-level properties currently.
 // TODO https://github.com/pulumi/pulumi-terraform-bridge/issues/1533
 func ReplaceConfigProperties(msg string, providerName string, config map[string]*SchemaInfo, schema shim.SchemaMap) string {
