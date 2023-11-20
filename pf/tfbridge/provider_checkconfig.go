@@ -101,7 +101,7 @@ func (p *provider) runPreConfigureCallback(ctx context.Context, news resource.Pr
 	if p.info.PreConfigureCallback == nil {
 		return nil
 	}
-	span, ctx := opentracing.StartSpanFromContext(ctx, "pf.PreConfigureCallback")
+	span, _ := opentracing.StartSpanFromContext(ctx, "pf.PreConfigureCallback")
 	defer span.Finish()
 	wc := &wrappedConfig{news}
 	// NOTE: the user code may modify news in-place.

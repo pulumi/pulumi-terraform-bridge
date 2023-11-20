@@ -366,7 +366,7 @@ func (p *Provider) preConfigureCallback(
 	if p.info.PreConfigureCallback == nil {
 		return nil
 	}
-	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallback")
+	span, _ := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallback")
 	defer span.Finish()
 	// NOTE: the user code may modify news in-place.
 	return p.info.PreConfigureCallback(news, config)
@@ -1312,7 +1312,7 @@ func (p *Provider) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.GetMapping",
-		opentracing.Tag{Key: "key", Value: string(req.Key)},
+		opentracing.Tag{Key: "key", Value: req.Key},
 	)
 	defer span.Finish()
 	p.memStats.collectMemStats(ctx, span)
