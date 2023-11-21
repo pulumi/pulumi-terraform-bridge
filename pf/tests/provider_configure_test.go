@@ -17,6 +17,7 @@ package tfbridgetests
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
@@ -85,8 +86,9 @@ func TestConfigure(t *testing.T) {
 
 func TestConfigureErrorReplacement(t *testing.T) {
 	t.Run("replace_config_properties", func(t *testing.T) {
+		errString := `some error with "config_property" and "config" but not config`
 		prov := &testprovider.ConfigTestProvider{
-			ConfigErrString: `some error with "config_property" and "config" but not config`,
+			ConfigErr: diag.NewErrorDiagnostic(errString, errString),
 			ProviderSchema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"config":          schema.StringAttribute{},
@@ -106,7 +108,35 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "some error with \"configProperty\" and \"CONFIG!\" but not config: some error with \"configProperty\" and \"CONFIG!\" but not config"
+			  "errors": "some error with \"configProperty\" and \"CONFIG!\" but not config"
+			}`)
+	})
+
+	t.Run("different_error_detail_and_summary_not_dropped", func(t *testing.T) {
+		errSummary := `problem with "config_property" and "config"`
+		errString := `some error with "config_property" and "config" but not config`
+		prov := &testprovider.ConfigTestProvider{
+			ConfigErr: diag.NewErrorDiagnostic(errSummary, errString),
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config":          schema.StringAttribute{},
+					"config_property": schema.StringAttribute{},
+				},
+			},
+		}
+
+		providerInfo := testprovider.SyntheticTestBridgeProvider()
+		providerInfo.P = tfpf.ShimProvider(prov)
+		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
+		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
+
+		server := newProviderServer(t, providerInfo)
+
+		testutils.Replay(t, server, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {"acceptResources": true},
+			  "errors": "problem with \"configProperty\" and \"CONFIG!\": some error with \"configProperty\" and \"CONFIG!\" but not config"
 			}`)
 	})
 }

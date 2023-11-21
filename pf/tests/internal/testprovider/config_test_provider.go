@@ -13,8 +13,8 @@ import (
 var _ provider.Provider = (*ConfigTestProvider)(nil)
 
 type ConfigTestProvider struct {
-	ProviderSchema  schema.Schema
-	ConfigErrString string
+	ProviderSchema schema.Schema
+	ConfigErr      diag.ErrorDiagnostic
 }
 
 func (*ConfigTestProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -25,7 +25,7 @@ func (p *ConfigTestProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 }
 
 func (p *ConfigTestProvider) Configure(_ context.Context, _ provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	resp.Diagnostics = append(resp.Diagnostics, diag.NewErrorDiagnostic(p.ConfigErrString, p.ConfigErrString))
+	resp.Diagnostics = append(resp.Diagnostics, p.ConfigErr)
 }
 
 func (*ConfigTestProvider) DataSources(ctx context.Context) []func() datasource.DataSource {

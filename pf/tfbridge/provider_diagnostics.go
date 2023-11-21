@@ -36,7 +36,9 @@ func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error
 			if d.Attribute != nil {
 				prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
 			}
-
+			if d.Summary == d.Detail {
+				return fmt.Errorf("%s%s", prefix, d.Summary)
+			}
 			return fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
 		}
 	}
