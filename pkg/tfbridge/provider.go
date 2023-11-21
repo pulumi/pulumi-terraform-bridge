@@ -534,7 +534,11 @@ func (p *Provider) Configure(ctx context.Context,
 	if err = p.tf.Configure(config); err != nil {
 		replacedErr, replacementError := ReplaceConfigProperties(err.Error(), p.info.Config, p.config)
 		if replacementError != nil {
-			return nil, multierror.Append(err, errors.Wrapf(replacementError, "failed to replace config properties in error message"))
+			wrappedErr := errors.Wrapf(
+				replacementError,
+				"failed to replace config properties in error message",
+			)
+			return nil, multierror.Append(err, wrappedErr)
 		}
 		return nil, errors.New(replacedErr)
 	}
