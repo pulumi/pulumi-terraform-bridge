@@ -20,10 +20,51 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 )
+
+// This function iterates over the diagnostics and replaces the names of tf config properties
+// with their corresponding Pulumi names.
+func replaceConfigInDiagnostics(
+	config map[string]*tfbridge.SchemaInfo,
+	schema shim.SchemaMap,
+	diags []*tfprotov6.Diagnostic,
+) []*tfprotov6.Diagnostic {
+	result := make([]*tfprotov6.Diagnostic, len(diags))
+	copy(result, diags)
+	for i, d := range diags {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			summary, summaryErr := tfbridge.ReplaceConfigProperties(d.Summary, config, schema)
+			if summaryErr != nil {
+				newDiag := tfprotov6.Diagnostic{
+					Severity: tfprotov6.DiagnosticSeverityError,
+					Summary:  "Property replacement error",
+					Detail:   summaryErr.Error(),
+				}
+				result = append(result, &newDiag)
+			} else {
+				result[i].Summary = summary
+			}
+
+			detail, detailErr := tfbridge.ReplaceConfigProperties(d.Detail, config, schema)
+			if detailErr != nil {
+				newDiag := tfprotov6.Diagnostic{
+					Severity: tfprotov6.DiagnosticSeverityError,
+					Summary:  "Property replacement error",
+					Detail:   detailErr.Error(),
+				}
+				result = append(result, &newDiag)
+			} else {
+				result[i].Detail = detail
+			}
+		}
+	}
+	return result
+}
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
@@ -46,5 +87,6 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 		return fmt.Errorf("error calling ConfigureProvider: %w", err)
 	}
 
+	resp.Diagnostics = replaceConfigInDiagnostics(p.info.Config, p.info.P.Schema(), resp.Diagnostics)
 	return p.processDiagnostics(resp.Diagnostics)
 }

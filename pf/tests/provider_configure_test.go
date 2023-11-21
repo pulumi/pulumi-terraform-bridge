@@ -17,6 +17,7 @@ package tfbridgetests
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
@@ -86,6 +87,12 @@ func TestConfigureErrorReplacement(t *testing.T) {
 	t.Run("replace_config_properties", func(t *testing.T) {
 		prov := &testprovider.ConfigTestProvider{
 			ConfigErrString: `some error with "config_property" and "config" but not config`,
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config":          schema.StringAttribute{},
+					"config_property": schema.StringAttribute{},
+				},
+			},
 		}
 
 		providerInfo := testprovider.SyntheticTestBridgeProvider()
@@ -99,7 +106,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "some error with \"config_property\" and \"config\" but not config: some error with \"config_property\" and \"config\" but not config"
+			  "errors": "some error with \"configProperty\" and \"CONFIG!\" but not config: some error with \"configProperty\" and \"CONFIG!\" but not config"
 			}`)
 	})
 }

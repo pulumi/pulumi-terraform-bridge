@@ -13,7 +13,7 @@ import (
 var _ provider.Provider = (*ConfigTestProvider)(nil)
 
 type ConfigTestProvider struct {
-	schema          schema.Schema
+	ProviderSchema  schema.Schema
 	ConfigErrString string
 }
 
@@ -21,7 +21,7 @@ func (*ConfigTestProvider) Metadata(_ context.Context, _ provider.MetadataReques
 }
 
 func (p *ConfigTestProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = p.schema
+	resp.Schema = p.ProviderSchema
 }
 
 func (p *ConfigTestProvider) Configure(_ context.Context, _ provider.ConfigureRequest, resp *provider.ConfigureResponse) {
