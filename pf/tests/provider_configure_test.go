@@ -18,11 +18,12 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestConfigure(t *testing.T) {
-
 	t.Run("configiure communicates to create", func(t *testing.T) {
 		// Test interaction of Configure and Create.
 		//
@@ -78,5 +79,27 @@ func TestConfigure(t *testing.T) {
 		  }
 		}`
 		testutils.Replay(t, server, testCase)
+	})
+}
+
+func TestConfigureErrorReplacement(t *testing.T) {
+	t.Run("replace_config_properties", func(t *testing.T) {
+		prov := &testprovider.ConfigTestProvider{
+			ConfigErrString: `some error with "config_property" and "config" but not config`,
+		}
+
+		providerInfo := testprovider.SyntheticTestBridgeProvider()
+		providerInfo.P = tfpf.ShimProvider(prov)
+		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
+		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
+
+		server := newProviderServer(t, providerInfo)
+
+		testutils.Replay(t, server, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {"acceptResources": true},
+			  "errors": "some error with \"config_property\" and \"config\" but not config: some error with \"config_property\" and \"config\" but not config"
+			}`)
 	})
 }
