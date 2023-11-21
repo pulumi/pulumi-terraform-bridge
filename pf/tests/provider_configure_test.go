@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
@@ -88,6 +89,12 @@ func TestConfigureErrorReplacement(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`
 		prov := &testprovider.ConfigTestProvider{
 			ConfigErr: diag.NewErrorDiagnostic(errString, errString),
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config":          schema.StringAttribute{},
+					"config_property": schema.StringAttribute{},
+				},
+			},
 		}
 
 		providerInfo := testprovider.SyntheticTestBridgeProvider()
@@ -102,7 +109,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "some error with \"config_property\" and \"config\" but not config"
+			  "errors": "some error with \"configProperty\" and \"CONFIG!\" but not config"
 			}`)
 	})
 
@@ -111,6 +118,12 @@ func TestConfigureErrorReplacement(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`
 		prov := &testprovider.ConfigTestProvider{
 			ConfigErr: diag.NewErrorDiagnostic(errSummary, errString),
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config":          schema.StringAttribute{},
+					"config_property": schema.StringAttribute{},
+				},
+			},
 		}
 
 		providerInfo := testprovider.SyntheticTestBridgeProvider()
@@ -125,7 +138,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "problem with \"config_property\" and \"config\": some error with \"config_property\" and \"config\" but not config"
+			  "errors": "problem with \"configProperty\" and \"CONFIG!\": some error with \"configProperty\" and \"CONFIG!\" but not config"
 			}`)
 	})
 }
