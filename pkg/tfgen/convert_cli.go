@@ -288,6 +288,7 @@ func (*cliConverter) convertViaPulumiCLI(
 
 	// Write out mappings files if necessary.
 	for _, m := range mappings {
+		m := m // Remove aliasing lint
 		mpi := tfbridge.MarshalProviderInfo(&m.info)
 		bytes, err := json.Marshal(mpi)
 		if err != nil {

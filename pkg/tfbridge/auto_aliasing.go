@@ -137,13 +137,19 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	applyAliases := []func(){}
 
 	for tfToken, computed := range info.Resources {
-		r, _ := rMap.GetOk(tfToken)
+		r, ok := rMap.GetOk(tfToken)
+		if !ok {
+			continue
+		}
 		aliasResource(info, r, &applyAliases, hist.Resources,
 			computed, tfToken, currentVersion)
 	}
 
 	for tfToken, computed := range info.DataSources {
-		ds, _ := dMap.GetOk(tfToken)
+		ds, ok := dMap.GetOk(tfToken)
+		if !ok {
+			continue
+		}
 		aliasDataSource(info, ds, &applyAliases, hist.DataSources,
 			computed, tfToken, currentVersion)
 	}
