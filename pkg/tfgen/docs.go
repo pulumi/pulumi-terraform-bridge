@@ -1276,7 +1276,19 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
 		// to reconvert them. But we need to surround them in the examples shortcode for rendering on the registry
-		return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
+
+		// Find the index of "## Example Usage"
+		exampleIndex := strings.Index(docs, "## Example Usage")
+
+		// if not found surround all content
+		if exampleIndex == -1 {
+			return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
+		}
+
+		// Separate resource description and surround the examples
+		return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
+			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
+			docs[exampleIndex:])
 	}
 
 	if cliConverterEnabled() {
