@@ -19,14 +19,14 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // Configures logging. Note that urn is optional but useful to identify logs with resources.
 //
 // See https://developer.hashicorp.com/terraform/plugin/log/writing
-func (p *provider) initLogging(ctx context.Context, sink logutils.LogSink, urn resource.URN) context.Context {
-	return logutils.InitLogging(ctx, logutils.LogOptions{
+func (p *provider) initLogging(ctx context.Context, sink logging.Sink, urn resource.URN) context.Context {
+	return logging.InitLogging(ctx, logging.LogOptions{
 		LogSink:         sink,
 		URN:             urn,
 		ProviderName:    p.info.Name,

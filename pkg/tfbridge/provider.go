@@ -45,6 +45,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
@@ -199,7 +200,12 @@ func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context
 		})
 	}
 
-	return ctxWithHostLogger(ctx, p.host, urn)
+	return logging.InitLogging(ctx, logging.LogOptions{
+		LogSink:         p.host,
+		URN:             urn,
+		ProviderName:    p.info.Name,
+		ProviderVersion: p.version,
+	})
 }
 
 func (p *Provider) label() string {
