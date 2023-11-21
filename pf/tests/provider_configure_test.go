@@ -104,7 +104,6 @@ func TestConfigureErrorReplacement(t *testing.T) {
 
 		server := newProviderServer(t, providerInfo)
 
-		// TODO: this is actually wrong
 		testutils.Replay(t, server, `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
@@ -133,7 +132,6 @@ func TestConfigureErrorReplacement(t *testing.T) {
 
 		server := newProviderServer(t, providerInfo)
 
-		// TODO: this is actually wrong
 		testutils.Replay(t, server, `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
