@@ -25,6 +25,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -54,6 +55,7 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 
 	if opts.URN != "" {
 		ctx = tflog.SetField(ctx, "urn", string(opts.URN))
+		ctx = tfsdklog.SetField(ctx, "urn", string(opts.URN))
 	}
 
 	if opts.ProviderName != "" {
@@ -62,11 +64,40 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 			p += "@" + opts.ProviderVersion
 		}
 		ctx = tflog.SetField(ctx, "provider", p)
+		ctx = tfsdklog.SetField(ctx, "provider", p)
 	}
+
+	// This call needs to happen after urn and provider fields are set, otherwise logs emitted
+	// by SDKv2 code against subsystems are not tagged with the urn and provider fields.
+	ctx = setupSubsystems(ctx, opts)
 
 	return context.WithValue(ctx, CtxKey, newHost[logLike](ctx, opts.LogSink, opts.URN, func(l *host[logLike]) logLike {
 		return l
 	}))
+}
+
+// Providers based on https://developer.hashicorp.com/terraform/plugin/sdkv2 emit logs via
+// helper_schema and helper_resource sub-systems, that need to be registered here.
+func setupSubsystems(ctx context.Context, opts LogOptions) context.Context {
+
+	// TF providers respect finer-grained control via TF_LOG_SDK and
+	// TF_LOG_SDK_HELPER_RESOURCE variables, but only TF_LOG is respected here for the
+	// moment, as that is the only option documented for Pulumi.
+	level := tfsdklog.WithLevelFromEnv(tfLogEnvVar)
+
+	ctx = tfsdklog.NewSubsystem(ctx, "helper_schema",
+		tfsdklog.WithAdditionalLocationOffset(1),
+		level,
+		tfsdklog.WithRootFields(), // ensure urn and provider field tagging
+	)
+
+	ctx = tfsdklog.NewSubsystem(ctx, "helper_resource",
+		tfsdklog.WithAdditionalLocationOffset(1),
+		level,
+		tfsdklog.WithRootFields(), // ensure urn and provider field tagging
+	)
+
+	return ctx
 }
 
 type ctxKey struct{}
@@ -176,7 +207,7 @@ func setupRootLoggers(ctx context.Context, output io.Writer) context.Context {
 }
 
 // Choose the default level carefully: logs at this level or higher (more severe) will be shown to the user of Pulumi
-// CLI direcrtly by default. Experimentally it seems that Info is too verbose, for example Cloudflare provider emits
+// CLI directly by default. Experimentally it seems that Info is too verbose, for example Cloudflare provider emits
 // routine authentication messages at INFO level.
 func defaultTFLogLevel() hclog.Level {
 	return hclog.Warn
@@ -239,7 +270,7 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 }
 
 func parseTfLogEnvVar() hclog.Level {
-	env, present := os.LookupEnv("TF_LOG")
+	env, present := os.LookupEnv(tfLogEnvVar)
 	if !present {
 		return hclog.NoLevel
 	}
