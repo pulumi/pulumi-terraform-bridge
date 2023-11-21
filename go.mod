@@ -55,6 +55,7 @@ require (
 	golang.org/x/text v0.13.0
 	google.golang.org/grpc v1.57.1
 	google.golang.org/protobuf v1.31.0
+	gotest.tools/v3 v3.0.3
 	pgregory.net/rapid v0.6.1
 )
 
@@ -169,7 +170,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-plugin-go v0.19.0 // indirect
-	github.com/hashicorp/terraform-plugin-log v0.9.0 // indirect
+	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-registry-address v0.2.2 // indirect
 	github.com/hashicorp/vault/api v1.8.2 // indirect
 	github.com/hashicorp/vault/sdk v0.6.1 // indirect

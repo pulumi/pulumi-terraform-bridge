@@ -161,11 +161,9 @@ type Log interface {
 
 // Get access to the [Logger] associated with this context.
 func GetLogger(ctx context.Context) Logger {
-	logger, ok := ctx.Value(logging.CtxKey).(Logger)
-	if !ok {
-		panic("Cannot call GetLogger on a context that is not equipped with a Logger")
-	}
-	return logger
+	logger := ctx.Value(logging.CtxKey)
+	contract.Assertf(logger != nil, "Cannot call GetLogger on a context that is not equipped with a Logger")
+	return newLoggerAdapter(logger)
 }
 
 func (info *ProviderInfo) GetConfig() map[string]*SchemaInfo {

@@ -26,8 +26,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestLogging(t *testing.T) {
@@ -88,7 +86,7 @@ func TestLogging(t *testing.T) {
 			name: "User Logging",
 			opts: LogOptions{URN: urn},
 			emit: func(ctx context.Context) {
-				log := tfbridge.GetLogger(ctx)
+				log := getLogger(ctx)
 				log.Warn("warn")
 				log.Status().Info("info - status")
 
@@ -178,7 +176,7 @@ type testLogSink struct {
 	logs []log
 }
 
-var _ LogSink = &testLogSink{}
+var _ Sink = &testLogSink{}
 
 func (sink *testLogSink) Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	sink.logs = append(sink.logs, log{
