@@ -99,7 +99,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "some error with \"config_property\" and \"config\" but not config: some error with \"config_property\" and \"config\" but not config"
+			  "errors": "some error with \"config_property\" and \"config\" but not config"
 			}`)
 	})
 }
