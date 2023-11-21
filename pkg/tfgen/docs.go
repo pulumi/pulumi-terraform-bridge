@@ -1285,7 +1285,7 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 
 		// Separate resource description and surround the examples
 		return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
-			docs[:exampleIndex],
+			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
 			docs[exampleIndex:])
 	}
 

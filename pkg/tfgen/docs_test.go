@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -39,7 +40,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
-	"os/exec"
 )
 
 var (
@@ -900,7 +900,7 @@ func TestConvertExamples(t *testing.T) {
 
 		stripSubsectionWithErrors bool
 
-		needsProviders map[string]string
+		needsProviders map[string]pluginDesc
 	}
 
 	testCases := []testCase{
@@ -911,8 +911,21 @@ func TestConvertExamples(t *testing.T) {
 				token:    "wavefront:index/dashboardJson:DashboardJson",
 			},
 			stripSubsectionWithErrors: true,
-			needsProviders: map[string]string{
-				"wavefront": "3.0.0",
+			needsProviders: map[string]pluginDesc{
+				"wavefront": {version: "3.0.0"},
+			},
+		},
+		{
+			name: "equinix_fabric_connection",
+			path: examplePath{
+				fullPath: "#/resources/equinix:fabric:Connection",
+				token:    "equinix:fabric:Connection",
+			},
+			needsProviders: map[string]pluginDesc{
+				"equinix": {
+					pluginDownloadURL: "github://api.github.com/equinix",
+					version:           "0.6.0",
+				},
 			},
 		},
 	}
@@ -943,7 +956,12 @@ func TestConvertExamples(t *testing.T) {
 	}
 }
 
-func ensureProvidersInstalled(t *testing.T, needsProviders map[string]string) {
+type pluginDesc struct {
+	version           string
+	pluginDownloadURL string
+}
+
+func ensureProvidersInstalled(t *testing.T, needsProviders map[string]pluginDesc) {
 	pulumi, err := exec.LookPath("pulumi")
 	require.NoError(t, err)
 
@@ -963,7 +981,7 @@ func ensureProvidersInstalled(t *testing.T, needsProviders map[string]string) {
 	err = json.Unmarshal(buf.Bytes(), &installedPlugins)
 	require.NoError(t, err)
 
-	for name, ver := range needsProviders {
+	for name, desc := range needsProviders {
 		count := 0
 		matched := false
 
@@ -971,7 +989,7 @@ func ensureProvidersInstalled(t *testing.T, needsProviders map[string]string) {
 			if p.Name == name {
 				count++
 			}
-			if p.Name == name && p.Version == ver {
+			if p.Name == name && p.Version == desc.version {
 				matched = true
 			}
 		}
@@ -987,8 +1005,13 @@ func ensureProvidersInstalled(t *testing.T, needsProviders map[string]string) {
 			require.NoError(t, err)
 		}
 
-		t.Logf("pulumi plugin install resource %s %s", name, ver)
-		err = exec.Command(pulumi, "plugin", "install", "resource", name, ver).Run()
+		args := []string{"plugin", "install", "resource", name, desc.version}
+		if desc.pluginDownloadURL != "" {
+			args = append(args, "--server", desc.pluginDownloadURL)
+		}
+		cmd := exec.Command(pulumi, args...)
+		t.Logf("Exec: %s", cmd)
+		err = cmd.Run()
 		require.NoError(t, err)
 	}
 }
