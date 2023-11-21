@@ -1143,6 +1143,44 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
 	t.Run("add-past", test(3, meta2, meta4))
 }
 
+func TestDeletedResourcesAutoAliasing(t *testing.T) {
+	provider := func(t *testing.T, tok string, resourceMap schema.ResourceMap, meta []byte) *tfbridge.ProviderInfo {
+		info, err := metadata.New(meta)
+		require.NoError(t, err)
+
+		prov := &tfbridge.ProviderInfo{
+			Version: "1.0.0",
+			P: (&schema.Provider{
+				ResourcesMap: resourceMap,
+			}).Shim(),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"pkg_r1": {
+					Tok:  ptokens.Type(tok),
+					Docs: &tfbridge.DocInfo{AllowMissing: true},
+				},
+			},
+			MetadataInfo: &tfbridge.MetadataInfo{Data: info, Path: "must be non-empty"},
+		}
+		err = prov.ApplyAutoAliases()
+		require.NoError(t, err)
+		return prov
+	}
+
+	var metadata []byte
+	p := provider(t, "pkg:index:R1", schema.ResourceMap{
+		"pkg_r1": (&schema.Resource{}).Shim(),
+	}, nil)
+	metadata = ((*md.Data)(p.MetadataInfo.Data)).MarshalIndent()
+
+	p = provider(t, "pkg:index:R1Again", schema.ResourceMap{
+		"pkg_r1": (&schema.Resource{}).Shim(),
+	}, metadata)
+	metadata = ((*md.Data)(p.MetadataInfo.Data)).MarshalIndent()
+
+	// Test that we don't panic
+	provider(t, "", schema.ResourceMap{}, metadata)
+}
+
 type Schema struct {
 	shim.Schema
 	MaxItemsOne bool
