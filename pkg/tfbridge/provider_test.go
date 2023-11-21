@@ -172,7 +172,6 @@ func TestCamelPascalPulumiName(t *testing.T) {
 			p.camelPascalPulumiName("not_resource_prefix_some_resource")
 		})
 	})
-
 }
 
 func TestDiffConfig(t *testing.T) {
@@ -1130,7 +1129,6 @@ func TestCheckConfig(t *testing.T) {
 			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
 			"Did you mean `testprovider:configValue`?",
 			resp.Failures[0].Reason)
-
 	})
 
 	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
@@ -1425,6 +1423,37 @@ func TestConfigure(t *testing.T) {
 	})
 }
 
+func TestConfigureErrorReplacement(t *testing.T) {
+	t.Run("replace_config_properties", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		p.ConfigureContextFunc = func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			return nil, diag.Errorf(`some error with "config_property" and "config" but not config`)
+		}
+		p.Schema["config_property"] = &schema.Schema{Type: schema.TypeString}
+		p.Schema["config"] = &schema.Schema{Type: schema.TypeString}
+
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				Config: map[string]*SchemaInfo{
+					"config_property": {Name: "configProperty"},
+					"config":          {Name: "CONFIG!"},
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {"acceptResources": true},
+			  "errors": "1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"
+			}`)
+	})
+}
+
 func TestPreConfigureCallback(t *testing.T) {
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		callCounter := 0
@@ -1610,7 +1639,6 @@ func TestPreConfigureCallback(t *testing.T) {
 }
 
 func TestInvoke(t *testing.T) {
-
 	t.Run("preserve_program_secrets", func(t *testing.T) {
 		// Currently the provider is unable to preserve secret-ness of values marked as secrets. Returning
 		// secrets makes SDKs unable to consume the provider. Therefore currently the secrets are stripped.
@@ -1937,7 +1965,6 @@ func TestSkipDetailedDiff(t *testing.T) {
 		t.Run("withDetailedDiff", test(false))
 		t.Run("skipDetailedDiff", test(true))
 	})
-
 }
 
 func TestTransformFromState(t *testing.T) {
@@ -1966,8 +1993,7 @@ func TestTransformFromState(t *testing.T) {
 						) (resource.PropertyMap, error) {
 							p := pm.Copy()
 							assert.Equal(t, "OLD", p["stringPropertyValue"].StringValue())
-							p["stringPropertyValue"] =
-								resource.NewStringProperty("TRANSFORMED")
+							p["stringPropertyValue"] = resource.NewStringProperty("TRANSFORMED")
 							called = true
 							return p, nil
 						},

@@ -27,6 +27,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -147,7 +148,8 @@ type DataSource struct {
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
 func NewProvider(ctx context.Context, host *provider.HostClient, module string, version string,
-	tf shim.Provider, info ProviderInfo, pulumiSchema []byte) *Provider {
+	tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
+) *Provider {
 	p := &Provider{
 		host:         host,
 		module:       module,
@@ -277,13 +279,12 @@ func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 		pascal = string(unicode.ToUpper(rune(pascal[0]))) + pascal[1:]
 	}
 	return camel, pascal
-
 }
 
 // GetSchema returns the JSON-encoded schema for this provider's package.
 func (p *Provider) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
-
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	if v := req.GetVersion(); v > 1 {
 		return nil, errors.Errorf("unsupported schema version %v", v)
 	}
@@ -505,8 +506,8 @@ func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 // NOTE that validation and calling PreConfigureCallbacks are not called here but are called in CheckConfig. Pulumi will
 // always call CheckConfig first and call Configure with validated (or extended) results of CheckConfig.
 func (p *Provider) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
-
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	if req.AcceptSecrets {
 		p.supportsSecrets = true
 	}
@@ -531,7 +532,15 @@ func (p *Provider) Configure(ctx context.Context,
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
 	if err = p.tf.Configure(config); err != nil {
-		return nil, err
+		replacedErr, replacementError := ReplaceConfigProperties(err.Error(), p.info.Config, p.config)
+		if replacementError != nil {
+			wrappedErr := errors.Wrapf(
+				replacementError,
+				"failed to replace config properties in error message",
+			)
+			return nil, multierror.Append(err, wrappedErr)
+		}
+		return nil, errors.New(replacedErr)
 	}
 
 	return &pulumirpc.ConfigureResponse{
@@ -557,7 +566,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	var err error
 	if req.GetOlds() != nil {
 		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
-			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
+			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -569,7 +579,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
+		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -610,7 +621,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		resource.NewObjectProperty(pinputs)).ObjectValue()
 
 	minputs, err := plugin.MarshalProperties(pinputsWithSecrets, plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true, KeepSecrets: true})
+		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true, KeepSecrets: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -857,7 +869,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
 	oldInputs, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
+		Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1111,7 +1124,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// Unmarshal the arguments.
 	args, err := plugin.UnmarshalProperties(req.GetArgs(), plugin.MarshalOptions{
-		Label: fmt.Sprintf("%s.args", label), KeepUnknowns: true, SkipNulls: true})
+		Label: fmt.Sprintf("%s.args", label), KeepUnknowns: true, SkipNulls: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1185,8 +1199,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 // StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
 // back as a series of messages.
 func (p *Provider) StreamInvoke(
-	req *pulumirpc.InvokeRequest, server pulumirpc.ResourceProvider_StreamInvokeServer) error {
-
+	req *pulumirpc.InvokeRequest, server pulumirpc.ResourceProvider_StreamInvokeServer,
+) error {
 	tok := tokens.ModuleMember(req.GetTok())
 	return errors.Errorf("unrecognized data function (StreamInvoke): %s", tok)
 }
@@ -1204,8 +1218,8 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 }
 
 func (p *Provider) GetMapping(
-	ctx context.Context, req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
-
+	ctx context.Context, req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
 	// The prototype converter used the key "tf", but the new plugin converter uses "terraform". For now
 	// support both, eventually we can remove the "tf" key.
 	if req.Key == "tf" || req.Key == "terraform" {
@@ -1235,8 +1249,8 @@ func initializationError(id string, props *pbstruct.Struct, reasons []string) er
 }
 
 func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok tokens.Type, newTok tokens.Type,
-	legacyModule string, newModule string, info *ResourceInfo) {
-
+	legacyModule string, newModule string, info *ResourceInfo,
+) {
 	resourcePrefix := p.Name + "_"
 	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
@@ -1278,8 +1292,8 @@ const (
 )
 
 func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
-	legacyModule string, newModule string, info *DataSourceInfo) {
-
+	legacyModule string, newModule string, info *DataSourceInfo,
+) {
 	resourcePrefix := p.Name + "_"
 	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
