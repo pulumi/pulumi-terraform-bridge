@@ -258,7 +258,7 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	raw := string(p)
 	level, raw := parseLevelFromRawString(raw)
 
-	if level <= w.desiredLevel {
+	if level < w.desiredLevel {
 		return
 	}
 
