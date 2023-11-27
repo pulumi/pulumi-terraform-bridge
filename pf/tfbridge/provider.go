@@ -35,12 +35,12 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
-	logutils "github.com/pulumi/pulumi-terraform-bridge/pf/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -60,7 +60,7 @@ type provider struct {
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
-	logSink       logutils.LogSink
+	logSink       logging.Sink
 
 	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
 	// populating defaults specified via DefaultInfo.Config.
@@ -170,7 +170,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
 func NewProviderServer(
 	ctx context.Context,
-	logSink logutils.LogSink,
+	logSink logging.Sink,
 	info tfbridge.ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {

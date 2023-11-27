@@ -26,8 +26,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestLogging(t *testing.T) {
@@ -38,6 +36,7 @@ func TestLogging(t *testing.T) {
 		opts LogOptions
 		emit func(context.Context)
 		logs []log
+		env  map[string]string
 	}{
 		{
 			name: "WARN and higher propagates by default",
@@ -50,6 +49,58 @@ func TestLogging(t *testing.T) {
 				tflog.Error(ctx, "Something went wrong ERROR ")
 			},
 			logs: []log{
+				{
+					msg: `Something went wrong WARN`,
+					sev: diag.Warning,
+				},
+				{
+					msg: `Something went wrong ERROR`,
+					sev: diag.Error,
+				},
+			},
+		},
+		{
+			name: "TF_LOG env var filtering can restrict logs",
+			opts: LogOptions{},
+			emit: func(ctx context.Context) {
+				tflog.Trace(ctx, "Something went wrong TRACE")
+				tflog.Debug(ctx, "Something went wrong DEBUG")
+				tflog.Info(ctx, "Something went wrong INFO")
+				tflog.Warn(ctx, "Something went wrong WARN")
+				tflog.Error(ctx, "Something went wrong ERROR ")
+			},
+			env: map[string]string{
+				"TF_LOG": "ERROR",
+			},
+			logs: []log{
+				{
+					msg: `Something went wrong ERROR`,
+					sev: diag.Error,
+				},
+			},
+		},
+		{
+			name: "TF_LOG env var filtering can enable more logging",
+			opts: LogOptions{},
+			emit: func(ctx context.Context) {
+				tflog.Trace(ctx, "Something went wrong TRACE")
+				tflog.Debug(ctx, "Something went wrong DEBUG")
+				tflog.Info(ctx, "Something went wrong INFO")
+				tflog.Warn(ctx, "Something went wrong WARN")
+				tflog.Error(ctx, "Something went wrong ERROR ")
+			},
+			env: map[string]string{
+				"TF_LOG": "DEBUG",
+			},
+			logs: []log{
+				{
+					msg: `Something went wrong DEBUG`,
+					sev: diag.Debug,
+				},
+				{
+					msg: `Something went wrong INFO`,
+					sev: diag.Info,
+				},
 				{
 					msg: `Something went wrong WARN`,
 					sev: diag.Warning,
@@ -88,7 +139,7 @@ func TestLogging(t *testing.T) {
 			name: "User Logging",
 			opts: LogOptions{URN: urn},
 			emit: func(ctx context.Context) {
-				log := tfbridge.GetLogger(ctx)
+				log := getLogger(ctx)
 				log.Warn("warn")
 				log.Status().Info("info - status")
 
@@ -113,6 +164,10 @@ func TestLogging(t *testing.T) {
 		c := c
 
 		t.Run(c.name, func(t *testing.T) {
+			for k, v := range c.env {
+				t.Setenv(k, v)
+			}
+
 			ctx := context.Background()
 			opts := c.opts
 			s := &testLogSink{}
@@ -178,7 +233,7 @@ type testLogSink struct {
 	logs []log
 }
 
-var _ LogSink = &testLogSink{}
+var _ Sink = &testLogSink{}
 
 func (sink *testLogSink) Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	sink.logs = append(sink.logs, log{
