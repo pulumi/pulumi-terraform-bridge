@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
@@ -40,6 +41,15 @@ func (p *provider) CheckConfigWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
+	inputsText := showMap(inputs)
+	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.CheckConfig",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version.String()},
+		opentracing.Tag{Key: "inputs", Value: inputsText},
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer checkConfigSpan.Finish()
+
 	// Transform news to apply Pulumi-level defaults.
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:      p.schemaOnlyProvider.Schema(),
@@ -48,6 +58,11 @@ func (p *provider) CheckConfigWithContext(
 		ProviderConfig: inputs,
 	})
 
+	newsText := showMap(news)
+	if newsText != inputsText {
+		checkConfigSpan.SetTag("inputsWithPulumiDefaults", newsText)
+	}
+
 	// It is currently a breaking change to call PreConfigureCallback with unknown values. The user code does not
 	// expect them and may panic.
 	//
@@ -55,29 +70,16 @@ func (p *provider) CheckConfigWithContext(
 	//
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
-		wc := &wrappedConfig{news}
-
-		if p.info.PreConfigureCallback != nil {
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallback(news, wc)
-			if validationErrors != nil {
-				return nil, nil, validationErrors
-			}
+		if err := p.runPreConfigureCallback(ctx, news); err != nil {
+			return nil, nil, err
 		}
-
-		if p.info.PreConfigureCallbackWithLogger != nil {
-			// Usually logSink is a HostClient; PreConfigureCallbackWithLogger type should have better been
-			// expressed in terms of a diag.Sink.
-			hc, ok := p.logSink.(*rprovider.HostClient)
-			if !ok {
-				hc = &rprovider.HostClient{}
-			}
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, hc, news, wc)
-			if validationErrors != nil {
-				return nil, nil, validationErrors
-			}
+		if err := p.runPreConfigureCallbackWithLogger(ctx, news); err != nil {
+			return nil, nil, err
 		}
+	}
+
+	if n := showMap(news); n != newsText {
+		checkConfigSpan.SetTag("inputsAfterCallbacks", n)
 	}
 
 	// Store for use in subsequent ApplyDefaultInfoValues.
@@ -93,11 +95,40 @@ func (p *provider) CheckConfigWithContext(
 		}
 	}
 
-	// Ensure propreties marked secret in the schema have secret values.
+	// Ensure properties marked secret in the schema have secret values.
 	secretNews := tfbridge.MarkSchemaSecrets(ctx, p.schemaOnlyProvider.Schema(), p.info.Config,
 		resource.NewObjectProperty(news)).ObjectValue()
 
+	checkConfigSpan.SetTag("checkedInputs", showMap(secretNews))
 	return secretNews, checkFailures, nil
+}
+
+func (p *provider) runPreConfigureCallback(ctx context.Context, news resource.PropertyMap) error {
+	if p.info.PreConfigureCallback == nil {
+		return nil
+	}
+	span, _ := opentracing.StartSpanFromContext(ctx, "pf.PreConfigureCallback")
+	defer span.Finish()
+	wc := &wrappedConfig{news}
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallback(news, wc)
+}
+
+func (p *provider) runPreConfigureCallbackWithLogger(ctx context.Context, news resource.PropertyMap) error {
+	if p.info.PreConfigureCallbackWithLogger == nil {
+		return nil
+	}
+	span, ctx := opentracing.StartSpanFromContext(ctx, "pf.PreConfigureCallbackWithLogger")
+	defer span.Finish()
+	// Usually logSink is a HostClient; PreConfigureCallbackWithLogger type should have better been
+	// expressed in terms of a diag.Sink.
+	hc, ok := p.logSink.(*rprovider.HostClient)
+	if !ok {
+		hc = &rprovider.HostClient{}
+	}
+	wc := &wrappedConfig{news}
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallbackWithLogger(ctx, hc, news, wc)
 }
 
 func (p *provider) validateProviderConfig(
@@ -105,6 +136,9 @@ func (p *provider) validateProviderConfig(
 	urn resource.URN,
 	inputs resource.PropertyMap,
 ) ([]plugin.CheckFailure, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "pf.ValidateProviderConfig")
+	defer span.Finish()
+
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
 	if err != nil {
 		err = fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
@@ -176,3 +210,7 @@ func (wc *wrappedConfig) IsSet(key string) bool {
 }
 
 var _ shim.ResourceConfig = &wrappedConfig{}
+
+func showMap(pm resource.PropertyMap) string {
+	return resource.NewObjectProperty(pm).String()
+}

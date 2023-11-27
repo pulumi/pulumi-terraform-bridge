@@ -29,6 +29,7 @@ import (
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -61,6 +62,7 @@ type Provider struct {
 	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
+	memStats        memStatCollector
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -326,6 +328,15 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
 
+	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.CheckConfig",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(news).String()},
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer checkConfigSpan.Finish()
+	p.memStats.collectMemStats(ctx, checkConfigSpan)
+
 	config, validationErrors := buildTerraformConfig(ctx, p, news)
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "could not marshal config state")
@@ -338,19 +349,11 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	//
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
-		if p.info.PreConfigureCallback != nil {
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallback(news, config)
-			if validationErrors != nil {
-				return nil, validationErrors
-			}
+		if err := p.preConfigureCallback(ctx, news, config); err != nil {
+			return nil, err
 		}
-		if p.info.PreConfigureCallbackWithLogger != nil {
-			// NOTE: the user code may modify news in-place.
-			validationErrors := p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
-			if validationErrors != nil {
-				return nil, validationErrors
-			}
+		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
+			return nil, err
 		}
 	}
 
@@ -361,7 +364,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}, nil
 	}
 
-	// Ensure propreties marked secret in the schema have secret values.
+	// Ensure properties marked secret in the schema have secret values.
 	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
 
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
@@ -373,6 +376,34 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	return &pulumirpc.CheckResponse{
 		Inputs: newsStruct,
 	}, nil
+}
+
+func (p *Provider) preConfigureCallback(
+	ctx context.Context,
+	news resource.PropertyMap,
+	config shim.ResourceConfig,
+) error {
+	if p.info.PreConfigureCallback == nil {
+		return nil
+	}
+	span, _ := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallback")
+	defer span.Finish()
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallback(news, config)
+}
+
+func (p *Provider) preConfigureCallbackWithLogger(
+	ctx context.Context,
+	news resource.PropertyMap,
+	config shim.ResourceConfig,
+) error {
+	if p.info.PreConfigureCallbackWithLogger == nil {
+		return nil
+	}
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.PreConfigureCallbackWithLogger")
+	defer span.Finish()
+	// NOTE: the user code may modify news in-place.
+	return p.info.PreConfigureCallbackWithLogger(ctx, p.host, news, config)
 }
 
 func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.PropertyMap) (shim.ResourceConfig, error) {
@@ -402,6 +433,9 @@ func validateProviderConfig(
 	p *Provider,
 	config shim.ResourceConfig,
 ) []*pulumirpc.CheckFailure {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.ValidateProviderConfig")
+	defer span.Finish()
+
 	schemaMap := p.config
 	schemaInfos := p.info.GetConfig()
 
@@ -541,6 +575,14 @@ func (p *Provider) Configure(ctx context.Context,
 		return nil, err
 	}
 
+	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Configure",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(configMap).String()},
+	)
+	defer configureSpan.Finish()
+	p.memStats.collectMemStats(ctx, configureSpan)
+
 	// Store the config values with their Pulumi names and values, before translation. This lets us fetch
 	// them later on for purposes of (e.g.) config-based defaults.
 	p.configValues = configMap
@@ -577,6 +619,12 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Check): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Check",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -659,6 +707,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Diff): %s", urn)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Diff",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -787,6 +841,12 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Create): %s", t)
 	}
 
+	createSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Create",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer createSpan.Finish()
+	p.memStats.collectMemStats(ctx, createSpan)
+
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -882,6 +942,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Read): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Read",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	id := req.GetId()
 	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
@@ -979,6 +1045,12 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if !has {
 		return nil, errors.Errorf("unrecognized resource type (Update): %s", t)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Update",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
@@ -1099,6 +1171,12 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, errors.Errorf("unrecognized resource type (Delete): %s", t)
 	}
 
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Delete",
+		opentracing.Tag{Key: "urn", Value: string(urn)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
+
 	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
@@ -1138,6 +1216,12 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	if !has {
 		return nil, errors.Errorf("unrecognized data function (Invoke): %s", tok)
 	}
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.Invoke",
+		opentracing.Tag{Key: "token", Value: string(tok)},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	glog.V(9).Infof("%s executing", label)
@@ -1227,6 +1311,13 @@ func (p *Provider) StreamInvoke(
 
 // GetPluginInfo implements an RPC call that returns the version of this plugin.
 func (p *Provider) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	getPluginInfoSpan, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.GetPluginInfo",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version},
+	)
+	defer getPluginInfoSpan.Finish()
+	p.memStats.collectMemStats(ctx, getPluginInfoSpan)
+
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
@@ -1240,6 +1331,12 @@ func (p *Provider) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Emp
 func (p *Provider) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.GetMapping",
+		opentracing.Tag{Key: "key", Value: req.Key},
+	)
+	defer span.Finish()
+	p.memStats.collectMemStats(ctx, span)
+
 	// The prototype converter used the key "tf", but the new plugin converter uses "terraform". For now
 	// support both, eventually we can remove the "tf" key.
 	if req.Key == "tf" || req.Key == "terraform" {

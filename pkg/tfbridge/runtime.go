@@ -18,7 +18,7 @@ type runtimeInfo struct {
 	stage runtimeStage
 }
 
-var runtime = initRuntimeInfo()
+var theRuntimeInfo = initRuntimeInfo()
 
 func initRuntimeInfo() runtimeInfo {
 	buildInfo, _ := debug.ReadBuildInfo()
@@ -36,5 +36,5 @@ func initRuntimeInfo() runtimeInfo {
 }
 
 func isTfgen() bool {
-	return runtime.stage != resourceStage
+	return theRuntimeInfo.stage != resourceStage
 }

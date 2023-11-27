@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -69,6 +70,13 @@ func replaceConfigInDiagnostics(
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
 	ctx = p.initLogging(ctx, p.logSink, "")
+
+	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.Configure",
+		opentracing.Tag{Key: "provider", Value: p.info.Name},
+		opentracing.Tag{Key: "version", Value: p.version.String()},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(inputs).String()},
+	)
+	defer configureSpan.Finish()
 
 	p.lastKnownProviderConfig = inputs
 
