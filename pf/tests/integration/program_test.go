@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
+	"sourcegraph.com/sourcegraph/appdash"
 )
 
 func TestBasicProgram(t *testing.T) {
@@ -163,6 +165,51 @@ func TestRegressSMAC(t *testing.T) {
 		Dir:                    filepath.Join("..", "testdata", "smac-program"),
 		ExtraRuntimeValidation: validateExpectedVsActual,
 	})
+}
+
+func TestTracePropagation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+	tmpdir := t.TempDir()
+
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+	bin := filepath.Join(wd, "..", "bin")
+
+	validate := func() {
+		spans := []string{
+			"pf.CheckConfig",
+			"pf.Configure",
+			"sdkv2.CheckConfig",
+			"sdkv2.Configure",
+		}
+		store, err := ReadMemoryStoreFromFile(filepath.Join(tmpdir, "pulumi-update-initial.trace"))
+		require.NoError(t, err)
+		assert.NotNil(t, store)
+
+		for _, s := range spans {
+			s := s
+			tr, err := FindTrace(store, func(tr *appdash.Trace) bool {
+				return tr.Span.Name() == s
+			})
+			require.NoError(t, err)
+			assert.NotNilf(t, tr, "Expected to find a trace span with the %q label", s)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env:     []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir:     filepath.Join("..", "testdata", "updateprogram"),
+		Tracing: fmt.Sprintf("file:%s", filepath.Join(tmpdir, "{command}.trace")),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			validate()
+		},
+		PrepareProject: func(info *engine.Projinfo) error {
+			return prepareStateFolder(info.Root)
+		},
+	})
+
 }
 
 func prepareStateFolder(root string) error {
