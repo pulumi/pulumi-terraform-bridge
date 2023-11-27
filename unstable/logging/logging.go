@@ -223,7 +223,7 @@ func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.
 		Level:             level,
 		IndependentLevels: true,
 		IncludeLocation:   true,
-		TimeFormat:        " ",
+		TimeFormat:        " ", // Do not print time
 
 		// Empirically the value of 1 seems to work in the current Pulumi setup, @caller field now points to the
 		// file where the logging originates.
