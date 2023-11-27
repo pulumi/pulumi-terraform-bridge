@@ -273,7 +273,8 @@ func (m *module) config() bool {
 func (m *module) addMember(member moduleMember) {
 	name := member.Name()
 	for _, existing := range m.members {
-		contract.Assertf(existing.Name() != name, "unexpected duplicate module member %s", name)
+		contract.Assertf(existing.Name() != name, "unexpected duplicate module member %q in %q",
+			name, m.name.String())
 	}
 	m.members = append(m.members, member)
 }
