@@ -88,6 +88,10 @@ func (s *attributeSchema) ExactlyOneOf() []string {
 	return nil
 }
 
+func (s *attributeSchema) RequiredWith() []string {
+	return nil
+}
+
 func (s *attributeSchema) AtLeastOneOf() []string {
 	return nil
 }

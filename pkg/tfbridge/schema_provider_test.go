@@ -21,8 +21,10 @@ func schemaMap(m map[string]*schema.Schema) shim.SchemaMap {
 	return mm
 }
 
-var testTFProvider = testprovider.ProviderV1()
-var testTFProviderV2 = testprovider.ProviderV2()
+var (
+	testTFProvider   = testprovider.ProviderV1()
+	testTFProviderV2 = testprovider.ProviderV2()
+)
 
 type shimFactory interface {
 	SDKVersion() string
@@ -134,7 +136,8 @@ func (f shimv1Factory) NewResource(r *schema.Resource) shim.Resource {
 
 func (f shimv1Factory) NewInstanceState(id string) shim.InstanceState {
 	return shimv1.NewInstanceState(&terraformv1.InstanceState{
-		ID: id, Attributes: map[string]string{}, Meta: map[string]interface{}{}})
+		ID: id, Attributes: map[string]string{}, Meta: map[string]interface{}{},
+	})
 }
 
 func (f shimv1Factory) NewTestProvider() shim.Provider {
@@ -188,6 +191,7 @@ func (f shimv2Factory) newSchema(m shim.Schema) *schemav2.Schema {
 		MaxItems:      m.MaxItems(),
 		MinItems:      m.MinItems(),
 		ConflictsWith: m.ConflictsWith(),
+		RequiredWith:  m.RequiredWith(),
 		Deprecated:    m.Deprecated(),
 		Sensitive:     m.Sensitive(),
 		ExactlyOneOf:  m.ExactlyOneOf(),
@@ -245,7 +249,8 @@ func (f shimv2Factory) NewResource(r *schema.Resource) shim.Resource {
 
 func (f shimv2Factory) NewInstanceState(id string) shim.InstanceState {
 	return shimv2.NewInstanceState(&terraformv2.InstanceState{
-		ID: id, Attributes: map[string]string{}, Meta: map[string]interface{}{}})
+		ID: id, Attributes: map[string]string{}, Meta: map[string]interface{}{},
+	})
 }
 
 func (f shimv2Factory) NewTestProvider() shim.Provider {

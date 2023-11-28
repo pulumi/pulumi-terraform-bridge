@@ -129,6 +129,7 @@ type Schema interface {
 	MinItems() int
 	ConflictsWith() []string
 	ExactlyOneOf() []string
+	RequiredWith() []string
 	Deprecated() string
 	Removed() string
 	Sensitive() bool

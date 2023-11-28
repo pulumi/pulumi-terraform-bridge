@@ -41,8 +41,8 @@ import (
 )
 
 func makeTerraformInputs(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
-
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{Assets: AssetTable{}}
 	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
 	if err != nil {
@@ -52,8 +52,8 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 }
 
 func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
-
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{
 		Assets:        AssetTable{},
 		ApplyDefaults: true,
@@ -362,7 +362,8 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 			oldState: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewStringProperty("sc"),
-				})}),
+				}),
+			}),
 			newState: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("sc"),
 			}),
@@ -932,6 +933,10 @@ func TestDefaults(t *testing.T) {
 				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 
+				// Test required with behavior: default should not be applied
+				"requiredWith1": {Type: shim.TypeString, RequiredWith: []string{"requiredWith2"}, Default: "", Optional: true},
+				"requiredWith2": {Type: shim.TypeString, RequiredWith: []string{"requiredWith1"}, Optional: true},
+
 				// Default value application across types
 				"x2stringxbool": {Type: shim.TypeString},
 				"x2stringxint":  {Type: shim.TypeString},
@@ -1040,7 +1045,7 @@ func TestDefaults(t *testing.T) {
 
 			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
-			//sort the defaults list before the equality test below.
+			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
@@ -1127,7 +1132,6 @@ func TestInvalidAsset(t *testing.T) {
 }
 
 func TestOverridingTFSchema(t *testing.T) {
-
 	tfInputs := map[string]interface{}{
 		"pulumi_override_tf_string_to_boolean":    MyString("true"),
 		"pulumi_override_tf_string_to_bool":       MyString("true"),
@@ -1506,7 +1510,6 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 }
 
 func TestImporterWithNoResource(t *testing.T) {
-
 	tfProvider := makeTestTFProvider(map[string]*schemav1.Schema{},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
@@ -1877,7 +1880,6 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputH": "Input_H_Default",
 		"inoutK": "",
 	}), ins)
-
 }
 
 // This schema replicates the panic behavior of

@@ -6,8 +6,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Schema(v2Schema{})
-var _ = shim.SchemaMap(v2SchemaMap{})
+var (
+	_ = shim.Schema(v2Schema{})
+	_ = shim.SchemaMap(v2SchemaMap{})
+)
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
 // representing a variable whose value is not known at some particular time. The value is duplicated here in
@@ -105,6 +107,10 @@ func (s v2Schema) ConflictsWith() []string {
 
 func (s v2Schema) ExactlyOneOf() []string {
 	return s.tf.ExactlyOneOf
+}
+
+func (s v2Schema) RequiredWith() []string {
+	return s.tf.RequiredWith
 }
 
 func (s v2Schema) Removed() string {

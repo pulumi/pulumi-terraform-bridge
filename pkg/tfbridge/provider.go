@@ -1247,7 +1247,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
 
-	// Next, ensure the inputs are valid before actually performing the invoaction.
+	// Next, ensure the inputs are valid before actually performing the invocation.
 	rescfg := MakeTerraformConfigFromInputs(p.tf, inputs)
 	warns, errs := p.tf.ValidateDataSource(tfname, rescfg)
 	for _, warn := range warns {
@@ -1499,13 +1499,13 @@ func SetProviderLicense(license TFProviderLicense) *TFProviderLicense {
 	return &license
 }
 
-// True is used for interations in the providers that require a pointer to true
+// True is used for interactions in the providers that require a pointer to true
 func True() *bool {
 	x := true
 	return &x
 }
 
-// False is used for interations in the providers that require a pointer to false
+// False is used for interactions in the providers that require a pointer to false
 func False() *bool {
 	x := false
 	return &x
