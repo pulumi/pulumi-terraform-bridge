@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"q"
 	"reflect"
 	"sort"
 	"strconv"
@@ -667,8 +666,6 @@ func (ctx *conversionContext) applyDefaults(
 	conflictsWith := buildConflictsWith(result, tfs)
 	exactlyOneOf := buildExactlyOneOfsWith(result, tfs)
 	requiredWith := buildRequiredWith(result, tfs)
-
-	q.Q(requiredWith, tfs)
 
 	// First, attempt to use the overlays.
 	for name, info := range ps {
