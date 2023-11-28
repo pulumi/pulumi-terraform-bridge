@@ -55,7 +55,6 @@ func (s *blockSchema) Description() string {
 
 // Needs to return a shim.Schema, a shim.Resource, or nil. See docstring on shim.Schema.Elem().
 func (s *blockSchema) Elem() interface{} {
-
 	asObjectType := func(typ any) (shim.Resource, bool) {
 		if tt, ok := typ.(basetypes.ObjectTypable); ok {
 			var res shim.Resource = newObjectPseudoResource(tt,
@@ -138,6 +137,10 @@ func (*blockSchema) DefaultValue() (interface{}, error) {
 
 func (*blockSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
+}
+
+func (*blockSchema) RequiredWith() []string {
+	panic("RequiredWith() should not be called during schema generation")
 }
 
 func (*blockSchema) SetElement(config interface{}) (interface{}, error) {
