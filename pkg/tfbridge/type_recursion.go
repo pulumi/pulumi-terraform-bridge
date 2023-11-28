@@ -60,18 +60,34 @@ func fixRecursiveResource(tfSchema shim.SchemaMap, info *ResourceInfo) {
 	})
 }
 
+func isCollection(s shim.Schema) bool {
+	if s == nil {
+		return true
+	}
+	t := s.Type()
+	return t == shim.TypeList || t == shim.TypeSet || t == shim.TypeMap
+}
+
+func isScalar(s shim.Schema) bool { return !isCollection(s) }
+
+func isRecursionOf(outer, inner shim.SchemaMap) bool {
+	similar, _ := isRecursionOfHelper(outer, inner)
+	return similar
+}
+
 // A type is similar to another type if:
 //
 // 1. They match on scalar fields, and
 // 2. Object fields are themselves similar, or
 // 3. One type is missing an object field that the other type has (the base case).
-func isRecursionOf(outer, inner shim.SchemaMap) bool {
+func isRecursionOfHelper(outer, inner shim.SchemaMap) (bool, bool) {
 	s := make(map[string]struct{}, inner.Len())
 	similar := true
+	ratchet := false
 	inner.Range(func(k string, schema shim.Schema) bool {
 		s[k] = struct{}{}
 		v, ok := outer.GetOk(k)
-		if !ok {
+		if !ok && isScalar(schema) {
 			similar = false
 			return false
 		}
@@ -79,9 +95,25 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 		switch schema.Type() {
 		case shim.TypeInvalid, shim.TypeBool, shim.TypeInt, shim.TypeFloat, shim.TypeString:
 			similar = shallowEqual(schema, v)
+			if !similar {
+				ratchet = false
+			}
 			return similar
 
-		case shim.TypeList, shim.TypeSet, shim.TypeMap:
+		case shim.TypeMap:
+			// If the missing key is paired with a strongly typed object, then
+			// this could be a base case and we should return early.
+			//
+			// Mark this as a ratchet so we try walking inward on "outer" to
+			// see if this lines up.
+			if _, ok := schema.Elem().(shim.Resource); ok {
+				ratchet = true
+				similar = false
+				return true
+			}
+
+			fallthrough
+		case shim.TypeList, shim.TypeSet:
 			if v.Type() != schema.Type() {
 				similar = false
 				return similar
@@ -89,6 +121,18 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 
 			schemaElem, vElem := schema.Elem(), v.Elem()
 			switch schemaElem := schemaElem.(type) {
+			case shim.Resource:
+				vElem, ok := vElem.(shim.Resource)
+				if !ok {
+					similar = false
+					return similar
+				}
+				similar, ratchet = isRecursionOfHelper(schemaElem.Schema(), vElem.Schema())
+				for ratchet && !similar {
+					similar, ratchet = isRecursionOfHelper(schemaElem.Schema(), inner)
+				}
+
+				return similar || ratchet
 			case shim.Schema:
 				vElem, ok := vElem.(shim.Schema)
 				if !ok {
@@ -96,14 +140,6 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 					return similar
 				}
 				similar = shallowEqual(schemaElem, vElem)
-				return similar
-			case shim.Resource:
-				vElem, ok := vElem.(shim.Resource)
-				if !ok {
-					similar = false
-					return similar
-				}
-				similar = isRecursionOf(schemaElem.Schema(), vElem.Schema())
 				return similar
 			case nil:
 				similar = vElem == nil
@@ -117,7 +153,7 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 	})
 	if !similar {
 		// We have already failed so we return early
-		return false
+		return false, ratchet
 	}
 	outer.Range(func(k string, schema shim.Schema) bool {
 		if _, ok := s[k]; ok {
@@ -126,12 +162,9 @@ func isRecursionOf(outer, inner shim.SchemaMap) bool {
 
 		// This could be a base case, so accept it
 		_, similar = schema.Elem().(shim.Resource)
-		if !similar {
-			panic(schema.Elem())
-		}
 		return similar
 	})
-	return similar
+	return similar, ratchet
 }
 
 func shallowEqual(a, b shim.Schema) bool {
