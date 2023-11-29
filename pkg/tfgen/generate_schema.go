@@ -53,6 +53,8 @@ type schemaGenerator struct {
 	version        string
 	info           tfbridge.ProviderInfo
 	renamesBuilder *renamesBuilder
+
+	nestedTypes map[*propertyType]*schemaNestedType
 }
 
 type schemaNestedType struct {
@@ -68,21 +70,24 @@ type schemaNestedType struct {
 
 type schemaNestedTypes struct {
 	nameToType map[string]*schemaNestedType
+	propToType map[*propertyType]*schemaNestedType
 }
 
-func gatherSchemaNestedTypesForModule(mod *module) map[string]*schemaNestedType {
+func gatherSchemaNestedTypesForModule(mod *module) map[*propertyType]*schemaNestedType {
 	nt := &schemaNestedTypes{
 		nameToType: make(map[string]*schemaNestedType),
+		propToType: make(map[*propertyType]*schemaNestedType),
 	}
 	for _, member := range mod.members {
 		nt.gatherFromMember(member)
 	}
-	return nt.nameToType
+	return nt.propToType
 }
 
 func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNestedType {
 	nt := &schemaNestedTypes{
 		nameToType: make(map[string]*schemaNestedType),
+		propToType: make(map[*propertyType]*schemaNestedType),
 	}
 	nt.gatherFromMember(member)
 	return nt.nameToType
@@ -158,8 +163,7 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		existing.typ, existing.required = typ, required
 		return typeName
 	}
-
-	nt.nameToType[typeName] = &schemaNestedType{
+	nested := &schemaNestedType{
 		typ:             typ,
 		declarer:        declarer,
 		required:        required,
@@ -167,6 +171,8 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		requiredOutputs: requiredOutputs,
 		typePaths:       paths.SingletonTypePathSet(typePath),
 	}
+	nt.nameToType[typeName] = nested
+	nt.propToType[typ] = nested
 	return typeName
 }
 
@@ -249,7 +255,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	var config []*variable
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
-		for _, t := range gatherSchemaNestedTypesForModule(mod) {
+		g.nestedTypes = gatherSchemaNestedTypesForModule(mod)
+		for _, t := range g.nestedTypes {
 			tok := g.genObjectTypeToken(t)
 			ts := g.genObjectType(t, false)
 			spec.Types[tok] = pschema.ComplexTypeSpec{
@@ -857,13 +864,13 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 	switch {
 	case typ == nil:
 		return pschema.TypeSpec{Ref: "pulumi.json#/Any"}
-	case typ.typ != "" || len(typ.altTypes) != 0:
+	case typ.typ != nil || len(typ.altTypes) != 0:
 		// Compute the default type for the union. May be empty.
 		defaultType := g.schemaPrimitiveType(typ.kind)
 
 		var toks []tokens.Type
-		if typ.typ != "" {
-			toks = []tokens.Type{typ.typ}
+		if typ.typ != nil {
+			toks = []tokens.Type{typ.typ.getName(g)}
 		}
 
 		if !out {

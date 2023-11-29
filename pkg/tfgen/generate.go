@@ -328,10 +328,35 @@ type propertyType struct {
 	element    *propertyType
 	properties []*variable
 
-	typ        tokens.Type
+	typ        propertyTypeName
 	nestedType tokens.Type
 	altTypes   []tokens.Type
 	asset      *tfbridge.AssetTranslation
+}
+
+type propertyTypeName interface {
+	getName(g *schemaGenerator) tokens.Type
+}
+
+type propertyTypeLiteral tokens.Type
+
+func (t propertyTypeLiteral) getName(g *schemaGenerator) tokens.Type {
+	return tokens.Type(t)
+}
+
+func maybePropertyTypeLiteral(t tokens.Type) propertyTypeName {
+	if t == "" {
+		return nil
+	}
+	return propertyTypeLiteral(t)
+}
+
+type propertyTypeReference struct {
+	to *propertyType
+}
+
+func (t propertyTypeReference) getName(g *schemaGenerator) tokens.Type {
+	return tokens.Type(g.genObjectTypeToken(g.nestedTypes[t.to]))
 }
 
 func (g *Generator) makePropertyType(typePath paths.TypePath,
@@ -342,7 +367,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	var elemInfo *tfbridge.SchemaInfo
 	if info != nil {
-		t.typ = info.Type
+		t.typ = maybePropertyTypeLiteral(info.Type)
 		t.nestedType = info.NestedType
 		t.altTypes = info.AltTypes
 		t.asset = info.Asset
@@ -377,17 +402,14 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	// Handle single-nested blocks next.
 	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
-		return g.makeObjectPropertyType(typePath, docsPath(objectName), blockType, elemInfo, out, entityDocs)
+		return g.makeObjectPropertyType(typePath, docsPath(objectName),
+			blockType, elemInfo, out, entityDocs)
+	} else if info != nil && len(info.IsRecursiveOn) > 0 {
+		g.error("%s: cannot mark non-object as recursive; found type %s", objectName, t.typ)
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
-	flatten := false
-	switch sch.Type() {
-	case shim.TypeList, shim.TypeSet:
-		if tfbridge.IsMaxItemsOne(sch, info) {
-			flatten = true
-		}
-	}
+	flatten := tfbridge.IsMaxItemsOne(sch, info)
 
 	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
 	// flattening that stays at the current path.
@@ -432,14 +454,18 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	}
 
 	if info != nil {
-		t.typ = info.Type
+		t.typ = maybePropertyTypeLiteral(info.Type)
 		t.nestedType = info.NestedType
 		t.altTypes = info.AltTypes
 		t.asset = info.Asset
 	}
 
+	recursiveOn := codegen.NewStringSet()
 	var propertyInfos map[string]*tfbridge.SchemaInfo
 	if info != nil {
+		for _, p := range info.IsRecursiveOn {
+			recursiveOn.Add(p.Name)
+		}
 		propertyInfos = info.Fields
 	}
 
@@ -453,6 +479,15 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
+
+			if recursiveOn.Has(key) {
+				v.typ.properties = nil
+				v.typ.element = nil
+				contract.Assertf(v.typ.typ == nil,
+					"Cannot set the type of a property marked recursive")
+				v.typ.typ = propertyTypeReference{to: t}
+			}
+
 			t.properties = append(t.properties, v)
 		}
 	}

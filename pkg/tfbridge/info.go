@@ -457,8 +457,17 @@ type SchemaInfo struct {
 	// if set, this property will not be added to the schema and no bindings will be generated for it
 	Omit bool
 
+	// if set, will set the type of subsequent fields to this one.
+	//
+	// Type must be an object.
+	IsRecursiveOn []RecursiveFieldInfo
+
 	// whether or not to treat this property as secret
 	Secret *bool
+}
+
+type RecursiveFieldInfo struct {
+	Name string
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
