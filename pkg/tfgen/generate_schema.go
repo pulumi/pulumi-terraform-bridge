@@ -659,14 +659,6 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 	spec.Properties = map[string]pschema.PropertySpec{}
 
 	for _, prop := range res.outprops {
-		// The property will be dropped from the schema
-		if prop.info != nil && prop.info.Omit {
-			if prop.schema.Required() {
-				contract.Failf("required property %q may not be omitted from binding generation", prop.name)
-			} else {
-				continue
-			}
-		}
 		// let's check that we are not trying to add a duplicate computed id property
 		if prop.name == "id" {
 			continue
@@ -793,14 +785,8 @@ func (g *schemaGenerator) genObjectType(typInfo *schemaNestedType, isTopLevel bo
 
 	spec.Properties = map[string]pschema.PropertySpec{}
 	for _, prop := range typ.properties {
-		if prop.info != nil && prop.info.Omit {
-			if prop.schema.Required() {
-				contract.Failf("required object property %q may not be omitted from binding generation", prop.name)
-			} else {
-				continue
-			}
-		}
-		// let's not build any additional ID properties - we don't want to exclude any required id properties
+		// let's not build any additional ID properties - we don't want to exclude
+		// any required id properties
 		if isTopLevel && prop.name == "id" {
 			continue
 		}
