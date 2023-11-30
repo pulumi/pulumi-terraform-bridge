@@ -26,8 +26,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
@@ -36,7 +38,6 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func Test_DeprecationFromTFSchema(t *testing.T) {
@@ -282,6 +283,102 @@ func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
+}
+
+func Test_ProviderWithOmittedTypes(t *testing.T) {
+
+	gen := func(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
+		strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+		nestedObj := (&shimschema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem: (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"fizz_buzz": strType,
+				},
+			}).Shim(),
+		}).Shim()
+		objType := (&shimschema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem: (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"foo_bar": strType,
+					"nested":  nestedObj,
+				},
+			}).Shim(),
+		}).Shim()
+
+		p := (&shimschema.Provider{
+			ResourcesMap: shimschema.ResourceMap{
+				"test_res": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"obj": objType,
+					},
+				}).Shim(),
+			},
+		}).Shim()
+
+		nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		})
+
+		res := &tfbridge.ResourceInfo{
+			Tok: "test:index:Bar",
+		}
+		if f != nil {
+			f(res)
+		}
+
+		r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+			DiagnosticsSink: nilSink,
+			ProviderInfo: tfbridge.ProviderInfo{
+				Name: "test",
+				P:    p,
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": res,
+				},
+			},
+		})
+		require.NoError(t, err)
+		return r.PackageSpec
+	}
+
+	t.Run("no-omit", func(t *testing.T) {
+		spec := gen(t, nil)
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
+		assert.Len(t, spec.Types, 2)
+	})
+
+	t.Run("omit-top-level-prop", func(t *testing.T) {
+		spec := gen(t, func(info *tfbridge.ResourceInfo) {
+			info.Fields = map[string]*tfbridge.SchemaInfo{
+				"obj": {Omit: true},
+			}
+		})
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 0)
+		assert.Len(t, spec.Types, 0)
+	})
+
+	t.Run("omit-nested-prop", func(t *testing.T) {
+		spec := gen(t, func(info *tfbridge.ResourceInfo) {
+			info.Fields = map[string]*tfbridge.SchemaInfo{
+				"obj": {
+					Elem: &tfbridge.SchemaInfo{
+						Fields: map[string]*tfbridge.SchemaInfo{
+							"nested": {Omit: true},
+						},
+					},
+				},
+			}
+		})
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
+		assert.Len(t, spec.Types, 1)
+	})
+
 }
 
 func TestModulePlacementForType(t *testing.T) {
