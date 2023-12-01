@@ -254,13 +254,23 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), g.info.GetGitHubHost())
 
 	var config []*variable
+	declaredTypes := map[string]*schemaNestedType{}
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
 		for _, t := range gatherSchemaNestedTypesForModule(mod) {
 			tok := g.genObjectTypeToken(t)
 			ts := g.genObjectType(t, false)
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
+
+			if existing, ok := declaredTypes[tok]; ok {
+				if !t.typ.equals(existing.typ) {
+					return pschema.PackageSpec{},
+						fmt.Errorf("%s: conflicting type definitions", tok)
+				}
+			} else {
+				declaredTypes[tok] = t
+				spec.Types[tok] = pschema.ComplexTypeSpec{
+					ObjectTypeSpec: ts,
+				}
 			}
 		}
 
