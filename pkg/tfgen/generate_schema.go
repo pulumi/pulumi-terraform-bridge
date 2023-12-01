@@ -118,9 +118,7 @@ type declarer interface {
 	Name() string
 }
 
-func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
-	typ *propertyType, isInput bool) string {
-
+func (nt *schemaNestedTypes) typeName(namePrefix, name string, typ *propertyType) string {
 	// Generate a name for this nested type.
 	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
 
@@ -134,6 +132,16 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 	}
 
 	typ.name = typeName
+	return typ.name
+}
+
+// declareType emits the declared type into nt.
+//
+// declareType requires that:
+// 1. nt.typeName(..., typ) has been called previously on this type.
+// 2. All nested types have already been declare.
+func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer,
+	typ *propertyType, isInput bool) {
 
 	required := codegen.StringSet{}
 	for _, p := range typ.properties {
@@ -150,8 +158,9 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 	}
 
 	// Merging makes sure that structurally identical types are shared and not generated more than once.
-	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
+	if existing, ok := nt.nameToType[typ.name]; ok {
+		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ),
+			"%s declared twice with different values", typ.name)
 
 		// Remember that existing type is now also seen at the current typePath.
 		existing.typePaths.Add(typePath)
@@ -166,10 +175,10 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		}
 
 		existing.typ, existing.required = typ, required
-		return typeName
+		return
 	}
 
-	nt.nameToType[typeName] = &schemaNestedType{
+	nt.nameToType[typ.name] = &schemaNestedType{
 		typ:             typ,
 		declarer:        declarer,
 		required:        required,
@@ -177,7 +186,6 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		requiredOutputs: requiredOutputs,
 		typePaths:       paths.SingletonTypePathSet(typePath),
 	}
-	return typeName
 }
 
 func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
@@ -221,8 +229,15 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, dec
 			namePrefix = ""
 			typePath = paths.NewRawPath(typ.typ, typePath)
 		}
-		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput)
+
+		// Because nt.declareType expects the declared type to be fully formed (to
+		// allow an equality comparison against other fully formed types), all
+		// nested types must themselves be fully formed.
+		//
+		// gatherFromProperties must be called before declareType.
+		baseName := nt.typeName(namePrefix, name, typ)
 		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput)
+		nt.declareType(typePath, declarer, typ, isInput)
 	}
 }
 
@@ -854,7 +869,6 @@ func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 	}
 
 	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, token)
-	fmt.Printf("Generated token %s (mod = %s, name = %s)\n", token, mod, name)
 	return token.String()
 }
 

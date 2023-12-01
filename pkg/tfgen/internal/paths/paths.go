@@ -357,6 +357,6 @@ func (p *RawTypePath) UniqueKey() string { return p.t.String() }
 // Human friendly representation.
 func (p *RawTypePath) String() string { return p.t.Name().String() }
 
-func (p *RawTypePath) Raw() tokens.Type { return tokens.Type(p.t) }
+func (p *RawTypePath) Raw() tokens.Type { return p.t }
 
 func (p *RawTypePath) StructuralPath() TypePath { return p.structuralPath }
