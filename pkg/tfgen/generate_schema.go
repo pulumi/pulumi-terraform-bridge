@@ -180,8 +180,12 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 			name = inflector.Singularize(name)
 		}
 
-		nt.gatherFromPropertyType(paths.NewProperyPath(pathContext, p.propertyName),
-			declarer, namePrefix, name, p.typ, isInput)
+		var path paths.TypePath = paths.NewProperyPath(pathContext, p.propertyName)
+		if t := p.typ.typ; t != "" && p.typ.kind == kindObject {
+			namePrefix = ""
+		}
+
+		nt.gatherFromPropertyType(path, declarer, namePrefix, name, p.typ, isInput)
 	}
 }
 
@@ -195,6 +199,9 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, dec
 				declarer, namePrefix, name, typ.element, isInput)
 		}
 	case kindObject:
+		if typ.typ != "" {
+			namePrefix = ""
+		}
 		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput)
 		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput)
 	}
