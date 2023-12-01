@@ -442,6 +442,10 @@ type SchemaInfo struct {
 	CSharpName string
 
 	// a type to override the default; "" uses the default.
+	//
+	// If the type overriden is an object type, `Type: newName` is interpreted as a
+	// move operation, pointing the property to a type called `newName` and creating
+	// `newName` with the schema described by this type.
 	Type tokens.Type
 
 	// alternative types that can be used instead of the override.
