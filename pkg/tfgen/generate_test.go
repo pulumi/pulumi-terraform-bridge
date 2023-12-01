@@ -287,25 +287,21 @@ func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
 
 func generateNestedSchema(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
 	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
-	nestedObj := (&shimschema.Schema{
-		Type:     shim.TypeMap,
-		Optional: true,
-		Elem: (&shimschema.Resource{
-			Schema: shimschema.SchemaMap{
-				"fizz_buzz": strType,
-			},
-		}).Shim(),
-	}).Shim()
-	objType := (&shimschema.Schema{
-		Type:     shim.TypeMap,
-		Optional: true,
-		Elem: (&shimschema.Resource{
-			Schema: shimschema.SchemaMap{
-				"foo_bar": strType,
-				"nested":  nestedObj,
-			},
-		}).Shim(),
-	}).Shim()
+	mkObj := func(m shim.SchemaMap) shim.Schema {
+		return (&shimschema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem:     (&shimschema.Resource{Schema: m}).Shim(),
+		}).Shim()
+	}
+
+	nestedObj := mkObj(shimschema.SchemaMap{
+		"fizz_buzz": strType,
+	})
+	objType := mkObj(shimschema.SchemaMap{
+		"foo_bar": strType,
+		"nested":  nestedObj,
+	})
 
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
@@ -402,9 +398,14 @@ func Test_ProviderWithMovedTypes(t *testing.T) {
 		t.Parallel()
 		spec := generateNestedSchema(t, func(info *tfbridge.ResourceInfo) {
 			info.Fields = map[string]*tfbridge.SchemaInfo{
-				"obj": {Type: "test:moved:Top"},
+				"obj": {
+					Elem: &tfbridge.SchemaInfo{
+						Type: "test:moved:Top",
+					},
+				},
 			}
 		})
+
 		assert.Len(t, spec.Resources, 1)
 		assert.Len(t, spec.Types, 2)
 		if assert.Contains(t, spec.Types, "test:moved:Top") {
@@ -419,7 +420,11 @@ func Test_ProviderWithMovedTypes(t *testing.T) {
 				"obj": {
 					Elem: &tfbridge.SchemaInfo{
 						Fields: map[string]*tfbridge.SchemaInfo{
-							"nested": {Type: "test:moved:Nested"},
+							"nested": {
+								Elem: &tfbridge.SchemaInfo{
+									Type: "test:moved:Nested",
+								},
+							},
 						},
 					},
 				},
