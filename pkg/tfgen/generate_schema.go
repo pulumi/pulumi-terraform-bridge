@@ -71,17 +71,19 @@ type schemaNestedType struct {
 }
 
 type schemaNestedTypes struct {
-	nameToType map[string]*schemaNestedType
+	nameToType      map[string]*schemaNestedType
+	pathCorrections map[string]paths.TypePath
 }
 
-func gatherSchemaNestedTypesForModule(mod *module) map[string]*schemaNestedType {
+func gatherSchemaNestedTypesForModule(mod *module) (map[string]*schemaNestedType, map[string]paths.TypePath) {
 	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
+		nameToType:      make(map[string]*schemaNestedType),
+		pathCorrections: make(map[string]paths.TypePath),
 	}
 	for _, member := range mod.members {
 		nt.gatherFromMember(member)
 	}
-	return nt.nameToType
+	return nt.nameToType, nt.pathCorrections
 }
 
 func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNestedType {
@@ -191,10 +193,18 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 		var path paths.TypePath = paths.NewProperyPath(pathContext, p.propertyName)
 		if t := p.typ.typ; t != "" && p.typ.kind == kindObject {
 			namePrefix = ""
+			newPath := paths.NewRawPath(t, path)
+			nt.correctPath(path, newPath)
+			path = newPath
 		}
 
 		nt.gatherFromPropertyType(path, declarer, namePrefix, name, p.typ, isInput)
 	}
+}
+
+// Insert a type path redirect, setting src to point to dst.
+func (nt *schemaNestedTypes) correctPath(src, dst paths.TypePath) {
+	nt.pathCorrections[src.UniqueKey()] = dst
 }
 
 func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, declarer declarer, namePrefix,
@@ -209,6 +219,7 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, dec
 	case kindObject:
 		if typ.typ != "" {
 			namePrefix = ""
+			typePath = paths.NewRawPath(typ.typ, typePath)
 		}
 		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput)
 		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput)
@@ -292,7 +303,17 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	declaredTypes := map[string]*schemaNestedType{}
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
-		for _, t := range gatherSchemaNestedTypesForModule(mod) {
+		nestedTypes, pathCorrections := gatherSchemaNestedTypesForModule(mod)
+		if b := g.renamesBuilder; b != nil {
+			if b.pathCorrections == nil {
+				b.pathCorrections = pathCorrections
+			} else {
+				for k, v := range pathCorrections {
+					b.pathCorrections[k] = v
+				}
+			}
+		}
+		for _, t := range nestedTypes {
 			tok := g.genObjectTypeToken(t)
 			ts := g.genObjectType(t, false)
 

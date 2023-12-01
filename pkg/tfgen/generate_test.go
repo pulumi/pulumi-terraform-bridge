@@ -409,7 +409,7 @@ func Test_ProviderWithMovedTypes(t *testing.T) {
 		assert.Len(t, spec.Resources, 1)
 		assert.Len(t, spec.Types, 2)
 		if assert.Contains(t, spec.Types, "test:moved:Top") {
-			assert.Contains(t, spec.Types, "test:moved:TopNested")
+			assert.Contains(t, spec.Types, "test:moved/TopNested:TopNested")
 		}
 	})
 
