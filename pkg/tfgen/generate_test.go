@@ -436,9 +436,136 @@ func Test_ProviderWithMovedTypes(t *testing.T) {
 		assert.Contains(t, spec.Types, "test:moved:Nested")
 	})
 
+	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+	mkObj := func(m shim.SchemaMap) shim.Schema {
+		return (&shimschema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem:     (&shimschema.Resource{Schema: m}).Shim(),
+		}).Shim()
+	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
+
 	t.Run("conflict", func(t *testing.T) {
 		t.Parallel()
-		t.Fatalf("TODO Test that the provider errors when multiple types are directed to the same token.")
+
+		nestedObj := mkObj(shimschema.SchemaMap{
+			"fizz_buzz": strType,
+		})
+		objType := mkObj(shimschema.SchemaMap{
+			"foo_bar": strType,
+			"nested":  nestedObj,
+		})
+
+		p := (&shimschema.Provider{
+			ResourcesMap: shimschema.ResourceMap{
+				"test_res": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"obj": objType,
+					},
+				}).Shim(),
+				"test_other": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"obj": nestedObj,
+					},
+				}).Shim(),
+			},
+		}).Shim()
+
+		nameObj := map[string]*tfbridge.SchemaInfo{
+			"obj": {
+				Elem: &tfbridge.SchemaInfo{
+					Type: "test:index:Obj",
+				},
+			},
+		}
+
+		// GenerateSchemaWithOptions should return an error when we force distinct
+		// types to have the same type token. Instead, it panics. We capture this
+		// behavior for now, since we want to assert that it doesn't return
+		// garbage.
+		err := "fatal: An assertion has failed: Obj declared twice with different values"
+		assert.PanicsWithValue(t, err, func() {
+			_, _ = GenerateSchemaWithOptions(GenerateSchemaOptions{
+				DiagnosticsSink: nilSink,
+				ProviderInfo: tfbridge.ProviderInfo{
+					Name: "test",
+					P:    p,
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"test_res": {
+							Tok:    "test:index:Res",
+							Fields: nameObj,
+						},
+						"test_other": {
+							Tok:    "test:index:Other",
+							Fields: nameObj,
+						},
+					},
+				},
+			})
+		})
+	})
+
+	t.Run("no-conflict", func(t *testing.T) {
+		t.Parallel()
+
+		nestedObj := mkObj(shimschema.SchemaMap{
+			"fizz_buzz": strType,
+		})
+		objType := mkObj(shimschema.SchemaMap{
+			"foo_bar": strType,
+			"nested":  nestedObj,
+		})
+
+		p := (&shimschema.Provider{
+			ResourcesMap: shimschema.ResourceMap{
+				"test_res": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"field1": objType,
+					},
+				}).Shim(),
+				"test_other": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"field2": objType,
+					},
+				}).Shim(),
+			},
+		}).Shim()
+
+		nameObj := func(i int) map[string]*tfbridge.SchemaInfo {
+			return map[string]*tfbridge.SchemaInfo{
+				fmt.Sprintf("field%d", i): {
+					Elem: &tfbridge.SchemaInfo{
+						Type: "test:index:Obj",
+					},
+				},
+			}
+		}
+
+		r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+			DiagnosticsSink: nilSink,
+			ProviderInfo: tfbridge.ProviderInfo{
+				Name: "test",
+				P:    p,
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": {
+						Tok:    "test:index:Res",
+						Fields: nameObj(1),
+					},
+					"test_other": {
+						Tok:    "test:index:Other",
+						Fields: nameObj(2),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, r.PackageSpec.Resources, 2)
+		assert.Len(t, r.PackageSpec.Types, 2,
+			"Since nested types were declared to have the same name, they should only show up once.")
 	})
 
 }
