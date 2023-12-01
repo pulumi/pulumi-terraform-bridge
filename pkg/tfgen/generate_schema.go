@@ -123,6 +123,10 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		typeName = typ.nestedType.Name().String()
 	}
 
+	if typ.typ != "" && typ.kind == kindObject {
+		typeName = typ.typ.Name().String()
+	}
+
 	typ.name = typeName
 
 	required := codegen.StringSet{}
@@ -781,11 +785,14 @@ func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 	}
 
 	mod := modulePlacementForTypeSet(g.pkg, typInfo.typePaths)
-	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
+	token := tokens.Type(fmt.Sprintf("%s/%s:%s", mod, name, name))
+	if typ.typ != "" {
+		token = typ.typ
+	}
 
-	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, tokens.Type(token))
-
-	return token
+	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, token)
+	fmt.Printf("Generated token %s (mod = %s, name = %s)\n", token, mod, name)
+	return token.String()
 }
 
 func (g *schemaGenerator) genObjectType(typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
@@ -922,7 +929,7 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
 		mod := modulePlacementForType(g.pkg, path)
-		ref := fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)
+		ref := fmt.Sprintf("#/types/%s/%s:%s", mod, typ.name, typ.name)
 		return pschema.TypeSpec{Ref: ref}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
@@ -1145,6 +1152,8 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 		return parentModuleOrSelf(m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
+	case *paths.RawTypePath:
+		return pp.Raw().Module()
 	default:
 		contract.Assertf(false, "invalid ParentKind")
 		return ""
