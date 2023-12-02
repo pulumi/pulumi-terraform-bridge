@@ -32,23 +32,120 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
 
-var (
-	accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-)
+func TestEntityDocsParsing(t *testing.T) {
+	t.Parallel()
+	baseDir := filepath.Join("test_data", "resources")
+
+	dir, err := os.ReadDir(baseDir)
+	require.NoError(t, err)
+
+	for _, d := range dir {
+		if !d.IsDir() {
+			continue
+		}
+		source := filepath.Join(baseDir, d.Name(), "upstream.md")
+		expect := filepath.Join(baseDir, d.Name(), "docs.json")
+		t.Run(d.Name(), func(t *testing.T) {
+			sourceBytes, err := os.ReadFile(source)
+			require.NoError(t, err)
+
+			nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+				Color: colors.Never,
+			})
+
+			entityDocs, err := getDocsForResource(&Generator{
+				sink: nilSink,
+			}, simpleSource{
+				d.Name(): sourceBytes,
+			}, ResourceDocs, d.Name(), &tfbridge.ResourceInfo{})
+			require.NoError(t, err)
+
+			actualBytes, err := json.MarshalIndent(entityDocs, "", "  ")
+			require.NoError(t, err)
+			if pulumiAccept {
+				err := os.WriteFile(expect, actualBytes, 0600)
+				assert.NoError(t, err)
+			} else {
+				expectedBytes, err := os.ReadFile(expect)
+				require.NoError(t, err)
+				assert.JSONEq(t, string(expectedBytes), string(actualBytes))
+			}
+		})
+	}
+}
+
+type simpleSource map[string][]byte
+
+func (s simpleSource) getResource(name string, _ *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := s[name]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  f,
+		FileName: name,
+	}, nil
+}
+
+func (s simpleSource) getDatasource(name string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return s.getResource(name, info)
+}
 
 type testcase struct {
 	Input    string
 	Expected string
+}
+
+func TestNodeItemName(t *testing.T) {
+	t.Parallel()
+	tests := []struct{ listItem, expected string }{
+		{
+			listItem: "- <a name=\"schema\"></a>`schema` - (Optional) A JSON schema for the table.",
+			expected: "schema",
+		},
+		{
+			listItem: "* `reference_file_schema_uri` - (Optional) When creating an external table, the user can provide a reference file with",
+			expected: "reference_file_schema_uri",
+		},
+		{
+			listItem: "- foo `bar`",
+			expected: "",
+		},
+		{
+			listItem: " *   `fizz` buzz",
+			expected: "fizz",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			src := []byte(tt.listItem)
+			node := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			assert.NoError(t, ast.Walk(node, func(node ast.Node, _ bool) (ast.WalkStatus, error) {
+				if node, ok := node.(*ast.ListItem); ok {
+					actual := nodeItemName(src, node)
+					assert.Equal(t, tt.expected, actual)
+					return ast.WalkStop, nil
+				}
+				return ast.WalkContinue, nil
+			}))
+		})
+	}
 }
 
 func TestURLRewrite(t *testing.T) {
@@ -89,6 +186,125 @@ func TestURLRewrite(t *testing.T) {
 	for _, test := range tests {
 		text, _ := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
+	}
+}
+
+func TestRenderMarkdown(t *testing.T) {
+	t.Parallel()
+	tests := []string{
+		"\n- foo bar",
+		`
+- top
+- foo
+  bar`,
+		"foo:\n* bar",
+		"\n- > bar",
+		`
+- foo
+  * bar
+    - middle
+  * fizz
+- buzz`,
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			src := []byte(tt)
+			node := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			actual := renderMdNode(src, node)
+			assert.Equal(t, tt, string(actual))
+		})
+	}
+}
+
+func TestCleanDescription(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		path     docsPath
+		desc     string
+		expected string
+	}{
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional, [Beta](https://terraform.io/docs/providers/google/guides/provider_versions.html))
+  Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Optional) Match versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path:     "tag_prefixes",
+			desc:     "`tag_prefixes` - (optional) Match versions by tag prefix.",
+			expected: "Match versions by tag prefix.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  (Required (Optimal (Actual))) Match versions (only versions) by tag prefix. Applied on any prefix match.
+`,
+			expected: "Match versions (only versions) by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path: "tag_prefixes",
+			desc: "`tag_prefixes` -" + `
+  () (Optional) versions by tag prefix. Applied on any prefix match.
+`,
+			expected: "versions by tag prefix. Applied on any prefix match.",
+		},
+		{
+			path:     "foo",
+			desc:     "`foo` - (Optional (Required) Enclosed.",
+			expected: "(Optional (Required) Enclosed.",
+		},
+		{
+			path:     "foo",
+			desc:     "",
+			expected: "",
+		},
+		{
+			path: "foo",
+			// This is an en-dash, not a hyphen
+			desc:     "`foo` – (Optional) Description",
+			expected: "Description",
+		},
+		{
+			path:     "foo.bar",
+			desc:     "`foo.bar` - (Required) ;)",
+			expected: ";)",
+		},
+		{
+			path:     "bar",
+			desc:     "`bar` - (Computed) is computed",
+			expected: "is computed",
+		},
+		{
+			path:     "bar",
+			desc:     "`bar` - (Forces new resource) replace",
+			expected: "replace",
+		},
+		{
+			path:     "bar",
+			desc:     "`bar` - ((some-thing)) bar",
+			expected: "bar",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			actual := cleanDescription(tt.path, tt.desc)
+			assert.Equal(t, tt.expected, actual)
+		})
 	}
 }
 
@@ -181,12 +397,11 @@ func TestArgumentRegex(t *testing.T) {
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				},
+				"action.type": {description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`"},
 				"override_action": {
 					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
 				},
-				"type": {
-					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-				},
+				"override_action.type": {description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`"},
 			},
 		},
 		{
@@ -258,7 +473,7 @@ func TestArgumentRegex(t *testing.T) {
 					description: "Indicates how to allocate the target capacity across\nthe Spot pools specified by the Spot fleet request. The default is\n`lowestPrice`.",
 				},
 				"instance_pools_to_use_count": {
-					description: "\nThe number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
+					description: "The number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
 				},
 			},
 		},
@@ -279,9 +494,9 @@ func TestArgumentRegex(t *testing.T) {
 				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
 				"target":  {description: "The URL pattern to target with the page rule."},
 				"actions": {description: "The actions taken by the page rule, options given below."},
-				// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
-				// because it doesn't correspond to a top level resource property.
-				"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+				"actions.always_use_https": {
+					description: "Boolean of whether this action is enabled. Default: false.",
+				},
 			},
 		},
 	}
@@ -289,9 +504,7 @@ func TestArgumentRegex(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run("", func(t *testing.T) {
-			ret := entityDocs{
-				Arguments: make(map[docsPath]*argumentDocs),
-			}
+			ret := entityDocs{Arguments: make(map[docsPath]*argumentDocs)}
 			parseArgReferenceSection(tt.input, &ret)
 
 			assert.Equal(t, tt.expected, ret.Arguments)
@@ -663,27 +876,35 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 }
 
 func TestGetNestedBlockName(t *testing.T) {
-	var tests = []struct {
-		input, expected string
-	}{
+	var tests = []struct{ input, expected string }{
 		{"", ""},
 		{"The `website` object supports the following:", "website"},
 		{"The optional `settings.location_preference` subblock supports:", "location_preference"},
 		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", "authorized_networks"},
+		// This is a common starting line of base arguments, so should result in zero value:
+		{"The following arguments are supported:", ""},
+		{"* `kms_key_id` - ...", ""},
+		{"## Import", ""},
+
+		// Heading arguments
 		{"#### result_configuration Argument Reference", "result_configuration"},
 		{"### advanced_security_options", "advanced_security_options"},
 		{"### `server_side_encryption`", "server_side_encryption"},
 		{"### Failover Routing Policy", "failover_routing_policy"},
 		{"##### `log_configuration`", "log_configuration"},
 		{"### data_format_conversion_configuration", "data_format_conversion_configuration"},
-		// This is a common starting line of base arguments, so should result in zero value:
-		{"The following arguments are supported:", ""},
-		{"* `kms_key_id` - ...", ""},
-		{"## Import", ""},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
+		if strings.HasPrefix(tt.input, "#") {
+			src := []byte(tt.input)
+			parsed := goldmark.New().Parser().Parse(
+				text.NewReader(src))
+			assert.Equal(t, tt.expected, isHeadingTarget(src, parsed.FirstChild().(*ast.Heading)))
+		} else {
+			actual, _ := getNestedBlockName([]byte(tt.input))
+			assert.Equal(t, tt.expected, actual)
+		}
 	}
 }
 
@@ -852,7 +1073,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 		parser.parseImports(tt.input)
 		actual := parser.ret.Import
 		if tt.expectedFile != "" {
-			if accept {
+			if pulumiAccept {
 				writefile(t, tt.expectedFile, []byte(actual))
 			}
 			tt.expected = readfile(t, tt.expectedFile)
@@ -945,7 +1166,7 @@ func TestConvertExamples(t *testing.T) {
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
-			if accept {
+			if pulumiAccept {
 				err = os.WriteFile(out, []byte(result), 0600)
 				require.NoError(t, err)
 			}

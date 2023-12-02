@@ -33,6 +33,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -797,28 +800,59 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-	regexp.MustCompile("`([a-z_]+)`.*following"),
-
-	// For example:
-	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
-
-	// For example:
-	// elasticsearch_domain.html.markdown: "### advanced_security_options"
-	regexp.MustCompile("###+ ([a-z_]+).*"),
-
-	// For example:
-	// dynamodb_table.html.markdown: "### `server_side_encryption`"
-	regexp.MustCompile("###+ `([a-z_]+).*`"),
-
-	// For example:
-	// route53_record.html.markdown: "### Failover Routing Policy"
-	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+	regexp.MustCompile("`([a-z_]+)`.*following:?"),
 
 	// For example:
 	// sql_database_instance.html.markdown:
 	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
+}
+
+var nestedHeadingRegexps = []*regexp.Regexp{
+	// For example:
+	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
+	regexp.MustCompile("(?i)([a-z_]+).* argument reference"),
+
+	// For example:
+	// elasticsearch_domain.html.markdown: "### advanced_security_options"
+	regexp.MustCompile("^([a-z_]+)"),
+
+	// For example:
+	// dynamodb_table.html.markdown: "### `server_side_encryption`"
+	regexp.MustCompile("`([a-z_]+).*`"),
+
+	// For example:
+	// lb_listner_rule.html.markdown: "### Action Blocks"
+	regexp.MustCompile("([a-zA-Z_ ]+?) (Blocks)"),
+
+	// For example:
+	// route53_record.html.markdown: "### Failover Routing Policy"
+	regexp.MustCompile("([a-zA-Z_ ]+)(Blocks)?"),
+}
+
+func isHeadingTarget(src []byte, n *ast.Heading) string {
+	if n.Level <= 2 {
+		return ""
+	}
+	s, _ := findNestingTarget(nestedHeadingRegexps, n.Text(src))
+	return s
+}
+
+func findNestingTarget(typ []*regexp.Regexp, text []byte) (nested string, bytesMatched int) {
+	for _, match := range typ {
+		matches := match.FindSubmatch(text)
+		if len(matches) >= 2 {
+			bytesMatched = len(matches[0])
+			nested = strings.ToLower(string(matches[1]))
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, "[]")
+			parts := strings.Split(nested, ".")
+			nested = parts[len(parts)-1]
+			break
+		}
+	}
+
+	return
 }
 
 // getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
@@ -828,86 +862,364 @@ var nestedObjectRegexps = []*regexp.Regexp{
 //
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) string {
-	nested := ""
-	for _, match := range nestedObjectRegexps {
-		matches := match.FindStringSubmatch(line)
-		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
-			nested = strings.Replace(nested, " ", "_", -1)
-			nested = strings.TrimSuffix(nested, "[]")
-			parts := strings.Split(nested, ".")
-			nested = parts[len(parts)-1]
-			break
-		}
-	}
-
-	return nested
+func getNestedBlockName(line []byte) (string, int) {
+	return findNestingTarget(nestedObjectRegexps, line)
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	var lastMatch string
-	var nested docsPath
+	ret.ensure()
+	src := []byte(strings.Join(subsection, "\n"))
+	node := goldmark.New().Parser().Parse(
+		text.NewReader(src))
 
-	addNewHeading := func(name, desc, line string) {
-		// found a property bullet, extract the name and description
-		if nested != "" {
-			// We found this line within a nested field. We should record it as such.
-			if ret.Arguments[nested] == nil {
-				totalArgumentsFromDocs++
+	type namedNode struct {
+		node     ast.Node
+		name     string
+		listItem bool
+	}
+	var current, latest []*namedNode
+	setLatest := func() { latest = append(latest[:0], current...) }
+	keyOf := func(path []*namedNode) docsPath {
+		if len(path) == 0 {
+			return ""
+		}
+		key := docsPath(path[0].name)
+		for _, n := range path[1:] {
+			key = key.join(n.name)
+		}
+		return key
+	}
+
+	skipPrint := map[ast.Node]bool{}
+
+	baked := map[docsPath]struct{}{}
+	unbaked := map[docsPath]struct{}{}
+
+	// The algorithm for this parse works on a single descend + ascend pass.
+	//
+	// During descent, significant nodes such as new headings are marked. During
+	// ascent, nodes are written to ret.
+
+	inItemNode := func() bool { l := len(current); return l > 0 && current[l-1].listItem }
+
+	var write func(ast.Node, bool) ast.WalkStatus
+
+	descend := func(node ast.Node) ast.WalkStatus {
+		switch node.Kind() {
+		case ast.KindThematicBreak:
+			for k := range unbaked {
+				baked[k] = struct{}{}
 			}
-			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
+			unbaked = map[docsPath]struct{}{}
+		case ast.KindListItem:
+			// We have entered a new item
+			if name := nodeItemName(src, node.(*ast.ListItem)); name != "" {
+				current = append(current, &namedNode{node, name, true})
+				key := keyOf(current)
+				setLatest()
+
+				_, isBaked := baked[key]
+				if v, ok := ret.Arguments[key]; ok && !isBaked {
+					v.description = ""
+				}
+				unbaked[key] = struct{}{}
+			} else {
+				// We wright nodes without names eagerly, since normal
+				// writes are written inside out.
+				//
+				// Doing that for a ListItem would render the text inside
+				// an item before the list itself (rendering `\n- foo\n`
+				// as `foo\n- foo\n`.
+				//
+				// Writing them eagerly means that we won't find arguments
+				// inside lists. We have not seen this pattern in the
+				// wild.
+				write(node, true)
+				skipPrint[node] = true
+				return ast.WalkSkipChildren
+			}
+		case ast.KindHeading:
+			target := isHeadingTarget(src, node.(*ast.Heading))
+			if target != "" {
+				current = append(current[:0], &namedNode{node, target, false})
+				skipPrint[node] = true
+				setLatest()
+				return ast.WalkSkipChildren
+			}
+		case ast.KindCodeSpan, ast.KindCodeBlock:
+			if nxt := node.NextSibling(); nxt != nil && nxt.Kind() == ast.KindText {
+				// Observe annotations like:
+				//
+				//	Inside of `dns` section the following argument are supported:
+				//
+				// When we find these, it overrides the current node.
+				txt := fmt.Sprintf("`%s` %s", string(node.Text(src)),
+					string(nxt.Text(src)))
+				target, matched := getNestedBlockName([]byte(txt))
+				if target != "" && (matched == len(txt) || !inItemNode()) {
+					// Setting both child an parent effectively sets
+					// this until the list ends (and we reset).
+					p := node.Parent()
+					current = append(current[:0], &namedNode{p, target, false})
+					skipPrint[node.Parent()] = true
+					setLatest()
+					return ast.WalkSkipChildren
+				}
+			}
+		case ast.KindText:
+			if !inItemNode() && genericNestedRegexp.Match(node.Text(src)) {
+				if len(latest) > 0 {
+					parent := *latest[0]
+					parent.listItem = false
+					current = append(latest[:0], &parent)
+				}
+				skipPrint[node.Parent()] = true
+				return ast.WalkSkipChildren
+			}
+		}
+		return ast.WalkContinue
+	}
+
+	write = func(node ast.Node, items bool) ast.WalkStatus {
+		// If we are not able to serialize node, exit early
+		switch node.(type) {
+		case *ast.Paragraph, *ast.TextBlock, *ast.FencedCodeBlock, *ast.ThematicBreak, *ast.Heading:
+		case *ast.ListItem:
+			if !items {
+				return ast.WalkContinue
+			}
+		default:
+			return ast.WalkContinue
+		}
+
+		var stack []*namedNode
+		if len(latest) > len(current) {
+			stack = latest
 		} else {
-			if genericNestedRegexp.MatchString(line) {
-				return
+			stack = current
+		}
+
+		key := keyOf(stack)
+		if key == "" || !stack[len(stack)-1].listItem {
+			return ast.WalkContinue
+		}
+
+		desc := string(renderMdNode(src, node))
+
+		arg := ret.Arguments[key]
+		if arg == nil {
+			arg = &argumentDocs{}
+			ret.Arguments[key] = arg
+		}
+		arg.description += desc
+		return ast.WalkContinue
+	}
+
+	// Identify the transition points between arguments.
+	err := ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering {
+			return descend(node), nil
+		}
+
+		if node.Kind() == ast.KindList {
+			// When we exit a list, clear our current state
+			if !entering {
+				current = current[:0]
 			}
-			ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
-			totalArgumentsFromDocs++
+			return ast.WalkContinue, nil
 		}
-	}
 
-	extendExistingHeading := func(line string) {
-		line = "\n" + strings.TrimSpace(line)
-		if nested != "" {
-			ret.Arguments[nested.join(lastMatch)].description += line
-		} else {
-			if genericNestedRegexp.MatchString(line) {
-				lastMatch = ""
-				nested = ""
-				return
+		defer func() {
+			if l := len(current); l > 0 && current[l-1].node == node && current[l-1].listItem {
+				current = current[:l-1]
 			}
-			ret.Arguments[docsPath(lastMatch)].description += line
+		}()
+
+		// Write the state on exit:
+
+		// There are several early exit conditions:
+		if len(latest) == 0 || // Don't have a node to write to
+			skipPrint[node] { // Is a marker node
+			return ast.WalkContinue, nil
+		}
+
+		return write(node, false), nil
+	})
+	contract.AssertNoErrorf(err, "An error is never returned")
+
+	for k, v := range ret.Arguments {
+		v.description = cleanDescription(k, v.description)
+	}
+}
+
+func renderMdNode(src []byte, n ast.Node) []byte {
+	var b bytes.Buffer
+
+	var render func(ast.Node)
+	render = func(n ast.Node) {
+		switch n.(type) {
+		case *ast.FencedCodeBlock, *ast.Document, *ast.List:
+			// Do not write any newlines
+		default:
+			if n.Type() == ast.TypeBlock && n.HasBlankPreviousLines() && n.PreviousSibling() != nil {
+				b.WriteString("\n\n")
+			}
+		}
+
+		switch n := n.(type) {
+		case *ast.Paragraph, *ast.TextBlock:
+			for i := 0; i < n.Lines().Len(); i++ {
+				line := n.Lines().At(i)
+				b.Write(line.Value(src))
+			}
+		case *ast.ListItem:
+			var marker byte = '*'
+			if p, ok := n.Parent().(*ast.List); ok {
+				marker = p.Marker
+			}
+			b.WriteRune('\n')
+			b.WriteRune(rune(marker))
+			b.WriteRune(' ')
+			var item bytes.Buffer
+			item, b = b, item
+
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+			item, b = b, item
+
+			// Apply indentation, batching writes by line
+			bytes, written := item.Bytes(), 0
+			for i, c := range bytes {
+				if c == '\n' {
+					b.Write(bytes[written : i+1])
+					b.Write([]byte{' ', ' '})
+					written = i + 1
+				}
+			}
+			b.Write(bytes[written:])
+		case *ast.List:
+			isTight := n.IsTight
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				if !isTight {
+					b.WriteRune('\n')
+				}
+				render(c)
+			}
+		case *ast.Blockquote:
+			b.WriteRune('>')
+			b.WriteRune(' ')
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+		case *ast.Document:
+			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+				render(c)
+			}
+		case *ast.FencedCodeBlock:
+			b.WriteString("\n\n```")
+			b.Write(n.Language(src))
+			b.WriteRune('\n')
+			for i := 0; i < n.Lines().Len(); i++ {
+				line := n.Lines().At(i)
+				b.Write(line.Value(src))
+			}
+			b.WriteString("```")
+		case *ast.ThematicBreak:
+			b.WriteRune('\n')
+		case *ast.Heading:
+			b.WriteString(strings.Repeat("#", n.Level) + " ")
+			b.Write(n.Text(src))
+		default:
+			n.Dump(src, 0)
+			panic(n)
 		}
 	}
+	render(n)
+	return b.Bytes()
+}
 
-	var hadSpace bool
-	for _, line := range subsection {
-		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
-			// We have found a new
-			addNewHeading(name, desc, line)
-			lastMatch = name
-		} else if strings.TrimSpace(line) == "---" {
-			// --- is a markdown section break. This probably indicates the
-			// section is over, but we take it to mean that the current
-			// heading is over.
-			lastMatch = ""
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
-			lastMatch = ""
-		} else if !isBlank(line) && lastMatch != "" {
-			extendExistingHeading(line)
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
-			lastMatch = ""
-		} else if lastMatch != "" {
-			extendExistingHeading(line)
+func nestedParensMatcher(input string) int {
+	runes := []rune(input)
+
+	// If input is empty or if we don't have a leading '(', return.
+	if len(runes) == 0 || runes[0] != '(' {
+		return 0
+	}
+
+	depth := 1
+	for i := 1; i < len(runes); i++ {
+		switch runes[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
 		}
-		hadSpace = isBlank(line)
 	}
+	// No matching paren was found, so return nothing found
+	return 0
+}
 
-	for _, v := range ret.Arguments {
-		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
+func prefixMatcher(prefix string) func(string) int {
+	return func(s string) int {
+		if strings.HasPrefix(s, prefix) {
+			return len(prefix)
+		}
+		return 0
 	}
+}
+
+var cleanDescriptionPrefixFns = []func(string) int{
+	// Cut Leading ':' and '-'
+	prefixMatcher("-"),
+	prefixMatcher("–"), // This is an en-dash (Unicode 8211)
+	prefixMatcher(":"),
+	// Cut leading "(.*)"
+	//
+	// This needs to be a function and not a regex because we want the final ')' cut
+	// to balance with the first '('.
+	nestedParensMatcher,
+}
+
+func cleanDescription(path docsPath, desc string) string {
+	valid := append(cleanDescriptionPrefixFns,
+		prefixMatcher("`"+path.leaf()+"`"),
+		prefixMatcher("`"+string(path)+"`"))
+	changed := true
+	desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
+	for changed {
+		changed = false
+		for _, c := range valid {
+			if cut := c(desc); cut != 0 {
+				changed = true
+				desc = desc[cut:]
+				desc = strings.TrimLeftFunc(desc, unicode.IsSpace)
+			}
+		}
+	}
+	return strings.TrimRightFunc(desc, unicode.IsSpace)
+}
+
+func nodeItemName(src []byte, node *ast.ListItem) string {
+	if node == nil {
+		return ""
+	}
+	var name string
+	contract.AssertNoErrorf(ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		switch node := node.(type) {
+		case *ast.CodeSpan:
+			name = string(node.Text(src))
+			return ast.WalkStop, nil
+		case *ast.Text:
+			return ast.WalkStop, nil
+		}
+		return ast.WalkContinue, nil
+	}), "We don't return an error")
+
+	return name
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
