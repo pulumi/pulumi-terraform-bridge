@@ -57,6 +57,15 @@ func TestRegressMiniRandom(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minirandom-schema.json", schema)
 }
 
+func TestCSharpMiniRandom(t *testing.T) {
+	provider := testprovider.ProviderMiniRandomCSharp()
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/minirandom-schema-csharp.json", schema)
+}
+
 func TestNestedMaxItemsOne(t *testing.T) {
 	provider := testprovider.ProviderMiniCloudflare()
 	meta, err := metadata.New(nil)
