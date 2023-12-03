@@ -1039,8 +1039,9 @@ func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
 
 // MarshallableResourceInfo is the JSON-marshallable form of a Pulumi ResourceInfo value.
 type MarshallableResourceInfo struct {
-	Tok    tokens.Type                        `json:"tok"`
-	Fields map[string]*MarshallableSchemaInfo `json:"fields"`
+	Tok        tokens.Type                        `json:"tok"`
+	CSharpName string                             `json:"csharpName,omitempty"`
+	Fields     map[string]*MarshallableSchemaInfo `json:"fields"`
 
 	// Deprecated: IDFields is not currently used and will be deprecated in the next major version of
 	// pulumi-terraform-bridge.
@@ -1054,9 +1055,10 @@ func MarshalResourceInfo(r *ResourceInfo) *MarshallableResourceInfo {
 		fields[k] = MarshalSchemaInfo(v)
 	}
 	return &MarshallableResourceInfo{
-		Tok:      r.Tok,
-		Fields:   fields,
-		IDFields: r.IDFields,
+		Tok:        r.Tok,
+		CSharpName: r.CSharpName,
+		Fields:     fields,
+		IDFields:   r.IDFields,
 	}
 }
 
