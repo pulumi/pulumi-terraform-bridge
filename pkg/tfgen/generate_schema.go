@@ -543,7 +543,10 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 
 	language := map[string]pschema.RawMessage{}
 	if prop.info != nil && prop.info.CSharpName != "" {
-		language["csharp"] = rawMessage(map[string]string{"name": prop.info.CSharpName})
+		info := csgen.CSharpPropertyInfo{
+			Name: prop.info.CSharpName,
+		}
+		language["csharp"] = rawMessage(info)
 	}
 
 	var defaultValue interface{}
@@ -706,6 +709,14 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 			Project: a.Project,
 			Type:    a.Type,
 		})
+	}
+
+	spec.Language = map[string]pschema.RawMessage{}
+	if res.info != nil && res.info.CSharpName != "" {
+		info := csgen.CSharpResourceInfo{
+			Name: res.info.CSharpName,
+		}
+		spec.Language["csharp"] = rawMessage(info)
 	}
 
 	return spec
