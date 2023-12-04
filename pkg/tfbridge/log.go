@@ -21,7 +21,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // LogRedirector creates a new redirection writer that takes as input plugin stderr output, and routes it to the
@@ -115,28 +118,12 @@ func (lr *LogRedirector) Write(p []byte) (n int, err error) {
 	return written, nil
 }
 
-type loggerAdapter struct {
-	Log
-	untyped untypedLogger
-}
-
-func (a *loggerAdapter) Status() Log {
-	return a.untyped.StatusUntyped().(Log)
-}
-
-var _ Logger = (*loggerAdapter)(nil)
-
-type untypedLogger interface {
-	Log
-	StatusUntyped() any
-}
-
-func newLoggerAdapter(logger any) Logger {
-	uLogger, ok := logger.(untypedLogger)
-	contract.Assertf(ok, "Context carries a logger that does not implement UntypedLogger")
-
-	return &loggerAdapter{
-		Log:     uLogger,
-		untyped: uLogger,
-	}
+func ctxWithHostLogger(
+	ctx context.Context, host *provider.HostClient, urn resource.URN,
+) context.Context {
+	return context.WithValue(ctx, logging.CtxKey,
+		logging.NewHost(ctx, host, urn,
+			func(l *logging.Host[Log]) Log {
+				return l
+			}))
 }
