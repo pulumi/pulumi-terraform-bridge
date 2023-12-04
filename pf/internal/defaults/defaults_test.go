@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
@@ -62,7 +62,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	}
 
 	testFrom := func(res *tfbridge.PulumiResource) (interface{}, error) {
-		n := string(res.URN.Name()) + "-"
+		n := res.URN.Name() + "-"
 		a := []rune("12345")
 		unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
 		return resource.NewStringProperty(unique), err
@@ -74,7 +74,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 	) func(context.Context, tfbridge.ComputeDefaultOptions) (interface{}, error) {
 		return func(_ context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
 			require.Equal(t, expectPriorValue, opts.PriorValue)
-			n := string(opts.URN.Name()) + "-"
+			n := opts.URN.Name() + "-"
 			a := []rune("12345")
 			unique, err := resource.NewUniqueName(opts.Seed, n, 3, 12, a)
 			return resource.NewStringProperty(unique), err

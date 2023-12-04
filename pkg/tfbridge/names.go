@@ -364,7 +364,7 @@ func ComputeAutoNameDefault(
 	}
 
 	// Take the URN name part, transform it if required, and then append some unique characters if requested.
-	vs := string(defaultOptions.URN.Name())
+	vs := defaultOptions.URN.Name()
 	if options.Transform != nil {
 		vs = options.Transform(vs)
 	}
