@@ -44,7 +44,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
@@ -157,7 +156,7 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 		host:         host,
 		module:       module,
 		version:      version,
-		tf:           shim.NewProviderWithContext(tf),
+		tf:           tf,
 		info:         info,
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
@@ -187,38 +186,19 @@ func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) 
 }
 
 func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context.Context {
-	// There is no host in a testing context.
-	if p.host == nil {
-		// For tests that did not call InitLogging yet, we should call it here so that
-		// GetLogger does not panic.
-		if ctx.Value(logging.CtxKey) == nil {
-			return logging.InitLogging(ctx, logging.LogOptions{
-				URN:             urn,
-				ProviderName:    p.info.Name,
-				ProviderVersion: p.version,
-			})
-		}
-
-		// Otherwise keep the context as-is.
-		return ctx
+	if p.host != nil {
+		log.SetOutput(&LogRedirector{
+			writers: map[string]func(string) error{
+				tfTracePrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
+				tfDebugPrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
+				tfInfoPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Info, "", msg) },
+				tfWarnPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Warning, "", msg) },
+				tfErrorPrefix: func(msg string) error { return p.host.Log(ctx, diag.Error, "", msg) },
+			},
+		})
 	}
 
-	log.SetOutput(&LogRedirector{
-		writers: map[string]func(string) error{
-			tfTracePrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
-			tfDebugPrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
-			tfInfoPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Info, "", msg) },
-			tfWarnPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Warning, "", msg) },
-			tfErrorPrefix: func(msg string) error { return p.host.Log(ctx, diag.Error, "", msg) },
-		},
-	})
-
-	return logging.InitLogging(ctx, logging.LogOptions{
-		LogSink:         p.host,
-		URN:             urn,
-		ProviderName:    p.info.Name,
-		ProviderVersion: p.version,
-	})
+	return ctxWithHostLogger(ctx, p.host, urn)
 }
 
 func (p *Provider) label() string {
@@ -566,7 +546,7 @@ func (p *Provider) Configure(ctx context.Context,
 		p.supportsSecrets = true
 	}
 
-	ctx = p.loggingContext(ctx, "")
+	p.loggingContext(ctx, "")
 
 	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
@@ -593,7 +573,7 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
-	if err = p.tfc().ConfigureWithContext(ctx, config); err != nil {
+	if err = p.tf.Configure(config); err != nil {
 		replacedErr, replacementError := ReplaceConfigProperties(err.Error(), p.info.Config, p.config)
 		if replacementError != nil {
 			wrappedErr := errors.Wrapf(
@@ -743,7 +723,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, state, config)
+	diff, err := p.tf.Diff(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -859,7 +839,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, nil, config)
+	diff, err := p.tf.Diff(res.TFName, nil, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -881,7 +861,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tfc().ApplyWithContext(ctx, res.TFName, nil, diff)
+		newstate, err = p.tf.Apply(res.TFName, nil, diff)
 		if newstate == nil {
 			if err == nil {
 				return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
@@ -987,7 +967,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	newstate, err := p.tfc().RefreshWithContext(ctx, res.TFName, state, config)
+	newstate, err := p.tf.Refresh(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
 	}
@@ -1081,7 +1061,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, state, config)
+	diff, err := p.tf.Diff(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1110,7 +1090,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tfc().ApplyWithContext(ctx, res.TFName, state, diff)
+		newstate, err = p.tf.Apply(res.TFName, state, diff)
 		if newstate == nil {
 			if err != nil {
 				return nil, err
@@ -1192,7 +1172,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		diff.SetTimeout(req.Timeout, shim.TimeoutDelete)
 	}
 
-	if _, err := p.tfc().ApplyWithContext(ctx, res.TFName, state, diff); err != nil {
+	if _, err := p.tf.Apply(res.TFName, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
@@ -1267,12 +1247,12 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// If there are no failures in verification, go ahead and perform the invocation.
 	var ret *pbstruct.Struct
 	if len(failures) == 0 {
-		diff, err := p.tfc().ReadDataDiffWithContext(ctx, tfname, rescfg)
+		diff, err := p.tf.ReadDataDiff(tfname, rescfg)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading data source diff for %s", tok)
 		}
 
-		invoke, err := p.tfc().ReadDataApplyWithContext(ctx, tfname, diff)
+		invoke, err := p.tf.ReadDataApply(tfname, diff)
 		if err != nil {
 			return nil, errors.Wrapf(err, "invoking %s", tok)
 		}
@@ -1353,10 +1333,6 @@ func (p *Provider) GetMapping(
 
 	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
 	return &pulumirpc.GetMappingResponse{}, nil
-}
-
-func (p *Provider) tfc() shim.ProviderWithContext {
-	return shim.NewProviderWithContext(p.tf)
 }
 
 func initializationError(id string, props *pbstruct.Struct, reasons []string) error {

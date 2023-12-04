@@ -15,20 +15,9 @@
 package tfbridge
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // TestLogDirector ensures that logging redirects to the right place.
@@ -107,45 +96,4 @@ func TestLogRedirector(t *testing.T) {
 	assert.Equal(t, 3, len(infos))
 	assert.Equal(t, 3, len(warnings))
 	assert.Equal(t, 3, len(errors))
-}
-
-// Check if framework logs emitted by SDKv2 based resources actually are captured by Pulumi.
-func TestLogCapture(t *testing.T) {
-	ctx := context.Background()
-	var logs bytes.Buffer
-
-	ctx = logging.InitLogging(ctx, logging.LogOptions{
-		LogSink: &testLogSink{&logs},
-	})
-
-	p := testprovider.ProviderV2()
-	provider := &Provider{
-		tf:     shimv2.NewProvider(p),
-		config: shimv2.NewSchemaMap(p.Schema),
-	}
-
-	_, err := provider.Configure(ctx, &pulumirpc.ConfigureRequest{})
-	assert.NoError(t, err)
-
-	_, err = provider.Configure(ctx, &pulumirpc.ConfigureRequest{})
-	assert.NoError(t, err)
-
-	// Calling Configure twice actually emits a warning from the framework.
-	assert.Contains(t, logs.String(), "Previously configured provider being re-configured.")
-}
-
-type testLogSink struct {
-	buf *bytes.Buffer
-}
-
-var _ logging.Sink = &testLogSink{}
-
-func (s *testLogSink) Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
-	fmt.Fprintf(s.buf, "[%v] [%v] %s\n", sev, urn, msg)
-	return nil
-}
-
-func (s *testLogSink) LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
-	fmt.Fprintf(s.buf, "[status] [%v] [%v] %s\n", sev, urn, msg)
-	return nil
 }

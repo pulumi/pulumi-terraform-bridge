@@ -1,7 +1,6 @@
 package shim
 
 import (
-	"context"
 	"time"
 )
 
@@ -207,74 +206,4 @@ type Provider interface {
 	NewDestroyDiff() InstanceDiff
 	NewResourceConfig(object map[string]interface{}) ResourceConfig
 	IsSet(v interface{}) ([]interface{}, bool)
-}
-
-type ProviderWithContext interface {
-	Provider
-
-	ConfigureWithContext(ctx context.Context, c ResourceConfig) error
-	DiffWithContext(ctx context.Context, t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
-	ApplyWithContext(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
-	RefreshWithContext(ctx context.Context, t string, s InstanceState, c ResourceConfig) (InstanceState, error)
-
-	ReadDataDiffWithContext(ctx context.Context, t string, c ResourceConfig) (InstanceDiff, error)
-	ReadDataApplyWithContext(ctx context.Context, t string, d InstanceDiff) (InstanceState, error)
-}
-
-func NewProviderWithContext(p Provider) ProviderWithContext {
-	if pwc, ok := p.(ProviderWithContext); ok {
-		return pwc
-	}
-	return &providerWithIgnoredContext{p}
-}
-
-type providerWithIgnoredContext struct {
-	Provider
-}
-
-func (p *providerWithIgnoredContext) ConfigureWithContext(_ context.Context, c ResourceConfig) error {
-	return p.Provider.Configure(c)
-}
-
-func (p *providerWithIgnoredContext) DiffWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	c ResourceConfig,
-) (InstanceDiff, error) {
-	return p.Provider.Diff(t, s, c)
-}
-
-func (p *providerWithIgnoredContext) ApplyWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	d InstanceDiff,
-) (InstanceState, error) {
-	return p.Provider.Apply(t, s, d)
-}
-
-func (p *providerWithIgnoredContext) RefreshWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	c ResourceConfig,
-) (InstanceState, error) {
-	return p.Provider.Refresh(t, s, c)
-}
-
-func (p *providerWithIgnoredContext) ReadDataDiffWithContext(
-	_ context.Context,
-	t string,
-	c ResourceConfig,
-) (InstanceDiff, error) {
-	return p.Provider.ReadDataDiff(t, c)
-}
-
-func (p *providerWithIgnoredContext) ReadDataApplyWithContext(
-	ctx context.Context,
-	t string,
-	d InstanceDiff,
-) (InstanceState, error) {
-	return p.Provider.ReadDataApply(t, d)
 }
