@@ -1069,9 +1069,10 @@ func (m *MarshallableResourceInfo) Unmarshal() *ResourceInfo {
 		fields[k] = v.Unmarshal()
 	}
 	return &ResourceInfo{
-		Tok:      m.Tok,
-		Fields:   fields,
-		IDFields: m.IDFields,
+		Tok:        m.Tok,
+		Fields:     fields,
+		IDFields:   m.IDFields,
+		CSharpName: m.CSharpName,
 	}
 }
 
