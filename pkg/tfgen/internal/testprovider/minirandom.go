@@ -54,3 +54,42 @@ func ProviderMiniRandom() tfbridge.ProviderInfo {
 		},
 	}
 }
+
+func ProviderMiniRandomCSharp() tfbridge.ProviderInfo {
+	randomPkg := "random"
+	randomMod := "index"
+
+	randomMember := func(mod string, mem string) tokens.ModuleMember {
+		return tokens.ModuleMember(randomPkg + ":" + mod + ":" + mem)
+	}
+
+	randomType := func(mod string, typ string) tokens.Type {
+		return tokens.Type(randomMember(mod, typ))
+	}
+
+	randomResource := func(mod string, res string) tokens.Type {
+		fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+		return randomType(mod+"/"+fn, res)
+	}
+
+	return tfbridge.ProviderInfo{
+		P:           shimv2.NewProvider(testproviderdata.ProviderMiniRandom()),
+		Name:        "random",
+		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
+		Keywords:    []string{"pulumi", "random"},
+		License:     "Apache-2.0",
+		Homepage:    "https://pulumi.io",
+		Repository:  "https://github.com/pulumi/pulumi-random",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"random_integer": {
+				Tok:        randomResource(randomMod, "RandomInteger"),
+				CSharpName: "CSharpRandomInteger",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"seed": {
+						CSharpName: "CSharpSeed",
+					},
+				},
+			},
+		},
+	}
+}
