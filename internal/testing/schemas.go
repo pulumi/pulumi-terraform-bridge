@@ -60,14 +60,14 @@ func AssertEqualsJSONFile[T any](
 	assertDataMatchesFile := func(actualData T, file string) {
 		expectedData, err := readTFromFile(file)
 		assert.NoError(t, err)
-		assert.Equal(t, tToString(expectedData), tToString(actualData))
+		assert.JSONEq(t, tToString(expectedData), tToString(actualData))
 	}
 
 	if os.Getenv("PULUMI_ACCEPT") != "" {
 		buf := bytes.Buffer{}
 		err := marshalT(actualData, &buf)
 		assert.NoError(t, err)
-		err = os.WriteFile(expectedJSONFile, buf.Bytes(), 0600)
+		err = os.WriteFile(expectedJSONFile, buf.Bytes(), 0o600)
 		assert.NoError(t, err)
 	}
 

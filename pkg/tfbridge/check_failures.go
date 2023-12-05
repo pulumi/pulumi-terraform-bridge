@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
@@ -156,7 +156,7 @@ func NewCheckFailure(
 		return formatProviderCheckFailure(reasonType, reason, pp, urn, configPrefix, schemaMap, schemaInfos)
 	}
 	if pp != nil && pp.valuePath != "" {
-		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(), pp.valuePath)
+		reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name(), pp.valuePath)
 	}
 	return plugin.CheckFailure{
 		Reason: reason,
@@ -177,7 +177,7 @@ func formatProviderCheckFailure(
 	reason = "could not validate provider configuration: " + reason
 	if isExplicitProvider(urn) {
 		if pp != nil && pp.valuePath != "" {
-			reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name().String(),
+			reason = fmt.Sprintf("%s. Examine values at '%s.%s'.", reason, urn.Name(),
 				pp.valuePath)
 		}
 		// Similarly to normal resources, do not populate Property here as that changes the UX of how it
@@ -282,7 +282,7 @@ func pulumiConfigExpr(configPrefix string, pp CheckFailurePath) string {
 // Provider configuration can be using an explicit provider or the default provider, use a heuristic here based on URN,
 // to detect the default provider.
 func isExplicitProvider(urn resource.URN) bool {
-	return urn != "" && !strings.HasPrefix(urn.Name().String(), "default")
+	return urn != "" && !strings.HasPrefix(urn.Name(), "default")
 }
 
 func missingProviderKey(

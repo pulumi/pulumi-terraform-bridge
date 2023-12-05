@@ -154,9 +154,10 @@ func (prov *provider) Delete(
 		timeout)
 }
 
-func (prov *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-	return prov.ProviderWithContext.ConstructWithContext(prov.ctx, info, typ, name, parent, inputs, options)
+func (prov *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions,
+) (plugin.ConstructResult, error) {
+	return prov.ProviderWithContext.ConstructWithContext(prov.ctx, info, typ, tokens.QName(name), parent, inputs, options)
 }
 
 func (prov *provider) Invoke(tok tokens.ModuleMember,
