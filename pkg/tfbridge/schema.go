@@ -458,7 +458,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 		if ps != nil {
 			psflds = ps.Fields
 		}
-		
+
 		if elemSchema, isSchema := tfs.Elem().(shim.Schema); isSchema &&
 			tfflds == nil && tfs.Type() == shim.TypeMap {
 			tfflds = schema.SchemaMap{}
