@@ -4,12 +4,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/stretchr/testify/require"
 )
 
 var awsSSMParameterSchema = &schema.Resource{
@@ -750,6 +751,12 @@ func TestRecoverCtyValue(t *testing.T) {
 			cty.Map(cty.String),
 			map[string]interface{}{},
 			cty.MapValEmpty(cty.String),
+		},
+		{
+			"empty list",
+			cty.List(cty.String),
+			[]any{},
+			cty.ListValEmpty(cty.String),
 		},
 		{
 			"empty set",

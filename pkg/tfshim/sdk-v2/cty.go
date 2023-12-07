@@ -19,9 +19,12 @@ import (
 	"math/big"
 
 	"github.com/golang/glog"
+
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -159,9 +162,7 @@ func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 }
 
 func recoverCtyValueOfMapType(dT cty.Type, value map[string]interface{}) (cty.Value, error) {
-	if !dT.IsMapType() {
-		return cty.NilVal, fmt.Errorf("recoverCtyValueOfMapType expected a Map, got %v", dT)
-	}
+	contract.Assertf(dT.IsMapType(), "recoverCtyValueOfMapType expected a Map, got %v", dT)
 	eT := dT.ElementType()
 	attrs := map[string]cty.Value{}
 	for k, v := range value {
@@ -178,10 +179,7 @@ func recoverCtyValueOfMapType(dT cty.Type, value map[string]interface{}) (cty.Va
 }
 
 func recoverCtyValueOfObjectType(dT cty.Type, value map[string]interface{}) (cty.Value, error) {
-	if !dT.IsObjectType() {
-		return cty.NilVal,
-			fmt.Errorf("recoverCtyValueOfObjectType expected an Object, got %v", dT)
-	}
+	contract.Assertf(dT.IsObjectType(), "recoverCtyValueOfObjectType expected an Object, got %v", dT)
 	aT := dT.AttributeTypes()
 	if len(aT) == 0 {
 		return cty.EmptyObjectVal, nil
@@ -202,10 +200,7 @@ func recoverCtyValueOfObjectType(dT cty.Type, value map[string]interface{}) (cty
 }
 
 func recoverCtyValueOfListType(dT cty.Type, values []interface{}) (cty.Value, error) {
-	if !dT.IsListType() {
-		return cty.NilVal,
-			fmt.Errorf("recoverCtyValueOfListType expected a List, got %v", dT)
-	}
+	contract.Assertf(dT.IsListType(), "recoverCtyValueOfListType expected a List, got %v", dT)
 	eT := dT.ElementType()
 	vals := []cty.Value{}
 	for _, v := range values {
@@ -222,9 +217,7 @@ func recoverCtyValueOfListType(dT cty.Type, values []interface{}) (cty.Value, er
 }
 
 func recoverCtyValueOfSetType(dT cty.Type, values []interface{}) (cty.Value, error) {
-	if !dT.IsSetType() {
-		return cty.NilVal, fmt.Errorf("recoverCtyValueOfSetType expected a Set, got %v", dT)
-	}
+	contract.Assertf(dT.IsSetType(), "recoverCtyValueOfSetType expected a Set, got %v", dT)
 	eT := dT.ElementType()
 	vals := []cty.Value{}
 	for _, v := range values {
@@ -241,10 +234,7 @@ func recoverCtyValueOfSetType(dT cty.Type, values []interface{}) (cty.Value, err
 }
 
 func recoverCtyValueOfTupleType(dT cty.Type, values []interface{}) (cty.Value, error) {
-	if !dT.IsTupleType() {
-		return cty.NilVal, fmt.Errorf(
-			"recoverCtyValueOfTulpeType expected a Tuple, got %v", dT)
-	}
+	contract.Assertf(dT.IsTupleType(), "recoverCtyValueOfTulpeType expected a Tuple, got %v", dT)
 	vals := []cty.Value{}
 	for i, v := range values {
 		rv, err := recoverCtyValue(dT.TupleElementType(i), v)
