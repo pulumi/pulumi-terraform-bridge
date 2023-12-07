@@ -600,6 +600,66 @@ func TestMakeResourceRawConfig(t *testing.T) {
 				}),
 			}),
 		},
+		{
+			name: "Regress aws 3094",
+			schema: func() *schema.Resource {
+				securityGroupRuleNestedBlock := &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"from_port": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"to_port": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"cidr_blocks": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				}
+				ingress := &schema.Schema{
+					Type:       schema.TypeSet,
+					Optional:   true,
+					Computed:   true,
+					ConfigMode: schema.SchemaConfigModeAttr,
+					Elem:       securityGroupRuleNestedBlock,
+					Set: func(i interface{}) int {
+						return 0
+					},
+				}
+				return &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"arn": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"ingress": ingress,
+					},
+				}
+			}(),
+			config: map[string]interface{}{
+				"ingress": []interface{}{
+					map[string]interface{}{
+						"to_port":   terraformUnknownVariableValue,
+						"from_port": terraformUnknownVariableValue,
+					},
+				},
+			},
+			expected: cty.ObjectVal(map[string]cty.Value{
+				"ingress": cty.SetVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"cidr_blocks": cty.NullVal(cty.List(cty.String)),
+						"from_port":   cty.UnknownVal(cty.Number),
+						"to_port":     cty.UnknownVal(cty.Number),
+					}),
+				}),
+			}),
+		},
 	}
 
 	for _, c := range cases {
