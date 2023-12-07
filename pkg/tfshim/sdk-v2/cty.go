@@ -211,7 +211,7 @@ func recoverCtyValueOfListType(dT cty.Type, values []interface{}) (cty.Value, er
 		vals = append(vals, rv)
 	}
 	if len(vals) == 0 {
-		return cty.ListValEmpty(dT), nil
+		return cty.ListValEmpty(eT), nil
 	}
 	return cty.ListVal(vals), nil
 }
