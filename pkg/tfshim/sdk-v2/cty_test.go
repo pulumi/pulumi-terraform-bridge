@@ -1,6 +1,7 @@
 package sdkv2
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -8,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 var awsSSMParameterSchema = &schema.Resource{
@@ -696,6 +698,87 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					t.Errorf("Key %q expected to have a value %v but got %v", k, ev.GoString(), av.GoString())
 				}
 			}
+		})
+	}
+}
+
+func TestRecoverCtyValue(t *testing.T) {
+	type testCase struct {
+		name   string
+		dT     cty.Type
+		value  any
+		expect cty.Value
+	}
+
+	cases := []testCase{
+		{"null", cty.EmptyObject, nil, cty.NullVal(cty.EmptyObject)},
+		{
+			"object with mismatched fields",
+			cty.Object(map[string]cty.Type{
+				"x": cty.String,
+				"y": cty.Bool,
+			}),
+			map[string]any{
+				"y": true,
+				"z": "ignored",
+			},
+			cty.ObjectVal(map[string]cty.Value{
+				"x": cty.NullVal(cty.String),
+				"y": cty.BoolVal(true),
+			}),
+		},
+		{
+			"tuple",
+			cty.Tuple([]cty.Type{cty.String, cty.Number}),
+			[]interface{}{"A", 42},
+			cty.TupleVal([]cty.Value{cty.StringVal("A"), cty.NumberIntVal(42)}),
+		},
+		{
+			"empty object",
+			cty.EmptyObject,
+			map[string]interface{}{},
+			cty.EmptyObjectVal,
+		},
+		{
+			"empty tuple",
+			cty.EmptyTuple,
+			[]interface{}{},
+			cty.EmptyTupleVal,
+		},
+		{
+			"empty map",
+			cty.Map(cty.String),
+			map[string]interface{}{},
+			cty.MapValEmpty(cty.String),
+		},
+		{
+			"empty set",
+			cty.Set(cty.String),
+			[]interface{}{},
+			cty.SetValEmpty(cty.String),
+		},
+		{"int", cty.Number, int(42), cty.NumberIntVal(42)},
+		{"int64", cty.Number, int64(42), cty.NumberIntVal(42)},
+		{"uint8", cty.Number, uint8(42), cty.NumberIntVal(42)},
+		{"uint16", cty.Number, uint16(42), cty.NumberIntVal(42)},
+		{"uint32", cty.Number, uint32(42), cty.NumberIntVal(42)},
+		{"uint64", cty.Number, uint64(42), cty.NumberIntVal(42)},
+		{"int8", cty.Number, int8(42), cty.NumberIntVal(42)},
+		{"int16", cty.Number, int16(42), cty.NumberIntVal(42)},
+		{"int32", cty.Number, int32(42), cty.NumberIntVal(42)},
+		{"int64", cty.Number, int64(42), cty.NumberIntVal(42)},
+		{"float64", cty.Number, float64(1.42), cty.NumberFloatVal(1.42)},
+		{"float32", cty.Number, float32(1.42), cty.NumberFloatVal(float64(float32(1.42)))},
+		{"big.Float", cty.Number, big.NewFloat(1.42), cty.NumberVal(big.NewFloat(1.42))},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := recoverCtyValue(tc.dT, tc.value)
+			require.NoError(t, err)
+			require.Truef(t, tc.expect.RawEquals(r), "expected %s to equal %s",
+				r.GoString(), tc.expect.GoString())
 		})
 	}
 }

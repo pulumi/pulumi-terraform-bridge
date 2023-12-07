@@ -171,7 +171,10 @@ func recoverCtyValueOfMapType(dT cty.Type, value map[string]interface{}) (cty.Va
 			return cty.NilVal, err
 		}
 	}
-	return cty.ObjectVal(attrs), nil
+	if len(attrs) == 0 {
+		return cty.MapValEmpty(eT), nil
+	}
+	return cty.MapVal(attrs), nil
 }
 
 func recoverCtyValueOfObjectType(dT cty.Type, value map[string]interface{}) (cty.Value, error) {
@@ -232,7 +235,7 @@ func recoverCtyValueOfSetType(dT cty.Type, values []interface{}) (cty.Value, err
 		vals = append(vals, rv)
 	}
 	if len(vals) == 0 {
-		return cty.SetValEmpty(dT), nil
+		return cty.SetValEmpty(eT), nil
 	}
 	return cty.SetVal(vals), nil
 }
