@@ -306,16 +306,6 @@ func makeDetailedDiff(
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
-
-		if IsMaxItemsOne(etf, eps) {
-			// check if the property is a list in olds.
-			// this means that max items one was just added.
-			newEl := news[k]
-			if v.IsArray() && !newEl.IsArray() {
-				*forceDiff = true
-				diff[string(k)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-			}
-		}
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE

@@ -29,8 +29,8 @@ type instanceDiff struct {
 }
 
 func newInstanceDiff(config, prior, planned cty.Value, meta map[string]interface{},
-	requiresReplace []*proto.AttributePath) *instanceDiff {
-
+	requiresReplace []*proto.AttributePath,
+) *instanceDiff {
 	attributes, requiresNew := computeDiff(prior, planned, requiresReplace)
 	return &instanceDiff{
 		config:      config,
@@ -51,6 +51,10 @@ func (d *instanceDiff) Attribute(key string) *shim.ResourceAttrDiff {
 
 func (d *instanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	return d.attributes
+}
+
+func (d *instanceDiff) SetAttribute(key string, attrDiff shim.ResourceAttrDiff) {
+	d.attributes[key] = attrDiff
 }
 
 func (d *instanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
@@ -125,7 +129,7 @@ func (d *instanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 }
 
 func (d *instanceDiff) SetTimeout(timeout float64, timeoutKey string) {
-	timeoutValue := time.Duration(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
+	timeoutValue := time.Duration(timeout * 1000000000) // this turns seconds to nanoseconds - TF wants it in this format
 
 	if d.meta == nil {
 		d.meta = map[string]interface{}{}
@@ -216,8 +220,8 @@ func rangeValue(val cty.Value, each func(k, v cty.Value)) {
 }
 
 func computeDiff(prior, planned cty.Value,
-	requiresReplace []*proto.AttributePath) (map[string]shim.ResourceAttrDiff, bool) {
-
+	requiresReplace []*proto.AttributePath,
+) (map[string]shim.ResourceAttrDiff, bool) {
 	requiresNew := stringSet{}
 	for _, path := range requiresReplace {
 		requiresNew.add(pathString(path))

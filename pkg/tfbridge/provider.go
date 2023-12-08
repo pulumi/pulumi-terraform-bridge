@@ -34,6 +34,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -726,6 +727,32 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	diff, err := p.tf.Diff(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+
+	// For properties with MaxItemsOne, where the state is still an array
+	// (i.e. from a previous version without MaxItemsOne)
+	// we need to mark them for update manually in order to correct the state
+	// from an array to a flat type.
+	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo, p resource.PropertyValue) bool {
+		if localInfo != nil && localInfo.MaxItemsOne != nil && *localInfo.MaxItemsOne && localInfo.Elem == nil && p.IsArray() {
+			return true
+		}
+		return false
+	}
+	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
+		schemaPath := PropertyPathToSchemaPath(pulumiPath, res.TF.Schema(), res.Schema.Fields)
+		schema, info, err := LookupSchemas(schemaPath, res.TF.Schema(), res.Schema.Fields)
+		if detectMismatchingType(schema, info, localValue) && diff.Attribute(schemaPath.GoString()) == nil {
+			// If the diff doesn't already have an entry for this property, add one.
+			diff.SetAttribute(schemaPath.GoString(), shim.ResourceAttrDiff{
+				Old: localValue.String(), New: localValue.String(),
+			})
+		}
+		return localValue, err // don't change just visit
+	}
+	_, err = propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
+	if err != nil {
+		return nil, err
 	}
 
 	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
