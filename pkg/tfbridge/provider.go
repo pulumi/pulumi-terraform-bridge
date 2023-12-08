@@ -679,6 +679,39 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	return &pulumirpc.CheckResponse{Inputs: minputs, Failures: failures}, nil
 }
 
+// For properties with MaxItemsOne, where the state is still an array
+// (i.e. from a previous version without MaxItemsOne)
+// we need to mark them for update manually in order to correct the state
+// from an array to a flat type.
+func markWronglyTypedStateDiff(res Resource, olds resource.PropertyMap, diff *shim.InstanceDiff) error {
+	if diff == nil {
+		return fmt.Errorf("diff is nil")
+	}
+	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo, p resource.PropertyValue) bool {
+		if localInfo != nil &&
+			localInfo.MaxItemsOne != nil &&
+			*localInfo.MaxItemsOne &&
+			localInfo.Elem == nil &&
+			p.IsArray() {
+			return true
+		}
+		return false
+	}
+	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
+		schemaPath := PropertyPathToSchemaPath(pulumiPath, res.TF.Schema(), res.Schema.Fields)
+		schema, info, err := LookupSchemas(schemaPath, res.TF.Schema(), res.Schema.Fields)
+		if detectMismatchingType(schema, info, localValue) && (*diff).Attribute(schemaPath.GoString()) == nil {
+			// If the diff doesn't already have an entry for this property, add one.
+			(*diff).SetAttribute(schemaPath.GoString(), shim.ResourceAttrDiff{
+				Old: localValue.String(), New: localValue.String(),
+			})
+		}
+		return localValue, err // don't change just visit
+	}
+	_, err := propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
+	return err
+}
+
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
@@ -728,33 +761,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
-
-	// For properties with MaxItemsOne, where the state is still an array
-	// (i.e. from a previous version without MaxItemsOne)
-	// we need to mark them for update manually in order to correct the state
-	// from an array to a flat type.
-	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo, p resource.PropertyValue) bool {
-		if localInfo != nil &&
-			localInfo.MaxItemsOne != nil &&
-			*localInfo.MaxItemsOne &&
-			localInfo.Elem == nil &&
-			p.IsArray() {
-			return true
-		}
-		return false
-	}
-	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
-		schemaPath := PropertyPathToSchemaPath(pulumiPath, res.TF.Schema(), res.Schema.Fields)
-		schema, info, err := LookupSchemas(schemaPath, res.TF.Schema(), res.Schema.Fields)
-		if detectMismatchingType(schema, info, localValue) && diff.Attribute(schemaPath.GoString()) == nil {
-			// If the diff doesn't already have an entry for this property, add one.
-			diff.SetAttribute(schemaPath.GoString(), shim.ResourceAttrDiff{
-				Old: localValue.String(), New: localValue.String(),
-			})
-		}
-		return localValue, err // don't change just visit
-	}
-	_, err = propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
+	err = markWronglyTypedStateDiff(res, olds, &diff)
 	if err != nil {
 		return nil, err
 	}
