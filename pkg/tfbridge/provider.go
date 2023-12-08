@@ -734,7 +734,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// we need to mark them for update manually in order to correct the state
 	// from an array to a flat type.
 	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo, p resource.PropertyValue) bool {
-		if localInfo != nil && localInfo.MaxItemsOne != nil && *localInfo.MaxItemsOne && localInfo.Elem == nil && p.IsArray() {
+		if localInfo != nil &&
+			localInfo.MaxItemsOne != nil &&
+			*localInfo.MaxItemsOne &&
+			localInfo.Elem == nil &&
+			p.IsArray() {
 			return true
 		}
 		return false
