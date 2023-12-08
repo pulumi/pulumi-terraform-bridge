@@ -24,6 +24,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // containsComputedValues returns true if the given property value is or contains a computed value.
@@ -102,7 +103,7 @@ func visitPropertyValue(
 				// fill in default values for empty fields (note that this is a property of the field reader, not of
 				// the schema) as it does when computing the hash code for a set element.
 				ctx := &conversionContext{Ctx: ctx}
-				ev, err := ctx.MakeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
+				ev, err := ctx.makeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
 				if err != nil {
 					return
 				}
@@ -140,7 +141,7 @@ func visitPropertyValue(
 			psflds = ps.Fields
 		}
 
-		rawElementNames := rawNames || useRawNames(tfs)
+		rawElementNames := rawNames || shimutil.IsOfTypeMap(tfs)
 		for k, e := range v.ObjectValue() {
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
@@ -261,11 +262,11 @@ func doIgnoreChanges(ctx context.Context, tfs shim.SchemaMap, ps map[string]*Sch
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, useRawNames(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, useRawNames(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
 	}
 
 	tfDiff.IgnoreChanges(ignoredKeySet)
@@ -298,15 +299,15 @@ func makeDetailedDiff(
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, shimutil.IsOfTypeMap(etf))
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, false, shimutil.IsOfTypeMap(etf))
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, useRawNames(etf))
+		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, forceDiff, etf, eps, true, shimutil.IsOfTypeMap(etf))
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE
