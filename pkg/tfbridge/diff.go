@@ -69,8 +69,8 @@ type propertyVisitor func(attributeKey, propertyPath string, value resource.Prop
 // check to see if the InstanceDiff has an entry for that path.
 func visitPropertyValue(
 	ctx context.Context, name, path string, v resource.PropertyValue, tfs shim.Schema,
-	ps *SchemaInfo, rawNames bool, visitor propertyVisitor,
-) {
+	ps *SchemaInfo, rawNames bool, visitor propertyVisitor) {
+
 	if IsMaxItemsOne(tfs, ps) {
 		if v.IsNull() {
 			v = resource.NewArrayProperty([]resource.PropertyValue{})
@@ -157,8 +157,8 @@ func visitPropertyValue(
 
 func makePropertyDiff(ctx context.Context, name, path string, v resource.PropertyValue, tfDiff shim.InstanceDiff,
 	diff map[string]*pulumirpc.PropertyDiff, forceDiff *bool,
-	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool,
-) {
+	tfs shim.Schema, ps *SchemaInfo, finalize, rawNames bool) {
+
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
 		case v.IsArray():
@@ -241,8 +241,8 @@ func makePropertyDiff(ctx context.Context, name, path string, v resource.Propert
 }
 
 func doIgnoreChanges(ctx context.Context, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	olds, news resource.PropertyMap, ignoredPaths []string, tfDiff shim.InstanceDiff,
-) {
+	olds, news resource.PropertyMap, ignoredPaths []string, tfDiff shim.InstanceDiff) {
+
 	if tfDiff == nil {
 		return
 	}
@@ -281,6 +281,7 @@ func makeDetailedDiff(
 	olds, news resource.PropertyMap,
 	tfDiff shim.InstanceDiff,
 ) (map[string]*pulumirpc.PropertyDiff, pulumirpc.DiffResponse_DiffChanges) {
+
 	if tfDiff == nil {
 		return map[string]*pulumirpc.PropertyDiff{}, pulumirpc.DiffResponse_DIFF_NONE
 	}
