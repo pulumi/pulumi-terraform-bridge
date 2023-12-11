@@ -689,20 +689,20 @@ func markWronglyTypedMaxItemsOneStateDiff(
 	schema shim.SchemaMap, info map[string]*SchemaInfo, olds resource.PropertyMap,
 ) bool {
 	res := False()
-	detectMismatchingType := func(localInfo *SchemaInfo, p resource.PropertyValue) bool {
+	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo) bool {
 		if localInfo != nil &&
 			localInfo.MaxItemsOne != nil &&
 			*localInfo.MaxItemsOne &&
 			localInfo.Elem == nil &&
-			p.IsArray() {
+			localSchema.Type() == shim.TypeList {
 			return true
 		}
 		return false
 	}
 	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
 		schemaPath := PropertyPathToSchemaPath(pulumiPath, schema, info)
-		_, info, err := LookupSchemas(schemaPath, schema, info)
-		if err == nil && detectMismatchingType(info, localValue) {
+		localSchema, info, err := LookupSchemas(schemaPath, schema, info)
+		if err == nil && detectMismatchingType(localSchema, info) {
 			glog.V(9).Infof("Found type mismatch for %s, flagging for update.", pulumiPath)
 			*res = true
 		}
