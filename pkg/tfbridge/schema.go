@@ -27,11 +27,14 @@ import (
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -314,19 +317,24 @@ func MakeTerraformInputs(
 		ApplyDefaults:         true,
 		Assets:                AssetTable{},
 	}
-	inputs, err := cctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputs, cctx.Assets, err
 }
 
-// MakeTerraformInput takes a single property plus custom schema info and does whatever is necessary to prepare it for
-// use by Terraform.  Note that this function may have side effects, for instance if it is necessary to spill an asset
-// to disk in order to create a name out of it.  Please take care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.PropertyValue,
-	tfs shim.Schema, ps *SchemaInfo, rawNames bool) (interface{}, error) {
-
+// makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
+// to prepare it for use by Terraform. Note that this function may have side effects, for instance
+// if it is necessary to spill an asset to disk in order to create a name out of it. Please take
+// care not to call it superfluously!
+func (ctx *conversionContext) makeTerraformInput(
+	name string,
+	old, v resource.PropertyValue,
+	tfs shim.Schema,
+	ps *SchemaInfo,
+	rawNames bool,
+) (interface{}, error) {
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
 	// nested value, and need to wrap it into a single-element array before passing to
 	// Terraform.
@@ -409,7 +417,7 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 				oldElem = oldArr[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := ctx.MakeTerraformInput(elemName, oldElem, elem, etfs, eps, rawNames)
+			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, etfs, eps, rawNames)
 			if err != nil {
 				return nil, err
 			}
@@ -448,25 +456,46 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 		}
 		return ps.Asset.TranslateArchive(v.ArchiveValue())
 	case v.IsObject():
-		var tfflds shim.SchemaMap
-		if tfs != nil {
-			if res, isres := tfs.Elem().(shim.Resource); isres {
-				tfflds = res.Schema()
-			}
-		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
 		var oldObject resource.PropertyMap
 		if old.IsObject() {
 			oldObject = old.ObjectValue()
 		}
 
-		input, err := ctx.MakeTerraformInputs(oldObject, v.ObjectValue(),
-			tfflds, psflds, rawNames || useRawNames(tfs))
-		if err != nil {
-			return nil, err
+		var input map[string]interface{}
+		if shimutil.IsOfTypeMap(tfs) {
+			var tfsElem shim.Schema
+			if tfs != nil {
+				if s, ok := tfs.Elem().(shim.Schema); ok {
+					tfsElem = s
+				}
+			}
+			var psElem *SchemaInfo
+			if ps != nil {
+				psElem = ps.Elem
+			}
+			var err error
+			input, err = ctx.makeMapTerraformInputs(oldObject, v.ObjectValue(),
+				tfsElem, psElem)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			var tfflds shim.SchemaMap
+			if tfs != nil {
+				if res, isres := tfs.Elem().(shim.Resource); isres {
+					tfflds = res.Schema()
+				}
+			}
+			var psflds map[string]*SchemaInfo
+			if ps != nil {
+				psflds = ps.Fields
+			}
+			var err error
+			input, err = ctx.makeObjectTerraformInputs(oldObject, v.ObjectValue(),
+				tfflds, psflds, rawNames)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// If we have schema information that indicates that this value is being presented to a map-typed field whose
@@ -489,17 +518,70 @@ func (ctx *conversionContext) MakeTerraformInput(name string, old, v resource.Pr
 
 }
 
-// MakeTerraformInputs takes a property map plus custom schema info and does whatever is necessary
+// makeTerraformInputs takes a property map plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform.  Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it.  Please take
 // care not to call it superfluously!
-func (ctx *conversionContext) MakeTerraformInputs(
+func (ctx *conversionContext) makeTerraformInputs(
+	olds, news resource.PropertyMap,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) (map[string]interface{}, error) {
+	return ctx.makeObjectTerraformInputs(olds, news, tfs, ps, false /*rawNames*/)
+}
+
+// Should only be called from inside makeTerraformInputs. Variation for makeTerraformInputs used
+// when the schema indicates that the code is handling a map[string,X] case and not an object.
+func (ctx *conversionContext) makeMapTerraformInputs(
+	olds, news resource.PropertyMap,
+	tfsElement shim.Schema,
+	psElement *SchemaInfo,
+) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	for key, value := range news {
+		// Map keys always preserved as-is, no translation necessary.
+		name := string(key)
+
+		var old resource.PropertyValue
+		if ctx.ApplyDefaults && olds != nil {
+			old = olds[key]
+		}
+
+		// If type information is lost (the map's element type is unknown), subsequent
+		// nested PropertyMap values will be treated by makeObjectTerraformInputs. In this
+		// case rawNames=true needs to make sure makeObjectTerraformInputs does not mangle
+		// pulumiStyleLabels into terraform_style_labels. This is the legacy behavior
+		// enforced by tests. It also makes intuitive sense: absent schema information the
+		// code should not be doing name mangling.
+		rawNames := tfsElement == nil
+
+		v, err := ctx.makeTerraformInput(name, old, value, tfsElement, psElement, rawNames)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = v
+		glog.V(9).Infof("Created Terraform input: %v = %v", name, v)
+	}
+
+	if glog.V(5) {
+		for k, v := range result {
+			glog.V(5).Infof("Terraform input %v = %#v", k, v)
+		}
+	}
+
+	return result, nil
+}
+
+// Should only be called from inside makeTerraformInputs. This variation should only be handling the
+// case when an object type is expected, or else the schema is lost and the translation is not sure
+// of the expected type. The case when map types are expected is handled by makeMapTerraformInputs.
+func (ctx *conversionContext) makeObjectTerraformInputs(
 	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	rawNames bool,
 ) (map[string]interface{}, error) {
-
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
 
@@ -544,7 +626,7 @@ func (ctx *conversionContext) MakeTerraformInputs(
 		}
 
 		// And then translate the property value.
-		v, err := ctx.MakeTerraformInput(name, old, value, tfi, psi, rawNames)
+		v, err := ctx.makeTerraformInput(name, old, value, tfi, psi, rawNames)
 		if err != nil {
 			return nil, err
 		}
@@ -674,7 +756,7 @@ func (ctx *conversionContext) applyDefaults(
 			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
-				v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{},
+				v, err := ctx.makeTerraformInput(name, resource.PropertyValue{},
 					old, tfi, psi, rawNames)
 				if err != nil {
 					return err
@@ -717,7 +799,7 @@ func (ctx *conversionContext) applyDefaults(
 				defaultValue, source = v, "env vars"
 			} else if configKey := info.Default.Config; configKey != "" {
 				if v := ctx.ProviderConfig[resource.PropertyKey(configKey)]; !v.IsNull() {
-					tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+					tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
 					if err != nil {
 						return err
 					}
@@ -725,7 +807,7 @@ func (ctx *conversionContext) applyDefaults(
 				}
 			} else if info.Default.Value != nil {
 				v := resource.NewPropertyValue(info.Default.Value)
-				tv, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+				tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
 				if err != nil {
 					return err
 				}
@@ -827,7 +909,7 @@ func (ctx *conversionContext) applyDefaults(
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := ctx.MakeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
+					v, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
 					if err != nil {
 						valueErr = err
 						return false
@@ -1074,7 +1156,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 			if ps != nil {
 				psflds = ps.Fields
 			}
-			obj := MakeTerraformOutputs(p, outs, tfflds, psflds, assets, rawNames || useRawNames(tfs), supportsSecrets)
+			obj := MakeTerraformOutputs(p, outs, tfflds, psflds, assets, rawNames || shimutil.IsOfTypeMap(tfs), supportsSecrets)
 			return resource.NewObjectProperty(obj)
 		default:
 			contract.Failf("Unexpected TF output property value: %#v with type %#T", v, v)
@@ -1101,7 +1183,7 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 		ProviderConfig: p.configValues,
 		Assets:         AssetTable{},
 	}
-	inputs, err := cctx.MakeTerraformInputs(nil, m, tfs, ps, false)
+	inputs, err := cctx.makeTerraformInputs(nil, m, tfs, ps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1176,7 +1258,7 @@ func MakeTerraformState(
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
 	cctx := &conversionContext{Ctx: ctx}
-	inputs, err := cctx.MakeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields, false)
+	inputs, err := cctx.makeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
@@ -1217,16 +1299,6 @@ func IsMaxItemsOne(tfs shim.Schema, info *SchemaInfo) bool {
 		return *info.MaxItemsOne
 	}
 	return tfs.MaxItems() == 1
-}
-
-// useRawNames returns true if raw, unmangled names should be preserved.  This is only true for Terraform maps with
-// an Elem that is not a shim.Resource.
-func useRawNames(tfs shim.Schema) bool {
-	if tfs == nil || tfs.Type() != shim.TypeMap {
-		return false
-	}
-	_, hasResourceElem := tfs.Elem().(shim.Resource)
-	return !hasResourceElem
 }
 
 // getInfoFromTerraformName does a map lookup to find the Pulumi name and schema info, if any.
@@ -1403,8 +1475,8 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 		for name, oldValue := range oldMap {
 			defaultElem := false
 			if newValue, ok := newMap[name]; ok {
-				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, rawNames || useRawNames(tfs))
-				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, rawNames || useRawNames(tfs))
+				_, etfs, eps := getInfoFromPulumiName(name, tfflds, psflds, rawNames || shimutil.IsOfTypeMap(tfs))
+				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
 			} else {
 				delete(oldMap, name)
 			}
@@ -1511,7 +1583,7 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 		a := state.ArrayValue()
 		v := make([]resource.PropertyValue, len(a))
 		for i := range a {
-			v[i] = extractSchemaInputs(a[i], etfs, eps, rawNames || useRawNames(tfs))
+			v[i] = extractSchemaInputs(a[i], etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
 		}
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
@@ -1530,13 +1602,13 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 		obj := state.ObjectValue()
 		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
 		for k, e := range obj {
-			_, etfs, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames || useRawNames(tfs))
+			_, etfs, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames || shimutil.IsOfTypeMap(tfs))
 			if isInput := isMap || etfs != nil && (etfs.Optional() || etfs.Required()); !isInput {
 				glog.V(9).Infof("skipping '%v' (not an input)", k)
 				continue
 			}
 
-			ev := extractSchemaInputs(e, etfs, eps, rawNames || useRawNames(tfs))
+			ev := extractSchemaInputs(e, etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
 			if mustSet := isMap || etfs != nil && (etfs.Required() || !isDefaultOrZeroValue(etfs, eps, ev)); !mustSet {
 				glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
 				continue

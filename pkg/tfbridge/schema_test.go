@@ -25,13 +25,14 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -44,7 +45,7 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
 
 	ctx := &conversionContext{Assets: AssetTable{}}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -58,7 +59,7 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 		Assets:        AssetTable{},
 		ApplyDefaults: true,
 	}
-	inputs, err := ctx.MakeTerraformInputs(olds, news, tfs, ps, false)
+	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,7 +68,7 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
-	return ctx.MakeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
 }
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
@@ -2451,4 +2452,112 @@ func TestOutputNumberTypes(t *testing.T) {
 		"fff": resource.NewNumberProperty(50),
 		"ggg": resource.NewNumberProperty(50),
 	}, outputs)
+}
+
+func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
+	r := &schemav2.Resource{
+		Schema: map[string]*schemav2.Schema{
+			"map_prop": {
+				Type:     schemav2.TypeMap,
+				Optional: true,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"x_prop": {
+								Optional: true,
+								Type:     schemav2.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	shimmedR := shimv2.NewResource(r)
+	ctx := context.Background()
+	var instance *PulumiResource
+
+	type testCase struct {
+		name   string
+		ps     map[string]*SchemaInfo
+		config resource.PropertyMap
+		news   resource.PropertyMap
+		olds   resource.PropertyMap
+		expect interface{}
+	}
+
+	testCases := []testCase{
+		{
+			name: "translates x_prop",
+			news: resource.PropertyMap{
+				"mapProp": resource.NewObjectProperty(resource.PropertyMap{
+					"elem1": resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"xProp": resource.NewStringProperty("xPropValue"),
+						}),
+					}),
+				}),
+			},
+			expect: map[string]interface{}{
+				"__defaults": []interface{}{},
+				"map_prop": map[string]interface{}{
+					"elem1": []interface{}{
+						map[string]interface{}{
+							"__defaults": []interface{}{},
+							"x_prop":     "xPropValue",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "respects x_prop renames",
+			news: resource.PropertyMap{
+				"mapProp": resource.NewObjectProperty(resource.PropertyMap{
+					"elem1": resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"x": resource.NewStringProperty("xPropValue"),
+						}),
+					}),
+				}),
+			},
+			ps: map[string]*SchemaInfo{
+				"map_prop": {
+					Elem: &SchemaInfo{
+						Elem: &SchemaInfo{
+							Fields: map[string]*SchemaInfo{
+								"x_prop": {
+									Name: "x",
+								},
+							},
+						},
+					},
+				},
+			},
+			expect: map[string]interface{}{
+				"__defaults": []interface{}{},
+				"map_prop": map[string]interface{}{
+					"elem1": []interface{}{
+						map[string]interface{}{
+							"__defaults": []interface{}{},
+							"x_prop":     "xPropValue",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			i, _, err := MakeTerraformInputs(ctx, instance, tc.config, tc.olds, tc.news, shimmedR.Schema(), tc.ps)
+			require.NoError(t, err)
+			require.Equal(t, tc.expect, i)
+		})
+	}
 }

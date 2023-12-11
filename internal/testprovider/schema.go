@@ -621,8 +621,8 @@ func ProviderV2() *schemav2.Provider {
 				},
 				Importer: &schemav2.ResourceImporter{
 					StateContext: func(_ context.Context, state *schemav2.ResourceData,
-						_ interface{}) ([]*schemav2.ResourceData, error) {
-
+						_ interface{},
+					) ([]*schemav2.ResourceData, error) {
 						return []*schemav2.ResourceData{state}, nil
 					},
 				},
@@ -868,8 +868,8 @@ func AssertProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
 				},
 				Importer: &schemav2.ResourceImporter{
 					StateContext: func(_ context.Context, state *schemav2.ResourceData,
-						_ interface{}) ([]*schemav2.ResourceData, error) {
-
+						_ interface{},
+					) ([]*schemav2.ResourceData, error) {
 						return []*schemav2.ResourceData{state}, nil
 					},
 				},
@@ -906,6 +906,24 @@ func CustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provi
 						return err
 					}
 					return diff.ForceNew("labels")
+				},
+			},
+		},
+	}
+}
+
+func MaxItemsOneProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"nested_str_res": {
+				Schema: map[string]*schemav2.Schema{
+					"nested_str": {
+						Type:     schemav2.TypeList,
+						MaxItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+						Optional: true,
+					},
 				},
 			},
 		},

@@ -2133,3 +2133,107 @@ func TestTransformFromState(t *testing.T) {
 		}`)
 	})
 }
+
+// This emulates the situation where we migrate from a state without maxItemsOne
+// which would make the property a list
+// into a state with maxItemsOne, which would flatten the type.
+// https://github.com/pulumi/pulumi-aws/issues/3092
+func TestMaxItemOneWrongStateDiff(t *testing.T) {
+	p := testprovider.MaxItemsOneProvider()
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p),
+		config: shimv2.NewSchemaMap(p.Schema),
+		resources: map[tokens.Type]Resource{
+			"NestedStrRes": {
+				TF:     shimv2.NewResource(p.ResourcesMap["nested_str_res"]),
+				TFName: "nested_str_res",
+				Schema: &ResourceInfo{
+					Tok:    "NestedStrRes",
+					Fields: map[string]*SchemaInfo{},
+				},
+			},
+		},
+	}
+	t.Run("DiffListAndVal", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
+				"olds": {
+					"nested_str": []
+				},
+				"news": {
+					"nested_str": ""
+				}
+			},
+			"response": {
+				"changes": "DIFF_SOME",
+				"hasDetailedDiff": true
+			}
+		}`)
+	})
+	t.Run("DiffListAndValNonEmpty", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
+				"olds": {
+					"nested_str": ["val"]
+				},
+				"news": {
+					"nested_str": "val"
+				}
+			},
+			"response": {
+				"changes": "DIFF_SOME",
+				"hasDetailedDiff": true
+			}
+		}`)
+	})
+
+	// Also check that we don't produce spurious diffs when not necessary.
+	t.Run("DiffValAndValEmpty", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
+				"olds": {
+					"nested_str": ""
+				},
+				"news": {
+					"nested_str": ""
+				}
+			},
+			"response": {
+				"changes": "DIFF_NONE",
+				"hasDetailedDiff": true
+			}
+		}`)
+	})
+	t.Run("DiffValAndValNonempty", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
+				"olds": {
+					"nested_str": "val"
+				},
+				"news": {
+					"nested_str": "val"
+				}
+			},
+			"response": {
+				"changes": "DIFF_NONE",
+				"hasDetailedDiff": true
+			}
+		}`)
+	})
+}
