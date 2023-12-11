@@ -766,16 +766,6 @@ func ProviderV2() *schemav2.Provider {
 					Update: Timeout(time.Second * 120),
 				},
 			},
-			"nested_str_res": {
-				Schema: map[string]*schemav2.Schema{
-					"nested_str": {
-						Type:     schemav2.TypeList,
-						MaxItems: 1,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-						Optional: true,
-					},
-				},
-			},
 		},
 		DataSourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
@@ -916,6 +906,24 @@ func CustomizedDiffProvider(f func(data *schemav2.ResourceData)) *schemav2.Provi
 						return err
 					}
 					return diff.ForceNew("labels")
+				},
+			},
+		},
+	}
+}
+
+func MaxItemsOneProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"nested_str_res": {
+				Schema: map[string]*schemav2.Schema{
+					"nested_str": {
+						Type:     schemav2.TypeList,
+						MaxItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+						Optional: true,
+					},
 				},
 			},
 		},

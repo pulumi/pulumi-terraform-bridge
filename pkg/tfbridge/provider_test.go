@@ -2140,12 +2140,13 @@ func TestTransformFromState(t *testing.T) {
 // https://github.com/pulumi/pulumi-aws/issues/3092
 func TestMaxItemOneWrongStateDiff(t *testing.T) {
 	t.Run("Diff", func(t *testing.T) {
+		p := testprovider.MaxItemsOneProvider()
 		provider := &Provider{
-			tf:     shimv2.NewProvider(testTFProviderV2),
-			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
 			resources: map[tokens.Type]Resource{
 				"NestedStrRes": {
-					TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["nested_str_res"]),
+					TF:     shimv2.NewResource(p.ResourcesMap["nested_str_res"]),
 					TFName: "nested_str_res",
 					Schema: &ResourceInfo{
 						Tok: "NestedStrRes",
