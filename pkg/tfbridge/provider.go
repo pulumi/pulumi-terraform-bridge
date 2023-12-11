@@ -700,7 +700,7 @@ func markWronglyTypedMaxItemsOneStateDiff(
 		return localValue, nil // don't change just visit
 	}
 	_, err := propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
-	contract.IgnoreError(err)
+	contract.AssertNoErrorf(err, "markWronglyTypedMaxItemsOneStateDiff should not return errors!")
 	return *res
 }
 
