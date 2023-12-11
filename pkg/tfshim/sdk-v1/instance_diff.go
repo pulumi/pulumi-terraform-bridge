@@ -55,28 +55,6 @@ func (d v1InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	return m
 }
 
-func (d v1InstanceDiff) SetAttribute(key string, attrDiff shim.ResourceAttrDiff) {
-	var t terraform.DiffAttrType
-	switch attrDiff.Type {
-	case shim.DiffAttrInput:
-		t = terraform.DiffAttrInput
-	case shim.DiffAttrOutput:
-		t = terraform.DiffAttrOutput
-	default:
-		t = terraform.DiffAttrUnknown
-	}
-	d.tf.Attributes[key] = &terraform.ResourceAttrDiff{
-		Old:         attrDiff.Old,
-		New:         attrDiff.New,
-		NewComputed: attrDiff.NewComputed,
-		NewRemoved:  attrDiff.NewRemoved,
-		NewExtra:    attrDiff.NewExtra,
-		RequiresNew: attrDiff.RequiresNew,
-		Sensitive:   attrDiff.Sensitive,
-		Type:        t,
-	}
-}
-
 func (d v1InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
 	var prior *terraform.InstanceState
 	if priorState != nil {
@@ -127,7 +105,7 @@ func (d v1InstanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 }
 
 func (d v1InstanceDiff) SetTimeout(timeout float64, timeoutKey string) {
-	timeoutValue := int64(timeout * 1000000000) // this turns seconds to nanoseconds - TF wants it in this format
+	timeoutValue := int64(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
 
 	switch timeoutKey {
 	case shim.TimeoutCreate:
