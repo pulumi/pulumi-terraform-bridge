@@ -197,7 +197,8 @@ func TestCustomizeDiff(t *testing.T) {
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string) {
+	ignoreChanges ...string,
+) {
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)

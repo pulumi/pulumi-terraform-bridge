@@ -621,8 +621,8 @@ func ProviderV2() *schemav2.Provider {
 				},
 				Importer: &schemav2.ResourceImporter{
 					StateContext: func(_ context.Context, state *schemav2.ResourceData,
-						_ interface{}) ([]*schemav2.ResourceData, error) {
-
+						_ interface{},
+					) ([]*schemav2.ResourceData, error) {
 						return []*schemav2.ResourceData{state}, nil
 					},
 				},
@@ -766,6 +766,16 @@ func ProviderV2() *schemav2.Provider {
 					Update: Timeout(time.Second * 120),
 				},
 			},
+			"nested_str_res": {
+				Schema: map[string]*schemav2.Schema{
+					"nested_str": {
+						Type:     schemav2.TypeList,
+						MaxItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+						Optional: true,
+					},
+				},
+			},
 		},
 		DataSourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
@@ -868,8 +878,8 @@ func AssertProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {
 				},
 				Importer: &schemav2.ResourceImporter{
 					StateContext: func(_ context.Context, state *schemav2.ResourceData,
-						_ interface{}) ([]*schemav2.ResourceData, error) {
-
+						_ interface{},
+					) ([]*schemav2.ResourceData, error) {
 						return []*schemav2.ResourceData{state}, nil
 					},
 				},

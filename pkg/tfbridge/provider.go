@@ -683,11 +683,13 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 // (i.e. from a previous version without MaxItemsOne)
 // we need to mark them for update manually in order to correct the state
 // from an array to a flat type.
-func markWronglyTypedStateDiff(res Resource, olds resource.PropertyMap, diff *shim.InstanceDiff) error {
-	if diff == nil {
-		return fmt.Errorf("diff is nil")
-	}
-	detectMismatchingType := func(localSchema shim.Schema, localInfo *SchemaInfo, p resource.PropertyValue) bool {
+// The diff is otherwise ignored since MakeTerraformInputs won't touch
+// the type if it in the right shape.
+func markWronglyTypedMaxItemsOneStateDiff(
+	schema shim.SchemaMap, info map[string]*SchemaInfo, olds resource.PropertyMap,
+) bool {
+	res := False()
+	detectMismatchingType := func(localInfo *SchemaInfo, p resource.PropertyValue) bool {
 		if localInfo != nil &&
 			localInfo.MaxItemsOne != nil &&
 			*localInfo.MaxItemsOne &&
@@ -698,18 +700,16 @@ func markWronglyTypedStateDiff(res Resource, olds resource.PropertyMap, diff *sh
 		return false
 	}
 	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
-		schemaPath := PropertyPathToSchemaPath(pulumiPath, res.TF.Schema(), res.Schema.Fields)
-		schema, info, err := LookupSchemas(schemaPath, res.TF.Schema(), res.Schema.Fields)
-		if detectMismatchingType(schema, info, localValue) && (*diff).Attribute(schemaPath.GoString()) == nil {
-			// If the diff doesn't already have an entry for this property, add one.
-			(*diff).SetAttribute(schemaPath.GoString(), shim.ResourceAttrDiff{
-				Old: localValue.String(), New: localValue.String(),
-			})
+		schemaPath := PropertyPathToSchemaPath(pulumiPath, schema, info)
+		_, info, err := LookupSchemas(schemaPath, schema, info)
+		if err == nil && detectMismatchingType(info, localValue) {
+			glog.V(9).Infof("Found type mismatch for %s, flagging for update.", pulumiPath)
+			*res = true
 		}
-		return localValue, err // don't change just visit
+		return localValue, nil // don't change just visit
 	}
-	_, err := propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
-	return err
+	_, _ = propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
+	return *res
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -760,10 +760,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	diff, err := p.tf.Diff(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
-	}
-	err = markWronglyTypedStateDiff(res, olds, &diff)
-	if err != nil {
-		return nil, err
 	}
 
 	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
@@ -834,6 +830,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		// later on.
 		len(replaces) == 0 {
 		replaces = append(replaces, "__meta")
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+	}
+
+	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
+		markWronglyTypedMaxItemsOneStateDiff(res.TF.Schema(), res.Schema.Fields, olds) {
+
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 

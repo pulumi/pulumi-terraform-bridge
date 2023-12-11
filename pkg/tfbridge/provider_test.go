@@ -2133,3 +2133,44 @@ func TestTransformFromState(t *testing.T) {
 		}`)
 	})
 }
+
+func TestMaxItemOneWrongStateDiff(t *testing.T) {
+	t.Run("Diff", func(t *testing.T) {
+		provider := &Provider{
+			tf:     shimv2.NewProvider(testTFProviderV2),
+			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+			resources: map[tokens.Type]Resource{
+				"NestedStrRes": {
+					TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["nested_str_res"]),
+					TFName: "nested_str_res",
+					Schema: &ResourceInfo{
+						Tok: "NestedStrRes",
+						Fields: map[string]*SchemaInfo{
+							"nested_str": {
+								MaxItemsOne: True(),
+							},
+						},
+					},
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Diff",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"olds": {
+				  "nested_str": []
+				},
+				"news": {
+				  "nested_str": ""
+						}
+			  },
+			  "response": {
+				"changes": "DIFF_SOME",
+				"hasDetailedDiff": true
+			  }
+			}`)
+	})
+}
