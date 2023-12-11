@@ -2156,82 +2156,84 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 	}
 	t.Run("DiffListAndVal", func(t *testing.T) {
 		testutils.Replay(t, provider, `
-			{
-			  "method": "/pulumirpc.ResourceProvider/Diff",
-			  "request": {
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
 				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
 				"olds": {
-				  "nested_str": []
+					"nested_str": []
 				},
 				"news": {
-				  "nested_str": ""
+					"nested_str": ""
 				}
-			  },
-			  "response": {
+			},
+			"response": {
 				"changes": "DIFF_SOME",
 				"hasDetailedDiff": true
-			  }
-			}`)
+			}
+		}`)
 	})
 	t.Run("DiffListAndValNonEmpty", func(t *testing.T) {
 		testutils.Replay(t, provider, `
-			{
-			  "method": "/pulumirpc.ResourceProvider/Diff",
-			  "request": {
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
 				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
 				"olds": {
-				  "nested_str": ["val"]
+					"nested_str": ["val"]
 				},
 				"news": {
-				  "nested_str": "val"
+					"nested_str": "val"
 				}
-			  },
-			  "response": {
+			},
+			"response": {
 				"changes": "DIFF_SOME",
-				"hasDetailedDiff": true,
-				"diffs": ["nested_str"],
-				"detailedDiff": {"nested_str": {}}
-			  }
-			}`)
+				"hasDetailedDiff": true
+			}
+		}`)
 	})
 
-	t.Run("DiffListAndVal", func(t *testing.T) {
+	// Also check that we don't produce spurious diffs when not necessary.
+	t.Run("DiffValAndValEmpty", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
-		  "method": "/pulumirpc.ResourceProvider/Diff",
-		  "request": {
-			"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
-			"olds": {
-			  "nested_str": ""
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
+				"olds": {
+					"nested_str": ""
+				},
+				"news": {
+					"nested_str": ""
+				}
 			},
-			"news": {
-			  "nested_str": ""
+			"response": {
+				"changes": "DIFF_NONE",
+				"hasDetailedDiff": true
 			}
-		  },
-		  "response": {
-			"changes": "DIFF_NONE",
-			"hasDetailedDiff": true
-		  }
 		}`)
 	})
 	t.Run("DiffValAndValNonempty", func(t *testing.T) {
-		// Also check that we don't produce spurious diffs when not necessary.
 		testutils.Replay(t, provider, `
-			{
-			  "method": "/pulumirpc.ResourceProvider/Diff",
-			  "request": {
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
 				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"id": "0",
 				"olds": {
-				  "nested_str": "val"
+					"nested_str": "val"
 				},
 				"news": {
-				  "nested_str": "val"
+					"nested_str": "val"
 				}
-			  },
-			  "response": {
+			},
+			"response": {
 				"changes": "DIFF_NONE",
 				"hasDetailedDiff": true
-			  }
-			}`)
+			}
+		}`)
 	})
 }

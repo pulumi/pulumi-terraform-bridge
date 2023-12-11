@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	q "Q"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -739,6 +740,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
 
+	q.Q(state)
+
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
 		plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
@@ -749,10 +752,13 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
+	q.Q(config)
+
 	diff, err := p.tf.Diff(res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
+	q.Q(diff)
 
 	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 	detailedDiff, changes := makeDetailedDiff(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, diff)
