@@ -2134,6 +2134,10 @@ func TestTransformFromState(t *testing.T) {
 	})
 }
 
+// This emulates the situation where we migrate from a state without maxItemsOne
+// which would make the property a list
+// into a state with maxItemsOne, which would flatten the type.
+// https://github.com/pulumi/pulumi-aws/issues/3092
 func TestMaxItemOneWrongStateDiff(t *testing.T) {
 	t.Run("Diff", func(t *testing.T) {
 		provider := &Provider{
