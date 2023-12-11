@@ -34,6 +34,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -678,6 +679,31 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	return &pulumirpc.CheckResponse{Inputs: minputs, Failures: failures}, nil
 }
 
+// For properties with MaxItemsOne, where the state is still an array
+// (i.e. from a previous version without MaxItemsOne)
+// we need to mark them for update manually in order to correct the state
+// from an array to a flat type.
+// The diff is otherwise ignored since MakeTerraformInputs won't touch
+// the type if it in the right shape.
+func markWronglyTypedMaxItemsOneStateDiff(
+	schema shim.SchemaMap, info map[string]*SchemaInfo, olds resource.PropertyMap,
+) bool {
+	res := False()
+	tr := func(pulumiPath resource.PropertyPath, localValue resource.PropertyValue) (resource.PropertyValue, error) {
+		schemaPath := PropertyPathToSchemaPath(pulumiPath, schema, info)
+		localSchema, info, err := LookupSchemas(schemaPath, schema, info)
+		contract.IgnoreError(err)
+		if IsMaxItemsOne(localSchema, info) && localValue.IsArray() {
+			glog.V(9).Infof("Found type mismatch for %s, flagging for update.", pulumiPath)
+			*res = true
+		}
+		return localValue, nil // don't change just visit
+	}
+	_, err := propertyvalue.TransformPropertyValue(make(resource.PropertyPath, 0), tr, resource.NewObjectProperty(olds))
+	contract.AssertNoErrorf(err, "markWronglyTypedMaxItemsOneStateDiff should not return errors!")
+	return *res
+}
+
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
@@ -796,6 +822,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		// later on.
 		len(replaces) == 0 {
 		replaces = append(replaces, "__meta")
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+	}
+
+	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
+		markWronglyTypedMaxItemsOneStateDiff(res.TF.Schema(), res.Schema.Fields, olds) {
+
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
