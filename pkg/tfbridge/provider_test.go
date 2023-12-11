@@ -2149,12 +2149,8 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 					TF:     shimv2.NewResource(p.ResourcesMap["nested_str_res"]),
 					TFName: "nested_str_res",
 					Schema: &ResourceInfo{
-						Tok: "NestedStrRes",
-						Fields: map[string]*SchemaInfo{
-							"nested_str": {
-								MaxItemsOne: True(),
-							},
-						},
+						Tok:    "NestedStrRes",
+						Fields: map[string]*SchemaInfo{},
 					},
 				},
 			},
@@ -2170,12 +2166,69 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 				},
 				"news": {
 				  "nested_str": ""
-						}
+				}
 			  },
 			  "response": {
 				"changes": "DIFF_SOME",
 				"hasDetailedDiff": true
 			  }
 			}`)
+
+		testutils.Replay(t, provider, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Diff",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"olds": {
+				  "nested_str": ["val"]
+				},
+				"news": {
+				  "nested_str": "val"
+				}
+			  },
+			  "response": {
+				"changes": "DIFF_SOME",
+				"hasDetailedDiff": true,
+				"diffs": ["nested_str"],
+				"detailedDiff": {"nested_str": {}}
+			  }
+			}`)
+
+		// Also check that we don't produce spurious diffs when not necessary.
+		testutils.Replay(t, provider, `
+			{
+			  "method": "/pulumirpc.ResourceProvider/Diff",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+				"olds": {
+				  "nested_str": "val"
+				},
+				"news": {
+				  "nested_str": "val"
+				}
+			  },
+			  "response": {
+				"changes": "DIFF_NONE",
+				"hasDetailedDiff": true
+			  }
+			}`)
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Diff",
+		  "request": {
+			"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
+			"olds": {
+			  "nested_str": ""
+			},
+			"news": {
+			  "nested_str": ""
+			}
+		  },
+		  "response": {
+			"changes": "DIFF_NONE",
+			"hasDetailedDiff": true
+		  }
+		}`)
 	})
 }
