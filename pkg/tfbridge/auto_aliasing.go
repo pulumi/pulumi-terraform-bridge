@@ -15,10 +15,7 @@
 package tfbridge
 
 import (
-	"bytes"
-	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/Masterminds/semver"
 
@@ -627,7 +624,7 @@ func (over maxItemsOneOverrides) isEmpty() bool {
 }
 
 func (over maxItemsOneOverrides) set(path walk.SchemaPath, maxItemsOne bool) {
-	over[encodeSchemaPath(path)] = maxItemsOne
+	over[path.MustEncodeSchemaPath()] = maxItemsOne
 }
 
 func (over *maxItemsOneOverrides) applyToResource(p *ProviderInfo, tfToken string) {
@@ -653,7 +650,7 @@ func (over maxItemsOneOverrides) applyMaxItemsOneOverridesToFields(fields *map[s
 func (over maxItemsOneOverrides) applyMaxItemsOneOverrides(info *SchemaInfo) {
 	for k, v := range over {
 		v := v
-		p := decodeSchemaPath(k)
+		p := walk.DecodeSchemaPath(k)
 		getOrCreateSchemaInfo(info, p).MaxItemsOne = &v
 	}
 }
@@ -665,39 +662,6 @@ func contains[T ~string](xs []T, x T) bool {
 		}
 	}
 	return false
-}
-
-func encodeSchemaPath(sp walk.SchemaPath) string {
-	var buf bytes.Buffer
-	for i, step := range sp {
-		if i > 0 {
-			fmt.Fprintf(&buf, ".")
-		}
-		switch step := step.(type) {
-		case walk.ElementStep:
-			fmt.Fprintf(&buf, "$")
-		case walk.GetAttrStep:
-			contract.Assertf(!strings.Contains(step.Name, "."),
-				"Cannot encode SchemaPath %q containing '.'", step.Name)
-			contract.Assertf(step.Name != "$", "Cannot encode SchemaPath %q", step.Name)
-			fmt.Fprintf(&buf, step.Name)
-		default:
-			contract.Failf("impossible")
-		}
-	}
-	return buf.String()
-}
-
-func decodeSchemaPath(path string) walk.SchemaPath {
-	p := walk.NewSchemaPath()
-	for _, frag := range strings.Split(path, ".") {
-		if frag == "$" {
-			p = p.Element()
-		} else {
-			p = p.GetAttr(frag)
-		}
-	}
-	return p
 }
 
 func getOrCreateSchemaInfo(info *SchemaInfo, path walk.SchemaPath) *SchemaInfo {
