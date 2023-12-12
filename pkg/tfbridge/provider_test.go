@@ -1468,7 +1468,7 @@ func TestConfigureContextCapture(t *testing.T) {
 	configure := func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		// StopContext is deprecated but still used in GCP for example:
 		// https://github.com/hashicorp/terraform-provider-google-beta/blob/master/google-beta/provider/provider.go#L2258
-		stopCtx, ok := schema.StopContext(ctx)
+		stopCtx, ok := schema.StopContext(ctx) //nolint
 		if !ok {
 			stopCtx = ctx
 		}

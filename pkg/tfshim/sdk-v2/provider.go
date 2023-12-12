@@ -91,7 +91,8 @@ func (p v2Provider) Configure(c shim.ResourceConfig) error {
 }
 
 func (p v2Provider) ConfigureWithContext(ctx context.Context, c shim.ResourceConfig) error {
-	// See ConfigureProvider in https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
+	// See ConfigureProvider e.g.
+	// https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
 	ctxHack := context.WithValue(ctx, schema.StopContextKey, p.stopContext(context.Background()))
 	return errors(p.tf.Configure(ctxHack, configFromShim(c)))
 }
