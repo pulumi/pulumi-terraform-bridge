@@ -285,74 +285,73 @@ func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
 	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
 }
 
-func Test_ProviderWithOmittedTypes(t *testing.T) {
-
-	gen := func(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
-		strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
-		nestedObj := (&shimschema.Schema{
+func generateNestedSchema(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
+	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+	mkObj := func(m shim.SchemaMap) shim.Schema {
+		return (&shimschema.Schema{
 			Type:     shim.TypeMap,
 			Optional: true,
-			Elem: (&shimschema.Resource{
-				Schema: shimschema.SchemaMap{
-					"fizz_buzz": strType,
-				},
-			}).Shim(),
+			Elem:     (&shimschema.Resource{Schema: m}).Shim(),
 		}).Shim()
-		objType := (&shimschema.Schema{
-			Type:     shim.TypeMap,
-			Optional: true,
-			Elem: (&shimschema.Resource{
-				Schema: shimschema.SchemaMap{
-					"foo_bar": strType,
-					"nested":  nestedObj,
-				},
-			}).Shim(),
-		}).Shim()
-
-		p := (&shimschema.Provider{
-			ResourcesMap: shimschema.ResourceMap{
-				"test_res": (&shimschema.Resource{
-					Schema: shimschema.SchemaMap{
-						"obj": objType,
-					},
-				}).Shim(),
-			},
-		}).Shim()
-
-		nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-			Color: colors.Never,
-		})
-
-		res := &tfbridge.ResourceInfo{
-			Tok: "test:index:Bar",
-		}
-		if f != nil {
-			f(res)
-		}
-
-		r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
-			DiagnosticsSink: nilSink,
-			ProviderInfo: tfbridge.ProviderInfo{
-				Name: "test",
-				P:    p,
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"test_res": res,
-				},
-			},
-		})
-		require.NoError(t, err)
-		return r.PackageSpec
 	}
 
+	nestedObj := mkObj(shimschema.SchemaMap{
+		"fizz_buzz": strType,
+	})
+	objType := mkObj(shimschema.SchemaMap{
+		"foo_bar": strType,
+		"nested":  nestedObj,
+	})
+
+	p := (&shimschema.Provider{
+		ResourcesMap: shimschema.ResourceMap{
+			"test_res": (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"obj": objType,
+				},
+			}).Shim(),
+		},
+	}).Shim()
+
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
+
+	res := &tfbridge.ResourceInfo{
+		Tok: "test:index:Bar",
+	}
+	if f != nil {
+		f(res)
+	}
+
+	r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		DiagnosticsSink: nilSink,
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "test",
+			P:    p,
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": res,
+			},
+		},
+	})
+	require.NoError(t, err)
+	return r.PackageSpec
+}
+
+func Test_ProviderWithOmittedTypes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("no-omit", func(t *testing.T) {
-		spec := gen(t, nil)
+		t.Parallel()
+		spec := generateNestedSchema(t, nil)
 		assert.Len(t, spec.Resources, 1)
 		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
 		assert.Len(t, spec.Types, 2)
 	})
 
 	t.Run("omit-top-level-prop", func(t *testing.T) {
-		spec := gen(t, func(info *tfbridge.ResourceInfo) {
+		t.Parallel()
+		spec := generateNestedSchema(t, func(info *tfbridge.ResourceInfo) {
 			info.Fields = map[string]*tfbridge.SchemaInfo{
 				"obj": {Omit: true},
 			}
@@ -363,7 +362,8 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 
 	t.Run("omit-nested-prop", func(t *testing.T) {
-		spec := gen(t, func(info *tfbridge.ResourceInfo) {
+		t.Parallel()
+		spec := generateNestedSchema(t, func(info *tfbridge.ResourceInfo) {
 			info.Fields = map[string]*tfbridge.SchemaInfo{
 				"obj": {
 					Elem: &tfbridge.SchemaInfo{
@@ -377,6 +377,195 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 		assert.Len(t, spec.Resources, 1)
 		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
 		assert.Len(t, spec.Types, 1)
+	})
+
+}
+
+func Test_ProviderWithMovedTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("none", func(t *testing.T) {
+		t.Parallel()
+		spec := generateNestedSchema(t, nil)
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
+		assert.Len(t, spec.Types, 2)
+		assert.Contains(t, spec.Types, "test:index/BarObj:BarObj")
+		assert.Contains(t, spec.Types, "test:index/BarObjNested:BarObjNested")
+	})
+
+	t.Run("top-level", func(t *testing.T) {
+		t.Parallel()
+		spec := generateNestedSchema(t, func(info *tfbridge.ResourceInfo) {
+			info.Fields = map[string]*tfbridge.SchemaInfo{
+				"obj": {
+					Elem: &tfbridge.SchemaInfo{
+						Type: "test:moved:Top",
+					},
+				},
+			}
+		})
+
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Types, 2)
+		if assert.Contains(t, spec.Types, "test:moved:Top") {
+			assert.Contains(t, spec.Types, "test:moved/TopNested:TopNested")
+		}
+	})
+
+	t.Run("nested-prop", func(t *testing.T) {
+		t.Parallel()
+		spec := generateNestedSchema(t, func(info *tfbridge.ResourceInfo) {
+			info.Fields = map[string]*tfbridge.SchemaInfo{
+				"obj": {
+					Elem: &tfbridge.SchemaInfo{
+						Fields: map[string]*tfbridge.SchemaInfo{
+							"nested": {
+								Elem: &tfbridge.SchemaInfo{
+									Type: "test:moved:Nested",
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+		assert.Len(t, spec.Resources, 1)
+		assert.Len(t, spec.Types, 2)
+		assert.Contains(t, spec.Types, "test:index/BarObj:BarObj")
+		assert.Contains(t, spec.Types, "test:moved:Nested")
+	})
+
+	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
+	mkObj := func(m shim.SchemaMap) shim.Schema {
+		return (&shimschema.Schema{
+			Type:     shim.TypeMap,
+			Optional: true,
+			Elem:     (&shimschema.Resource{Schema: m}).Shim(),
+		}).Shim()
+	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
+
+	t.Run("conflict", func(t *testing.T) {
+		t.Parallel()
+
+		nestedObj := mkObj(shimschema.SchemaMap{
+			"fizz_buzz": strType,
+		})
+		objType := mkObj(shimschema.SchemaMap{
+			"foo_bar": strType,
+			"nested":  nestedObj,
+		})
+
+		p := (&shimschema.Provider{
+			ResourcesMap: shimschema.ResourceMap{
+				"test_res": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"obj": objType,
+					},
+				}).Shim(),
+				"test_other": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"obj": nestedObj,
+					},
+				}).Shim(),
+			},
+		}).Shim()
+
+		nameObj := map[string]*tfbridge.SchemaInfo{
+			"obj": {
+				Elem: &tfbridge.SchemaInfo{
+					Type: "test:index:Obj",
+				},
+			},
+		}
+
+		// GenerateSchemaWithOptions should return an error when we force distinct
+		// types to have the same type token. Instead, it panics. We capture this
+		// behavior for now, since we want to assert that it doesn't return
+		// garbage.
+		err := "fatal: An assertion has failed: Obj declared twice with different values"
+		assert.PanicsWithValue(t, err, func() {
+			_, _ = GenerateSchemaWithOptions(GenerateSchemaOptions{
+				DiagnosticsSink: nilSink,
+				ProviderInfo: tfbridge.ProviderInfo{
+					Name: "test",
+					P:    p,
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"test_res": {
+							Tok:    "test:index:Res",
+							Fields: nameObj,
+						},
+						"test_other": {
+							Tok:    "test:index:Other",
+							Fields: nameObj,
+						},
+					},
+				},
+			})
+		})
+	})
+
+	t.Run("no-conflict", func(t *testing.T) {
+		t.Parallel()
+
+		nestedObj := mkObj(shimschema.SchemaMap{
+			"fizz_buzz": strType,
+		})
+		objType := mkObj(shimschema.SchemaMap{
+			"foo_bar": strType,
+			"nested":  nestedObj,
+		})
+
+		p := (&shimschema.Provider{
+			ResourcesMap: shimschema.ResourceMap{
+				"test_res": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"field1": objType,
+					},
+				}).Shim(),
+				"test_other": (&shimschema.Resource{
+					Schema: shimschema.SchemaMap{
+						"field2": objType,
+					},
+				}).Shim(),
+			},
+		}).Shim()
+
+		nameObj := func(i int) map[string]*tfbridge.SchemaInfo {
+			return map[string]*tfbridge.SchemaInfo{
+				fmt.Sprintf("field%d", i): {
+					Elem: &tfbridge.SchemaInfo{
+						Type: "test:index:Obj",
+					},
+				},
+			}
+		}
+
+		r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+			DiagnosticsSink: nilSink,
+			ProviderInfo: tfbridge.ProviderInfo{
+				Name: "test",
+				P:    p,
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": {
+						Tok:    "test:index:Res",
+						Fields: nameObj(1),
+					},
+					"test_other": {
+						Tok:    "test:index:Other",
+						Fields: nameObj(2),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, r.PackageSpec.Resources, 2)
+		assert.Len(t, r.PackageSpec.Types, 2,
+			"Since nested types were declared to have the same name, they should only show up once.")
 	})
 
 }

@@ -67,17 +67,19 @@ type schemaNestedType struct {
 }
 
 type schemaNestedTypes struct {
-	nameToType map[string]*schemaNestedType
+	nameToType      map[string]*schemaNestedType
+	pathCorrections map[string]paths.TypePath
 }
 
-func gatherSchemaNestedTypesForModule(mod *module) map[string]*schemaNestedType {
+func gatherSchemaNestedTypesForModule(mod *module) (map[string]*schemaNestedType, map[string]paths.TypePath) {
 	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
+		nameToType:      make(map[string]*schemaNestedType),
+		pathCorrections: make(map[string]paths.TypePath),
 	}
 	for _, member := range mod.members {
 		nt.gatherFromMember(member)
 	}
-	return nt.nameToType
+	return nt.nameToType, nt.pathCorrections
 }
 
 func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNestedType {
@@ -112,9 +114,7 @@ type declarer interface {
 	Name() string
 }
 
-func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
-	typ *propertyType, isInput bool) string {
-
+func (nt *schemaNestedTypes) typeName(namePrefix, name string, typ *propertyType) string {
 	// Generate a name for this nested type.
 	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
 
@@ -123,7 +123,21 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		typeName = typ.nestedType.Name().String()
 	}
 
+	if typ.typ != "" && typ.kind == kindObject {
+		typeName = typ.typ.Name().String()
+	}
+
 	typ.name = typeName
+	return typ.name
+}
+
+// declareType emits the declared type into nt.
+//
+// declareType requires that:
+// 1. nt.typeName(..., typ) has been called previously on this type.
+// 2. All nested types have already been declare.
+func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer,
+	typ *propertyType, isInput bool) {
 
 	required := codegen.StringSet{}
 	for _, p := range typ.properties {
@@ -140,8 +154,9 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 	}
 
 	// Merging makes sure that structurally identical types are shared and not generated more than once.
-	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
+	if existing, ok := nt.nameToType[typ.name]; ok {
+		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ),
+			"%s declared twice with different values", typ.name)
 
 		// Remember that existing type is now also seen at the current typePath.
 		existing.typePaths.Add(typePath)
@@ -156,10 +171,10 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		}
 
 		existing.typ, existing.required = typ, required
-		return typeName
+		return
 	}
 
-	nt.nameToType[typeName] = &schemaNestedType{
+	nt.nameToType[typ.name] = &schemaNestedType{
 		typ:             typ,
 		declarer:        declarer,
 		required:        required,
@@ -167,7 +182,6 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		requiredOutputs: requiredOutputs,
 		typePaths:       paths.SingletonTypePathSet(typePath),
 	}
-	return typeName
 }
 
 func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
@@ -180,9 +194,21 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 			name = inflector.Singularize(name)
 		}
 
-		nt.gatherFromPropertyType(paths.NewProperyPath(pathContext, p.propertyName),
-			declarer, namePrefix, name, p.typ, isInput)
+		var path paths.TypePath = paths.NewProperyPath(pathContext, p.propertyName)
+		if t := p.typ.typ; t != "" && p.typ.kind == kindObject {
+			namePrefix = ""
+			newPath := paths.NewRawPath(t, path)
+			nt.correctPath(path, newPath)
+			path = newPath
+		}
+
+		nt.gatherFromPropertyType(path, declarer, namePrefix, name, p.typ, isInput)
 	}
+}
+
+// Insert a type path redirect, setting src to point to dst.
+func (nt *schemaNestedTypes) correctPath(src, dst paths.TypePath) {
+	nt.pathCorrections[src.UniqueKey()] = dst
 }
 
 func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, declarer declarer, namePrefix,
@@ -195,8 +221,19 @@ func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, dec
 				declarer, namePrefix, name, typ.element, isInput)
 		}
 	case kindObject:
-		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput)
+		if typ.typ != "" {
+			namePrefix = ""
+			typePath = paths.NewRawPath(typ.typ, typePath)
+		}
+
+		// Because nt.declareType expects the declared type to be fully formed (to
+		// allow an equality comparison against other fully formed types), all
+		// nested types must themselves be fully formed.
+		//
+		// gatherFromProperties must be called before declareType.
+		baseName := nt.typeName(namePrefix, name, typ)
 		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput)
+		nt.declareType(typePath, declarer, typ, isInput)
 	}
 }
 
@@ -247,13 +284,33 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), g.info.GetGitHubHost())
 
 	var config []*variable
+	declaredTypes := map[string]*schemaNestedType{}
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
-		for _, t := range gatherSchemaNestedTypesForModule(mod) {
+		nestedTypes, pathCorrections := gatherSchemaNestedTypesForModule(mod)
+		if b := g.renamesBuilder; b != nil {
+			if b.pathCorrections == nil {
+				b.pathCorrections = pathCorrections
+			} else {
+				for k, v := range pathCorrections {
+					b.pathCorrections[k] = v
+				}
+			}
+		}
+		for _, t := range nestedTypes {
 			tok := g.genObjectTypeToken(t)
 			ts := g.genObjectType(t, false)
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
+
+			if existing, ok := declaredTypes[tok]; ok {
+				if !t.typ.equals(existing.typ) {
+					return pschema.PackageSpec{},
+						fmt.Errorf("%s: conflicting type definitions", tok)
+				}
+			} else {
+				declaredTypes[tok] = t
+				spec.Types[tok] = pschema.ComplexTypeSpec{
+					ObjectTypeSpec: ts,
+				}
 			}
 		}
 
@@ -775,11 +832,13 @@ func (g *schemaGenerator) genObjectTypeToken(typInfo *schemaNestedType) string {
 	}
 
 	mod := modulePlacementForTypeSet(g.pkg, typInfo.typePaths)
-	token := fmt.Sprintf("%s/%s:%s", mod.String(), name, name)
+	token := tokens.Type(fmt.Sprintf("%s/%s:%s", mod, name, name))
+	if typ.typ != "" {
+		token = typ.typ
+	}
 
-	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, tokens.Type(token))
-
-	return token
+	g.renamesBuilder.registerNamedObjectType(typInfo.typePaths, token)
+	return token.String()
 }
 
 func (g *schemaGenerator) genObjectType(typInfo *schemaNestedType, isTopLevel bool) pschema.ObjectTypeSpec {
@@ -916,7 +975,7 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 		return pschema.TypeSpec{Type: "object", AdditionalProperties: &additionalProperties}
 	case kindObject:
 		mod := modulePlacementForType(g.pkg, path)
-		ref := fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)
+		ref := fmt.Sprintf("#/types/%s/%s:%s", mod, typ.name, typ.name)
 		return pschema.TypeSpec{Ref: ref}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)
@@ -1139,6 +1198,8 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 		return parentModuleOrSelf(m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)
+	case *paths.RawTypePath:
+		return pp.Raw().Module()
 	default:
 		contract.Assertf(false, "invalid ParentKind")
 		return ""

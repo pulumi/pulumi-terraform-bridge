@@ -70,6 +70,12 @@ type renamesBuilder struct {
 	functions       map[tokens.ModuleMember]string
 	objectTypes     map[string]tokens.Type
 	objectTypePaths map[tokens.Type]paths.TypePathSet
+
+	// pathCorrections accounts for the case where a user has explicitly specified a
+	// path, so it no longer matches it's expected location.
+	//
+	// This maps the unique key of a structural path to the user supplied path.
+	pathCorrections map[string]paths.TypePath
 }
 
 func newRenamesBuilder(pkg tokens.Package, resourcePrefix string) *renamesBuilder {
@@ -215,6 +221,8 @@ func (r *renamesBuilder) BuildRenames() (Renames, error) {
 }
 
 func (r renamesBuilder) findObjectTypeToken(path paths.TypePath) (tokens.Type, error) {
+	path = r.correctPath(path)
+
 	if p, ok := r.objectTypes[path.String()]; ok {
 		return p, nil
 	}
@@ -227,7 +235,20 @@ func (r renamesBuilder) findObjectTypeToken(path paths.TypePath) (tokens.Type, e
 	if p, ok := r.objectTypes[path.String()]; ok {
 		return p, nil
 	}
-	return "", fmt.Errorf("expected registerNamedObjectType to be called for %s", path.String())
+	return "", fmt.Errorf("expected registerNamedObjectType to be called for %s (%[1]T)", path)
+}
+
+func (r renamesBuilder) correctPath(path paths.TypePath) paths.TypePath {
+	if v, ok := r.pathCorrections[path.UniqueKey()]; ok {
+		return v
+	}
+
+	switch path := path.(type) {
+	case *paths.PropertyPath:
+		return paths.NewProperyPath(r.correctPath(path.Parent()), path.PropertyName)
+	default:
+		return path
+	}
 }
 
 func (r renamesBuilder) normalizeProviderStateToProviderInputs(p paths.TypePath) paths.TypePath {
@@ -237,9 +258,7 @@ func (r renamesBuilder) normalizeProviderStateToProviderInputs(p paths.TypePath)
 			return pp.ResourcePath.Inputs()
 		}
 		return p
-	case *paths.DataSourceMemberPath:
-		return p
-	case *paths.ConfigPath:
+	case *paths.DataSourceMemberPath, *paths.ConfigPath, *paths.RawTypePath:
 		return p
 	case *paths.ElementPath:
 		return paths.NewElementPath(r.normalizeProviderStateToProviderInputs(pp.Parent()))
