@@ -5,12 +5,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var awsSSMParameterSchema = &schema.Resource{
@@ -788,4 +791,78 @@ func TestRecoverCtyValue(t *testing.T) {
 				r.GoString(), tc.expect.GoString())
 		})
 	}
+}
+
+func TestRecoverAndCoerceCtyValue(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		depth := 3
+		res := rapidgen.ResourceProperGen(depth).Draw(t, "res")
+		t.Logf("res.CoreConfigSchema().ImpliedType() == %v", res.CoreConfigSchema().ImpliedType().GoString())
+		m := valueMapGen(valueGen(depth-1)).Draw(t, "m")
+		v, err := schema.JSONMapToStateValue(m, res.CoreConfigSchema())
+		if err != nil {
+			return
+		}
+		result, err := recoverAndCoerceCtyValue(res, m)
+		if err != nil {
+			t.Fatalf("got an error from recoverAndCoerceCtyValue: %v", err)
+		}
+
+		v = normalizeCtyValue(v)
+		result = normalizeCtyValue(result)
+		require.Equal(t, result, v)
+	})
+}
+
+func normalizeCtyValue(v cty.Value) cty.Value {
+	v, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
+		if v.IsWhollyKnown() && !v.IsNull() && v.Type() == cty.Number {
+			f := v.AsBigFloat()
+			f.SetPrec(512)
+			return cty.NumberVal(f), nil
+		}
+		return v, nil
+	})
+	contract.AssertNoErrorf(err, "Transform should never fail here")
+	return v
+}
+
+func numGen() *rapid.Generator[interface{}] {
+	return rapid.OneOf(
+		rapid.IntRange(0, 2).AsAny(),
+		rapid.Int8Range(0, 2).AsAny(),
+		rapid.Int16Range(0, 2).AsAny(),
+		rapid.Int32Range(0, 2).AsAny(),
+		rapid.Int64Range(0, 2).AsAny(),
+		rapid.UintRange(0, 2).AsAny(),
+		rapid.Uint8Range(0, 2).AsAny(),
+		rapid.Uint16Range(0, 2).AsAny(),
+		rapid.Uint32Range(0, 2).AsAny(),
+		rapid.Uint64Range(0, 2).AsAny(),
+		rapid.SampledFrom([]float32{0, 1}).AsAny(),
+		rapid.SampledFrom([]float64{0, 1}).AsAny(),
+	)
+}
+
+func valueGen(depth int) *rapid.Generator[interface{}] {
+	scalars := []interface{}{
+		nil,
+		true, false,
+		"", "s",
+	}
+	s := rapid.OneOf(rapid.SampledFrom(scalars), numGen())
+	if depth == 0 {
+		return s
+	}
+
+	g := valueGen(depth - 1)
+	return rapid.OneOf(
+		s,
+		rapid.SliceOf(g).AsAny(),
+		valueMapGen(g).AsAny(),
+	)
+}
+
+func valueMapGen(g *rapid.Generator[interface{}]) *rapid.Generator[map[string]interface{}] {
+	return rapid.MapOfN(rapidgen.PropertyNameGen(), g, 0, 2)
 }

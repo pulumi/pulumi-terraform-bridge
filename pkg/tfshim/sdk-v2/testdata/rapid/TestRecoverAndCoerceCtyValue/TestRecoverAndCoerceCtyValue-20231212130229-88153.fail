@@ -1,0 +1,52 @@
+# 2023/12/12 13:02:29 TestRecoverAndCoerceCtyValue [rapid] draw res: &schema.Resource{Schema:map[string]*schema.Schema{"f1":*schema.Schema{Type:6, ConfigMode:2, Required:true, Optional:false, Computed:false, ForceNew:false, DiffSuppressFunc:(schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh:false, Default:interface {}(nil), DefaultFunc:(schema.SchemaDefaultFunc)(nil), Description:"", InputDefault:"", StateFunc:(schema.SchemaStateFunc)(nil), Elem:(*schema.Resource)(0xc0005702a0), MaxItems:0, MinItems:0, Set:(schema.SchemaSetFunc)(nil), ComputedWhen:[]string(nil), ConflictsWith:[]string(nil), ExactlyOneOf:[]string(nil), AtLeastOneOf:[]string(nil), RequiredWith:[]string(nil), Deprecated:"", ValidateFunc:(schema.SchemaValidateFunc)(nil), ValidateDiagFunc:(schema.SchemaValidateDiagFunc)(nil), Sensitive:false}}, SchemaFunc:(func() map[string]*schema.Schema)(nil), SchemaVersion:0, MigrateState:(schema.StateMigrateFunc)(nil), StateUpgraders:[]schema.StateUpgrader(nil), Create:(schema.CreateFunc)(nil), Read:(schema.ReadFunc)(nil), Update:(schema.UpdateFunc)(nil), Delete:(schema.DeleteFunc)(nil), Exists:(schema.ExistsFunc)(nil), CreateContext:(schema.CreateContextFunc)(nil), ReadContext:(schema.ReadContextFunc)(nil), UpdateContext:(schema.UpdateContextFunc)(nil), DeleteContext:(schema.DeleteContextFunc)(nil), CreateWithoutTimeout:(schema.CreateContextFunc)(nil), ReadWithoutTimeout:(schema.ReadContextFunc)(nil), UpdateWithoutTimeout:(schema.UpdateContextFunc)(nil), DeleteWithoutTimeout:(schema.DeleteContextFunc)(nil), CustomizeDiff:(schema.CustomizeDiffFunc)(nil), Importer:(*schema.ResourceImporter)(nil), DeprecationMessage:"", Timeouts:(*schema.ResourceTimeout)(nil), Description:"", UseJSONNumber:false, EnableLegacyTypeSystemApplyErrors:false, EnableLegacyTypeSystemPlanErrors:false}
+# 2023/12/12 13:02:29 TestRecoverAndCoerceCtyValue res.CoreConfigSchema().ImpliedType() == cty.Object(map[string]cty.Type{"f1":cty.Map(cty.String), "id":cty.String})
+# 2023/12/12 13:02:29 TestRecoverAndCoerceCtyValue [rapid] draw m: map[string]interface {}{"f1":map[string]interface {}{"f1":0x0}}
+# 2023/12/12 13:02:29 TestRecoverAndCoerceCtyValue got an error from recoverAndCoerceCtyValue: recoverCtyValue failed: Cannot recover cty.Value
+#   Desired type: cty.String
+#   Value: 0
+#   Actual type: uint
+# 
+v0.4.8#14505753928684085835
+0x10000000000000
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x10000000000000
+0x0
+0x0
+0x0
+0x0
+0x38e38e38e38e4
+0x2
+0x10000000000000
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x6b74f03291620
+0x5
+0x0
+0x0
+0x0
+0x0
