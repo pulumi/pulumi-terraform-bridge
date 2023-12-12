@@ -1618,10 +1618,9 @@ func (s languages) Less(i, j int) bool {
 	} else if ii == notFound && jj != notFound {
 		// Only the second item is found, so it must come first:
 		return false
-	} else {
-		// Fall back to alphabetical if neither are found:
-		return s[i] < s[j]
 	}
+	// Fall back to alphabetical if neither are found:
+	return s[i] < s[j]
 }
 
 // hclMapToString takes a map of hclConversions to various languages and returns a single Markdown string for use in
