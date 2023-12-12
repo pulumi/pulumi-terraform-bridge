@@ -91,7 +91,17 @@ func (p v2Provider) Configure(c shim.ResourceConfig) error {
 }
 
 func (p v2Provider) ConfigureWithContext(ctx context.Context, c shim.ResourceConfig) error {
-	return errors(p.tf.Configure(ctx, configFromShim(c)))
+	// See ConfigureProvider in https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
+	ctxHack := context.WithValue(ctx, schema.StopContextKey, p.stopContext(context.Background()))
+	return errors(p.tf.Configure(ctxHack, configFromShim(c)))
+}
+
+func (p v2Provider) stopContext(ctx context.Context) context.Context {
+	// TODO may want to follow StopContext implementation to make sure calling calling p.Stop()
+	// cancels the context returned here.
+	//
+	// See: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L60C1-L60C80
+	return ctx
 }
 
 func (p v2Provider) Apply(
