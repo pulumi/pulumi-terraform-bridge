@@ -153,6 +153,8 @@ func recoverScalarCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		return cty.BoolVal(value), nil
 	case int:
 		return cty.NumberIntVal(int64(value)), nil
+	case uint:
+		return cty.NumberIntVal(int64(value)), nil
 	case int64:
 		return cty.NumberIntVal(value), nil
 	case uint64:

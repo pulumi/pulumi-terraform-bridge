@@ -827,14 +827,30 @@ func normalizeCtyValue(v cty.Value) cty.Value {
 	return v
 }
 
+func numGen() *rapid.Generator[interface{}] {
+	return rapid.OneOf(
+		rapid.IntRange(0, 2).AsAny(),
+		rapid.Int8Range(0, 2).AsAny(),
+		rapid.Int16Range(0, 2).AsAny(),
+		rapid.Int32Range(0, 2).AsAny(),
+		rapid.Int64Range(0, 2).AsAny(),
+		rapid.UintRange(0, 2).AsAny(),
+		rapid.Uint8Range(0, 2).AsAny(),
+		rapid.Uint16Range(0, 2).AsAny(),
+		rapid.Uint32Range(0, 2).AsAny(),
+		rapid.Uint64Range(0, 2).AsAny(),
+		rapid.SampledFrom([]float32{0, 1}).AsAny(),
+		rapid.SampledFrom([]float64{0, 1}).AsAny(),
+	)
+}
+
 func valueGen(depth int) *rapid.Generator[interface{}] {
 	scalars := []interface{}{
 		nil,
 		true, false,
 		"", "s",
-		int(0), int(1),
 	}
-	s := rapid.OneOf(rapid.SampledFrom(scalars))
+	s := rapid.OneOf(rapid.SampledFrom(scalars), numGen())
 	if depth == 0 {
 		return s
 	}
