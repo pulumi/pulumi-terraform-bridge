@@ -484,14 +484,8 @@ func (h autoAliasHelper) captureFieldHistory(
 }
 
 func loadAutoSettings(artifact ProviderMetadata) (autoSettings, error) {
-	hist, ok, err := md.Get[autoSettings](artifact, autoSettingsKey)
-	if err != nil {
-		return autoSettings{}, err
-	}
-	if !ok {
-		hist = autoSettings{}
-	}
-	return hist, nil
+	as, _, err := md.Get[autoSettings](artifact, autoSettingsKey)
+	return as, err
 }
 
 func loadHistory(artifact ProviderMetadata) (aliasHistory, error) {
