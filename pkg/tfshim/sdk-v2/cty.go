@@ -15,12 +15,14 @@
 package sdkv2
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 
 	"github.com/golang/glog"
 
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
@@ -121,6 +123,27 @@ func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		default:
 			return cty.NilVal, fmt.Errorf("Cannot reconcile slice %v to %v", value, dT)
 		}
+	default:
+		v, err := recoverScalarCtyValue(dT, value)
+		if err != nil {
+			return v, err
+		}
+		if !v.Type().Equals(dT) {
+			// If we failed to get the desired type, borrow coalescing logic from
+			// schema.JSONMapToStateValue. At this point the code is only dealing with
+			// fully known scalars so this logic should give the desired result.
+			js, err := json.Marshal(value)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			return ctyjson.Unmarshal(js, dT)
+		}
+		return v, nil
+	}
+}
+
+func recoverScalarCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
+	switch value := value.(type) {
 	case string:
 		if value == terraformUnknownVariableValue {
 			return cty.UnknownVal(dT), nil

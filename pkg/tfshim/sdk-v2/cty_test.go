@@ -793,15 +793,6 @@ func TestRecoverCtyValue(t *testing.T) {
 	}
 }
 
-func TestR14(t *testing.T) {
-
-	e := cty.ObjectVal(map[string]cty.Value{"f2": cty.SetVal([]cty.Value{cty.NumberIntVal(1)}), "id": cty.NullVal(cty.String)})
-	a := cty.ObjectVal(map[string]cty.Value{"f2": cty.SetVal([]cty.Value{cty.NumberIntVal(1)}), "id": cty.NullVal(cty.String)})
-
-	t.Logf("e=a %v", e.RawEquals(a))
-
-}
-
 func TestRecoverAndCoerceCtyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		depth := 3
