@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -1452,6 +1453,71 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			  "errors": "1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"
 			}`)
 	})
+}
+
+// Legacy providers like gcp hold onto the Context object passed to Configure to use it in various
+// clients. To mitigate this, Configure in terraform-plugin-sdk injects a ctxHack context, as can be
+// seen under "see TODO: remove global stop context hack":
+//
+// https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L602
+//
+// This test tries to make sure such providers work when bridged.
+func TestConfigureContextCapture(t *testing.T) {
+	var clientContext context.Context
+
+	configure := func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		// StopContext is deprecated but still used in GCP for example:
+		// https://github.com/hashicorp/terraform-provider-google-beta/blob/master/google-beta/provider/provider.go#L2258
+		stopCtx, ok := schema.StopContext(ctx) //nolint
+		if !ok {
+			stopCtx = ctx
+		}
+		clientContext = stopCtx
+		return nil, nil
+	}
+
+	createR1 := func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+		fail := false
+		go func() {
+			<-clientContext.Done()
+			fail = true
+		}()
+		time.Sleep(100 * time.Millisecond)
+		assert.Falsef(t, fail, "clientContext is Done() during Create")
+		rd.SetId("0")
+		return nil
+	}
+
+	sProvider := &schema.Provider{
+		Schema:               map[string]*schema.Schema{},
+		ConfigureContextFunc: configure,
+		ResourcesMap: map[string]*schema.Resource{
+			"p_r1": {CreateContext: createR1},
+		},
+	}
+
+	provider := &Provider{
+		tf:     shimv2.NewProvider(sProvider),
+		config: shimv2.NewSchemaMap(sProvider.Schema),
+		info: ProviderInfo{
+			Resources: map[string]*ResourceInfo{
+				"p_r1": {Tok: "prov:index:ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	_, err := provider.Configure(ctx, &pulumirpc.ConfigureRequest{
+		Variables: map[string]string{},
+	})
+	require.NoError(t, err)
+	cancel()
+
+	_, err = provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn: "urn:pulumi:dev::teststack::prov:index:ExampleResource::exres",
+	})
+	require.NoError(t, err)
 }
 
 func TestPreConfigureCallback(t *testing.T) {

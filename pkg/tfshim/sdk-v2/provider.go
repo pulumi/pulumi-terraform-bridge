@@ -53,6 +53,8 @@ type v2Provider struct {
 	opts []providerOption
 }
 
+var _ shim.ProviderWithContext = (*v2Provider)(nil)
+
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	return v2Provider{
 		tf:   p,
@@ -85,10 +87,38 @@ func (p v2Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]strin
 }
 
 func (p v2Provider) Configure(c shim.ResourceConfig) error {
-	return errors(p.tf.Configure(context.TODO(), configFromShim(c)))
+	return errors(p.tf.Configure(context.Background(), configFromShim(c)))
 }
 
-func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v2Provider) ConfigureWithContext(ctx context.Context, c shim.ResourceConfig) error {
+	// See ConfigureProvider e.g.
+	// https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
+	ctxHack := context.WithValue(ctx, schema.StopContextKey, p.stopContext(context.Background()))
+	return errors(p.tf.Configure(ctxHack, configFromShim(c)))
+}
+
+func (p v2Provider) stopContext(ctx context.Context) context.Context {
+	// TODO may want to follow StopContext implementation to make sure calling calling p.Stop()
+	// cancels the context returned here.
+	//
+	// See: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L60C1-L60C80
+	return ctx
+}
+
+func (p v2Provider) Apply(
+	t string,
+	s shim.InstanceState,
+	d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	return p.ApplyWithContext(context.Background(), t, s, d)
+}
+
+func (p v2Provider) ApplyWithContext(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
@@ -97,11 +127,24 @@ func (p v2Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
-	state, diags := r.Apply(context.TODO(), state, diffFromShim(d), p.tf.Meta())
+	state, diags := r.Apply(ctx, state, diffFromShim(d), p.tf.Meta())
 	return stateToShim(r, state), errors(diags)
 }
 
-func (p v2Provider) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
+func (p v2Provider) Refresh(
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	return p.RefreshWithContext(context.Background(), t, s, c)
+}
+
+func (p v2Provider) RefreshWithContext(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+) (shim.InstanceState, error) {
 	opts, err := getProviderOptions(p.opts)
 	if err != nil {
 		return nil, err
@@ -125,21 +168,43 @@ func (p v2Provider) Refresh(t string, s shim.InstanceState, c shim.ResourceConfi
 	return stateToShim(r, state), errors(diags)
 }
 
-func (p v2Provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v2Provider) ReadDataDiff(
+	t string,
+	c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	return p.ReadDataDiffWithContext(context.Background(), t, c)
+}
+
+func (p v2Provider) ReadDataDiffWithContext(
+	ctx context.Context,
+	t string,
+	c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	r, ok := p.tf.DataSourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	diff, err := r.Diff(context.TODO(), nil, configFromShim(c), p.tf.Meta())
+	diff, err := r.Diff(ctx, nil, configFromShim(c), p.tf.Meta())
 	return diffToShim(diff), err
 }
 
-func (p v2Provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v2Provider) ReadDataApply(
+	t string,
+	d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	return p.ReadDataApplyWithContext(context.Background(), t, d)
+}
+
+func (p v2Provider) ReadDataApplyWithContext(
+	ctx context.Context,
+	t string,
+	d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	r, ok := p.tf.DataSourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, diags := r.ReadDataApply(context.TODO(), diffFromShim(d), p.tf.Meta())
+	state, diags := r.ReadDataApply(ctx, diffFromShim(d), p.tf.Meta())
 	return stateToShim(r, state), errors(diags)
 }
 

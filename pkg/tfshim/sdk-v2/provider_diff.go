@@ -26,7 +26,20 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v2Provider) Diff(
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	return p.DiffWithContext(context.Background(), t, s, c)
+}
+
+func (p v2Provider) DiffWithContext(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
@@ -60,7 +73,7 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 		}
 	}
 
-	diff, err := p.simpleDiff(opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
+	diff, err := p.simpleDiff(ctx, opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
 	if diff != nil {
 		diff.RawConfig = rawConfig
 	}
@@ -68,6 +81,7 @@ func (p v2Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 }
 
 func (p v2Provider) simpleDiff(
+	ctx context.Context,
 	diffStrat DiffStrategy,
 	res *schema.Resource,
 	s *terraform.InstanceState,
@@ -75,7 +89,6 @@ func (p v2Provider) simpleDiff(
 	rawConfigVal hcty.Value,
 	meta interface{},
 ) (*terraform.InstanceDiff, error) {
-	ctx := context.TODO()
 
 	switch diffStrat {
 	case ClassicDiff:
