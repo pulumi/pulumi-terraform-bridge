@@ -15,11 +15,14 @@
 package walk
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
 	hcty "github.com/hashicorp/go-cty/cty"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -64,6 +67,51 @@ func (p SchemaPath) WithStep(suffix SchemaPathStep) SchemaPath {
 	copy(ret, p)
 	ret[len(p)] = suffix
 	return ret
+}
+
+func (p SchemaPath) EncodeSchemaPath() (string, error) {
+	var buf bytes.Buffer
+	for i, step := range p {
+		if i > 0 {
+			fmt.Fprintf(&buf, ".")
+		}
+		switch step := step.(type) {
+		case ElementStep:
+			fmt.Fprintf(&buf, "$")
+		case GetAttrStep:
+			if strings.Contains(step.Name, ".") {
+				return "", fmt.Errorf("Cannot encode SchemaPath %q containing '.'", step.Name)
+			}
+			if step.Name == "$" {
+				return "", fmt.Errorf("Cannot encode SchemaPath %q", step.Name)
+			}
+			fmt.Fprintf(&buf, step.Name)
+		default:
+			contract.Failf("impossible")
+		}
+	}
+	return buf.String(), nil
+}
+
+func (p SchemaPath) MustEncodeSchemaPath() string {
+	s, err := p.EncodeSchemaPath()
+	contract.AssertNoErrorf(err, "Unexpected SchemaPath encoding error")
+	return s
+}
+
+func DecodeSchemaPath(path string) SchemaPath {
+	p := NewSchemaPath()
+	if path == "" {
+		return p
+	}
+	for _, frag := range strings.Split(path, ".") {
+		if frag == "$" {
+			p = p.Element()
+		} else {
+			p = p.GetAttr(frag)
+		}
+	}
+	return p
 }
 
 // Builds a new empty SchemaPath.

@@ -15,39 +15,17 @@
 package tfbridge
 
 import (
+	"sort"
+
 	"github.com/Masterminds/semver"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
-
-type tokenHistory[T ~string] struct {
-	Current T          `json:"current"`        // the current Pulumi token for the resource
-	Past    []alias[T] `json:"past,omitempty"` // Previous tokens
-
-	MajorVersion int                      `json:"majorVersion,omitempty"`
-	Fields       map[string]*fieldHistory `json:"fields,omitempty"`
-}
-
-type alias[T ~string] struct {
-	Name         T    `json:"name"`         // The previous token.
-	InCodegen    bool `json:"inCodegen"`    // If the alias is a fully generated resource, or just a schema alias.
-	MajorVersion int  `json:"majorVersion"` // The provider's major version when Name was introduced.
-}
-
-type aliasHistory struct {
-	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources,omitempty"`
-	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources,omitempty"`
-}
-
-type fieldHistory struct {
-	MaxItemsOne *bool `json:"maxItemsOne,omitempty"`
-
-	Fields map[string]*fieldHistory `json:"fields,omitempty"`
-	Elem   *fieldHistory            `json:"elem,omitempty"`
-}
 
 // Automatically applies backwards compatibility best practices.
 //
@@ -73,40 +51,216 @@ type fieldHistory struct {
 // detected, and then overrides are cleared. Effectively this makes sure that upstream
 // MaxItems changes are deferred until the next major version.
 //
-// Implementation note: to operate correctly this method needs to keep a persistent track
-// of a database of past decision history. This is currently done by doing reads and
-// writes to `providerInfo.GetMetadata()`, which is assumed to be persisted across
-// provider releases. The bridge framework keeps this information written out to an opaque
-// `bridge-metadata.json` blob which is expected to be stored in source control to persist
-// across releases.
-//
 // Panics if [ProviderInfo.ApplyAutoAliases] would return an error.
 func (info *ProviderInfo) MustApplyAutoAliases() {
 	err := info.ApplyAutoAliases()
 	contract.AssertNoErrorf(err, "Failed to apply aliases")
 }
 
-// Automatically applies backwards compatibility best practices.
-//
-// The goal is to prevent breaking changes from Pulumi maintainers or from the upstream
-// provider from causing breaking changes in minor version bumps. We do this by deferring
-// certain types of breaking changes to major versions.
-//
-// For details on the implement ion of this method, go to ./README.md#"Automatic Aliasing"
+// See [MustApplyAutoAliases].
 func (info *ProviderInfo) ApplyAutoAliases() error {
+	// Do minimal work at runtime to avoid adding to provider startup delay.
+	if currentRuntimeStage == runningProviderStage {
+		autoSettings, err := loadAutoSettings(info.GetMetadata())
+		if err != nil {
+			return err
+		}
+		autoSettings.apply(info)
+		return nil
+	}
+
 	artifact := info.GetMetadata()
-	hist, err := getHistory(artifact)
+
+	hist, err := loadHistory(artifact)
 	if err != nil {
 		return err
 	}
 
+	h := &autoAliasHelper{info}
+
+	currentVersion, err := h.computeCurrentVersion(hist)
+	if err != nil {
+		return err
+	}
+
+	// This needs to happen before newHist forgets the historical versions.
+	h.clearFieldHistoryForMajorUpgrades(hist, currentVersion)
+
+	newHist := h.updatedAliasHistory(hist, currentVersion)
+
+	autoSettings, err := h.computeAutoSettings(newHist, currentVersion)
+	if err != nil {
+		return err
+	}
+
+	// Apply automatic settings by modifying info so that tfgen sees these settings.
+	autoSettings.apply(info)
+
+	// Now that info has updated Field values, save them to the history for later.
+	h.updateFieldHistory(newHist)
+
+	// Save updated history for later invocations of tfgen.
+	if err := md.Set(artifact, aliasMetadataKey, newHist); err != nil {
+		// Set fails only when `hist` is not serializable. Because `newHist` is composed of
+		// marshallable, non-cyclic types, this is impossible.
+		contract.AssertNoErrorf(err, "History failed to serialize")
+	}
+
+	// Save automatic settings so that the provider can load them at runtime.
+	if err := md.Set(artifact, autoSettingsKey, autoSettings); err != nil {
+		contract.AssertNoErrorf(err, "Auto settings failed to serialize")
+	}
+
+	return nil
+}
+
+const (
+	// Key for storing aliasHistory in ProviderMetadata.
+	aliasMetadataKey = "auto-aliasing"
+
+	// Key for storing autoSettings in ProviderMetadata.
+	autoSettingsKey = "auto-settings"
+)
+
+// History used by ApplyAutoAliases. This data is persisted across provider builds so that schema
+// generation can consult decisions from the previous release. For ApplyAutoAliases to operate
+// correctly, a persistent database of past decision history is required. This is currently done by
+// doing reads and writes to `providerInfo.GetMetadata()`, which is assumed to be persisted across
+// provider releases. The bridge framework keeps this information written out to an opaque
+// `bridge-metadata.json` blob which is expected to be stored in source control to persist across
+// releases. This data should not be used by the provider at runtime, and remain a tfgen-only
+// concern.
+type aliasHistory struct {
+	Resources   map[string]*tokenHistory[tokens.Type]         `json:"resources,omitempty"`
+	DataSources map[string]*tokenHistory[tokens.ModuleMember] `json:"datasources,omitempty"`
+}
+
+type tokenHistory[T ~string] struct {
+	Current T          `json:"current"`        // the current Pulumi token for the resource
+	Past    []alias[T] `json:"past,omitempty"` // Previous tokens
+
+	MajorVersion int                      `json:"majorVersion,omitempty"`
+	Fields       map[string]*fieldHistory `json:"fields,omitempty"`
+}
+
+type alias[T ~string] struct {
+	Name         T    `json:"name"`         // The previous token.
+	InCodegen    bool `json:"inCodegen"`    // If the alias is a fully generated resource, or just a schema alias.
+	MajorVersion int  `json:"majorVersion"` // The provider's major version when Name was introduced.
+}
+
+type fieldHistory struct {
+	MaxItemsOne *bool `json:"maxItemsOne,omitempty"`
+
+	Fields map[string]*fieldHistory `json:"fields,omitempty"`
+	Elem   *fieldHistory            `json:"elem,omitempty"`
+}
+
+func (fields *fieldHistory) lookup(path walk.SchemaPath) *fieldHistory {
+	here := fields
+	for len(path) > 0 {
+		switch step := path[0].(type) {
+		case walk.ElementStep:
+			if here.Elem == nil {
+				return nil
+			}
+			here, path = here.Elem, path[1:]
+		case walk.GetAttrStep:
+			if here.Fields == nil {
+				return nil
+			}
+			if _, ok := here.Fields[step.Name]; !ok {
+				return nil
+			}
+			here, path = here.Fields[step.Name], path[1:]
+		default:
+			contract.Failf("impossible")
+		}
+	}
+	return here
+}
+
+func (fields *fieldHistory) getOrCreate(path walk.SchemaPath) *fieldHistory {
+	here := fields
+	for len(path) > 0 {
+		switch step := path[0].(type) {
+		case walk.ElementStep:
+			if here.Elem == nil {
+				here.Elem = &fieldHistory{}
+			}
+			here, path = here.Elem, path[1:]
+		case walk.GetAttrStep:
+			if here.Fields == nil {
+				here.Fields = map[string]*fieldHistory{}
+			}
+			if _, ok := here.Fields[step.Name]; !ok {
+				here.Fields[step.Name] = &fieldHistory{}
+			}
+			here, path = here.Fields[step.Name], path[1:]
+		default:
+			contract.Failf("impossible")
+		}
+	}
+	return here
+}
+
+type autoAliasHelper struct {
+	info *ProviderInfo
+}
+
+func (h autoAliasHelper) computeAutoSettings(
+	history aliasHistory,
+	currentVersion int,
+) (autoSettings, error) {
+	info := h.info
+	settings := autoSettings{}
+
+	for tfToken := range info.Resources {
+		r, ok := info.P.ResourcesMap().GetOk(tfToken)
+		if !ok {
+			continue
+		}
+		fields := info.Resources[tfToken].GetFields()
+		var fieldHist map[string]*fieldHistory
+		if hr, ok := history.Resources[tfToken]; ok {
+			fieldHist = hr.Fields
+		}
+		if r != nil {
+			over := h.computeMaxItemsOneOverrides(r.Schema(), fields, fieldHist)
+			settings.setResourceOverrides(tfToken, over)
+		}
+		h.computeResourceAliasesAndRenames(tfToken, history, currentVersion, &settings)
+	}
+
+	for tfToken := range info.DataSources {
+		d, ok := info.P.DataSourcesMap().GetOk(tfToken)
+		if !ok {
+			continue
+		}
+		fields := info.DataSources[tfToken].GetFields()
+		var fieldHist map[string]*fieldHistory
+		if hr, ok := history.DataSources[tfToken]; ok {
+			fieldHist = hr.Fields
+		}
+		if d != nil {
+			over := h.computeMaxItemsOneOverrides(d.Schema(), fields, fieldHist)
+			settings.setDataSourceOverrides(tfToken, over)
+		}
+		h.computeDataSourceRenames(tfToken, history, currentVersion, &settings)
+	}
+
+	return settings, nil
+}
+
+func (h autoAliasHelper) computeCurrentVersion(hist aliasHistory) (int, error) {
+	info := h.info
 	var currentVersion int
 	// If version is missing, we assume the current version is the most recent major
 	// version in mentioned in history.
 	if info.Version != "" {
 		v, err := semver.NewVersion(info.Version)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		currentVersion = int(v.Major())
 	} else {
@@ -125,53 +279,216 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 			}
 		}
 	}
-
-	rMap := info.P.ResourcesMap()
-	dMap := info.P.DataSourcesMap()
-
-	// Applying resource aliases adds new resources to providerInfo.Resources. To keep
-	// this process deterministic, we don't apply resource aliases until all resources
-	// have been examined.
-	//
-	// The same logic applies to datasources.
-	applyAliases := []func(){}
-
-	for tfToken, computed := range info.Resources {
-		r, ok := rMap.GetOk(tfToken)
-		if !ok {
-			continue
-		}
-		aliasResource(info, r, &applyAliases, hist.Resources,
-			computed, tfToken, currentVersion)
-	}
-
-	for tfToken, computed := range info.DataSources {
-		ds, ok := dMap.GetOk(tfToken)
-		if !ok {
-			continue
-		}
-		aliasDataSource(info, ds, &applyAliases, hist.DataSources,
-			computed, tfToken, currentVersion)
-	}
-
-	for _, f := range applyAliases {
-		f()
-	}
-
-	if isTfgen() {
-		if err := md.Set(artifact, aliasMetadataKey, hist); err != nil {
-			// Set fails only when `hist` is not serializable. Because `hist` is
-			// composed of marshallable, non-cyclic types, this is impossible.
-			contract.AssertNoErrorf(err, "History failed to serialize")
-		}
-	}
-
-	return nil
+	return currentVersion, nil
 }
 
-const aliasMetadataKey = "auto-aliasing"
+func (autoAliasHelper) computeMaxItemsOneOverrides(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+	history map[string]*fieldHistory,
+) maxItemsOneOverrides {
+	if schemaMap == nil {
+		return nil
+	}
+	over := make(maxItemsOneOverrides)
+	fh := &fieldHistory{Fields: history}
+	walk.VisitSchemaMap(schemaMap, func(sp walk.SchemaPath, s shim.Schema) {
+		info := LookupSchemaInfoMapPath(sp, schemaInfos)
 
-func getHistory(artifact ProviderMetadata) (aliasHistory, error) {
+		// If the user already set a MaxItemsOne override, respect it.
+		if info != nil && info.MaxItemsOne != nil {
+			return
+		}
+
+		actual := IsMaxItemsOne(s, info)
+		prev := fh.lookup(sp)
+
+		// Preserve historical MaxItemsOne if it is available and disagrees with current.
+		if prev != nil && prev.MaxItemsOne != nil && *prev.MaxItemsOne != actual {
+			over.set(sp, *prev.MaxItemsOne)
+		}
+	})
+	return over
+}
+
+func (h autoAliasHelper) computeResourceAliasesAndRenames(
+	tfToken string,
+	history aliasHistory,
+	currentVersion int,
+	settings *autoSettings,
+) {
+	hist := history.Resources[tfToken]
+	if hist == nil {
+		return
+	}
+	for _, a := range hist.Past {
+		// Only respect hard aliases introduced in the same major version
+		if a.InCodegen && a.MajorVersion == currentVersion {
+			settings.addResourceAlias(tfToken, a.Name)
+		} else {
+			settings.addResourceRename(tfToken, a.Name)
+		}
+	}
+}
+
+func (h autoAliasHelper) computeDataSourceRenames(
+	tfToken string,
+	history aliasHistory,
+	currentVersion int,
+	settings *autoSettings,
+) {
+	hist := history.DataSources[tfToken]
+	if hist == nil {
+		return
+	}
+	for _, a := range hist.Past {
+		if a.MajorVersion != currentVersion {
+			continue
+		}
+		settings.addDataSourceRename(tfToken, a.Name)
+	}
+}
+
+// This modifies hist in-place to drop Fields overrides that are not on the current version.
+func (h autoAliasHelper) clearFieldHistoryForMajorUpgrades(hist aliasHistory, currentVersion int) {
+	for _, v := range hist.DataSources {
+		if v.MajorVersion < currentVersion {
+			v.Fields = nil
+		}
+	}
+	for _, v := range hist.Resources {
+		if v.MajorVersion < currentVersion {
+			v.Fields = nil
+		}
+	}
+}
+
+// Non-destructively computes updated alias history.
+func (h autoAliasHelper) updatedAliasHistory(hist aliasHistory, currentVersion int) aliasHistory {
+	info := h.info
+	newHist := aliasHistory{
+		DataSources: map[string]*tokenHistory[tokens.ModuleMember]{},
+		Resources:   map[string]*tokenHistory[tokens.Type]{},
+	}
+
+	for tfToken, res := range info.Resources {
+		_, ok := info.P.ResourcesMap().GetOk(tfToken)
+		if !ok {
+			continue
+		}
+		old := hist.Resources[tfToken]
+		upd := updatedTokenHistory(old, currentVersion, res.Tok)
+		newHist.Resources[tfToken] = upd
+	}
+
+	for tfToken, ds := range info.DataSources {
+		_, ok := info.P.DataSourcesMap().GetOk(tfToken)
+		if !ok {
+			continue
+		}
+		old := hist.DataSources[tfToken]
+		upd := updatedTokenHistory(old, currentVersion, ds.Tok)
+		newHist.DataSources[tfToken] = upd
+	}
+
+	return newHist
+}
+
+// Returns an updated alias history with the new currentToken and currentMajorVersion. Previous
+// values for "Current" are recorded in the Past list. Preserves the invariant Past and Current are
+// unique, that is Past aliases are unique by Name and none of them has a Name matching Current.
+func updatedTokenHistory[T ~string](
+	th *tokenHistory[T],
+	currentMajorVersion int,
+	currentToken T,
+) *tokenHistory[T] {
+	if th == nil {
+		return &tokenHistory[T]{
+			Current:      currentToken,
+			MajorVersion: currentMajorVersion,
+		}
+	}
+
+	past := map[T]alias[T]{}
+
+	for _, a := range append(th.Past, alias[T]{
+		Name:         th.Current,
+		InCodegen:    true,
+		MajorVersion: th.MajorVersion,
+	}) {
+		if a.Name != currentToken {
+			past[a.Name] = a
+		}
+	}
+
+	u := tokenHistory[T]{
+		Current:      currentToken,
+		MajorVersion: currentMajorVersion,
+		Fields:       th.Fields,
+	}
+
+	for _, a := range past {
+		u.Past = append(u.Past, a)
+	}
+
+	sort.Slice(u.Past, func(i, j int) bool {
+		return u.Past[i].Name < u.Past[j].Name
+	})
+
+	return &u
+}
+
+// Destructively updates hist Fields by recording the actual values of MaxItemsOne found in the
+// modified Provider from h.info.
+func (h autoAliasHelper) updateFieldHistory(hist aliasHistory) {
+	for tfToken, r := range hist.Resources {
+		res := h.info.P.ResourcesMap().Get(tfToken)
+		if res != nil {
+			r.Fields = h.captureFieldHistory(
+				res.Schema(),
+				h.info.Resources[tfToken].GetFields(),
+			).Fields
+		}
+	}
+	for tfToken, d := range hist.DataSources {
+		ds := h.info.P.DataSourcesMap().Get(tfToken)
+		if ds != nil {
+			d.Fields = h.captureFieldHistory(
+				ds.Schema(),
+				h.info.DataSources[tfToken].GetFields(),
+			).Fields
+		}
+	}
+}
+
+func (h autoAliasHelper) captureFieldHistory(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) *fieldHistory {
+	fh := &fieldHistory{}
+
+	if schemaMap == nil {
+		return fh
+	}
+
+	walk.VisitSchemaMap(schemaMap, func(sp walk.SchemaPath, tfs shim.Schema) {
+		info := LookupSchemaInfoMapPath(sp, schemaInfos)
+		if tfs == nil || (tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet) {
+			return
+		}
+		actual := IsMaxItemsOne(tfs, info)
+		fh.getOrCreate(sp).MaxItemsOne = &actual
+	})
+
+	return fh
+}
+
+func loadAutoSettings(artifact ProviderMetadata) (autoSettings, error) {
+	as, _, err := md.Get[autoSettings](artifact, autoSettingsKey)
+	return as, err
+}
+
+func loadHistory(artifact ProviderMetadata) (aliasHistory, error) {
 	hist, ok, err := md.Get[aliasHistory](artifact, aliasMetadataKey)
 	if err != nil {
 		return aliasHistory{}, err
@@ -185,349 +502,182 @@ func getHistory(artifact ProviderMetadata) (aliasHistory, error) {
 	return hist, nil
 }
 
-func aliasResource(
-	p *ProviderInfo, res shim.Resource,
-	applyResourceAliases *[]func(),
-	hist map[string]*tokenHistory[tokens.Type], computed *ResourceInfo,
-	tfToken string, version int,
-) {
-	prev, hasPrev := hist[tfToken]
-	if !hasPrev {
-		if isTfgen() {
-			// It's not in the history, so it must be new. Stick it in the history for
-			// next time.
-			hist[tfToken] = &tokenHistory[tokens.Type]{
-				Current: computed.Tok,
-			}
-		}
-	} else {
-		// We don't do this eagerly because aliasResource is called while
-		// iterating over p.Resources which aliasOrRenameResource mutates.
-		*applyResourceAliases = append(*applyResourceAliases,
-			func() { aliasOrRenameResource(p, computed, tfToken, prev, version) })
+// Minimal data computed at tfgen time that is needed to inform the runtime provider behavior.
+type autoSettings struct {
+	Resources   map[string]*autoResourceSettings   `json:"resources,omitempty"`
+	DataSources map[string]*autoDataSourceSettings `json:"datasources,omitempty"`
+}
+
+func (a *autoSettings) findOrCreateResource(key string) *autoResourceSettings {
+	if a.Resources == nil {
+		a.Resources = map[string]*autoResourceSettings{}
 	}
+	if _, ok := a.Resources[key]; !ok {
+		a.Resources[key] = &autoResourceSettings{}
+	}
+	return a.Resources[key]
+}
 
-	// Apply Aliasing to MaxItemOne by traversing the field tree and applying the
-	// stored value.
-	//
-	// Note: If the user explicitly sets a MaxItemOne value, that value is respected
-	// and overwrites the current history.'
+func (a *autoSettings) findOrCreateDataSource(key string) *autoDataSourceSettings {
+	if a.DataSources == nil {
+		a.DataSources = map[string]*autoDataSourceSettings{}
+	}
+	if _, ok := a.DataSources[key]; !ok {
+		a.DataSources[key] = &autoDataSourceSettings{}
+	}
+	return a.DataSources[key]
+}
 
-	if res == nil || hist[tfToken] == nil {
+func (a *autoSettings) addResourceAlias(key string, alias tokens.Type) {
+	r := a.findOrCreateResource(key)
+	if !contains(r.Aliases, alias) {
+		r.Aliases = append(r.Aliases, alias)
+	}
+}
+
+func (a *autoSettings) addResourceRename(key string, rename tokens.Type) {
+	r := a.findOrCreateResource(key)
+	if !contains(r.Renames, rename) {
+		r.Renames = append(r.Renames, rename)
+	}
+}
+
+func (a *autoSettings) addDataSourceRename(key string, rename tokens.ModuleMember) {
+	d := a.findOrCreateDataSource(key)
+	if !contains(d.Renames, rename) {
+		d.Renames = append(d.Renames, rename)
+	}
+}
+
+func (a *autoSettings) setResourceOverrides(key string, over maxItemsOneOverrides) {
+	if over.isEmpty() {
 		return
 	}
-
-	// If we are behind the major version, reset the fields and the major version.
-	if hist[tfToken].MajorVersion < version {
-		hist[tfToken].MajorVersion = version
-		hist[tfToken].Fields = nil
-	}
-
-	applyResourceMaxItemsOneAliasing(res, &hist[tfToken].Fields, &computed.Fields)
+	a.findOrCreateResource(key).MaxItemsOneOverrides = over
 }
 
-// applyResourceMaxItemsOneAliasing traverses a shim.Resource, applying walk to each field in the resource.
-func applyResourceMaxItemsOneAliasing(
-	r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*SchemaInfo,
-) (bool, bool) {
-	if r == nil {
-		return hist != nil, info != nil
-	}
-	m := r.Schema()
-	if m == nil {
-		return hist != nil, info != nil
-	}
-
-	var rHasH, rHasI bool
-
-	m.Range(func(k string, v shim.Schema) bool {
-		h, hasH := getNonNil(hist, k)
-		i, hasI := getNonNil(info, k)
-		fieldHasHist, fieldHasInfo := applyMaxItemsOneAliasing(v, h, i)
-
-		hasH = hasH || fieldHasHist
-		hasI = hasI || fieldHasInfo
-
-		if !hasH && isTfgen() {
-			delete(*hist, k)
-		}
-		if !hasI {
-			delete(*info, k)
-		}
-
-		rHasH = rHasH || hasH
-		rHasI = rHasI || hasI
-
-		return true
-	})
-
-	return rHasH, rHasI
-}
-
-// When walking the schema tree for a resource, we create mirroring trees in
-// *fieldHistory and *SchemaInfo. To avoid polluting either tree (and
-// interfering with other actions such as SetAutonaming), we clean up the paths
-// that we created but did not store any information into.
-//
-// For example, consider the schema for a field of type `Object{ Key1:
-// List[String] }`.  The schema tree for this field looks like this:
-//
-//	Object:
-//	  Fields:
-//	    Key1:
-//	      List:
-//	        Elem:
-//	          String
-//
-// When we walk the tree, we create an almost identical history tree:
-//
-//	Object:
-//	  Fields:
-//	    Key1:
-//	      List:
-//	        MaxItemsOne: false
-//	        Elem:
-//	          String
-//
-// We stored the additional piece of information `MaxItemsOne: false`. We need to
-// keep enough of the tree to maintain that information, but no more. We can
-// discard the unnecessary `Elem: String`.
-//
-// This keeps the tree as clean as possible for other processes which expect a
-// `nil` element when making changes. Since other processes (like SetAutonaming)
-// act on edge nodes (like our String), this allows us to inter-operate with them
-// without interference.
-//
-// applyMaxItemsOneAliasing traverses a generic shim.Schema recursively, applying fieldHistory to
-// SchemaInfo and vise versa as necessary to avoid breaking changes in the
-// resulting sdk.
-func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *SchemaInfo) (hasH bool, hasI bool) {
-	//revive:disable-next-line:empty-block
-	if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
-		// MaxItemsOne does not apply, so do nothing
-	} else if info.MaxItemsOne != nil {
-		// The user has overwritten the value, so we will just record that.
-		if isTfgen() {
-			h.MaxItemsOne = info.MaxItemsOne
-			hasH = true
-		}
-	} else if h.MaxItemsOne != nil {
-		// If we have a previous value in the history, we keep it as is.
-		info.MaxItemsOne = h.MaxItemsOne
-		hasI = true
-	} else if isTfgen() {
-		// There is no history for this value, so we bake it into the
-		// alias history.
-		h.MaxItemsOne = BoolRef(IsMaxItemsOne(schema, info))
-		hasH = true
-	}
-
-	// if h.Elem is null and we're not trying to generate updated history, we're done
-	if h.Elem == nil && !isTfgen() {
-		return hasH, hasI
-	}
-
-	// Ensure that the h.Elem and info.Elem fields are non-nil so they can be
-	// safely recursed on.
-	//
-	// If the .Elem existed before this function, we mark it as unsafe to cleanup.
-	var hasElemH, hasElemI bool
-	populateElem := func() {
-		if h.Elem == nil {
-			h.Elem = &fieldHistory{}
-		} else {
-			hasElemH = true
-		}
-		if info.Elem == nil {
-			info.Elem = &SchemaInfo{}
-		} else {
-			hasElemI = true
-		}
-	}
-	// Cleanup after we have walked a .Elem value.
-	//
-	// If the .Elem field was created in populateElem and the field was not
-	// changed, we then delete the field.
-	cleanupElem := func(elemHist, elemInfo bool) {
-		hasElemH = hasElemH || elemHist
-		hasElemI = hasElemI || elemInfo
-		if !hasElemH {
-			h.Elem = nil
-		}
-		if !hasElemI {
-			info.Elem = nil
-		}
-	}
-
-	e := schema.Elem()
-	switch e := e.(type) {
-	case shim.Resource:
-		populateElem()
-		eHasH, eHasI := applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
-		cleanupElem(eHasH, eHasI)
-	case shim.Schema:
-		populateElem()
-		eHasH, eHasI := applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
-		cleanupElem(eHasH, eHasI)
-	}
-
-	return hasH || hasElemH, hasI || hasElemI
-}
-
-func getNonNil[K comparable, V any](m *map[K]*V, key K) (_ *V, alreadyThere bool) {
-	contract.Assertf(m != nil, "Cannot restore map if ptr is nil")
-	if *m == nil {
-		*m = map[K]*V{}
-	}
-	v := (*m)[key]
-
-	if v == nil {
-		var new V
-		v = &new
-		(*m)[key] = v
-	} else {
-		alreadyThere = true
-	}
-	return v, alreadyThere
-}
-
-func aliasOrRenameResource(
-	p *ProviderInfo,
-	res *ResourceInfo, tfToken string,
-	hist *tokenHistory[tokens.Type], currentVersion int,
-) {
-	var alreadyPresent bool
-	for _, a := range hist.Past {
-		if a.Name == hist.Current {
-			alreadyPresent = true
-			break
-		}
-	}
-	if !alreadyPresent && res.Tok != hist.Current {
-		// The resource is in history, but the name has changed. Update the new current name
-		// and add the old name to the history.
-		hist.Past = append(hist.Past, alias[tokens.Type]{
-			Name:         hist.Current,
-			InCodegen:    true,
-			MajorVersion: currentVersion,
-		})
-		hist.Current = res.Tok
-	}
-	for _, a := range hist.Past {
-		legacy := a.Name
-		// Only respect hard aliases introduced in the same major version
-		if a.InCodegen && a.MajorVersion == currentVersion {
-			p.RenameResourceWithAlias(tfToken, legacy,
-				res.Tok, legacy.Module().Name().String(),
-				res.Tok.Module().Name().String(), res)
-		} else {
-			res.Aliases = append(res.Aliases,
-				AliasInfo{Type: (*string)(&legacy)})
-		}
-	}
-
-}
-
-func aliasDataSource(
-	p *ProviderInfo,
-	ds shim.Resource,
-	queue *[]func(),
-	hist map[string]*tokenHistory[tokens.ModuleMember],
-	computed *DataSourceInfo,
-	tfToken string,
-	version int,
-) {
-	prev, hasPrev := hist[tfToken]
-	if !hasPrev {
-		// It's not in the history, so it must be new. Stick it in the history for
-		// next time.
-		hist[tfToken] = &tokenHistory[tokens.ModuleMember]{
-			Current:      computed.Tok,
-			MajorVersion: version,
-		}
-	} else {
-		*queue = append(*queue,
-			func() { aliasOrRenameDataSource(p, computed, tfToken, prev, version) })
-	}
-
-	if ds == nil {
+func (a *autoSettings) setDataSourceOverrides(key string, over maxItemsOneOverrides) {
+	if over.isEmpty() {
 		return
 	}
-
-	// If we are behind the major version, reset the fields and the major version.
-	if hist[tfToken].MajorVersion < version {
-		hist[tfToken].MajorVersion = version
-		hist[tfToken].Fields = nil
-	}
-
-	applyResourceMaxItemsOneAliasing(ds, &hist[tfToken].Fields, &computed.Fields)
+	a.findOrCreateDataSource(key).MaxItemsOneOverrides = over
 }
 
-func aliasOrRenameDataSource(
-	p *ProviderInfo,
-	ds *DataSourceInfo, tfToken string,
-	prev *tokenHistory[tokens.ModuleMember],
-	currentVersion int,
-) {
-	// re-fetch the resource, to make sure we have the right pointer.
-	computed, ok := p.DataSources[tfToken]
-	if !ok {
-		// The DataSource to alias has been removed. There
-		// is nothing to alias anymore.
-		return
+func (a *autoSettings) apply(p *ProviderInfo) {
+	for k, v := range a.Resources {
+		v.apply(p, k)
 	}
-
-	if prev.Current != ds.Tok {
-		prev.Past = append(prev.Past, alias[tokens.ModuleMember]{
-			Name:         prev.Current,
-			MajorVersion: currentVersion,
-		})
-		prev.Current = ds.Tok
-
-		duplicates := []int{}
-		for i, v := range prev.Past {
-			if v.Name != prev.Current {
-				continue
-			}
-			duplicates = append(duplicates, i)
-		}
-		prev.Past = removeIndexes(prev.Past, duplicates)
+	for k, v := range a.DataSources {
+		v.apply(p, k)
 	}
-	for _, a := range prev.Past {
-		if a.MajorVersion != currentVersion {
-			continue
-		}
-		legacy := a.Name
-		p.RenameDataSource(tfToken, legacy,
-			computed.Tok, legacy.Module().Name().String(),
-			computed.Tok.Module().Name().String(), computed)
-	}
-
 }
 
-// Remove elements at indexes from src, then return the resulting array.
-//
-// indexes must be in sorted order from largest to smallest.
-func removeIndexes[T any](src []T, indexes []int) []T {
-	if len(indexes) == 0 {
-		return src
+type autoResourceSettings struct {
+	Aliases              []tokens.Type        `json:"aliases,omitempty"`
+	MaxItemsOneOverrides maxItemsOneOverrides `json:"maxItemsOneOverrides,omitempty"`
+	Renames              []tokens.Type        `json:"renames,omitempty"`
+}
+
+func (a autoResourceSettings) apply(p *ProviderInfo, tfToken string) {
+	r, ok := p.Resources[tfToken]
+	contract.Assertf(ok && r.Tok != "",
+		"Unexpected resource token lacking a mapping: %q", tfToken)
+	for _, old := range a.Aliases {
+		oldMod := old.Module().Name().String()
+		newMod := r.Tok.Module().Name().String()
+		p.RenameResourceWithAlias(tfToken, old, r.Tok, oldMod, newMod, r)
 	}
-	dst := make([]T, len(src)-len(indexes))
-	indexPtr, dstPtr := 0, 0
-	for i, v := range src {
-		if i == indexes[indexPtr] {
-			indexPtr++
+	for _, old := range a.Renames {
+		ty := old.String()
+		r.Aliases = append(r.Aliases, AliasInfo{Type: &ty})
+	}
+	a.MaxItemsOneOverrides.applyToResource(p, tfToken)
+}
 
-			// We are done, so copy the remaining elements in a block.
-			if indexPtr == len(indexes) {
-				copy(dst[dstPtr:], src[i+1:])
-				break
-			}
+type autoDataSourceSettings struct {
+	Renames              []tokens.ModuleMember `json:"renames,omitempty"`
+	MaxItemsOneOverrides maxItemsOneOverrides  `json:"maxItemsOneOverrides,omitempty"`
+}
 
-			continue
+func (a autoDataSourceSettings) apply(p *ProviderInfo, tfToken string) {
+	d, ok := p.DataSources[tfToken]
+	contract.Assertf(ok && d.Tok != "",
+		"Unexpected data source token lacking a mapping: %q", tfToken)
+	for _, old := range a.Renames {
+		oldMod := old.Module().Name().String()
+		newMod := d.Tok.Module().Name().String()
+		p.RenameDataSource(tfToken, old, d.Tok, oldMod, newMod, d)
+	}
+	a.MaxItemsOneOverrides.applyToDataSource(p, tfToken)
+}
+
+type maxItemsOneOverrides map[string]bool
+
+func (over maxItemsOneOverrides) isEmpty() bool {
+	return len(over) == 0
+}
+
+func (over maxItemsOneOverrides) set(path walk.SchemaPath, maxItemsOne bool) {
+	over[path.MustEncodeSchemaPath()] = maxItemsOne
+}
+
+func (over *maxItemsOneOverrides) applyToResource(p *ProviderInfo, tfToken string) {
+	r, ok := p.Resources[tfToken]
+	contract.Assertf(ok && r.Tok != "",
+		"Unexpected resource token lacking a mapping: %q", tfToken)
+	over.applyMaxItemsOneOverridesToFields(&r.Fields)
+}
+
+func (over *maxItemsOneOverrides) applyToDataSource(p *ProviderInfo, tfToken string) {
+	d, ok := p.DataSources[tfToken]
+	contract.Assertf(ok && d.Tok != "",
+		"Unexpected data source token lacking a mapping: %q", tfToken)
+	over.applyMaxItemsOneOverridesToFields(&d.Fields)
+}
+
+func (over maxItemsOneOverrides) applyMaxItemsOneOverridesToFields(fields *map[string]*SchemaInfo) {
+	s := &SchemaInfo{Fields: *fields}
+	over.applyMaxItemsOneOverrides(s)
+	*fields = s.Fields
+}
+
+func (over maxItemsOneOverrides) applyMaxItemsOneOverrides(info *SchemaInfo) {
+	for k, v := range over {
+		v := v
+		p := walk.DecodeSchemaPath(k)
+		getOrCreateSchemaInfo(info, p).MaxItemsOne = &v
+	}
+}
+
+func contains[T ~string](xs []T, x T) bool {
+	for _, y := range xs {
+		if x == y {
+			return true
 		}
-		dst[dstPtr] = v
-		dstPtr++
 	}
-	return dst
+	return false
+}
+
+func getOrCreateSchemaInfo(info *SchemaInfo, path walk.SchemaPath) *SchemaInfo {
+	here := info
+	for len(path) > 0 {
+		switch step := path[0].(type) {
+		case walk.ElementStep:
+			if here.Elem == nil {
+				here.Elem = &SchemaInfo{}
+			}
+			here, path = here.Elem, path[1:]
+		case walk.GetAttrStep:
+			if here.Fields == nil {
+				here.Fields = map[string]*SchemaInfo{}
+			}
+			if _, ok := here.Fields[step.Name]; !ok {
+				here.Fields[step.Name] = &SchemaInfo{}
+			}
+			here, path = here.Fields[step.Name], path[1:]
+		default:
+			contract.Failf("impossible")
+		}
+	}
+	return here
 }

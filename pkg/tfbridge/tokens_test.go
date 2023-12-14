@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -488,6 +489,10 @@ func TestTokenAliasing(t *testing.T) {
 	}
 }
 
+func TestTokenAliasing1(t *testing.T) {
+	testTokenAliasing(t)
+}
+
 func testTokenAliasing(t *testing.T) {
 	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
@@ -506,6 +511,7 @@ func testTokenAliasing(t *testing.T) {
 	}
 
 	simple := provider()
+	simple.Version = "1.0.0"
 
 	metadata, autoAliasing := makeAutoAliasing(t)
 
@@ -534,7 +540,7 @@ func testTokenAliasing(t *testing.T) {
 
 	hist2 := md.Clone(metadata)
 	ref := func(s string) *string { return &s }
-	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+	require.Equal(t, map[string]*tfbridge.ResourceInfo{
 		"pkg_mod1_r1": {
 			Tok:     "pkg:mod1/r1:R1",
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
@@ -603,8 +609,7 @@ func testTokenAliasing(t *testing.T) {
 	autoAliasing(modules3, metadata)
 	require.NoError(t, err)
 
-	// All hard aliases should be removed on a major version upgrade
-	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+	assert.Equalf(t, map[string]*tfbridge.ResourceInfo{
 		"pkg_mod1_r1": {
 			Tok:     "pkg:mod1/r1:R1",
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
@@ -617,7 +622,7 @@ func testTokenAliasing(t *testing.T) {
 			Tok:     "pkg:mod2/r1:R1",
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod2R1:Mod2R1")}},
 		},
-	}, modules3.Resources)
+	}, modules3.Resources, "All hard aliases should be removed on a major version upgrade")
 
 	// A provider with no version should assume the most recent major
 	// version in history – in this case, all aliases should be kept
@@ -654,8 +659,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.MarshalIndent())
-	expected := `{
+	autogold.Expect(`{
     "auto-aliasing": {
         "resources": {
             "pkg_r1": {
@@ -670,9 +674,9 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 }
             }
         }
-    }
-}`
-	assert.Equal(t, expected, v)
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 
 	info = provider(false, true)
 
@@ -681,14 +685,59 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.MarshalIndent()))
+
+	autogold.Expect(`{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": true
+                    },
+                    "f2": {
+                        "maxItemsOne": false
+                    }
+                }
+            }
+        }
+    },
+    "auto-settings": {
+        "resources": {
+            "pkg_r1": {
+                "maxItemsOneOverrides": {
+                    "f1": true,
+                    "f2": false
+                }
+            }
+        }
+    }
+}`).Equal(t, string(metadata.MarshalIndent()))
 
 	// Apply metadata back into the provider again, making sure there isn't a diff
 	autoAliasing(info, metadata)
 
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, expected, string(metadata.MarshalIndent()))
+
+	autogold.Expect(`{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": true
+                    },
+                    "f2": {
+                        "maxItemsOne": false
+                    }
+                }
+            }
+        }
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 
 	// Validate that overrides work
 
@@ -699,8 +748,13 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 
 	autoAliasing(info, metadata)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f1"].MaxItemsOne)
-	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].MaxItemsOne)
-	assert.Equal(t, `{
+
+	f2Schema := info.P.ResourcesMap().Get("pkg_r1").Schema().Get("f2")
+	f2Overrides := info.Resources["pkg_r1"].Fields["f2"]
+
+	assert.False(t, tfbridge.IsMaxItemsOne(f2Schema, f2Overrides))
+
+	autogold.Expect(`{
     "auto-aliasing": {
         "resources": {
             "pkg_r1": {
@@ -715,8 +769,9 @@ func TestMaxItemsOneAliasing(t *testing.T) {
                 }
             }
         }
-    }
-}`, string(metadata.MarshalIndent()))
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 }
 
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
@@ -741,8 +796,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.MarshalIndent())
-	expected := `{
+	autogold.Expect(`{
     "auto-aliasing": {
         "resources": {
             "pkg_r1": {
@@ -757,9 +811,9 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 }
             }
         }
-    }
-}`
-	assert.Equal(t, expected, v)
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 
 	info = provider(false, true)
 
@@ -769,7 +823,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 
 	assert.Nil(t, info.Resources["pkg_r1"].Fields["f1"])
 	assert.Nil(t, info.Resources["pkg_r1"].Fields["f2"])
-	assert.Equal(t, `{
+	autogold.Expect(`{
     "auto-aliasing": {
         "resources": {
             "pkg_r1": {
@@ -785,9 +839,9 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
                 }
             }
         }
-    }
-}`, string(metadata.MarshalIndent()))
-
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 }
 
 func TestMaxItemsOneAliasingNested(t *testing.T) {
@@ -817,8 +871,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 	// Save current state into metadata
 	autoAliasing(info, metadata)
 
-	v := string(metadata.MarshalIndent())
-	expected := `{
+	autogold.Expect(`{
     "auto-aliasing": {
         "resources": {
             "pkg_r1": {
@@ -843,15 +896,52 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
                 }
             }
         }
-    }
-}`
-	assert.Equal(t, expected, v)
+    },
+    "auto-settings": {}
+}`).Equal(t, string(metadata.MarshalIndent()))
 
 	// Apply the saved metadata to a new provider
 	info = provider(false, true)
 	autoAliasing(info, metadata)
 
-	assert.Equal(t, expected, string(metadata.MarshalIndent()))
+	autogold.Expect(`{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "f1": {
+                        "maxItemsOne": false
+                    },
+                    "f2": {
+                        "maxItemsOne": false,
+                        "elem": {
+                            "fields": {
+                                "n1": {
+                                    "maxItemsOne": true
+                                },
+                                "n2": {
+                                    "maxItemsOne": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "auto-settings": {
+        "resources": {
+            "pkg_r1": {
+                "maxItemsOneOverrides": {
+                    "f2.$.n1": true,
+                    "f2.$.n2": false
+                }
+            }
+        }
+    }
+}`).Equal(t, string(metadata.MarshalIndent()))
+
 	assert.True(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n1"].MaxItemsOne)
 	assert.False(t, *info.Resources["pkg_r1"].Fields["f2"].Elem.Fields["n2"].MaxItemsOne)
 }
@@ -897,29 +987,30 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 		assert.Nil(t, r.Fields["nest_list"])
 		assert.Nil(t, r.Fields["override_list"])
 
-		assert.JSONEq(t, `{
-                "auto-aliasing": {
-                    "resources": {
-                        "pkg_r1": {
-                            "current": "pkg:index/r1:R1",
-                            "fields": {
-                                "nest_flat": {
-                                    "maxItemsOne": true
-                                },
-                                "nest_list": {
-                                    "maxItemsOne": false
-                                },
-                                "override_flat": {
-                                    "maxItemsOne": true
-                                },
-                                "override_list": {
-                                    "maxItemsOne": false
-                                }
-                            }
-                        }
+		autogold.Expect(`{
+    "auto-aliasing": {
+        "resources": {
+            "pkg_r1": {
+                "current": "pkg:index/r1:R1",
+                "fields": {
+                    "nest_flat": {
+                        "maxItemsOne": true
+                    },
+                    "nest_list": {
+                        "maxItemsOne": false
+                    },
+                    "override_flat": {
+                        "maxItemsOne": true
+                    },
+                    "override_list": {
+                        "maxItemsOne": false
                     }
                 }
-            }`, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
+            }
+        }
+    },
+    "auto-settings": {}
+}`).Equal(t, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
@@ -978,29 +1069,30 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 		assert.Nil(t, r.Fields["nest_list"])
 		assert.Nil(t, r.Fields["override_list"])
 
-		assert.JSONEq(t, `{
-                "auto-aliasing": {
-                    "datasources": {
-                        "pkg_r1": {
-                            "current": "pkg:index/getR1:getR1",
-                            "fields": {
-                                "nest_flat": {
-                                    "maxItemsOne": true
-                                },
-                                "nest_list": {
-                                    "maxItemsOne": false
-                                },
-                                "override_flat": {
-                                    "maxItemsOne": true
-                                },
-                                "override_list": {
-                                    "maxItemsOne": false
-                                }
-                            }
-                        }
+		autogold.Expect(`{
+    "auto-aliasing": {
+        "datasources": {
+            "pkg_r1": {
+                "current": "pkg:index/getR1:getR1",
+                "fields": {
+                    "nest_flat": {
+                        "maxItemsOne": true
+                    },
+                    "nest_list": {
+                        "maxItemsOne": false
+                    },
+                    "override_flat": {
+                        "maxItemsOne": true
+                    },
+                    "override_list": {
+                        "maxItemsOne": false
                     }
                 }
-            }`, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
+            }
+        }
+    },
+    "auto-settings": {}
+}`).Equal(t, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 	}
 
 	t.Run("auto-named-then-aliased", func(t *testing.T) {
@@ -1075,72 +1167,119 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
         }
     }`
 
-	meta3 := `{
-        "auto-aliasing": {
-            "datasources": {
-                "pkg_d1": {
-                    "current": "pkg:index:getD1",
-                    "majorVersion": 1,
-                    "past": [
-                        {
-                            "name": "pkg:index:getD2",
-                            "inCodegen": false,
-                            "majorVersion": 1
-                        }
-                    ]
-                }
+	testCases := []struct {
+		testname string
+		name     int
+		current  string
+		expect   autogold.Value
+	}{
+		// Test that ApplyAutoAliases will update current and append history.
+		{"confirm-change", 2, meta1, autogold.Expect(`{
+    "auto-aliasing": {
+        "datasources": {
+            "pkg_d1": {
+                "current": "pkg:index:getD2",
+                "past": [
+                    {
+                        "name": "pkg:index:getD1",
+                        "inCodegen": true,
+                        "majorVersion": 1
+                    }
+                ],
+                "majorVersion": 1
             }
         }
-    }`
-
-	meta4 := `{
-        "auto-aliasing": {
-            "datasources": {
-                "pkg_d1": {
-                    "current": "pkg:index:getD3",
-                    "majorVersion": 1,
-                    "past": [
-                        {
-                            "name": "pkg:index:getD1",
-                            "inCodegen": false,
-                            "majorVersion": 1
-                        },
-                        {
-                            "name": "pkg:index:getD2",
-                            "inCodegen": false,
-                            "majorVersion": 1
-                        }
-                    ]
-                }
+    },
+    "auto-settings": {
+        "datasources": {
+            "pkg_d1": {
+                "renames": [
+                    "pkg:index:getD1"
+                ]
             }
         }
-    }`
+    }
+}`)},
 
-	test := func(name int, current, expected string) func(t *testing.T) {
-		return func(t *testing.T) {
-			p := provider(t, current, name)
-			require.JSONEq(t, expected,
-				string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
+		// Test that we don't keep redundant history.
+		{"reversion", 1, meta2, autogold.Expect(`{
+    "auto-aliasing": {
+        "datasources": {
+            "pkg_d1": {
+                "current": "pkg:index:getD1",
+                "past": [
+                    {
+                        "name": "pkg:index:getD2",
+                        "inCodegen": true,
+                        "majorVersion": 1
+                    }
+                ],
+                "majorVersion": 1
+            }
+        }
+    },
+    "auto-settings": {
+        "datasources": {
+            "pkg_d1": {
+                "renames": [
+                    "pkg:index:getD2"
+                ]
+            }
+        }
+    }
+}`)},
+
+		// Test that adding a name that has already been seen works as expected.
+		{"add-past", 3, meta2, autogold.Expect(`{
+    "auto-aliasing": {
+        "datasources": {
+            "pkg_d1": {
+                "current": "pkg:index:getD3",
+                "past": [
+                    {
+                        "name": "pkg:index:getD1",
+                        "inCodegen": false,
+                        "majorVersion": 1
+                    },
+                    {
+                        "name": "pkg:index:getD2",
+                        "inCodegen": true,
+                        "majorVersion": 1
+                    }
+                ],
+                "majorVersion": 1
+            }
+        }
+    },
+    "auto-settings": {
+        "datasources": {
+            "pkg_d1": {
+                "renames": [
+                    "pkg:index:getD1",
+                    "pkg:index:getD2"
+                ]
+            }
+        }
+    }
+}`)},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testname, func(t *testing.T) {
+			p := provider(t, tc.current, tc.name)
+			st := string((*md.Data)(p.MetadataInfo.Data).MarshalIndent())
+			tc.expect.Equal(t, st)
 
 			// Regardless of the input and output, once we apply some name to
 			// our state, reapplying the same name to the new state should be
 			// idempotent.
 			t.Run("idempotent", func(t *testing.T) {
-				p := provider(t, expected, name)
-				require.JSONEq(t, expected,
-					string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
+				p := provider(t, st, tc.name)
+				assert.Equal(t, st, string((*md.Data)(p.MetadataInfo.Data).MarshalIndent()))
 			})
-		}
+		})
 	}
-
-	// Test that ApplyAutoAliases will update current and append history.
-	t.Run("confirm-change", test(2, meta1, meta2))
-
-	// Test that we don't keep redundant history.
-	t.Run("reversion", test(1, meta2, meta3))
-
-	// Test that adding a name that has already been seen works as expected.
-	t.Run("add-past", test(3, meta2, meta4))
 }
 
 func TestDeletedResourcesAutoAliasing(t *testing.T) {

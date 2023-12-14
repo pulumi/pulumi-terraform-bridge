@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -131,4 +132,36 @@ func TestVisitSchemaMap(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ss, s)
 	})
+}
+
+func TestEncodeDecodeSchemaPath(t *testing.T) {
+	type testCase struct {
+		p     SchemaPath
+		s     string
+		isErr bool
+	}
+
+	testCases := []testCase{
+		{p: NewSchemaPath(), s: ""},
+		{p: NewSchemaPath().GetAttr("a"), s: "a"},
+		{p: NewSchemaPath().GetAttr("a").GetAttr("b"), s: "a.b"},
+		{p: NewSchemaPath().GetAttr("a").Element().GetAttr("b"), s: "a.$.b"},
+		{p: NewSchemaPath().Element(), s: "$"},
+		{p: NewSchemaPath().GetAttr("$"), isErr: true},
+		{p: NewSchemaPath().GetAttr("foo.bar"), isErr: true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.s, func(t *testing.T) {
+			ep, err := tc.p.EncodeSchemaPath()
+			if tc.isErr {
+				require.NotNil(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.s, ep)
+				require.Equal(t, tc.p, DecodeSchemaPath(ep))
+			}
+		})
+	}
 }

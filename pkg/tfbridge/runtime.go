@@ -5,36 +5,26 @@ import (
 	"strings"
 )
 
+// Used internally for the code to distinguish if it is running at build-time or at runtime.
 type runtimeStage int
 
 const (
 	unknownStage runtimeStage = iota
-	tfgenStage
-	resourceStage
+	buildingProviderStage
+	runningProviderStage
 )
 
-// Holds runtime flags
-type runtimeInfo struct {
-	stage runtimeStage
-}
+var currentRuntimeStage = guessRuntimeStage()
 
-var theRuntimeInfo = initRuntimeInfo()
-
-func initRuntimeInfo() runtimeInfo {
+func guessRuntimeStage() runtimeStage {
 	buildInfo, _ := debug.ReadBuildInfo()
 	stage := unknownStage
 	if buildInfo != nil {
 		if strings.Contains(buildInfo.Path, "pulumi-tfgen") {
-			stage = tfgenStage
+			stage = buildingProviderStage
 		} else if strings.Contains(buildInfo.Path, "pulumi-resource") {
-			stage = resourceStage
+			stage = runningProviderStage
 		}
 	}
-	return runtimeInfo{
-		stage: stage,
-	}
-}
-
-func isTfgen() bool {
-	return theRuntimeInfo.stage != resourceStage
+	return stage
 }
