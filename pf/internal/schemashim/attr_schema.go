@@ -15,11 +15,9 @@
 package schemashim
 
 import (
-	"fmt"
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
@@ -86,39 +84,25 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc {
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
-	t := s.attr.GetType()
-
+	switch t := s.attr.GetType().(type) {
 	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
 	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,
 	// Elem() needes to return a Resource value.
 	//
 	// See also: documentation on shim.Schema.Elem().
-	if tt, ok := t.(basetypes.ObjectTypable); ok {
-		var res shim.Resource = newObjectPseudoResource(tt, s.attr.Nested(), nil)
+	case basetypes.ObjectTypable:
+		var res shim.Resource = newObjectPseudoResource(t, s.attr.Nested(), nil)
 		return res
-	}
-	if tt, ok := t.(pfattr.TypeWithElementTypes); ok {
-		var res shim.Resource = newTuplePseudoResource(tt)
+	case pfattr.TypeWithElementTypes:
+		var res shim.Resource = newTuplePseudoResource(t)
 		return res
-	}
+	case pfattr.TypeWithElementType:
+		return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))
 
-	// Anything else that does not have an ElementType can be skipped.
-	if _, ok := t.(pfattr.TypeWithElementType); !ok {
+	// t does not support any kind of element type.
+	default:
 		return nil
 	}
-
-	var schema shim.Schema
-	switch tt := t.(type) {
-	case types.MapType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
-	case types.ListType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
-	case types.SetType:
-		schema = newTypeSchema(tt.ElemType, s.attr.Nested())
-	default:
-		panic(fmt.Errorf("This Elem() case is not yet supported: %v", t))
-	}
-	return schema
 }
 
 func (*attrSchema) MaxItems() int {
