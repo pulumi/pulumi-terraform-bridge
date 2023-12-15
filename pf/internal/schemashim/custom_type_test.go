@@ -89,6 +89,34 @@ func TestCustomListType(t *testing.T) {
 	assert.Equal(t, shim.TypeString, create.Type())
 }
 
+func TestCustomListAttribute(t *testing.T) {
+	ctx := context.Background()
+
+	raw := schema.ListNestedAttribute{
+		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"filter_string": basetypes.StringType{},
+			},
+		}),
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"filter_string": schema.StringAttribute{
+					Required: true,
+				},
+			},
+		},
+	}
+
+	shimmed := &attrSchema{"key", pfutils.FromAttrLike(raw)}
+	assert.Equal(t, shim.TypeList, shimmed.Type())
+	assert.NotNil(t, shimmed.Elem())
+	_, isPseudoResource := shimmed.Elem().(shim.Schema)
+	assert.Truef(t, isPseudoResource, "expected shim.Elem() to be of type shim.Resource, encoding an object type")
+
+	create := shimmed.Elem().(shim.Schema).Elem().(shim.Resource).Schema().Get("filter_string")
+	assert.Equal(t, shim.TypeString, create.Type())
+}
+
 func TestCustomSetType(t *testing.T) {
 	ctx := context.Background()
 
