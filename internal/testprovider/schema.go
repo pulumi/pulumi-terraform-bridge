@@ -929,3 +929,131 @@ func MaxItemsOneProvider() *schemav2.Provider {
 		},
 	}
 }
+
+func ConflictsWithValidationProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"default_value_res": {
+				Schema: map[string]*schemav2.Schema{
+					"conflicting_property": {
+						Type:     schemav2.TypeString,
+						Optional: true,
+						// Some TF providers use this to mean not specified
+						// https://github.com/pulumi/pulumi-azuredevops/issues/38
+						Default:       "",
+						ConflictsWith: []string{"conflicting_property2"},
+					},
+					"conflicting_property2": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						Default:       "",
+						ConflictsWith: []string{"conflicting_property"},
+					},
+
+					"conflicting_required_property": {
+						Type:          schemav2.TypeString,
+						Required:      true,
+						Default:       "",
+						ConflictsWith: []string{"conflicting_nonrequired_property2"},
+					},
+					"conflicting_nonrequired_property2": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						Default:       "",
+						ConflictsWith: []string{"conflicting_required_property"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func ExactlyOneOfValidationProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"default_value_res": {
+				Schema: map[string]*schemav2.Schema{
+					"exactly_one_of_property": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						ExactlyOneOf: []string{"exactly_one_of_property", "exactly_one_of_property2"},
+					},
+					"exactly_one_of_property2": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						ExactlyOneOf: []string{"exactly_one_of_property", "exactly_one_of_property2"},
+					},
+
+					// This doesn't really make much sense as a schema
+					// but it should still behave as expected.
+					"exactly_one_of_required_property": {
+						Type:         schemav2.TypeString,
+						Required:     true,
+						Default:      "",
+						ExactlyOneOf: []string{"exactly_one_of_required_property", "exactly_one_of_nonrequired_property2"},
+					},
+					"exactly_one_of_nonrequired_property2": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						ExactlyOneOf: []string{"exactly_one_of_required_property", "exactly_one_of_nonrequired_property2"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func RequiredWithValidationProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"default_value_res": {
+				Schema: map[string]*schemav2.Schema{
+					"required_with_property": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_property2"},
+					},
+					"required_with_property2": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_property"},
+					},
+
+					"required_with_required_property": {
+						Type:         schemav2.TypeString,
+						Required:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_nonrequired_property"},
+					},
+					"required_with_nonrequired_property": {
+						Type:         schemav2.TypeString,
+						Optional:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_required_property"},
+					},
+
+					"required_with_required_property2": {
+						Type:         schemav2.TypeString,
+						Required:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_required_property3"},
+					},
+					"required_with_required_property3": {
+						Type:         schemav2.TypeString,
+						Required:     true,
+						Default:      "",
+						RequiredWith: []string{"required_with_required_property2"},
+					},
+				},
+			},
+		},
+	}
+}
