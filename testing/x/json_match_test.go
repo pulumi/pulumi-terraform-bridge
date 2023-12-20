@@ -30,4 +30,8 @@ func TestJsonMatch(t *testing.T) {
 		[]byte(`[{"key1":"val"}, {"key2":"val"}]`),
 		[]byte(`[{"key2":"val"}, {"key1":"val"}]`),
 	)
+	AssertJSONMatchesPattern(t,
+		[]byte(`[{"key":"val1"}, {"key":"val2"}]`),
+		[]byte(`[{"key":"val2"}, {"key":"val1"}]`),
+	)
 }
