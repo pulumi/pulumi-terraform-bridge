@@ -78,12 +78,6 @@ func AssertJSONMatchesPattern(
 					path, len(pp), prettyJSON(t, a))
 			}
 
-			sort.SliceStable(pp, func(i, j int) bool {
-				return strings.Compare(
-					fmt.Sprintf("%v", pp[i]),
-					fmt.Sprintf("%v", pp[j]),
-				) < 0
-			})
 			sort.SliceStable(aa, func(i, j int) bool {
 				return strings.Compare(
 					fmt.Sprintf("%v", aa[i]),

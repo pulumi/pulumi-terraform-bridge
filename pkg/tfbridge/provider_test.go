@@ -2398,9 +2398,9 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 					"__defaults": []
 				},
 				"failures": [
-					{"reason": "Invalid combination of arguments. \"exactly_one_of_property2\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty2'."},
-					{"reason": "Invalid combination of arguments. \"exactly_one_of_property\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty'."},
 					{"reason": "Invalid combination of arguments. \"exactly_one_of_nonrequired_property2\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfNonrequiredProperty2'."},
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_property\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty'."},
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_property2\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty2'."},
 					{"reason": "Invalid combination of arguments. \"exactly_one_of_required_property\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfRequiredProperty'."}
 				]
 			}
@@ -2460,17 +2460,17 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 			"response": {
 				"inputs": {
 					"__defaults": [
+						"requiredWithNonrequiredProperty",
 						"requiredWithProperty",
 						"requiredWithProperty2",
 						"requiredWithRequiredProperty",
-						"requiredWithNonrequiredProperty",
 						"requiredWithRequiredProperty2",
 						"requiredWithRequiredProperty3"
 					],
+					"requiredWithNonrequiredProperty": "",
 					"requiredWithProperty": "",
 					"requiredWithProperty2": "",
 					"requiredWithRequiredProperty": "",
-					"requiredWithNonrequiredProperty": "",
 					"requiredWithRequiredProperty2": "",
 					"requiredWithRequiredProperty3": ""
 				},
@@ -2491,10 +2491,10 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 					"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
 					"olds": {},
 					"news": {
+						"requiredWithNonrequiredProperty": "foo",
 						"requiredWithProperty": "foo",
 						"requiredWithProperty2": "foo",
 						"requiredWithRequiredProperty": "foo",
-						"requiredWithNonrequiredProperty": "foo",
 						"requiredWithRequiredProperty2": "foo",
 						"requiredWithRequiredProperty3": "foo"
 					},
@@ -2503,10 +2503,10 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 				"response": {
 					"inputs": {
 						"__defaults": [],
+						"requiredWithNonrequiredProperty": "foo",
 						"requiredWithProperty": "foo",
 						"requiredWithProperty2": "foo",
 						"requiredWithRequiredProperty": "foo",
-						"requiredWithNonrequiredProperty": "foo",
 						"requiredWithRequiredProperty2": "foo",
 						"requiredWithRequiredProperty3": "foo"
 					}
@@ -2532,14 +2532,14 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 				"response": {
 					"inputs": {
 						"__defaults": [
-							"requiredWithProperty2",
 							"requiredWithNonrequiredProperty",
+							"requiredWithProperty2",
 							"requiredWithRequiredProperty3"
 						],
+						"requiredWithNonrequiredProperty": "",
 						"requiredWithProperty": "foo",
 						"requiredWithProperty2": "",
 						"requiredWithRequiredProperty": "foo",
-						"requiredWithNonrequiredProperty": "",
 						"requiredWithRequiredProperty2": "foo",
 						"requiredWithRequiredProperty3": ""
 					},

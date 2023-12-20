@@ -25,4 +25,9 @@ func TestJsonMatch(t *testing.T) {
 	AssertJSONMatchesPattern(t, []byte(`{"\\": "*"}`), []byte(`"*"`))
 	AssertJSONMatchesPattern(t, []byte(`[1, "*", 3]`), []byte(`[1, 2, 3]`))
 	AssertJSONMatchesPattern(t, []byte(`{"foo": "*", "bar": 3}`), []byte(`{"foo": 1, "bar": 3}`))
+	AssertJSONMatchesPattern(t, []byte(`[1, 2, 3]`), []byte(`[1, 3, 2]`))
+	AssertJSONMatchesPattern(t,
+		[]byte(`[{"key1":"val"}, {"key2":"val"}]`),
+		[]byte(`[{"key2":"val"}, {"key1":"val"}]`),
+	)
 }
