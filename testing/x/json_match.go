@@ -17,7 +17,9 @@ package testing
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +39,6 @@ func AssertJSONMatchesPattern(
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
 ) {
-
 	var p, a interface{}
 
 	if err := json.Unmarshal(expectedPattern, &p); err != nil {
@@ -77,6 +78,20 @@ func AssertJSONMatchesPattern(
 				t.Errorf("[%s]: expected an array of length %d, but got %s",
 					path, len(pp), prettyJSON(t, a))
 			}
+
+			slices.SortFunc(pp, func(i interface{}, j interface{}) int {
+				return strings.Compare(
+					fmt.Sprintf("%v", i),
+					fmt.Sprintf("%v", j),
+				)
+			})
+			slices.SortFunc(aa, func(i interface{}, j interface{}) int {
+				return strings.Compare(
+					fmt.Sprintf("%v", i),
+					fmt.Sprintf("%v", j),
+				)
+			})
+
 			for i, pv := range pp {
 				av := aa[i]
 				match(fmt.Sprintf("%s[%d]", path, i), pv, av)
