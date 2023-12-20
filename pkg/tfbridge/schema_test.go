@@ -42,8 +42,8 @@ import (
 )
 
 func makeTerraformInputs(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
-
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{Assets: AssetTable{}}
 	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
@@ -53,8 +53,8 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 }
 
 func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (map[string]interface{}, AssetTable, error) {
-
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{
 		Assets:        AssetTable{},
 		ApplyDefaults: true,
@@ -363,7 +363,8 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 			oldState: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewStringProperty("sc"),
-				})}),
+				}),
+			}),
 			newState: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("sc"),
 			}),
@@ -885,7 +886,7 @@ func TestDefaults(t *testing.T) {
 			//     - iii string; old default "OLI", TF default "TFI", PS default "PSI", no input => "OLD"
 			//     - jjj string: old input "OLJ", no defaults, no input => no merged input
 			//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
-			//     - ll2: old input "OLL", TF default "TFL", no input => "TL2"
+			//     - ll2: old input "OL2", TF default "TL2", no input => "TL2"
 			//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
 			//     - mm2: old input "OLM", PS default "PM2", no input => "PM2"
 			//     - uuu: PS default "PSU", envvars w/o valiues => "PSU"
@@ -898,10 +899,7 @@ func TestDefaults(t *testing.T) {
 			asset, err := resource.NewTextAsset("hello")
 			assert.Nil(t, err)
 
-			x1ofN := []string{"x1of1", "x1of2", "x1of3"}
 			tfs := f.NewSchemaMap(map[string]*schema.Schema{
-				"xyz": {Type: shim.TypeString, ExactlyOneOf: []string{"xyz", "abc"}},
-				"abc": {Type: shim.TypeString, Default: "ABC", ExactlyOneOf: []string{"xyz", "abc"}},
 				"ccc": {Type: shim.TypeString, Default: "CCC"},
 				"cc2": {Type: shim.TypeString, DefaultFunc: func() (interface{}, error) { return "CC2", nil }},
 				"ddd": {Type: shim.TypeString, Default: "TFD"},
@@ -914,11 +912,6 @@ func TestDefaults(t *testing.T) {
 				"ll2": {Type: shim.TypeString, Default: "TL2"},
 				"mmm": {Type: shim.TypeString},
 				"mm2": {Type: shim.TypeString},
-				"nnn": {Type: shim.TypeString, ConflictsWith: []string{"nn2"}, Default: "NNN"},
-				"nn2": {Type: shim.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
-				"ooo": {Type: shim.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
-				"oo2": {Type: shim.TypeString, ConflictsWith: []string{"ooo"}},
-				"oo3": {Type: shim.TypeString, ConflictsWith: []string{"nonexisting"}},
 				"sss": {Type: shim.TypeString, Removed: "removed"},
 				"ttt": {Type: shim.TypeString, Removed: "removed", Default: "TFD"},
 				"uuu": {Type: shim.TypeString},
@@ -927,11 +920,6 @@ func TestDefaults(t *testing.T) {
 				"xxx": {Type: shim.TypeString, Deprecated: "deprecated", Optional: true},
 				"yyy": {Type: shim.TypeString, Default: "TLY", Deprecated: "deprecated", Optional: true},
 				"zzz": {Type: shim.TypeString},
-
-				// Test exactly one of behavior with default funcs:
-				"x1of1": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault("x1of1-value")},
-				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
-				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
 
 				// Default value application across types
 				"x2stringxbool": {Type: shim.TypeString},
@@ -947,7 +935,6 @@ func TestDefaults(t *testing.T) {
 				"iii": {Default: &DefaultInfo{Value: "PSI"}},
 				"mmm": {Default: &DefaultInfo{Value: "PSM"}},
 				"mm2": {Default: &DefaultInfo{Value: "PM2"}},
-				"oo2": {Default: &DefaultInfo{Value: "PO2"}},
 				"sss": {Default: &DefaultInfo{Value: "PSS"}, Removed: true},
 				"uuu": {Default: &DefaultInfo{Value: "PSU", EnvVars: []string{"PTFU", "PTFU2"}}},
 				"vvv": {Default: &DefaultInfo{Value: 42, EnvVars: []string{"PTFV", "PTFV2"}}},
@@ -991,14 +978,10 @@ func TestDefaults(t *testing.T) {
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
-					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
-
-					"x1of1",
-
+					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "uuu", "vvv", "www",
 					"x2stringxbool", "x2stringxint",
 				},
-				"abc": "ABC",
 				"bbb": "BBB",
 				"ccc": "CCC",
 				"cc2": "CC2",
@@ -1015,15 +998,10 @@ func TestDefaults(t *testing.T) {
 				"ll2": "TL2",
 				"mmm": "OLM",
 				"mm2": "PM2",
-				"oo2": "PO2",
 				"uuu": "PSU",
 				"vvv": 1337,
 				"www": "OLW",
-				// xzy is NOT set as it's either that or abc
 				"zzz": asset,
-
-				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
-				"x1of1": "x1of1-value",
 
 				"x2stringxbool": true,
 				"x2stringxint":  1,
@@ -1041,18 +1019,15 @@ func TestDefaults(t *testing.T) {
 
 			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
-			//sort the defaults list before the equality test below.
+			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 				defaultsKey: []interface{}{
-					"abc", "cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
-					"mm2", "mmm", "oo2", "uuu", "vvv", "www",
-
-					"x1of1",
+					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
+					"mm2", "mmm", "uuu", "vvv", "www",
 
 					"x2stringxbool", "x2stringxint",
 				},
-				"abc": "ABC",
 				"bbb": "BBB",
 				"ccc": "CCC",
 				"cc2": "CC2",
@@ -1069,21 +1044,82 @@ func TestDefaults(t *testing.T) {
 				"ll2": "OL2",
 				"mmm": "OLM",
 				"mm2": "OM2",
-				// nnn/nn2 are NOT set as they conflict with each other
-				// ooo is NOT set as it conflicts with oo2
-				"oo2": "PO2",
 				"uuu": "PSU",
 				"vvv": 1337,
 				"www": "OLW",
-				// xyz is NOT set as it has ExactlyOneOf with abc
 				"zzz": asset,
-
-				// x1of1 is set as it UNIQUELY has a default value in its
-				// ExactlyOneOf set (x1of1, x1of2, x1of3)
-				"x1of1": "x1of1-value",
 
 				"x2stringxbool": true,
 				"x2stringxint":  1,
+			}), outputs)
+		})
+	}
+}
+
+func TestDefaultsConflictsWith(t *testing.T) {
+	for _, f := range factories {
+		t.Run(f.SDKVersion(), func(t *testing.T) {
+			x1ofN := []string{"x1of1", "x1of2", "x1of3"}
+			tfs := f.NewSchemaMap(map[string]*schema.Schema{
+				"xyz": {Type: shim.TypeString, ExactlyOneOf: []string{"xyz", "abc"}},
+				"abc": {Type: shim.TypeString, Default: "ABC", ExactlyOneOf: []string{"xyz", "abc"}},
+				"nnn": {Type: shim.TypeString, ConflictsWith: []string{"nn2"}, Default: "NNN"},
+				"nn2": {Type: shim.TypeString, ConflictsWith: []string{"nnn"}, Default: "NN2"},
+				"ooo": {Type: shim.TypeString, ConflictsWith: []string{"oo2"}, Default: "OOO"},
+				"oo2": {Type: shim.TypeString, ConflictsWith: []string{"ooo"}},
+				"oo3": {Type: shim.TypeString, ConflictsWith: []string{"nonexisting"}},
+
+				// Test exactly one of behavior with default funcs:
+				"x1of1": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault("x1of1-value")},
+				"x1of2": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
+				"x1of3": {Type: shim.TypeString, ExactlyOneOf: x1ofN, DefaultFunc: fixedDefault(nil)},
+			})
+
+			ps := map[string]*SchemaInfo{
+				"oo2": {Default: &DefaultInfo{Value: "PO2"}},
+			}
+			olds := resource.PropertyMap{
+				defaultsKey: resource.NewPropertyValue([]interface{}{}),
+			}
+			props := resource.PropertyMap{}
+
+			inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
+			assert.NoError(t, err)
+			outputs := MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			sortDefaultsList(outputs)
+
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				defaultsKey: []interface{}{
+					"abc", "oo2", "x1of1",
+				},
+				"abc": "ABC",
+				// nnn/nn2 are NOT set as they conflict with each other
+				// ooo is NOT set as it conflicts with oo2
+				"oo2": "PO2",
+				// xyz is NOT set as it has ExactlyOneOf with abc
+				// x1of1 is set as it UNIQUELY has a default value in its ExactlyOneOf set (x1of1, x1of2, x1of3)
+				"x1of1": "x1of1-value",
+			}), outputs)
+
+			delete(olds, defaultsKey)
+			inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
+			assert.NoError(t, err)
+
+			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			sortDefaultsList(outputs)
+
+			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				defaultsKey: []interface{}{
+					"abc", "oo2", "x1of1",
+				},
+				"abc": "ABC",
+				// nnn/nn2 are NOT set as they conflict with each other
+				// ooo is NOT set as it conflicts with oo2
+				"oo2": "PO2",
+				// xyz is NOT set as it has ExactlyOneOf with abc
+				// x1of1 is set as it UNIQUELY has a default value in its
+				// ExactlyOneOf set (x1of1, x1of2, x1of3)
+				"x1of1": "x1of1-value",
 			}), outputs)
 		})
 	}
@@ -1128,7 +1164,6 @@ func TestInvalidAsset(t *testing.T) {
 }
 
 func TestOverridingTFSchema(t *testing.T) {
-
 	tfInputs := map[string]interface{}{
 		"pulumi_override_tf_string_to_boolean":    MyString("true"),
 		"pulumi_override_tf_string_to_bool":       MyString("true"),
@@ -1507,7 +1542,6 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 }
 
 func TestImporterWithNoResource(t *testing.T) {
-
 	tfProvider := makeTestTFProvider(map[string]*schemav1.Schema{},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
@@ -1878,7 +1912,6 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		"inputH": "Input_H_Default",
 		"inoutK": "",
 	}), ins)
-
 }
 
 // This schema replicates the panic behavior of
