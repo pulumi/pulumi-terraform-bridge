@@ -17,7 +17,6 @@ package testing
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -79,17 +78,17 @@ func AssertJSONMatchesPattern(
 					path, len(pp), prettyJSON(t, a))
 			}
 
-			slices.SortFunc(pp, func(i interface{}, j interface{}) int {
+			sort.SliceStable(pp, func(i, j int) bool {
 				return strings.Compare(
-					fmt.Sprintf("%v", i),
-					fmt.Sprintf("%v", j),
-				)
+					fmt.Sprintf("%v", pp[i]),
+					fmt.Sprintf("%v", pp[j]),
+				) < 0
 			})
-			slices.SortFunc(aa, func(i interface{}, j interface{}) int {
+			sort.SliceStable(aa, func(i, j int) bool {
 				return strings.Compare(
-					fmt.Sprintf("%v", i),
-					fmt.Sprintf("%v", j),
-				)
+					fmt.Sprintf("%v", aa[i]),
+					fmt.Sprintf("%v", aa[j]),
+				) < 0
 			})
 
 			for i, pv := range pp {
