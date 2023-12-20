@@ -2511,7 +2511,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 			}`)
 	})
 
-	t.Run("CheckHappyPath", func(t *testing.T) {
+	t.Run("CheckMissingRequiredWith", func(t *testing.T) {
 		testutils.Replay(t, provider, strings.ReplaceAll(`
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
