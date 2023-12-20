@@ -887,7 +887,7 @@ func TestDefaults(t *testing.T) {
 			//     - iii string; old default "OLI", TF default "TFI", PS default "PSI", no input => "OLD"
 			//     - jjj string: old input "OLJ", no defaults, no input => no merged input
 			//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
-			//     - ll2: old input "OL2", TF default "TL2", no input => "OL2"
+			//     - ll2: old input "OL2", TF default "TL2", no input => "TL2"
 			//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
 			//     - mm2: old input "OLM", PS default "PM2", no input => "PM2"
 			//     - uuu: PS default "PSU", envvars w/o valiues => "PSU"
