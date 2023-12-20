@@ -2445,7 +2445,6 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 	}
 
 	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
-		// TODO
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -2457,10 +2456,96 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 			},
 			"response": {
 				"inputs": {
-					"__defaults": [],
-					"failures": []
-				}
+					"__defaults": [
+						"requiredWithProperty",
+						"requiredWithProperty2",
+						"requiredWithRequiredProperty",
+						"requiredWithNonrequiredProperty",
+						"requiredWithRequiredProperty2",
+						"requiredWithRequiredProperty3"
+					],
+					"requiredWithProperty": "",
+					"requiredWithProperty2": "",
+					"requiredWithRequiredProperty": "",
+					"requiredWithNonrequiredProperty": "",
+					"requiredWithRequiredProperty2": "",
+					"requiredWithRequiredProperty3": ""
+				},
+				"failures": [
+					{"reason": "Missing required argument. The argument \"required_with_required_property\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty'."},
+					{"reason": "Missing required argument. The argument \"required_with_required_property2\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty2'."},
+					{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
+				]
 			}
 		}`)
+	})
+
+	t.Run("CheckHappyPath", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+			{
+				"method": "/pulumirpc.ResourceProvider/Check",
+				"request": {
+					"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+					"olds": {},
+					"news": {
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithNonrequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": "foo"
+					},
+					"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+				},
+				"response": {
+					"inputs": {
+						"__defaults": [],
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithNonrequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": "foo"
+					}
+				}
+			}`)
+	})
+
+	t.Run("CheckHappyPath", func(t *testing.T) {
+		testutils.Replay(t, provider, strings.ReplaceAll(`
+			{
+				"method": "/pulumirpc.ResourceProvider/Check",
+				"request": {
+					"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+					"olds": {},
+					"news": {
+						"requiredWithProperty": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo"
+					},
+					"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+				},
+				"response": {
+					"inputs": {
+						"__defaults": [
+							"requiredWithProperty2",
+							"requiredWithNonrequiredProperty",
+							"requiredWithRequiredProperty3"
+						],
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithNonrequiredProperty": "",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": ""
+					},
+					"failures": [
+						{"reason": "Missing required argument. \"required_with_property\": all of $required_with_property,required_with_property2$ must be specified. Examine values at 'exres.requiredWithProperty'."},
+						{"reason": "Missing required argument. \"required_with_required_property\": all of $required_with_nonrequired_property,required_with_required_property$ must be specified. Examine values at 'exres.requiredWithRequiredProperty'."},
+						{"reason": "Missing required argument. \"required_with_required_property2\": all of $required_with_required_property2,required_with_required_property3$ must be specified. Examine values at 'exres.requiredWithRequiredProperty2'."},
+						{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
+					]
+				}
+			}`, "$", "`"))
 	})
 }
