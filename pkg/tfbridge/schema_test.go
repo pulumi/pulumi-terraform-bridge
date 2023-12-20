@@ -886,6 +886,7 @@ func TestDefaults(t *testing.T) {
 			//     - iii string; old default "OLI", TF default "TFI", PS default "PSI", no input => "OLD"
 			//     - jjj string: old input "OLJ", no defaults, no input => no merged input
 			//     - lll: old default "OLL", TF default "TFL", no input => "OLL"
+			// TODO: why is the old default in ll2 replaced? If so, why do we even need the TF defaults?
 			//     - ll2: old input "OL2", TF default "TL2", no input => "TL2"
 			//     - mmm: old default "OLM", PS default "PSM", no input => "OLM"
 			//     - mm2: old input "OLM", PS default "PM2", no input => "PM2"
