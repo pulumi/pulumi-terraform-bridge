@@ -2323,6 +2323,7 @@ func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
 	}
 
 	t.Run("CheckMissingRequiredProp", func(t *testing.T) {
+		//nolint:lll
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -2381,6 +2382,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 		},
 	}
 	t.Run("CheckFailsWhenExactlyOneOfNotSpecified", func(t *testing.T) {
+		//nolint:lll
 		testutils.Replay(t, provider, strings.ReplaceAll(`
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -2445,6 +2447,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 	}
 
 	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
+		//nolint:lll
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -2512,6 +2515,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 	})
 
 	t.Run("CheckMissingRequiredWith", func(t *testing.T) {
+		//nolint:lll
 		testutils.Replay(t, provider, strings.ReplaceAll(`
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
