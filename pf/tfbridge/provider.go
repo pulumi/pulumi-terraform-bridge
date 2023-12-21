@@ -15,12 +15,10 @@
 package tfbridge
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/json-iterator/go"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -61,7 +59,6 @@ type provider struct {
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logging.Sink
-	pkgName       tokens.Package
 
 	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
 	// populating defaults specified via DefaultInfo.Config.
@@ -120,11 +117,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
 	}
 
-	pkgName, err := parsePkgName(meta.PackageSchema)
-	if err != nil {
-		return nil, err
-	}
-
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
 	}
@@ -162,21 +154,9 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
 		version:       semverVersion,
-		pkgName:       pkgName,
 
 		schemaOnlyProvider: schemaOnlyProvider,
 	}, nil
-}
-
-func parsePkgName(schemaBytes []byte) (tokens.Package, error) {
-	type miniPackageSpec struct {
-		Name string `json:"name" yaml:"name"`
-	}
-	var thePackageSpec miniPackageSpec
-	if err := jsoniter.NewDecoder(bytes.NewBuffer(schemaBytes)).Decode(&thePackageSpec); err != nil {
-		return "", fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
-	}
-	return tokens.Package(thePackageSpec.Name), nil
 }
 
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
@@ -204,7 +184,7 @@ func (p *provider) Close() error {
 
 // Pkg fetches this provider's package.
 func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
-	return p.pkgName
+	return tokens.Package(p.info.Name)
 }
 
 // GetSchema returns the schema for the provider.
