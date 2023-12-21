@@ -15,17 +15,18 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/blang/semver"
+	"github.com/json-iterator/go"
+
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -54,13 +55,13 @@ type provider struct {
 	resources     pfutils.Resources
 	datasources   pfutils.DataSources
 	pulumiSchema  []byte
-	packageSpec   pschema.PackageSpec
 	encoding      convert.Encoding
 	diagSink      diag.Sink
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logging.Sink
+	pkgName       tokens.Package
 
 	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
 	// populating defaults specified via DefaultInfo.Config.
@@ -119,9 +120,9 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
 	}
 
-	var thePackageSpec pschema.PackageSpec
-	if err := json.Unmarshal(meta.PackageSchema, &thePackageSpec); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
+	pkgName, err := parsePkgName(meta.PackageSchema)
+	if err != nil {
+		return nil, err
 	}
 
 	if info.MetadataInfo == nil {
@@ -157,14 +158,25 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		resources:     resources,
 		datasources:   datasources,
 		pulumiSchema:  meta.PackageSchema,
-		packageSpec:   thePackageSpec,
 		encoding:      enc,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
 		version:       semverVersion,
+		pkgName:       pkgName,
 
 		schemaOnlyProvider: schemaOnlyProvider,
 	}, nil
+}
+
+func parsePkgName(schemaBytes []byte) (tokens.Package, error) {
+	type miniPackageSpec struct {
+		Name string `json:"name" yaml:"name"`
+	}
+	var thePackageSpec miniPackageSpec
+	if err := jsoniter.NewDecoder(bytes.NewBuffer(schemaBytes)).Decode(&thePackageSpec); err != nil {
+		return "", fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
+	}
+	return tokens.Package(thePackageSpec.Name), nil
 }
 
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
@@ -192,7 +204,7 @@ func (p *provider) Close() error {
 
 // Pkg fetches this provider's package.
 func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
-	return tokens.Package(p.packageSpec.Name)
+	return p.pkgName
 }
 
 // GetSchema returns the schema for the provider.
