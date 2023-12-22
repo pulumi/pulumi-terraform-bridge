@@ -38,10 +38,10 @@ func AssertJSONMatchesPattern(
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
 ) {
-	AssertJSONMatchesPatternWithOpts(t, expectedPattern, actual, JsonMatchOptions{})
+	AssertJSONMatchesPatternWithOpts(t, expectedPattern, actual, JSONMatchOptions{})
 }
 
-type JsonMatchOptions struct {
+type JSONMatchOptions struct {
 	UnorderedArrayPaths map[string]bool
 }
 
@@ -49,7 +49,7 @@ func AssertJSONMatchesPatternWithOpts(
 	t *testing.T,
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
-	opts JsonMatchOptions,
+	opts JSONMatchOptions,
 ) {
 	var p, a interface{}
 

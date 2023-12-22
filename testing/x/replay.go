@@ -32,7 +32,7 @@ import (
 )
 
 type ReplayOptions struct {
-	MatchOptions JsonMatchOptions
+	MatchOptions JSONMatchOptions
 }
 
 // Replay executes a request from a provider operation log against an in-memory resource provider server and asserts

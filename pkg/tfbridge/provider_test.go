@@ -2405,7 +2405,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 				]
 			}
 		}`, "$", "`"), testutils.ReplayOptions{
-			MatchOptions: testutils.JsonMatchOptions{
+			MatchOptions: testutils.JSONMatchOptions{
 				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
 			},
 		})
@@ -2485,7 +2485,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 				]
 			}
 		}`, testutils.ReplayOptions{
-			MatchOptions: testutils.JsonMatchOptions{
+			MatchOptions: testutils.JSONMatchOptions{
 				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
 			},
 		})
@@ -2520,7 +2520,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 					}
 				}
 			}`, testutils.ReplayOptions{
-			MatchOptions: testutils.JsonMatchOptions{
+			MatchOptions: testutils.JSONMatchOptions{
 				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
 			},
 		})
@@ -2563,7 +2563,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 					]
 				}
 			}`, "$", "`"), testutils.ReplayOptions{
-			MatchOptions: testutils.JsonMatchOptions{
+			MatchOptions: testutils.JSONMatchOptions{
 				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
 			},
 		})
