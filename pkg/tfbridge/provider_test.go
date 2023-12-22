@@ -2383,7 +2383,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 	}
 	t.Run("CheckFailsWhenExactlyOneOfNotSpecified", func(t *testing.T) {
 		//nolint:lll
-		testutils.Replay(t, provider, strings.ReplaceAll(`
+		testutils.ReplayWithOpts(t, provider, strings.ReplaceAll(`
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
 			"request": {
@@ -2404,7 +2404,11 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 					{"reason": "Invalid combination of arguments. \"exactly_one_of_required_property\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfRequiredProperty'."}
 				]
 			}
-		}`, "$", "`"))
+		}`, "$", "`"), testutils.ReplayOptions{
+			MatchOptions: testutils.JsonMatchOptions{
+				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
+			},
+		})
 	})
 
 	t.Run("Check", func(t *testing.T) {
@@ -2448,7 +2452,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 
 	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
 		//nolint:lll
-		testutils.Replay(t, provider, `
+		testutils.ReplayWithOpts(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
 			"request": {
@@ -2480,11 +2484,15 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 					{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
 				]
 			}
-		}`)
+		}`, testutils.ReplayOptions{
+			MatchOptions: testutils.JsonMatchOptions{
+				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
+			},
+		})
 	})
 
 	t.Run("CheckHappyPath", func(t *testing.T) {
-		testutils.Replay(t, provider, `
+		testutils.ReplayWithOpts(t, provider, `
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
 				"request": {
@@ -2511,12 +2519,16 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 						"requiredWithRequiredProperty3": "foo"
 					}
 				}
-			}`)
+			}`, testutils.ReplayOptions{
+			MatchOptions: testutils.JsonMatchOptions{
+				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
+			},
+		})
 	})
 
 	t.Run("CheckMissingRequiredWith", func(t *testing.T) {
 		//nolint:lll
-		testutils.Replay(t, provider, strings.ReplaceAll(`
+		testutils.ReplayWithOpts(t, provider, strings.ReplaceAll(`
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
 				"request": {
@@ -2550,6 +2562,10 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 						{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
 					]
 				}
-			}`, "$", "`"))
+			}`, "$", "`"), testutils.ReplayOptions{
+			MatchOptions: testutils.JsonMatchOptions{
+				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
+			},
+		})
 	})
 }

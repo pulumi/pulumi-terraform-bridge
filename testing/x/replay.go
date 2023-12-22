@@ -31,6 +31,10 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+type ReplayOptions struct {
+	MatchOptions JsonMatchOptions
+}
+
 // Replay executes a request from a provider operation log against an in-memory resource provider server and asserts
 // that the server's response matches the logged response.
 //
@@ -86,6 +90,10 @@ import (
 //
 // Replay does not assume that the provider is a bridged provider and can be generally useful.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
+	ReplayWithOpts(t, server, jsonLog, ReplayOptions{})
+}
+
+func ReplayWithOpts(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string, opts ReplayOptions) {
 	ctx := context.Background()
 	var entry jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entry)
@@ -94,45 +102,45 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	switch entry.Method {
 
 	case "/pulumirpc.ResourceProvider/GetSchema":
-		replay(t, entry, new(pulumirpc.GetSchemaRequest), server.GetSchema)
+		replay(t, entry, new(pulumirpc.GetSchemaRequest), server.GetSchema, opts)
 
 	case "/pulumirpc.ResourceProvider/CheckConfig":
-		replay(t, entry, new(pulumirpc.CheckRequest), server.CheckConfig)
+		replay(t, entry, new(pulumirpc.CheckRequest), server.CheckConfig, opts)
 
 	case "/pulumirpc.ResourceProvider/DiffConfig":
-		replay(t, entry, new(pulumirpc.DiffRequest), server.DiffConfig)
+		replay(t, entry, new(pulumirpc.DiffRequest), server.DiffConfig, opts)
 
 	case "/pulumirpc.ResourceProvider/Configure":
-		replay(t, entry, new(pulumirpc.ConfigureRequest), server.Configure)
+		replay(t, entry, new(pulumirpc.ConfigureRequest), server.Configure, opts)
 
 	case "/pulumirpc.ResourceProvider/Invoke":
-		replay(t, entry, new(pulumirpc.InvokeRequest), server.Invoke)
+		replay(t, entry, new(pulumirpc.InvokeRequest), server.Invoke, opts)
 
 	// TODO StreamInvoke might need some special handling as it is a streaming RPC method.
 
 	case "/pulumirpc.ResourceProvider/Call":
-		replay(t, entry, new(pulumirpc.CallRequest), server.Call)
+		replay(t, entry, new(pulumirpc.CallRequest), server.Call, opts)
 
 	case "/pulumirpc.ResourceProvider/Check":
-		replay(t, entry, new(pulumirpc.CheckRequest), server.Check)
+		replay(t, entry, new(pulumirpc.CheckRequest), server.Check, opts)
 
 	case "/pulumirpc.ResourceProvider/Diff":
-		replay(t, entry, new(pulumirpc.DiffRequest), server.Diff)
+		replay(t, entry, new(pulumirpc.DiffRequest), server.Diff, opts)
 
 	case "/pulumirpc.ResourceProvider/Create":
-		replay(t, entry, new(pulumirpc.CreateRequest), server.Create)
+		replay(t, entry, new(pulumirpc.CreateRequest), server.Create, opts)
 
 	case "/pulumirpc.ResourceProvider/Read":
-		replay(t, entry, new(pulumirpc.ReadRequest), server.Read)
+		replay(t, entry, new(pulumirpc.ReadRequest), server.Read, opts)
 
 	case "/pulumirpc.ResourceProvider/Update":
-		replay(t, entry, new(pulumirpc.UpdateRequest), server.Update)
+		replay(t, entry, new(pulumirpc.UpdateRequest), server.Update, opts)
 
 	case "/pulumirpc.ResourceProvider/Delete":
-		replay(t, entry, new(pulumirpc.DeleteRequest), server.Delete)
+		replay(t, entry, new(pulumirpc.DeleteRequest), server.Delete, opts)
 
 	case "/pulumirpc.ResourceProvider/Construct":
-		replay(t, entry, new(pulumirpc.ConstructRequest), server.Construct)
+		replay(t, entry, new(pulumirpc.ConstructRequest), server.Construct, opts)
 
 	case "/pulumirpc.ResourceProvider/Cancel":
 		_, err := server.Cancel(ctx, &emptypb.Empty{})
@@ -143,13 +151,13 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	// rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 
 	case "/pulumirpc.ResourceProvider/Attach":
-		replay(t, entry, new(pulumirpc.PluginAttach), server.Attach)
+		replay(t, entry, new(pulumirpc.PluginAttach), server.Attach, opts)
 
 	case "/pulumirpc.ResourceProvider/GetMapping":
-		replay(t, entry, new(pulumirpc.GetMappingRequest), server.GetMapping)
+		replay(t, entry, new(pulumirpc.GetMappingRequest), server.GetMapping, opts)
 
 	case "/pulumirpc.ResourceProvider/GetMappings":
-		replay(t, entry, new(pulumirpc.GetMappingsRequest), server.GetMappings)
+		replay(t, entry, new(pulumirpc.GetMappingsRequest), server.GetMappings, opts)
 
 	default:
 		t.Errorf("Unknown method: %s", entry.Method)
@@ -174,6 +182,7 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 	entry jsonLogEntry,
 	req Req,
 	serve func(context.Context, Req) (Resp, error),
+	opts ReplayOptions,
 ) {
 	ctx := context.Background()
 
@@ -191,7 +200,7 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 
 	var expected, actual json.RawMessage = entry.Response, bytes
 
-	AssertJSONMatchesPattern(t, expected, actual)
+	AssertJSONMatchesPatternWithOpts(t, expected, actual, opts.MatchOptions)
 }
 
 // ReplayFile executes ReplaySequence on all pulumirpc.ResourceProvider events found in the file produced with

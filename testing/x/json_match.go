@@ -38,6 +38,19 @@ func AssertJSONMatchesPattern(
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
 ) {
+	AssertJSONMatchesPatternWithOpts(t, expectedPattern, actual, JsonMatchOptions{})
+}
+
+type JsonMatchOptions struct {
+	UnorderedArrayPaths map[string]bool
+}
+
+func AssertJSONMatchesPatternWithOpts(
+	t *testing.T,
+	expectedPattern json.RawMessage,
+	actual json.RawMessage,
+	opts JsonMatchOptions,
+) {
 	var p, a interface{}
 
 	if err := json.Unmarshal(expectedPattern, &p); err != nil {
@@ -78,12 +91,14 @@ func AssertJSONMatchesPattern(
 					path, len(pp), prettyJSON(t, a))
 			}
 
-			sort.SliceStable(aa, func(i, j int) bool {
-				return strings.Compare(
-					fmt.Sprintf("%v", aa[i]),
-					fmt.Sprintf("%v", aa[j]),
-				) < 0
-			})
+			if opts.UnorderedArrayPaths[path] {
+				sort.SliceStable(aa, func(i, j int) bool {
+					return strings.Compare(
+						fmt.Sprintf("%v", aa[i]),
+						fmt.Sprintf("%v", aa[j]),
+					) < 0
+				})
+			}
 
 			for i, pv := range pp {
 				av := aa[i]
