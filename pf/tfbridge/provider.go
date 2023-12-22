@@ -16,16 +16,15 @@ package tfbridge
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/blang/semver"
+
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -54,7 +53,6 @@ type provider struct {
 	resources     pfutils.Resources
 	datasources   pfutils.DataSources
 	pulumiSchema  []byte
-	packageSpec   pschema.PackageSpec
 	encoding      convert.Encoding
 	diagSink      diag.Sink
 	configEncoder convert.Encoder
@@ -119,11 +117,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
 	}
 
-	var thePackageSpec pschema.PackageSpec
-	if err := json.Unmarshal(meta.PackageSchema, &thePackageSpec); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal PackageSpec: %w", err)
-	}
-
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
 	}
@@ -157,7 +150,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		resources:     resources,
 		datasources:   datasources,
 		pulumiSchema:  meta.PackageSchema,
-		packageSpec:   thePackageSpec,
 		encoding:      enc,
 		configEncoder: configEncoder,
 		configType:    providerConfigType,
@@ -192,7 +184,7 @@ func (p *provider) Close() error {
 
 // Pkg fetches this provider's package.
 func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
-	return tokens.Package(p.packageSpec.Name)
+	return tokens.Package(p.info.Name)
 }
 
 // GetSchema returns the schema for the provider.
