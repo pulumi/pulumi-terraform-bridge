@@ -15,9 +15,10 @@
 package tfbridge
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type SchemaPath = walk.SchemaPath
@@ -114,8 +115,117 @@ func propertyPathToSchemaPathInner(
 	return nil
 }
 
+// Translate a a bridged provider schema path into a Pulumi property path.
+//
+// The function hides the complexity of mapping Terraform names to Pulumi property names,
+// joining Schema with user overrides in [SchemaInfo]s, and accounting for MaxItems=1
+// situations where Pulumi flattens collections to plain values.  and therefore SchemaPath
+// values are longer than the PropertyPath values.
+//
+// [SchemaPathToPropertyPath] may return nil if there is no matching schema found. This
+// may happen when drilling down to values of unknown type, attributes not tracked in
+// schema, or when there is a type mismatch between the path and the schema.
+//
+// ## Element handling
+//
+// [SchemaPath]s can be either attributes or existential elements. For example:
+//
+//	NewSchemaPath().GetAttr("x").Element().GetAttr("y")
+//
+// [resource.PropertyPath]s have attributes or instantiated elements. For example:
+//
+//	x[3].y
+//
+// [SchemaPathToPropertyPath] translates all existential elements into the "*" (_any_)
+// element. For example:
+//
+//	NewSchemaPath().GetAttr("x").Element().GetAttr("y") => x["*"].y
+//
+// This is information preserving, but "*"s are not usable in all functions that
+// accept [resource.PropertyPath].
+func SchemaPathToPropertyPath(
+	schemaPath SchemaPath,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo) resource.PropertyPath {
+	return schemaPathToPropertyPath(resource.PropertyPath{}, schemaPath, schemaMap, schemaInfos)
+}
+
+func schemaPathToPropertyPath(
+	basePath resource.PropertyPath,
+	schemaPath SchemaPath,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo) resource.PropertyPath {
+
+	if len(schemaPath) == 0 {
+		return basePath
+	}
+
+	if schemaInfos == nil {
+		schemaInfos = make(map[string]*SchemaInfo)
+	}
+
+	firstStep, ok := schemaPath[0].(walk.GetAttrStep)
+	if !ok {
+		return nil
+	}
+
+	firstStepPu := TerraformToPulumiNameV2(firstStep.Name, schemaMap, schemaInfos)
+
+	fieldSchema, found := schemaMap.GetOk(firstStep.Name)
+	if !found {
+		return nil
+	}
+	fieldInfo := schemaInfos[firstStep.Name]
+	return schemaPathToPropertyPathInner(append(basePath, firstStepPu), schemaPath[1:], fieldSchema, fieldInfo)
+}
+
+func schemaPathToPropertyPathInner(
+	basePath resource.PropertyPath,
+	schemaPath SchemaPath,
+	schema shim.Schema,
+	schemaInfo *SchemaInfo,
+) resource.PropertyPath {
+
+	if len(schemaPath) == 0 {
+		return basePath
+	}
+
+	if schemaInfo == nil {
+		schemaInfo = &SchemaInfo{}
+	}
+
+	// Detect single-nested blocks (object types).
+	if res, isRes := schema.Elem().(shim.Resource); schema.Type() == shim.TypeMap && isRes {
+		return schemaPathToPropertyPath(basePath, schemaPath, res.Schema(), schemaInfo.Fields)
+	}
+
+	// Detect collections.
+	switch schema.Type() {
+	case shim.TypeList, shim.TypeMap, shim.TypeSet:
+		// If a element is MaxItemsOne, it doesn't appear in the resource.PropertyPath at all.
+		//
+		// Otherwise we represent Elem relationships with a "*", since the schema
+		// change applies to all nested items.
+		if !IsMaxItemsOne(schema, schemaInfo) {
+			basePath = append(basePath, "*")
+		}
+		switch e := schema.Elem().(type) {
+		case shim.Resource: // object element type
+			return schemaPathToPropertyPath(basePath, schemaPath[1:], e.Schema(), schemaInfo.Fields)
+		case shim.Schema: // non-object element type
+			return schemaPathToPropertyPathInner(basePath, schemaPath[1:], e, schemaInfo.Elem)
+		case nil: // unknown element type
+			// Cannot drill down further, but len(propertyPath)>0.
+			return nil
+		}
+	}
+
+	// Cannot drill down further, but len(propertyPath)>0.
+	return nil
+}
+
 // Convenience method to lookup both a Schema and a SchemaInfo by path.
-func LookupSchemas(schemaPath walk.SchemaPath,
+func LookupSchemas(schemaPath SchemaPath,
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo) (shim.Schema, *SchemaInfo, error) {
 
