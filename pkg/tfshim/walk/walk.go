@@ -16,7 +16,9 @@ package walk
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	hcty "github.com/hashicorp/go-cty/cty"
@@ -112,6 +114,38 @@ func DecodeSchemaPath(path string) SchemaPath {
 		}
 	}
 	return p
+}
+
+var (
+	_ json.Marshaler   = SchemaPath{}
+	_ json.Unmarshaler = &SchemaPath{}
+)
+
+func (p SchemaPath) MarshalJSON() ([]byte, error) {
+	s, err := p.EncodeSchemaPath()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(s)
+}
+
+func (p *SchemaPath) UnmarshalJSON(bytes []byte) error {
+	var s string
+	err := json.Unmarshal(bytes, &s)
+	if err != nil {
+		return err
+	}
+	*p = DecodeSchemaPath(s)
+	return nil
+}
+
+// Provide a stable ordering of SchemaPaths.
+//
+// Beyond determinism, there is no specific sort order.
+func SortSchemaPaths(paths []SchemaPath) {
+	sort.Slice(paths, func(i, j int) bool {
+		return paths[i].GoString() < paths[j].GoString()
+	})
 }
 
 // Builds a new empty SchemaPath.

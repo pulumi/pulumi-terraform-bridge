@@ -66,7 +66,14 @@ func (info *MetadataInfo) assertValid() {
 // in the future this method might also substitute compressed contents within some keys
 func (info *MetadataInfo) ExtractRuntimeMetadata() *MetadataInfo {
 	data, _ := metadata.New(nil)
-	metadata.CloneKey(autoSettingsKey, info.Data, data)
-	metadata.CloneKey("mux", info.Data, data)
+
+	for _, k := range []string{
+		autoSettingsKey,
+		"mux",
+		"traverse-effects",
+	} {
+		metadata.CloneKey(k, info.Data, data)
+	}
+
 	return &MetadataInfo{"runtime-bridge-metadata.json", ProviderMetadata(data)}
 }
