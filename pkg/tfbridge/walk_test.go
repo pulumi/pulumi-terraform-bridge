@@ -43,6 +43,10 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 			Type: shim.TypeList,
 			Elem: strSchema,
 		}).Shim(),
+		"list_str_named": (&schema.Schema{
+			Type: shim.TypeList,
+			Elem: strSchema,
+		}).Shim(),
 		"list_unknowns": (&schema.Schema{
 			Type: shim.TypeList,
 		}).Shim(),
@@ -68,6 +72,9 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 	schemaInfos := map[string]*SchemaInfo{
 		"flat_list_via_schema_info": {
 			MaxItemsOne: &yes,
+		},
+		"list_str_named": {
+			Name: "listStr",
 		},
 	}
 
@@ -95,12 +102,18 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		},
 		{
 			name:     "list",
-			pp:       []any{"listStr"},
+			pp:       []any{"listStrs"},
 			expected: walk.NewSchemaPath().GetAttr("list_str"),
 		},
 		{
+			name:     "named list",
+			pp:       []any{"listStr"},
+			expected: walk.NewSchemaPath().GetAttr("list_str_named"),
+		},
+
+		{
 			name:     "list element",
-			pp:       []any{"listStr", 3},
+			pp:       []any{"listStrs", 3},
 			expected: walk.NewSchemaPath().GetAttr("list_str").Element(),
 		},
 		{
@@ -120,17 +133,17 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		},
 		{
 			name:     "set-nested block 1",
-			pp:       []any{"objSet"},
+			pp:       []any{"objSets"},
 			expected: walk.NewSchemaPath().GetAttr("obj_set"),
 		},
 		{
 			name:     "set-nested block 2",
-			pp:       []any{"objSet", 0},
+			pp:       []any{"objSets", 0},
 			expected: walk.NewSchemaPath().GetAttr("obj_set").Element(),
 		},
 		{
 			name:     "set-nested block 3",
-			pp:       []any{"objSet", 0, "xProp"},
+			pp:       []any{"objSets", 0, "xProp"},
 			expected: walk.NewSchemaPath().GetAttr("obj_set").Element().GetAttr("x_prop"),
 		},
 		{
@@ -155,6 +168,25 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pp := PropertyPathToSchemaPath(tc.pp, schemaMap, schemaInfos)
 			assert.Equal(t, tc.expected, pp)
+
+			t.Run("inverse", func(t *testing.T) {
+				// If SchemaPath -> PP doesn't work, it doesn't make sense
+				// to test round tripping.
+				if tc.expected == nil {
+					t.SkipNow()
+				}
+
+				// Element selection is not round-trippable, so we convert
+				// some element index, like `3` into the generic element
+				// index `"*"`.
+				for i, p := range tc.pp {
+					if _, ok := p.(int); ok {
+						tc.pp[i] = "*"
+					}
+				}
+				actual := SchemaPathToPropertyPath(pp, schemaMap, schemaInfos)
+				assert.Equal(t, tc.pp, actual)
+			})
 		})
 	}
 }
