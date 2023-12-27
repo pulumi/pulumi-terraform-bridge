@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
@@ -119,8 +120,7 @@ func propertyPathToSchemaPathInner(
 //
 // The function hides the complexity of mapping Terraform names to Pulumi property names,
 // joining Schema with user overrides in [SchemaInfo]s, and accounting for MaxItems=1
-// situations where Pulumi flattens collections to plain values.  and therefore SchemaPath
-// values are longer than the PropertyPath values.
+// situations where Pulumi flattens collections to plain values.
 //
 // [SchemaPathToPropertyPath] may return nil if there is no matching schema found. This
 // may happen when drilling down to values of unknown type, attributes not tracked in
@@ -128,16 +128,19 @@ func propertyPathToSchemaPathInner(
 //
 // ## Element handling
 //
-// [SchemaPath]s can be either attributes or existential elements. For example:
+// [SchemaPath]s can be either attributes or existential elements. .Element() segments are
+// existential because they represent some element access, but not a specific element
+// access. For example:
 //
 //	NewSchemaPath().GetAttr("x").Element().GetAttr("y")
 //
-// [resource.PropertyPath]s have attributes or instantiated elements. For example:
+// [resource.PropertyPath]s have attributes or instantiated elements. Elements are
+// instantiated because they represent a specific element access. For example:
 //
 //	x[3].y
 //
-// [SchemaPathToPropertyPath] translates all existential elements into the "*" (_any_)
-// element. For example:
+// [SchemaPathToPropertyPath] translates all existential elements into the "*"
+// (_universal_) element. For example:
 //
 //	NewSchemaPath().GetAttr("x").Element().GetAttr("y") => x["*"].y
 //
@@ -195,8 +198,8 @@ func schemaPathToPropertyPathInner(
 	}
 
 	// Detect single-nested blocks (object types).
-	if res, isRes := schema.Elem().(shim.Resource); schema.Type() == shim.TypeMap && isRes {
-		return schemaPathToPropertyPath(basePath, schemaPath, res.Schema(), schemaInfo.Fields)
+	if obj, isObject := util.CastToTypeObject(schema); isObject {
+		return schemaPathToPropertyPath(basePath, schemaPath, obj, schemaInfo.Fields)
 	}
 
 	// Detect collections.

@@ -18,7 +18,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// isOfTypeMap detects schemas indicating a map[string,X] type. Due to a quirky encoding of
+// IsOfTypeMap detects schemas indicating a map[string,X] type. Due to a quirky encoding of
 // single-nested Terraform blocks, it is insufficient to just check for tfs.Type() == shim.TypeMap.
 // See [shim.Schema.Elem()] comment for all the details of the encoding.
 func IsOfTypeMap(tfs shim.Schema) bool {
@@ -27,4 +27,19 @@ func IsOfTypeMap(tfs shim.Schema) bool {
 	}
 	_, hasResourceElem := tfs.Elem().(shim.Resource)
 	return !hasResourceElem
+}
+
+// CastToTypeObject performs a checked cast from shim.Schema to a TF object (a collection
+// of fields).
+//
+// See [shim.Schema.Elem()] comment for all the details of the encoding.
+func CastToTypeObject(tfs shim.Schema) (shim.SchemaMap, bool) {
+	if tfs == nil {
+		return nil, false
+	}
+	res, isRes := tfs.Elem().(shim.Resource)
+	if isRes && tfs.Type() == shim.TypeMap {
+		return res.Schema(), true
+	}
+	return nil, false
 }
