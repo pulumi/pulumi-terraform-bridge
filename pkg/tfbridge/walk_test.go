@@ -15,14 +15,17 @@
 package tfbridge
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
@@ -259,4 +262,173 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func TestTraverseProperties(t *testing.T) {
+	prov := &ProviderInfo{
+		P:              shimv2.NewProvider(testTFProviderV2),
+		IgnoreMappings: []string{"nested_secret_resource"},
+		MetadataInfo:   NewProviderMetadata(nil),
+	}
+
+	tfToken := func(i PropertyVisitInfo) string {
+		switch root := i.Root.(type) {
+		case VisitResourceRoot:
+			return root.TfToken
+		case VisitDataSourceRoot:
+			return root.TfToken
+		default:
+			return ""
+		}
+	}
+
+	hasEffect := func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+		return PropertyVisitResult{
+			HasEffect: strings.Contains(i.SchemaPath().GoString(), "bool_property_value") ||
+				strings.Contains(i.SchemaPath().GoString(), "opt_bool"),
+		}, nil
+	}
+
+	seenPaths := map[string][]SchemaPath{}
+	err := prov.TraverseProperties(t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+		paths := seenPaths[tfToken(i)]
+		seenPaths[tfToken(i)] = append(paths, i.SchemaPath())
+		return hasEffect(i)
+	}, TraverseForEffect(false))
+	require.NoError(t, err)
+
+	for k, v := range seenPaths {
+		walk.SortSchemaPaths(v)
+		seenPaths[k] = v
+	}
+
+	assert.Equal(t, map[string][]walk.SchemaPath{
+		"": {
+			walk.NewSchemaPath().GetAttr("config_value")},
+		"example_resource": {
+			walk.NewSchemaPath().GetAttr("array_property_value"),
+			walk.NewSchemaPath().GetAttr("array_property_value"),
+			walk.NewSchemaPath().GetAttr("array_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("array_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+			walk.NewSchemaPath().GetAttr("float_property_value"),
+			walk.NewSchemaPath().GetAttr("float_property_value"),
+			walk.NewSchemaPath().GetAttr("map_property_value"),
+			walk.NewSchemaPath().GetAttr("nested_resources"),
+			walk.NewSchemaPath().GetAttr("nested_resources"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("configuration"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("configuration"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("kind"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("opt_bool"),
+			walk.NewSchemaPath().GetAttr("nil_property_value"),
+			walk.NewSchemaPath().GetAttr("nil_property_value"),
+			walk.NewSchemaPath().GetAttr("number_property_value"),
+			walk.NewSchemaPath().GetAttr("number_property_value"),
+			walk.NewSchemaPath().GetAttr("object_property_value"),
+			walk.NewSchemaPath().GetAttr("object_property_value"),
+			walk.NewSchemaPath().GetAttr("set_property_value"),
+			walk.NewSchemaPath().GetAttr("set_property_value"),
+			walk.NewSchemaPath().GetAttr("set_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("set_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("string_property_value"),
+			walk.NewSchemaPath().GetAttr("string_property_value"),
+			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation"),
+			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation")},
+		"second_resource": {
+			walk.NewSchemaPath().GetAttr("array_property_value"),
+			walk.NewSchemaPath().GetAttr("array_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+			walk.NewSchemaPath().GetAttr("conflicting_property"),
+			walk.NewSchemaPath().GetAttr("conflicting_property2"),
+			walk.NewSchemaPath().GetAttr("conflicting_property_unidirectional"),
+			walk.NewSchemaPath().GetAttr("float_property_value"),
+			walk.NewSchemaPath().GetAttr("nested_resources"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("configuration"),
+			walk.NewSchemaPath().GetAttr("nil_property_value"),
+			walk.NewSchemaPath().GetAttr("number_property_value"),
+			walk.NewSchemaPath().GetAttr("object_property_value"),
+			walk.NewSchemaPath().GetAttr("set_property_value"),
+			walk.NewSchemaPath().GetAttr("set_property_value").Element(),
+			walk.NewSchemaPath().GetAttr("string_property_value"),
+			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation")},
+	}, seenPaths)
+
+	seenPaths = map[string][]SchemaPath{}
+	err = prov.TraverseProperties(t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+		paths := seenPaths[tfToken(i)]
+		seenPaths[tfToken(i)] = append(paths, i.SchemaPath())
+		return hasEffect(i)
+	}, TraverseForEffect(true))
+	require.NoError(t, err)
+
+	for k, v := range seenPaths {
+		walk.SortSchemaPaths(v)
+		seenPaths[k] = v
+	}
+
+	assert.Equal(t, map[string][]walk.SchemaPath{
+		"example_resource": {
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("opt_bool")},
+		"second_resource": {
+			walk.NewSchemaPath().GetAttr("bool_property_value")},
+	}, seenPaths)
+}
+
+func TestTraversePropertiesSchemaInfo(t *testing.T) {
+	md := NewProviderMetadata(nil)
+	prov := &ProviderInfo{
+		P:            shimv2.NewProvider(testTFProviderV2),
+		MetadataInfo: md,
+	}
+
+	isTarget := func(i PropertyVisitInfo) bool {
+		return strings.Contains(i.SchemaPath().GoString(), "bool_property_value") ||
+			strings.Contains(i.SchemaPath().GoString(), "opt_bool")
+	}
+
+	visitor := func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+		// Force the schema info to be produced for all visit props
+		info := i.SchemaInfo()
+		if isTarget(i) {
+			info.ForceNew = BoolRef(true)
+			return PropertyVisitResult{HasEffect: true}, nil
+		}
+		return PropertyVisitResult{}, nil
+	}
+
+	verify := func(prov *ProviderInfo) {
+		assert.Equal(t, BoolRef(true), prov.Resources["example_resource"].
+			Fields["nested_resources"].Elem.
+			Fields["opt_bool"].ForceNew)
+		assert.Equal(t, BoolRef(true), prov.Resources["example_resource"].
+			Fields["bool_property_value"].ForceNew)
+		assert.Equal(t, BoolRef(true), prov.Resources["second_resource"].
+			Fields["bool_property_value"].ForceNew)
+	}
+
+	err := prov.TraverseProperties(t.Name(), visitor, TraverseForEffect(false))
+	require.NoError(t, err)
+
+	assert.NotNil(t, prov.Resources["example_resource"].
+		Fields["nested_resources"].Elem.
+		Fields["configuration"])
+
+	verify(prov)
+
+	// Reset prov - We are now testing for effect
+	prov = &ProviderInfo{
+		P:            shimv2.NewProvider(testTFProviderV2),
+		MetadataInfo: md.ExtractRuntimeMetadata(),
+	}
+	err = prov.TraverseProperties(t.Name(), visitor, TraverseForEffect(true))
+	require.NoError(t, err)
+	verify(prov)
+
+	// This property did not have an effect, so it should not have been visited.
+	assert.Nil(t, prov.Resources["example_resource"].
+		Fields["nested_resources"].Elem.
+		Fields["configuration"])
 }

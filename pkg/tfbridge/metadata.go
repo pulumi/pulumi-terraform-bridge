@@ -62,11 +62,21 @@ func (info *MetadataInfo) assertValid() {
 
 }
 
+var declaredRuntimeMetadata = map[string]struct{}{
+	autoSettingsKey: {},
+	"mux":           {},
+}
+
+func declareRuntimeMetadata(label string) { declaredRuntimeMetadata[label] = struct{}{} }
+
 // trim the metadata to just the keys required for the runtime phase
 // in the future this method might also substitute compressed contents within some keys
 func (info *MetadataInfo) ExtractRuntimeMetadata() *MetadataInfo {
 	data, _ := metadata.New(nil)
-	metadata.CloneKey(autoSettingsKey, info.Data, data)
-	metadata.CloneKey("mux", info.Data, data)
+
+	for k := range declaredRuntimeMetadata {
+		metadata.CloneKey(k, info.Data, data)
+	}
+
 	return &MetadataInfo{"runtime-bridge-metadata.json", ProviderMetadata(data)}
 }
