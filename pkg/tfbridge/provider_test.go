@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -2301,5 +2302,254 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 				"hasDetailedDiff": true
 			}
 		}`)
+	})
+}
+
+// These should test that we validate resources before applying TF defaults,
+// since this is what TF does.
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
+func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
+	p := testprovider.ConflictsWithValidationProvider()
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p),
+		config: shimv2.NewSchemaMap(p.Schema),
+		resources: map[tokens.Type]Resource{
+			"DefaultValueRes": {
+				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TFName: "default_value_res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("CheckMissingRequiredProp", func(t *testing.T) {
+		//nolint:lll
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+				"olds": {},
+				"news": {},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": []
+				},
+				"failures": [
+					{ "reason": "Missing required argument. The argument \"conflicting_required_property\" is required, but no definition was found.. Examine values at 'exres.conflictingRequiredProperty'."
+					}
+				]
+			}
+		}`)
+	})
+
+	t.Run("CheckRequiredDoesNotConflict", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+				"olds": {},
+				"news": {
+					"conflicting_required_property": "required"
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"conflictingRequiredProperty": "required"
+				}
+			}
+		}`)
+	})
+}
+
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
+func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
+	p := testprovider.ExactlyOneOfValidationProvider()
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p),
+		config: shimv2.NewSchemaMap(p.Schema),
+		resources: map[tokens.Type]Resource{
+			"DefaultValueRes": {
+				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TFName: "default_value_res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+	t.Run("CheckFailsWhenExactlyOneOfNotSpecified", func(t *testing.T) {
+		//nolint:lll
+		testutils.Replay(t, provider, strings.ReplaceAll(`
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": []
+				},
+				"failures": [
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_nonrequired_property2\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfNonrequiredProperty2'."},
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_property\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty'."},
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_property2\": one of $exactly_one_of_property,exactly_one_of_property2$ must be specified. Examine values at 'exres.exactlyOneOfProperty2'."},
+					{"reason": "Invalid combination of arguments. \"exactly_one_of_required_property\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfRequiredProperty'."}
+				]
+			}
+		}`, "$", "`"))
+	})
+
+	t.Run("Check", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+				"olds": {},
+				"news": {
+					"exactlyOneOfProperty": "exactly_one_value",
+					"exactlyOneOfRequiredProperty": "exactly_one_req_value"
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"exactlyOneOfProperty": "exactly_one_value",
+					"exactlyOneOfRequiredProperty": "exactly_one_req_value"
+				}
+			}
+		}`)
+	})
+}
+
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
+func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
+	p := testprovider.RequiredWithValidationProvider()
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p),
+		config: shimv2.NewSchemaMap(p.Schema),
+		resources: map[tokens.Type]Resource{
+			"DefaultValueRes": {
+				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TFName: "default_value_res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
+		//nolint:lll
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+				"olds": {},
+				"news": {},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [
+						"requiredWithNonrequiredProperty",
+						"requiredWithProperty",
+						"requiredWithProperty2",
+						"requiredWithRequiredProperty",
+						"requiredWithRequiredProperty2",
+						"requiredWithRequiredProperty3"
+					],
+					"requiredWithNonrequiredProperty": "",
+					"requiredWithProperty": "",
+					"requiredWithProperty2": "",
+					"requiredWithRequiredProperty": "",
+					"requiredWithRequiredProperty2": "",
+					"requiredWithRequiredProperty3": ""
+				},
+				"failures": [
+					{"reason": "Missing required argument. The argument \"required_with_required_property\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty'."},
+					{"reason": "Missing required argument. The argument \"required_with_required_property2\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty2'."},
+					{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
+				]
+			}
+		}`)
+	})
+
+	t.Run("CheckHappyPath", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+			{
+				"method": "/pulumirpc.ResourceProvider/Check",
+				"request": {
+					"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+					"olds": {},
+					"news": {
+						"requiredWithNonrequiredProperty": "foo",
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": "foo"
+					},
+					"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+				},
+				"response": {
+					"inputs": {
+						"__defaults": [],
+						"requiredWithNonrequiredProperty": "foo",
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": "foo"
+					}
+				}
+			}`)
+	})
+
+	t.Run("CheckMissingRequiredWith", func(t *testing.T) {
+		//nolint:lll
+		testutils.Replay(t, provider, strings.ReplaceAll(`
+			{
+				"method": "/pulumirpc.ResourceProvider/Check",
+				"request": {
+					"urn": "urn:pulumi:dev::teststack::DefaultValueRes::exres",
+					"olds": {},
+					"news": {
+						"requiredWithProperty": "foo",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo"
+					},
+					"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+				},
+				"response": {
+					"inputs": {
+						"__defaults": [
+							"requiredWithNonrequiredProperty",
+							"requiredWithProperty2",
+							"requiredWithRequiredProperty3"
+						],
+						"requiredWithNonrequiredProperty": "",
+						"requiredWithProperty": "foo",
+						"requiredWithProperty2": "",
+						"requiredWithRequiredProperty": "foo",
+						"requiredWithRequiredProperty2": "foo",
+						"requiredWithRequiredProperty3": ""
+					},
+					"failures": [
+						{"reason": "Missing required argument. \"required_with_property\": all of $required_with_property,required_with_property2$ must be specified. Examine values at 'exres.requiredWithProperty'."},
+						{"reason": "Missing required argument. \"required_with_required_property\": all of $required_with_nonrequired_property,required_with_required_property$ must be specified. Examine values at 'exres.requiredWithRequiredProperty'."},
+						{"reason": "Missing required argument. \"required_with_required_property2\": all of $required_with_required_property2,required_with_required_property3$ must be specified. Examine values at 'exres.requiredWithRequiredProperty2'."},
+						{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
+					]
+				}
+			}`, "$", "`"))
 	})
 }

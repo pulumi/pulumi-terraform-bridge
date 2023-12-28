@@ -292,14 +292,15 @@ type conversionContext struct {
 	ComputeDefaultOptions ComputeDefaultOptions
 	ProviderConfig        resource.PropertyMap
 	ApplyDefaults         bool
+	ApplyTFDefaults       bool
 	Assets                AssetTable
 }
 
-func MakeTerraformInputs(
+func makeTerraformInputsHelper(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+	applyTFDefaults bool,
 ) (map[string]interface{}, AssetTable, error) {
-
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
 		cdOptions = ComputeDefaultOptions{
@@ -315,6 +316,7 @@ func MakeTerraformInputs(
 		ComputeDefaultOptions: cdOptions,
 		ProviderConfig:        config,
 		ApplyDefaults:         true,
+		ApplyTFDefaults:       applyTFDefaults,
 		Assets:                AssetTable{},
 	}
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
@@ -322,6 +324,20 @@ func MakeTerraformInputs(
 		return nil, nil, err
 	}
 	return inputs, cctx.Assets, err
+}
+
+func MakeTerraformInputs(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true)
+}
+
+func makeTerraformInputsWithoutTFDefaults(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -853,7 +869,7 @@ func (ctx *conversionContext) applyDefaults(
 	}
 
 	// Next, populate defaults from the Terraform schema.
-	if tfs != nil {
+	if tfs != nil && ctx.ApplyTFDefaults {
 		var valueErr error
 		tfs.Range(func(name string, sch shim.Schema) bool {
 			if sch.Removed() != "" {

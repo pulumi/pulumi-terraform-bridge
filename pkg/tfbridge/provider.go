@@ -664,7 +664,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
-	inputs, assets, err := MakeTerraformInputs(ctx,
+	inputs, _, err := makeTerraformInputsWithoutTFDefaults(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
 		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
@@ -682,6 +682,14 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	// Now produce CheckFalures for any properties that failed verification.
 	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
+
+	// Now re-generate the inputs WITH the TF defaults
+	inputs, assets, err := MakeTerraformInputs(ctx,
+		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
+		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+	if err != nil {
+		return nil, err
+	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)

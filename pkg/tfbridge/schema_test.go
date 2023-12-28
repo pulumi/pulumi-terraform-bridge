@@ -56,8 +56,9 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{
-		Assets:        AssetTable{},
-		ApplyDefaults: true,
+		Assets:          AssetTable{},
+		ApplyDefaults:   true,
+		ApplyTFDefaults: true,
 	}
 	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {

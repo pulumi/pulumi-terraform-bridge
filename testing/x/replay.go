@@ -191,7 +191,7 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 
 	var expected, actual json.RawMessage = entry.Response, bytes
 
-	AssertJSONMatchesPattern(t, expected, actual)
+	AssertJSONMatchesPattern(t, expected, actual, WithUnorderedArrayPaths(map[string]bool{`#["failures"]`: true}))
 }
 
 // ReplayFile executes ReplaySequence on all pulumirpc.ResourceProvider events found in the file produced with
