@@ -432,11 +432,15 @@ func TraverseProperties(
 		}
 	}
 
+	ignoredTokens := ignoredTokens(prov)
+
 	prov.P.ResourcesMap().Range(func(tfName string, rShim shim.Resource) bool {
+		if ignoredTokens[tfName] {
+			return true
+		}
+
 		var err error
-
 		effectPaths := ensureMap(&traversalEffects.Resources)[tfName]
-
 		effectPaths, err = traverseResourceOrDataSource(tfName, rShim, ensureMapKey(&prov.Resources, tfName),
 			visitor, forEffect, effectPaths)
 		if err != nil {
@@ -448,9 +452,12 @@ func TraverseProperties(
 	})
 
 	prov.P.DataSourcesMap().Range(func(tfName string, dShim shim.Resource) bool {
+		if ignoredTokens[tfName] {
+			return true
+		}
+
 		var err error
 		effectPaths := ensureMap(&traversalEffects.DataSources)[tfName]
-
 		effectPaths, err = traverseResourceOrDataSource(tfName, dShim, ensureMapKey(&prov.DataSources, tfName),
 			visitor, forEffect, effectPaths)
 		if err != nil {
