@@ -25,29 +25,21 @@ func TestJsonMatch(t *testing.T) {
 	AssertJSONMatchesPattern(t, []byte(`{"\\": "*"}`), []byte(`"*"`))
 	AssertJSONMatchesPattern(t, []byte(`[1, "*", 3]`), []byte(`[1, 2, 3]`))
 	AssertJSONMatchesPattern(t, []byte(`{"foo": "*", "bar": 3}`), []byte(`{"foo": 1, "bar": 3}`))
-	AssertJSONMatchesPatternWithOpts(t, []byte(`[1, 2, 3]`), []byte(`[1, 3, 2]`),
-		JSONMatchOptions{
-			UnorderedArrayPaths: map[string]bool{"#": true},
-		})
-	AssertJSONMatchesPatternWithOpts(t,
+	AssertJSONMatchesPattern(t, []byte(`[1, 2, 3]`), []byte(`[1, 3, 2]`),
+		WithUnorderedArrayPaths(map[string]bool{"#": true}))
+	AssertJSONMatchesPattern(t,
 		[]byte(`[{"key1":"val"}, {"key2":"val"}]`),
 		[]byte(`[{"key2":"val"}, {"key1":"val"}]`),
-		JSONMatchOptions{
-			UnorderedArrayPaths: map[string]bool{"#": true},
-		},
+		WithUnorderedArrayPaths(map[string]bool{"#": true}),
 	)
-	AssertJSONMatchesPatternWithOpts(t,
+	AssertJSONMatchesPattern(t,
 		[]byte(`[{"key":"val1"}, {"key":"val2"}]`),
 		[]byte(`[{"key":"val2"}, {"key":"val1"}]`),
-		JSONMatchOptions{
-			UnorderedArrayPaths: map[string]bool{"#": true},
-		},
+		WithUnorderedArrayPaths(map[string]bool{"#": true}),
 	)
-	AssertJSONMatchesPatternWithOpts(t,
+	AssertJSONMatchesPattern(t,
 		[]byte(`{"arr":[{"key":"val1"}, {"key":"val2"}]}`),
 		[]byte(`{"arr":[{"key":"val2"}, {"key":"val1"}]}`),
-		JSONMatchOptions{
-			UnorderedArrayPaths: map[string]bool{`#["arr"]`: true},
-		},
+		WithUnorderedArrayPaths(map[string]bool{`#["arr"]`: true}),
 	)
 }

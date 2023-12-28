@@ -296,11 +296,28 @@ type conversionContext struct {
 	Assets                AssetTable
 }
 
-func makeTerraformInputsHelper(
+type makeTerraformInputOptions struct {
+	DisableTFDefaults bool
+}
+
+type MakeTerraformInputOption func(*makeTerraformInputOptions)
+
+func WithDisableTFDefaults() MakeTerraformInputOption {
+	return func(opts *makeTerraformInputOptions) {
+		opts.DisableTFDefaults = true
+	}
+}
+
+func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	applyTFDefaults bool,
+	opts ...MakeTerraformInputOption,
 ) (map[string]interface{}, AssetTable, error) {
+	options := &makeTerraformInputOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
 		cdOptions = ComputeDefaultOptions{
@@ -316,7 +333,7 @@ func makeTerraformInputsHelper(
 		ComputeDefaultOptions: cdOptions,
 		ProviderConfig:        config,
 		ApplyDefaults:         true,
-		ApplyTFDefaults:       applyTFDefaults,
+		ApplyTFDefaults:       !options.DisableTFDefaults,
 		Assets:                AssetTable{},
 	}
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
@@ -324,20 +341,6 @@ func makeTerraformInputsHelper(
 		return nil, nil, err
 	}
 	return inputs, cctx.Assets, err
-}
-
-func MakeTerraformInputs(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true)
-}
-
-func MakeTerraformInputsNoTFDefaults(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary

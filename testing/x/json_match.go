@@ -25,6 +25,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type jsonMatchOptions struct {
+	UnorderedArrayPaths map[string]bool
+}
+
+type JSONMatchOption func(*jsonMatchOptions)
+
+func WithUnorderedArrayPaths(unorderedArrayPaths map[string]bool) JSONMatchOption {
+	return func(opts *jsonMatchOptions) {
+		opts.UnorderedArrayPaths = unorderedArrayPaths
+	}
+}
+
 // Assert that a given JSON document structurally matches a pattern.
 //
 // The pattern language supports the following constructs:
@@ -37,21 +49,14 @@ func AssertJSONMatchesPattern(
 	t *testing.T,
 	expectedPattern json.RawMessage,
 	actual json.RawMessage,
-) {
-	AssertJSONMatchesPatternWithOpts(t, expectedPattern, actual, JSONMatchOptions{})
-}
-
-type JSONMatchOptions struct {
-	UnorderedArrayPaths map[string]bool
-}
-
-func AssertJSONMatchesPatternWithOpts(
-	t *testing.T,
-	expectedPattern json.RawMessage,
-	actual json.RawMessage,
-	opts JSONMatchOptions,
+	opts ...JSONMatchOption,
 ) {
 	var p, a interface{}
+
+	options := jsonMatchOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
 
 	if err := json.Unmarshal(expectedPattern, &p); err != nil {
 		require.NoError(t, err)
@@ -91,7 +96,7 @@ func AssertJSONMatchesPatternWithOpts(
 					path, len(pp), prettyJSON(t, a))
 			}
 
-			if opts.UnorderedArrayPaths[path] {
+			if options.UnorderedArrayPaths[path] {
 				sort.SliceStable(aa, func(i, j int) bool {
 					return strings.Compare(
 						fmt.Sprintf("%v", aa[i]),

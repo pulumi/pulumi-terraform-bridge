@@ -664,9 +664,9 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
 	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
-	inputs, _, err := MakeTerraformInputsNoTFDefaults(ctx,
+	inputs, _, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields, WithDisableTFDefaults())
 	if err != nil {
 		return nil, err
 	}

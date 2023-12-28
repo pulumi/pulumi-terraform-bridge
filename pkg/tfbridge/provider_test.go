@@ -2305,8 +2305,8 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 	})
 }
 
-// These should test that we validate resources before applying TF defaults.
-// This is what TF does!
+// These should test that we validate resources before applying TF defaults,
+// since this is what TF does.
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
 	p := testprovider.ConflictsWithValidationProvider()
@@ -2383,7 +2383,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 	}
 	t.Run("CheckFailsWhenExactlyOneOfNotSpecified", func(t *testing.T) {
 		//nolint:lll
-		testutils.ReplayWithOpts(t, provider, strings.ReplaceAll(`
+		testutils.Replay(t, provider, strings.ReplaceAll(`
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
 			"request": {
@@ -2404,11 +2404,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 					{"reason": "Invalid combination of arguments. \"exactly_one_of_required_property\": one of $exactly_one_of_nonrequired_property2,exactly_one_of_required_property$ must be specified. Examine values at 'exres.exactlyOneOfRequiredProperty'."}
 				]
 			}
-		}`, "$", "`"), testutils.ReplayOptions{
-			MatchOptions: testutils.JSONMatchOptions{
-				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
-			},
-		})
+		}`, "$", "`"))
 	})
 
 	t.Run("Check", func(t *testing.T) {
@@ -2452,7 +2448,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 
 	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
 		//nolint:lll
-		testutils.ReplayWithOpts(t, provider, `
+		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
 			"request": {
@@ -2484,15 +2480,11 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 					{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
 				]
 			}
-		}`, testutils.ReplayOptions{
-			MatchOptions: testutils.JSONMatchOptions{
-				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
-			},
-		})
+		}`)
 	})
 
 	t.Run("CheckHappyPath", func(t *testing.T) {
-		testutils.ReplayWithOpts(t, provider, `
+		testutils.Replay(t, provider, `
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
 				"request": {
@@ -2519,16 +2511,12 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 						"requiredWithRequiredProperty3": "foo"
 					}
 				}
-			}`, testutils.ReplayOptions{
-			MatchOptions: testutils.JSONMatchOptions{
-				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
-			},
-		})
+			}`)
 	})
 
 	t.Run("CheckMissingRequiredWith", func(t *testing.T) {
 		//nolint:lll
-		testutils.ReplayWithOpts(t, provider, strings.ReplaceAll(`
+		testutils.Replay(t, provider, strings.ReplaceAll(`
 			{
 				"method": "/pulumirpc.ResourceProvider/Check",
 				"request": {
@@ -2562,10 +2550,6 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 						{"reason": "Missing required argument. The argument \"required_with_required_property3\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty3'."}
 					]
 				}
-			}`, "$", "`"), testutils.ReplayOptions{
-			MatchOptions: testutils.JSONMatchOptions{
-				UnorderedArrayPaths: map[string]bool{`#["failures"]`: true},
-			},
-		})
+			}`, "$", "`"))
 	})
 }
