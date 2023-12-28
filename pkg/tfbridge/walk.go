@@ -306,7 +306,7 @@ func getOrCreateSchemaInfoPath(schemaPath SchemaPath, schemaInfo *SchemaInfo) *S
 	}
 }
 
-type VisitInfo struct {
+type PropertyVisitInfo struct {
 	Root VisitRoot
 
 	schemaPath SchemaPath
@@ -318,18 +318,20 @@ type VisitInfo struct {
 	getSchemaInfoMap func() map[string]*SchemaInfo
 }
 
-type VisitResult struct {
+type PropertyVisitResult struct {
 	// If the visitor has done something.
 	//
 	// Visits will only be replayed during runtime startup if `HasEffect: true`.
 	HasEffect bool
 }
 
-func (v *VisitInfo) SchemaPath() SchemaPath                         { return v.schemaPath }
-func (v *VisitInfo) ShimSchema() shim.Schema                        { return v.shimSchema }
-func (v *VisitInfo) SchemaInfo() *SchemaInfo                        { return v.getSchemaInfo() }
-func (v *VisitInfo) EnclosingSchemaInfoMap() map[string]*SchemaInfo { return v.getSchemaInfoMap() }
-func (v *VisitInfo) EnclosingSchemaShimMap() shim.SchemaMap         { return v.getShimSchemaMap() }
+func (v *PropertyVisitInfo) SchemaPath() SchemaPath  { return v.schemaPath }
+func (v *PropertyVisitInfo) ShimSchema() shim.Schema { return v.shimSchema }
+func (v *PropertyVisitInfo) SchemaInfo() *SchemaInfo { return v.getSchemaInfo() }
+func (v *PropertyVisitInfo) EnclosingSchemaInfoMap() map[string]*SchemaInfo {
+	return v.getSchemaInfoMap()
+}
+func (v *PropertyVisitInfo) EnclosingSchemaMap() shim.SchemaMap { return v.getShimSchemaMap() }
 
 type VisitRoot interface {
 	PulumiToken() tokens.Type
@@ -372,20 +374,23 @@ type VisitConfigRoot struct{ token tokens.Type }
 func (r VisitConfigRoot) PulumiToken() tokens.Type { return r.token }
 func (r VisitConfigRoot) isVisitRoot()             {}
 
-type Visitor = func(VisitInfo) (VisitResult, error)
+type PropertyVisitor = func(PropertyVisitInfo) (PropertyVisitResult, error)
 
-// A wrapper around [TraverseSchemas] that panics on error. See [TraverseSchemas] for
+// A wrapper around [TraverseProperties] that panics on error. See [TraverseProperties] for
 // documentation.
-func MustTraverseSchemas(prov *ProviderInfo, traversalID string, visitor Visitor) {
-	err := TraverseSchemas(prov, traversalID, visitor)
+func MustTraverseProperties(prov *ProviderInfo, traversalID string, visitor PropertyVisitor) {
+	err := TraverseProperties(prov, traversalID, visitor)
 	contract.AssertNoErrorf(err, "failed to traverse provider schemas")
 }
 
-// _Efficiently_ traverse all schemas in a provider.
+// _Efficiently_ traverse all property fields in a provider.
 //
-// TraverseSchemas operates in two stages:
+// Each property is rooted in a resource, data source or provider config. Roots themselves
+// are not visited, only properties.
 //
-//   - During `make tfgen` time, all fields in the provider are visited. TraverseSchemas
+// TraverseProperties operates in two stages:
+//
+//   - During `make tfgen` time, all fields in the provider are visited. TraverseProperties
 //     builds a list of fields where `VisitResult{ HasEffect: true }` is returned.
 //
 //   - During the provider's normal runtime, only "effectful" fields are visited.
@@ -393,7 +398,10 @@ func MustTraverseSchemas(prov *ProviderInfo, traversalID string, visitor Visitor
 // traversalId must be unique for each traversal within a `make tfgen`, but the same
 // between `make tfgen` and the provider runtime. A simple descriptive string like `"apply
 // labels"` works great here.
-func TraverseSchemas(prov *ProviderInfo, traversalID string, visitor Visitor, opts ...TraversalOption) error {
+func TraverseProperties(
+	prov *ProviderInfo, traversalID string, visitor PropertyVisitor,
+	opts ...TraversalOption,
+) error {
 	prov.MetadataInfo.assertValid() // We must have metadata info for an efficient (sparse) traversal.
 
 	var errs []error
@@ -410,61 +418,52 @@ func TraverseSchemas(prov *ProviderInfo, traversalID string, visitor Visitor, op
 		forEffect = *b
 	}
 
-	var effects traversalRecord
+	var traversalEffects traversalRecord
 
 	// We are in forEffect mode, so we need to load in the list of paths where we need
 	// to replay effects.
 	if forEffect {
 		var ok bool
 		var err error
-		effects, ok, err = md.Get[traversalRecord](prov.GetMetadata(), traversalID)
+		traversalEffects, ok, err = md.Get[traversalRecord](prov.GetMetadata(), traversalID)
 		contract.Assertf(ok, "could not find traversalID %q in metadata, are you missing a `make tfgen`?", traversalID)
 		if err != nil {
 			return fmt.Errorf("unable to find effect list: %w", err)
 		}
 	}
 
-	rMap := prov.P.ResourcesMap()
-	for tfName, rInfo := range prov.Resources {
-		rShim, ok := rMap.GetOk(tfName)
-		if !ok {
-			continue
-		}
-
+	prov.P.ResourcesMap().Range(func(tfName string, rShim shim.Resource) bool {
 		var err error
 
-		effect := ensureMap(&effects.Resources)[tfName]
+		effectPaths := ensureMap(&traversalEffects.Resources)[tfName]
 
-		effect, err = traverseResourceOrDataSource(tfName, rShim, rInfo,
-			visitor, forEffect, effect)
+		effectPaths, err = traverseResourceOrDataSource(tfName, rShim, ensureMapKey(&prov.Resources, tfName),
+			visitor, forEffect, effectPaths)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		effects.Resources[tfName] = effect
-	}
+		traversalEffects.Resources[tfName] = effectPaths
 
-	dMap := prov.P.DataSourcesMap()
-	for tfName, dInfo := range prov.DataSources {
-		rShim, ok := dMap.GetOk(tfName)
-		if !ok {
-			continue
-		}
+		return true
+	})
 
+	prov.P.DataSourcesMap().Range(func(tfName string, dShim shim.Resource) bool {
 		var err error
-		effect := ensureMap(&effects.DataSources)[tfName]
+		effectPaths := ensureMap(&traversalEffects.DataSources)[tfName]
 
-		effect, err = traverseResourceOrDataSource(tfName, rShim, dInfo,
-			visitor, forEffect, effect)
+		effectPaths, err = traverseResourceOrDataSource(tfName, dShim, ensureMapKey(&prov.DataSources, tfName),
+			visitor, forEffect, effectPaths)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		effects.DataSources[tfName] = effect
-	}
+		traversalEffects.DataSources[tfName] = effectPaths
+		return true
+	})
 
 	{
 		var err error
-		effects.Config, err = traverseSchemaMap(prov.P.Schema(), ensureMap(&prov.Config),
-			VisitConfigRoot{tokens.Type("pulumi:providers" + prov.Name)}, visitor, forEffect, effects.Config)
+		traversalEffects.Config, err = traverseSchemaMap(prov.P.Schema(), ensureMap(&prov.Config),
+			VisitConfigRoot{tokens.Type("pulumi:providers" + prov.Name)}, visitor, forEffect, traversalEffects.Config)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -472,8 +471,9 @@ func TraverseSchemas(prov *ProviderInfo, traversalID string, visitor Visitor, op
 
 	// We are in !forEffect mode, so we need to save the list of effects to generate.
 	if !forEffect {
-		effects.clean()
-		err := md.Set(prov.GetMetadata(), traversalID, effects)
+		traversalEffects.clean()
+		declareRuntimeMetadata(traversalID)
+		err := md.Set(prov.GetMetadata(), traversalID, traversalEffects)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -488,20 +488,20 @@ type traversalOptions struct {
 
 type TraversalOption func(*traversalOptions)
 
-// Set [TraverseSchemas] to run in a specific mode.
+// Set [TraverseProperties] to run in a specific mode.
 //
-// If forEffect is `false`, then [TraverseSchemas] will always touch every field,
+// If forEffect is `false`, then [TraverseProperties] will always touch every field,
 // regardless of runtime.
 //
-// If forEffect is `true`, then [TraverseSchemas] will only touch fields based off of the
+// If forEffect is `true`, then [TraverseProperties] will only touch fields based off of the
 // "effectful" list contained in [prov.MetadataInfo].
-func TraverseForEffect(forEffect bool) func(*traversalOptions) {
+func TraverseForEffect(forEffect bool) TraversalOption {
 	return func(opts *traversalOptions) {
 		opts.forEffect = &forEffect
 	}
 }
 
-// traversalRecord is the record of "effectful" traversals generated by [TraverseSchemas]
+// traversalRecord is the record of "effectful" traversals generated by [TraverseProperties]
 // during `make tfgen`. It is used to replay _only_ "effectful" changes during provider
 // startup.
 type traversalRecord struct {
@@ -539,7 +539,7 @@ func (r *traversalRecord) clean() {
 // During the provider runtime, visitor is only replayed on paths where there was an effect.
 func traverseResourceOrDataSource(
 	tfToken string, schema shim.Resource, info ResourceOrDataSourceInfo,
-	visitor Visitor, forEffect bool, effects []SchemaPath,
+	visitor PropertyVisitor, forEffect bool, effects []SchemaPath,
 ) ([]SchemaPath, error) {
 	// If we are gathering effects for this resource, we don't want to observe any
 	// previously gathered effects.
@@ -575,7 +575,7 @@ func traverseResourceOrDataSource(
 
 func traverseSchemaMap(
 	schema shim.SchemaMap, info map[string]*SchemaInfo, root VisitRoot,
-	visitor Visitor, forEffect bool, effects []SchemaPath,
+	visitor PropertyVisitor, forEffect bool, effects []SchemaPath,
 ) ([]SchemaPath, error) {
 	var errs []error
 
@@ -602,7 +602,7 @@ func traverseSchemaMap(
 			}
 			return elem.Schema()
 		}
-		result, err := visitor(VisitInfo{
+		result, err := visitor(PropertyVisitInfo{
 			Root:             root,
 			schemaPath:       p,
 			shimSchema:       s,
