@@ -290,7 +290,7 @@ func TestTraverseProperties(t *testing.T) {
 	}
 
 	seenPaths := map[string][]SchemaPath{}
-	err := TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+	err := prov.TraverseProperties(t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
 		paths := seenPaths[tfToken(i)]
 		seenPaths[tfToken(i)] = append(paths, i.SchemaPath())
 		return hasEffect(i)
@@ -355,7 +355,7 @@ func TestTraverseProperties(t *testing.T) {
 	}, seenPaths)
 
 	seenPaths = map[string][]SchemaPath{}
-	err = TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+	err = prov.TraverseProperties(t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
 		paths := seenPaths[tfToken(i)]
 		seenPaths[tfToken(i)] = append(paths, i.SchemaPath())
 		return hasEffect(i)
@@ -409,7 +409,7 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 			Fields["bool_property_value"].ForceNew)
 	}
 
-	err := TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(false))
+	err := prov.TraverseProperties(t.Name(), visitor, TraverseForEffect(false))
 	require.NoError(t, err)
 
 	assert.NotNil(t, prov.Resources["example_resource"].
@@ -423,7 +423,7 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 		P:            shimv2.NewProvider(testTFProviderV2),
 		MetadataInfo: md.ExtractRuntimeMetadata(),
 	}
-	err = TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(true))
+	err = prov.TraverseProperties(t.Name(), visitor, TraverseForEffect(true))
 	require.NoError(t, err)
 	verify(prov)
 
