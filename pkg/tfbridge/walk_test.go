@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -277,10 +278,11 @@ func TestTraverseProperties(t *testing.T) {
 	}
 
 	seenPaths := []SchemaPath{}
-	TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+	err := TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
 		seenPaths = append(seenPaths, i.SchemaPath())
 		return hasEffect(i)
 	}, TraverseForEffect(false))
+	require.NoError(t, err)
 
 	walk.SortSchemaPaths(seenPaths)
 
@@ -336,10 +338,11 @@ func TestTraverseProperties(t *testing.T) {
 	}, seenPaths)
 
 	seenPaths = []SchemaPath{}
-	TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
+	err = TraverseProperties(prov, t.Name(), func(i PropertyVisitInfo) (PropertyVisitResult, error) {
 		seenPaths = append(seenPaths, i.SchemaPath())
 		return hasEffect(i)
 	}, TraverseForEffect(true))
+	require.NoError(t, err)
 
 	walk.SortSchemaPaths(seenPaths)
 	assert.Equal(t, []walk.SchemaPath{
@@ -382,7 +385,8 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 			Fields["bool_property_value"].ForceNew)
 	}
 
-	TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(false))
+	err := TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(false))
+	require.NoError(t, err)
 
 	assert.NotNil(t, prov.Resources["example_resource"].
 		Fields["nested_resources"].Elem.
@@ -395,7 +399,8 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 		P:            shimv2.NewProvider(testTFProviderV2),
 		MetadataInfo: md.ExtractRuntimeMetadata(),
 	}
-	TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(true))
+	err = TraverseProperties(prov, t.Name(), visitor, TraverseForEffect(true))
+	require.NoError(t, err)
 	verify(prov)
 
 	// This property did not have an effect, so it should not have been visited.
