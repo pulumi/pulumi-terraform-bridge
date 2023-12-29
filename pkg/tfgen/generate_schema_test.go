@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -55,6 +56,61 @@ func TestRegressMiniRandom(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minirandom-schema.json", schema)
+}
+
+func TestMiniMuxed(t *testing.T) {
+	provider := testprovider.ProviderMiniMuxed()
+	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/minimuxed-schema.json", schema)
+
+	table, found, err := metadata.Get[muxer.DispatchTable](provider.GetMetadata(), "mux")
+	assert.NoError(t, err)
+	assert.True(t, found)
+
+	assert.Equal(t, 1, len(table.Functions))
+	idx, found := table.Functions["minimuxed:index/muxedFunction:muxedFunction"]
+	assert.True(t, found)
+	assert.Equal(t, 1, idx)
+
+	assert.Equal(t, 1, len(table.Resources))
+	idx, found = table.Resources["minimuxed:index/minimuxedInteger:MinimuxedInteger"]
+	assert.True(t, found)
+	assert.Equal(t, 0, idx)
+}
+
+func TestMiniMuxedReplace(t *testing.T) {
+	provider := testprovider.ProviderMiniMuxedReplace()
+	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/minimuxed-replace-schema.json", schema)
+
+	table, found, err := metadata.Get[muxer.DispatchTable](provider.GetMetadata(), "mux")
+	assert.NoError(t, err)
+	assert.True(t, found)
+
+	assert.Equal(t, 0, len(table.Functions))
+
+	assert.Equal(t, 1, len(table.Resources))
+	idx, found := table.Resources["minimuxed:index/minimuxedInteger:MinimuxedInteger"]
+	assert.True(t, found)
+	assert.Equal(t, 1, idx)
+}
+
+func TestMiniMuxedGracefulErrorOnMissingMetadata(t *testing.T) {
+	provider := testprovider.ProviderMiniMuxedReplace()
+	_, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.ErrorContains(t, err, "ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
 }
 
 func TestCSharpMiniRandom(t *testing.T) {
