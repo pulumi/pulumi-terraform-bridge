@@ -31,6 +31,7 @@ import (
 
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -42,6 +43,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 const (
@@ -252,7 +255,36 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 		info:           info,
 		renamesBuilder: renamesBuilder,
 	}
-	return g.genPackageSpec(pack)
+	pulumiPackageSpec, err := g.genPackageSpec(pack)
+	if err != nil {
+		return pschema.PackageSpec{}, err
+	}
+
+	if info.MuxWith != nil {
+		if info.MetadataInfo == nil {
+			return pschema.PackageSpec{}, fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
+		}
+		muxSchemas := make([]pschema.PackageSpec, len(info.MuxWith)+1)
+		muxSchemas[0] = pulumiPackageSpec
+		for i, v := range info.MuxWith {
+			spec, err := v.GetSpec()
+			if err != nil {
+				return pschema.PackageSpec{}, err
+			}
+			// TODO: do we have to enforce name equality between the main provider and a mixin (spec.Name == pulumiPackageSpec.Name)?
+			muxSchemas[i+1] = spec
+		}
+		dispatchTable, muxSpec, err := muxer.MergeSchemasAndComputeDispatchTable(muxSchemas)
+		if err != nil {
+			return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create muxer schema")
+		}
+		err = metadata.Set(info.MetadataInfo.Data, "mux", dispatchTable)
+		if err != nil {
+			return pschema.PackageSpec{}, fmt.Errorf("[pkg/tfgen] failed to add muxer to MetadataInfo.Data: %w", err)
+		}
+		pulumiPackageSpec = muxSpec
+	}
+	return pulumiPackageSpec, nil
 }
 
 func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
