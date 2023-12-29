@@ -33,7 +33,7 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 			// If we have multiple providers to serve, Mux them together.
 
 			var mapping muxer.DispatchTable
-			if m, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "muxer"); err != nil {
+			if m, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux"); err != nil {
 				return nil, err
 			} else if found {
 				mapping = m
