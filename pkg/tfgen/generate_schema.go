@@ -262,7 +262,8 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 
 	if info.MuxWith != nil {
 		if info.MetadataInfo == nil {
-			return pschema.PackageSpec{}, fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
+			return pschema.PackageSpec{},
+				fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
 		}
 		muxSchemas := make([]pschema.PackageSpec, len(info.MuxWith)+1)
 		muxSchemas[0] = pulumiPackageSpec
@@ -271,7 +272,8 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 			if err != nil {
 				return pschema.PackageSpec{}, err
 			}
-			// TODO: do we have to enforce name equality between the main provider and a mixin (spec.Name == pulumiPackageSpec.Name)?
+			// TODO: do we have to enforce name equality between the main
+			// provider and a mixin (spec.Name == pulumiPackageSpec.Name)?
 			muxSchemas[i+1] = spec
 		}
 		dispatchTable, muxSpec, err := muxer.MergeSchemasAndComputeDispatchTable(muxSchemas)

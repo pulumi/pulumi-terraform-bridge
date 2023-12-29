@@ -46,8 +46,8 @@ func MergeSchemasAndComputeDispatchTable(schemas []schema.PackageSpec) (Dispatch
 	muxedSchema.Config = schema.ConfigSpec{}
 	muxedSchema.Provider = schema.ResourceSpec{}
 
-	for i, s := range schemas {
-		dispatchTable.layerSchema(muxedSchema, &s, i)
+	for i := range schemas {
+		dispatchTable.layerSchema(muxedSchema, &schemas[i], i)
 	}
 
 	if len(muxedSchema.Resources) == 0 {
