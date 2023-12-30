@@ -56,3 +56,14 @@ pin_upstream_sdk:
 	find . -name go.mod -and \
 	-not -path '*/x/muxer/*' -and \
 	-execdir go mod edit -replace ${UpstreamPluginSDK}=${OurPluginSDK}@${PluginSDKVersion} \;
+
+.PHONY: go.work
+go.work::
+	@cd $(PROJECT_DIR)
+ifeq (,$(wildcard $(PROJECT_DIR)/go.work))
+	@echo "Initializing go.work..."
+	@go work init
+else
+	@echo "Updating go.work..."
+endif
+	@go work use -r .
