@@ -29,7 +29,7 @@ import (
 func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte) error {
 	// Create a new resource provider server and listen for and serve incoming connections.
 	return provider.Main(module, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		if info.MuxWith != nil && len(info.MuxWith) > 0 {
+		if len(info.MuxWith) > 0 {
 			// If we have multiple providers to serve, Mux them together.
 
 			var mapping muxer.DispatchTable
@@ -51,7 +51,7 @@ func Serve(module string, version string, info ProviderInfo, pulumiSchema []byte
 			}
 
 			return muxer.Main{
-				Schema:        string(pulumiSchema),
+				Schema:        pulumiSchema,
 				DispatchTable: mapping,
 				Servers:       servers,
 			}.Server(host, module, version)
