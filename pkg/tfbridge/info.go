@@ -102,7 +102,7 @@ type ProviderInfo struct {
 	//
 	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
 	// If a provider should be mixed in with the Terraform provider with MuxWith (see below)
-	// this field mus be initialized
+	// this field must be initialized.
 	MetadataInfo *MetadataInfo
 
 	// Rules that control file discovery and edits for any subset of docs in a provider.
@@ -1293,7 +1293,6 @@ func ConfigArrayValue(vars resource.PropertyMap, prop resource.PropertyKey, envs
 	var vals []string
 	if ok && val.IsArray() {
 		for _, v := range val.ArrayValue() {
-
 			vals = append(vals, v.StringValue())
 		}
 		return vals
