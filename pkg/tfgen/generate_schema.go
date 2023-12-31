@@ -260,11 +260,8 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 		return pschema.PackageSpec{}, err
 	}
 
-	if info.MuxWith != nil {
-		if info.MetadataInfo == nil {
-			return pschema.PackageSpec{},
-				fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
-		}
+	if len(info.MuxWith) > 0 {
+		md := info.GetMetadata()
 		muxSchemas := make([]pschema.PackageSpec, len(info.MuxWith)+1)
 		muxSchemas[0] = pulumiPackageSpec
 		for i, v := range info.MuxWith {
@@ -280,7 +277,7 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 		if err != nil {
 			return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create muxer schema")
 		}
-		err = metadata.Set(info.MetadataInfo.Data, "mux", dispatchTable)
+		err = metadata.Set(md, "mux", dispatchTable)
 		if err != nil {
 			return pschema.PackageSpec{}, fmt.Errorf("[pkg/tfgen] failed to add muxer to MetadataInfo.Data: %w", err)
 		}
