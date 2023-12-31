@@ -154,7 +154,7 @@ func MakeMuxedServer(
 	}
 	m := muxer.Main{
 		DispatchTable: dispatchTable,
-		Schema:        string(schema),
+		Schema:        schema,
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
 			"tf":        getTFMapping,
 			"terraform": getTFMapping,

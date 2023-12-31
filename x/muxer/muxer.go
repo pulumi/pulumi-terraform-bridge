@@ -40,7 +40,9 @@ import (
 const SchemaVersion int32 = 0
 
 func mux(
-	host *provider.HostClient, dispatchTable dispatchTable, pulumiSchema string,
+	host *provider.HostClient,
+	dispatchTable dispatchTable,
+	pulumiSchema []byte,
 	getMappingHandlers getMappingHandler,
 	servers ...rpc.ResourceProviderServer,
 ) *muxer {
@@ -65,7 +67,7 @@ type muxer struct {
 
 	dispatchTable dispatchTable
 
-	schema string
+	schema []byte
 
 	servers []server
 
@@ -113,7 +115,7 @@ func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.
 		return nil, fmt.Errorf("Expected schema version %d, got %d",
 			SchemaVersion, req.GetVersion())
 	}
-	return &rpc.GetSchemaResponse{Schema: m.schema}, nil
+	return &rpc.GetSchemaResponse{Schema: string(m.schema)}, nil
 }
 
 func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {

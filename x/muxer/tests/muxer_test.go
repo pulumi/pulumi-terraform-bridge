@@ -374,7 +374,7 @@ func buildMux(
 	s, err := muxer.Main{
 		Servers:           endpoints,
 		DispatchTable:     mapping,
-		Schema:            "some-schema",
+		Schema:            []byte("some-schema"),
 		GetMappingHandler: getMappings,
 	}.Server(nil, "test", "0.0.0")
 	require.NoError(t, err)
