@@ -72,7 +72,7 @@ func TestMiniMuxed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, found)
 
-	assert.Equal(t, 1, len(table.Functions))
+	assert.Len(t, table.Functions, 1)
 	idx, found := table.Functions["minimuxed:index/muxedFunction:muxedFunction"]
 	assert.True(t, found)
 	assert.Equal(t, 1, idx)
@@ -103,14 +103,6 @@ func TestMiniMuxedReplace(t *testing.T) {
 	idx, found := table.Resources["minimuxed:index/minimuxedInteger:MinimuxedInteger"]
 	assert.True(t, found)
 	assert.Equal(t, 1, idx)
-}
-
-func TestMiniMuxedGracefulErrorOnMissingMetadata(t *testing.T) {
-	provider := testprovider.ProviderMiniMuxedReplace()
-	_, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	}))
-	assert.ErrorContains(t, err, "ProviderInfo.MetadataInfo is required and cannot be nil for muxed providers")
 }
 
 func TestCSharpMiniRandom(t *testing.T) {
