@@ -16,11 +16,12 @@ package tests
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	"net"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -140,7 +141,7 @@ func TestRegress1020(t *testing.T) {
 		},
 	}
 
-	server := func(p shim.Provider) *tfbridge.Provider {
+	server := func(p shim.Provider) pulumirpc.ResourceProviderServer {
 		info := tfbridge.ProviderInfo{
 			P:           p,
 			Name:        "aws",
