@@ -46,6 +46,8 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
@@ -151,8 +153,21 @@ type DataSource struct {
 }
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
-func NewProvider(ctx context.Context, host *provider.HostClient, module string, version string,
+func NewProvider(ctx context.Context, host *provider.HostClient, module, version string,
 	tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
+) pulumirpc.ResourceProviderServer {
+	if len(info.MuxWith) > 0 {
+		p, err := newMuxWithProvider(ctx, host, module, version, info, pulumiSchema)
+		if err != nil {
+			panic(err)
+		}
+		return p
+	}
+	return newProvider(ctx, host, module, version, tf, info, pulumiSchema)
+}
+
+func newProvider(ctx context.Context, host *provider.HostClient,
+	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
 ) *Provider {
 	p := &Provider{
 		host:         host,
@@ -166,6 +181,34 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 	p.loggingContext(ctx, "")
 	p.initResourceMaps()
 	return p
+}
+
+func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
+	module, version string, info ProviderInfo, pulumiSchema []byte,
+) (pulumirpc.ResourceProviderServer, error) {
+	var mapping muxer.DispatchTable
+	if m, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux"); err != nil {
+		return nil, err
+	} else if found {
+		mapping = m
+	} else {
+		return nil, fmt.Errorf("missing pre-computed muxer mapping")
+	}
+
+	servers := []muxer.Endpoint{{
+		Server: func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+			return newProvider(context.Background(), host, module, version, info.P, info, pulumiSchema), nil
+		},
+	}}
+	for _, f := range info.MuxWith {
+		servers = append(servers, muxer.Endpoint{Server: f.GetInstance})
+	}
+
+	return muxer.Main{
+		Schema:        pulumiSchema,
+		DispatchTable: mapping,
+		Servers:       servers,
+	}.Server(host, module, version)
 }
 
 var _ pulumirpc.ResourceProviderServer = (*Provider)(nil)
