@@ -2553,3 +2553,20 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 			}`, "$", "`"))
 	})
 }
+
+func TestSetAutoNaming(t *testing.T) {
+	tok := func(name string) tokens.Type { return MakeResource("auto", "index", name) }
+	prov := &ProviderInfo{
+		Name: "auto",
+		P:    shimv2.NewProvider(testprovider.AutonamingProvider()),
+		Resources: map[string]*ResourceInfo{
+			"auto_v1": {Tok: tok("v1")},
+			"auto_v2": {Tok: tok("v2")},
+		},
+	}
+
+	prov.SetAutonaming(10, "-")
+
+	assert.True(t, prov.Resources["auto_v1"].Fields["name"].Default.AutoNamed) // Of type string - so applied
+	assert.Nil(t, prov.Resources["auto_v2"].Fields["name"])                    // Of type list - so not applied
+}

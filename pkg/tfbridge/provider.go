@@ -1521,13 +1521,15 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 	const nameProperty = "name"
 	for resname, res := range p.Resources {
 		if schema := p.P.ResourcesMap().Get(resname); schema != nil {
-			// Only apply auto-name to input properties (Optional || Required) named `name`
-			if sch := schema.Schema().Get(nameProperty); sch != nil && (sch.Optional() || sch.Required()) {
+			// Only apply auto-name to input properties (Optional || Required)
+			// of type `string` named `name`
+			if sch, hasName := schema.Schema().GetOk(nameProperty); hasName &&
+				(sch.Optional() || sch.Required()) && // Is an input type
+				sch.Type() == shim.TypeString { // has type string
+
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					if res.Fields == nil {
-						res.Fields = make(map[string]*SchemaInfo)
-					}
-					res.Fields[nameProperty] = AutoName(nameProperty, maxLength, separator)
+					ensureMap(&res.Fields)[nameProperty] =
+						AutoName(nameProperty, maxLength, separator)
 				}
 			}
 		}
@@ -1539,17 +1541,13 @@ func SetProviderLicense(license TFProviderLicense) *TFProviderLicense {
 	return &license
 }
 
-// True is used for interations in the providers that require a pointer to true
-func True() *bool {
-	x := true
-	return &x
-}
+func ref[T any](t T) *T { return &t }
 
-// False is used for interations in the providers that require a pointer to false
-func False() *bool {
-	x := false
-	return &x
-}
+// True is used for interactions in the providers that require a pointer to true
+func True() *bool { return ref(true) }
+
+// False is used for interactions in the providers that require a pointer to false
+func False() *bool { return ref(false) }
 
 func transformFromState(
 	ctx context.Context, res *ResourceInfo, inputs resource.PropertyMap,

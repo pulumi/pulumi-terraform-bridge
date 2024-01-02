@@ -52,8 +52,6 @@ func TestTerraformToPulumiName(t *testing.T) {
 	assert.Equal(t, "TESTNAME", TerraformToPulumiName("t_e_s_t_n_a_m_e", nil, nil, true))
 }
 
-func ref[T any](value T) *T { return &value }
-
 func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 	tfs := map[string]*schema.Schema{
 		"list_property": {
