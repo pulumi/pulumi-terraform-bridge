@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -64,13 +65,50 @@ func lintMain() {
 	roots := findGoModuleRoots()
 	failed := false
 	for _, m := range roots {
+		fmt.Printf("%q: linting ...", m)
 		err := execCommand(m, "golangci-lint", "run")
-		if err != nil {
+		if err == nil {
+			fmt.Printf(" done\n")
+		} else {
+			fmt.Printf(" failed:\n")
+			err.(*execError).MustWrite(os.Stderr)
 			failed = true
 		}
 	}
 	if failed {
 		log.Fatalf("lint failed")
+	}
+}
+
+type execError struct {
+	err error
+	cmd *exec.Cmd
+}
+
+func (e *execError) Error() string { return fmt.Sprintf("%s: %s", e.cmd, e.err.Error()) }
+
+func (e *execError) Unwrap() error { return e.err }
+
+func (e *execError) Write(sink io.Writer) (err error) {
+	w := func(s string, a ...any) {
+		if err != nil {
+			return
+		}
+		_, err = fmt.Fprintf(sink, s, a...)
+	}
+	w("cd %s && %s %s\n", e.cmd.Dir, e.cmd.Path, strings.Join(e.cmd.Args, " "))
+	w("%s\n", e.cmd.Stdout.(*bytes.Buffer).String())
+	w("%s\n", e.cmd.Stderr.(*bytes.Buffer).String())
+	w("%s\n", e.err.Error())
+	w("\n")
+
+	return
+}
+
+func (e *execError) MustWrite(sink io.Writer) {
+	err := e.Write(sink)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -82,18 +120,17 @@ func execCommand(cwd, name string, arg ...string) error {
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("cd %s && %s %s\n", cwd, name, strings.Join(arg, " "))
-		fmt.Println(stdout.String())
-		fmt.Println(stderr.String())
-		fmt.Println(err)
-		fmt.Println()
+		return &execError{err, cmd}
 	}
-	return err
+	return nil
 }
 
 func execCommandOrLogFatal(cwd, name string, arg ...string) {
 	err := execCommand(cwd, name, arg...)
 	if err != nil {
+		if err, ok := err.(*execError); ok {
+			err.MustWrite(os.Stderr)
+		}
 		log.Fatal(err)
 	}
 }
