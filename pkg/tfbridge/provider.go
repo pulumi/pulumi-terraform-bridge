@@ -369,7 +369,13 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
 
 	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
-	newsStruct, err := configEnc.MarshalProperties(secretNews)
+	newsStruct, err := plugin.MarshalProperties(secretNews, plugin.MarshalOptions{
+		Label:        "config",
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		KeepSecrets:  true,
+		RejectAssets: true,
+	})
 	if err != nil {
 		return nil, err
 	}
