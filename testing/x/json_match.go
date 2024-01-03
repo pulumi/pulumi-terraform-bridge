@@ -164,6 +164,7 @@ func AssertJSONMatchesPattern(
 }
 
 func assertJSONEquals(t *testing.T, path string, expected, actual interface{}) {
+	t.Helper()
 	assert.Equalf(t, prettyJSON(t, expected), prettyJSON(t, actual), "at %s", path)
 }
 

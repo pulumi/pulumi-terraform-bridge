@@ -36,7 +36,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func TestCheckConfig(t *testing.T) {
@@ -107,7 +107,8 @@ func TestCheckConfig(t *testing.T) {
 			},
 		}
 
-		assert.Equal(t, "04da6b54-80e4-46f7-96ec-b56ff0331ba9", plugin.UnknownStringValue)
+		assert.Equal(t, "dd056dcd-154b-4c76-9bd3-c8f88648b5ff", plugin.UnknownObjectValue)
+		assert.Equal(t, "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2", plugin.UnknownArrayValue)
 		testutils.Replay(t, makeProviderServer(t, schema), `
 		{
 		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
@@ -122,8 +123,8 @@ func TestCheckConfig(t *testing.T) {
 		  },
 		  "response": {
 		    "inputs": {
-	              "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-	              "scopes": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+	              "configValue": "dd056dcd-154b-4c76-9bd3-c8f88648b5ff",
+	              "scopes": "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2",
 		      "version": "6.54.0"
 		    }
 		  }
@@ -439,13 +440,19 @@ func TestCheckConfig(t *testing.T) {
 	          },
 	          "response": {
 	            "inputs": {
-	              "batching": {
-	                "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-	                "value": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}"
-	              },
-	              "scopes": "[\"a\",\"b\"]",
-	              "version": "6.54.0"
-	            }
+                  "batching": {
+                    "enableBatching": true,
+                    "sendAfter": {
+                  	"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                  	"value": "1s"
+                    }
+                  },
+                  "scopes": [
+                    "a",
+                    "b"
+                  ],
+                  "version": "6.54.0"
+                }
 	          }
 	        }`)
 	})
@@ -667,7 +674,7 @@ func TestPreConfigureCallback(t *testing.T) {
 		  "response": {
 		    "inputs": {
 		      "version": "6.54.0",
-	              "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	              "configValue": "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
 		    }
 		  }
 		}`)

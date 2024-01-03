@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -200,7 +201,13 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, p.checkNYI("CheckConfig", err)
 	}
 
-	rpcInputs, err := p.configEncoding.MarshalProperties(newInputs)
+	rpcInputs, err := plugin.MarshalProperties(newInputs, plugin.MarshalOptions{
+		Label:        "config",
+		KeepUnknowns: true,
+		SkipNulls:    true,
+		KeepSecrets:  true,
+		RejectAssets: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("CheckConfig failed to marshal updated news: %w", err)
 	}
