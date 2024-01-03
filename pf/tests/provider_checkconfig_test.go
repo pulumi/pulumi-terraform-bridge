@@ -360,8 +360,8 @@ func TestCheckConfig(t *testing.T) {
 		  },
 		  "response": {
 	            "inputs": {
-		      "batching": "{\"enableBatching\":true,\"sendAfter\":\"1s\"}",
-		      "scopes": "[\"a\",\"b\"]",
+		      "batching": {"enableBatching":true,"sendAfter":"1s"},
+		      "scopes": ["a","b"],
 		      "version": "6.54.0"
 	            }
 	          }

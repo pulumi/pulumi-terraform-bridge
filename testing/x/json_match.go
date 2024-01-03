@@ -51,6 +51,8 @@ func AssertJSONMatchesPattern(
 	actual json.RawMessage,
 	opts ...JSONMatchOption,
 ) {
+	t.Helper()
+
 	var p, a interface{}
 
 	options := jsonMatchOptions{}
@@ -80,6 +82,7 @@ func AssertJSONMatchesPattern(
 
 	var match func(path string, p, a interface{})
 	match = func(path string, p, a interface{}) {
+		t.Helper()
 		switch pp := p.(type) {
 		case string:
 			if pp != "*" {
