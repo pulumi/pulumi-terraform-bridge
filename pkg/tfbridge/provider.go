@@ -197,7 +197,7 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 
 	servers := []muxer.Endpoint{{
 		Server: func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-			return newProvider(context.Background(), host, module, version, info.P, info, pulumiSchema), nil
+			return newProvider(ctx, host, module, version, info.P, info, pulumiSchema), nil
 		},
 	}}
 	for _, f := range info.MuxWith {
