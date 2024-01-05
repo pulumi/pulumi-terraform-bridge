@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -92,12 +91,12 @@ type Main struct {
 	// derived from layering underlying server schemas.
 	//
 	// If set, DispatchTable must also be set.
-	Schema string
+	Schema []byte
 
 	GetMappingHandler map[string]MultiMappingHandler
 }
 
-func (m Main) Server(host *provider.HostClient, module, version string) (pulumirpc.ResourceProviderServer, error) {
+func (m Main) Server(host *provider.HostClient, module, version string) (rpc.ResourceProviderServer, error) {
 	servers := make([]rpc.ResourceProviderServer, len(m.Servers))
 	for i, s := range m.Servers {
 		var err error
@@ -108,7 +107,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 	}
 
 	dispatchTable, pulumiSchema := m.DispatchTable.dispatchTable, m.Schema
-	if dispatchTable.isEmpty() || pulumiSchema == "" {
+	if dispatchTable.isEmpty() || len(pulumiSchema) == 0 {
 		req := &rpc.GetSchemaRequest{Version: SchemaVersion}
 		primary, err := servers[0].GetSchema(context.Background(), req)
 		contract.AssertNoErrorf(err, "Muxing requires GetSchema for dispatch")
@@ -130,7 +129,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		contract.AssertNoErrorf(err, "Failed to compute a muxer mapping")
 		schemaBytes, err := json.Marshal(muxedSchema)
 		contract.AssertNoErrorf(err, "Failed to marshal muxed schema")
-		pulumiSchema = string(schemaBytes)
+		pulumiSchema = schemaBytes
 		dispatchTable = mComputed.dispatchTable
 	}
 

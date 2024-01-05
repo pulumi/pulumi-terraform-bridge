@@ -104,6 +104,9 @@ func handleFlags(
 //
 // This is an experimental API.
 func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte) {
+	if len(info.MuxWith) > 0 {
+		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
+	}
 	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
 		info := info
 		return tfbridge.MarshalProviderInfo(&info), nil
@@ -154,7 +157,7 @@ func MakeMuxedServer(
 	}
 	m := muxer.Main{
 		DispatchTable: dispatchTable,
-		Schema:        string(schema),
+		Schema:        schema,
 		GetMappingHandler: map[string]muxer.MultiMappingHandler{
 			"tf":        getTFMapping,
 			"terraform": getTFMapping,

@@ -46,9 +46,8 @@ func MergeSchemasAndComputeDispatchTable(schemas []schema.PackageSpec) (Dispatch
 	muxedSchema.Config = schema.ConfigSpec{}
 	muxedSchema.Provider = schema.ResourceSpec{}
 
-	for i, s := range schemas {
-		i, s := i, s
-		dispatchTable.layerSchema(muxedSchema, &s, i)
+	for i := range schemas {
+		dispatchTable.layerSchema(muxedSchema, &schemas[i], i)
 	}
 
 	if len(muxedSchema.Resources) == 0 {
@@ -89,6 +88,9 @@ func (dispatchTable dispatchTable) isEmpty() bool {
 func (dispatchTable dispatchTable) layerSchema(dstSchema, srcSchema *schema.PackageSpec, srcIndex int) {
 	m := dispatchTableCtx{dispatchTable, dstSchema, srcSchema, srcIndex}
 
+	for tk, t := range m.srcSchema.Types {
+		m.addComplexType(tk, t)
+	}
 	for tk, r := range m.srcSchema.Resources {
 		m.setResource(tk, r)
 	}
@@ -191,11 +193,8 @@ type dispatchTableCtx struct {
 }
 
 func (m *dispatchTableCtx) setResource(token string, resource schema.ResourceSpec) {
-	_, ok := m.dispatchTable.Resources[token]
-	if ok {
-		return
-	}
 	m.dispatchTable.Resources[token] = m.srcIndex
+
 	m.dstSchema.Resources[token] = resource
 	m.addProperties(resource.InputProperties)
 	m.addProperties(resource.Properties)
@@ -205,12 +204,9 @@ func (m *dispatchTableCtx) setResource(token string, resource schema.ResourceSpe
 }
 
 func (m *dispatchTableCtx) setFunction(token string, function schema.FunctionSpec) {
-	_, ok := m.dispatchTable.Functions[token]
-	if ok {
-		return
-	}
-	m.dstSchema.Functions[token] = function
+	m.dispatchTable.Functions[token] = m.srcIndex
 
+	m.dstSchema.Functions[token] = function
 	m.addObjectType(function.Inputs)
 	m.addObjectType(function.Outputs)
 }

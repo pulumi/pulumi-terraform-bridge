@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -46,6 +47,8 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
@@ -64,6 +67,16 @@ type Provider struct {
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
 	memStats        memStatCollector
+}
+
+// MuxProvider defines an interface which must be implemented by providers
+// that shall be used as mixins of a wrapped Terraform provider
+type MuxProvider interface {
+	GetSpec(ctx context.Context,
+		name, version string) (schema.PackageSpec, error)
+	GetInstance(ctx context.Context,
+		name, version string,
+		host *provider.HostClient) (pulumirpc.ResourceProviderServer, error)
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -151,8 +164,21 @@ type DataSource struct {
 }
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
-func NewProvider(ctx context.Context, host *provider.HostClient, module string, version string,
+func NewProvider(ctx context.Context, host *provider.HostClient, module, version string,
 	tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
+) pulumirpc.ResourceProviderServer {
+	if len(info.MuxWith) > 0 {
+		p, err := newMuxWithProvider(ctx, host, module, version, info, pulumiSchema)
+		if err != nil {
+			panic(err)
+		}
+		return p
+	}
+	return newProvider(ctx, host, module, version, tf, info, pulumiSchema)
+}
+
+func newProvider(ctx context.Context, host *provider.HostClient,
+	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
 ) *Provider {
 	p := &Provider{
 		host:         host,
@@ -166,6 +192,37 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module string, 
 	p.loggingContext(ctx, "")
 	p.initResourceMaps()
 	return p
+}
+
+func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
+	module, version string, info ProviderInfo, pulumiSchema []byte,
+) (pulumirpc.ResourceProviderServer, error) {
+	var mapping muxer.DispatchTable
+	if m, found, err := metadata.Get[muxer.DispatchTable](info.GetMetadata(), "mux"); err != nil {
+		return nil, err
+	} else if found {
+		mapping = m
+	} else {
+		return nil, fmt.Errorf("missing pre-computed muxer mapping")
+	}
+
+	servers := []muxer.Endpoint{{
+		Server: func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+			return newProvider(ctx, host, module, version, info.P, info, pulumiSchema), nil
+		},
+	}}
+	for _, f := range info.MuxWith {
+		servers = append(servers, muxer.Endpoint{
+			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+				return f.GetInstance(ctx, module, version, hc)
+			}})
+	}
+
+	return muxer.Main{
+		Schema:        pulumiSchema,
+		DispatchTable: mapping,
+		Servers:       servers,
+	}.Server(host, module, version)
 }
 
 var _ pulumirpc.ResourceProviderServer = (*Provider)(nil)

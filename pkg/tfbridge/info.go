@@ -100,6 +100,8 @@ type ProviderInfo struct {
 	// Information for the embedded metadata file.
 	//
 	// See NewProviderMetadata for in-place construction of a *MetadataInfo.
+	// If a provider should be mixed in with the Terraform provider with MuxWith (see below)
+	// this field must be initialized.
 	MetadataInfo *MetadataInfo
 
 	// Rules that control file discovery and edits for any subset of docs in a provider.
@@ -120,6 +122,14 @@ type ProviderInfo struct {
 	// the bridge completed its original version based on the TF schema.
 	// A hook to enable custom schema modifications specific to a provider.
 	SchemaPostProcessor func(spec *pschema.PackageSpec)
+
+	// The MuxWith array allows the mixin (muxing) of other providers to the wrapped upstream Terraform provider.
+	// With a provider mixin it's possible to add or replace resources and/or functions (data sources) in the wrapped
+	// Terraform provider without having to change the upstream code itself. If multiple provider mixins are specified
+	// the schema generator in pkg/tfgen will call the GetSpec() method of muxer.Provider in sequenece. Thus, if more or two
+	// of the mixins define the same resource/function, the last definition will end up in the combined schema of the
+	// compiled provider.
+	MuxWith []MuxProvider
 
 	// Disables validation of provider-level configuration for Plugin Framework based providers.
 	// Hybrid providers that utilize a mixture of Plugin Framework and SDKv2 based resources may
@@ -1282,7 +1292,6 @@ func ConfigArrayValue(vars resource.PropertyMap, prop resource.PropertyKey, envs
 	var vals []string
 	if ok && val.IsArray() {
 		for _, v := range val.ArrayValue() {
-
 			vals = append(vals, v.StringValue())
 		}
 		return vals

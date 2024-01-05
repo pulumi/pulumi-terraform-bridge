@@ -68,6 +68,10 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
+	if len(info.MuxWith) > 0 {
+		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
+	}
+
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
