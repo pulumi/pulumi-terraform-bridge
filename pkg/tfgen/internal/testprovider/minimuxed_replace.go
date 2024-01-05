@@ -114,10 +114,13 @@ type muxReplaceProvider struct {
 	packageSchema schema.PackageSpec
 }
 
-func (m *muxReplaceProvider) GetSpec(ctx context.Context, name, version string) (schema.PackageSpec, error) {
+func (m *muxReplaceProvider) GetSpec(ctx context.Context,
+	name, version string) (schema.PackageSpec, error) {
 	return m.packageSchema, nil
 }
 
-func (m *muxReplaceProvider) GetInstance(ctx context.Context, name, version string, host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+func (m *muxReplaceProvider) GetInstance(ctx context.Context,
+	name, version string,
+	host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	return m, nil
 }

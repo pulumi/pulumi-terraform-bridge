@@ -72,8 +72,11 @@ type Provider struct {
 // ProviderMixin defines an interface which must be implemented by providers
 // that shall be used as mixins of a wrapped Terraform provider
 type MuxProvider interface {
-	GetSpec(ctx context.Context, name, version string) (schema.PackageSpec, error)
-	GetInstance(ctx context.Context, name, version string, host *provider.HostClient) (pulumirpc.ResourceProviderServer, error)
+	GetSpec(ctx context.Context,
+		name, version string) (schema.PackageSpec, error)
+	GetInstance(ctx context.Context,
+		name, version string,
+		host *provider.HostClient) (pulumirpc.ResourceProviderServer, error)
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -209,9 +212,10 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		},
 	}}
 	for _, f := range info.MuxWith {
-		servers = append(servers, muxer.Endpoint{Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-			return f.GetInstance(ctx, module, version, hc)
-		}})
+		servers = append(servers, muxer.Endpoint{
+			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+				return f.GetInstance(ctx, module, version, hc)
+			}})
 	}
 
 	return muxer.Main{
