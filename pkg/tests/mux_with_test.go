@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -37,10 +36,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-// func todo[T any]() T {
-// 	panic("TODO")
-// }
 
 func newTFProvider() *schema.Provider {
 	resource := &schema.Resource{
@@ -119,6 +114,7 @@ func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourcePro
 	)
 	return
 }
+
 func TestMuxWithProvider(t *testing.T) {
 
 	info := tfbridge.ProviderInfo{
@@ -185,7 +181,7 @@ func TestMuxWithProvider(t *testing.T) {
 	}
 
 	info.MetadataInfo = tfbridge.NewProviderMetadata(nil)
-	info.MuxWith = []muxer.Provider{
+	info.MuxWith = []tfbridge.MuxProvider{
 		newMuxProvider(),
 	}
 
@@ -233,7 +229,7 @@ func TestMuxWithProvider(t *testing.T) {
 
 }
 
-func newMuxProvider() muxer.Provider {
+func newMuxProvider() tfbridge.MuxProvider {
 	return &tfMuxProvider{
 		packageSchema: pschema.PackageSpec{
 			Name: "random",
@@ -263,11 +259,11 @@ type tfMuxProvider struct {
 	packageSchema pschema.PackageSpec
 }
 
-func (p *tfMuxProvider) GetSpec() (pschema.PackageSpec, error) {
+func (p *tfMuxProvider) GetSpec(ctx context.Context, name, version string) (pschema.PackageSpec, error) {
 	return p.packageSchema, nil
 }
 
-func (p *tfMuxProvider) GetInstance(*provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+func (p *tfMuxProvider) GetInstance(ctx context.Context, name, version string, host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	return p, nil
 }
 

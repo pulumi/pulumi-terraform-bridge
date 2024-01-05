@@ -1,10 +1,11 @@
 package testprovider
 
 import (
+	"context"
+
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -25,13 +26,13 @@ func ProviderMiniMuxed() tfbridge.ProviderInfo {
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"minimuxed_integer": {Tok: tfbridge.MakeResource(minimuxedPkg, minimuxedMod, "MinimuxedInteger")},
 		},
-		MuxWith: []muxer.Provider{
+		MuxWith: []tfbridge.MuxProvider{
 			newMuxProvider(),
 		},
 	}
 }
 
-func newMuxProvider() muxer.Provider {
+func newMuxProvider() tfbridge.MuxProvider {
 	return &muxProvider{
 		packageSchema: schema.PackageSpec{
 			Name: "minimuxed",
@@ -86,10 +87,10 @@ type muxProvider struct {
 	packageSchema schema.PackageSpec
 }
 
-func (m *muxProvider) GetSpec() (schema.PackageSpec, error) {
+func (m *muxProvider) GetSpec(ctx context.Context, name, version string) (schema.PackageSpec, error) {
 	return m.packageSchema, nil
 }
 
-func (m *muxProvider) GetInstance(*provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+func (m *muxProvider) GetInstance(ctx context.Context, name, version string, host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	return m, nil
 }
