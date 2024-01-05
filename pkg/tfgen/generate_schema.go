@@ -20,6 +20,7 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -260,17 +261,16 @@ func genPulumiSchema(pack *pkg, name tokens.Package, version string,
 		return pschema.PackageSpec{}, err
 	}
 
+	ctx := context.Background()
 	if len(info.MuxWith) > 0 {
 		md := info.GetMetadata()
 		muxSchemas := make([]pschema.PackageSpec, len(info.MuxWith)+1)
 		muxSchemas[0] = pulumiPackageSpec
 		for i, v := range info.MuxWith {
-			spec, err := v.GetSpec()
+			spec, err := v.GetSpec(ctx, string(name), version)
 			if err != nil {
 				return pschema.PackageSpec{}, err
 			}
-			// TODO: do we have to enforce name equality between the main
-			// provider and a mixin (spec.Name == pulumiPackageSpec.Name)?
 			muxSchemas[i+1] = spec
 		}
 		dispatchTable, muxSpec, err := muxer.MergeSchemasAndComputeDispatchTable(muxSchemas)
