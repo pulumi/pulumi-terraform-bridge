@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -66,6 +67,13 @@ type Provider struct {
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
 	memStats        memStatCollector
+}
+
+// ProviderMixin defines an interface which must be implemented by providers
+// that shall be used as mixins of a wrapped Terraform provider
+type MuxProvider interface {
+	GetSpec(ctx context.Context, name, version string) (schema.PackageSpec, error)
+	GetInstance(ctx context.Context, name, version string, host *provider.HostClient) (pulumirpc.ResourceProviderServer, error)
 }
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
@@ -201,7 +209,9 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		},
 	}}
 	for _, f := range info.MuxWith {
-		servers = append(servers, muxer.Endpoint{Server: f.GetInstance})
+		servers = append(servers, muxer.Endpoint{Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+			return f.GetInstance(ctx, module, version, hc)
+		}})
 	}
 
 	return muxer.Main{
