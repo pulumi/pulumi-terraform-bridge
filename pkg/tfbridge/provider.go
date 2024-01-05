@@ -69,7 +69,7 @@ type Provider struct {
 	memStats        memStatCollector
 }
 
-// ProviderMixin defines an interface which must be implemented by providers
+// MuxProvider defines an interface which must be implemented by providers
 // that shall be used as mixins of a wrapped Terraform provider
 type MuxProvider interface {
 	GetSpec(ctx context.Context,
