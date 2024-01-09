@@ -1901,7 +1901,7 @@ var tf12builtins = map[string]*model.Function{
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
 							Severity: hcl.DiagError,
-							Summary:  "the first argument to 'element' must be a list, map, object, tuple, or string",
+							Summary:  "the first argument to 'length' must be a list, map, object, tuple, or string",
 							Subject:  &rng,
 						}}
 					}
