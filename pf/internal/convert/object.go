@@ -74,16 +74,15 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 		t := enc.objectType.AttributeTypes[attr]
 		key := enc.propertyNames.PropertyKey(attr, t)
 		pv, gotPV := pulumiMap[key]
-		if gotPV {
-			v, err := attrEncoder.fromPropertyValue(pv)
-			if err != nil {
-				return tftypes.NewValue(enc.objectType, nil),
-					fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)
-			}
-			values[attr] = v
-		} else {
-			values[attr] = tftypes.NewValue(t, nil)
+		if !gotPV {
+			pv = resource.NewNullProperty()
 		}
+		v, err := attrEncoder.fromPropertyValue(pv)
+		if err != nil {
+			return tftypes.NewValue(enc.objectType, nil),
+				fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)
+		}
+		values[attr] = v
 	}
 	return tftypes.NewValue(enc.objectType, values), nil
 }
