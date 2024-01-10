@@ -72,6 +72,11 @@ func TestFlattenedEncoder(t *testing.T) {
 		expected := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{})
 		assert.Equal(t, expected, actual)
 	})
+
+	t.Run("error-propagation", func(t *testing.T) {
+		_, err := listEncoder.fromPropertyValue(resource.NewObjectProperty(resource.PropertyMap{}))
+		require.Error(t, err)
+	})
 }
 
 func TestFlattenedDecoder(t *testing.T) {
@@ -121,6 +126,12 @@ func TestFlattenedDecoder(t *testing.T) {
 		require.NoError(t, err)
 		expected := resource.NewNullProperty()
 		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("error-propagation", func(t *testing.T) {
+		tfValue := tftypes.NewValue(tftypes.String, "mistyped")
+		_, err := listDecoder.toPropertyValue(tfValue)
+		require.Error(t, err)
 	})
 }
 
