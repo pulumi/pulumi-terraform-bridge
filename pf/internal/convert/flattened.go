@@ -29,7 +29,7 @@ type flattenedEncoder struct {
 func (enc *flattenedEncoder) fromPropertyValue(v resource.PropertyValue) (tftypes.Value, error) {
 	encoded, err := enc.elementEncoder.fromPropertyValue(v)
 	if err != nil {
-		return tftypes.Value{}, nil
+		return tftypes.Value{}, err
 	}
 
 	list := []tftypes.Value{}
@@ -47,7 +47,7 @@ type flattenedDecoder struct {
 func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	var list []tftypes.Value
 	if err := v.As(&list); err != nil {
-		return resource.PropertyValue{}, nil
+		return resource.PropertyValue{}, err
 	}
 	switch len(list) {
 	case 0:
