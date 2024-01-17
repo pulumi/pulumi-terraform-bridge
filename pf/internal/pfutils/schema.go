@@ -116,6 +116,7 @@ func (a *schemaAdapter[T]) AttributeAtPath(ctx context.Context, p path.Path) (At
 	if !ok {
 		detail := fmt.Sprintf("Expected an AttrLike at path %s, got %s", p, reflect.TypeOf(raw))
 		diag.AddError("Bad attributeAtPath result", detail)
+		return nil, diag
 	}
 	return FromAttrLike(attrLike), diag
 }
