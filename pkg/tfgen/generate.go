@@ -869,6 +869,10 @@ func (g *Generator) Generate() error {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
+	if err := checkIDProperties(g.sink, pulumiPackageSpec, g.info); err != nil {
+		return err
+	}
+
 	// As a side-effect genPulumiSchema also populated rename tables.
 	renames, err := g.Renames()
 	if err != nil {
