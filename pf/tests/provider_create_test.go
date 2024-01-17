@@ -17,8 +17,10 @@ package tfbridgetests
 import (
 	"testing"
 
+	"fmt"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
@@ -227,4 +229,36 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	  }
 	]`
 	testutils.ReplaySequence(t, server, testCase)
+}
+
+func TestCreateSupportsCustomID(t *testing.T) {
+	p := testprovider.RandomProvider()
+	p.Resources["random_pet"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+		newID := fmt.Sprintf("customID%v", state["length"].NumberValue())
+		state["id"] = resource.NewStringProperty(newID)
+		return resource.ID(newID), nil
+	}
+	server := newProviderServer(t, p)
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Create",
+	  "request": {
+	    "urn": "urn:pulumi:dev::pulumi-terraform-bridge-812::random:index/randomPet:RandomPet::pet",
+	    "properties": {
+	      "separator": {
+		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		"value": "BbAXG:}h"
+	      }
+	    }
+	  },
+	  "response": {
+            "id": "customID2",
+            "properties": {
+              "id": "customID2",
+              "length": 2,
+              "separator": "BbAXG:}h"
+            }
+          }
+	}`
+	testutils.Replay(t, server, testCase)
 }
