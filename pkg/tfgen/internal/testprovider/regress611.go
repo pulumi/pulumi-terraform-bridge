@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // Minified variant of pulumi-aws provider extracted from
@@ -335,6 +336,13 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 	}
 
 	prov.SetAutonaming(255, "-")
+
+	for _, r := range prov.Resources {
+		// Suppress unresolved ID mapping errors.
+		r.ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+			return resource.ID("ID"), nil
+		}
+	}
 
 	return prov
 }
