@@ -1317,3 +1317,75 @@ func readlines(t *testing.T, file string) []string {
 
 	return lines
 }
+
+func TestFixupImports(t *testing.T) {
+	tests := []struct{ text, expected string }{
+		{
+			"% terraform import thing",
+			"% pulumi import thing",
+		},
+		{
+			"% Terraform import thing",
+			"% pulumi import thing",
+		},
+		{
+			"% FOO import thing",
+			"% FOO import thing",
+		},
+		{
+			"`terraform import`",
+			"`pulumi import`",
+		},
+		{
+			"`Terraform import`",
+			"`pulumi import`",
+		},
+		{
+			`% terraform import has-terraform-name`,
+			`% pulumi import has-pulumi-name`,
+		},
+		{
+			"In Terraform v1.5.0 and later, use an `import` block to import Transfer Workflows using the `id`. For example:\n" +
+				"\n" +
+				"```terraform" + `
+		import {
+		to = aws_verifiedaccess_trust_provider.example
+		id = "vatp-8012925589"
+		}` + "\n```\n" + `post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+			`post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+		},
+		{
+			"In terraform v1.5.0 and later, use an `import` block to import Transfer Workflows using the `id`. For example:\n" +
+				"\n" +
+				"```terraform" + `
+		import {
+		to = aws_verifiedaccess_trust_provider.example
+		id = "vatp-8012925589"
+		}` + "\n```\n" + `post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+			`post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.text, func(t *testing.T) {
+			//t.Parallel()
+			myRule := fixupImports()
+			actual, err := myRule.Edit("*", []byte(tt.text))
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, string(actual))
+		})
+	}
+}
