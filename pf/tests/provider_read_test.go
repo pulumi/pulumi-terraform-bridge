@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestReadFromRefresh(t *testing.T) {
@@ -225,6 +226,150 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 			"services": []
 		}
       }
+	}`
+	testutils.Replay(t, server, testCase)
+}
+
+func TestRefreshSupportsCustomID(t *testing.T) {
+	p := testprovider.RandomProvider()
+	server := newProviderServer(t, p)
+
+	p.Resources["random_password"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+		state["id"] = resource.NewStringProperty("customID")
+		return resource.ID("customID"), nil
+	}
+
+	testCase := `[
+	{
+	  "method": "/pulumirpc.ResourceProvider/Configure",
+	  "request": {
+	    "args": {
+	      "version": "4.8.0"
+	    },
+	    "acceptSecrets": true,
+	    "acceptResources": true
+	  },
+	  "response": {
+	    "supportsPreview": true,
+	    "acceptResources": true
+	  },
+	  "metadata": {
+	    "kind": "resource",
+	    "mode": "client",
+	    "name": "random"
+	  }
+	},
+	{
+	  "method": "/pulumirpc.ResourceProvider/Read",
+	  "request": {
+	    "id": "customID",
+	    "urn": "urn:pulumi:dev::repro-pulumi-random-258::random:index/randomPassword:RandomPassword::access-token-",
+	    "properties": {
+	      "__meta": "{\"schema_version\":\"1\"}",
+	      "bcryptHash": "$2a$10$HHwx0gQztkpPIc7WkE4Wt.v7ibWT9Ug24/F5XLa6xNm/gOuyS5WRa",
+	      "id": "none",
+	      "length": 8,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "overrideSpecial": "_%@:",
+	      "result": "Ps7XGKxa",
+	      "special": true,
+	      "upper": true
+	    },
+	    "inputs": {
+	      "__defaults": [
+		"lower",
+		"minLower",
+		"minNumeric",
+		"minSpecial",
+		"minUpper",
+		"number",
+		"upper"
+	      ],
+	      "length": 8,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "overrideSpecial": "_%@:",
+	      "special": true,
+	      "upper": true
+	    }
+	  },
+	  "response": {
+	    "id": "customID",
+	    "properties": {
+	      "__meta": "*",
+	      "bcryptHash": "*",
+	      "id": "customID",
+	      "length": 8,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+              "numeric": true,
+	      "overrideSpecial": "_%@:",
+	      "result": "*",
+	      "special": true,
+	      "upper": true
+	    },
+	    "inputs": "*"
+	  }
+	}]`
+
+	testutils.ReplaySequence(t, server, testCase)
+}
+
+func TestImportSupportsCustomID(t *testing.T) {
+	p := testprovider.RandomProvider()
+	p.Resources["random_password"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+		state["id"] = resource.NewStringProperty("customID")
+		return resource.ID("customID"), nil
+	}
+	server := newProviderServer(t, p)
+	testCase := `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Read",
+	  "request": {
+	    "id": "supersecret",
+	    "urn": "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
+	    "properties": {}
+	  },
+	  "response": {
+	    "id": "customID",
+	    "properties": {
+	      "__meta": "{\"schema_version\":\"3\"}",
+	      "bcryptHash": "*",
+	      "id": "customID",
+	      "length": 11,
+	      "lower": true,
+	      "minLower": 0,
+	      "minNumeric": 0,
+	      "minSpecial": 0,
+	      "minUpper": 0,
+	      "number": true,
+	      "numeric": true,
+	      "result": "*",
+	      "special": true,
+	      "upper": true
+	    },
+	    "inputs": {
+              "length": 11,
+              "lower": true,
+              "number": true,
+              "numeric": true,
+              "special": true,
+              "upper": true
+            }
+	  }
 	}`
 	testutils.Replay(t, server, testCase)
 }
