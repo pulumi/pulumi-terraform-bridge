@@ -17,6 +17,7 @@ package testing
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -196,6 +197,12 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 	assert.NoError(t, err)
 
 	var expected, actual json.RawMessage = entry.Response, bytes
+
+	fmt.Println("EXPECTED:")
+	fmt.Println(string(expected))
+	fmt.Println("ACTUAL:")
+	fmt.Println(string(actual))
+	fmt.Println()
 
 	AssertJSONMatchesPattern(t, expected, actual, WithUnorderedArrayPaths(map[string]bool{`#["failures"]`: true}))
 }
