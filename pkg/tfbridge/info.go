@@ -371,6 +371,8 @@ type ResourceInfo struct {
 	// exceptions, however, such as RandomBytes resource, that base identity on a different
 	// field ("base64" in the case of RandomBytes). ComputeID customization option supports
 	// such resources and will be called during Create and Read provider methods.
+	//
+	// This option is currently only supported for Plugin Framework based resources.
 	ComputeID func(state resource.PropertyMap) (resource.ID, error)
 }
 
