@@ -36,7 +36,6 @@ type resourceHandle struct {
 	terraformResourceName  string
 	schema                 pfutils.Schema
 	pulumiResourceInfo     *tfbridge.ResourceInfo // optional
-	idExtractor            idExtractor
 	encoder                convert.Encoder
 	decoder                convert.Decoder
 	schemaOnlyShimResource shim.Resource
@@ -53,18 +52,12 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	n := pfutils.TypeName(typeName)
 	schema := resources.Schema(n)
 
-	idExtractor, err := newIDExtractor(ctx, typeName, schema)
-	if err != nil {
-		return resourceHandle{}, err
-	}
-
 	result := resourceHandle{
 		makeResource: func() pfresource.Resource {
 			return resources.Resource(n)
 		},
 		terraformResourceName: typeName,
 		schema:                schema,
-		idExtractor:           idExtractor,
 	}
 
 	if info, ok := p.info.Resources[typeName]; ok {

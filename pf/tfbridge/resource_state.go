@@ -58,14 +58,6 @@ func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.Prop
 	})
 }
 
-func (u *upgradedResourceState) ExtractID(rh *resourceHandle) (resource.ID, error) {
-	idString, err := rh.idExtractor.extractID(u.state.Value)
-	if err != nil {
-		return "", err
-	}
-	return resource.ID(idString), nil
-}
-
 func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *upgradedResourceState {
 	tfType := rh.schema.Type().TerraformType(ctx)
 	value := tftypes.NewValue(tfType, nil)

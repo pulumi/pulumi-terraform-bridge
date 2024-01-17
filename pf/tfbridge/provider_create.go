@@ -122,7 +122,7 @@ func (p *provider) CreateWithContext(
 		}
 	}
 
-	createdID, err := createdState.ExtractID(&rh)
+	createdID, err := extractID(rh.pulumiResourceInfo, createdStateMap)
 	if err != nil {
 		return "", nil, 0, err
 	}
