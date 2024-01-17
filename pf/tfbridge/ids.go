@@ -22,12 +22,15 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func extractID(info *tfbridge.ResourceInfo, state resource.PropertyMap) (resource.ID, error) {
+func extractID(
+	resname string, info *tfbridge.ResourceInfo, state resource.PropertyMap,
+) (resource.ID, error) {
 	if info != nil && info.ComputeID != nil {
 		return info.ComputeID(state)
 	}
 	idValue, ok := state["id"]
-	c := ". If special identity handling is needed, consider customizing ResourceInfo.ComputeID"
+	c := fmt.Sprintf(". If special identity handling is needed, consider customizing "+
+		"ResourceInfo.ComputeID for the %s resource", resname)
 	if !ok {
 		return "", fmt.Errorf("Resource state did not contain an 'id' property" + c)
 	}
