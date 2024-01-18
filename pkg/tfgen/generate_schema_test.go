@@ -446,3 +446,11 @@ func TestDefaultInfoFails(t *testing.T) {
 	// Should panic
 	_, _ = GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}))
 }
+
+func TestRegress1626(t *testing.T) {
+	info := testprovider.ProviderMiniTalos()
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	s, err := GenerateSchema(info, sink)
+	t.Logf("SPEC: %v", s)
+	require.NoError(t, err)
+}
