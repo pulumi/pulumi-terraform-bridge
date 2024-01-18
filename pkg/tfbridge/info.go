@@ -368,7 +368,7 @@ type ResourceInfo struct {
 	//
 	// The vast majority of resources define an "id" field that is recognized as the resource
 	// identity. This is the default behavior when ComputeID is nil. There are some
-	// exceptions, however, such as RandomBytes resource, that base identity on a different
+	// exceptions, however, such as the RandomBytes resource, that base identity on a different
 	// field ("base64" in the case of RandomBytes). ComputeID customization option supports
 	// such resources and will be called during Create and Read provider methods.
 	//
