@@ -426,10 +426,6 @@ type SchemaInfo struct {
 	CSharpName string
 
 	// a type to override the default; "" uses the default.
-	//
-	// If the type overridden is an object type, `Type: newName` is interpreted as a
-	// move operation, pointing the property to a type called `newName` and creating
-	// `newName` with the schema described by this type.
 	Type tokens.Type
 
 	// alternative types that can be used instead of the override.
@@ -438,7 +434,7 @@ type SchemaInfo struct {
 	// a type to override when the property is a nested structure.
 	NestedType tokens.Type
 
-	// an optional idempotent transformation, applied before passing to TF.
+	// an optional idemponent transformation, applied before passing to TF.
 	Transform Transformer
 
 	// a schema override for elements for arrays, maps, and sets.
