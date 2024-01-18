@@ -15,9 +15,10 @@
 package tfbridgetests
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
-	"fmt"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -233,7 +234,9 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 
 func TestCreateSupportsCustomID(t *testing.T) {
 	p := testprovider.RandomProvider()
-	p.Resources["random_pet"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+	p.Resources["random_pet"].ComputeID = func(
+		ctx context.Context, state resource.PropertyMap,
+	) (resource.ID, error) {
 		newID := fmt.Sprintf("customID%v", state["length"].NumberValue())
 		state["id"] = resource.NewStringProperty(newID)
 		return resource.ID(newID), nil

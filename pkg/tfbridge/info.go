@@ -367,13 +367,14 @@ type ResourceInfo struct {
 	// Customizes inferring resource identity from state.
 	//
 	// The vast majority of resources define an "id" field that is recognized as the resource
-	// identity. This is the default behavior when ComputeID is nil. There are some
-	// exceptions, however, such as the RandomBytes resource, that base identity on a different
-	// field ("base64" in the case of RandomBytes). ComputeID customization option supports
-	// such resources and will be called during Create and Read provider methods.
+	//
+	// identity. This is the default behavior when ComputeID is nil. There are some exceptions,
+	// however, such as the RandomBytes resource, that base identity on a different field ("base64"
+	// in the case of RandomBytes). ComputeID customization option supports such resources. It
+	// is called in Create(preview=false) and Read provider methods.
 	//
 	// This option is currently only supported for Plugin Framework based resources.
-	ComputeID func(state resource.PropertyMap) (resource.ID, error)
+	ComputeID func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
 }
 
 type PropertyTransform = func(context.Context, resource.PropertyMap) (resource.PropertyMap, error)

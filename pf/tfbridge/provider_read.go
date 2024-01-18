@@ -152,7 +152,7 @@ func (p *provider) readViaReadResource(
 		return plugin.ReadResult{}, err
 	}
 
-	readID, err := extractID(rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
+	readID, err := extractID(ctx, rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
 	if err != nil {
 		readID = ""
 	}
@@ -206,7 +206,8 @@ func (p *provider) readViaImportResourceState(
 		return plugin.ReadResult{}, err
 	}
 
-	finalID, err := extractID(rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
+	rn := rh.terraformResourceName
+	finalID, err := extractID(ctx, rn, rh.pulumiResourceInfo, readStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}

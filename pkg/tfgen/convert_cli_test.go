@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -74,7 +75,9 @@ output "some_output" {
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"simple_resource": {
 				// Suppress warnings about ID mapping errors.
-				ComputeID: func(state resource.PropertyMap) (resource.ID, error) {
+				ComputeID: func(
+					ctx context.Context, state resource.PropertyMap,
+				) (resource.ID, error) {
 					return resource.ID("ID"), nil
 				},
 				Tok: "simple:index:resource",

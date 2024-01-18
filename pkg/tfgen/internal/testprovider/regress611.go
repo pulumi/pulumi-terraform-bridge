@@ -15,6 +15,7 @@
 package testprovider
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"unicode"
@@ -339,7 +340,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 
 	for _, r := range prov.Resources {
 		// Suppress unresolved ID mapping errors.
-		r.ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+		r.ComputeID = func(context.Context, resource.PropertyMap) (resource.ID, error) {
 			return resource.ID("ID"), nil
 		}
 	}

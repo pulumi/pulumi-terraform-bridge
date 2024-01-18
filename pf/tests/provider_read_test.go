@@ -15,6 +15,7 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
 	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
@@ -234,7 +235,9 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 	p := testprovider.RandomProvider()
 	server := newProviderServer(t, p)
 
-	p.Resources["random_password"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+	p.Resources["random_password"].ComputeID = func(
+		ctx context.Context, state resource.PropertyMap,
+	) (resource.ID, error) {
 		state["id"] = resource.NewStringProperty("customID")
 		return resource.ID("customID"), nil
 	}
@@ -330,7 +333,9 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 
 func TestImportSupportsCustomID(t *testing.T) {
 	p := testprovider.RandomProvider()
-	p.Resources["random_password"].ComputeID = func(state resource.PropertyMap) (resource.ID, error) {
+	p.Resources["random_password"].ComputeID = func(
+		ctx context.Context, state resource.PropertyMap,
+	) (resource.ID, error) {
 		state["id"] = resource.NewStringProperty("customID")
 		return resource.ID("customID"), nil
 	}

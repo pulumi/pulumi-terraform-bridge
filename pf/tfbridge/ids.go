@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -23,10 +24,13 @@ import (
 )
 
 func extractID(
-	resname string, info *tfbridge.ResourceInfo, state resource.PropertyMap,
+	ctx context.Context,
+	resname string,
+	info *tfbridge.ResourceInfo,
+	state resource.PropertyMap,
 ) (resource.ID, error) {
 	if info != nil && info.ComputeID != nil {
-		return info.ComputeID(state)
+		return info.ComputeID(ctx, state)
 	}
 	idValue, ok := state["id"]
 	c := fmt.Sprintf(". If special identity handling is needed, consider customizing "+
