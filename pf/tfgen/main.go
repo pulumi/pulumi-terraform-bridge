@@ -53,7 +53,15 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		return g.Generate()
+		if err := g.Generate(); err != nil {
+			return err
+		}
+
+		if err := checkIDProperties(g.Sink(), opts.ProviderInfo); err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 

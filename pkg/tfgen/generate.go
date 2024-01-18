@@ -335,6 +335,10 @@ type propertyType struct {
 	asset      *tfbridge.AssetTranslation
 }
 
+func (g *Generator) Sink() diag.Sink {
+	return g.sink
+}
+
 func (g *Generator) makePropertyType(typePath paths.TypePath,
 	objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
 	entityDocs entityDocs) *propertyType {
