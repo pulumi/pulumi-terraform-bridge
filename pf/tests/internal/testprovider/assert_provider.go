@@ -135,6 +135,12 @@ func (e *assertRes) Delete(ctx context.Context, req resource.DeleteRequest, resp
 
 func (e *assertRes) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	e.p.f(tfsdk.Config{}, &req.State, &resp.State)
+
+	diag := resp.State.SetAttribute(ctx, path.Root("id"), "0")
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (e *assertRes) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

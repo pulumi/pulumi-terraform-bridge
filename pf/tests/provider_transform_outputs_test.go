@@ -298,8 +298,10 @@ func TestTransformFromState(t *testing.T) {
 	            }
 		  },
 		  "response": {
+                    "id": "0",
 	            "inputs": "*",
 		    "properties": {
+                        "id": "0",
 			"stringPropertyValue": "SET"
 		    }
 		  }
