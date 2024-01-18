@@ -383,8 +383,6 @@ func locateTypByTypePath(prov tfbridge.ProviderInfo, path paths.TypePath) (typ, 
 			return nil, err
 		}
 		return t.Element()
-	case *paths.RawTypePath:
-		return locateTypByTypePath(prov, p.StructuralPath())
 	default:
 		panic("impossible match in locateTypByTypePath")
 	}
