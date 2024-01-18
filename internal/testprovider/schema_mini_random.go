@@ -64,11 +64,6 @@ func ProviderMiniRandom() *schema.Provider {
 					Type:        schema.TypeInt,
 					Computed:    true,
 				},
-
-				"id": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
 			},
 		}
 	}

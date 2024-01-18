@@ -15,7 +15,6 @@
 package tfgen
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +34,6 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
@@ -74,12 +72,6 @@ output "some_output" {
 		}),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"simple_resource": {
-				// Suppress warnings about ID mapping errors.
-				ComputeID: func(
-					ctx context.Context, state resource.PropertyMap,
-				) (resource.ID, error) {
-					return resource.ID("ID"), nil
-				},
 				Tok: "simple:index:resource",
 				Fields: map[string]*tfbridge.SchemaInfo{
 					"input_one": {
