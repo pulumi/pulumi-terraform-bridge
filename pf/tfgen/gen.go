@@ -64,6 +64,10 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 		return nil, err
 	}
 
+	if err := checkIDProperties(sink, opts.ProviderInfo); err != nil {
+		return nil, err
+	}
+
 	return &GenerateSchemaResult{
 		ProviderMetadata: tfbridge.ProviderMetadata{
 			PackageSchema: schema,
