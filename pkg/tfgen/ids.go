@@ -13,22 +13,16 @@ func checkIDProperties(sink diag.Sink, spec schema.PackageSpec, info tfbridge.Pr
 	errors := 0
 
 	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
-		_, gotID := resource.Schema().GetOk("id")
-		if gotID {
+		if resourceHasComputeID(info, rname) {
 			return true
 		}
-
-		if info.Resources != nil {
-			if info, ok := info.Resources[rname]; ok {
-				if info.ComputeID != nil {
-					return true
-				}
-			}
+		ok, reason := resourceHasRegularID(resource)
+		if ok {
+			return true
 		}
-
-		m := fmt.Sprintf("Resource %s does not have id property defined. "+
-			"To map this resource properly consider specifying ResourceInfo.ComputeID",
-			rname)
+		m := fmt.Sprintf("Resource %s has a problem: %s. "+
+			"To map this resource consider specifying ResourceInfo.ComputeID",
+			rname, reason)
 		errors++
 		sink.Errorf(&diag.Diag{Message: m})
 
@@ -40,4 +34,28 @@ func checkIDProperties(sink diag.Sink, spec schema.PackageSpec, info tfbridge.Pr
 	}
 
 	return nil
+}
+
+func resourceHasRegularID(resource shim.Resource) (bool, string) {
+	idSchema, gotID := resource.Schema().GetOk("id")
+	if !gotID {
+		return false, `no "id" attribute`
+	}
+	if idSchema.Type() != shim.TypeString {
+		return false, `"id" attribute is not of type String`
+	}
+	if idSchema.Sensitive() {
+		return false, `"id" attribute is sensitive`
+	}
+	return true, ""
+}
+
+func resourceHasComputeID(info tfbridge.ProviderInfo, resname string) bool {
+	if info.Resources == nil {
+		return false
+	}
+	if info, ok := info.Resources[resname]; ok {
+		return info.ComputeID != nil
+	}
+	return false
 }
