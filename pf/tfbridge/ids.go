@@ -43,6 +43,9 @@ func extractID(
 	secret := idValue.ContainsSecrets()
 	contract.Assertf(!secret, "Cannot support secrets in 'id' property. %s", errSuffix)
 
+	computed := idValue.IsComputed()
+	contract.Assertf(!computed, "Unexpected computed PropertyValue in state. %s", errSuffix)
+
 	contract.Assertf(idValue.IsString(),
 		"Resource state 'id' property expected to be a string but %v was given. %s",
 		idValue, errSuffix)
