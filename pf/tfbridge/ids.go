@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -32,15 +33,19 @@ func extractID(
 	if info != nil && info.ComputeID != nil {
 		return info.ComputeID(ctx, state)
 	}
-	idValue, ok := state["id"]
-	c := fmt.Sprintf(". If special identity handling is needed, consider customizing "+
-		"ResourceInfo.ComputeID for the %s resource", resname)
-	if !ok {
-		return "", fmt.Errorf("Resource state did not contain an 'id' property" + c)
-	}
-	if !idValue.IsString() {
-		return "", fmt.Errorf("Resource state 'id' property expected to be a string but "+
-			"%v was given"+c, idValue)
-	}
+
+	errSuffix := fmt.Sprintf("This is an error in the provider. Special identity handling may "+
+		"be needed. Consider setting ResourceInfo.ComputeID for the %s resource", resname)
+
+	idValue, gotID := state["id"]
+	contract.Assertf(gotID, "Resource state did not contain an 'id' property. %s", errSuffix)
+
+	secret := idValue.ContainsSecrets()
+	contract.Assertf(!secret, "Cannot support secrets in 'id' property. %s", errSuffix)
+
+	contract.Assertf(idValue.IsString(),
+		"Resource state 'id' property expected to be a string but %v was given. %s",
+		idValue, errSuffix)
+
 	return resource.ID(idValue.StringValue()), nil
 }
