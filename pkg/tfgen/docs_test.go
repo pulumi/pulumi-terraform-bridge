@@ -1326,7 +1326,7 @@ func TestFixupImports(t *testing.T) {
 		},
 		{
 			"% Terraform import thing",
-			"% pulumi import thing",
+			"% Pulumi import thing",
 		},
 		{
 			"% FOO import thing",
