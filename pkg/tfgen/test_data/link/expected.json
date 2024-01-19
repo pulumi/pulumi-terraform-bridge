@@ -1,5 +1,5 @@
 {
-  "Description": "## \n\nThis is a test that we correctly strip TF doc links.",
+  "Description": "## \n\nThis is a test that we correctly strip TF doc links.\n\nThis is another test that we correctly strip TF import links.\n\nWe also make sure that we strip TF registry doc links.",
   "Arguments": {},
   "Attributes": {},
   "Import": ""

@@ -157,13 +157,39 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 	}
 }
 
+func fixupImports() tfbridge.DocsEdit {
+
+	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
+	var quotedImportRegexp = regexp.MustCompile("`[tT]erraform import`")
+
+	// (?s) makes the '.' match newlines (in addition to everything else).
+	var blockImportRegexp = regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
+		" use an `import` block.*?```.+?```\n")
+
+	return tfbridge.DocsEdit{
+		Path: "*",
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			// Strip import blocks
+			content = blockImportRegexp.ReplaceAllLiteral(content, nil)
+			content = inlineImportRegexp.ReplaceAllFunc(content, func(match []byte) []byte {
+				match = bytes.ReplaceAll(match, []byte("terraform"), []byte("pulumi"))
+				match = bytes.ReplaceAll(match, []byte("Terraform"), []byte("Pulumi"))
+				return match
+			})
+			content = quotedImportRegexp.ReplaceAllLiteral(content, []byte("`pulumi import`"))
+			return content, nil
+		},
+	}
+}
+
 var (
 	// Replace content such as "`terraform plan`" with "`pulumi preview`"
 	replaceTfPlan = boundedReplace("[tT]erraform [pP]lan", "pulumi preview")
 	// Replace content such as " Terraform Apply." with " pulumi up."
 	replaceTfApply = boundedReplace("[tT]erraform [aA]pply", "pulumi up")
+
 	// A markdown link that has terraform in the link component.
-	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*\.terraform([^\)]*)\)`)
+	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`)
 )
 
 type editRules []tfbridge.DocsEdit
@@ -196,6 +222,7 @@ func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 				return tfLink.ReplaceAll(content, []byte("$1")), nil
 			},
 		},
+		fixupImports(),
 	}
 	if info == nil || info.EditRules == nil {
 		return defaults
