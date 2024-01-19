@@ -1345,7 +1345,7 @@ func TestFixupImports(t *testing.T) {
 			`% pulumi import has-pulumi-name`,
 		},
 		{
-			"In Terraform v1.5.0 and later, use an `import` block to import Transfer Workflows using the `id`. For example:\n" +
+			text: "In Terraform v1.5.0 and later, use an `import` block to import Transfer Workflows using the `id`. For example:\n" +
 				"\n" +
 				"```terraform" + `
 		import {
@@ -1355,7 +1355,7 @@ func TestFixupImports(t *testing.T) {
 		` + "```yaml" + `
 		foo: bar
 		` + "```\n",
-			`post text:
+			expected: `post text:
 		` + "```yaml" + `
 		foo: bar
 		` + "```\n",
@@ -1381,7 +1381,7 @@ func TestFixupImports(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.text, func(t *testing.T) {
-			//t.Parallel()
+			t.Parallel()
 			myRule := fixupImports()
 			actual, err := myRule.Edit("*", []byte(tt.text))
 			require.NoError(t, err)

@@ -173,7 +173,7 @@ func fixupImports() tfbridge.DocsEdit {
 			content = blockImportRegexp.ReplaceAllLiteral(content, nil)
 			content = inlineImportRegexp.ReplaceAllFunc(content, func(match []byte) []byte {
 				match = bytes.ReplaceAll(match, []byte("terraform"), []byte("pulumi"))
-				match = bytes.ReplaceAll(match, []byte("Terraform"), []byte("pulumi"))
+				match = bytes.ReplaceAll(match, []byte("Terraform"), []byte("Pulumi"))
 				return match
 			})
 			content = quotedImportRegexp.ReplaceAllLiteral(content, []byte("`pulumi import`"))
