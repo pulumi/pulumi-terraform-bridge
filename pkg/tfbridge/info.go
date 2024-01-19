@@ -333,7 +333,7 @@ type ResourceInfo struct {
 	Fields map[string]*SchemaInfo // a map of custom field names; if a type is missing, uses the default.
 
 	// Deprecated: IDFields is not currently used and will be removed in the next major version of
-	// pulumi-terraform-bridge.
+	// pulumi-terraform-bridge. See [ComputeID].
 	IDFields []string
 
 	// list of parameters that we can trust that any change will allow a createBeforeDelete
@@ -363,6 +363,17 @@ type ResourceInfo struct {
 	// are accessed by other provider functions or by terraform. In particular, it can
 	// be used to perform upgrades on old pulumi state.  Should be used sparingly.
 	TransformFromState PropertyTransform
+
+	// Customizes inferring resource identity from state.
+	//
+	// The vast majority of resources define an "id" field that is recognized as the resource
+	// identity. This is the default behavior when ComputeID is nil. There are some exceptions,
+	// however, such as the RandomBytes resource, that base identity on a different field
+	// ("base64" in the case of RandomBytes). ComputeID customization option supports such
+	// resources. It is called in Create(preview=false) and Read provider methods.
+	//
+	// This option is currently only supported for Plugin Framework based resources.
+	ComputeID func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
 }
 
 type PropertyTransform = func(context.Context, resource.PropertyMap) (resource.PropertyMap, error)

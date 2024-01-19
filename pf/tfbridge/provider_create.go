@@ -122,7 +122,8 @@ func (p *provider) CreateWithContext(
 		}
 	}
 
-	createdID, err := createdState.ExtractID(&rh)
+	rn := rh.terraformResourceName
+	createdID, err := extractID(ctx, rn, rh.pulumiResourceInfo, createdStateMap)
 	if err != nil {
 		return "", nil, 0, err
 	}

@@ -147,14 +147,14 @@ func (p *provider) readViaReadResource(
 		return plugin.ReadResult{}, err
 	}
 
-	readID, err := readState.ExtractID(rh)
-	if err != nil {
-		readID = ""
-	}
-
 	readStateMap, err := readState.ToPropertyMap(rh)
 	if err != nil {
 		return plugin.ReadResult{}, err
+	}
+
+	readID, err := extractID(ctx, rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
+	if err != nil {
+		readID = ""
 	}
 
 	return plugin.ReadResult{
@@ -201,12 +201,13 @@ func (p *provider) readViaImportResourceState(
 		return plugin.ReadResult{}, err
 	}
 
-	finalID, err := readState.ExtractID(rh)
+	readStateMap, err := readState.ToPropertyMap(rh)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}
 
-	readStateMap, err := readState.ToPropertyMap(rh)
+	rn := rh.terraformResourceName
+	finalID, err := extractID(ctx, rn, rh.pulumiResourceInfo, readStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}

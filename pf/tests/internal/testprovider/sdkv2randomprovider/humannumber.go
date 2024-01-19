@@ -32,6 +32,10 @@ func humanNumber() *schema.Resource {
 		DeleteContext: humanNumberDelete,
 
 		Schema: map[string]*schema.Schema{
+			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"suggestion": {
 				// This description is used by the documentation generator and the language server.
 				Description: "What number you think I should say. This will make it less random.",
