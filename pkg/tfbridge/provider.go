@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"q"
 	"strings"
 	"unicode"
 
@@ -215,7 +216,8 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		servers = append(servers, muxer.Endpoint{
 			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 				return f.GetInstance(ctx, module, version, hc)
-			}})
+			},
+		})
 	}
 
 	return muxer.Main{
@@ -791,6 +793,7 @@ func markWronglyTypedMaxItemsOneStateDiff(
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	panic("DIFF CALLED!")
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
@@ -915,6 +918,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+	q.Q(changes, replaces, deleteBeforeReplace)
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
@@ -1585,8 +1589,7 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 				sch.Type() == shim.TypeString { // has type string
 
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					ensureMap(&res.Fields)[nameProperty] =
-						AutoName(nameProperty, maxLength, separator)
+					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
 				}
 			}
 		}
