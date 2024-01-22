@@ -50,4 +50,11 @@ See [automatic token mapping](./automatic-token-mapping.md) for more information
 
 ## Augmenting a Terraform Provider
 
-To add new resources/datasoruces or replace existing resources/datasoruces to the bridge Terraform provider, see [MuxWith](./muxwith.md).
+To add new resources/datasoruces or replace existing resources/datasoruces to the bridge
+Terraform provider, see [MuxWith](./muxwith.md).
+
+## Pulumi Bridge for Terraform Plugin Framework
+
+For instructions on bridging a Terraform provider built using the [Terraform Plugin
+Framework](https://developer.hashicorp.com/terraform/plugin/framework), please see
+[pf/README.md](../pf/README.md).

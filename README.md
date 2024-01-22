@@ -13,7 +13,7 @@ If you want to wrap a _new_ Terraform provider as a Pulumi provider, check out [
 
 ## Developing a New Provider
 
-The recommended way to start developing a new TF provider is with https://github.com/pulumi/pulumi-tf-provider-boilerplate/issues.
+The recommended way to start developing a new TF provider is with [pulumi-tf-provider-boilerplate](https://github.com/pulumi/pulumi-tf-provider-boilerplate).
 
 If you want details on how provider development works, please see [our docs](./docs/new-provider.md).
 
