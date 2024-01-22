@@ -126,7 +126,7 @@ type ProviderInfo struct {
 	// The MuxWith array allows the mixin (muxing) of other providers to the wrapped upstream Terraform provider.
 	// With a provider mixin it's possible to add or replace resources and/or functions (data sources) in the wrapped
 	// Terraform provider without having to change the upstream code itself. If multiple provider mixins are specified
-	// the schema generator in pkg/tfgen will call the GetSpec() method of muxer.Provider in sequenece. Thus, if more or two
+	// the schema generator in pkg/tfgen will call the GetSpec() method of muxer.Provider in sequence. Thus, if more or two
 	// of the mixins define the same resource/function, the last definition will end up in the combined schema of the
 	// compiled provider.
 	MuxWith []MuxProvider

@@ -6,7 +6,7 @@ Providers](https://github.com/terraform-providers) built using the [Terraform Pl
 Framework](https://developer.hashicorp.com/terraform/plugin/framework).
 
 If you need to adapt [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) based providers, see
-[Pulumi Terraform Bridge](https://github.com/pulumi/pulumi-terraform-bridge).
+[the documentation for bridging a new SDK based provider](../docs/new-provider.md).
 
 ## How to Bridge a Provider
 

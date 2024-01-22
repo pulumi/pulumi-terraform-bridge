@@ -11,12 +11,13 @@ of infrastructure providers and types.  In principle, any of them can be program
 
 If you want to wrap a _new_ Terraform provider as a Pulumi provider, check out [pulumi/pulumi-tf-provider-boilerplate](https://github.com/pulumi/pulumi-tf-provider-boilerplate).
 
-## Overview
+## Developing a New Provider
 
-Although the Terraform schema is used as a starting point, the concept of "overlays" enables customization, including
-classification into modules, stronger typing, better documentation, and more.  Pulumi can also augment providers with
-non-CRUD operations like queries, metrics, and logs -- while not having to repeat all of the considerable and quality
-work that has already gone into building reliable CRUD operations against the major cloud providers' platforms.
+The recommended way to start developing a new TF provider is with [pulumi-tf-provider-boilerplate](https://github.com/pulumi/pulumi-tf-provider-boilerplate).
+
+If you want details on how provider development works, please see [our docs](./docs/new-provider.md).
+
+## Overview
 
 Most users of Pulumi don't need to know how this bridge works.  Many will find it interesting, and, if you'd like to
 bring up a new provider that is available in Terraform but not yet Pulumi, we would love to hear from you.
@@ -62,39 +63,7 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 See [playbook](https://github.com/pulumi/platform-providers-team/blob/main/playbooks/Release%3A%20Terraform%20Bridge.md).
 
-### Adapting a New Terraform Provider
-
-It is relatively easy to adapt a Terraform Provider, X, for use with Pulumi.  The
-[AWS provider](https://github.com/pulumi/pulumi-aws) offers a good blueprint for how to go about this.
-
-You will create two Go binaries -- one purely for design-time usage to act as X's code-generator and the other for
-runtime usage to serve as its dynamic resource plugin -- and link with the Terraform Provider repo and this one.
-There is then typically a `resources.go` file that maps all of the Terraform Provider metadata available at runtime
-to types and concepts that the bridge will use to generate well-typed programmatic abstractions.
-
-The AWS provider provides a standard blueprint to follow for this.  There are three major elements:
-
-* [`cmd/pulumi-tfgen-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/provider/cmd/pulumi-tfgen-aws)
-* [`cmd/pulumi-resource-aws/`](https://github.com/pulumi/pulumi-aws/tree/master/provider/cmd/pulumi-resource-aws)
-* [`resources.go`](https://github.com/pulumi/pulumi-aws/blob/master/provider/resources.go)
-
-The [`Makefile`](https://github.com/pulumi/pulumi-aws/blob/master/Makefile) compiles these programs, and notably, uses
-the resulting `pulumi-tfgen-aws` binary to generate code for many different languages.  The resulting generated code is
-stored in the [`sdk` directory](https://github.com/pulumi/pulumi-aws/tree/master/sdk).
-
-### Augmenting Auto-Generated Code w/ Overlays
-
-An overlay is a set of additional directives that the code generator obeys when creating the final packages.
-
-These may specify additional types, functions, or entire modules in this directory may be merged into the resulting
-package.  This can be useful for helper modules and functions, in addition to gradual typing, such as using strongly
-typed enums in places where the underlying provider may only have weakly typed strings.
-
-To do this, first add the files in the appropriate package sub-directory of the sdk, and then add the requisite directives to the
-provider file.  See the [AWS overlays section in resources.go](https://github.com/pulumi/pulumi-aws/blob/master/provider/resources.go#L4486) for
-an example of this in action.
-
-# tfgen options
+## Design Time Options
 
 tfgen, the command that generates Pulumi schema/code for a bridged provider supports the following environment variables:
 
