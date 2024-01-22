@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"q"
 	"strings"
 	"unicode"
 
@@ -793,7 +792,6 @@ func markWronglyTypedMaxItemsOneStateDiff(
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	panic("DIFF CALLED!")
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
@@ -918,7 +916,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
-	q.Q(changes, replaces, deleteBeforeReplace)
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
