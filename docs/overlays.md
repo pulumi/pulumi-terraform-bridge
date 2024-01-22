@@ -4,7 +4,7 @@
 >             We do not recommend using overlays for a new provider. To augment a terraform provider,
 >             please use [tfbridge.ProviderInfo.MuxWith](./muxwith.md).
 
-An overlay is a set of additional (per language files) that the code generator injects when creating the final packages.
+An overlay is a set of additional (per language) files that the code generator injects when creating the final packages.
 
 These may add additional types, functions, or entire modules in this directory may be merged into the resulting
 package.  This can be useful for helper modules and functions, in addition to gradual typing, such as using strongly
