@@ -56,10 +56,14 @@ type v2Provider struct {
 var _ shim.Provider = (*v2Provider)(nil)
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
-	return v2Provider{
+	prov := v2Provider{
 		tf:   p,
 		opts: opts,
 	}
+	if opts, err := getProviderOptions(opts); err == nil && opts.planResourceChangeFilter != nil {
+		return newProviderWithPlanResourceChange(p, prov, opts.planResourceChangeFilter)
+	}
+	return prov
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {

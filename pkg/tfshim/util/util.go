@@ -34,13 +34,13 @@ func (UnimplementedProvider) Validate(
 	panic("unimplemented")
 }
 
-func (UnimplementedProvider) ValidateResource(
+func (UnimplementedProvider) ValidateDataSource(
 	ctx context.Context, t string, c shim.ResourceConfig,
 ) ([]string, []error) {
 	panic("unimplemented")
 }
 
-func (UnimplementedProvider) ValidateDataSource(
+func (UnimplementedProvider) ValidateResource(
 	ctx context.Context, t string, c shim.ResourceConfig,
 ) ([]string, []error) {
 	panic("unimplemented")

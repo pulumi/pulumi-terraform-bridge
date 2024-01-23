@@ -81,11 +81,20 @@ func makeResourceRawConfigClassic(config *terraform.ResourceConfig, resource *sc
 // One possibility to refactor this code is to have MakeTerraformInput return cty.Value directly
 // instead of implicit any encoding.
 func recoverAndCoerceCtyValue(resource *schema.Resource, value any) (cty.Value, error) {
-	c, err := recoverCtyValue(resource.CoreConfigSchema().ImpliedType(), value)
+	return recoverAndCoerceCtyValueWithSchema(resource.CoreConfigSchema(), value)
+}
+
+type blockLike interface {
+	ImpliedType() cty.Type
+	CoerceValue(cty.Value) (cty.Value, error)
+}
+
+func recoverAndCoerceCtyValueWithSchema(schema blockLike, value any) (cty.Value, error) {
+	c, err := recoverCtyValue(schema.ImpliedType(), value)
 	if err != nil {
 		return cty.NilVal, fmt.Errorf("recoverCtyValue failed: %w", err)
 	}
-	cv, err := resource.CoreConfigSchema().CoerceValue(c)
+	cv, err := schema.CoerceValue(c)
 	if err != nil {
 		return cty.NilVal, fmt.Errorf("CoerceValue failed: %w", err)
 	}
