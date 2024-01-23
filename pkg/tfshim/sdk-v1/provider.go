@@ -87,14 +87,22 @@ func (p v1Provider) Configure(_ context.Context, c shim.ResourceConfig) error {
 }
 
 func (p v1Provider) Diff(
-	_ context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	_ context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts ...shim.DiffOption,
 ) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
 
 	diff, err := p.tf.SimpleDiff(instanceInfo(t), stateFromShim(s), configFromShim(c))
-	return diffToShim(diff), err
+
+	options := shim.NewDiffOptions(opts...)
+	d := diffToShim(diff)
+
+	if dd, ok := d.(v1InstanceDiff); ok && options.IgnoreChanges != nil {
+		dd.processIgnoreChanges(options.IgnoreChanges)
+	}
+
+	return d, err
 }
 
 func (p v1Provider) Apply(

@@ -31,12 +31,13 @@ func (p v2Provider) Diff(
 	t string,
 	s shim.InstanceState,
 	c shim.ResourceConfig,
+	opts ...shim.DiffOption,
 ) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
 
-	opts, err := getProviderOptions(p.opts)
+	providerOpts, err := getProviderOptions(p.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func (p v2Provider) Diff(
 	}
 
 	config, state := configFromShim(c), stateFromShim(s)
-	rawConfig := makeResourceRawConfig(opts.diffStrategy, config, r)
+	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, r)
 
 	if state == nil {
 		// When handling Create Pulumi passes nil for state, but this diverges from how Terraform does things,
@@ -65,11 +66,22 @@ func (p v2Provider) Diff(
 		}
 	}
 
-	diff, err := p.simpleDiff(ctx, opts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
+	diff, err := p.simpleDiff(ctx, providerOpts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
+	if err != nil {
+		return nil, err
+	}
 	if diff != nil {
 		diff.RawConfig = rawConfig
 	}
-	return diffToShim(diff), err
+
+	resultingDiff := diffToShim(diff)
+
+	options := shim.NewDiffOptions(opts...)
+	if dd, ok := resultingDiff.(v2InstanceDiff); ok && options.IgnoreChanges != nil {
+		dd.processIgnoreChanges(options.IgnoreChanges)
+	}
+
+	return resultingDiff, err
 }
 
 func (p v2Provider) simpleDiff(

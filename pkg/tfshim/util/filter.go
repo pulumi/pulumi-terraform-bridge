@@ -79,9 +79,9 @@ func (p *FilteringProvider) Configure(ctx context.Context, c shim.ResourceConfig
 }
 
 func (p *FilteringProvider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts ...shim.DiffOption,
 ) (shim.InstanceDiff, error) {
-	return p.Provider.Diff(ctx, t, s, c)
+	return p.Provider.Diff(t, s, c, opts...)
 }
 
 func (p *FilteringProvider) Apply(

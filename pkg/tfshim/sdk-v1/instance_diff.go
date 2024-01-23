@@ -92,6 +92,22 @@ func (d v1InstanceDiff) IgnoreChanges(ignored map[string]bool) {
 	}
 }
 
+func (d v1InstanceDiff) processIgnoreChanges(ignored shim.IgnoreChanges) {
+	i := ignored()
+	for k := range d.tf.Attributes {
+		if _, ok := i[k]; ok {
+			delete(d.tf.Attributes, k)
+		} else {
+			for attr := range i {
+				if strings.HasPrefix(k, attr+".") {
+					delete(d.tf.Attributes, k)
+					break
+				}
+			}
+		}
+	}
+}
+
 func (d v1InstanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	v1Timeouts := &schema.ResourceTimeout{}
 	if timeouts != nil {

@@ -37,6 +37,21 @@ func (UnimplementedProvider) Validate(
 func (UnimplementedProvider) ValidateResource(
 	ctx context.Context, t string, c shim.ResourceConfig,
 ) ([]string, []error) {
+	panic("Unimplemented")
+}
+
+func (UnimplementedProvider) Configure(c shim.ResourceConfig) error { panic("unimplemented") }
+
+func (UnimplementedProvider) Diff(
+	t string, s shim.InstanceState, c shim.ResourceConfig, opts ...shim.DiffOption,
+) (shim.InstanceDiff, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+	panic("unimplemented")
+}
+func (UnimplementedProvider) Refresh(string, shim.InstanceState, shim.ResourceConfig) (shim.InstanceState, error) {
 	panic("unimplemented")
 }
 

@@ -277,8 +277,13 @@ func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 }
 
 func (p *provider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts ...shim.DiffOption,
 ) (shim.InstanceDiff, error) {
+
+	if shim.NewDiffOptions(opts...).IgnoreChanges != nil {
+		return nil, fmt.Errorf("IgnoreChanges option is not yet supported")
+	}
+
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
