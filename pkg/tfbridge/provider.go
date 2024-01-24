@@ -215,7 +215,8 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		servers = append(servers, muxer.Endpoint{
 			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 				return f.GetInstance(ctx, module, version, hc)
-			}})
+			},
+		})
 	}
 
 	return muxer.Main{
@@ -408,10 +409,14 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
 		if err := p.preConfigureCallback(ctx, news, config); err != nil {
-			return nil, err
+			return &pulumirpc.CheckResponse{
+				Failures: p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), []error{err}),
+			}, nil
 		}
 		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
-			return nil, err
+			return &pulumirpc.CheckResponse{
+				Failures: p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), []error{err}),
+			}, nil
 		}
 	}
 
@@ -1585,8 +1590,7 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 				sch.Type() == shim.TypeString { // has type string
 
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					ensureMap(&res.Fields)[nameProperty] =
-						AutoName(nameProperty, maxLength, separator)
+					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
 				}
 			}
 		}
