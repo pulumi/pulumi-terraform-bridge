@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	"github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
@@ -77,7 +77,7 @@ func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 	}
 	errString := "myerr"
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", &errString,
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", []string{errString},
 			part(0, "{}", "{}", &errString),
 			part(1, "{}", "{}", &errString),
 		))
@@ -97,7 +97,7 @@ func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
 			"/pulumirpc.ResourceProvider/CheckConfig",
 			"{}",
 			"{}",
-			&expectedErr,
+			[]string{expectedErr},
 			part(0, "{}", "{}", &firstErr),
 			part(1, "{}", "{}", &secondErr),
 		))
@@ -111,7 +111,7 @@ func TestCheckConfigOneErrorReturned(t *testing.T) {
 	}
 	err := "myerr"
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", &err,
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", []string{err},
 			part(0, "{}", `{"inputs": {"myurn":"urn"}}`, nil),
 			part(1, "{}", "{}", &err),
 		))
@@ -303,15 +303,15 @@ func (m testMuxer) replay(exchanges ...Exchange) {
 
 	bytes, err := json.Marshal(exchanges)
 	require.NoError(m.t, err)
-	testutils.ReplaySequence(m.t, muxedServer, string(bytes))
+	replay.ReplaySequence(m.t, muxedServer, string(bytes))
 }
 
 type Exchange struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request"`
 	Response json.RawMessage `json:"response"`
-	Errors   *string
-	Parts    []ExchangePart `json:"-"`
+	Errors   []string        `json:"errors"`
+	Parts    []ExchangePart  `json:"-"`
 }
 
 type ExchangePart struct {
@@ -337,7 +337,7 @@ func simpleExchange(provider int, method, request, response string) Exchange {
 	}
 }
 
-func exchange(method, request, response string, errors *string, parts ...ExchangePart) Exchange {
+func exchange(method, request, response string, errors []string, parts ...ExchangePart) Exchange {
 	return Exchange{
 		Method:   method,
 		Request:  json.RawMessage(request),
@@ -416,7 +416,7 @@ func handleMethod[T proto.Message, R proto.Message](m *server, req T) (R, error)
 	require.NoError(m.t, err)
 
 	failed := m.t.Failed()
-	testutils.AssertJSONMatchesPattern(m.t, json.RawMessage(next.incoming), json.RawMessage(marshalled))
+	replay.AssertJSONMatchesPattern(m.t, json.RawMessage(next.incoming), json.RawMessage(marshalled))
 	if !failed && m.t.Failed() {
 		m.t.Logf("Unexpected semantic diff:\nexpected: <-JSON\n%s\nJSON\nactual: <-JSON\n%s\nJSON\n",
 			next.incoming, string(marshalled))

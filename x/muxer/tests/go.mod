@@ -1,13 +1,15 @@
 module github.com/pulumi/pulumi-terraform-bridge/x/muxer/tests
 
-go 1.20
+go 1.21.0
+
+toolchain go1.21.5
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../
 
 replace github.com/pulumi/pulumi-terraform-bridge/testing => ../../../testing/
 
 require (
-	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.0-20230406212415-0b560771908d
+	github.com/pulumi/providertest v0.0.9-0.20240123170534-2c3636a7ae1a
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.7
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.31.0
@@ -96,10 +98,10 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/grpc v1.57.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
