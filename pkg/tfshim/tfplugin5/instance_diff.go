@@ -28,6 +28,16 @@ type instanceDiff struct {
 	attributes  map[string]shim.ResourceAttrDiff
 }
 
+func (d instanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
+	if opts.ResourceTimeout != nil {
+		err := d.encodeTimeouts(opts.ResourceTimeout)
+		contract.AssertNoErrorf(err, "encodeTimeouts should never fail")
+	}
+	for timeoutKey, dur := range opts.TimeoutOverrides {
+		d.setTimeout(dur, timeoutKey)
+	}
+}
+
 func newInstanceDiff(config, prior, planned cty.Value, meta map[string]interface{},
 	requiresReplace []*proto.AttributePath) *instanceDiff {
 
@@ -80,7 +90,7 @@ func (d *instanceDiff) RequiresNew() bool {
 	return d.requiresNew
 }
 
-func (d *instanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
+func (d *instanceDiff) encodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	if timeouts == nil {
 		return nil
 	}
@@ -109,8 +119,9 @@ func (d *instanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	return nil
 }
 
-func (d *instanceDiff) SetTimeout(timeout float64, timeoutKey string) {
-	timeoutValue := time.Duration(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
+func (d *instanceDiff) setTimeout(timeout time.Duration, timeoutKey shim.TimeoutKey) {
+	// this turns seconds to nanoseconds - TF wants it in this format
+	timeoutValue := timeout.Nanoseconds()
 
 	if d.meta == nil {
 		d.meta = map[string]interface{}{}
@@ -123,15 +134,15 @@ func (d *instanceDiff) SetTimeout(timeout float64, timeoutKey string) {
 
 	switch timeoutKey {
 	case shim.TimeoutCreate:
-		timeoutsMap["create"] = timeoutValue.Nanoseconds()
+		timeoutsMap["create"] = timeoutValue
 	case shim.TimeoutRead:
-		timeoutsMap["read"] = timeoutValue.Nanoseconds()
+		timeoutsMap["read"] = timeoutValue
 	case shim.TimeoutUpdate:
-		timeoutsMap["update"] = timeoutValue.Nanoseconds()
+		timeoutsMap["update"] = timeoutValue
 	case shim.TimeoutDelete:
-		timeoutsMap["delete"] = timeoutValue.Nanoseconds()
+		timeoutsMap["delete"] = timeoutValue
 	case shim.TimeoutDefault:
-		timeoutsMap["default"] = timeoutValue.Nanoseconds()
+		timeoutsMap["default"] = timeoutValue
 	}
 }
 

@@ -2,11 +2,13 @@ package sdkv1
 
 import (
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var _ = shim.InstanceDiff(v1InstanceDiff{})
@@ -39,6 +41,16 @@ func resourceAttrDiffToShim(d *terraform.ResourceAttrDiff) *shim.ResourceAttrDif
 
 type v1InstanceDiff struct {
 	tf *terraform.InstanceDiff
+}
+
+func (d v1InstanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
+	if opts.ResourceTimeout != nil {
+		err := d.encodeTimeouts(opts.ResourceTimeout)
+		contract.AssertNoErrorf(err, "encodeTimeouts should never fail")
+	}
+	for timeoutKey, dur := range opts.TimeoutOverrides {
+		d.setTimeout(dur, timeoutKey)
+	}
 }
 
 func (d v1InstanceDiff) Attribute(key string) *shim.ResourceAttrDiff {
@@ -93,7 +105,7 @@ func (d v1InstanceDiff) processIgnoreChanges(ignored shim.IgnoreChanges) {
 	}
 }
 
-func (d v1InstanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
+func (d v1InstanceDiff) encodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	v1Timeouts := &schema.ResourceTimeout{}
 	if timeouts != nil {
 		v1Timeouts.Create = timeouts.Create
@@ -105,8 +117,9 @@ func (d v1InstanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	return v1Timeouts.DiffEncode(d.tf)
 }
 
-func (d v1InstanceDiff) SetTimeout(timeout float64, timeoutKey string) {
-	timeoutValue := int64(timeout * 1000000000) //this turns seconds to nanoseconds - TF wants it in this format
+func (d v1InstanceDiff) setTimeout(timeout time.Duration, timeoutKey shim.TimeoutKey) {
+	// this turns seconds to nanoseconds - TF wants it in this format
+	timeoutValue := timeout.Nanoseconds()
 
 	switch timeoutKey {
 	case shim.TimeoutCreate:
@@ -130,9 +143,9 @@ func (d v1InstanceDiff) SetTimeout(timeout float64, timeoutKey string) {
 	timeouts, ok := d.tf.Meta[schema.TimeoutKey].(map[string]interface{})
 	if !ok {
 		d.tf.Meta[schema.TimeoutKey] = map[string]interface{}{
-			timeoutKey: timeoutValue,
+			string(timeoutKey): timeoutValue,
 		}
 	} else {
-		timeouts[timeoutKey] = timeoutValue
+		timeouts[string(timeoutKey)] = timeoutValue
 	}
 }

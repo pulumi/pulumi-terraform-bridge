@@ -85,7 +85,9 @@ func (UnimplementedProvider) Stop(ctx context.Context) error       { panic("unim
 
 func (UnimplementedProvider) InitLogging(ctx context.Context) { panic("unimplemented") }
 
-func (UnimplementedProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+func (UnimplementedProvider) NewDestroyDiff(
+	ctx context.Context, t string, _ shim.TimeoutOptions,
+) shim.InstanceDiff {
 	panic("unimplemented")
 }
 

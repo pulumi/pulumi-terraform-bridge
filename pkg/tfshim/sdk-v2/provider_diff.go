@@ -32,7 +32,13 @@ func (p v2Provider) Diff(
 	s shim.InstanceState,
 	c shim.ResourceConfig,
 	opts shim.DiffOptions,
-) (shim.InstanceDiff, error) {
+) (theDiff shim.InstanceDiff, theError error) {
+	defer func() {
+		switch theDiff := theDiff.(type) {
+		case v2InstanceDiff:
+			theDiff.applyTimeoutOptions(opts.TimeoutOptions)
+		}
+	}()
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}

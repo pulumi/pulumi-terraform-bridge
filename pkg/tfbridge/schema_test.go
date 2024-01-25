@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -689,13 +690,16 @@ func TestMetaProperties(t *testing.T) {
 			ok = clearID(state)
 			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
-			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{})
-			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 			timeouts, err := res.DecodeTimeouts(cfg)
 			assert.NoError(t, err)
-			err = diff.EncodeTimeouts(timeouts)
+
+			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{
+				TimeoutOptions: shim.TimeoutOptions{
+					ResourceTimeout: timeouts,
+				},
+			})
 			assert.NoError(t, err)
 
 			assert.NoError(t, err)
@@ -765,16 +769,20 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			ok = clearID(state)
 			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
-			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{})
-			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 			resourceTimeouts, err := res.DecodeTimeouts(cfg)
 			assert.NoError(t, err)
-			err = diff.EncodeTimeouts(resourceTimeouts)
-			assert.NoError(t, err)
 
-			diff.SetTimeout(300, schemav1.TimeoutCreate)
+			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{
+				TimeoutOptions: shim.TimeoutOptions{
+					ResourceTimeout: resourceTimeouts,
+					TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+						shim.TimeoutCreate: 300 * time.Second,
+					},
+				},
+			})
+			assert.NoError(t, err)
 
 			assert.NoError(t, err)
 			create, err := prov.Apply(ctx, resName, state, diff)

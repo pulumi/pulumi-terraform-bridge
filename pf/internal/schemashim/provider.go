@@ -127,7 +127,7 @@ func (p *SchemaOnlyProvider) InitLogging(ctx context.Context) {
 	panic("schemaOnlyProvider does not implement runtime operation InitLogging")
 }
 
-func (p *SchemaOnlyProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+func (p *SchemaOnlyProvider) NewDestroyDiff(ctx context.Context, t string, _ shim.TimeoutOptions) shim.InstanceDiff {
 	panic("schemaOnlyProvider does not implement runtime operation NewDestroyDiff")
 }
 
