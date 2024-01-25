@@ -90,11 +90,10 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores),
+		})
 		assert.NoError(t, err)
-
-		// ProcessIgnoreChanges
-		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
@@ -132,11 +131,10 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores),
+		})
 		assert.NoError(t, err)
-
-		// ProcessIgnoreChanges
-		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
@@ -230,30 +228,37 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 	assert.NoError(t, err)
 
-	tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
-	assert.NoError(t, err)
+	t.Run("standard", func(t *testing.T) {
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+		})
+		assert.NoError(t, err)
 
-	// ProcessIgnoreChanges
-	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+		// Convert the diff to a detailed diff and check the result.
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+		for k, v := range expected {
+			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+		}
+		assert.Equal(t, expectedDiffChanges, changes)
+		assert.Equal(t, expectedDiff, diff)
+	})
 
-	// Convert the diff to a detailed diff and check the result.
-	diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-	expectedDiff := map[string]*pulumirpc.PropertyDiff{}
-	for k, v := range expected {
-		expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-	}
-	assert.Equal(t, expectedDiffChanges, changes)
-	assert.Equal(t, expectedDiff, diff)
+	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
+	// and check the result.
+	t.Run("withIgnoreAllExpected", func(t *testing.T) {
+		for k := range expected {
+			ignoreChanges = append(ignoreChanges, k)
+		}
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+		})
+		assert.NoError(t, err)
 
-	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff and check the result.
-	for k := range expected {
-		ignoreChanges = append(ignoreChanges, k)
-	}
-	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
-
-	diff, changes = makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-	assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
-	assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+		assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
+		assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+	})
 }
 
 func TestCustomDiffProducesReplace(t *testing.T) {
@@ -2060,23 +2065,4 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 			"prop.nest": AR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
-}
-
-func doIgnoreChanges(
-	ctx context.Context,
-	tfs shim.SchemaMap,
-	ps map[string]*SchemaInfo,
-	olds, news resource.PropertyMap,
-	ignoredPaths []string,
-	diff shim.InstanceDiff,
-) {
-	if diff == nil {
-		return
-	}
-	ignored := computeIgnoreChanges(ctx, tfs, ps, olds, news, ignoredPaths)
-	m := map[string]bool{}
-	for k := range ignored {
-		m[k] = true
-	}
-	diff.IgnoreChanges(m)
 }

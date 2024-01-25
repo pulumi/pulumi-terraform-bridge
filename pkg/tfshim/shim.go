@@ -41,12 +41,6 @@ type InstanceDiff interface {
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
-
-	// Deprecated. Instead of constructing an InstanceDiff object and then calling IgnoreChanges
-	// on it, please pass IgnoreChanges option to Diff so that the ignores are processed as part
-	// of constructing InstanceDiff.
-	IgnoreChanges(ignored map[string]bool)
-
 	EncodeTimeouts(timeouts *ResourceTimeout) error
 	SetTimeout(timeout float64, timeoutKey string)
 }
