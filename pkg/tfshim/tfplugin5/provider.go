@@ -277,10 +277,10 @@ func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 }
 
 func (p *provider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts ...shim.DiffOption,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 
-	if shim.NewDiffOptions(opts...).IgnoreChanges != nil {
+	if opts.IgnoreChanges != nil {
 		return nil, fmt.Errorf("IgnoreChanges option is not yet supported")
 	}
 

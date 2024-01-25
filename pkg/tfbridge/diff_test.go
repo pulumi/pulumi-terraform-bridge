@@ -90,7 +90,7 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 		assert.NoError(t, err)
 
 		// ProcessIgnoreChanges
@@ -132,7 +132,7 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 		assert.NoError(t, err)
 
 		// ProcessIgnoreChanges
@@ -188,7 +188,7 @@ func TestCustomizeDiff(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
-				_, err = provider.Diff(ctx, "resource", tfState, config)
+				_, err = provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 				assert.NoError(t, err)
 			})
 		}
@@ -230,7 +230,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 	assert.NoError(t, err)
 
-	tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
+	tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 	assert.NoError(t, err)
 
 	// ProcessIgnoreChanges

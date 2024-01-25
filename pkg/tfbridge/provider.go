@@ -879,7 +879,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.WithIgnored(ic))
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+		IgnoreChanges: ic,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1000,7 +1002,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, nil, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1226,7 +1228,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.WithIgnored(ic))
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+		IgnoreChanges: ic,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}

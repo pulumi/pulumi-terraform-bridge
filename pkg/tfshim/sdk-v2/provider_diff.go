@@ -31,7 +31,7 @@ func (p v2Provider) Diff(
 	t string,
 	s shim.InstanceState,
 	c shim.ResourceConfig,
-	opts ...shim.DiffOption,
+	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
@@ -76,9 +76,8 @@ func (p v2Provider) Diff(
 
 	resultingDiff := diffToShim(diff)
 
-	options := shim.NewDiffOptions(opts...)
-	if dd, ok := resultingDiff.(v2InstanceDiff); ok && options.IgnoreChanges != nil {
-		dd.processIgnoreChanges(options.IgnoreChanges)
+	if dd, ok := resultingDiff.(v2InstanceDiff); ok && opts.IgnoreChanges != nil {
+		dd.processIgnoreChanges(opts.IgnoreChanges)
 	}
 
 	return resultingDiff, err

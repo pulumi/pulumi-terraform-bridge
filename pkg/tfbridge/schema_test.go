@@ -689,7 +689,7 @@ func TestMetaProperties(t *testing.T) {
 			ok = clearID(state)
 			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
-			diff, err := prov.Diff(ctx, resName, state, cfg)
+			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{})
 			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
@@ -765,7 +765,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			ok = clearID(state)
 			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
-			diff, err := prov.Diff(ctx, resName, state, cfg)
+			diff, err := prov.Diff(ctx, resName, state, cfg, shim.DiffOptions{})
 			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff

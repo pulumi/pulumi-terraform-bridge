@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +63,7 @@ func TestRawPlanSet(t *testing.T) {
 
 	id, err := wp.Diff(ctx, "myres", ss, v2ResourceConfig{
 		tf: resourceConfig,
-	})
+	}, shim.DiffOptions{})
 	require.NoError(t, err)
 
 	assert.False(t, id.(v2InstanceDiff).tf.RawPlan.IsNull(), "RawPlan should not be Null")

@@ -202,7 +202,7 @@ type Provider interface {
 		t string,
 		s InstanceState,
 		c ResourceConfig,
-		opts ...DiffOption,
+		opts DiffOptions,
 	) (InstanceDiff, error)
 
 	Apply(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
@@ -232,16 +232,6 @@ type DiffOptions struct {
 	IgnoreChanges IgnoreChanges
 }
 
-func NewDiffOptions(opts ...DiffOption) DiffOptions {
-	options := DiffOptions{}
-	for _, o := range opts {
-		o(&options)
-	}
-	return options
-}
-
-type DiffOption func(*DiffOptions)
-
 // Supports the ignoreChanges Pulumi option.
 //
 // The bridge needs to be able to suppress diffs computed by the underlying provider.
@@ -254,7 +244,3 @@ type DiffOption func(*DiffOptions)
 //
 // https://www.pulumi.com/docs/concepts/options/ignorechanges/
 type IgnoreChanges = func() map[string]struct{}
-
-func WithIgnored(i IgnoreChanges) DiffOption {
-	return func(opts *DiffOptions) { opts.IgnoreChanges = i }
-}

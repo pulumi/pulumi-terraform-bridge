@@ -1042,7 +1042,7 @@ func TestDiff(t *testing.T) {
 			configVal, err := goToCty(config, res.(*resource).ctyType)
 			require.NoError(t, err)
 
-			diff, err := p.Diff(ctx, "example_resource", state, config)
+			diff, err := p.Diff(ctx, "example_resource", state, config, shim.DiffOptions{})
 			require.NoError(t, err)
 
 			var meta map[string]interface{}
@@ -1177,7 +1177,7 @@ func TestApply(t *testing.T) {
 
 			config := p.NewResourceConfig(ctx, c.config)
 
-			diff, err := p.Diff(ctx, "example_resource", state, config)
+			diff, err := p.Diff(ctx, "example_resource", state, config, shim.DiffOptions{})
 			require.NoError(t, err)
 
 			if len(diff.Attributes()) == 0 {
@@ -1223,7 +1223,7 @@ func TestApply(t *testing.T) {
 				state, err = resource.InstanceState("", map[string]interface{}{}, nil)
 				require.NoError(t, err)
 
-				diff, err = p.Diff(ctx, "example_resource", state, config)
+				diff, err = p.Diff(ctx, "example_resource", state, config, shim.DiffOptions{})
 				require.NoError(t, err)
 			}
 
