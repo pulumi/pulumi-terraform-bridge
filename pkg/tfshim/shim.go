@@ -188,93 +188,38 @@ type Provider interface {
 	ResourcesMap() ResourceMap
 	DataSourcesMap() ResourceMap
 
-	Validate(c ResourceConfig) ([]string, []error)
-	ValidateResource(t string, c ResourceConfig) ([]string, []error)
-	ValidateDataSource(t string, c ResourceConfig) ([]string, []error)
+	Validate(ctx context.Context, c ResourceConfig) ([]string, []error)
+	ValidateResource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)
+	ValidateDataSource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)
 
-	Configure(c ResourceConfig) error
-	Diff(t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
-	Apply(t string, s InstanceState, d InstanceDiff) (InstanceState, error)
-	Refresh(t string, s InstanceState, c ResourceConfig) (InstanceState, error)
+	Configure(ctx context.Context, c ResourceConfig) error
 
-	ReadDataDiff(t string, c ResourceConfig) (InstanceDiff, error)
-	ReadDataApply(t string, d InstanceDiff) (InstanceState, error)
+	Diff(
+		ctx context.Context,
+		t string,
+		s InstanceState,
+		c ResourceConfig,
+	) (InstanceDiff, error)
 
-	Meta() interface{}
-	Stop() error
+	Apply(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
 
-	InitLogging()
-	NewDestroyDiff() InstanceDiff
-	NewResourceConfig(object map[string]interface{}) ResourceConfig
-	IsSet(v interface{}) ([]interface{}, bool)
-}
+	Refresh(
+		ctx context.Context, t string, s InstanceState, c ResourceConfig,
+	) (InstanceState, error)
 
-type ProviderWithContext interface {
-	Provider
+	ReadDataDiff(ctx context.Context, t string, c ResourceConfig) (InstanceDiff, error)
+	ReadDataApply(ctx context.Context, t string, d InstanceDiff) (InstanceState, error)
 
-	ConfigureWithContext(ctx context.Context, c ResourceConfig) error
-	DiffWithContext(ctx context.Context, t string, s InstanceState, c ResourceConfig) (InstanceDiff, error)
-	ApplyWithContext(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
-	RefreshWithContext(ctx context.Context, t string, s InstanceState, c ResourceConfig) (InstanceState, error)
+	Meta(ctx context.Context) interface{}
+	Stop(ctx context.Context) error
 
-	ReadDataDiffWithContext(ctx context.Context, t string, c ResourceConfig) (InstanceDiff, error)
-	ReadDataApplyWithContext(ctx context.Context, t string, d InstanceDiff) (InstanceState, error)
-}
+	InitLogging(ctx context.Context)
 
-func NewProviderWithContext(p Provider) ProviderWithContext {
-	if pwc, ok := p.(ProviderWithContext); ok {
-		return pwc
-	}
-	return &providerWithIgnoredContext{p}
-}
+	// Create a Destroy diff for a resource identified by the TF token t.
+	NewDestroyDiff(ctx context.Context, t string) InstanceDiff
 
-type providerWithIgnoredContext struct {
-	Provider
-}
+	NewResourceConfig(ctx context.Context, object map[string]interface{}) ResourceConfig
 
-func (p *providerWithIgnoredContext) ConfigureWithContext(_ context.Context, c ResourceConfig) error {
-	return p.Provider.Configure(c)
-}
-
-func (p *providerWithIgnoredContext) DiffWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	c ResourceConfig,
-) (InstanceDiff, error) {
-	return p.Provider.Diff(t, s, c)
-}
-
-func (p *providerWithIgnoredContext) ApplyWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	d InstanceDiff,
-) (InstanceState, error) {
-	return p.Provider.Apply(t, s, d)
-}
-
-func (p *providerWithIgnoredContext) RefreshWithContext(
-	_ context.Context,
-	t string,
-	s InstanceState,
-	c ResourceConfig,
-) (InstanceState, error) {
-	return p.Provider.Refresh(t, s, c)
-}
-
-func (p *providerWithIgnoredContext) ReadDataDiffWithContext(
-	_ context.Context,
-	t string,
-	c ResourceConfig,
-) (InstanceDiff, error) {
-	return p.Provider.ReadDataDiff(t, c)
-}
-
-func (p *providerWithIgnoredContext) ReadDataApplyWithContext(
-	ctx context.Context,
-	t string,
-	d InstanceDiff,
-) (InstanceState, error) {
-	return p.Provider.ReadDataApply(t, d)
+	// Checks if a value is representing a Set, and unpacks its elements on success.
+	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
 }

@@ -415,9 +415,11 @@ type MyString string
 // TestTerraformOutputsWithSecretsSupported verifies that we translate Terraform outputs into Pulumi outputs and
 // treating sensitive outputs as secrets
 func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
+	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			result := MakeTerraformOutputs(
+				ctx,
 				f.NewTestProvider(),
 				map[string]interface{}{
 					"nil_property_value":       nil,
@@ -584,9 +586,11 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 // TestTerraformOutputsWithSecretsUnsupported verifies that we translate Terraform outputs into Pulumi outputs without
 // treating sensitive outputs as secrets
 func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
+	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			result := MakeTerraformOutputs(
+				ctx,
 				f.NewTestProvider(),
 				map[string]interface{}{
 					"secret_value": "MyPassword",
@@ -645,11 +649,11 @@ func TestMetaProperties(t *testing.T) {
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state, nil)
+			read, err := prov.Refresh(ctx, resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
-			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			props, err := MakeTerraformResult(ctx, prov, read, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
@@ -659,7 +663,7 @@ func TestMetaProperties(t *testing.T) {
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state, nil)
+			read2, err := prov.Refresh(ctx, resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -676,7 +680,7 @@ func TestMetaProperties(t *testing.T) {
 			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 			ok := clearMeta(read2)
 			assert.True(t, ok)
-			props, err = MakeTerraformResult(prov, read2, res.Schema(), nil, nil, true)
+			props, err = MakeTerraformResult(ctx, prov, read2, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 			assert.NotContains(t, props, metaKey)
@@ -684,8 +688,8 @@ func TestMetaProperties(t *testing.T) {
 			// Ensure that timeouts are populated and preserved.
 			ok = clearID(state)
 			assert.True(t, ok)
-			cfg := prov.NewResourceConfig(map[string]interface{}{})
-			diff, err := prov.Diff(resName, state, cfg)
+			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
+			diff, err := prov.Diff(ctx, resName, state, cfg)
 			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
@@ -695,10 +699,10 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NoError(t, err)
-			create, err := prov.Apply(resName, state, diff)
+			create, err := prov.Apply(ctx, resName, state, diff)
 			assert.NoError(t, err)
 
-			props, err = MakeTerraformResult(prov, create, res.Schema(), nil, nil, true)
+			props, err = MakeTerraformResult(ctx, prov, create, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
@@ -721,11 +725,11 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			res := prov.ResourcesMap().Get(resName)
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state, nil)
+			read, err := prov.Refresh(ctx, resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
-			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			props, err := MakeTerraformResult(ctx, prov, read, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
@@ -735,7 +739,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
 
-			read2, err := prov.Refresh(resName, state, nil)
+			read2, err := prov.Refresh(ctx, resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read2)
 			assert.Equal(t, read, read2)
@@ -752,7 +756,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 			ok := clearMeta(read2)
 			assert.True(t, ok)
-			props, err = MakeTerraformResult(prov, read2, res.Schema(), nil, nil, true)
+			props, err = MakeTerraformResult(ctx, prov, read2, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 			assert.NotContains(t, props, metaKey)
@@ -760,8 +764,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Ensure that timeouts are populated and preserved.
 			ok = clearID(state)
 			assert.True(t, ok)
-			cfg := prov.NewResourceConfig(map[string]interface{}{})
-			diff, err := prov.Diff(resName, state, cfg)
+			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
+			diff, err := prov.Diff(ctx, resName, state, cfg)
 			assert.NoError(t, err)
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
@@ -773,10 +777,10 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			diff.SetTimeout(300, schemav1.TimeoutCreate)
 
 			assert.NoError(t, err)
-			create, err := prov.Apply(resName, state, diff)
+			create, err := prov.Apply(ctx, resName, state, diff)
 			assert.NoError(t, err)
 
-			props, err = MakeTerraformResult(prov, create, res.Schema(), nil, nil, true)
+			props, err = MakeTerraformResult(ctx, prov, create, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
@@ -827,11 +831,11 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			res := prov.ResourcesMap().Get("example_resource")
 
 			state := f.NewInstanceState("0")
-			read, err := prov.Refresh(resName, state, nil)
+			read, err := prov.Refresh(ctx, resName, state, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, read)
 
-			props, err := MakeTerraformResult(prov, read, res.Schema(), nil, nil, true)
+			props, err := MakeTerraformResult(ctx, prov, read, res.Schema(), nil, nil, true)
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
@@ -869,6 +873,7 @@ func fixedDefault(value interface{}) func() (interface{}, error) {
 }
 
 func TestDefaults(t *testing.T) {
+	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			// Produce maps with the following properties, and then validate them:
@@ -972,7 +977,7 @@ func TestDefaults(t *testing.T) {
 			}
 			inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 			assert.NoError(t, err)
-			outputs := MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
@@ -1018,7 +1023,7 @@ func TestDefaults(t *testing.T) {
 			assert.Equal(t, "true", inputs["x2stringxbool"])
 			assert.Equal(t, "1", inputs["x2stringxint"])
 
-			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
@@ -1058,6 +1063,7 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestDefaultsConflictsWith(t *testing.T) {
+	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			x1ofN := []string{"x1of1", "x1of2", "x1of3"}
@@ -1086,7 +1092,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 
 			inputs, assets, err := makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 			assert.NoError(t, err)
-			outputs := MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1106,7 +1112,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			inputs, assets, err = makeTerraformInputsWithDefaults(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
-			outputs = MakeTerraformOutputs(f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1127,6 +1133,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 }
 
 func TestComputedAsset(t *testing.T) {
+	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
 	})
@@ -1139,13 +1146,14 @@ func TestComputedAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
 	}, outputs)
 }
 
 func TestInvalidAsset(t *testing.T) {
+	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
 	})
@@ -1158,13 +1166,15 @@ func TestInvalidAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}, outputs)
 }
 
 func TestOverridingTFSchema(t *testing.T) {
+	ctx := context.Background()
+
 	tfInputs := map[string]interface{}{
 		"pulumi_override_tf_string_to_boolean":    MyString("true"),
 		"pulumi_override_tf_string_to_bool":       MyString("true"),
@@ -1216,6 +1226,7 @@ func TestOverridingTFSchema(t *testing.T) {
 
 	t.Run("MakeTerraformOutputs", func(t *testing.T) {
 		result := MakeTerraformOutputs(
+			ctx,
 			shimv1.NewProvider(testTFProvider),
 			tfInputs,
 			tfSchema,
@@ -1256,6 +1267,7 @@ func TestOverridingTFSchema(t *testing.T) {
 }
 
 func TestArchiveAsAsset(t *testing.T) {
+	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
 	})
@@ -1275,7 +1287,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputs(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
 }
 
@@ -1597,7 +1609,9 @@ func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1
 }
 
 func TestStringOutputsWithSchema(t *testing.T) {
+	ctx := context.Background()
 	result := MakeTerraformOutputs(
+		ctx,
 		shimv1.NewProvider(testTFProvider),
 		map[string]interface{}{
 			"bool_property_value":      "false",
@@ -2450,6 +2464,7 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 }
 
 func TestOutputNumberTypes(t *testing.T) {
+	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"aaa": {Type: schemav1.TypeInt},
 		"bbb": {Type: schemav1.TypeInt},
@@ -2469,6 +2484,7 @@ func TestOutputNumberTypes(t *testing.T) {
 		"ggg": float64(50),
 	}
 	outputs := MakeTerraformOutputs(
+		ctx,
 		shimv1.NewProvider(testTFProvider),
 		inputs,
 		tfs,

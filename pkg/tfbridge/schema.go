@@ -1015,9 +1015,15 @@ const metaKey = "__meta"
 
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
-func MakeTerraformResult(p shim.Provider, state shim.InstanceState,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, assets AssetTable,
-	supportsSecrets bool) (resource.PropertyMap, error) {
+func MakeTerraformResult(
+	ctx context.Context,
+	p shim.Provider,
+	state shim.InstanceState,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	assets AssetTable,
+	supportsSecrets bool,
+) (resource.PropertyMap, error) {
 
 	var outs map[string]interface{}
 	if state != nil {
@@ -1028,7 +1034,7 @@ func MakeTerraformResult(p shim.Provider, state shim.InstanceState,
 		outs = obj
 	}
 
-	outMap := MakeTerraformOutputs(p, outs, tfs, ps, assets, false, supportsSecrets)
+	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, false, supportsSecrets)
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta()) != 0 {
@@ -1042,9 +1048,16 @@ func MakeTerraformResult(p shim.Provider, state shim.InstanceState,
 
 // MakeTerraformOutputs takes an expanded Terraform property map and returns a Pulumi equivalent.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
-func MakeTerraformOutputs(p shim.Provider, outs map[string]interface{},
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, assets AssetTable, rawNames,
-	supportsSecrets bool) resource.PropertyMap {
+func MakeTerraformOutputs(
+	ctx context.Context,
+	p shim.Provider,
+	outs map[string]interface{},
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	assets AssetTable,
+	rawNames,
+	supportsSecrets bool,
+) resource.PropertyMap {
 	result := make(resource.PropertyMap)
 
 	for key, value := range outs {
@@ -1053,7 +1066,7 @@ func MakeTerraformOutputs(p shim.Provider, outs map[string]interface{},
 		contract.Assertf(name != "", `name != ""`)
 
 		// Next perform a translation of the value accordingly.
-		out := MakeTerraformOutput(p, value, tfi, psi, assets, rawNames, supportsSecrets)
+		out := MakeTerraformOutput(ctx, p, value, tfi, psi, assets, rawNames, supportsSecrets)
 		//if !out.IsNull() {
 		result[name] = out
 		//}
@@ -1069,8 +1082,15 @@ func MakeTerraformOutputs(p shim.Provider, outs map[string]interface{},
 }
 
 // MakeTerraformOutput takes a single Terraform property and returns the Pulumi equivalent.
-func MakeTerraformOutput(p shim.Provider, v interface{},
-	tfs shim.Schema, ps *SchemaInfo, assets AssetTable, rawNames, supportsSecrets bool) resource.PropertyValue {
+func MakeTerraformOutput(
+	ctx context.Context,
+	p shim.Provider,
+	v interface{},
+	tfs shim.Schema,
+	ps *SchemaInfo,
+	assets AssetTable,
+	rawNames, supportsSecrets bool,
+) resource.PropertyValue {
 
 	buildOutput := func(p shim.Provider, v interface{},
 		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, rawNames, supportsSecrets bool) resource.PropertyValue {
@@ -1090,7 +1110,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 		}
 
 		// Marshal sets as their list value.
-		if list, ok := p.IsSet(v); ok {
+		if list, ok := p.IsSet(ctx, v); ok {
 			v = list
 		}
 
@@ -1130,7 +1150,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 			if err != nil || coerced == t {
 				return resource.NewStringProperty(t)
 			}
-			return MakeTerraformOutput(p, coerced, tfs, ps, assets, rawNames, supportsSecrets)
+			return MakeTerraformOutput(ctx, p, coerced, tfs, ps, assets, rawNames, supportsSecrets)
 		case reflect.Slice:
 			elems := []interface{}{}
 			for i := 0; i < val.Len(); i++ {
@@ -1141,7 +1161,7 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 
 			var arr []resource.PropertyValue
 			for _, elem := range elems {
-				arr = append(arr, MakeTerraformOutput(p, elem, tfes, pes, assets, rawNames, supportsSecrets))
+				arr = append(arr, MakeTerraformOutput(ctx, p, elem, tfes, pes, assets, rawNames, supportsSecrets))
 			}
 			// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, so need to extract
 			// out the single element (or null).
@@ -1172,7 +1192,9 @@ func MakeTerraformOutput(p shim.Provider, v interface{},
 			if ps != nil {
 				psflds = ps.Fields
 			}
-			obj := MakeTerraformOutputs(p, outs, tfflds, psflds, assets, rawNames || shimutil.IsOfTypeMap(tfs), supportsSecrets)
+			obj := MakeTerraformOutputs(
+				ctx, p, outs, tfflds, psflds, assets, rawNames || shimutil.IsOfTypeMap(tfs), supportsSecrets,
+			)
 			return resource.NewObjectProperty(obj)
 		default:
 			contract.Failf("Unexpected TF output property value: %#v with type %#T", v, v)
@@ -1203,7 +1225,7 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformConfigFromInputs(p.tf, inputs), cctx.Assets, nil
+	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), cctx.Assets, nil
 }
 
 // UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
@@ -1246,9 +1268,11 @@ func makeConfig(v interface{}) interface{} {
 }
 
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
-func MakeTerraformConfigFromInputs(p shim.Provider, inputs map[string]interface{}) shim.ResourceConfig {
+func MakeTerraformConfigFromInputs(
+	ctx context.Context, p shim.Provider, inputs map[string]interface{},
+) shim.ResourceConfig {
 	raw := makeConfig(inputs).(map[string]interface{})
-	return p.NewResourceConfig(raw)
+	return p.NewResourceConfig(ctx, raw)
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires

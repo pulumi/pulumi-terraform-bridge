@@ -15,6 +15,7 @@
 package sdkv2
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -25,6 +26,7 @@ import (
 )
 
 func TestRawPlanSet(t *testing.T) {
+	ctx := context.Background()
 	r := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"tags": {
@@ -58,7 +60,7 @@ func TestRawPlanSet(t *testing.T) {
 		tf:       instanceState,
 	}
 
-	id, err := wp.Diff("myres", ss, v2ResourceConfig{
+	id, err := wp.Diff(ctx, "myres", ss, v2ResourceConfig{
 		tf: resourceConfig,
 	})
 	require.NoError(t, err)

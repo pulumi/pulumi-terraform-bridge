@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -40,62 +41,80 @@ func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
 }
 
-func (ProviderShim) Validate(c shim.ResourceConfig) ([]string, []error) {
+func (ProviderShim) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (ProviderShim) ValidateResource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (ProviderShim) ValidateDataSource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Configure(c shim.ResourceConfig) error {
+func (ProviderShim) Configure(
+	ctx context.Context, c shim.ResourceConfig,
+) error {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (ProviderShim) Diff(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (ProviderShim) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
+func (ProviderShim) Refresh(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (ProviderShim) ReadDataDiff(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (ProviderShim) ReadDataApply(
+	ctx context.Context, t string, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Meta() interface{} {
+func (ProviderShim) Meta(ctx context.Context) interface{} {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) Stop() error {
+func (ProviderShim) Stop(ctx context.Context) error {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) InitLogging() {
+func (ProviderShim) InitLogging(ctx context.Context) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) NewDestroyDiff() shim.InstanceDiff {
+func (ProviderShim) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+func (ProviderShim) NewResourceConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) IsSet(v interface{}) ([]interface{}, bool) {
+func (ProviderShim) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("this provider is schema-only and does not support runtime operations")
 }

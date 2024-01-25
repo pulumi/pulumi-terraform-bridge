@@ -90,11 +90,13 @@ type Resource struct {
 // resource ID, and returns a replacement input map if any resources are matched. A nil map
 // with no error should be interpreted by the caller as meaning the resource does not exist,
 // but there were no errors in determining this.
-func (res *Resource) runTerraformImporter(id string, provider *Provider) (shim.InstanceState, error) {
+func (res *Resource) runTerraformImporter(
+	ctx context.Context, id string, provider *Provider,
+) (shim.InstanceState, error) {
 	contract.Assertf(res.TF.Importer() != nil, "res.TF.Importer() != nil")
 
 	// Run the importer defined in the Terraform resource schema
-	states, err := res.TF.Importer()(res.TFName, id, provider.tf.Meta())
+	states, err := res.TF.Importer()(res.TFName, id, provider.tf.Meta(ctx))
 	if err != nil {
 		return nil, errors.Wrapf(err, "importing %s", id)
 	}
@@ -200,7 +202,7 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		host:         host,
 		module:       module,
 		version:      version,
-		tf:           shim.NewProviderWithContext(tf),
+		tf:           tf,
 		info:         info,
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
@@ -517,7 +519,7 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		return nil, err
 	}
 
-	return MakeTerraformConfigFromInputs(p.tf, inputs), nil
+	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), nil
 }
 
 func validateProviderConfig(
@@ -552,7 +554,7 @@ func validateProviderConfig(
 	}
 
 	// Perform validation of the config state so we can offer nice errors.
-	warns, errs := p.tf.Validate(config)
+	warns, errs := p.tf.Validate(ctx, config)
 	for _, warn := range warns {
 		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn))
 		if logErr != nil {
@@ -686,7 +688,7 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	// Now actually attempt to do the configuring and return its resulting error (if any).
-	if err = p.tfc().ConfigureWithContext(ctx, config); err != nil {
+	if err = p.tf.Configure(ctx, config); err != nil {
 		replacedErr, replacementError := ReplaceConfigProperties(err.Error(), p.info.Config, p.config)
 		if replacementError != nil {
 			wrappedErr := errors.Wrapf(
@@ -764,8 +766,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// Now check with the resource provider to see if the values pass muster.
-	rescfg := MakeTerraformConfigFromInputs(p.tf, inputs)
-	warns, errs := p.tf.ValidateResource(tfname, rescfg)
+	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
+	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
 		if err = p.host.Log(ctx, diag.Warning, urn, fmt.Sprintf("%v verification warning: %v", urn, warn)); err != nil {
 			return nil, err
@@ -784,7 +786,9 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
-	pinputs := MakeTerraformOutputs(p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets)
+	pinputs := MakeTerraformOutputs(
+		ctx, p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets,
+	)
 
 	pinputsWithSecrets := MarkSchemaSecrets(ctx, res.TF.Schema(), res.Schema.Fields,
 		resource.NewObjectProperty(pinputs)).ObjectValue()
@@ -869,7 +873,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, state, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -991,7 +995,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, nil, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, nil, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1013,7 +1017,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tfc().ApplyWithContext(ctx, res.TFName, nil, diff)
+		newstate, err = p.tf.Apply(ctx, res.TFName, nil, diff)
 		if newstate == nil {
 			if err == nil {
 				return nil, fmt.Errorf("expected non-nil error with nil state during Create of %s", urn)
@@ -1035,7 +1039,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -1102,7 +1106,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if !isRefresh && res.TF.Importer() != nil {
 		glog.V(9).Infof("%s has TF Importer", res.TFName)
 
-		state, err = res.runTerraformImporter(id, p)
+		state, err = res.runTerraformImporter(ctx, id, p)
 		if err != nil {
 			// Pass through any error running the importer
 			return nil, err
@@ -1119,7 +1123,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	newstate, err := p.tfc().RefreshWithContext(ctx, res.TFName, state, config)
+	newstate, err := p.tf.Refresh(ctx, res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "refreshing %s", urn)
 	}
@@ -1127,7 +1131,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, nil, p.supportsSecrets)
+		props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -1213,7 +1217,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tfc().DiffWithContext(ctx, res.TFName, state, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1242,7 +1246,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 	if !req.GetPreview() {
-		newstate, err = p.tfc().ApplyWithContext(ctx, res.TFName, state, diff)
+		newstate, err = p.tf.Apply(ctx, res.TFName, state, diff)
 		if newstate == nil {
 			if err != nil {
 				return nil, err
@@ -1265,7 +1269,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		}
 	}
 
-	props, err := MakeTerraformResult(p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -1319,12 +1323,12 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 
 	// Create a new destroy diff.
-	diff := p.tf.NewDestroyDiff()
+	diff := p.tf.NewDestroyDiff(ctx, string(t))
 	if req.Timeout != 0 {
 		diff.SetTimeout(req.Timeout, shim.TimeoutDelete)
 	}
 
-	if _, err := p.tfc().ApplyWithContext(ctx, res.TFName, state, diff); err != nil {
+	if _, err := p.tf.Apply(ctx, res.TFName, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
 	return &pbempty.Empty{}, nil
@@ -1380,8 +1384,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	}
 
 	// Next, ensure the inputs are valid before actually performing the invoaction.
-	rescfg := MakeTerraformConfigFromInputs(p.tf, inputs)
-	warns, errs := p.tf.ValidateDataSource(tfname, rescfg)
+	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
+	warns, errs := p.tf.ValidateDataSource(ctx, tfname, rescfg)
 	for _, warn := range warns {
 		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("%v verification warning: %v", tok, warn)); err != nil {
 			return nil, err
@@ -1399,18 +1403,18 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	// If there are no failures in verification, go ahead and perform the invocation.
 	var ret *pbstruct.Struct
 	if len(failures) == 0 {
-		diff, err := p.tfc().ReadDataDiffWithContext(ctx, tfname, rescfg)
+		diff, err := p.tf.ReadDataDiff(ctx, tfname, rescfg)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading data source diff for %s", tok)
 		}
 
-		invoke, err := p.tfc().ReadDataApplyWithContext(ctx, tfname, diff)
+		invoke, err := p.tf.ReadDataApply(ctx, tfname, diff)
 		if err != nil {
 			return nil, errors.Wrapf(err, "invoking %s", tok)
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props, err := MakeTerraformResult(p.tf, invoke, ds.TF.Schema(), ds.Schema.Fields, nil, p.supportsSecrets)
+		props, err := MakeTerraformResult(ctx, p.tf, invoke, ds.TF.Schema(), ds.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -1485,10 +1489,6 @@ func (p *Provider) GetMapping(
 
 	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
 	return &pulumirpc.GetMappingResponse{}, nil
-}
-
-func (p *Provider) tfc() shim.ProviderWithContext {
-	return shim.NewProviderWithContext(p.tf)
 }
 
 func initializationError(id string, props *pbstruct.Struct, reasons []string) error {

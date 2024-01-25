@@ -219,7 +219,7 @@ func TestBuildConfig(t *testing.T) {
 	configOut, err := buildTerraformConfig(ctx, provider, configIn)
 	assert.NoError(t, err)
 
-	expected := provider.tf.NewResourceConfig(map[string]interface{}{
+	expected := provider.tf.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	})
 	assert.Equal(t, expected, configOut)
