@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.20
+go 1.21.0
+
+toolchain go1.21.3
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 
@@ -36,7 +38,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/providertest v0.0.8
+	github.com/pulumi/providertest v0.0.9
 	github.com/pulumi/pulumi-java/pkg v0.9.9
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.7
 	github.com/pulumi/pulumi-yaml v1.4.5
@@ -74,8 +76,6 @@ require (
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/hexops/valast v1.4.4 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect

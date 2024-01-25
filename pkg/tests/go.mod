@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests
 
-go 1.20
+go 1.21.0
+
+toolchain go1.21.3
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
@@ -9,7 +11,7 @@ replace (
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
-	github.com/pulumi/providertest v0.0.8
+	github.com/pulumi/providertest v0.0.9
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.63.2
 	github.com/stretchr/testify v1.8.4
 )
@@ -44,8 +46,6 @@ require (
 	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mitchellh/cli v1.1.5 // indirect
