@@ -222,10 +222,12 @@ func (p *planResourceChangeImpl) Refresh(
 	}, nil
 }
 
-func (p *planResourceChangeImpl) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+func (p *planResourceChangeImpl) NewDestroyDiff(
+	ctx context.Context, t string, opts shim.TimeoutOptions,
+) shim.InstanceDiff {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	dd := (&v2Provider{}).NewDestroyDiff(ctx, t).(v2InstanceDiff)
+	dd := (&v2Provider{}).NewDestroyDiff(ctx, t, opts).(v2InstanceDiff)
 	return &v2InstanceDiff2{
 		v2InstanceDiff: dd,
 		config:         cty.NullVal(ty),
@@ -560,20 +562,14 @@ type planResourceChangeProvider interface {
 	) (shim.InstanceDiff, error)
 
 	Apply(
-		ctx context.Context,
-		t string,
-		s shim.InstanceState,
-		d shim.InstanceDiff,
+		ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
 	) (shim.InstanceState, error)
 
 	Refresh(
-		ctx context.Context,
-		t string,
-		s shim.InstanceState,
-		c shim.ResourceConfig,
+		ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
 	) (shim.InstanceState, error)
 
-	NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff
+	NewDestroyDiff(ctx context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff
 
 	// Moving this method to the provider object from the shim.Resource object for convenience.
 	Importer(t string) shim.ImportFunc
@@ -628,11 +624,6 @@ func (p *providerWithPlanResourceChangeDispatch) Apply(
 	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
 ) (shim.InstanceState, error) {
 	if p.usePlanResourceChange(t) {
-		// We need to adapt destroy diffs here because planResourceChangeProvider may use a
-		// different concrete type to represent the diffs.
-		if d.Destroy() {
-			d = p.planResourceChangeProvider.NewDestroyDiff(ctx, t)
-		}
 		return p.planResourceChangeProvider.Apply(ctx, t, s, d)
 	}
 	return p.Provider.Apply(ctx, t, s, d)
@@ -646,6 +637,16 @@ func (p *providerWithPlanResourceChangeDispatch) Refresh(
 		return p.planResourceChangeProvider.Refresh(ctx, t, s, c)
 	}
 	return p.Provider.Refresh(ctx, t, s, c)
+}
+
+// Override NewDestroyDiff to dispatch appropriately.
+func (p *providerWithPlanResourceChangeDispatch) NewDestroyDiff(
+	ctx context.Context, t string, opts shim.TimeoutOptions,
+) shim.InstanceDiff {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.NewDestroyDiff(ctx, t, opts)
+	}
+	return p.Provider.NewDestroyDiff(ctx, t, opts)
 }
 
 type v2ResourceCustomMap struct {
