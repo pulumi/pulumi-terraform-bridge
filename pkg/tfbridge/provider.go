@@ -163,13 +163,20 @@ type DataSource struct {
 	TFName string          // the Terraform resource name.
 }
 
-type CheckFailureError struct {
+type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
 }
 
+// CheckFailureError can be returned from a PreConfigureCallback to indicate that the
+// configuration is invalid along with an actionable error message. These will be
+// returned as failures in the CheckConfig response instead of errors.
+type CheckFailureError struct {
+	Failures []CheckFailureErrorElement
+}
+
 func (e CheckFailureError) Error() string {
-	return fmt.Sprintf("CheckFailureError with %s, reason: %s", e.Property, e.Reason)
+	return fmt.Sprintf("CheckFailureErrors %s", e.Failures)
 }
 
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
@@ -382,6 +389,19 @@ func (p *Provider) GetSchema(ctx context.Context,
 	}, nil
 }
 
+func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckResponse {
+	failures := make([]*pulumirpc.CheckFailure, len(err.Failures))
+	for i, failure := range err.Failures {
+		failures[i] = &pulumirpc.CheckFailure{
+			Reason:   failure.Reason,
+			Property: failure.Property,
+		}
+	}
+	return &pulumirpc.CheckResponse{
+		Failures: failures,
+	}
+}
+
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
@@ -418,27 +438,13 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	if !news.ContainsUnknowns() {
 		if err := p.preConfigureCallback(ctx, news, config); err != nil {
 			if failureErr, ok := err.(CheckFailureError); ok {
-				return &pulumirpc.CheckResponse{
-					Failures: []*pulumirpc.CheckFailure{
-						{
-							Reason:   failureErr.Reason,
-							Property: failureErr.Property,
-						},
-					},
-				}, nil
+				return makeCheckResponseFromCheckErr(failureErr), nil
 			}
 			return nil, err
 		}
 		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
 			if failureErr, ok := err.(CheckFailureError); ok {
-				return &pulumirpc.CheckResponse{
-					Failures: []*pulumirpc.CheckFailure{
-						{
-							Reason:   failureErr.Reason,
-							Property: failureErr.Property,
-						},
-					},
-				}, nil
+				return makeCheckResponseFromCheckErr(failureErr), nil
 			}
 			return nil, err
 		}
