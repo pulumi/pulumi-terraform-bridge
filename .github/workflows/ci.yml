@@ -15,7 +15,7 @@ jobs:
         #
         # When we decide to bump our minimum go version, we need to remember to bump the
         # go version in our go.mod files.
-        go-version: [1.20.x, 1.21.x]
+        go-version: [1.21.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
