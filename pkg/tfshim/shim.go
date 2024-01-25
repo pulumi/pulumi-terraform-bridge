@@ -202,6 +202,7 @@ type Provider interface {
 		t string,
 		s InstanceState,
 		c ResourceConfig,
+		opts ...DiffOption,
 	) (InstanceDiff, error)
 
 	Apply(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)

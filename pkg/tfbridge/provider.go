@@ -880,7 +880,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.WithIgnored(ic))
-
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1228,7 +1227,6 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.WithIgnored(ic))
-
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
