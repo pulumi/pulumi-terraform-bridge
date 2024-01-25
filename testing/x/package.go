@@ -15,4 +15,7 @@
 // Package testing implements helper code to facilitate testing bridged providers.
 //
 // These APIs are currently experimental (hence the "x" package name) and subject to change.
+
+// Deprecated: This package has been moved to
+// [https://github.com/pulumi/providertest/tree/main/replay]
 package testing

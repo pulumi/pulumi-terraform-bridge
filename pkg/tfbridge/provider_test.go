@@ -35,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -1452,7 +1452,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"
+			  "errors": ["1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"]
 			}`)
 	})
 }

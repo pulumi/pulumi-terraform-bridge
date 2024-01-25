@@ -25,14 +25,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestCheck(t *testing.T) {
-
 	type testCase struct {
 		name        string
 		schema      schema.Schema

@@ -2,10 +2,7 @@ module github.com/pulumi/pulumi-terraform-bridge/v3
 
 go 1.20
 
-replace (
-	github.com/pulumi/pulumi-terraform-bridge/testing => ./testing
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
-)
+replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
@@ -39,8 +36,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
+	github.com/pulumi/providertest v0.0.10
 	github.com/pulumi/pulumi-java/pkg v0.9.9
-	github.com/pulumi/pulumi-terraform-bridge/testing v0.0.1
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.7
 	github.com/pulumi/pulumi-yaml v1.4.5
 	github.com/pulumi/schema-tools v0.1.2
@@ -50,7 +47,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/zclconf/go-cty v1.14.0
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.18.0
 	golang.org/x/mod v0.14.0
 	golang.org/x/net v0.19.0
 	golang.org/x/text v0.14.0
@@ -238,8 +235,8 @@ require (
 	gocloud.dev/secrets/hashivault v0.27.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.126.0 // indirect

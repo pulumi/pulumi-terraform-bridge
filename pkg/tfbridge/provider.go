@@ -233,7 +233,8 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		servers = append(servers, muxer.Endpoint{
 			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 				return f.GetInstance(ctx, module, version, hc)
-			}})
+			},
+		})
 	}
 
 	return muxer.Main{
@@ -1620,8 +1621,7 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 				sch.Type() == shim.TypeString { // has type string
 
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					ensureMap(&res.Fields)[nameProperty] =
-						AutoName(nameProperty, maxLength, separator)
+					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
 				}
 			}
 		}

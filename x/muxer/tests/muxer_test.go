@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	testutils "github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
@@ -75,11 +75,11 @@ func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 		"test:mod:A": 0,
 		"test:mod:B": 1,
 	}
-	errString := "myerr"
+	errString := []string{"myerr"}
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", &errString,
-			part(0, "{}", "{}", &errString),
-			part(1, "{}", "{}", &errString),
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", errString,
+			part(0, "{}", "{}", errString),
+			part(1, "{}", "{}", errString),
 		))
 }
 
@@ -89,17 +89,17 @@ func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
 		"test:mod:A": 0,
 		"test:mod:B": 1,
 	}
-	firstErr := "myerr"
-	secondErr := "othererr"
-	expectedErr := "2 errors occurred:\n\t* myerr\n\t* othererr\n\n"
+	firstErr := []string{"myerr"}
+	secondErr := []string{"othererr"}
+	expectedErr := []string{"2 errors occurred:\n\t* myerr\n\t* othererr\n\n"}
 	mux(t, m).replay(
 		exchange(
 			"/pulumirpc.ResourceProvider/CheckConfig",
 			"{}",
 			"{}",
-			&expectedErr,
-			part(0, "{}", "{}", &firstErr),
-			part(1, "{}", "{}", &secondErr),
+			expectedErr,
+			part(0, "{}", "{}", firstErr),
+			part(1, "{}", "{}", secondErr),
 		))
 }
 
@@ -109,11 +109,11 @@ func TestCheckConfigOneErrorReturned(t *testing.T) {
 		"test:mod:A": 0,
 		"test:mod:B": 1,
 	}
-	err := "myerr"
+	err := []string{"myerr"}
 	mux(t, m).replay(
-		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", &err,
+		exchange("/pulumirpc.ResourceProvider/CheckConfig", "{}", "{}", err,
 			part(0, "{}", `{"inputs": {"myurn":"urn"}}`, nil),
-			part(1, "{}", "{}", &err),
+			part(1, "{}", "{}", err),
 		))
 }
 
@@ -310,7 +310,7 @@ type Exchange struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request"`
 	Response json.RawMessage `json:"response"`
-	Errors   *string
+	Errors   []string
 	Parts    []ExchangePart `json:"-"`
 }
 
@@ -318,7 +318,7 @@ type ExchangePart struct {
 	Provider int
 	Request  string `json:"request"`
 	Response string `json:"response"`
-	Errors   *string
+	Errors   []string
 }
 
 // A simple exchange is one where only one sub-server is used
@@ -337,7 +337,7 @@ func simpleExchange(provider int, method, request, response string) Exchange {
 	}
 }
 
-func exchange(method, request, response string, errors *string, parts ...ExchangePart) Exchange {
+func exchange(method, request, response string, errors []string, parts ...ExchangePart) Exchange {
 	return Exchange{
 		Method:   method,
 		Request:  json.RawMessage(request),
@@ -347,7 +347,7 @@ func exchange(method, request, response string, errors *string, parts ...Exchang
 	}
 }
 
-func part(provider int, request, response string, errors *string) ExchangePart {
+func part(provider int, request, response string, errors []string) ExchangePart {
 	return ExchangePart{
 		provider,
 		request,
@@ -394,7 +394,7 @@ type server struct {
 type call struct {
 	incoming string
 	response string
-	errors   *string
+	errors   []string
 }
 
 // Assert that a gRPC call matches the next expected call, then rehydrate and return the
@@ -409,7 +409,7 @@ func handleMethod[T proto.Message, R proto.Message](m *server, req T) (R, error)
 	reflect.ValueOf(&r).Elem().Set(reflect.New(reflect.TypeOf(r).Elem()))
 
 	if next.errors != nil {
-		return r, errors.New(*next.errors)
+		return r, errors.New(next.errors[0])
 	}
 
 	marshalled, err := protojson.MarshalOptions{Multiline: true}.Marshal(req)

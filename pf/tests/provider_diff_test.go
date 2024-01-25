@@ -17,8 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.

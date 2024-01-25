@@ -32,11 +32,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func TestCheckConfig(t *testing.T) {
@@ -219,7 +219,6 @@ func TestCheckConfig(t *testing.T) {
 			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
 			"Did you mean `testprovider:configValue`?",
 			resp.Failures[0].Reason)
-
 	})
 
 	t.Run("validators", func(t *testing.T) {
@@ -472,7 +471,6 @@ func TestCheckConfig(t *testing.T) {
 }
 
 func TestPreConfigureCallback(t *testing.T) {
-
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{

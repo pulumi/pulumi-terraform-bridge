@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -116,7 +116,6 @@ func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourcePro
 }
 
 func TestMuxWithProvider(t *testing.T) {
-
 	info := tfbridge.ProviderInfo{
 		P:          shimv2.NewProvider(newTFProvider()),
 		Name:       "random",
@@ -226,7 +225,6 @@ func TestMuxWithProvider(t *testing.T) {
 	for i := range grpcTestCases {
 		testutils.Replay(t, server, grpcMuxTestCases[i])
 	}
-
 }
 
 func newMuxProvider() tfbridge.MuxProvider {

@@ -17,8 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 )
 
 func TestBasicInvoke(t *testing.T) {

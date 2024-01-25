@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -174,8 +174,7 @@ func TestTransformFromState(t *testing.T) {
 			) (resource.PropertyMap, error) {
 				p := pm.Copy()
 				assert.Equal(t, "OLD", p["stringPropertyValue"].StringValue())
-				p["stringPropertyValue"] =
-					resource.NewStringProperty("TRANSFORMED")
+				p["stringPropertyValue"] = resource.NewStringProperty("TRANSFORMED")
 				called = true
 				return p, nil
 			},

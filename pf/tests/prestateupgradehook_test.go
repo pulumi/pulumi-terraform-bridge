@@ -17,8 +17,8 @@ package tfbridgetests
 import (
 	"testing"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	testutils "github.com/pulumi/pulumi-terraform-bridge/testing/x"
 	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -68,5 +68,4 @@ func TestPreStateUpgradeHook(t *testing.T) {
 	  }
 	}
         `)
-
 }
