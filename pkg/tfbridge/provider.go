@@ -55,19 +55,18 @@ import (
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host                 *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module               string                             // the Terraform module name.
-	version              string                             // the plugin version number.
-	tf                   shim.Provider                      // the Terraform resource provider to use.
-	info                 ProviderInfo                       // overlaid info about this provider.
-	config               shim.SchemaMap                     // the Terraform config schema.
-	configValues         resource.PropertyMap               // this package's config values.
-	resources            map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources          map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
-	supportsSecrets      bool                               // true if the engine supports secret property values
-	pulumiSchema         []byte                             // the JSON-encoded Pulumi schema.
-	memStats             memStatCollector
-	emittedCheckFailures []*pulumirpc.CheckFailure // a list of check failures emitted by the provider
+	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module          string                             // the Terraform module name.
+	version         string                             // the plugin version number.
+	tf              shim.Provider                      // the Terraform resource provider to use.
+	info            ProviderInfo                       // overlaid info about this provider.
+	config          shim.SchemaMap                     // the Terraform config schema.
+	configValues    resource.PropertyMap               // this package's config values.
+	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	supportsSecrets bool                               // true if the engine supports secret property values
+	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
+	memStats        memStatCollector
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -164,6 +163,15 @@ type DataSource struct {
 	TFName string          // the Terraform resource name.
 }
 
+type CheckFailureError struct {
+	Reason   string
+	Property string
+}
+
+func (e CheckFailureError) Error() string {
+	return fmt.Sprintf("CheckFailureError with %s, reason: %s", e.Property, e.Reason)
+}
+
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
 func NewProvider(ctx context.Context, host *provider.HostClient, module, version string,
 	tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
@@ -216,7 +224,8 @@ func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
 		servers = append(servers, muxer.Endpoint{
 			Server: func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 				return f.GetInstance(ctx, module, version, hc)
-			}})
+			},
+		})
 	}
 
 	return muxer.Main{
@@ -374,11 +383,6 @@ func (p *Provider) GetSchema(ctx context.Context,
 	}, nil
 }
 
-// EmitCheckFailure allows the provider to emit a check failure during CheckConfig
-func (p *Provider) EmitCheckFailure(ctx context.Context, failure *pulumirpc.CheckFailure) {
-	p.emittedCheckFailures = append(p.emittedCheckFailures, failure)
-}
-
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
@@ -414,17 +418,30 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
 		if err := p.preConfigureCallback(ctx, news, config); err != nil {
+			if failureErr, ok := err.(CheckFailureError); ok {
+				return &pulumirpc.CheckResponse{
+					Failures: []*pulumirpc.CheckFailure{
+						{
+							Reason:   failureErr.Reason,
+							Property: failureErr.Property,
+						},
+					},
+				}, nil
+			}
 			return nil, err
 		}
 		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
-			return nil, err
-		}
-		if len(p.emittedCheckFailures) != 0 {
-			resp := &pulumirpc.CheckResponse{
-				Failures: p.emittedCheckFailures,
+			if failureErr, ok := err.(CheckFailureError); ok {
+				return &pulumirpc.CheckResponse{
+					Failures: []*pulumirpc.CheckFailure{
+						{
+							Reason:   failureErr.Reason,
+							Property: failureErr.Property,
+						},
+					},
+				}, nil
 			}
-			p.emittedCheckFailures = nil
-			return resp, nil
+			return nil, err
 		}
 	}
 
@@ -1598,8 +1615,7 @@ func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
 				sch.Type() == shim.TypeString { // has type string
 
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					ensureMap(&res.Fields)[nameProperty] =
-						AutoName(nameProperty, maxLength, separator)
+					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
 				}
 			}
 		}

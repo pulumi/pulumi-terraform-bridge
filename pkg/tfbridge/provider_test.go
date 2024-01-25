@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2569,4 +2570,75 @@ func TestSetAutoNaming(t *testing.T) {
 
 	assert.True(t, prov.Resources["auto_v1"].Fields["name"].Default.AutoNamed) // Of type string - so applied
 	assert.Nil(t, prov.Resources["auto_v2"].Fields["name"])                    // Of type list - so not applied
+}
+
+func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
+	t.Run("can_emit_failure", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *provider.HostClient, vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					return CheckFailureError{
+						Reason:   "failure reason",
+						Property: "",
+					}
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"failures": [
+					{
+						"reason": "failure reason"
+					}
+				]
+			}
+		}`)
+	})
+
+	t.Run("can_error", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *provider.HostClient, vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					return fmt.Errorf("error")
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"errors": "error"
+		}`)
+	})
 }
