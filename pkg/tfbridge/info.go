@@ -94,7 +94,12 @@ type ProviderInfo struct {
 	TFProviderLicense        *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
 	TFProviderModuleVersion  string             // the Go module version of the provider. Default is unversioned e.g. v1
 
-	PreConfigureCallback           PreConfigureCallback // a provider-specific callback to invoke prior to TF Configure
+	// a provider-specific callback to invoke prior to TF Configure
+	// Any CheckFailureErrors returned from PreConfigureCallback are converted to
+	// CheckFailures and returned as failures instead of errors in CheckConfig
+	PreConfigureCallback PreConfigureCallback
+	// Any CheckFailureErrors returned from PreConfigureCallbackWithLogger are
+	// converted to CheckFailures and returned as failures instead of errors in CheckConfig
 	PreConfigureCallbackWithLogger PreConfigureCallbackWithLogger
 
 	// Information for the embedded metadata file.
