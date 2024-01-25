@@ -11,6 +11,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -2059,4 +2060,23 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 			"prop.nest": AR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
+}
+
+func doIgnoreChanges(
+	ctx context.Context,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap,
+	ignoredPaths []string,
+	diff shim.InstanceDiff,
+) {
+	if diff == nil {
+		return
+	}
+	ignored := computeIgnoreChanges(ctx, tfs, ps, olds, news, ignoredPaths)
+	m := map[string]bool{}
+	for k := range ignored {
+		m[k] = true
+	}
+	diff.IgnoreChanges(m)
 }
