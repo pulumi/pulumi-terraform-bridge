@@ -1451,7 +1451,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
-			  "errors": "1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"
+			  "errors": ["1 error occurred:\n\t* some error with \"configProperty\" and \"CONFIG!\" but not config\n\n"]
 			}`)
 	})
 }
