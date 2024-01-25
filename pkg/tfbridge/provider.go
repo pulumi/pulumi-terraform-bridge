@@ -55,19 +55,19 @@ import (
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module          string                             // the Terraform module name.
-	version         string                             // the plugin version number.
-	tf              shim.Provider                      // the Terraform resource provider to use.
-	info            ProviderInfo                       // overlaid info about this provider.
-	config          shim.SchemaMap                     // the Terraform config schema.
-	configValues    resource.PropertyMap               // this package's config values.
-	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
-	supportsSecrets bool                               // true if the engine supports secret property values
-	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
-	memStats        memStatCollector
-	emittedCheckFailures []*pulumirpc.CheckFailure     // a list of check failures emitted by the provider
+	host                 *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module               string                             // the Terraform module name.
+	version              string                             // the plugin version number.
+	tf                   shim.Provider                      // the Terraform resource provider to use.
+	info                 ProviderInfo                       // overlaid info about this provider.
+	config               shim.SchemaMap                     // the Terraform config schema.
+	configValues         resource.PropertyMap               // this package's config values.
+	resources            map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources          map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	supportsSecrets      bool                               // true if the engine supports secret property values
+	pulumiSchema         []byte                             // the JSON-encoded Pulumi schema.
+	memStats             memStatCollector
+	emittedCheckFailures []*pulumirpc.CheckFailure // a list of check failures emitted by the provider
 }
 
 // MuxProvider defines an interface which must be implemented by providers
