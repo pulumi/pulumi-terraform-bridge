@@ -67,6 +67,7 @@ type Provider struct {
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
 	memStats        memStatCollector
+	emittedCheckFailures []*pulumirpc.CheckFailure     // a list of check failures emitted by the provider
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -373,6 +374,11 @@ func (p *Provider) GetSchema(ctx context.Context,
 	}, nil
 }
 
+// EmitCheckFailure allows the provider to emit a check failure during CheckConfig
+func (p *Provider) EmitCheckFailure(ctx context.Context, failure *pulumirpc.CheckFailure) {
+	p.emittedCheckFailures = append(p.emittedCheckFailures, failure)
+}
+
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
@@ -408,14 +414,17 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
 		if err := p.preConfigureCallback(ctx, news, config); err != nil {
-			return &pulumirpc.CheckResponse{
-				Failures: p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), []error{err}),
-			}, nil
+			return nil, err
 		}
 		if err := p.preConfigureCallbackWithLogger(ctx, news, config); err != nil {
-			return &pulumirpc.CheckResponse{
-				Failures: p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), []error{err}),
-			}, nil
+			return nil, err
+		}
+		if len(p.emittedCheckFailures) != 0 {
+			resp := &pulumirpc.CheckResponse{
+				Failures: p.emittedCheckFailures,
+			}
+			p.emittedCheckFailures = nil
+			return resp, nil
 		}
 	}
 
