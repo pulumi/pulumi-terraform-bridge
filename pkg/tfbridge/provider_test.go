@@ -2587,8 +2587,12 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 					config shim.ResourceConfig,
 				) error {
 					return CheckFailureError{
-						Reason:   "failure reason",
-						Property: "",
+						[]CheckFailureErrorElement{
+							{
+								Reason:   "failure reason",
+								Property: "",
+							},
+						},
 					}
 				},
 			},
@@ -2604,6 +2608,56 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 			},
 			"response": {
 				"failures": [
+					{
+						"reason": "failure reason"
+					}
+				]
+			}
+		}`)
+	})
+
+	t.Run("can_emit_multiple_failures", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *provider.HostClient, vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					return CheckFailureError{
+						[]CheckFailureErrorElement{
+							{
+								Reason:   "failure reason",
+								Property: "",
+							},
+							{
+								Reason:   "failure reason 2",
+								Property: "",
+							},
+						},
+					}
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"failures": [
+					{
+						"reason": "failure reason 2"
+					},
 					{
 						"reason": "failure reason"
 					}
