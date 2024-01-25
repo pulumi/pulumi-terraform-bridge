@@ -77,21 +77,6 @@ func (d v1InstanceDiff) RequiresNew() bool {
 	return d.tf.RequiresNew()
 }
 
-func (d v1InstanceDiff) IgnoreChanges(ignored map[string]bool) {
-	for k := range d.tf.Attributes {
-		if ignored[k] {
-			delete(d.tf.Attributes, k)
-		} else {
-			for attr := range ignored {
-				if strings.HasPrefix(k, attr+".") {
-					delete(d.tf.Attributes, k)
-					break
-				}
-			}
-		}
-	}
-}
-
 func (d v1InstanceDiff) processIgnoreChanges(ignored shim.IgnoreChanges) {
 	i := ignored()
 	for k := range d.tf.Attributes {
