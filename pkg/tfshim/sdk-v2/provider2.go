@@ -93,7 +93,6 @@ type v2InstanceDiff2 struct {
 	plannedState cty.Value
 }
 
-// TODO setting timeouts does not modify plannedState but it should.
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 
 func (d *v2InstanceDiff2) ProposedState(
@@ -148,7 +147,9 @@ func (p *planResourceChangeImpl) Diff(
 	}
 	st := state.stateValue
 	ic := opts.IgnoreChanges
-	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, state.meta, meta, ic)
+	priv := state.meta
+	to := opts.TimeoutOptions
+	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic, to)
 	if err != nil {
 		return nil, err
 	}
@@ -365,6 +366,7 @@ func (s *grpcServer) PlanResourceChange(
 	priorMeta map[string]interface{},
 	providerMeta *cty.Value,
 	ignores shim.IgnoreChanges,
+	timeoutOpts shim.TimeoutOptions,
 ) (*struct {
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
@@ -378,12 +380,13 @@ func (s *grpcServer) PlanResourceChange(
 		PriorPrivateState:   priorMeta,
 	}
 
-	if ignores != nil {
-		req.InstanceDiffTransform = func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
-			dd := &v2InstanceDiff{d}
+	req.InstanceDiffTransform = func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
+		dd := &v2InstanceDiff{d}
+		if ignores != nil {
 			dd.processIgnoreChanges(ignores)
-			return dd.tf
 		}
+		dd.applyTimeoutOptions(timeoutOpts)
+		return dd.tf
 	}
 
 	resp := s.gserver.PlanResourceChangeLogical(ctx, req)
