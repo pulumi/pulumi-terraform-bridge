@@ -1,8 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests
 
-go 1.21.0
-
-toolchain go1.21.3
+go 1.20
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
@@ -11,7 +9,7 @@ replace (
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
-	github.com/pulumi/providertest v0.0.9
+	github.com/pulumi/providertest v0.0.10-0.20240125101605-77cea43377f7
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.63.2
 	github.com/stretchr/testify v1.8.4
 )

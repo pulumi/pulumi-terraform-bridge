@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.19.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
-	github.com/pulumi/providertest v0.0.9
+	github.com/pulumi/providertest v0.0.10-0.20240125101605-77cea43377f7
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.71.0
 	github.com/stretchr/testify v1.8.4
