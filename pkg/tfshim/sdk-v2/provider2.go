@@ -7,7 +7,10 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/msgpack"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
@@ -341,7 +344,29 @@ func (p *planResourceChangeImpl) upgradeState(
 // Helper to unwrap gRPC types from GRPCProviderServer.
 type grpcServer struct {
 	gserver *schema.GRPCProviderServer
-	handle  func(diags []*tfprotov5.Diagnostic, err error) error
+}
+
+// This will return an error if any of the diagnostics are error-level, or a given err is non-nil.
+// It will also logs the diagnostics into TF loggers, so they appear when debugging with the bridged
+// provider with TF_LOG=TRACE or similar.
+func (s *grpcServer) handle(ctx context.Context, diags []*tfprotov5.Diagnostic, err error) error {
+	var dd diag.Diagnostics
+	for _, d := range diags {
+		if d == nil {
+			continue
+		}
+		rd := recoverDiagnostic(*d)
+		dd = append(dd, rd)
+		logDiag(ctx, rd)
+	}
+	derr := errors(dd)
+	if derr != nil && err != nil {
+		return multierror.Append(derr, err)
+	}
+	if derr != nil {
+		return derr
+	}
+	return err
 }
 
 func (s *grpcServer) ConfigureProvider(
@@ -355,7 +380,7 @@ func (s *grpcServer) ConfigureProvider(
 		TerraformVersion: "pulumi-terraform-bridge",
 		Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
 	})
-	return s.handle(resp.Diagnostics, err)
+	return s.handle(ctx, resp.Diagnostics, err)
 }
 
 func (s *grpcServer) PlanResourceChange(
@@ -390,7 +415,7 @@ func (s *grpcServer) PlanResourceChange(
 	}
 
 	resp := s.gserver.PlanResourceChangeLogical(ctx, req)
-	if err := s.handle(resp.Diagnostics, nil); err != nil {
+	if err := s.handle(ctx, resp.Diagnostics, nil); err != nil {
 		return nil, err
 	}
 	// Ignore resp.UnsafeToUseLegacyTypeSystem - does not matter for Pulumi bridged providers.
@@ -445,7 +470,7 @@ func (s *grpcServer) ApplyResourceChange(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ApplyResourceChange(ctx, req)
-	if err := s.handle(resp.Diagnostics, err); err != nil {
+	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -496,7 +521,7 @@ func (s *grpcServer) ReadResource(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ReadResource(ctx, req)
-	if err := s.handle(resp.Diagnostics, err); err != nil {
+	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -527,7 +552,7 @@ func (s *grpcServer) ImportResourceState(
 		ID:       id,
 	}
 	resp, err := s.gserver.ImportResourceState(ctx, req)
-	if err := s.handle(resp.Diagnostics, err); err != nil {
+	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	out := []v2InstanceState2{}
@@ -706,12 +731,37 @@ func newProviderWithPlanResourceChange(
 			tf: p,
 			server: &grpcServer{
 				gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
-				handle: func(diags []*tfprotov5.Diagnostic, err error) error {
-					// TODO handle diags and errors.
-					return err
-				},
 			},
 		},
 		usePlanResourceChange: filter,
 	}
+}
+
+func recoverDiagnostic(d tfprotov5.Diagnostic) diag.Diagnostic {
+	dd := diag.Diagnostic{
+		Summary: d.Summary,
+		Detail:  d.Detail,
+	}
+	switch d.Severity {
+	case tfprotov5.DiagnosticSeverityError:
+		dd.Severity = diag.Error
+	case tfprotov5.DiagnosticSeverityWarning:
+		dd.Severity = diag.Warning
+	}
+	if d.Attribute != nil {
+		dd.AttributePath = make(cty.Path, 0)
+		for _, step := range d.Attribute.Steps() {
+			switch step := step.(type) {
+			case tftypes.AttributeName:
+				dd.AttributePath = dd.AttributePath.GetAttr(string(step))
+			case tftypes.ElementKeyInt:
+				dd.AttributePath = dd.AttributePath.IndexInt(int(int64(step)))
+			case tftypes.ElementKeyString:
+				dd.AttributePath = dd.AttributePath.IndexString(string(step))
+			default:
+				contract.Failf("Unexpected AttributePathStep")
+			}
+		}
+	}
+	return dd
 }

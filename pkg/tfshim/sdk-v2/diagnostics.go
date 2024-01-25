@@ -1,8 +1,13 @@
 package sdkv2
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
@@ -40,5 +45,21 @@ func fromV2Diag(diagnostic diag.Diagnostic) error {
 		AttributePath: diagnostic.AttributePath,
 		Summary:       diagnostic.Summary,
 		Detail:        diagnostic.Detail,
+	}
+}
+
+func logDiag(ctx context.Context, d diag.Diagnostic) {
+	s := d.Summary
+	if d.Detail != "" {
+		s = fmt.Sprintf("%s: %s", s, d.Detail)
+	}
+	if len(d.AttributePath) > 0 {
+		s = d.AttributePath.NewErrorf("%s", s).Error()
+	}
+	switch d.Severity {
+	case diag.Error:
+		tfsdklog.SubsystemError(ctx, "helper_schema", s)
+	case diag.Warning:
+		tfsdklog.SubsystemWarn(ctx, "helper_schema", s)
 	}
 }
