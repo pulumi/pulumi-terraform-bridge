@@ -179,7 +179,7 @@ func (p *provider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSources
 }
 
-func (p *provider) Validate(c shim.ResourceConfig) ([]string, []error) {
+func (p *provider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
 	config, ok := c.(resourceConfig)
 	if !ok {
 		return nil, []error{fmt.Errorf("internal error: foreign resource config")}
@@ -200,7 +200,7 @@ func (p *provider) Validate(c shim.ResourceConfig) ([]string, []error) {
 	return unmarshalWarningsAndErrors(resp.Diagnostics)
 }
 
-func (p *provider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p *provider) ValidateResource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	config, ok := c.(resourceConfig)
 	if !ok {
 		return nil, []error{fmt.Errorf("internal error: foreign resource config")}
@@ -227,7 +227,7 @@ func (p *provider) ValidateResource(t string, c shim.ResourceConfig) ([]string, 
 	return unmarshalWarningsAndErrors(resp.Diagnostics)
 }
 
-func (p *provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p *provider) ValidateDataSource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	config, ok := c.(resourceConfig)
 	if !ok {
 		return nil, []error{fmt.Errorf("internal error: foreign resource config")}
@@ -254,7 +254,7 @@ func (p *provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string
 	return unmarshalWarningsAndErrors(resp.Diagnostics)
 }
 
-func (p *provider) Configure(c shim.ResourceConfig) error {
+func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	config, ok := c.(resourceConfig)
 	if !ok {
 		return fmt.Errorf("internal error: foreign resource config")
@@ -276,7 +276,9 @@ func (p *provider) Configure(c shim.ResourceConfig) error {
 	return unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p *provider) Diff(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -346,7 +348,9 @@ func (p *provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (
 	return newInstanceDiff(configVal, stateVal, plannedVal, plannedMeta, resp.RequiresReplace), nil
 }
 
-func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p *provider) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -421,7 +425,9 @@ func (p *provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (s
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) Refresh(t string, s shim.InstanceState, _ shim.ResourceConfig) (shim.InstanceState, error) {
+func (p *provider) Refresh(
+	ctx context.Context, t string, s shim.InstanceState, _ shim.ResourceConfig,
+) (shim.InstanceState, error) {
 	state, ok := s.(*instanceState)
 	if s != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign resource state")
@@ -479,7 +485,7 @@ func (p *provider) Refresh(t string, s shim.InstanceState, _ shim.ResourceConfig
 	return newState, unmarshalErrors(resp.Diagnostics)
 }
 
-func (p *provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p *provider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	dataSource, ok := p.dataSources[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown data source %v", t)
@@ -493,7 +499,7 @@ func (p *provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceD
 	return &instanceDiff{planned: planned}, nil
 }
 
-func (p *provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p *provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	diff, ok := d.(*instanceDiff)
 	if d != nil && !ok {
 		return nil, fmt.Errorf("internal error: foreign instance diff")
@@ -525,11 +531,11 @@ func (p *provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceSt
 	return p.decodeState(dataSource, nil, stateVal, nil)
 }
 
-func (p *provider) Meta() interface{} {
+func (p *provider) Meta(ctx context.Context) interface{} {
 	return nil
 }
 
-func (p *provider) Stop() error {
+func (p *provider) Stop(ctx context.Context) error {
 	resp, err := p.client.Stop(context.TODO(), &proto.Stop_Request{})
 	switch {
 	case err != nil:
@@ -541,19 +547,19 @@ func (p *provider) Stop() error {
 	}
 }
 
-func (p *provider) InitLogging() {
+func (p *provider) InitLogging(ctx context.Context) {
 	// Nothing to do.
 }
 
-func (p *provider) NewDestroyDiff() shim.InstanceDiff {
+func (p *provider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
 	return &instanceDiff{destroy: true}
 }
 
-func (p *provider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+func (p *provider) NewResourceConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {
 	return resourceConfig(object)
 }
 
-func (p *provider) IsSet(v interface{}) ([]interface{}, bool) {
+func (p *provider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	val, ok := v.(cty.Value)
 	if !ok {
 		return nil, false

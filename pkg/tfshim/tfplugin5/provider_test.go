@@ -2,6 +2,7 @@ package tfplugin5
 
 import (
 	"bytes"
+	"context"
 	goerrors "errors"
 	"io"
 	"log"
@@ -147,6 +148,7 @@ func (l *testLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer
 }
 
 func startTestProvider(t *testing.T) (*provider, bool) {
+	ctx := context.Background()
 	const testProviderEnv = "PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER"
 
 	testProviderPath := os.Getenv(testProviderEnv)
@@ -190,7 +192,7 @@ func startTestProvider(t *testing.T) (*provider, bool) {
 
 	provider := p.(*provider)
 	t.Cleanup(func() {
-		err := provider.Stop()
+		err := provider.Stop(ctx)
 		contract.IgnoreError(err)
 
 		pluginClient.Kill()
@@ -773,12 +775,13 @@ func TestProviderDataSourcesMap(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	warnings, errors := p.Validate(p.NewResourceConfig(map[string]interface{}{
+	warnings, errors := p.Validate(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	}))
 	assert.Empty(t, warnings)
@@ -786,22 +789,23 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidateResource(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	warnings, errors := p.ValidateResource("example_resource", p.NewResourceConfig(map[string]interface{}{}))
+	warnings, errors := p.ValidateResource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{}))
 	assert.Empty(t, warnings)
 	assert.NotEmpty(t, errors)
 
-	warnings, errors = p.ValidateResource("example_resource", p.NewResourceConfig(map[string]interface{}{
+	warnings, errors = p.ValidateResource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{},
 	}))
 	assert.Empty(t, warnings)
 	assert.Empty(t, errors)
 
-	warnings, errors = p.ValidateResource("example_resource", p.NewResourceConfig(map[string]interface{}{
+	warnings, errors = p.ValidateResource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{
 		"nil_property_value":    map[string]interface{}{"foo": "bar"},
 		"bool_property_value":   true,
 		"number_property_value": 42,
@@ -821,7 +825,7 @@ func TestValidateResource(t *testing.T) {
 	assert.Empty(t, errors)
 
 	var err *diagnostics.ValidationError
-	warnings, errors = p.ValidateResource("example_resource", p.NewResourceConfig(map[string]interface{}{
+	warnings, errors = p.ValidateResource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{
 		// missing required array_property_value
 	}))
 	assert.Empty(t, warnings)
@@ -838,22 +842,23 @@ func TestValidateResource(t *testing.T) {
 }
 
 func TestValidateDataSource(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	warnings, errors := p.ValidateDataSource("example_resource", p.NewResourceConfig(map[string]interface{}{}))
+	warnings, errors := p.ValidateDataSource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{}))
 	assert.Empty(t, warnings)
 	assert.NotEmpty(t, errors)
 
-	warnings, errors = p.ValidateDataSource("example_resource", p.NewResourceConfig(map[string]interface{}{
+	warnings, errors = p.ValidateDataSource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{},
 	}))
 	assert.Empty(t, warnings)
 	assert.Empty(t, errors)
 
-	warnings, errors = p.ValidateDataSource("example_resource", p.NewResourceConfig(map[string]interface{}{
+	warnings, errors = p.ValidateDataSource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{
 		"nil_property_value":    map[string]interface{}{"foo": "bar"},
 		"bool_property_value":   true,
 		"number_property_value": 42,
@@ -874,18 +879,20 @@ func TestValidateDataSource(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
+	err := p.Configure(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	}))
 	assert.NoError(t, err)
 }
 
 func TestDiff(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
@@ -894,7 +901,7 @@ func TestDiff(t *testing.T) {
 	res, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
 
-	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
+	err := p.Configure(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	}))
 	require.NoError(t, err)
@@ -1031,11 +1038,11 @@ func TestDiff(t *testing.T) {
 			state, err := res.InstanceState("0", c.state, nil)
 			require.NoError(t, err)
 
-			config := p.NewResourceConfig(c.config)
+			config := p.NewResourceConfig(ctx, c.config)
 			configVal, err := goToCty(config, res.(*resource).ctyType)
 			require.NoError(t, err)
 
-			diff, err := p.Diff("example_resource", state, config)
+			diff, err := p.Diff(ctx, "example_resource", state, config)
 			require.NoError(t, err)
 
 			var meta map[string]interface{}
@@ -1060,6 +1067,7 @@ func TestDiff(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
@@ -1068,7 +1076,7 @@ func TestApply(t *testing.T) {
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
 
-	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
+	err := p.Configure(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	}))
 	require.NoError(t, err)
@@ -1167,9 +1175,9 @@ func TestApply(t *testing.T) {
 			state, err := resource.InstanceState("0", c.state, nil)
 			require.NoError(t, err)
 
-			config := p.NewResourceConfig(c.config)
+			config := p.NewResourceConfig(ctx, c.config)
 
-			diff, err := p.Diff("example_resource", state, config)
+			diff, err := p.Diff(ctx, "example_resource", state, config)
 			require.NoError(t, err)
 
 			if len(diff.Attributes()) == 0 {
@@ -1215,11 +1223,11 @@ func TestApply(t *testing.T) {
 				state, err = resource.InstanceState("", map[string]interface{}{}, nil)
 				require.NoError(t, err)
 
-				diff, err = p.Diff("example_resource", state, config)
+				diff, err = p.Diff(ctx, "example_resource", state, config)
 				require.NoError(t, err)
 			}
 
-			state, err = p.Apply("example_resource", state, diff)
+			state, err = p.Apply(ctx, "example_resource", state, diff)
 			require.NoError(t, err)
 
 			expectedObject, err := ctyToGo(cty.ObjectVal(expected))
@@ -1241,6 +1249,7 @@ func TestApply(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
@@ -1249,7 +1258,7 @@ func TestRefresh(t *testing.T) {
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
 
-	err := p.Configure(p.NewResourceConfig(map[string]interface{}{
+	err := p.Configure(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
 	}))
 	require.NoError(t, err)
@@ -1294,7 +1303,7 @@ func TestRefresh(t *testing.T) {
 		"string_with_bad_interpolation": cty.StringVal("some ${interpolated:value} with syntax errors"),
 	}
 
-	state, err = p.Refresh("example_resource", state, nil)
+	state, err = p.Refresh(ctx, "example_resource", state, nil)
 	require.NoError(t, err)
 
 	expectedObject, err := ctyToGo(cty.ObjectVal(expected))
@@ -1309,16 +1318,17 @@ func TestRefresh(t *testing.T) {
 }
 
 func TestReadDataDiff(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	config := p.NewResourceConfig(map[string]interface{}{
+	config := p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{"foo"},
 	})
 
-	diff, err := p.ReadDataDiff("example_resource", config)
+	diff, err := p.ReadDataDiff(ctx, "example_resource", config)
 	require.NoError(t, err)
 
 	expected := cty.ObjectVal(map[string]cty.Value{
@@ -1342,19 +1352,20 @@ func TestReadDataDiff(t *testing.T) {
 }
 
 func TestReadDataApply(t *testing.T) {
+	ctx := context.Background()
 	p, ok := startTestProvider(t)
 	if !ok {
 		return
 	}
 
-	config := p.NewResourceConfig(map[string]interface{}{
+	config := p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{"foo"},
 	})
 
-	diff, err := p.ReadDataDiff("example_resource", config)
+	diff, err := p.ReadDataDiff(ctx, "example_resource", config)
 	require.NoError(t, err)
 
-	state, err := p.ReadDataApply("example_resource", diff)
+	state, err := p.ReadDataApply(ctx, "example_resource", diff)
 	require.NoError(t, err)
 
 	expected := cty.ObjectVal(map[string]cty.Value{

@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -57,64 +58,80 @@ func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 	return &filteringMap{p.Provider.DataSourcesMap(), p.DataSourceFilter}
 }
 
-func (p *FilteringProvider) Validate(c shim.ResourceConfig) ([]string, []error) {
-	return p.Provider.Validate(c)
+func (p *FilteringProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
+	return p.Provider.Validate(ctx, c)
 }
 
-func (p *FilteringProvider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
-	return p.Provider.ValidateResource(t, c)
+func (p *FilteringProvider) ValidateResource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
+	return p.Provider.ValidateResource(ctx, t, c)
 }
 
-func (p *FilteringProvider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
-	return p.Provider.ValidateDataSource(t, c)
+func (p *FilteringProvider) ValidateDataSource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
+	return p.Provider.ValidateDataSource(ctx, t, c)
 }
 
-func (p *FilteringProvider) Configure(c shim.ResourceConfig) error {
-	return p.Provider.Configure(c)
+func (p *FilteringProvider) Configure(ctx context.Context, c shim.ResourceConfig) error {
+	return p.Provider.Configure(ctx, c)
 }
 
-func (p *FilteringProvider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	return p.Provider.Diff(t, s, c)
+func (p *FilteringProvider) Diff(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	return p.Provider.Diff(ctx, t, s, c)
 }
 
-func (p *FilteringProvider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
-	return p.Provider.Apply(t, s, d)
+func (p *FilteringProvider) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	return p.Provider.Apply(ctx, t, s, d)
 }
 
-func (p *FilteringProvider) Refresh(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceState, error) {
-	return p.Provider.Refresh(t, s, c)
+func (p *FilteringProvider) Refresh(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	return p.Provider.Refresh(ctx, t, s, c)
 }
 
-func (p *FilteringProvider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	return p.Provider.ReadDataDiff(t, c)
+func (p *FilteringProvider) ReadDataDiff(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	return p.Provider.ReadDataDiff(ctx, t, c)
 }
 
-func (p *FilteringProvider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
-	return p.Provider.ReadDataApply(t, d)
+func (p *FilteringProvider) ReadDataApply(
+	ctx context.Context, t string, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	return p.Provider.ReadDataApply(ctx, t, d)
 }
 
-func (p *FilteringProvider) Meta() interface{} {
-	return p.Provider.Meta()
+func (p *FilteringProvider) Meta(ctx context.Context) interface{} {
+	return p.Provider.Meta(ctx)
 }
 
-func (p *FilteringProvider) Stop() error {
-	return p.Provider.Stop()
+func (p *FilteringProvider) Stop(ctx context.Context) error {
+	return p.Provider.Stop(ctx)
 }
 
-func (p *FilteringProvider) InitLogging() {
-	p.Provider.InitLogging()
+func (p *FilteringProvider) InitLogging(ctx context.Context) {
+	p.Provider.InitLogging(ctx)
 }
 
-func (p *FilteringProvider) NewDestroyDiff() shim.InstanceDiff {
-	return p.Provider.NewDestroyDiff()
+func (p *FilteringProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+	return p.Provider.NewDestroyDiff(ctx, t)
 }
 
-func (p *FilteringProvider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
-	return p.Provider.NewResourceConfig(object)
+func (p *FilteringProvider) NewResourceConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	return p.Provider.NewResourceConfig(ctx, object)
 }
 
-func (p *FilteringProvider) IsSet(v interface{}) ([]interface{}, bool) {
-	return p.Provider.IsSet(v)
+func (p *FilteringProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
+	return p.Provider.IsSet(ctx, v)
 }
 
 type filteringMap struct {

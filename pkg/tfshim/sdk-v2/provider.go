@@ -53,7 +53,7 @@ type v2Provider struct {
 	opts []providerOption
 }
 
-var _ shim.ProviderWithContext = (*v2Provider)(nil)
+var _ shim.Provider = (*v2Provider)(nil)
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	return v2Provider{
@@ -74,23 +74,19 @@ func (p v2Provider) DataSourcesMap() shim.ResourceMap {
 	return v2ResourceMap(p.tf.DataSourcesMap)
 }
 
-func (p v2Provider) Validate(c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) Validate(_ context.Context, c shim.ResourceConfig) ([]string, []error) {
 	return warningsAndErrors(p.tf.Validate(configFromShim(c)))
 }
 
-func (p v2Provider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) ValidateResource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	return warningsAndErrors(p.tf.ValidateResource(t, configFromShim(c)))
 }
 
-func (p v2Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) ValidateDataSource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	return warningsAndErrors(p.tf.ValidateDataSource(t, configFromShim(c)))
 }
 
-func (p v2Provider) Configure(c shim.ResourceConfig) error {
-	return errors(p.tf.Configure(context.Background(), configFromShim(c)))
-}
-
-func (p v2Provider) ConfigureWithContext(ctx context.Context, c shim.ResourceConfig) error {
+func (p v2Provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	// See ConfigureProvider e.g.
 	// https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
 	ctxHack := context.WithValue(ctx, schema.StopContextKey, p.stopContext(context.Background()))
@@ -106,14 +102,6 @@ func (p v2Provider) stopContext(ctx context.Context) context.Context {
 }
 
 func (p v2Provider) Apply(
-	t string,
-	s shim.InstanceState,
-	d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	return p.ApplyWithContext(context.Background(), t, s, d)
-}
-
-func (p v2Provider) ApplyWithContext(
 	ctx context.Context,
 	t string,
 	s shim.InstanceState,
@@ -132,14 +120,6 @@ func (p v2Provider) ApplyWithContext(
 }
 
 func (p v2Provider) Refresh(
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-) (shim.InstanceState, error) {
-	return p.RefreshWithContext(context.Background(), t, s, c)
-}
-
-func (p v2Provider) RefreshWithContext(
 	ctx context.Context,
 	t string,
 	s shim.InstanceState,
@@ -169,13 +149,6 @@ func (p v2Provider) RefreshWithContext(
 }
 
 func (p v2Provider) ReadDataDiff(
-	t string,
-	c shim.ResourceConfig,
-) (shim.InstanceDiff, error) {
-	return p.ReadDataDiffWithContext(context.Background(), t, c)
-}
-
-func (p v2Provider) ReadDataDiffWithContext(
 	ctx context.Context,
 	t string,
 	c shim.ResourceConfig,
@@ -189,13 +162,6 @@ func (p v2Provider) ReadDataDiffWithContext(
 }
 
 func (p v2Provider) ReadDataApply(
-	t string,
-	d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	return p.ReadDataApplyWithContext(context.Background(), t, d)
-}
-
-func (p v2Provider) ReadDataApplyWithContext(
 	ctx context.Context,
 	t string,
 	d shim.InstanceDiff,
@@ -208,30 +174,32 @@ func (p v2Provider) ReadDataApplyWithContext(
 	return stateToShim(r, state), errors(diags)
 }
 
-func (p v2Provider) Meta() interface{} {
+func (p v2Provider) Meta(_ context.Context) interface{} {
 	return p.tf.Meta()
 }
 
-func (p v2Provider) Stop() error {
+func (p v2Provider) Stop(_ context.Context) error {
 	return nil
 }
 
-func (p v2Provider) InitLogging() {
+func (p v2Provider) InitLogging(_ context.Context) {
 	logging.SetOutput(&testing.RuntimeT{})
 }
 
-func (p v2Provider) NewDestroyDiff() shim.InstanceDiff {
+func (p v2Provider) NewDestroyDiff(_ context.Context, t string) shim.InstanceDiff {
 	return v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
 }
 
-func (p v2Provider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+func (p v2Provider) NewResourceConfig(
+	_ context.Context, object map[string]interface{},
+) shim.ResourceConfig {
 	return v2ResourceConfig{&terraform.ResourceConfig{
 		Raw:    object,
 		Config: object,
 	}}
 }
 
-func (p v2Provider) IsSet(v interface{}) ([]interface{}, bool) {
+func (p v2Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool) {
 	if set, ok := v.(*schema.Set); ok {
 		return set.List(), true
 	}

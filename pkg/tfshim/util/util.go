@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -27,40 +28,73 @@ func (UnimplementedProvider) Schema() shim.SchemaMap           { panic("unimplem
 func (UnimplementedProvider) ResourcesMap() shim.ResourceMap   { panic("unimplemented") }
 func (UnimplementedProvider) DataSourcesMap() shim.ResourceMap { panic("unimplemented") }
 
-func (UnimplementedProvider) Validate(c shim.ResourceConfig) ([]string, []error) {
-	panic("unimplemented")
-}
-func (UnimplementedProvider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
-	panic("unimplemented")
-}
-func (UnimplementedProvider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (UnimplementedProvider) Validate(
+	ctx context.Context, c shim.ResourceConfig,
+) ([]string, []error) {
 	panic("unimplemented")
 }
 
-func (UnimplementedProvider) Configure(c shim.ResourceConfig) error { panic("unimplemented") }
-func (UnimplementedProvider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	panic("unimplemented")
-}
-func (UnimplementedProvider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
-	panic("unimplemented")
-}
-func (UnimplementedProvider) Refresh(string, shim.InstanceState, shim.ResourceConfig) (shim.InstanceState, error) {
+func (UnimplementedProvider) ValidateResource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
 	panic("unimplemented")
 }
 
-func (UnimplementedProvider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	panic("unimplemented")
-}
-func (UnimplementedProvider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (UnimplementedProvider) ValidateDataSource(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) ([]string, []error) {
 	panic("unimplemented")
 }
 
-func (UnimplementedProvider) Meta() interface{} { panic("unimplemented") }
-func (UnimplementedProvider) Stop() error       { panic("unimplemented") }
-
-func (UnimplementedProvider) InitLogging()                      { panic("unimplemented") }
-func (UnimplementedProvider) NewDestroyDiff() shim.InstanceDiff { panic("unimplemented") }
-func (UnimplementedProvider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+func (UnimplementedProvider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 	panic("unimplemented")
 }
-func (UnimplementedProvider) IsSet(v interface{}) ([]interface{}, bool) { panic("unimplemented") }
+
+func (UnimplementedProvider) Diff(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) Refresh(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) ReadDataDiff(
+	ctx context.Context, t string, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) ReadDataApply(
+	ctx context.Context, t string, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) Meta(ctx context.Context) interface{} { panic("unimplemented") }
+func (UnimplementedProvider) Stop(ctx context.Context) error       { panic("unimplemented") }
+
+func (UnimplementedProvider) InitLogging(ctx context.Context) { panic("unimplemented") }
+
+func (UnimplementedProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) NewResourceConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	panic("unimplemented")
+}
+
+func (UnimplementedProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
+	panic("unimplemented")
+}

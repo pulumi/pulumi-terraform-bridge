@@ -27,14 +27,6 @@ import (
 )
 
 func (p v2Provider) Diff(
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-) (shim.InstanceDiff, error) {
-	return p.DiffWithContext(context.Background(), t, s, c)
-}
-
-func (p v2Provider) DiffWithContext(
 	ctx context.Context,
 	t string,
 	s shim.InstanceState,

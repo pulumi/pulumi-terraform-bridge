@@ -1,6 +1,8 @@
 package sdkv1
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
@@ -68,23 +70,25 @@ func (p v1Provider) DataSourcesMap() shim.ResourceMap {
 	return v1ResourceMap(p.tf.DataSourcesMap)
 }
 
-func (p v1Provider) Validate(c shim.ResourceConfig) ([]string, []error) {
+func (p v1Provider) Validate(_ context.Context, c shim.ResourceConfig) ([]string, []error) {
 	return p.tf.Validate(configFromShim(c))
 }
 
-func (p v1Provider) ValidateResource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v1Provider) ValidateResource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	return p.tf.ValidateResource(t, configFromShim(c))
 }
 
-func (p v1Provider) ValidateDataSource(t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v1Provider) ValidateDataSource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	return p.tf.ValidateDataSource(t, configFromShim(c))
 }
 
-func (p v1Provider) Configure(c shim.ResourceConfig) error {
+func (p v1Provider) Configure(_ context.Context, c shim.ResourceConfig) error {
 	return p.tf.Configure(configFromShim(c))
 }
 
-func (p v1Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v1Provider) Diff(
+	_ context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
@@ -93,50 +97,60 @@ func (p v1Provider) Diff(t string, s shim.InstanceState, c shim.ResourceConfig) 
 	return diffToShim(diff), err
 }
 
-func (p v1Provider) Apply(t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v1Provider) Apply(
+	_ context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	state, err := p.tf.Apply(instanceInfo(t), stateFromShim(s), diffFromShim(d))
 	return stateToShim(state), err
 }
 
-func (p v1Provider) Refresh(t string, s shim.InstanceState, _ shim.ResourceConfig) (shim.InstanceState, error) {
+func (p v1Provider) Refresh(
+	_ context.Context, t string, s shim.InstanceState, _ shim.ResourceConfig,
+) (shim.InstanceState, error) {
 	state, err := p.tf.Refresh(instanceInfo(t), stateFromShim(s))
 	return stateToShim(state), err
 }
 
-func (p v1Provider) ReadDataDiff(t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
+func (p v1Provider) ReadDataDiff(
+	_ context.Context, t string, c shim.ResourceConfig,
+) (shim.InstanceDiff, error) {
 	diff, err := p.tf.ReadDataDiff(instanceInfo(t), configFromShim(c))
 	return diffToShim(diff), err
 }
 
-func (p v1Provider) ReadDataApply(t string, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p v1Provider) ReadDataApply(
+	_ context.Context, t string, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	state, err := p.tf.ReadDataApply(instanceInfo(t), diffFromShim(d))
 	return stateToShim(state), err
 }
 
-func (p v1Provider) Meta() interface{} {
+func (p v1Provider) Meta(_ context.Context) interface{} {
 	return p.tf.Meta()
 }
 
-func (p v1Provider) Stop() error {
+func (p v1Provider) Stop(_ context.Context) error {
 	return p.tf.Stop()
 }
 
-func (p v1Provider) InitLogging() {
+func (p v1Provider) InitLogging(_ context.Context) {
 	logging.SetOutput()
 }
 
-func (p v1Provider) NewDestroyDiff() shim.InstanceDiff {
+func (p v1Provider) NewDestroyDiff(_ context.Context, t string) shim.InstanceDiff {
 	return v1InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
 }
 
-func (p v1Provider) NewResourceConfig(object map[string]interface{}) shim.ResourceConfig {
+func (p v1Provider) NewResourceConfig(
+	_ context.Context, object map[string]interface{},
+) shim.ResourceConfig {
 	return v1ResourceConfig{&terraform.ResourceConfig{
 		Raw:    object,
 		Config: object,
 	}}
 }
 
-func (p v1Provider) IsSet(v interface{}) ([]interface{}, bool) {
+func (p v1Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool) {
 	if set, ok := v.(*schema.Set); ok {
 		return set.List(), true
 	}
