@@ -64,7 +64,7 @@ func (ProviderShim) Configure(
 }
 
 func (ProviderShim) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }

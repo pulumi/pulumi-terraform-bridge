@@ -79,7 +79,7 @@ func (p *SchemaOnlyProvider) Configure(ctx context.Context, c shim.ResourceConfi
 }
 
 func (p *SchemaOnlyProvider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	panic("schemaOnlyProvider does not implement runtime operation Diff")
 }

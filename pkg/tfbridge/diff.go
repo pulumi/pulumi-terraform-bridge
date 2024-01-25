@@ -241,22 +241,37 @@ func makePropertyDiff(ctx context.Context, name, path string, v resource.Propert
 	visitPropertyValue(ctx, name, path, v, tfs, ps, rawNames, visitor)
 }
 
-func doIgnoreChanges(ctx context.Context, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	olds, news resource.PropertyMap, ignoredPaths []string, tfDiff shim.InstanceDiff) {
-
-	if tfDiff == nil {
-		return
+func newIgnoreChanges(
+	ctx context.Context,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap,
+	ignoredPaths []string,
+) shim.IgnoreChanges {
+	if len(ignoredPaths) == 0 {
+		return nil
 	}
+	return func() map[string]struct{} {
+		return computeIgnoreChanges(ctx, tfs, ps, olds, news, ignoredPaths)
+	}
+}
 
+// Computes the ignored key set.
+func computeIgnoreChanges(
+	ctx context.Context,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap,
+	ignoredPaths []string,
+) map[string]struct{} {
 	ignoredPathSet := map[string]bool{}
 	for _, p := range ignoredPaths {
 		ignoredPathSet[p] = true
 	}
-
-	ignoredKeySet := map[string]bool{}
+	ignoredKeySet := map[string]struct{}{}
 	visitor := func(attributeKey, propertyPath string, _ resource.PropertyValue) bool {
 		if ignoredPathSet[propertyPath] {
-			ignoredKeySet[attributeKey] = true
+			ignoredKeySet[attributeKey] = struct{}{}
 		}
 		return true
 	}
@@ -268,8 +283,7 @@ func doIgnoreChanges(ctx context.Context, tfs shim.SchemaMap, ps map[string]*Sch
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
 	}
-
-	tfDiff.IgnoreChanges(ignoredKeySet)
+	return ignoredKeySet
 }
 
 // makeDetailedDiff converts the given state (olds), config (news), and InstanceDiff to a Pulumi property diff.

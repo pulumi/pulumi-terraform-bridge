@@ -11,6 +11,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -89,11 +90,10 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores),
+		})
 		assert.NoError(t, err)
-
-		// ProcessIgnoreChanges
-		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
@@ -131,11 +131,10 @@ func TestCustomizeDiff(t *testing.T) {
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 		assert.NoError(t, err)
 
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores),
+		})
 		assert.NoError(t, err)
-
-		// ProcessIgnoreChanges
-		doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignores, tfDiff)
 
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
@@ -187,7 +186,7 @@ func TestCustomizeDiff(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
-				_, err = provider.Diff(ctx, "resource", tfState, config)
+				_, err = provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 				assert.NoError(t, err)
 			})
 		}
@@ -229,30 +228,37 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 	assert.NoError(t, err)
 
-	tfDiff, err := provider.Diff(ctx, "resource", tfState, config)
-	assert.NoError(t, err)
+	t.Run("standard", func(t *testing.T) {
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+		})
+		assert.NoError(t, err)
 
-	// ProcessIgnoreChanges
-	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
+		// Convert the diff to a detailed diff and check the result.
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+		for k, v := range expected {
+			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+		}
+		assert.Equal(t, expectedDiffChanges, changes)
+		assert.Equal(t, expectedDiff, diff)
+	})
 
-	// Convert the diff to a detailed diff and check the result.
-	diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-	expectedDiff := map[string]*pulumirpc.PropertyDiff{}
-	for k, v := range expected {
-		expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-	}
-	assert.Equal(t, expectedDiffChanges, changes)
-	assert.Equal(t, expectedDiff, diff)
+	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
+	// and check the result.
+	t.Run("withIgnoreAllExpected", func(t *testing.T) {
+		for k := range expected {
+			ignoreChanges = append(ignoreChanges, k)
+		}
+		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+		})
+		assert.NoError(t, err)
 
-	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff and check the result.
-	for k := range expected {
-		ignoreChanges = append(ignoreChanges, k)
-	}
-	doIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges, tfDiff)
-
-	diff, changes = makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-	assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
-	assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+		assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
+		assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+	})
 }
 
 func TestCustomDiffProducesReplace(t *testing.T) {

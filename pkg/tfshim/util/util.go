@@ -51,7 +51,7 @@ func (UnimplementedProvider) Configure(ctx context.Context, c shim.ResourceConfi
 }
 
 func (UnimplementedProvider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	panic("unimplemented")
 }

@@ -869,18 +869,24 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	config, _, err := MakeTerraformConfig(ctx, p, news, res.TF.Schema(), res.Schema.Fields)
+
+	schema, fields := res.TF.Schema(), res.Schema.Fields
+
+	config, _, err := MakeTerraformConfig(ctx, p, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
+	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
+
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+		IgnoreChanges: ic,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
-	detailedDiff, changes := makeDetailedDiff(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, diff)
+	detailedDiff, changes := makeDetailedDiff(ctx, schema, fields, olds, news, diff)
 
 	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 	// to changes being dropped by Pulumi.
@@ -923,8 +929,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// For all properties that are ForceNew, but didn't change, assume they are stable.  Also recognize
 	// overlays that have requested that we treat specific properties as stable.
 	var stables []string
-	res.TF.Schema().Range(func(k string, sch shim.Schema) bool {
-		name, _, cust := getInfoFromTerraformName(k, res.TF.Schema(), res.Schema.Fields, false)
+	schema.Range(func(k string, sch shim.Schema) bool {
+		name, _, cust := getInfoFromTerraformName(k, schema, fields, false)
 		if !replaced[string(name)] &&
 			(sch.ForceNew() || (cust != nil && cust.Stable != nil && *cust.Stable)) {
 			stables = append(stables, string(name))
@@ -933,7 +939,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	})
 
 	deleteBeforeReplace := len(replaces) > 0 &&
-		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, res.TF.Schema(), res.Schema))
+		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
 
 	// If the upstream diff object indicates a replace is necessary and we have not
 	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
@@ -951,7 +957,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
-		markWronglyTypedMaxItemsOneStateDiff(res.TF.Schema(), res.Schema.Fields, olds) {
+		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
@@ -996,7 +1002,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, nil, config)
+	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1213,12 +1219,18 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	config, assets, err := MakeTerraformConfig(ctx, p, news, res.TF.Schema(), res.Schema.Fields)
+
+	schema, fields := res.TF.Schema(), res.Schema.Fields
+
+	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config)
+	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
+	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+		IgnoreChanges: ic,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1229,10 +1241,6 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		// moment.
 		return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
 	}
-
-	// Apply any ignoreChanges before we check that the diff doesn't require replacement or deletion since we may be
-	// ignoring changes to the keys that would result in replacement/deletion.
-	doIgnoreChanges(ctx, res.TF.Schema(), res.Schema.Fields, olds, news, req.GetIgnoreChanges(), diff)
 
 	if diff.Destroy() || diff.RequiresNew() {
 		return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+

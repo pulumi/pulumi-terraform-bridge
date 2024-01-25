@@ -80,21 +80,6 @@ func (d *instanceDiff) RequiresNew() bool {
 	return d.requiresNew
 }
 
-func (d *instanceDiff) IgnoreChanges(ignored map[string]bool) {
-	for k := range d.attributes {
-		if ignored[k] {
-			delete(d.attributes, k)
-		} else {
-			for attr := range ignored {
-				if strings.HasPrefix(k, attr+".") {
-					delete(d.attributes, k)
-					break
-				}
-			}
-		}
-	}
-}
-
 func (d *instanceDiff) EncodeTimeouts(timeouts *shim.ResourceTimeout) error {
 	if timeouts == nil {
 		return nil

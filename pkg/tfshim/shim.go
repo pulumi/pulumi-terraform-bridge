@@ -41,9 +41,6 @@ type InstanceDiff interface {
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
-
-	IgnoreChanges(ignored map[string]bool)
-
 	EncodeTimeouts(timeouts *ResourceTimeout) error
 	SetTimeout(timeout float64, timeoutKey string)
 }
@@ -199,6 +196,7 @@ type Provider interface {
 		t string,
 		s InstanceState,
 		c ResourceConfig,
+		opts DiffOptions,
 	) (InstanceDiff, error)
 
 	Apply(ctx context.Context, t string, s InstanceState, d InstanceDiff) (InstanceState, error)
@@ -223,3 +221,20 @@ type Provider interface {
 	// Checks if a value is representing a Set, and unpacks its elements on success.
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
 }
+
+type DiffOptions struct {
+	IgnoreChanges IgnoreChanges
+}
+
+// Supports the ignoreChanges Pulumi option.
+//
+// The bridge needs to be able to suppress diffs computed by the underlying provider.
+//
+// For legacy reasons, this is implemented in terms of terraform.InstanceDiff object from
+// terraform-plugin-sdk. That is, the function needs to return a set of paths that match the keys of
+// InstanceDiff.Attributes, something that is slightly complicated to compute correctly for nested
+// properties and sets. Diffs that match the keys from the IgnoreChanges set exactly or by prefix
+// (sub-diffs) are ignored.
+//
+// https://www.pulumi.com/docs/concepts/options/ignorechanges/
+type IgnoreChanges = func() map[string]struct{}
