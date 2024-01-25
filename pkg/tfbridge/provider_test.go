@@ -2645,6 +2645,8 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 			},
 		}
 
+		// NOTE: failure reasons are sorted as an artifact of testutils.Replay trying not to
+		// care about ordering for CheckFailures, and are actually returned as-is.
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/CheckConfig",
@@ -2656,10 +2658,10 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 			"response": {
 				"failures": [
 					{
-						"reason": "failure reason 2"
+						"reason": "failure reason"
 					},
 					{
-						"reason": "failure reason"
+						"reason": "failure reason 2"
 					}
 				]
 			}
@@ -2692,7 +2694,7 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 				"olds": {},
 				"news": { "version": "6.18.2" }
 			},
-			"errors": "error"
+			"errors": ["error"]
 		}`)
 	})
 }
