@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 	"unicode"
 
 	"google.golang.org/grpc/status"
@@ -1002,23 +1003,20 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "diffing %s", urn)
-	}
-
 	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 	timeouts, err := res.TF.DecodeTimeouts(config)
 	if err != nil {
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
-	if err = diff.EncodeTimeouts(timeouts); err != nil {
-		return nil, errors.Errorf("error setting default timeouts to diff: %s", err)
-	}
 
-	// If a custom timeout has been set for this method, overwrite the default timeout
-	if req.Timeout != 0 {
-		diff.SetTimeout(req.Timeout, shim.TimeoutCreate)
+	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
+		TimeoutOptions: shim.TimeoutOptions{
+			ResourceTimeout:  timeouts,
+			TimeoutOverrides: newTimeoutOverrides(shim.TimeoutCreate, req.Timeout),
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
 	var newstate shim.InstanceState
@@ -1230,6 +1228,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 		IgnoreChanges: ic,
+		TimeoutOptions: shim.TimeoutOptions{
+			TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
+		},
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
@@ -1246,10 +1247,6 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+
 			" during Update of %s. Found delete=%t, replace=%t. This indicates a bug in provider.",
 			urn, diff.Destroy(), diff.RequiresNew())
-	}
-
-	if req.Timeout != 0 {
-		diff.SetTimeout(req.Timeout, shim.TimeoutUpdate)
 	}
 
 	var newstate shim.InstanceState
@@ -1332,11 +1329,9 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 
 	// Create a new destroy diff.
-	diff := p.tf.NewDestroyDiff(ctx, string(t))
-	if req.Timeout != 0 {
-		diff.SetTimeout(req.Timeout, shim.TimeoutDelete)
-	}
-
+	diff := p.tf.NewDestroyDiff(ctx, string(t), shim.TimeoutOptions{
+		TimeoutOverrides: newTimeoutOverrides(shim.TimeoutDelete, req.Timeout),
+	})
 	if _, err := p.tf.Apply(ctx, res.TFName, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
 	}
@@ -1664,4 +1659,13 @@ func transformFromState(
 		return nil, fmt.Errorf("transforming inputs: %w", err)
 	}
 	return o, nil
+}
+
+// If a custom timeout has been set for this method, overwrite the default timeout.
+func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[shim.TimeoutKey]time.Duration {
+	timeoutOverrides := map[shim.TimeoutKey]time.Duration{}
+	if maybeTimeoutSeconds != 0 {
+		timeoutOverrides[shim.TimeoutCreate] = time.Duration(maybeTimeoutSeconds * float64(time.Second))
+	}
+	return timeoutOverrides
 }
