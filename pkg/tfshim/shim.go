@@ -41,8 +41,6 @@ type InstanceDiff interface {
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
-	EncodeTimeouts(timeouts *ResourceTimeout) error
-	SetTimeout(timeout float64, timeoutKey string)
 }
 
 type ValueType int
@@ -148,12 +146,14 @@ type SchemaMap interface {
 
 type ImportFunc func(t, id string, meta interface{}) ([]InstanceState, error)
 
+type TimeoutKey string
+
 const (
-	TimeoutCreate  = "create"
-	TimeoutRead    = "read"
-	TimeoutUpdate  = "update"
-	TimeoutDelete  = "delete"
-	TimeoutDefault = "default"
+	TimeoutCreate  TimeoutKey = "create"
+	TimeoutRead    TimeoutKey = "read"
+	TimeoutUpdate  TimeoutKey = "update"
+	TimeoutDelete  TimeoutKey = "delete"
+	TimeoutDefault TimeoutKey = "default"
 )
 
 type ResourceTimeout struct {
@@ -214,7 +214,7 @@ type Provider interface {
 	InitLogging(ctx context.Context)
 
 	// Create a Destroy diff for a resource identified by the TF token t.
-	NewDestroyDiff(ctx context.Context, t string) InstanceDiff
+	NewDestroyDiff(ctx context.Context, t string, opts TimeoutOptions) InstanceDiff
 
 	NewResourceConfig(ctx context.Context, object map[string]interface{}) ResourceConfig
 
@@ -222,8 +222,14 @@ type Provider interface {
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
 }
 
+type TimeoutOptions struct {
+	ResourceTimeout  *ResourceTimeout // optional
+	TimeoutOverrides map[TimeoutKey]time.Duration
+}
+
 type DiffOptions struct {
-	IgnoreChanges IgnoreChanges
+	IgnoreChanges  IgnoreChanges
+	TimeoutOptions TimeoutOptions
 }
 
 // Supports the ignoreChanges Pulumi option.

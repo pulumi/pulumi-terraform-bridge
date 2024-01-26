@@ -88,7 +88,14 @@ func (p v1Provider) Configure(_ context.Context, c shim.ResourceConfig) error {
 
 func (p v1Provider) Diff(
 	_ context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
-) (shim.InstanceDiff, error) {
+) (theDiff shim.InstanceDiff, theError error) {
+	defer func() {
+		switch theDiff := theDiff.(type) {
+		case v1InstanceDiff:
+			theDiff.applyTimeoutOptions(opts.TimeoutOptions)
+		}
+	}()
+
 	if c == nil {
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
@@ -144,8 +151,10 @@ func (p v1Provider) InitLogging(_ context.Context) {
 	logging.SetOutput()
 }
 
-func (p v1Provider) NewDestroyDiff(_ context.Context, t string) shim.InstanceDiff {
-	return v1InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+func (p v1Provider) NewDestroyDiff(_ context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
+	d := v1InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+	d.applyTimeoutOptions(opts)
+	return d
 }
 
 func (p v1Provider) NewResourceConfig(

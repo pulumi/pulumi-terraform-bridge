@@ -59,18 +59,18 @@ func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 	return &schemaOnlyDataSourceMap{dataSources}
 }
 
-func (p *SchemaOnlyProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
+func (p *SchemaOnlyProvider) Validate(context.Context, shim.ResourceConfig) ([]string, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation Validate")
 }
 
 func (p *SchemaOnlyProvider) ValidateResource(
-	ctx context.Context, t string, c shim.ResourceConfig,
+	context.Context, string, shim.ResourceConfig,
 ) ([]string, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation ValidateResource")
 }
 
 func (p *SchemaOnlyProvider) ValidateDataSource(
-	ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
+	context.Context, string, shim.ResourceConfig) ([]string, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation ValidateDataSource")
 }
 
@@ -79,16 +79,13 @@ func (p *SchemaOnlyProvider) Configure(ctx context.Context, c shim.ResourceConfi
 }
 
 func (p *SchemaOnlyProvider) Diff(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
+	context.Context, string, shim.InstanceState, shim.ResourceConfig, shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	panic("schemaOnlyProvider does not implement runtime operation Diff")
 }
 
 func (p *SchemaOnlyProvider) Apply(
-	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	d shim.InstanceDiff,
+	context.Context, string, shim.InstanceState, shim.InstanceDiff,
 ) (shim.InstanceState, error) {
 	panic("schemaOnlyProvider does not implement runtime operation Apply")
 }
@@ -100,41 +97,37 @@ func (p *SchemaOnlyProvider) Refresh(
 }
 
 func (p *SchemaOnlyProvider) ReadDataDiff(
-	ctx context.Context,
-	t string,
-	c shim.ResourceConfig,
+	context.Context, string, shim.ResourceConfig,
 ) (shim.InstanceDiff, error) {
 	panic("schemaOnlyProvider does not implement runtime operation ReadDataDiff")
 }
 
 func (p *SchemaOnlyProvider) ReadDataApply(
-	ctx context.Context,
-	t string,
-	d shim.InstanceDiff,
+	context.Context, string, shim.InstanceDiff,
 ) (shim.InstanceState, error) {
 	panic("schemaOnlyProvider does not implement runtime operation ReadDataApply")
 }
 
-func (p *SchemaOnlyProvider) Meta(ctx context.Context) interface{} {
+func (p *SchemaOnlyProvider) Meta(context.Context) interface{} {
 	panic("schemaOnlyProvider does not implement runtime operation Meta")
 }
 
-func (p *SchemaOnlyProvider) Stop(ctx context.Context) error {
+func (p *SchemaOnlyProvider) Stop(context.Context) error {
 	panic("schemaOnlyProvider does not implement runtime operation Stop")
 }
 
-func (p *SchemaOnlyProvider) InitLogging(ctx context.Context) {
+func (p *SchemaOnlyProvider) InitLogging(context.Context) {
 	panic("schemaOnlyProvider does not implement runtime operation InitLogging")
 }
 
-func (p *SchemaOnlyProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+func (p *SchemaOnlyProvider) NewDestroyDiff(context.Context, string, shim.TimeoutOptions) shim.InstanceDiff {
 	panic("schemaOnlyProvider does not implement runtime operation NewDestroyDiff")
 }
 
-func (p *SchemaOnlyProvider) NewResourceConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {
-	panic("schemaOnlyProvider does not implement runtime operation ReourceConfig")
+func (p *SchemaOnlyProvider) NewResourceConfig(context.Context, map[string]interface{}) shim.ResourceConfig {
+	panic("schemaOnlyProvider does not implement runtime operation ResourceConfig")
 }
 
-func (p *SchemaOnlyProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
+func (p *SchemaOnlyProvider) IsSet(context.Context, interface{}) ([]interface{}, bool) {
 	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }

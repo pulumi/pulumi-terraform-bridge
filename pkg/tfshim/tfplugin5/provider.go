@@ -556,8 +556,10 @@ func (p *provider) InitLogging(ctx context.Context) {
 	// Nothing to do.
 }
 
-func (p *provider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
-	return &instanceDiff{destroy: true}
+func (p *provider) NewDestroyDiff(ctx context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
+	d := &instanceDiff{destroy: true}
+	d.applyTimeoutOptions(opts)
+	return d
 }
 
 func (p *provider) NewResourceConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {

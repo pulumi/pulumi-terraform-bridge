@@ -105,7 +105,7 @@ func (ProviderShim) InitLogging(ctx context.Context) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
-func (ProviderShim) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
+func (ProviderShim) NewDestroyDiff(ctx context.Context, t string, _ shim.TimeoutOptions) shim.InstanceDiff {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 

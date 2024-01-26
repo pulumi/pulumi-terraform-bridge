@@ -186,8 +186,10 @@ func (p v2Provider) InitLogging(_ context.Context) {
 	logging.SetOutput(&testing.RuntimeT{})
 }
 
-func (p v2Provider) NewDestroyDiff(_ context.Context, t string) shim.InstanceDiff {
-	return v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+func (p v2Provider) NewDestroyDiff(_ context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
+	d := v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+	d.applyTimeoutOptions(opts)
+	return d
 }
 
 func (p v2Provider) NewResourceConfig(

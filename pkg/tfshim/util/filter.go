@@ -120,8 +120,10 @@ func (p *FilteringProvider) InitLogging(ctx context.Context) {
 	p.Provider.InitLogging(ctx)
 }
 
-func (p *FilteringProvider) NewDestroyDiff(ctx context.Context, t string) shim.InstanceDiff {
-	return p.Provider.NewDestroyDiff(ctx, t)
+func (p *FilteringProvider) NewDestroyDiff(
+	ctx context.Context, t string, opts shim.TimeoutOptions,
+) shim.InstanceDiff {
+	return p.Provider.NewDestroyDiff(ctx, t, opts)
 }
 
 func (p *FilteringProvider) NewResourceConfig(
