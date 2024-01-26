@@ -52,7 +52,7 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 }
 
 // Selectively opt-in resources that pass the filter to using PlanResourceChange.
-func WithPlanResourceChange(filter func(string) bool) providerOption {
+func WithPlanResourceChange(filter func(string) bool) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		opts.planResourceChangeFilter = filter
 		return opts, nil

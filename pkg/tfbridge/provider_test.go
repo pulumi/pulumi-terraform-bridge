@@ -255,7 +255,9 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, outs["stringPropertyValue"], resource.NewStringProperty("foo"))
-	assert.Equal(t, outs["setPropertyValues"], resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}))
+
+	expectSetPV := resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")})
+	assert.Equal(t, outs["setPropertyValues"], expectSetPV)
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
