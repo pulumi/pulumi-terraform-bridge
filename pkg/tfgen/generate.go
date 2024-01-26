@@ -428,10 +428,14 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	return t
 }
 
+func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
+	subSchema := schemaMap.Get(key)
+	return subSchema.Description()
+}
+
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
-
 	t := &propertyType{
 		kind: kindObject,
 	}
@@ -456,6 +460,10 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
 
+		// If we have no result from entityDocs, we look up the TF schema Description.
+		if doc == "" {
+			doc = getDocsFromSchemaMap(key, propertySchema)
+		}
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)

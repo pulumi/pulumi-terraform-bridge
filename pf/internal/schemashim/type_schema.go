@@ -98,8 +98,8 @@ func (*typeSchema) DefaultValue() (interface{}, error) {
 	return nil, bridge.ErrSchemaDefaultValue
 }
 
-func (*typeSchema) Description() string {
-	panic("Description() should not be called during schema generation")
+func (s *typeSchema) Description() string {
+	return ""
 }
 
 func (*typeSchema) StateFunc() shim.SchemaStateFunc {
