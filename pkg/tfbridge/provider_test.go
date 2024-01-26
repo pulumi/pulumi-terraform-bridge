@@ -248,13 +248,14 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 	})
 	assert.NoError(t, err)
 
-	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{
+		KeepUnknowns: true,
+		SkipNulls:    true,
+	})
 	assert.NoError(t, err)
-	assert.True(t, resource.PropertyMap{
-		"id":                  resource.NewStringProperty(""),
-		"stringPropertyValue": resource.NewStringProperty("foo"),
-		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-	}.DeepEquals(outs))
+
+	assert.Equal(t, outs["stringPropertyValue"], resource.NewStringProperty("foo"))
+	assert.Equal(t, outs["setPropertyValues"], resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}))
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -323,17 +324,28 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestIgnoreChangesV2(t *testing.T) {
+	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
+}
+
+func TestIgnoreChangesV2WithPlanResourceChange(t *testing.T) {
+	opt := shimv2.WithPlanResourceChange(func(string) bool { return true })
+	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2, opt))
+}
+
+func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     prov,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		info: ProviderInfo{
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource":       {Tok: "ExampleResource"},
+				"second_resource":        {Tok: "SecondResource"},
+				"nested_secret_resource": {Tok: "NestedSecretResource"},
+			},
 		},
 	}
+	provider.initResourceMaps()
 	testIgnoreChanges(t, provider)
 }
 

@@ -11,7 +11,13 @@ type ResourceConfig interface {
 
 type InstanceState interface {
 	Type() string
+
+	// Return the resource identifier.
+	//
+	// If the ID is unknown, as would be the case when previewing a Create, return an empty
+	// string (zero value).
 	ID() string
+
 	Object(sch SchemaMap) (map[string]interface{}, error)
 	Meta() map[string]interface{}
 }

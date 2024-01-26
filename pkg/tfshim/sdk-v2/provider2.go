@@ -77,8 +77,12 @@ func (s *v2InstanceState2) Type() string {
 }
 
 func (s *v2InstanceState2) ID() string {
-	// TODO better error messages.
-	return s.stateValue.GetAttr("id").AsString()
+	id := s.stateValue.GetAttr("id")
+	if !id.IsKnown() {
+		return ""
+	}
+	contract.Assertf(id.Type() == cty.String, "expected id to be of type String")
+	return id.AsString()
 }
 
 func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
@@ -305,7 +309,7 @@ func (p *planResourceChangeImpl) unpackInstanceState(
 	case *v2InstanceState2:
 		return s
 	}
-	contract.Failf("Unexpected type for shim.InstanceState")
+	contract.Failf("Unexpected type for shim.InstanceState: #%T", s)
 	return nil
 }
 
@@ -320,6 +324,10 @@ func (p *planResourceChangeImpl) upgradeState(
 	instanceState, err := res.ShimInstanceStateFromValue(state.stateValue)
 	if err != nil {
 		return nil, err
+	}
+	// Looks like this definitely can happen, but upgradeResourceState assumes a non-nil map.
+	if instanceState.Attributes == nil {
+		instanceState.Attributes = map[string]string{}
 	}
 	instanceState.Meta = state.meta
 	newInstanceState, err := upgradeResourceState(p.tf, res, instanceState)

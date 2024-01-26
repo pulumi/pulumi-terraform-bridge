@@ -371,7 +371,7 @@ func (p *Provider) initResourceMaps() {
 func (p *Provider) camelPascalPulumiName(name string) (string, string) {
 	prefix := p.info.GetResourcePrefix() + "_"
 	contract.Assertf(strings.HasPrefix(name, prefix),
-		"Expected all Terraform resources in this module to have a '%v' prefix", prefix)
+		"Expected all Terraform resources in this module to have a '%v' prefix (%q)", prefix, name)
 	name = name[len(prefix):]
 	camel := TerraformToPulumiNameV2(name, nil, nil)
 	pascal := camel
@@ -1329,7 +1329,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 
 	// Create a new destroy diff.
-	diff := p.tf.NewDestroyDiff(ctx, string(t), shim.TimeoutOptions{
+	diff := p.tf.NewDestroyDiff(ctx, res.TFName, shim.TimeoutOptions{
 		TimeoutOverrides: newTimeoutOverrides(shim.TimeoutDelete, req.Timeout),
 	})
 	if _, err := p.tf.Apply(ctx, res.TFName, state, diff); err != nil {
