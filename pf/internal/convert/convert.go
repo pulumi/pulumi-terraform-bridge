@@ -70,6 +70,9 @@ func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, erro
 	if err != nil {
 		return nil, err
 	}
+	if pv.IsNull() {
+		return nil, nil
+	}
 	if !pv.IsObject() {
 		return nil, fmt.Errorf("Expected an Object, got: %v", pv.String())
 	}

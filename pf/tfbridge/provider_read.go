@@ -108,17 +108,17 @@ func (p *provider) readViaReadResource(
 
 	currentStateRaw, err := parseResourceState(rh, currentStateMap)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("failed to get current raw state: %w", err)
 	}
 
 	currentState, err := p.UpgradeResourceState(ctx, rh, currentStateRaw)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("failed to get current state: %w", err)
 	}
 
 	currentStateDV, err := makeDynamicValue(currentState.state.Value)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("failed to get dynamic value: %w", err)
 	}
 
 	req := tfprotov6.ReadResourceRequest{
@@ -131,25 +131,33 @@ func (p *provider) readViaReadResource(
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("ReadResource call: %w", err)
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("ReadResource call (diagnostics): %w", err)
 	}
 
 	if resp.NewState == nil {
 		return plugin.ReadResult{}, nil
 	}
 
+	newStateNull, err := resp.NewState.IsNull()
+	if err != nil {
+		return plugin.ReadResult{}, fmt.Errorf("Checking null state: %w", err)
+	}
+	if newStateNull {
+		return plugin.ReadResult{}, nil
+	}
+
 	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState, resp.Private)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("parsing resource state: %w", err)
 	}
 
 	readStateMap, err := readState.ToPropertyMap(rh)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, fmt.Errorf("converting to property map: %w", err)
 	}
 
 	readID, err := extractID(ctx, rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
@@ -212,8 +220,17 @@ func (p *provider) readViaImportResourceState(
 		return plugin.ReadResult{}, err
 	}
 
-	return plugin.ReadResult{
-		ID:      finalID,
-		Outputs: readStateMap,
-	}, nil
+	isNull, err := r.State.IsNull()
+	if err != nil {
+		return plugin.ReadResult{}, err
+	}
+
+	// If the resulting map is null
+	if isNull {
+		// Returning a result where plugin.ReadResult.Outputs is nil indicates
+		// that the found resource does not exist.
+		return plugin.ReadResult{ID: finalID}, nil
+	}
+
+	return p.readViaReadResource(ctx, rh, finalID, nil, readStateMap)
 }
