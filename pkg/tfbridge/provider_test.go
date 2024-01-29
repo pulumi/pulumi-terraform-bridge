@@ -2732,7 +2732,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 	init := func(rcf schema.ReadContextFunc) *Provider {
 		p := testprovider.ProviderV2()
 		er := p.ResourcesMap["example_resource"]
-		er.Read = nil
+		er.Read = nil //nolint
 		er.ReadContext = rcf
 		er.Importer = &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -2762,7 +2762,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		provider := init(func(
 			ctx context.Context, rd *schema.ResourceData, i interface{},
 		) diag.Diagnostics {
-			rd.Set("string_property_value", "imported")
+			require.NoError(t, rd.Set("string_property_value", "imported"))
 			return diag.Diagnostics{}
 		})
 
@@ -2828,7 +2828,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 	init := func(rcf schema.ReadContextFunc) *Provider {
 		p := testprovider.ProviderV2()
 		er := p.ResourcesMap["example_resource"]
-		er.Read = nil
+		er.Read = nil //nolint
 		er.ReadContext = rcf
 		er.Schema = map[string]*schema.Schema{
 			"string_property_value": {Type: schema.TypeString, Optional: true},
@@ -2855,7 +2855,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		provider := init(func(
 			ctx context.Context, rd *schema.ResourceData, i interface{},
 		) diag.Diagnostics {
-			rd.Set("string_property_value", "imported")
+			require.NoError(t, rd.Set("string_property_value", "imported"))
 			return diag.Diagnostics{}
 		})
 
