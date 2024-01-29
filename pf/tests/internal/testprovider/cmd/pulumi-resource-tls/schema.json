@@ -60,17 +60,21 @@
         "tls:config/proxy:proxy": {
             "properties": {
                 "fromEnv": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "When `true` the provider will discover the proxy configuration from environment variables. This is based upon [`http.ProxyFromEnvironment`](https://pkg.go.dev/net/http#ProxyFromEnvironment) and it supports the same environment variables (default: `true`).\n"
                 },
                 "password": {
                     "type": "string",
+                    "description": "Password used for Basic authentication against the Proxy.\n",
                     "secret": true
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`. \n"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Username (or Token) used for Basic authentication against the Proxy.\n"
                 }
             },
             "type": "object"
@@ -78,34 +82,43 @@
         "tls:index/CertRequestSubject:CertRequestSubject": {
             "properties": {
                 "commonName": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `CN`\n"
                 },
                 "country": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `C`\n"
                 },
                 "locality": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `L`\n"
                 },
                 "organization": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `O`\n"
                 },
                 "organizationalUnit": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `OU`\n"
                 },
                 "postalCode": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `PC`\n"
                 },
                 "province": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `ST`\n"
                 },
                 "serialNumber": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `SERIALNUMBER`\n"
                 },
                 "streetAddresses": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "Distinguished name: `STREET`\n"
                 }
             },
             "type": "object"
@@ -113,17 +126,21 @@
         "tls:index/ProviderProxy:ProviderProxy": {
             "properties": {
                 "fromEnv": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "When `true` the provider will discover the proxy configuration from environment variables. This is based upon [`http.ProxyFromEnvironment`](https://pkg.go.dev/net/http#ProxyFromEnvironment) and it supports the same environment variables (default: `true`).\n"
                 },
                 "password": {
                     "type": "string",
+                    "description": "Password used for Basic authentication against the Proxy.\n",
                     "secret": true
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`. \n"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Username (or Token) used for Basic authentication against the Proxy.\n"
                 }
             },
             "type": "object"
@@ -131,34 +148,43 @@
         "tls:index/SelfSignedCertSubject:SelfSignedCertSubject": {
             "properties": {
                 "commonName": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `CN`\n"
                 },
                 "country": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `C`\n"
                 },
                 "locality": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `L`\n"
                 },
                 "organization": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `O`\n"
                 },
                 "organizationalUnit": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `OU`\n"
                 },
                 "postalCode": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `PC`\n"
                 },
                 "province": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `ST`\n"
                 },
                 "serialNumber": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Distinguished name: `SERIALNUMBER`\n"
                 },
                 "streetAddresses": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "Distinguished name: `STREET`\n"
                 }
             },
             "type": "object"
