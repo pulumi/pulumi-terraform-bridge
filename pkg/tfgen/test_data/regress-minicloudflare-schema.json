@@ -30,13 +30,16 @@
     "cloudflare:index/RulesetRule:RulesetRule": {
       "properties": {
         "actionParameters": {
-          "$ref": "#/types/cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters"
+          "$ref": "#/types/cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters",
+          "description": "List of parameters that configure the behavior of the ruleset rule action.\n"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Unique rule identifier.\n"
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "Version of the ruleset to deploy.\n"
         }
       },
       "type": "object",
@@ -52,7 +55,8 @@
     "cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters": {
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Identifier of the action parameter to modify.\n"
         },
         "phases": {
           "$ref": "#/types/cloudflare:index/RulesetRuleActionParametersPhases:RulesetRuleActionParametersPhases"
