@@ -2902,3 +2902,68 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		}`)
 	})
 }
+
+func TestDestroy(t *testing.T) {
+	t.Run("sdkv2", func(t *testing.T) {
+		testDestroy(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p)
+		})
+	})
+	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
+		testDestroy(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
+				return true
+			}))
+		})
+	})
+}
+
+func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
+	init := func(dcf schema.DeleteContextFunc) *Provider {
+		p := testprovider.ProviderV2()
+		er := p.ResourcesMap["example_resource"]
+		er.Schema = map[string]*schema.Schema{
+			"string_property_value": {Type: schema.TypeString, Optional: true},
+		}
+		er.Delete = nil //nolint
+		er.DeleteContext = dcf
+		shimProv := newProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P:              shimProv,
+				ResourcePrefix: "example",
+				Resources: map[string]*ResourceInfo{
+					"example_resource":       {Tok: "ExampleResource"},
+					"second_resource":        {Tok: "SecondResource"},
+					"nested_secret_resource": {Tok: "NestedSecretResource"},
+				},
+			},
+		}
+		provider.initResourceMaps()
+		return provider
+	}
+
+	t.Run("destroy", func(t *testing.T) {
+		called := 0
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			called++
+			return diag.Diagnostics{}
+		})
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Delete",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {"stringPropertyValue": "old"}
+		  },
+		  "response": {}
+		}`)
+		require.Equal(t, 1, called)
+	})
+}
