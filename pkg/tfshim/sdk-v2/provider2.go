@@ -405,36 +405,71 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
 }, error) {
-	req := &schema.SimplePlanResourceChangeLogicalRequest{
-		ResourceName:        typeName,
-		ConfigVal:           config,
-		PriorStateVal:       priorState,
-		ProposedNewStateVal: proposedNewState,
-		PriorPrivateState:   priorMeta,
+	configVal, err := msgpack.Marshal(config, ty)
+	if err != nil {
+		return nil, err
 	}
-
-	req.InstanceDiffTransform = func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
-		dd := &v2InstanceDiff{d}
-		if ignores != nil {
-			dd.processIgnoreChanges(ignores)
+	priorStateVal, err := msgpack.Marshal(priorState, ty)
+	if err != nil {
+		return nil, err
+	}
+	proposedNewStateVal, err := msgpack.Marshal(proposedNewState, ty)
+	if err != nil {
+		return nil, err
+	}
+	req := &schema.PlanResourceChangeExtraRequest{
+		PlanResourceChangeRequest: tfprotov5.PlanResourceChangeRequest{
+			TypeName:         typeName,
+			PriorState:       &tfprotov5.DynamicValue{MsgPack: priorStateVal},
+			ProposedNewState: &tfprotov5.DynamicValue{MsgPack: proposedNewStateVal},
+			Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
+		},
+		TransformInstanceDiff: func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
+			dd := &v2InstanceDiff{d}
+			if ignores != nil {
+				dd.processIgnoreChanges(ignores)
+			}
+			dd.applyTimeoutOptions(timeoutOpts)
+			return dd.tf
+		},
+	}
+	if len(priorMeta) > 0 {
+		priorPrivate, err := json.Marshal(priorMeta)
+		if err != nil {
+			return nil, err
 		}
-		dd.applyTimeoutOptions(timeoutOpts)
-		return dd.tf
+		req.PriorPrivate = priorPrivate
 	}
-
-	resp := s.gserver.PlanResourceChangeLogical(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, nil); err != nil {
+	if providerMeta != nil {
+		providerMetaVal, err := msgpack.Marshal(*providerMeta, ty)
+		if err != nil {
+			return nil, err
+		}
+		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
+	}
+	resp, err := s.gserver.PlanResourceChangeExtra(ctx, req)
+	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	// Ignore resp.UnsafeToUseLegacyTypeSystem - does not matter for Pulumi bridged providers.
 	// Ignore resp.RequiresReplace - expect replacement to be encoded in resp.InstanceDiff.
+	plannedState, err := msgpack.Unmarshal(resp.PlannedState.MsgPack, ty)
+	if err != nil {
+		return nil, err
+	}
+	var meta map[string]interface{}
+	if resp.PlannedPrivate != nil {
+		if err := json.Unmarshal(resp.PlannedPrivate, &meta); err != nil {
+			return nil, err
+		}
+	}
 	return &struct {
 		PlannedState cty.Value
 		PlannedMeta  map[string]interface{}
 		PlannedDiff  *terraform.InstanceDiff
 	}{
-		PlannedState: resp.PlannedState,
-		PlannedMeta:  resp.PlannedPrivate,
+		PlannedState: plannedState,
+		PlannedMeta:  meta,
 		PlannedDiff:  resp.InstanceDiff,
 	}, nil
 }
@@ -459,16 +494,18 @@ func (s *grpcServer) ApplyResourceChange(
 	if err != nil {
 		return nil, err
 	}
-	plannedPrivate, err := json.Marshal(plannedMeta)
-	if err != nil {
-		return nil, err
-	}
 	req := &tfprotov5.ApplyResourceChangeRequest{
-		TypeName:       typeName,
-		Config:         &tfprotov5.DynamicValue{MsgPack: configVal},
-		PriorState:     &tfprotov5.DynamicValue{MsgPack: priorStateVal},
-		PlannedState:   &tfprotov5.DynamicValue{MsgPack: plannedStateVal},
-		PlannedPrivate: plannedPrivate,
+		TypeName:     typeName,
+		Config:       &tfprotov5.DynamicValue{MsgPack: configVal},
+		PriorState:   &tfprotov5.DynamicValue{MsgPack: priorStateVal},
+		PlannedState: &tfprotov5.DynamicValue{MsgPack: plannedStateVal},
+	}
+	if len(plannedMeta) > 0 {
+		plannedPrivate, err := json.Marshal(plannedMeta)
+		if err != nil {
+			return nil, err
+		}
+		req.PlannedPrivate = plannedPrivate
 	}
 	if providerMeta != nil {
 		providerMetaVal, err := msgpack.Marshal(*providerMeta, ty)

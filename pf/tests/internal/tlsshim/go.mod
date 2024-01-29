@@ -38,4 +38,4 @@ require (
 
 replace github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 
-replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240124180637-ce7315bc0145
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240129150304-788a34f7fdda
