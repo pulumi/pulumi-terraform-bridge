@@ -42,13 +42,21 @@ func TestObjectAttribute(t *testing.T) {
 	assert.Equal(t, shim.TypeString, s.Type())
 }
 
+func TestTypeSchemaDescriptionIsEmpty(t *testing.T) {
+	shimmedType := &typeSchema{
+		t:      types.StringType,
+		nested: nil,
+	}
+	assert.Equal(t, shimmedType.Description(), "")
+}
+
 func TestSingleNestedBlock(t *testing.T) {
 	b := schema.SingleNestedBlock{
 		Attributes: simpleObjectAttributes(),
 	}
 	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
 	assertIsObjectType(t, shimmed)
-	assert.Equal(t, "obj[c=str,co=str,o=str,r=str]", schemaLogicalType(shimmed).String())
+	assert.Equal(t, "obj[c=str,co=str,desc=str,o=str,r=str]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
 	require.True(t, ok, "Single-nested TF blocks should be represented as Elem() shim.Resource")
 	assertHasSimpleObjectAttributes(t, r)
@@ -61,7 +69,7 @@ func TestListNestedBlock(t *testing.T) {
 		},
 	}
 	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
-	assert.Equal(t, "list[obj[c=str,co=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
+	assert.Equal(t, "list[obj[c=str,co=str,desc=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
 	require.True(t, ok, "List-nested TF blocks should be represented as Elem() shim.Resource")
 	assertHasSimpleObjectAttributes(t, r)
@@ -74,7 +82,7 @@ func TestSetNestedBlock(t *testing.T) {
 		},
 	}
 	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
-	assert.Equal(t, "set[obj[c=str,co=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
+	assert.Equal(t, "set[obj[c=str,co=str,desc=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
 	require.True(t, ok, "Set-nested TF blocks should be represented as Elem() shim.Resource")
 	assertHasSimpleObjectAttributes(t, r)
@@ -135,6 +143,9 @@ func simpleObjectAttributes() map[string]schema.Attribute {
 			Computed: true,
 			Optional: true,
 		},
+		"desc": schema.StringAttribute{
+			Description: "I am a description",
+		},
 	}
 }
 
@@ -143,6 +154,8 @@ func assertHasSimpleObjectAttributes(t *testing.T, r shim.Resource) {
 	assert.True(t, r.Schema().Get("c").Computed(), "c is computed")
 	assert.True(t, r.Schema().Get("r").Required(), "r is required")
 	assert.True(t, r.Schema().Get("co").Computed() && r.Schema().Get("co").Optional(), "co is computed and optional")
+	assert.Equal(t, r.Schema().Get("desc").Description(), "I am a description")
+
 }
 
 func assertIsObjectType(t *testing.T, shimmed shim.Schema) {
