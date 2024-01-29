@@ -86,7 +86,13 @@ func (s *v2InstanceState2) ID() string {
 }
 
 func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
-	return objectFromCtyValue(s.stateValue), nil
+	res := objectFromCtyValue(s.stateValue)
+	// grpc servers add a "timeouts" key to compensate for infinite diffs; this is not needed in
+	// the Pulumi projection.
+	if _, hasTimeouts := res[schema.TimeoutsConfigKey]; hasTimeouts {
+		delete(res, schema.TimeoutsConfigKey)
+	}
+	return res, nil
 }
 
 func (s *v2InstanceState2) Meta() map[string]interface{} {

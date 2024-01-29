@@ -2712,3 +2712,99 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		}`)
 	})
 }
+
+func TestImport(t *testing.T) {
+	t.Run("sdkv2", func(t *testing.T) {
+		testImport(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p)
+		})
+	})
+	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
+		testImport(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
+				return true
+			}))
+		})
+	})
+}
+
+func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
+	init := func(rcf schema.ReadContextFunc) *Provider {
+		p := testprovider.ProviderV2()
+		er := p.ResourcesMap["example_resource"]
+		er.Read = nil
+		er.ReadContext = rcf
+		er.Importer = &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		}
+		er.Schema = map[string]*schema.Schema{
+			"string_property_value": {Type: schema.TypeString, Optional: true},
+		}
+		shimProv := newProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P:              shimProv,
+				ResourcePrefix: "example",
+				Resources: map[string]*ResourceInfo{
+					"example_resource":       {Tok: "ExampleResource"},
+					"second_resource":        {Tok: "SecondResource"},
+					"nested_secret_resource": {Tok: "NestedSecretResource"},
+				},
+			},
+		}
+		provider.initResourceMaps()
+		return provider
+	}
+
+	t.Run("import", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.Set("string_property_value", "imported")
+			return diag.Diagnostics{}
+		})
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {}
+		  },
+		  "response": {
+		    "inputs": {
+		      "__defaults": [],
+		      "stringPropertyValue": "imported"
+		    },
+		    "properties": {
+		      "id": "res1",
+		      "stringPropertyValue": "imported",
+		      "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":120000000000},\"schema_version\":\"1\"}"
+		    },
+		    "id": "res1"
+		  }
+		}`)
+	})
+
+	t.Run("import-not-found", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.SetId("") // emulate not found
+			return diag.Diagnostics{}
+		})
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {}
+		  },
+		  "response": {}
+		}`)
+	})
+}
