@@ -256,4 +256,4 @@ require (
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 )
 
-replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240129150304-788a34f7fdda
+replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240129205329-74776a5cd5f9
