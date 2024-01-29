@@ -15,7 +15,8 @@
 package sdkv2
 
 type providerOptions struct {
-	diffStrategy DiffStrategy
+	diffStrategy             DiffStrategy
+	planResourceChangeFilter func(string) bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -48,4 +49,13 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 		}
 	}
 	return res, nil
+}
+
+// Selectively opt-in resources that pass the filter to using PlanResourceChange. Resources are
+// identified by their TF type name such as aws_ssm_document.
+func WithPlanResourceChange(filter func(tfResourceType string) bool) providerOption { //nolint:revive
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.planResourceChangeFilter = filter
+		return opts, nil
+	}
 }

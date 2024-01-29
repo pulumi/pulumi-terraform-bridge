@@ -248,13 +248,16 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 	})
 	assert.NoError(t, err)
 
-	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{
+		KeepUnknowns: true,
+		SkipNulls:    true,
+	})
 	assert.NoError(t, err)
-	assert.True(t, resource.PropertyMap{
-		"id":                  resource.NewStringProperty(""),
-		"stringPropertyValue": resource.NewStringProperty("foo"),
-		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-	}.DeepEquals(outs))
+
+	assert.Equal(t, outs["stringPropertyValue"], resource.NewStringProperty("foo"))
+
+	expectSetPV := resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")})
+	assert.Equal(t, outs["setPropertyValues"], expectSetPV)
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -323,17 +326,28 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestIgnoreChangesV2(t *testing.T) {
+	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
+}
+
+func TestIgnoreChangesV2WithPlanResourceChange(t *testing.T) {
+	opt := shimv2.WithPlanResourceChange(func(string) bool { return true })
+	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2, opt))
+}
+
+func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     prov,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		info: ProviderInfo{
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource":       {Tok: "ExampleResource"},
+				"second_resource":        {Tok: "SecondResource"},
+				"nested_secret_resource": {Tok: "NestedSecretResource"},
+			},
 		},
 	}
+	provider.initResourceMaps()
 	testIgnoreChanges(t, provider)
 }
 
@@ -2696,5 +2710,260 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 			},
 			"errors": ["error"]
 		}`)
+	})
+}
+
+func TestImport(t *testing.T) {
+	t.Run("sdkv2", func(t *testing.T) {
+		testImport(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p)
+		})
+	})
+	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
+		testImport(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
+				return true
+			}))
+		})
+	})
+}
+
+func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
+	init := func(rcf schema.ReadContextFunc) *Provider {
+		p := testprovider.ProviderV2()
+		er := p.ResourcesMap["example_resource"]
+		er.Read = nil //nolint
+		er.ReadContext = rcf
+		er.Importer = &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		}
+		er.Schema = map[string]*schema.Schema{
+			"string_property_value": {Type: schema.TypeString, Optional: true},
+		}
+		shimProv := newProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P:              shimProv,
+				ResourcePrefix: "example",
+				Resources: map[string]*ResourceInfo{
+					"example_resource":       {Tok: "ExampleResource"},
+					"second_resource":        {Tok: "SecondResource"},
+					"nested_secret_resource": {Tok: "NestedSecretResource"},
+				},
+			},
+		}
+		provider.initResourceMaps()
+		return provider
+	}
+
+	t.Run("import", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			require.NoError(t, rd.Set("string_property_value", "imported"))
+			return diag.Diagnostics{}
+		})
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {}
+		  },
+		  "response": {
+		    "inputs": {
+		      "__defaults": [],
+		      "stringPropertyValue": "imported"
+		    },
+		    "properties": {
+		      "id": "res1",
+		      "stringPropertyValue": "imported",
+		      "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":120000000000},\"schema_version\":\"1\"}"
+		    },
+		    "id": "res1"
+		  }
+		}`)
+	})
+
+	t.Run("import-not-found", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.SetId("") // emulate not found
+			return diag.Diagnostics{}
+		})
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {}
+		  },
+		  "response": {}
+		}`)
+	})
+}
+
+func TestRefresh(t *testing.T) {
+	t.Run("sdkv2", func(t *testing.T) {
+		testRefresh(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p)
+		})
+	})
+	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
+		testRefresh(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
+				return true
+			}))
+		})
+	})
+}
+
+func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
+	init := func(rcf schema.ReadContextFunc) *Provider {
+		p := testprovider.ProviderV2()
+		er := p.ResourcesMap["example_resource"]
+		er.Read = nil //nolint
+		er.ReadContext = rcf
+		er.Schema = map[string]*schema.Schema{
+			"string_property_value": {Type: schema.TypeString, Optional: true},
+		}
+		shimProv := newProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P:              shimProv,
+				ResourcePrefix: "example",
+				Resources: map[string]*ResourceInfo{
+					"example_resource":       {Tok: "ExampleResource"},
+					"second_resource":        {Tok: "SecondResource"},
+					"nested_secret_resource": {Tok: "NestedSecretResource"},
+				},
+			},
+		}
+		provider.initResourceMaps()
+		return provider
+	}
+
+	t.Run("refresh", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			require.NoError(t, rd.Set("string_property_value", "imported"))
+			return diag.Diagnostics{}
+		})
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {"stringPropertyValue": "old"},
+                    "inputs": {"stringPropertyValue": "old"}
+		  },
+		  "response": {
+		    "inputs": {
+		      "stringPropertyValue": "imported"
+		    },
+		    "properties": {
+		      "id": "res1",
+		      "stringPropertyValue": "imported",
+		      "__meta": "{\"schema_version\":\"1\"}"
+		    },
+		    "id": "res1"
+		  }
+		}`)
+	})
+
+	t.Run("refresh-not-found", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.SetId("") // emulate not found
+			return diag.Diagnostics{}
+		})
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {"stringPropertyValue": "old"},
+                    "inputs": {"stringPropertyValue": "old"}
+		  },
+		  "response": {}
+		}`)
+	})
+}
+
+func TestDestroy(t *testing.T) {
+	t.Run("sdkv2", func(t *testing.T) {
+		testDestroy(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p)
+		})
+	})
+	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
+		testDestroy(t, func(p *schema.Provider) shim.Provider {
+			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
+				return true
+			}))
+		})
+	})
+}
+
+func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
+	init := func(dcf schema.DeleteContextFunc) *Provider {
+		p := testprovider.ProviderV2()
+		er := p.ResourcesMap["example_resource"]
+		er.Schema = map[string]*schema.Schema{
+			"string_property_value": {Type: schema.TypeString, Optional: true},
+		}
+		er.Delete = nil //nolint
+		er.DeleteContext = dcf
+		shimProv := newProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P:              shimProv,
+				ResourcePrefix: "example",
+				Resources: map[string]*ResourceInfo{
+					"example_resource":       {Tok: "ExampleResource"},
+					"second_resource":        {Tok: "SecondResource"},
+					"nested_secret_resource": {Tok: "NestedSecretResource"},
+				},
+			},
+		}
+		provider.initResourceMaps()
+		return provider
+	}
+
+	t.Run("destroy", func(t *testing.T) {
+		called := 0
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			called++
+			return diag.Diagnostics{}
+		})
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Delete",
+		  "request": {
+		    "id": "res1",
+		    "urn": "urn:pulumi:dev::mystack::ExampleResource::res1name",
+		    "properties": {"stringPropertyValue": "old"}
+		  },
+		  "response": {}
+		}`)
+		require.Equal(t, 1, called)
 	})
 }
