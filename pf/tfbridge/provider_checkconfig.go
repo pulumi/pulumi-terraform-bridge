@@ -31,6 +31,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
+func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFailure {
+	failures := make([]plugin.CheckFailure, len(err.Failures))
+	for i, failure := range err.Failures {
+		failures[i] = plugin.CheckFailure{
+			Reason:   failure.Reason,
+			Property: resource.PropertyKey(failure.Property),
+		}
+	}
+	return failures
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfigWithContext(
 	ctx context.Context,
@@ -71,9 +82,15 @@ func (p *provider) CheckConfigWithContext(
 	// See pulumi/pulumi-terraform-bridge#1087
 	if !news.ContainsUnknowns() {
 		if err := p.runPreConfigureCallback(ctx, news); err != nil {
+			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
+				return nil, makeFailuresFromCheckErr(failureErr), nil
+			}
 			return nil, nil, err
 		}
 		if err := p.runPreConfigureCallbackWithLogger(ctx, news); err != nil {
+			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
+				return nil, makeFailuresFromCheckErr(failureErr), nil
+			}
 			return nil, nil, err
 		}
 	}

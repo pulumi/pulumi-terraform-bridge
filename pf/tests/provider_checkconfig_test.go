@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -667,6 +668,117 @@ func TestPreConfigureCallback(t *testing.T) {
 		      "version": "6.54.0",
 	              "configValue": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 		    }
+		  }
+		}`)
+	})
+
+	t.Run("PreConfigureCallback can error", func(t *testing.T) {
+		m := func(
+			ctx context.Context,
+			host *hostclient.HostClient,
+			vars resource.PropertyMap,
+			config shim.ResourceConfig,
+		) error {
+			return errors.New("Err")
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallbackWithLogger = m
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "errors": ["Err"]
+		}`)
+	})
+
+	t.Run("PreConfigureCallback can return failure", func(t *testing.T) {
+		m := func(
+			ctx context.Context,
+			host *hostclient.HostClient,
+			vars resource.PropertyMap,
+			config shim.ResourceConfig,
+		) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{
+					{
+						Reason: "Err",
+					},
+				},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallbackWithLogger = m
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+			"inputs": {},
+			"failures": [{
+				"reason": "Err"
+			}]
+		  }
+		}`)
+	})
+
+	t.Run("PreConfigureCallback can return multiple failures", func(t *testing.T) {
+		m := func(
+			ctx context.Context,
+			host *hostclient.HostClient,
+			vars resource.PropertyMap,
+			config shim.ResourceConfig,
+		) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{
+					{
+						Reason: "Err",
+					},
+					{
+						Reason: "Err2",
+					},
+				},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallbackWithLogger = m
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+			"inputs": {},
+			"failures": [
+				{
+					"reason": "Err"
+				},
+				{
+					"reason": "Err2"
+				}
+			]
 		  }
 		}`)
 	})
