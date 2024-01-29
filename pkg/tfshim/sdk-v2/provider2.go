@@ -115,10 +115,6 @@ func (d *v2InstanceDiff2) ProposedState(
 	}, nil
 }
 
-func (*v2InstanceDiff2) IgnoreChanges(ignored map[string]bool) {
-	contract.Failf("IgnoreChanges is deprecated and should not be called anymore")
-}
-
 // Provides PlanResourceChange handling for select resources.
 type planResourceChangeImpl struct {
 	tf     *schema.Provider
@@ -391,20 +387,6 @@ func (s *grpcServer) handle(ctx context.Context, diags []*tfprotov5.Diagnostic, 
 		return derr
 	}
 	return err
-}
-
-func (s *grpcServer) ConfigureProvider(
-	ctx context.Context, ty cty.Type, cfg cty.Value,
-) error {
-	configVal, err := msgpack.Marshal(cfg, ty)
-	if err != nil {
-		return err
-	}
-	resp, err := s.gserver.ConfigureProvider(ctx, &tfprotov5.ConfigureProviderRequest{
-		TerraformVersion: "pulumi-terraform-bridge",
-		Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
-	})
-	return s.handle(ctx, resp.Diagnostics, err)
 }
 
 func (s *grpcServer) PlanResourceChange(
