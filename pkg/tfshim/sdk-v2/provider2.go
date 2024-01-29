@@ -223,6 +223,11 @@ func (p *planResourceChangeImpl) Refresh(
 	}
 	msg := "Expected %q == %q matching resource types"
 	contract.Assertf(rr.resourceType == t, msg, rr.resourceType, t)
+	// When the resource is not found, the bridge expects a literal nil instead of a non-nil
+	// state where the nil is encoded internally.
+	if rr.stateValue.IsNull() {
+		return nil, nil
+	}
 	return &v2InstanceState2{
 		resourceType: rr.resourceType,
 		stateValue:   rr.stateValue,
@@ -259,7 +264,14 @@ func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
 		// Auto cast does not work, have to loop to promote to pointers.
 		out := []shim.InstanceState{}
 		for i := range states {
-			out = append(out, &states[i])
+			// If the resource is not found, the outer bridge expects the state to
+			// literally be nil, instead of encoding the nil as a value inside a non-nil
+			// state.
+			if states[i].stateValue.IsNull() {
+				out = append(out, nil)
+			} else {
+				out = append(out, &states[i])
+			}
 		}
 		return out, nil
 	})
