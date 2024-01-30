@@ -1,0 +1,138 @@
+{
+  "name": "cloudflare",
+  "description": "A Pulumi package to safely use cloudflare in Pulumi programs.",
+  "keywords": [
+    "pulumi",
+    "random"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`cloudflare` Terraform Provider](https://github.com/terraform-providers/terraform-provider-cloudflare).",
+  "repository": "https://github.com/pulumi/pulumi-cloudflare",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "packageDescription": "A Pulumi package to safely use cloudflare in Pulumi programs.",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-cloudflare)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-cloudflare` repo](https://github.com/pulumi/pulumi-cloudflare/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-cloudflare` repo](https://github.com/terraform-providers/terraform-provider-cloudflare/issues).",
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-cloudflare)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-cloudflare` repo](https://github.com/pulumi/pulumi-cloudflare/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-cloudflare` repo](https://github.com/terraform-providers/terraform-provider-cloudflare/issues).",
+      "compatibility": "tfbridge20",
+      "pyproject": {}
+    }
+  },
+  "config": {},
+  "types": {
+    "cloudflare:index/RulesetRule:RulesetRule": {
+      "properties": {
+        "actionParameters": {
+          "$ref": "#/types/cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters",
+          "description": "List of parameters that configure the behavior of the ruleset rule action.\n"
+        },
+        "id": {
+          "type": "string",
+          "description": "Unique rule identifier.\n"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the ruleset to deploy.\n"
+        }
+      },
+      "type": "object",
+      "language": {
+        "nodejs": {
+          "requiredOutputs": [
+            "id",
+            "version"
+          ]
+        }
+      }
+    },
+    "cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "translateField": {
+          "type":     "string",
+          "description": "When cloudflare.Ruleset is mentioned, it should be translated.\n"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "description": "The provider type for the cloudflare package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "cloudflare:index/ruleset:Ruleset": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Brief summary of the ruleset and its intended use.\n"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ruleset.\n"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
+          },
+          "description": "List of rules to apply to the ruleset.\n"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "description": "Brief summary of the ruleset and its intended use.\n"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ruleset.\n",
+          "willReplaceOnChanges": true
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
+          },
+          "description": "List of rules to apply to the ruleset.\n"
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Ruleset resources.\n",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Brief summary of the ruleset and its intended use.\n"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the ruleset.\n",
+            "willReplaceOnChanges": true
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
+            },
+            "description": "List of rules to apply to the ruleset.\n"
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}

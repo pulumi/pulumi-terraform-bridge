@@ -152,6 +152,15 @@ func TestNestedMaxItemsOne(t *testing.T) {
 	assert.Equal(t, schema, schema2)
 }
 
+func TestNestedDescriptions(t *testing.T) {
+	provider := testprovider.ProviderNestedDescriptions()
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/nested-descriptions-schema.json", schema)
+}
+
 func TestRenameGeneration(t *testing.T) {
 	info := testprovider.ProviderRegress611()
 

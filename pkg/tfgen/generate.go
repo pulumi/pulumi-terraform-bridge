@@ -48,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -472,9 +471,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 			}
 			// Description fields have no footers, so we pass in an empty map
 			fakeFooterLinks := map[string]string{}
-			q.Q(doc)
 			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
-			q.Q(doc)
 		}
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
@@ -1095,8 +1092,16 @@ func (g *Generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
+		// Reformat the upstream Description if necessary
+		docsInfoCtx := infoContext{
+			language: g.language,
+			pkg:      g.pkg,
+			info:     g.info,
+		}
+		fakeFooterLinks := map[string]string{}
+		rawdoc, _ := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
 		prop := g.propertyVariable(cfgPath,
-			key, cfg, custom, "", sch.Description(), true /*out*/, entityDocs{})
+			key, cfg, custom, "", rawdoc, true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
