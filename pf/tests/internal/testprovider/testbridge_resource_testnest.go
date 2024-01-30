@@ -17,6 +17,7 @@ package testprovider
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -84,6 +85,12 @@ func (*testnest) schema() rschema.Schema {
 			"rules": schema.ListNestedBlock{
 				MarkdownDescription: "List of rules to apply to the ruleset.",
 				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"protocol": schema.StringAttribute{
+							MarkdownDescription: "network protocol",
+							Optional:            true,
+						},
+					},
 					Blocks: map[string]schema.Block{
 						"action_parameters": schema.ListNestedBlock{
 							MarkdownDescription: "List of parameters that configure the behavior of the ruleset rule action.",
@@ -136,7 +143,17 @@ func (e *testnest) Create(ctx context.Context, req resource.CreateRequest, resp 
 }
 
 func (e *testnest) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	panic("unimplemented")
+	type ruleModel struct {
+		Protocol         string     `tfsdk:"protocol"`
+		ActionParameters []struct{} `tfsdk:"action_parameters"`
+	}
+	path := path.Root("rules")
+	err := resp.State.SetAttribute(ctx, path, []ruleModel{
+		{Protocol: "some-string"},
+	})
+	if err != nil {
+		resp.Diagnostics.Append(err...)
+	}
 }
 
 func (e *testnest) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

@@ -46,6 +46,9 @@
             "properties": {
                 "actionParameters": {
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
+                },
+                "protocol": {
+                    "type": "string"
                 }
             },
             "type": "object"

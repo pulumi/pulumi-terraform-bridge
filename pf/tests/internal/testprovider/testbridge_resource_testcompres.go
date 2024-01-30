@@ -87,7 +87,7 @@ func (e *testCompRes) Create(ctx context.Context, req resource.CreateRequest, re
 }
 
 func (e *testCompRes) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	panic("TODO Read")
+	// Accept the inputs of ImportState as is.
 }
 
 func (e *testCompRes) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
