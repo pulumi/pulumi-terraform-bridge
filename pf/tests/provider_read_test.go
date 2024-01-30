@@ -188,22 +188,46 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	testCase := `
 	{
-	  "method": "/pulumirpc.ResourceProvider/Read",
-	  "request": {
-	    "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
-	    "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
-	    "properties": {}
-	  },
-	  "response": {
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {}
+          },
+          "response": {
             "id": "*",
             "inputs": "*",
             "properties": {
-               	"id": "*",
-               	"rules": [],
-				"services": []
+              "id": "*",
+              "rules": [
+                {
+                  "protocol": "some-string"
+                }
+              ],
+              "services": []
             }
           }
-	}`
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
+// Check that importing a resource that does not exist returns an empty property bag and
+// no ID.
+func TestImportingMissingResources(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "missing",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {}
+          },
+          "response": {
+            "inputs": {},
+            "properties": {}
+          }
+        }`
 	testutils.Replay(t, server, testCase)
 }
 
@@ -213,21 +237,49 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	testCase := `
 	{
-	  "method": "/pulumirpc.ResourceProvider/Read",
-	  "request": {
-	    "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
-	    "urn": "urn:pulumi:testing::testing::testbridge:index/testnestattr:Testnestattr::someresource",
-	    "properties": {}
-	  },
-	  "response": {
-		"id": "*",
-		"inputs": "*",
-		"properties": {
-			"id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
-			"services": []
-		}
-      }
-	}`
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnestattr:Testnestattr::someresource",
+            "properties": {}
+          },
+          "response": {
+            "id": "*",
+            "inputs": "*",
+            "properties": {
+              "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+              "services": []
+            }
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
+// Check that refreshing a resource that does not exist returns an empty property bag and
+// no ID.
+func TestRefreshMissingResources(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "missing",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {
+              "id": "missing",
+              "rules": [
+                {
+                  "protocol": "some-string"
+                }
+              ],
+              "services": []
+            }
+          },
+          "response": {
+            "inputs": {},
+            "properties": {}
+          }
+        }`
 	testutils.Replay(t, server, testCase)
 }
 

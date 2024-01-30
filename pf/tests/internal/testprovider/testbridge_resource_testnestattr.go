@@ -100,7 +100,7 @@ func (e *testnestattr) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (e *testnestattr) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	panic("unimplemented")
+	// Do nothing, accepting the result from ImportState as-is
 }
 
 func (e *testnestattr) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
