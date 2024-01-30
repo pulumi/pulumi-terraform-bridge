@@ -64,9 +64,9 @@ func (p *provider) ReadWithContext(
 			return plugin.ReadResult{}, 0, err
 		}
 
-		result, err = p.readViaReadResource(ctx, &rh, id, oldInputs, currentStateMap)
+		result, err = p.readResource(ctx, &rh, currentStateMap)
 	} else {
-		result, err = p.readViaImportResourceState(ctx, &rh, id)
+		result, err = p.importResource(ctx, &rh, id)
 	}
 	if err != nil {
 		return result, ignoredStatus, err
@@ -98,11 +98,10 @@ func (p *provider) ReadWithContext(
 	return result, ignoredStatus, err
 }
 
-func (p *provider) readViaReadResource(
+// readResource calls the PF's ReadResource method on the given resource.
+func (p *provider) readResource(
 	ctx context.Context,
 	rh *resourceHandle,
-	id resource.ID,
-	unusedInputs,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, error) {
 
@@ -142,6 +141,8 @@ func (p *provider) readViaReadResource(
 		return plugin.ReadResult{}, nil
 	}
 
+	// TF interpretes a null new state as an indication that the resource does not
+	// exist in the cloud provider.
 	newStateNull, err := resp.NewState.IsNull()
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("Checking null state: %w", err)
@@ -171,7 +172,27 @@ func (p *provider) readViaReadResource(
 	}, nil
 }
 
-func (p *provider) readViaImportResourceState(
+// Execute a Pulumi import against a PF resource.
+//
+// PF models an import with 2 steps:
+//
+// 1. ImportState the resource into TF state.
+// 2. Read against the recently imported resource.
+//
+// According to PF's documentation:
+//
+//	Resources can implement the ImportState method, which must either specify enough
+//	Terraform state for the Read method to refresh resource.Resource or return an
+//	error.
+//
+// source: https://developer.hashicorp.com/terraform/plugin/framework/resources/import
+//
+// This model is commonly implemented with ImportState simply translating from the import
+// string to resource state, without reaching the cloud.
+//
+// The Read method is generally responsible for checking if a resource exists, returning a
+// nil output map is no resource is found.
+func (p *provider) importResource(
 	ctx context.Context,
 	rh *resourceHandle,
 	id resource.ID,
@@ -214,12 +235,6 @@ func (p *provider) readViaImportResourceState(
 		return plugin.ReadResult{}, err
 	}
 
-	rn := rh.terraformResourceName
-	finalID, err := extractID(ctx, rn, rh.pulumiResourceInfo, readStateMap)
-	if err != nil {
-		return plugin.ReadResult{}, err
-	}
-
 	isNull, err := r.State.IsNull()
 	if err != nil {
 		return plugin.ReadResult{}, err
@@ -229,8 +244,9 @@ func (p *provider) readViaImportResourceState(
 	if isNull {
 		// Returning a result where plugin.ReadResult.Outputs is nil indicates
 		// that the found resource does not exist.
-		return plugin.ReadResult{ID: finalID}, nil
+		return plugin.ReadResult{}, nil
 	}
 
-	return p.readViaReadResource(ctx, rh, finalID, nil, readStateMap)
+	// Now that the resource has been translated to TF state, read it.
+	return p.readResource(ctx, rh, readStateMap)
 }
