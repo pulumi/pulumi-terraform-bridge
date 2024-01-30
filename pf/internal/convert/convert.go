@@ -70,15 +70,6 @@ func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, erro
 	if err != nil {
 		return nil, err
 	}
-
-	// Pulumi's property value representation doesn't do a good job distinguishing
-	// between the empty property map (PropertyMap{}) and a nil value
-	// (resource.NullProperty).
-	//
-	// We allow converting a null property into a nil map.
-	if pv.IsNull() {
-		return nil, nil
-	}
 	if !pv.IsObject() {
 		return nil, fmt.Errorf("Expected an Object, got: %v", pv.String())
 	}
