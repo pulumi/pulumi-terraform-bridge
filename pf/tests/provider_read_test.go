@@ -211,6 +211,26 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
+// Check that importing a resource that does not exist returns an empty property bag and
+// no ID.
+func TestImportingMissingResources(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "missing",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {}
+          },
+          "response": {
+            "inputs": {},
+            "properties": {}
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
 func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 	// Importing a resource that has attribute blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
@@ -230,6 +250,34 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
               "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
               "services": []
             }
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
+// Check that refreshing a resource that does not exist returns an empty property bag and
+// no ID.
+func TestRefreshMissingResources(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "missing",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {
+              "id": "missing",
+              "rules": [
+                {
+                  "protocol": "some-string"
+                }
+              ],
+              "services": []
+            }
+          },
+          "response": {
+            "inputs": {},
+            "properties": {}
           }
         }`
 	testutils.Replay(t, server, testCase)

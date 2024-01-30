@@ -147,12 +147,24 @@ func (e *testnest) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		Protocol         string     `tfsdk:"protocol"`
 		ActionParameters []struct{} `tfsdk:"action_parameters"`
 	}
+
+	var id string
+	diag := req.State.GetAttribute(ctx, path.Root("id"), &id)
+	if diag != nil {
+		resp.Diagnostics.Append(diag...)
+	}
+
+	if id == "missing" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	path := path.Root("rules")
-	err := resp.State.SetAttribute(ctx, path, []ruleModel{
+	diag = resp.State.SetAttribute(ctx, path, []ruleModel{
 		{Protocol: "some-string"},
 	})
-	if err != nil {
-		resp.Diagnostics.Append(err...)
+	if diag != nil {
+		resp.Diagnostics.Append(diag...)
 	}
 }
 
