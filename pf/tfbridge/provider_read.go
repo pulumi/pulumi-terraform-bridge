@@ -130,11 +130,11 @@ func (p *provider) readResource(
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("ReadResource call: %w", err)
+		return plugin.ReadResult{}, err
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("ReadResource call (diagnostics): %w", err)
+		return plugin.ReadResult{}, err
 	}
 
 	if resp.NewState == nil {
@@ -145,7 +145,7 @@ func (p *provider) readResource(
 	// exist in the cloud provider.
 	newStateNull, err := resp.NewState.IsNull()
 	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("Checking null state: %w", err)
+		return plugin.ReadResult{}, fmt.Errorf("checking null state: %w", err)
 	}
 	if newStateNull {
 		return plugin.ReadResult{}, nil
