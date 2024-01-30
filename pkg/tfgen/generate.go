@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -463,6 +464,17 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// If we have no result from entityDocs, we look up the TF schema Description.
 		if doc == "" {
 			doc = getDocsFromSchemaMap(key, propertySchema)
+			// Since these docs have not been parsed via entityDocs, they still need to be reformatted.
+			docsInfoCtx := infoContext{
+				language: g.language,
+				pkg:      g.pkg,
+				info:     g.info,
+			}
+			// Description fields have no footers, so we pass in an empty map
+			fakeFooterLinks := map[string]string{}
+			q.Q(doc)
+			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
+			q.Q(doc)
 		}
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {

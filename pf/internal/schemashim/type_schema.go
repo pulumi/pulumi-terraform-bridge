@@ -98,7 +98,7 @@ func (*typeSchema) DefaultValue() (interface{}, error) {
 	return nil, bridge.ErrSchemaDefaultValue
 }
 
-func (s *typeSchema) Description() string {
+func (*typeSchema) Description() string {
 	return ""
 }
 
