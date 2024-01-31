@@ -70,7 +70,7 @@
                 },
                 "url": {
                     "type": "string",
-                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`. \n"
+                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`.\n"
                 },
                 "username": {
                     "type": "string",
@@ -136,7 +136,7 @@
                 },
                 "url": {
                     "type": "string",
-                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`. \n"
+                    "description": "URL used to connect to the Proxy. Accepted schemes are: `http`, `https`, `socks5`.\n"
                 },
                 "username": {
                     "type": "string",
