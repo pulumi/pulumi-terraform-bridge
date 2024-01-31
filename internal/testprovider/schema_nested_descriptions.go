@@ -66,8 +66,7 @@ func resourceNestedDescriptionsSchema() map[string]*schema.Schema {
 						Description: "Version of the ruleset to deploy.",
 					},
 					"action_parameters": {
-						Type: schema.TypeList,
-						// MaxItems:    1,
+						Type:        schema.TypeList,
 						Optional:    true,
 						Description: "List of parameters that configure the behavior of the ruleset rule action.",
 						Elem: &schema.Resource{

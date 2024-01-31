@@ -155,7 +155,6 @@ func assertHasSimpleObjectAttributes(t *testing.T, r shim.Resource) {
 	assert.True(t, r.Schema().Get("r").Required(), "r is required")
 	assert.True(t, r.Schema().Get("co").Computed() && r.Schema().Get("co").Optional(), "co is computed and optional")
 	assert.Equal(t, r.Schema().Get("desc").Description(), "I am a description")
-
 }
 
 func assertIsObjectType(t *testing.T, shimmed shim.Schema) {
