@@ -962,10 +962,9 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	}
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
-		containsTerraform := strings.Contains(strings.ToLower(p.ret.Import), "terraform")
-		if containsTerraform {
-			message := fmt.Sprintf("parseImports %q should not render the string"+
-				" 'terraform' in its emitted markdown.\n"+
+		if elide(p.ret.Import) {
+			message := fmt.Sprintf("parseImports %q should not render <elided> text"+
+				" in its emitted markdown.\n"+
 				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
 				token, strings.Join(subsection, "\n"), p.ret.Import)
 			if p.sink != nil {
@@ -1964,15 +1963,25 @@ func extractExamples(description string) string {
 	return strings.Replace(description, parts[0], "", -1)
 }
 
+var (
+	reTerraform = regexp.MustCompile("[Tt]erraform")
+	reHashicorp = regexp.MustCompile("[Hh]ashicorp")
+)
+
+func elide(text string) bool {
+	return reTerraform.MatchString(text) ||
+		reHashicorp.MatchString(text)
+}
+
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
 	cleanupText := func(text string) (string, bool) {
-		// Remove incorrect documentation that should have been cleaned up in our forks.
-		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+		// Remove incorrect documentation.
+		if elide(text) {
 			return "", true
 		}
 
-		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
+		// Replace occurrences of "->" or "~>" with just ">", to get a proper Markdown note.
 		text = strings.ReplaceAll(text, "-> ", "> ")
 		text = strings.ReplaceAll(text, "~> ", "> ")
 
