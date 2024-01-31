@@ -45,10 +45,12 @@
         "testbridge:index/TestnestRule:TestnestRule": {
             "properties": {
                 "actionParameters": {
-                    "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters"
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters",
+                    "description": "List of parameters that configure the behavior of the ruleset rule action.\n"
                 },
                 "protocol": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "network protocol\n"
                 }
             },
             "type": "object"
@@ -56,10 +58,12 @@
         "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
             "properties": {
                 "automaticHttpsRewrites": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Turn on or off Cloudflare Automatic HTTPS rewrites.\n"
                 },
                 "bic": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Inspect the visitor's browser for headers commonly associated with spammers and certain bots.\n"
                 },
                 "phases": {
                     "$ref": "#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"
@@ -70,10 +74,12 @@
         "testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases": {
             "properties": {
                 "p1": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "The first phase.\n"
                 },
                 "p2": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "The second phase.\n"
                 }
             },
             "type": "object"
@@ -81,16 +87,19 @@
         "testbridge:index/TestnestService:TestnestService": {
             "properties": {
                 "intport": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
                 },
                 "ports": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestServicePort:TestnestServicePort"
-                    }
+                    },
+                    "description": "External ports and handlers\n"
                 },
                 "protocol": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "network protocol\n"
                 }
             },
             "type": "object",
@@ -106,10 +115,12 @@
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "How the edge should process requests\n"
                 },
                 "port": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "External port\n"
                 }
             },
             "type": "object",
@@ -120,16 +131,19 @@
         "testbridge:index/TestnestattrService:TestnestattrService": {
             "properties": {
                 "intport": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
                 },
                 "ports": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestattrServicePort:TestnestattrServicePort"
-                    }
+                    },
+                    "description": "External ports and handlers\n"
                 },
                 "protocol": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "network protocol\n"
                 }
             },
             "type": "object",
@@ -145,10 +159,12 @@
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "How the edge should process requests\n"
                 },
                 "port": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "External port\n"
                 }
             },
             "type": "object",
@@ -159,16 +175,19 @@
         "testbridge:index/TestresService:TestresService": {
             "properties": {
                 "intport": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
                 },
                 "ports": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresServicePort:TestresServicePort"
-                    }
+                    },
+                    "description": "External ports and handlers\n"
                 },
                 "protocol": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "network protocol\n"
                 }
             },
             "type": "object",
@@ -184,10 +203,12 @@
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "description": "How the edge should process requests\n"
                 },
                 "port": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "External port\n"
                 }
             },
             "type": "object",

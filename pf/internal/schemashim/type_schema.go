@@ -99,7 +99,7 @@ func (*typeSchema) DefaultValue() (interface{}, error) {
 }
 
 func (*typeSchema) Description() string {
-	panic("Description() should not be called during schema generation")
+	return ""
 }
 
 func (*typeSchema) StateFunc() shim.SchemaStateFunc {

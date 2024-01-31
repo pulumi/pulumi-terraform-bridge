@@ -20,10 +20,9 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderMiniCloudflare() tfbridge.ProviderInfo {
-
+func ProviderNestedDescriptions() tfbridge.ProviderInfo {
 	return tfbridge.ProviderInfo{
-		P:           shimv2.NewProvider(testproviderdata.ProviderMiniCloudflare()),
+		P:           shimv2.NewProvider(testproviderdata.ProviderNestedDescriptions()),
 		Name:        "cloudflare",
 		Description: "A Pulumi package to safely use cloudflare in Pulumi programs.",
 		Keywords:    []string{"pulumi", "random"},

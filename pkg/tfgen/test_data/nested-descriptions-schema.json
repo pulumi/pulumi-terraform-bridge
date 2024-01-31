@@ -55,25 +55,14 @@
     "cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters": {
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Identifier of the action parameter to modify.\n"
+          "type": "string"
         },
-        "phases": {
-          "$ref": "#/types/cloudflare:index/RulesetRuleActionParametersPhases:RulesetRuleActionParametersPhases"
+        "translateField": {
+          "type":     "string",
+          "description": "When cloudflare.Ruleset is mentioned, it should be translated.\n"
         }
       },
       "type": "object"
-    },
-    "cloudflare:index/RulesetRuleActionParametersPhases:RulesetRuleActionParametersPhases": {
-      "properties": {
-        "phase1": {
-          "type": "string"
-        }
-      },
-      "type": "object",
-      "required": [
-        "phase1"
-      ]
     }
   },
   "provider": {

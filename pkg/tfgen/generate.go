@@ -428,10 +428,14 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	return t
 }
 
+func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
+	subSchema := schemaMap.Get(key)
+	return subSchema.Description()
+}
+
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
-
 	t := &propertyType{
 		kind: kindObject,
 	}
@@ -456,6 +460,19 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
 
+		// If we have no result from entityDocs, we look up the TF schema Description.
+		if doc == "" {
+			doc = getDocsFromSchemaMap(key, propertySchema)
+			// Since these docs have not been parsed via entityDocs, they still need to be reformatted.
+			docsInfoCtx := infoContext{
+				language: g.language,
+				pkg:      g.pkg,
+				info:     g.info,
+			}
+			// Description fields have no footers, so we pass in an empty map
+			fakeFooterLinks := map[string]string{}
+			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
+		}
 		if v := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
 			t.properties = append(t.properties, v)
@@ -1075,8 +1092,16 @@ func (g *Generator) gatherConfig() *module {
 	for _, key := range cfgkeys {
 		// Generate a name and type to use for this key.
 		sch := cfg.Get(key)
+		// Reformat the upstream Description if necessary
+		docsInfoCtx := infoContext{
+			language: g.language,
+			pkg:      g.pkg,
+			info:     g.info,
+		}
+		fakeFooterLinks := map[string]string{}
+		rawdoc, _ := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
 		prop := g.propertyVariable(cfgPath,
-			key, cfg, custom, "", sch.Description(), true /*out*/, entityDocs{})
+			key, cfg, custom, "", rawdoc, true /*out*/, entityDocs{})
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)

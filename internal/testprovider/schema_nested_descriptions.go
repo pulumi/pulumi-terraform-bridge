@@ -18,12 +18,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// Subset of pulumi-cloudflare provider, specifically to test nested descriptions cleanup
-func ProviderMiniCloudflare() *schema.Provider {
+// Subset of pulumi-cloudflare provider.
+func ProviderNestedDescriptions() *schema.Provider {
 	resourceRuleset := func() *schema.Resource {
 		return &schema.Resource{
 			Description: "Deploy a ruleset for cloudflare",
-			Schema:      resourceCloudflareRulesetSchema(),
+			Schema:      resourceNestedDescriptionsSchema(),
 		}
 	}
 
@@ -36,7 +36,7 @@ func ProviderMiniCloudflare() *schema.Provider {
 }
 
 // An aggressively cut down version of cloudflare_ruleset.
-func resourceCloudflareRulesetSchema() map[string]*schema.Schema {
+func resourceNestedDescriptionsSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		"name": {
 			Type:        schema.TypeString,
@@ -66,25 +66,21 @@ func resourceCloudflareRulesetSchema() map[string]*schema.Schema {
 						Description: "Version of the ruleset to deploy.",
 					},
 					"action_parameters": {
-						Type: schema.TypeList,
-						// MaxItems:    1,
+						Type:        schema.TypeList,
 						Optional:    true,
 						Description: "List of parameters that configure the behavior of the ruleset rule action.",
 						Elem: &schema.Resource{
 							Schema: map[string]*schema.Schema{
 								"id": {
+									Type:     schema.TypeString,
+									Optional: true,
+									Description: "Identifier of the action parameter to modify. " +
+										"When Terraform is mentioned here, the description should be dropped.",
+								},
+								"translateField": {
 									Type:        schema.TypeString,
 									Optional:    true,
-									Description: "Identifier of the action parameter to modify.",
-								},
-								"phases": {
-									Type:     schema.TypeList,
-									Optional: true,
-									Elem: &schema.Resource{
-										Schema: map[string]*schema.Schema{
-											"phase1": {Type: schema.TypeString},
-										},
-									},
+									Description: "When cloudflare_ruleset is mentioned, it should be translated.",
 								},
 							},
 						},
