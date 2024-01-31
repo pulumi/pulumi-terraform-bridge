@@ -1091,6 +1091,19 @@ func TestCheckConfig(t *testing.T) {
 
 	t.Run("invalid_config_value", func(t *testing.T) {
 		p := testprovider.ProviderV2()
+		p.Schema["assume_role"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"role_arn": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
 		provider := &Provider{
 			tf:     shimv2.NewProvider(p),
 			config: shimv2.NewSchemaMap(p.Schema),
@@ -1109,6 +1122,24 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
 		require.Equal(t, "`cloudflare:requiredprop` is not a valid configuration key for the cloudflare provider. "+
+			"If the key is not intended for the provider, please choose a different namespace from `cloudflare:`.",
+			resp.Failures[0].Reason)
+		// Default provider nested config property case.
+		deepArgs, err := structpb.NewStruct(
+			map[string]interface{}{
+				"assumeRole": map[string]interface{}{
+					"roleAnr": "someRoleARN",
+				},
+			},
+		)
+		require.NoError(t, err)
+		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:aws::default_5_2_1",
+			News: deepArgs,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		require.Equal(t, "`cloudflare:assumeRole.roleAnr` is not a valid configuration key for the cloudflare provider. "+
 			"If the key is not intended for the provider, please choose a different namespace from `cloudflare:`.",
 			resp.Failures[0].Reason)
 		// Explicit provider.

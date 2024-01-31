@@ -75,7 +75,7 @@ func NewCheckFailurePath(
 }
 
 func (p CheckFailurePath) valuePathDot(prop string) string {
-	r := regexp.MustCompile("^[_a-zA-Z][_-a-zA-Z0-9]*$")
+	r := regexp.MustCompile("^[_a-zA-Z][-_a-zA-Z0-9]*$")
 	if r.MatchString(prop) {
 		return fmt.Sprintf("%s.%s", p.valuePath, prop)
 	}
@@ -256,8 +256,8 @@ func formatDefaultProviderInvalidKey(
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
 	sentences := []string{}
-	invalid := fmt.Sprintf("`%s` is not a valid configuration key for the %s provider.",
-		pulumiConfigExpr(prefix, p), prefix)
+	invalid := fmt.Sprintf("`%s:%s` is not a valid configuration key for the %s provider.",
+		prefix, p.valuePath, prefix)
 	sentences = append(sentences, invalid)
 	if sugg := keySuggestions(p, schemaMap, schemaInfos); len(sugg) > 0 {
 		quoted := []string{}
