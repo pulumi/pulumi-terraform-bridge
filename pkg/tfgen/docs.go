@@ -157,6 +157,18 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 	}
 }
 
+// reReplace creates a regex based replace.
+func reReplace(from, to string) tfbridge.DocsEdit {
+	r := regexp.MustCompile(from)
+	bTo := []byte(to)
+	return tfbridge.DocsEdit{
+		Path: "*",
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			return r.ReplaceAll(content, bTo), nil
+		},
+	}
+}
+
 func fixupImports() tfbridge.DocsEdit {
 
 	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
@@ -182,16 +194,6 @@ func fixupImports() tfbridge.DocsEdit {
 	}
 }
 
-var (
-	// Replace content such as "`terraform plan`" with "`pulumi preview`"
-	replaceTfPlan = boundedReplace("[tT]erraform [pP]lan", "pulumi preview")
-	// Replace content such as " Terraform Apply." with " pulumi up."
-	replaceTfApply = boundedReplace("[tT]erraform [aA]pply", "pulumi up")
-
-	// A markdown link that has terraform in the link component.
-	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`)
-)
-
 type editRules []tfbridge.DocsEdit
 
 func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
@@ -212,17 +214,20 @@ func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
 }
 
 // Get the replace rule set for a DocRuleInfo.
+//
+// getEditRules is only called once during `tfgen`, so we move the cost of compiling
+// regexes into getEditRules, avoiding a marginal startup time penalty.
 func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 	defaults := []tfbridge.DocsEdit{
-		replaceTfPlan,
-		replaceTfApply,
-		{ // Here we strip links to terraform documentation.
-			Path: "*",
-			Edit: func(_ string, content []byte) ([]byte, error) {
-				return tfLink.ReplaceAll(content, []byte("$1")), nil
-			},
-		},
+		// Replace content such as "`terraform plan`" with "`pulumi preview`"
+		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
+		// Replace content such as " Terraform Apply." with " pulumi up."
+		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
+		// A markdown link that has terraform in the link component.
+		reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1"),
 		fixupImports(),
+		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
+		reReplace("@hashicorp.com", "@example.com"),
 	}
 	if info == nil || info.EditRules == nil {
 		return defaults

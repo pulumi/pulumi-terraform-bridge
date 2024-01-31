@@ -1,5 +1,5 @@
 {
-  "Description": "## \n\n\t\tThis is a document for the pkg_mod1_res1 resource. To create this resource, run \"pulumi preview\" then \"pulumi up\".",
+  "Description": "## \n\n\t\tThis is a document for the pkg_mod1_res1 resource. To create this resource, run \"pulumi preview\" then \"pulumi up\".\n\t\tThe specified email must be valid: `jdoe@example.com`.",
   "Arguments": {},
   "Attributes": {},
   "Import": ""
