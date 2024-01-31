@@ -51,7 +51,7 @@ type testcase struct {
 	Expected string
 }
 
-func TestURLRewrite(t *testing.T) {
+func TestReformatText(t *testing.T) {
 	tests := []testcase{
 		{
 			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
@@ -73,6 +73,14 @@ func TestURLRewrite(t *testing.T) {
 			Input:    "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 			Expected: "The appIp of name of the Firebase webApp.",
 		},
+		{
+			Input:    "An example username is jdoa@hashicorp.com",
+			Expected: "",
+		},
+		{
+			Input:    "An example passowrd is Terraform-secret",
+			Expected: "",
+		},
 	}
 
 	infoCtx := infoContext{
@@ -87,8 +95,10 @@ func TestURLRewrite(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		text, _ := reformatText(infoCtx, test.Input, nil)
+		text, elided := reformatText(infoCtx, test.Input, nil)
 		assert.Equal(t, test.Expected, text)
+		assert.Equalf(t, text == "", elided,
+			"We should only see an empty result for non-empty inputs if we have elided text")
 	}
 }
 

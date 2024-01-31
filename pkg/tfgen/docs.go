@@ -157,6 +157,18 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 	}
 }
 
+// reReplace creates a regex based replace.
+func reReplace(from, to string) tfbridge.DocsEdit {
+	r := regexp.MustCompile(from)
+	bTo := []byte(to)
+	return tfbridge.DocsEdit{
+		Path: "*",
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			return r.ReplaceAll(content, bTo), nil
+		},
+	}
+}
+
 func fixupImports() tfbridge.DocsEdit {
 
 	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
@@ -182,16 +194,6 @@ func fixupImports() tfbridge.DocsEdit {
 	}
 }
 
-var (
-	// Replace content such as "`terraform plan`" with "`pulumi preview`"
-	replaceTfPlan = boundedReplace("[tT]erraform [pP]lan", "pulumi preview")
-	// Replace content such as " Terraform Apply." with " pulumi up."
-	replaceTfApply = boundedReplace("[tT]erraform [aA]pply", "pulumi up")
-
-	// A markdown link that has terraform in the link component.
-	tfLink = regexp.MustCompile(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`)
-)
-
 type editRules []tfbridge.DocsEdit
 
 func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
@@ -212,17 +214,20 @@ func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
 }
 
 // Get the replace rule set for a DocRuleInfo.
+//
+// getEditRules is only called once during `tfgen`, so we move the cost of compiling
+// regexes into getEditRules, avoiding a marginal startup time penalty.
 func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 	defaults := []tfbridge.DocsEdit{
-		replaceTfPlan,
-		replaceTfApply,
-		{ // Here we strip links to terraform documentation.
-			Path: "*",
-			Edit: func(_ string, content []byte) ([]byte, error) {
-				return tfLink.ReplaceAll(content, []byte("$1")), nil
-			},
-		},
+		// Replace content such as "`terraform plan`" with "`pulumi preview`"
+		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
+		// Replace content such as " Terraform Apply." with " pulumi up."
+		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
+		// A markdown link that has terraform in the link component.
+		reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1"),
 		fixupImports(),
+		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
+		reReplace("@hashicorp.com", "@example.com"),
 	}
 	if info == nil || info.EditRules == nil {
 		return defaults
@@ -962,10 +967,9 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	}
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
-		containsTerraform := strings.Contains(strings.ToLower(p.ret.Import), "terraform")
-		if containsTerraform {
-			message := fmt.Sprintf("parseImports %q should not render the string"+
-				" 'terraform' in its emitted markdown.\n"+
+		if elide(p.ret.Import) {
+			message := fmt.Sprintf("parseImports %q should not render <elided> text"+
+				" in its emitted markdown.\n"+
 				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
 				token, strings.Join(subsection, "\n"), p.ret.Import)
 			if p.sink != nil {
@@ -1964,15 +1968,25 @@ func extractExamples(description string) string {
 	return strings.Replace(description, parts[0], "", -1)
 }
 
+var (
+	reTerraform = regexp.MustCompile("[Tt]erraform")
+	reHashicorp = regexp.MustCompile("[Hh]ashicorp")
+)
+
+func elide(text string) bool {
+	return reTerraform.MatchString(text) ||
+		reHashicorp.MatchString(text)
+}
+
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
 	cleanupText := func(text string) (string, bool) {
-		// Remove incorrect documentation that should have been cleaned up in our forks.
-		if strings.Contains(text, "Terraform") || strings.Contains(text, "terraform") {
+		// Remove incorrect documentation.
+		if elide(text) {
 			return "", true
 		}
 
-		// Replace occurrences of "->" or "~>" with just ">", to get a proper MarkDown note.
+		// Replace occurrences of "->" or "~>" with just ">", to get a proper Markdown note.
 		text = strings.ReplaceAll(text, "-> ", "> ")
 		text = strings.ReplaceAll(text, "~> ", "> ")
 
