@@ -227,18 +227,12 @@ func formatDefaultProviderCheckFailure(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) plugin.CheckFailure {
+	if pp != nil && reasonType == InvalidKey {
+		return formatDefaultProviderInvalidKey(*pp, configPrefix, schemaMap, schemaInfos)
+	}
 	if pp != nil {
 		getExpr := "pulumi config get " + pulumiConfigExpr(configPrefix, *pp)
 		reason = fmt.Sprintf("%s. Check `%s`.", reason, getExpr)
-	}
-	if pp != nil && reasonType == InvalidKey {
-		if sugg := keySuggestions(*pp, schemaMap, schemaInfos); len(sugg) > 0 {
-			quoted := []string{}
-			for _, s := range sugg {
-				quoted = append(quoted, fmt.Sprintf("`%s:%s`", configPrefix, string(s)))
-			}
-			reason = fmt.Sprintf("%s Did you mean %s?", reason, strings.Join(quoted, " or "))
-		}
 	}
 	return plugin.CheckFailure{
 		Reason: reason,
@@ -246,6 +240,37 @@ func formatDefaultProviderCheckFailure(
 		// provider URN as if it is a resource, which is confusing. Instead Reason contains instructions on how
 		// to set the value via a `pulumi config` command.
 	}
+}
+
+// This error arises when the user sets `pulumi config set aws:foo` but the AWS provider does not
+// recognize foo. The upstream error message is not very actionable:
+//
+//	could not validate provider configuration: Invalid or unknown key.
+//
+// So this function provides a Pulumi-specific message instead, anchoring it with the key compatible
+// with `pulumi config get --path key`.
+func formatDefaultProviderInvalidKey(
+	p CheckFailurePath,
+	prefix string,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) plugin.CheckFailure {
+	sentences := []string{}
+	invalid := fmt.Sprintf("`%s` is not a valid configuration key for the %s provider.",
+		pulumiConfigExpr(prefix, p), prefix)
+	sentences = append(sentences, invalid)
+	if sugg := keySuggestions(p, schemaMap, schemaInfos); len(sugg) > 0 {
+		quoted := []string{}
+		for _, s := range sugg {
+			quoted = append(quoted, fmt.Sprintf("`%s:%s`", prefix, string(s)))
+		}
+		dym := fmt.Sprintf("Did you mean %s?", strings.Join(quoted, " or "))
+		sentences = append(sentences, dym)
+	}
+	suggest := fmt.Sprintf("If the key is not intended for the provider, please "+
+		"choose a different namespace from `%s:`.", prefix)
+	sentences = append(sentences, suggest)
+	return plugin.CheckFailure{Reason: strings.Join(sentences, " ")}
 }
 
 func keySuggestions(

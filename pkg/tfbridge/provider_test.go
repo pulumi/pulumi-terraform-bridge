@@ -1108,8 +1108,8 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get cloudflare:requiredprop`.",
+		require.Equal(t, "`cloudflare:requiredprop` is not a valid configuration key for the cloudflare provider. "+
+			"If the key is not intended for the provider, please choose a different namespace from `cloudflare:`.",
 			resp.Failures[0].Reason)
 		// Explicit provider.
 		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
@@ -1118,8 +1118,8 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.",
+		require.Equal(t, "could not validate provider configuration: Invalid or unknown key. "+
+			"Examine values at 'explicitprovider.requiredprop'.",
 			resp.Failures[0].Reason)
 	})
 
@@ -1142,9 +1142,9 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
-			"Did you mean `testprovider:configValue`?",
+		require.Equal(t, "`testprovider:cofnigValue` is not a valid configuration key for the testprovider provider. "+
+			"Did you mean `testprovider:configValue`? "+
+			"If the key is not intended for the provider, please choose a different namespace from `testprovider:`.",
 			resp.Failures[0].Reason)
 	})
 
