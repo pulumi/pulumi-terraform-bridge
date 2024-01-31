@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/agext/levenshtein"
@@ -37,13 +38,33 @@ const (
 
 // Identifies a path to the property that is failing checks. See [NewCheckFailure].
 type CheckFailurePath struct {
-	schemaPath  walk.SchemaPath
-	valuePath   string
+	schemaPath walk.SchemaPath
+
+	// valuePath is a form suitable to pass to `pulumi config get`.
+	//
+	// "accessToken" is a top-level property example, can be used as:
+	//
+	//	pulumi config get aws:accessToken
+	//
+	// "assumeRoleArn.roleArn" is a nested example, can be used as:
+	//
+	//	pulumi config get --path aws:assumeRoleArn.roleArn
+	//
+	// For complicated literals it may resort to quoting as needed:
+	//
+	//      foo["c o m p l i c a t e d"]`
+	//
+	// It form is also approximately a TypeScript-like literal and is used as such in error
+	// message suggestions.
+	valuePath string
+
 	schemaMap   shim.SchemaMap
 	schemaInfos map[string]*SchemaInfo
 }
 
-func NewCheckFailurePath(schemaMap shim.SchemaMap, schemaInfos map[string]*SchemaInfo, prop string) CheckFailurePath {
+func NewCheckFailurePath(
+	schemaMap shim.SchemaMap, schemaInfos map[string]*SchemaInfo, prop string,
+) CheckFailurePath {
 	pulumiName := TerraformToPulumiNameV2(prop, schemaMap, schemaInfos)
 	return CheckFailurePath{
 		schemaPath:  walk.NewSchemaPath().GetAttr(prop),
@@ -51,6 +72,14 @@ func NewCheckFailurePath(schemaMap shim.SchemaMap, schemaInfos map[string]*Schem
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
 	}
+}
+
+func (p CheckFailurePath) valuePathDot(prop string) string {
+	r := regexp.MustCompile("^[_a-zA-Z][_-a-zA-Z0-9]*$")
+	if r.MatchString(prop) {
+		return fmt.Sprintf("%s.%s", p.valuePath, prop)
+	}
+	return fmt.Sprintf("%s[%q]", p.valuePath, prop)
 }
 
 func (p CheckFailurePath) Attribute(name string) CheckFailurePath {
@@ -61,7 +90,7 @@ func (p CheckFailurePath) Attribute(name string) CheckFailurePath {
 	}
 	return CheckFailurePath{
 		schemaPath:  path,
-		valuePath:   fmt.Sprintf("%s.%s", p.valuePath, pulumiName),
+		valuePath:   p.valuePathDot(pulumiName),
 		schemaMap:   p.schemaMap,
 		schemaInfos: p.schemaInfos,
 	}
@@ -91,7 +120,7 @@ func (p CheckFailurePath) ListElement(n int64) CheckFailurePath {
 func (p CheckFailurePath) MapElement(s string) CheckFailurePath {
 	valuePath := p.valuePath
 	if !p.isMaxItemsOne() {
-		valuePath = fmt.Sprintf("%s[%q]", p.valuePath, s)
+		valuePath = p.valuePathDot(s)
 	}
 	return CheckFailurePath{
 		schemaPath:  p.schemaPath.Element(),
