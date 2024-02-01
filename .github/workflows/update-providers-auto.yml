@@ -20,13 +20,13 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge to the latest version automatically
+    name: Upgrade to pulumi-terraform-bridge to the latest version automatically
     steps:
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/pulumi-${{ matrix.provider }}
+          repository: pulumi/pulumi-hcloud
           event-type: upgrade-bridge
           # Not specifying target-bridge-version in the payload will make it upgrade to the latest.
           client-payload: |-
@@ -40,6 +40,6 @@ jobs:
       # concurrently.  For more information, see:
       # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
       max-parallel: 1
-      matrix:
-        provider: ${{ fromJson(needs.generate-providers-list.outputs.providers ) }}
+      # matrix:
+      #   provider: ${{ fromJson(needs.generate-providers-list.outputs.providers ) }}
       fail-fast: false
