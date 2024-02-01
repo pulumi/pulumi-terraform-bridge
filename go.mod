@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.20
+go 1.21
+
+toolchain go1.21.5
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 
@@ -43,6 +45,7 @@ require (
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
+	github.com/ryboe/q v1.0.20
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
@@ -83,6 +86,8 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/hexops/valast v1.4.4 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect

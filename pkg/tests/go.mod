@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests
 
-go 1.20
+go 1.21
+
+toolchain go1.21.5
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
