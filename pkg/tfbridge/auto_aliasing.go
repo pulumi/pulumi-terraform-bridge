@@ -97,7 +97,7 @@ func (info *ProviderInfo) ApplyAutoAliases() error {
 	autoSettings.apply(info)
 
 	// Now that info has updated Field values, save them to the history for later.
-	h.updateFieldHistory(newHist)
+	// h.updateFieldHistory(newHist)
 
 	// Save updated history for later invocations of tfgen.
 	if err := md.Set(artifact, aliasMetadataKey, newHist); err != nil {
@@ -225,7 +225,7 @@ func (h autoAliasHelper) computeAutoSettings(
 		if hr, ok := history.Resources[tfToken]; ok {
 			fieldHist = hr.Fields
 		}
-		if r != nil {
+		if r != nil && false {
 			over := h.computeMaxItemsOneOverrides(r.Schema(), fields, fieldHist)
 			settings.setResourceOverrides(tfToken, over)
 		}
@@ -242,7 +242,7 @@ func (h autoAliasHelper) computeAutoSettings(
 		if hr, ok := history.DataSources[tfToken]; ok {
 			fieldHist = hr.Fields
 		}
-		if d != nil {
+		if d != nil && false {
 			over := h.computeMaxItemsOneOverrides(d.Schema(), fields, fieldHist)
 			settings.setDataSourceOverrides(tfToken, over)
 		}
