@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -180,9 +181,7 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		assert.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get testprovider:requiredprop`.",
-			resp.Failures[0].Reason)
+		autogold.Expect("`testprovider:requiredprop` is not a valid configuration key for the testprovider provider. If the referenced key is not intended for the provider, please choose a different namespace from `testprovider:`.").Equal(t, resp.Failures[0].Reason)
 		// Explicit provider.
 		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
 			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::explicitprovider",
@@ -190,9 +189,7 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		assert.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.",
-			resp.Failures[0].Reason)
+		autogold.Expect("could not validate provider configuration: Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.").Equal(t, resp.Failures[0].Reason)
 	})
 
 	t.Run("levenshtein_correction", func(t *testing.T) {
@@ -216,10 +213,8 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
-			"Did you mean `testprovider:configValue`?",
-			resp.Failures[0].Reason)
+		//nolint:lll
+		autogold.Expect("`testprovider:cofnigValue` is not a valid configuration key for the testprovider provider. Did you mean `testprovider:configValue`? If the referenced key is not intended for the provider, please choose a different namespace from `testprovider:`.").Equal(t, resp.Failures[0].Reason)
 	})
 
 	t.Run("validators", func(t *testing.T) {

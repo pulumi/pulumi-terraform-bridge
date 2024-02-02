@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -1091,6 +1092,19 @@ func TestCheckConfig(t *testing.T) {
 
 	t.Run("invalid_config_value", func(t *testing.T) {
 		p := testprovider.ProviderV2()
+		p.Schema["assume_role"] = &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"role_arn": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
 		provider := &Provider{
 			tf:     shimv2.NewProvider(p),
 			config: shimv2.NewSchemaMap(p.Schema),
@@ -1108,9 +1122,25 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get cloudflare:requiredprop`.",
-			resp.Failures[0].Reason)
+		//nolint:lll
+		autogold.Expect("`cloudflare:requiredprop` is not a valid configuration key for the cloudflare provider. If the referenced key is not intended for the provider, please choose a different namespace from `cloudflare:`.").Equal(t, resp.Failures[0].Reason)
+		// Default provider nested config property case.
+		deepArgs, err := structpb.NewStruct(
+			map[string]interface{}{
+				"assumeRole": map[string]interface{}{
+					"roleAnr": "someRoleARN",
+				},
+			},
+		)
+		require.NoError(t, err)
+		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:aws::default_5_2_1",
+			News: deepArgs,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Failures))
+		//nolint:lll
+		autogold.Expect("`cloudflare:assumeRole.roleAnr` is not a valid configuration key for the cloudflare provider. If the referenced key is not intended for the provider, please choose a different namespace from `cloudflare:`.").Equal(t, resp.Failures[0].Reason)
 		// Explicit provider.
 		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
 			Urn:  "urn:pulumi:r::cloudflare-record-ts::pulumi:providers:cloudflare::explicitprovider",
@@ -1118,8 +1148,8 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Examine values at 'explicitprovider.requiredprop'.",
+		require.Equal(t, "could not validate provider configuration: Invalid or unknown key. "+
+			"Examine values at 'explicitprovider.requiredprop'.",
 			resp.Failures[0].Reason)
 	})
 
@@ -1142,10 +1172,8 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		require.Equal(t, "could not validate provider configuration: "+
-			"Invalid or unknown key. Check `pulumi config get testprovider:cofnigValue`. "+
-			"Did you mean `testprovider:configValue`?",
-			resp.Failures[0].Reason)
+		//nolint:lll
+		autogold.Expect("`testprovider:cofnigValue` is not a valid configuration key for the testprovider provider. Did you mean `testprovider:configValue`? If the referenced key is not intended for the provider, please choose a different namespace from `testprovider:`.").Equal(t, resp.Failures[0].Reason)
 	})
 
 	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
