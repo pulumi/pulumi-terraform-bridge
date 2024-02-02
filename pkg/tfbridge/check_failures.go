@@ -267,7 +267,7 @@ func formatDefaultProviderInvalidKey(
 		dym := fmt.Sprintf("Did you mean %s?", strings.Join(quoted, " or "))
 		sentences = append(sentences, dym)
 	}
-	suggest := fmt.Sprintf("If the key is not intended for the provider, please "+
+	suggest := fmt.Sprintf("If the referenced key is not intended for the provider, please "+
 		"choose a different namespace from `%s:`.", prefix)
 	sentences = append(sentences, suggest)
 	return plugin.CheckFailure{Reason: strings.Join(sentences, " ")}
