@@ -43,7 +43,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/ryboe/q"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
@@ -963,16 +962,8 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
 	var token string
-
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
-	}
-
-	testtoken := "gcp:serviceaccount/account:Account"
-
-	if token == testtoken {
-		q.Q(subsection)
-
 	}
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
@@ -1000,22 +991,9 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 	}
 
-	if token == testtoken {
-		q.Q("there were no import overwrites")
-	}
-
 	if i, ok := tryParseV2Imports(token, subsection); ok {
 		p.ret.Import = i
-
-		if token == testtoken {
-			q.Q("we hit a tryParseV2Import using", token)
-		}
-
 		return
-	}
-
-	if token == testtoken {
-		q.Q("we didn't hit ParseV2Imports")
 	}
 
 	var importDocString []string
@@ -1046,11 +1024,6 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			section = strings.Replace(section, "terraform import ", "", -1)
 			importString := ""
 			parts := strings.Split(section, " ")
-
-			if token == testtoken {
-				q.Q(parts)
-			}
-
 			for i, p := range parts {
 				switch i {
 				case 0:
@@ -1073,43 +1046,22 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			// We are going to use a placeholder here for the linebreak so that when we get into converting examples
-			// we can format our Import section outside of the examples section
-			// It appears that the above comment refers to `<break>` being converted into `n` somewhere past this code.
+			// Because splitGroupLines will strip any newlines off our description text, we use `<break>` as a
+			// placeholder, which we will replace with newlines in convertExamplesInner.
 			importCommand := fmt.Sprintf("$ pulumi import %s%s", tok, importString)
-
-			if token == testtoken {
-				q.Q(importCommand)
-			}
-
-			importDetails := []string{"<break>```sh<break>", importCommand, "<break>```<break>"}
-			if token == testtoken {
-				q.Q(importDetails)
-			}
+			importDetails := []string{"```sh<break>", importCommand, "<break>```<break><break>"}
 			importDocString = append(importDocString, importDetails...)
 		} else {
 			if !isBlank(section) {
+				// Ensure every section receives a line break.
+				section = section + "<break><break>"
 				importDocString = append(importDocString, section)
 			}
 		}
 	}
-	if token == testtoken {
-		q.Q(importDocString)
-	}
-	var formattedImportDocString []string
-	for _, line := range importDocString {
-		if strings.HasPrefix(line, "*") {
-			line = "\t" + line
-		}
-		line = line + "<break>"
-		formattedImportDocString = append(formattedImportDocString, line)
-	}
 
 	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(formattedImportDocString, "\n"))
-		if token == testtoken {
-			q.Q(p.ret.Import)
-		}
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(importDocString, " "))
 	}
 }
 
@@ -1503,7 +1455,6 @@ func (g *Generator) convertExamplesInner(
 			importDetails := strings.Join(section, " ")
 			importDetails = strings.Replace(importDetails, "  ", "\n\n", -1)
 			importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
-			importDetails = strings.Replace(importDetails, ": ", "", -1)
 			importDetails = strings.Replace(importDetails, " \n", "\n", -1)
 			fprintf(output, "%s", importDetails)
 			continue

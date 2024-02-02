@@ -1,8 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 
-go 1.21
-
-toolchain go1.21.5
+go 1.20
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.4.1

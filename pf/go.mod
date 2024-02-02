@@ -1,8 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf
 
-go 1.21
-
-toolchain go1.21.5
+go 1.20
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
