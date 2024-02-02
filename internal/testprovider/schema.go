@@ -1057,3 +1057,16 @@ func RequiredWithValidationProvider() *schemav2.Provider {
 		},
 	}
 }
+
+func SchemaFuncPanicsProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				SchemaFunc: func () map[string]*schemav2.Schema {
+					panic("schema func panic")
+				},
+			},
+		},
+	}
+}
