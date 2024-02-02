@@ -24,6 +24,7 @@ import (
 	"runtime/trace"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -33,6 +34,9 @@ import (
 
 // Main executes the TFGen process for the given package pkg and provider prov.
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
+	// Enable additional provider validation.
+	schema.RunProviderInternalValidation = true
+
 	MainWithCustomGenerate(pkg, version, prov, func(opts GeneratorOptions) error {
 		// Create a generator with the specified settings.
 		g, err := NewGenerator(opts)

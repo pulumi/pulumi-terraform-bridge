@@ -2967,3 +2967,58 @@ func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		require.Equal(t, 1, called)
 	})
 }
+
+func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
+	p := testprovider.SchemaFuncPanicsProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+	}
+
+	t.Run("Schema func not called if validate disabled", func(t *testing.T) {
+		schema.RunProviderInternalValidation = false
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"inputs": {
+					"version": "6.18.2"
+				}
+			}
+		}`)
+	})
+
+	t.Run("Schema func panic if validate enabled", func(t *testing.T) {
+		schema.RunProviderInternalValidation = true
+		defer func() {
+			r := recover()
+			if r.(string) != "schema func panic" {
+				t.Errorf("Wrong panic: %v", r)
+			}
+		}()
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"inputs": {
+					"version": "6.18.2"
+				}
+			}
+		}`)
+		t.Errorf("The code did not panic!")
+	})
+}
