@@ -31,7 +31,7 @@ jobs:
           # Not specifying target-bridge-version in the payload will make it upgrade to the latest.
           client-payload: |-
             {
-               "pr-reviewers": ${{ toJSON( github.actor ) == 'pulumi-bot' && 't0yv0' || toJSON( github.actor || 't0yv0' ) }},
+               "pr-reviewers": ${{ toJSON( github.actor ) == 'pulumi-bot' && 'VenelinMartinov' || toJSON( github.actor || 'VenelinMartinov' ) }},
                "automerge": true
             }
     needs: generate-providers-list
