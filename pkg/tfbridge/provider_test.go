@@ -2929,6 +2929,59 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		  "response": {}
 		}`)
 	})
+
+	t.Run("refresh-read-unchanged-archive", func(t *testing.T) {
+		provider := init(func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			return diag.Diagnostics{}
+		})
+		provider.info.Resources["example_resource"].Fields = map[string]*SchemaInfo{
+			"string_property_value": {
+				Asset: &AssetTranslation{
+					Kind: FileAsset,
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Read",
+		  "request": {
+		    "id": "someres",
+		    "urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+		    "properties": {
+		      "stringPropertyValue": {
+			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"
+		      }
+		    },
+		    "inputs": {
+		      "stringPropertyValue": {
+			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"
+		      }
+		    }
+		  },
+		  "response": {
+		    "id": "someres",
+		    "properties": {
+                      "id": "someres",
+                      "__meta": "*",
+		      "stringPropertyValue": {
+			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"
+		      }
+		    },
+		    "inputs": {
+		      "stringPropertyValue": {
+			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"
+		      }
+		    }
+		  }
+		}`)
+	})
 }
 
 func TestDestroy(t *testing.T) {
