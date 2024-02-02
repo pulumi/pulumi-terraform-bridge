@@ -1063,7 +1063,7 @@ func SchemaFuncPanicsProvider() *schemav2.Provider {
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
 			"res": {
-				SchemaFunc: func () map[string]*schemav2.Schema {
+				SchemaFunc: func() map[string]*schemav2.Schema {
 					panic("schema func panic")
 				},
 			},
