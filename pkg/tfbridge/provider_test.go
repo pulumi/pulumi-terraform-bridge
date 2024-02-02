@@ -1122,6 +1122,7 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
+		//nolint:lll
 		autogold.Expect("`cloudflare:requiredprop` is not a valid configuration key for the cloudflare provider. If the referenced key is not intended for the provider, please choose a different namespace from `cloudflare:`.").Equal(t, resp.Failures[0].Reason)
 		// Default provider nested config property case.
 		deepArgs, err := structpb.NewStruct(
@@ -1138,6 +1139,7 @@ func TestCheckConfig(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
+		//nolint:lll
 		autogold.Expect("`cloudflare:assumeRole.roleAnr` is not a valid configuration key for the cloudflare provider. If the referenced key is not intended for the provider, please choose a different namespace from `cloudflare:`.").Equal(t, resp.Failures[0].Reason)
 		// Explicit provider.
 		resp, err = provider.CheckConfig(ctx, &pulumirpc.CheckRequest{
@@ -1170,6 +1172,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
+		//nolint:lll
 		autogold.Expect("`testprovider:cofnigValue` is not a valid configuration key for the testprovider provider. Did you mean `testprovider:configValue`? If the referenced key is not intended for the provider, please choose a different namespace from `testprovider:`.").Equal(t, resp.Failures[0].Reason)
 	})
 
