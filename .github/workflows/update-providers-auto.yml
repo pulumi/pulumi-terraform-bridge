@@ -1,10 +1,10 @@
 name: Update Providers with new bridge version upon release
 on:
   push:
-    tags:
-      # Typically pf* module is tagged after the main module, so this is a good time to fire off
-      # automatic downstream upgrades.
-      - 'pf/**'
+    # tags:
+    #   # Typically pf* module is tagged after the main module, so this is a good time to fire off
+    #   # automatic downstream upgrades.
+    #   - 'pf/**'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
