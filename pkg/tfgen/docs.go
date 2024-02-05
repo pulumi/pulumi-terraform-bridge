@@ -1046,13 +1046,15 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			// We are going to use a placeholder here for the linebreak so that when we get into converting examples
-			// we can format our Import section outside of the examples section
+			// Because splitGroupLines will strip any newlines off our description text, we use `<break>` as a
+			// placeholder, which we will replace with newlines in convertExamplesInner.
 			importCommand := fmt.Sprintf("$ pulumi import %s%s", tok, importString)
-			importDetails := []string{"<break><break>```sh<break>", importCommand, "<break>```<break><break>"}
+			importDetails := []string{"```sh<break>", importCommand, "<break>```<break><break>"}
 			importDocString = append(importDocString, importDetails...)
 		} else {
 			if !isBlank(section) {
+				// Ensure every section receives a line break.
+				section = section + "<break><break>"
 				importDocString = append(importDocString, section)
 			}
 		}
@@ -1453,7 +1455,6 @@ func (g *Generator) convertExamplesInner(
 			importDetails := strings.Join(section, " ")
 			importDetails = strings.Replace(importDetails, "  ", "\n\n", -1)
 			importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
-			importDetails = strings.Replace(importDetails, ": ", "", -1)
 			importDetails = strings.Replace(importDetails, " \n", "\n", -1)
 			fprintf(output, "%s", importDetails)
 			continue

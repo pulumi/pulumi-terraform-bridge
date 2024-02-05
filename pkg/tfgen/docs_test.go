@@ -816,7 +816,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/accountGrant:AccountGrant",
-			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option <break><break>```sh<break> $ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true' <break>```<break><break>",
+			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option<break><break> ```sh<break> $ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true' <break>```<break><break>",
 		},
 		{
 			input: []string{
@@ -829,7 +829,22 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/apiIntegration:ApiIntegration",
-			expected: "## Import\n\n<break><break>```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
+			expected: "## Import\n\n```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
+		},
+		{
+			input: []string{
+				"",
+				"This is a first line in a multi-line import section",
+				"* `{{name}}`",
+				"* `{{id}}`",
+				"For example:",
+				"```sh", // This has several variations upstream
+				"terraform import gcp_accesscontextmanager_access_level.example name",
+				"```",
+				"",
+			},
+			token:    "gcp:accesscontextmanager/accessLevel:AccessLevel",
+			expected: "## Import\n\nThis is a first line in a multi-line import section<break><break> * `{{name}}`<break><break> * `{{id}}`<break><break> For example:<break><break> ```sh<break> $ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name <break>```<break><break>",
 		},
 		{
 			input:        readlines(t, "test_data/parse-imports/accessanalyzer.md"),
