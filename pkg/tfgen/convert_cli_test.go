@@ -64,11 +64,11 @@ output "some_output" {
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
 					Schema: map[string]*schema.Schema{
-						"input_one": &schema.Schema{
+						"input_one": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						"input_two": &schema.Schema{
+						"input_two": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
