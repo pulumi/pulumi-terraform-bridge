@@ -219,7 +219,7 @@ func (cc *cliConverter) bulkConvert() error {
 // The mappings argument helps the converter resolve the metadata for bridged providers during
 // example translation. Most importantly it needs to include the current provider, but it also may
 // include additional providers used in examples.
-func (c *cliConverter) convertViaPulumiCLI(
+func (cc *cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
 	mappings []tfbridge.ProviderInfo,
 ) (
@@ -284,7 +284,7 @@ func (c *cliConverter) convertViaPulumiCLI(
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings folder: %w", err)
 		}
-		mf := c.mappingsFile(mappingsDir, info)
+		mf := cc.mappingsFile(mappingsDir, info)
 		if err := os.WriteFile(mf, bytes, 0600); err != nil {
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings file: %w", err)
@@ -299,7 +299,7 @@ func (c *cliConverter) convertViaPulumiCLI(
 
 	var mappingsArgs []string
 	for _, info := range mappings {
-		mappingsArgs = append(mappingsArgs, "--mappings", c.mappingsFile(mappingsDir, info))
+		mappingsArgs = append(mappingsArgs, "--mappings", cc.mappingsFile(mappingsDir, info))
 	}
 
 	cmdArgs := []string{

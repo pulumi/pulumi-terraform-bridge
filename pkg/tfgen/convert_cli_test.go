@@ -176,7 +176,7 @@ output "someOutput" {
 	t.Run("mappingsFile", func(t *testing.T) {
 		c := &cliConverter{}
 		aws := tfbridge.ProviderInfo{Name: "aws"}
-		assert.Equal(t, filepath.Join(".", "aws.json"),	c.mappingsFile(".", aws))
+		assert.Equal(t, filepath.Join(".", "aws.json"), c.mappingsFile(".", aws))
 		withPrefix := tfbridge.ProviderInfo{Name: "p", ResourcePrefix: "prov"}
 		assert.Equal(t, filepath.Join(".", "prov.json"), c.mappingsFile(".", withPrefix))
 	})
