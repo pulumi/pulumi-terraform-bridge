@@ -130,10 +130,7 @@ output "someOutput" {
 		out, err := cc.convertViaPulumiCLI(map[string]string{
 			"example1": simpleResourceTF,
 			"example2": simpleDataSourceTF,
-		}, []struct {
-			name string
-			info tfbridge.ProviderInfo
-		}{{info: p, name: "simple"}})
+		}, []tfbridge.ProviderInfo{p})
 
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(out))
@@ -174,5 +171,13 @@ output "someOutput" {
 
 		bridgetesting.AssertEqualsJSONFile(t,
 			"test_data/TestConvertViaPulumiCLI/schema.json", schema)
+	})
+
+	t.Run("mappingsFile", func(t *testing.T) {
+		c := &cliConverter{}
+		aws := tfbridge.ProviderInfo{Name: "aws"}
+		assert.Equal(t, filepath.Join(".", "aws.json"), c.mappingsFile(".", aws))
+		withPrefix := tfbridge.ProviderInfo{Name: "p", ResourcePrefix: "prov"}
+		assert.Equal(t, filepath.Join(".", "prov.json"), c.mappingsFile(".", withPrefix))
 	})
 }

@@ -55,7 +55,6 @@ func cliConverterEnabled() bool {
 // Note that once examples are converted to PCL, they continue to be processed with in-process
 // target language specific generators to produce TypeScript, YAML, Python etc target code.
 type cliConverter struct {
-	packageName  string                // name of the provider such as "gcp"
 	info         tfbridge.ProviderInfo // provider declaration
 	pluginHost   plugin.Host           // the plugin host for PCL conversion
 	packageCache *pcl.PackageCache     // the package cache for PCL conversion
@@ -101,7 +100,6 @@ func (g *Generator) cliConverter() *cliConverter {
 		hcls:         map[string]struct{}{},
 		info:         g.info,
 		packageCache: g.packageCache,
-		packageName:  string(g.pkg),
 		pluginHost:   g.pluginHost,
 		pcls:         map[string]translatedExample{},
 	}
@@ -191,14 +189,8 @@ func (cc *cliConverter) bulkConvert() error {
 		examples[fileName] = hcl
 		n++
 	}
-	result, err := cc.convertViaPulumiCLI(examples, []struct {
-		name string
-		info tfbridge.ProviderInfo
-	}{
-		{
-			name: cc.packageName,
-			info: cc.info,
-		},
+	result, err := cc.convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
+		cc.info,
 	})
 	if err != nil {
 		return err
@@ -223,12 +215,13 @@ func (cc *cliConverter) bulkConvert() error {
 //
 // This may need to be coarse-grain parallelized to speed up larger providers at the cost of more
 // memory, for example run 4 instances of `pulumi convert` on 25% of examples each.
-func (*cliConverter) convertViaPulumiCLI(
+//
+// The mappings argument helps the converter resolve the metadata for bridged providers during
+// example translation. Most importantly it needs to include the current provider, but it also may
+// include additional providers used in examples.
+func (cc *cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
-	mappings []struct {
-		name string
-		info tfbridge.ProviderInfo
-	},
+	mappings []tfbridge.ProviderInfo,
 ) (
 	output map[string]translatedExample,
 	finalError error,
@@ -274,10 +267,6 @@ func (*cliConverter) convertViaPulumiCLI(
 
 	mappingsDir := filepath.Join(outDir, "mappings")
 
-	mappingsFile := func(name string) string {
-		return filepath.Join(mappingsDir, fmt.Sprintf("%s.json", name))
-	}
-
 	// Prepare mappings folder if necessary.
 	if len(mappings) > 0 {
 		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
@@ -287,15 +276,15 @@ func (*cliConverter) convertViaPulumiCLI(
 	}
 
 	// Write out mappings files if necessary.
-	for _, m := range mappings {
-		m := m // Remove aliasing lint
-		mpi := tfbridge.MarshalProviderInfo(&m.info)
+	for _, info := range mappings {
+		info := info // remove aliasing lint
+		mpi := tfbridge.MarshalProviderInfo(&info)
 		bytes, err := json.Marshal(mpi)
 		if err != nil {
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings folder: %w", err)
 		}
-		mf := mappingsFile(m.name)
+		mf := cc.mappingsFile(mappingsDir, info)
 		if err := os.WriteFile(mf, bytes, 0600); err != nil {
 			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
 				"mappings file: %w", err)
@@ -309,8 +298,8 @@ func (*cliConverter) convertViaPulumiCLI(
 	}
 
 	var mappingsArgs []string
-	for _, m := range mappings {
-		mappingsArgs = append(mappingsArgs, "--mappings", mappingsFile(m.name))
+	for _, info := range mappings {
+		mappingsArgs = append(mappingsArgs, "--mappings", cc.mappingsFile(mappingsDir, info))
 	}
 
 	cmdArgs := []string{
@@ -354,6 +343,15 @@ func (*cliConverter) convertViaPulumiCLI(
 	}
 
 	return result, nil
+}
+
+func (*cliConverter) mappingsFile(mappingsDir string, info tfbridge.ProviderInfo) string {
+	// This seems to be what the converter expects the filename to be. For providers
+	// like "aws" this is simply the provider name, but there are exceptions such as
+	// "azure" where this has to be "azurerm.json" to match the prefix on the Terraform
+	// resource names such as azurerm_xyz.
+	name := info.GetResourcePrefix()
+	return filepath.Join(mappingsDir, fmt.Sprintf("%s.json", name))
 }
 
 // Conversion from PCL to the target language still happens in-process temporarily, which is really
