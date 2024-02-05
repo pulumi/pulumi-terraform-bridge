@@ -69,6 +69,7 @@ type cliConverter struct {
 			stripSubsectionsWithErrors bool,
 			convertHCL func(hcl, path, exampleTitle string,
 				languages []string) (string, error),
+			useCoverageTracker bool,
 		) string
 	}
 
@@ -113,7 +114,8 @@ func (cc *cliConverter) StartConvertingExamples(
 	stripSubsectionsWithErrors bool,
 ) string {
 	// Record inner HCL conversions and discard the result.
-	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL)
+	cov := true // report examples to CoverageTracker
+	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL, cov)
 	// Record the convertExamples job for later.
 	e := struct {
 		docs                       string
@@ -147,8 +149,13 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 		i, err := strconv.Atoi(string(groups[1]))
 		contract.AssertNoErrorf(err, "strconv.Atoi")
 		ex := cc.convertExamplesList[i]
+
+		// Set useCoverageTracker to false to avoid double-counting the examples. Presumably
+		// we already reported the examples to CoverageTracker during
+		// StartConvertingExamples, so no need do it again here.
+		useCoverageTracker := false
 		source := cc.generator.convertExamplesInner(ex.docs, ex.path,
-			ex.stripSubsectionsWithErrors, cc.generator.convertHCL)
+			ex.stripSubsectionsWithErrors, cc.generator.convertHCL, useCoverageTracker)
 		// JSON-escaping to splice into JSON string literals.
 		bytes, err := json.Marshal(source)
 		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")

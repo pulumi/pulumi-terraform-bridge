@@ -1329,7 +1329,9 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 			stripSubsectionsWithErrors)
 	}
 
-	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL)
+	// Use coverage tracker: on by default.
+	cov := true
+	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL, cov)
 }
 
 // The inner implementation of examples conversion is parameterized by convertHCL so that it can be
@@ -1339,6 +1341,7 @@ func (g *Generator) convertExamplesInner(
 	path examplePath,
 	stripSubsectionsWithErrors bool,
 	convertHCL func(hcl, path, exampleTitle string, languages []string) (string, error),
+	useCoverageTracker bool,
 ) (result string) {
 	output := &bytes.Buffer{}
 
@@ -1393,8 +1396,12 @@ func (g *Generator) convertExamplesInner(
 					if g.language.shouldConvertExamples() {
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
-						// We've got some code -- assume it's HCL and try to convert it.
-						g.coverageTracker.foundExample(path.String(), hcl)
+						// We've got some code -- assume it's HCL and try to
+						// convert it.
+						if useCoverageTracker {
+							g.coverageTracker.foundExample(
+								path.String(), hcl)
+						}
 
 						exampleTitle := ""
 						if strings.Contains(subsection[0], "###") {
