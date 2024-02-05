@@ -21,7 +21,6 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -108,9 +107,7 @@ func (r *objectPseudoResource) Len() int {
 
 func (r *objectPseudoResource) Get(key string) shim.Schema {
 	s, ok := r.GetOk(key)
-	if !ok {
-		panic(fmt.Sprintf("Missing key: %v", key))
-	}
+	contract.Assertf(ok, "Missing key: %v", key)
 	return s
 }
 
@@ -129,15 +126,16 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 		return newBlockSchema(key, block), true
 	}
 
-	// If there fail to find an Attr, perhaps we have a simple ObjectType then we can look up the property's
-	// AttrType and go with that.
-	if objType, ok := r.obj.(types.ObjectType); ok {
-		if t, ok := objType.AttrTypes[key]; ok {
-			return newTypeSchema(t, nil), true
-		}
+	if t, err := r.obj.ApplyTerraform5AttributePathStep(tftypes.AttributeName(key)); err == nil {
+		typ, ok := t.(attr.Type)
+		msg := "Failing to translate schema for attribute %q, unexpected attribute of type %T"
+		contract.Assertf(ok, msg, key, typ)
+		return newTypeSchema(typ, nil), true
 	}
 
+	// Check if key is a valid attribute.
 	for _, a := range r.allAttrNames {
+		// If key is a valid attribute, then we have failed to find it:
 		if key == a {
 			contract.Failf("[pf/internal/schemashim] Failing to translate schema "+
 				"for attribute %q of object type %#v. "+
@@ -146,6 +144,7 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 		}
 	}
 
+	// Otherwise key is not a valid attribute, so we can just return
 	return nil, false
 }
 
@@ -204,9 +203,7 @@ func (r *tuplePseudoResource) Schema() shim.SchemaMap {
 
 func (r *tuplePseudoResource) Get(key string) shim.Schema {
 	v, ok := r.GetOk(key)
-	if !ok {
-		panic(fmt.Sprintf("Missing key: '%s' in tuple with %d elements", key, r.Len()))
-	}
+	contract.Assertf(ok, "Missing key: '%s' in tuple with %d elements", key, r.Len())
 	return v
 }
 
