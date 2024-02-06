@@ -124,13 +124,12 @@ func (ct *CoverageTracker) getOrCreateExample(pageName string, hcl string) *Exam
 		example := Example{hcl, make(map[string]*LanguageConversionResult)}
 		existingPage.Examples = append(existingPage.Examples, example)
 		return &example
-	} else {
-		// Initializing a page for this example.
-		example := Example{hcl, make(map[string]*LanguageConversionResult)}
-		examples := []Example{example}
-		ct.EncounteredPages[pageName] = &DocumentationPage{pageName, examples}
-		return &example
 	}
+	// Initializing a page for this example.
+	example := Example{hcl, make(map[string]*LanguageConversionResult)}
+	examples := []Example{example}
+	ct.EncounteredPages[pageName] = &DocumentationPage{pageName, examples}
+	return &example
 }
 
 // Used when: current example has been successfully converted to a certain language
