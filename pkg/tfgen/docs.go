@@ -1329,7 +1329,9 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 			stripSubsectionsWithErrors)
 	}
 
-	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL)
+	// Use coverage tracker: on by default.
+	cov := true
+	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL, cov)
 }
 
 // The inner implementation of examples conversion is parameterized by convertHCL so that it can be
@@ -1338,7 +1340,10 @@ func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
 	stripSubsectionsWithErrors bool,
-	convertHCL func(hcl, path, exampleTitle string, languages []string) (string, error),
+	convertHCL func(
+		e *Example, hcl, path, exampleTitle string, languages []string,
+	) (string, error),
+	useCoverageTracker bool,
 ) (result string) {
 	output := &bytes.Buffer{}
 
@@ -1393,8 +1398,13 @@ func (g *Generator) convertExamplesInner(
 					if g.language.shouldConvertExamples() {
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
 
-						// We've got some code -- assume it's HCL and try to convert it.
-						g.coverageTracker.foundExample(path.String(), hcl)
+						// We've got some code -- assume it's HCL and try to
+						// convert it.
+						var e *Example
+						if useCoverageTracker {
+							e = g.coverageTracker.getOrCreateExample(
+								path.String(), hcl)
+						}
 
 						exampleTitle := ""
 						if strings.Contains(subsection[0], "###") {
@@ -1402,7 +1412,8 @@ func (g *Generator) convertExamplesInner(
 						}
 
 						langs := genLanguageToSlice(g.language)
-						codeBlock, err := convertHCL(hcl, path.String(), exampleTitle, langs)
+						codeBlock, err := convertHCL(e, hcl, path.String(),
+							exampleTitle, langs)
 
 						if err != nil {
 							skippedExamples = true
@@ -1518,17 +1529,19 @@ var _ error = &ConversionError{}
 //
 // Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/477
-func (g *Generator) convert(input afero.Fs, languageName string) (files map[string][]byte, diags convert.Diagnostics,
-	err error) {
+func (g *Generator) convert(
+	e *Example, input afero.Fs, languageName string,
+) (files map[string][]byte, diags convert.Diagnostics, err error) {
 	defer func() {
 		v := recover()
-		if v != nil {
-			files = map[string][]byte{}
-			diags = convert.Diagnostics{}
-			var trace = string(debug.Stack())
-			err = newConversionError(v, trace)
-			g.coverageTracker.languageConversionPanic(languageName, fmt.Sprintf("%v", v))
+		if v == nil {
+			return
 		}
+		files = map[string][]byte{}
+		diags = convert.Diagnostics{}
+		var trace = string(debug.Stack())
+		err = newConversionError(v, trace)
+		g.coverageTracker.languageConversionPanic(e, languageName, fmt.Sprintf("%v", v))
 	}()
 
 	files, diags, err = convert.Convert(convert.Options{
@@ -1549,7 +1562,7 @@ func (g *Generator) convert(input afero.Fs, languageName string) (files map[stri
 }
 
 func (g *Generator) legacyConvert(
-	hclCode, fileName, languageName string,
+	e *Example, hclCode, fileName, languageName string,
 ) (string, hcl.Diagnostics, error) {
 	input := afero.NewMemMapFs()
 	f, err := input.Create(fileName)
@@ -1558,7 +1571,7 @@ func (g *Generator) legacyConvert(
 	contract.AssertNoErrorf(err, "err != nil")
 	contract.IgnoreClose(f)
 
-	files, diags, err := g.convert(input, languageName)
+	files, diags, err := g.convert(e, input, languageName)
 	if diags.All.HasErrors() || err != nil {
 		return "", diags.All, err
 	}
@@ -1574,7 +1587,7 @@ func (g *Generator) legacyConvert(
 
 // convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
 // simplified parameters and return values
-func (g *Generator) convertHCLToString(hclCode, path, languageName string) (string, error) {
+func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName string) (string, error) {
 	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 
 	var convertedHcl string
@@ -1584,7 +1597,7 @@ func (g *Generator) convertHCLToString(hclCode, path, languageName string) (stri
 	if cliConverterEnabled() {
 		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
 	} else {
-		convertedHcl, diags, err = g.legacyConvert(hclCode, fileName, languageName)
+		convertedHcl, diags, err = g.legacyConvert(e, hclCode, fileName, languageName)
 	}
 
 	// By observation on the GCP provider, convert.Convert() will either panic (in which case the wrapped method above
@@ -1606,11 +1619,11 @@ func (g *Generator) convertHCLToString(hclCode, path, languageName string) (stri
 		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
 
 		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
-		g.coverageTracker.languageConversionFailure(languageName, diags)
+		g.coverageTracker.languageConversionFailure(e, languageName, diags)
 		return "", fmt.Errorf(errMsg)
 	}
 
-	g.coverageTracker.languageConversionSuccess(languageName, convertedHcl)
+	g.coverageTracker.languageConversionSuccess(e, languageName, convertedHcl)
 	return convertedHcl, nil
 }
 
@@ -1694,7 +1707,7 @@ func hclConversionsToString(hclConversions map[string]string) string {
 // If all languages fail to convert, the returned string will be "" and an error will be returned.
 // If some languages fail to convert, the returned string contain any successful conversions and no error will be
 // returned, but conversion failures will be logged via the Generator.
-func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []string) (string, error) {
+func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, languages []string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1710,7 +1723,7 @@ func (g *Generator) convertHCL(hcl, path, exampleTitle string, languages []strin
 
 	for _, lang := range languages {
 		var convertErr error
-		hclConversions[lang], convertErr = g.convertHCLToString(hcl, path, lang)
+		hclConversions[lang], convertErr = g.convertHCLToString(e, hcl, path, lang)
 		if convertErr != nil {
 			failedLangs[lang] = convertErr
 			err = multierror.Append(err, convertErr)

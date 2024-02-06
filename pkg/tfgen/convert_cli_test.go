@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"encoding/json"
+
+	"github.com/hexops/autogold/v2"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +63,16 @@ output "some_output" {
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
-					Schema: map[string]*schema.Schema{},
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
@@ -147,6 +158,8 @@ output "someOutput" {
 		tempdir := t.TempDir()
 		fs := afero.NewBasePathFs(afero.NewOsFs(), tempdir)
 
+		ct := newCoverageTracker(info.Name, info.Version)
+
 		g, err := NewGenerator(GeneratorOptions{
 			Package:      info.Name,
 			Version:      info.Version,
@@ -156,6 +169,7 @@ output "someOutput" {
 			Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 				Color: colors.Never,
 			}),
+			CoverageTracker: ct,
 		})
 		assert.NoError(t, err)
 
@@ -171,6 +185,25 @@ output "someOutput" {
 
 		bridgetesting.AssertEqualsJSONFile(t,
 			"test_data/TestConvertViaPulumiCLI/schema.json", schema)
+
+		autogold.Expect(`
+Provider:     simple
+Success rate: 100.00% (6/6)
+
+Converted 100.00% of csharp examples (1/1)
+Converted 100.00% of go examples (1/1)
+Converted 100.00% of java examples (1/1)
+Converted 100.00% of python examples (1/1)
+Converted 100.00% of typescript examples (1/1)
+Converted 100.00% of yaml examples (1/1)
+`).Equal(t, ct.getShortResultSummary())
+
+		require.Equalf(t, 1, len(ct.EncounteredPages), "expected 1 page")
+		var page *DocumentationPage
+		for _, p := range ct.EncounteredPages {
+			page = p
+		}
+		require.Equal(t, 1, len(page.Examples), "expected 1 example")
 	})
 
 	t.Run("mappingsFile", func(t *testing.T) {

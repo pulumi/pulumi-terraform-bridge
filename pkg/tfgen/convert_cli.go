@@ -62,13 +62,17 @@ type cliConverter struct {
 	hcls map[string]struct{} // set of observed HCL snippets
 
 	generator interface {
-		convertHCL(hcl, path, exampleTitle string, languages []string) (string, error)
+		convertHCL(
+			e *Example, hcl, path, exampleTitle string, languages []string,
+		) (string, error)
 		convertExamplesInner(
 			docs string,
 			path examplePath,
 			stripSubsectionsWithErrors bool,
-			convertHCL func(hcl, path, exampleTitle string,
-				languages []string) (string, error),
+			convertHCL func(
+				e *Example, hcl, path, exampleTitle string, languages []string,
+			) (string, error),
+			useCoverageTracker bool,
 		) string
 	}
 
@@ -113,7 +117,8 @@ func (cc *cliConverter) StartConvertingExamples(
 	stripSubsectionsWithErrors bool,
 ) string {
 	// Record inner HCL conversions and discard the result.
-	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL)
+	cov := false // do not use coverage tracker yet, it will be used in the second pass.
+	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL, cov)
 	// Record the convertExamples job for later.
 	e := struct {
 		docs                       string
@@ -147,8 +152,11 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 		i, err := strconv.Atoi(string(groups[1]))
 		contract.AssertNoErrorf(err, "strconv.Atoi")
 		ex := cc.convertExamplesList[i]
+
+		// Use coverage tracker here on the second pass.
+		useCoverageTracker := true
 		source := cc.generator.convertExamplesInner(ex.docs, ex.path,
-			ex.stripSubsectionsWithErrors, cc.generator.convertHCL)
+			ex.stripSubsectionsWithErrors, cc.generator.convertHCL, useCoverageTracker)
 		// JSON-escaping to splice into JSON string literals.
 		bytes, err := json.Marshal(source)
 		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")
@@ -441,7 +449,7 @@ func (cc *cliConverter) convertPCL(
 
 // Act as a convertHCL stub that does not actually convert but spies on the literals involved.
 func (cc *cliConverter) recordHCL(
-	hcl, path, exampleTitle string, languages []string,
+	e *Example, hcl, path, exampleTitle string, languages []string,
 ) (string, error) {
 	h := cc.hcls
 	h[hcl] = struct{}{}
