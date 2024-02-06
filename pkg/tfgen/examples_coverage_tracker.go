@@ -116,6 +116,7 @@ func (ct *CoverageTracker) getOrCreateExample(pageName string, hcl string) *Exam
 	if ct == nil {
 		return nil
 	}
+	// If the example with this HCL already exists, return it right away.
 	if e := ct.getExample(pageName, hcl); e != nil {
 		return e
 	}

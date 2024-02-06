@@ -1404,9 +1404,6 @@ func (g *Generator) convertExamplesInner(
 						if useCoverageTracker {
 							e = g.coverageTracker.getOrCreateExample(
 								path.String(), hcl)
-						} else {
-							e = g.coverageTracker.getExample(
-								path.String(), hcl)
 						}
 
 						exampleTitle := ""
