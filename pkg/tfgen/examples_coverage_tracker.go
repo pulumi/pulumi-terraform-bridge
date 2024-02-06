@@ -245,11 +245,6 @@ func formatDiagnostics(diagnostics hcl.Diagnostics) string {
 	return strings.Join(results[:], "; ")
 }
 
-// Returning the page's last example, to which conversion results will be added.
-func (Page *DocumentationPage) lastExample() *Example {
-	return &Page.Examples[len(Page.Examples)-1]
-}
-
 // Exporting the coverage results
 func (ct *CoverageTracker) exportResults(outputDirectory string) error {
 	coverageExportUtil := newCoverageExportUtil(ct)
