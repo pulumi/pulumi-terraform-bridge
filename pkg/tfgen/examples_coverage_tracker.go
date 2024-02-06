@@ -28,7 +28,6 @@ four categories of 100 attempts, with each corresponding to one example.
 package tfgen
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -41,20 +40,19 @@ the tracker of what is going on. Notifications are treated as an ordered sequenc
 
 NOTIFICATION INTERFACE:
 
-foundExample(pageName, hcl)
+example := getOrCreateExample(pageName, hcl)
 
-languageConversionSuccess(targetLanguage)
+languageConversionSuccess(example, targetLanguage)
 
-languageConversionWarning(targetLanguage, warningDiagnostics)
+languageConversionWarning(example, targetLanguage, warningDiagnostics)
 
-languageConversionFailure(targetLanguage, failureDiagnostics)
+languageConversionFailure(example, targetLanguage, failureDiagnostics)
 
-languageConversionPanic(targetLanguage, panicInfo)
+languageConversionPanic(example, targetLanguage, panicInfo)
 */
 type CoverageTracker struct {
 	ProviderName     string                        // Name of the provider
 	ProviderVersion  string                        // Version of the provider
-	currentPageName  string                        // Name of current page that is being processed
 	EncounteredPages map[string]*DocumentationPage // Map linking page IDs to their data
 }
 
@@ -92,36 +90,57 @@ const (
 )
 
 func newCoverageTracker(ProviderName string, ProviderVersion string) *CoverageTracker {
-	return &CoverageTracker{ProviderName, ProviderVersion, "",
-		make(map[string]*DocumentationPage)}
+	return &CoverageTracker{ProviderName, ProviderVersion, make(map[string]*DocumentationPage)}
 }
 
-// Used when: generator has found a brand new example, with a convertible block
-// of HCL that hasn't been encountered before.
-func (ct *CoverageTracker) foundExample(pageName string, hcl string) {
+// Find example by pageName and raw HCL source.
+func (ct *CoverageTracker) getExample(pageName string, hcl string) *Example {
 	if ct == nil {
-		return
+		return nil
 	}
-	ct.currentPageName = pageName
+	page, ok := ct.EncounteredPages[pageName]
+	if !ok {
+		return nil
+	}
+	for _, e := range page.Examples {
+		if e.OriginalHCL == hcl {
+			return &e
+		}
+	}
+	return nil
+}
 
+// Similar to getExample, but instead of returning nil when not found, creates an appropriate page
+// and Example object and registers it.
+func (ct *CoverageTracker) getOrCreateExample(pageName string, hcl string) *Example {
+	if ct == nil {
+		return nil
+	}
+	if e := ct.getExample(pageName, hcl); e != nil {
+		return e
+	}
 	if existingPage, ok := ct.EncounteredPages[pageName]; ok {
 		// This example's page already exists. Appending example to it.
-		existingPage.Examples = append(existingPage.Examples, Example{hcl, make(map[string]*LanguageConversionResult)})
+		example := Example{hcl, make(map[string]*LanguageConversionResult)}
+		existingPage.Examples = append(existingPage.Examples, example)
+		return &example
 	} else {
 		// Initializing a page for this example.
-		ct.EncounteredPages[pageName] = &DocumentationPage{
-			pageName,
-			[]Example{{hcl, make(map[string]*LanguageConversionResult)}},
-		}
+		example := Example{hcl, make(map[string]*LanguageConversionResult)}
+		examples := []Example{example}
+		ct.EncounteredPages[pageName] = &DocumentationPage{pageName, examples}
+		return &example
 	}
 }
 
 // Used when: current example has been successfully converted to a certain language
-func (ct *CoverageTracker) languageConversionSuccess(languageName string, program string) {
+func (ct *CoverageTracker) languageConversionSuccess(
+	e *Example, languageName string, program string,
+) {
 	if ct == nil {
 		return
 	}
-	ct.insertLanguageConversionResult(languageName, LanguageConversionResult{
+	ct.insertLanguageConversionResult(e, languageName, LanguageConversionResult{
 		FailureSeverity:  Success,
 		FailureInfo:      "",
 		TranslationCount: 1,
@@ -132,11 +151,13 @@ func (ct *CoverageTracker) languageConversionSuccess(languageName string, progra
 // Used when: generator has successfully converted current example, but threw out some warnings
 //
 //nolint:unused
-func (ct *CoverageTracker) languageConversionWarning(languageName string, warningDiagnostics hcl.Diagnostics) {
+func (ct *CoverageTracker) languageConversionWarning(
+	e *Example, languageName string, warningDiagnostics hcl.Diagnostics,
+) {
 	if ct == nil {
 		return
 	}
-	ct.insertLanguageConversionResult(languageName, LanguageConversionResult{
+	ct.insertLanguageConversionResult(e, languageName, LanguageConversionResult{
 		FailureSeverity:  Warning,
 		FailureInfo:      formatDiagnostics(warningDiagnostics),
 		TranslationCount: 1,
@@ -144,11 +165,13 @@ func (ct *CoverageTracker) languageConversionWarning(languageName string, warnin
 }
 
 // Used when: generator has failed to convert the current example to a certain language
-func (ct *CoverageTracker) languageConversionFailure(languageName string, failureDiagnostics hcl.Diagnostics) {
+func (ct *CoverageTracker) languageConversionFailure(
+	e *Example, languageName string, failureDiagnostics hcl.Diagnostics,
+) {
 	if ct == nil {
 		return
 	}
-	ct.insertLanguageConversionResult(languageName, LanguageConversionResult{
+	ct.insertLanguageConversionResult(e, languageName, LanguageConversionResult{
 		FailureSeverity:  Failure,
 		FailureInfo:      formatDiagnostics(failureDiagnostics),
 		TranslationCount: 1,
@@ -157,11 +180,13 @@ func (ct *CoverageTracker) languageConversionFailure(languageName string, failur
 
 // Used when: generator encountered a fatal internal error when trying to convert the
 // current example to a certain language
-func (ct *CoverageTracker) languageConversionPanic(languageName string, panicInfo string) {
+func (ct *CoverageTracker) languageConversionPanic(
+	e *Example, languageName string, panicInfo string,
+) {
 	if ct == nil {
 		return
 	}
-	ct.insertLanguageConversionResult(languageName, LanguageConversionResult{
+	ct.insertLanguageConversionResult(e, languageName, LanguageConversionResult{
 		FailureSeverity:  Fatal,
 		FailureInfo:      panicInfo,
 		TranslationCount: 1,
@@ -169,27 +194,21 @@ func (ct *CoverageTracker) languageConversionPanic(languageName string, panicInf
 }
 
 // Adding a language conversion result to the current example. If a conversion result with the same
-// target language already exists, keep the lowest severity one and mark the example as possibly duplicated
-func (ct *CoverageTracker) insertLanguageConversionResult(languageName string,
-	newConversionResult LanguageConversionResult) {
-	if currentPage, ok := ct.EncounteredPages[ct.currentPageName]; ok {
-		lastExample := currentPage.lastExample()
-
-		if existingConversionResult, ok := lastExample.ConversionResults[languageName]; ok {
-			// Example already has this language conversion attempt. Replace if new one has a lower severity
-			if newConversionResult.FailureSeverity < existingConversionResult.FailureSeverity {
-				lastExample.ConversionResults[languageName] = &newConversionResult
-			}
-			existingConversionResult.TranslationCount++
-		} else {
-			// The new language conversion result is added for this example
-			lastExample.ConversionResults[languageName] = &newConversionResult
+// target language already exists, keep the lowest severity one and mark the example as possibly
+// duplicated
+func (ct *CoverageTracker) insertLanguageConversionResult(
+	e *Example, languageName string, newConversionResult LanguageConversionResult,
+) {
+	if existingConversionResult, ok := e.ConversionResults[languageName]; ok {
+		// Example already has this language conversion attempt. Replace if new one has a
+		// lower severity
+		if newConversionResult.FailureSeverity < existingConversionResult.FailureSeverity {
+			e.ConversionResults[languageName] = &newConversionResult
 		}
+		existingConversionResult.TranslationCount++
 	} else {
-		// Check that foundExample() is called before all other Coverage Tracker interface methods
-		fmt.Println("Error: attempted to log an example language conversion result without first finding its page")
-		fmt.Println(newConversionResult)
-		panic("")
+		// The new language conversion result is added for this example
+		e.ConversionResults[languageName] = &newConversionResult
 	}
 }
 

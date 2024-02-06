@@ -62,13 +62,16 @@ type cliConverter struct {
 	hcls map[string]struct{} // set of observed HCL snippets
 
 	generator interface {
-		convertHCL(hcl, path, exampleTitle string, languages []string) (string, error)
+		convertHCL(
+			e *Example, hcl, path, exampleTitle string, languages []string,
+		) (string, error)
 		convertExamplesInner(
 			docs string,
 			path examplePath,
 			stripSubsectionsWithErrors bool,
-			convertHCL func(hcl, path, exampleTitle string,
-				languages []string) (string, error),
+			convertHCL func(
+				e *Example, hcl, path, exampleTitle string, languages []string,
+			) (string, error),
 			useCoverageTracker bool,
 		) string
 	}
@@ -448,7 +451,7 @@ func (cc *cliConverter) convertPCL(
 
 // Act as a convertHCL stub that does not actually convert but spies on the literals involved.
 func (cc *cliConverter) recordHCL(
-	hcl, path, exampleTitle string, languages []string,
+	e *Example, hcl, path, exampleTitle string, languages []string,
 ) (string, error) {
 	h := cc.hcls
 	h[hcl] = struct{}{}
