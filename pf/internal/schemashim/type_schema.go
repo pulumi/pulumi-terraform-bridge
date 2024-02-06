@@ -17,6 +17,7 @@ package schemashim
 import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -57,7 +58,7 @@ func (*typeSchema) Sensitive() bool { return false }
 
 func (s *typeSchema) Elem() interface{} {
 	switch tt := s.t.(type) {
-	case types.ObjectType:
+	case basetypes.ObjectTypable:
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested, nil)
 		return pseudoResource
 	case types.ListType:
