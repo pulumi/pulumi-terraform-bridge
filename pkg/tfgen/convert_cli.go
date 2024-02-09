@@ -35,6 +35,7 @@ import (
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -76,6 +77,8 @@ type cliConverter struct {
 		) string
 	}
 
+	loader schema.Loader
+
 	convertExamplesList []struct {
 		docs                       string
 		path                       examplePath
@@ -106,6 +109,12 @@ func (g *Generator) cliConverter() *cliConverter {
 		packageCache: g.packageCache,
 		pluginHost:   g.pluginHost,
 		pcls:         map[string]translatedExample{},
+	}
+	if g.pluginHost != nil {
+		l := newLoader(g.pluginHost)
+		// Ensure azurerm resolves to azure for example:
+		l.aliasPackage(g.info.Name, string(g.pkg))
+		g.cliConverterState.loader = l
 	}
 	return g.cliConverterState
 }
@@ -389,8 +398,9 @@ func (cc *cliConverter) convertPCL(
 		opts = append(opts, pcl.SkipResourceTypechecking)
 		if cc.pluginHost != nil {
 			opts = append(opts, pcl.PluginHost(cc.pluginHost))
-			loader := newLoader(cc.pluginHost)
-			opts = append(opts, pcl.Loader(loader))
+		}
+		if cc.loader != nil {
+			opts = append(opts, pcl.Loader(cc.loader))
 		}
 		if cc.packageCache != nil {
 			opts = append(opts, pcl.Cache(cc.packageCache))

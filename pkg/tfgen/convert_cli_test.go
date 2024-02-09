@@ -15,27 +15,34 @@
 package tfgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
-	"encoding/json"
-
+	"github.com/blang/semver"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
@@ -164,6 +171,7 @@ output "someOutput" {
 			Package:      info.Name,
 			Version:      info.Version,
 			Language:     Schema,
+			PluginHost:   &testPluginHost{},
 			ProviderInfo: info,
 			Root:         fs,
 			Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -213,4 +221,115 @@ Converted 100.00% of yaml examples (1/1)
 		withPrefix := tfbridge.ProviderInfo{Name: "p", ResourcePrefix: "prov"}
 		assert.Equal(t, filepath.Join(".", "prov.json"), c.mappingsFile(".", withPrefix))
 	})
+
+	// Taken from https://github.com/pulumi/pulumi-azure/issues/1698
+	//
+	// Emulate a case where pulumi name does not match the TF provider prefix, and one of the
+	// examples is referencing an unknown resource.
+	//
+	// Before the fix this would panic reaching out to PluginHost.ResolvePlugin.
+	t.Run("unknownResource", func(t *testing.T) {
+		md := []byte(strings.ReplaceAll(`
+# azurerm_web_pubsub_custom_certificate
+
+Manages an Azure Web PubSub Custom Certificate.
+
+## Example Usage
+
+%%%hcl
+
+resource "azurerm_web_pubsub_service" "example" {
+  name = "example-webpubsub"
 }
+
+resource "azurerm_web_pubsub_custom_certificate" "test" {
+  name = "example-cert"
+}
+
+%%%`, "%%%", "```"))
+		p := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"azurerm_web_pubsub_custom_certificate": {
+					Schema: map[string]*schema.Schema{"name": {
+						Type:     schema.TypeString,
+						Optional: true,
+					}},
+				},
+			},
+		}
+		pi := tfbridge.ProviderInfo{
+			P:       shimv2.NewProvider(p),
+			Name:    "azurerm",
+			Version: "0.0.1",
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"azurerm_web_pubsub_custom_certificate": {
+					Tok:  "azure:webpubsub/customCertificate:CustomCertificate",
+					Docs: &tfbridge.DocInfo{Markdown: md},
+				},
+			},
+		}
+		g, err := NewGenerator(GeneratorOptions{
+			Package:      "azure",
+			Version:      "0.0.1",
+			PluginHost:   &testPluginHost{},
+			Language:     Schema,
+			ProviderInfo: pi,
+			Root:         afero.NewBasePathFs(afero.NewOsFs(), t.TempDir()),
+			Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+				Color: colors.Never,
+			}),
+		})
+		require.NoError(t, err)
+
+		err = g.Generate()
+		require.NoError(t, err)
+	})
+}
+
+type testPluginHost struct{}
+
+func (*testPluginHost) ServerAddr() string { panic("Unexpected call") }
+
+func (*testPluginHost) Log(diag.Severity, resource.URN, string, int32) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) LogStatus(diag.Severity, resource.URN, string, int32) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) Analyzer(tokens.QName) (plugin.Analyzer, error) { panic("Unexpected call") }
+
+func (*testPluginHost) PolicyAnalyzer(
+	tokens.QName, string, *plugin.PolicyAnalyzerOptions,
+) (plugin.Analyzer, error) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) ListAnalyzers() []plugin.Analyzer { panic("Unexpected call") }
+
+func (*testPluginHost) Provider(tokens.Package, *semver.Version) (plugin.Provider, error) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) CloseProvider(plugin.Provider) error { panic("Unexpected call") }
+
+func (*testPluginHost) LanguageRuntime(string, plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) EnsurePlugins([]workspace.PluginSpec, plugin.Flags) error {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) ResolvePlugin(
+	workspace.PluginKind, string, *semver.Version,
+) (*workspace.PluginInfo, error) {
+	panic("Unexpected call")
+}
+
+func (*testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin { panic("Unexpected call") }
+func (*testPluginHost) SignalCancellation() error                    { panic("Unexpected call") }
+func (*testPluginHost) Close() error                                 { return nil }
+
+var _ plugin.Host = (*testPluginHost)(nil)
