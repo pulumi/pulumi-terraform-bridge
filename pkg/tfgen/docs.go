@@ -1708,14 +1708,6 @@ func hclConversionsToString(hclConversions map[string]string) string {
 // If some languages fail to convert, the returned string contain any successful conversions and no error will be
 // returned, but conversion failures will be logged via the Generator.
 func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, languages []string) (string, error) {
-
-	defer func() {
-		if e := recover(); e != nil {
-			msg := fmt.Sprintf("PANIC while converting hcl=%q: %v", hcl, e)
-			panic(msg)
-		}
-	}()
-
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.

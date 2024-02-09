@@ -370,13 +370,6 @@ func (cc *cliConverter) convertPCL(
 	source string,
 	languageName string,
 ) (string, hcl.Diagnostics, error) {
-	defer func() {
-		if e := recover(); e != nil {
-			msg := fmt.Sprintf("PANIC while converting pcl=%q: %v", source, e)
-			panic(msg)
-		}
-	}()
-
 	pulumiParser := syntax.NewParser()
 
 	err := pulumiParser.ParseFile(bytes.NewBufferString(source), "example.pp")
@@ -397,9 +390,6 @@ func (cc *cliConverter) convertPCL(
 		if cc.pluginHost != nil {
 			opts = append(opts, pcl.PluginHost(cc.pluginHost))
 			loader := newLoader(cc.pluginHost)
-			// This stanza helps the loader to recognize that for example "azurerm"
-			// needs to be loaded as "azure".
-			//loader.AliasPackage(cc.info.Name, spec.Name)
 			opts = append(opts, pcl.Loader(loader))
 		}
 		if cc.packageCache != nil {
