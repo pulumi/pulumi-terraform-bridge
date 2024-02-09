@@ -59,7 +59,8 @@ output "some_output" {
 }`
 
 	p := tfbridge.ProviderInfo{
-		Name: "simple",
+		Name:           "simple",
+		ResourcePrefix: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
@@ -83,7 +84,7 @@ output "some_output" {
 		}),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"simple_resource": {
-				Tok: "simple:index:resource",
+				Tok: "simp:index:resource",
 				Fields: map[string]*tfbridge.SchemaInfo{
 					"input_one": {
 						Name: "renamedInput1",
@@ -100,41 +101,41 @@ output "some_output" {
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"simple_data_source": {
-				Tok: "simple:index:dataSource",
+				Tok: "simp:index:dataSource",
 			},
 		},
 	}
 
 	simpleDataSourceTF := `
-data "simple_data_source" "a_data_source" {
-    input_one = "hello"
-    input_two = true
-}
+	data "simple_data_source" "a_data_source" {
+	    input_one = "hello"
+	    input_two = true
+	}
 
-output "some_output" {
-    value = data.simple_data_source.a_data_source.result
-}`
+	output "some_output" {
+	    value = data.simple_data_source.a_data_source.result
+	}`
 
 	simpleResourceExpectPCL := `resource "aResource" "simple:index:resource" {
-  __logicalName = "a_resource"
-  renamedInput1 = "hello"
-  inputTwo      = true
-}
+	  __logicalName = "a_resource"
+	  renamedInput1 = "hello"
+	  inputTwo      = true
+	}
 
-output "someOutput" {
-  value = aResource.result
-}
-`
+	output "someOutput" {
+	  value = aResource.result
+	}
+	`
 
 	simpleDataSourceExpectPCL := `aDataSource = invoke("simple:index:dataSource", {
-  inputOne = "hello"
-  inputTwo = true
-})
+	  inputOne = "hello"
+	  inputTwo = true
+	})
 
-output "someOutput" {
-  value = aDataSource.result
-}
-`
+	output "someOutput" {
+	  value = aDataSource.result
+	}
+	`
 
 	t.Run("convertViaPulumiCLI", func(t *testing.T) {
 		cc := &cliConverter{}
@@ -161,7 +162,7 @@ output "someOutput" {
 		ct := newCoverageTracker(info.Name, info.Version)
 
 		g, err := NewGenerator(GeneratorOptions{
-			Package:      info.Name,
+			Package:      "simp",
 			Version:      info.Version,
 			Language:     Schema,
 			ProviderInfo: info,
@@ -174,7 +175,7 @@ output "someOutput" {
 		assert.NoError(t, err)
 
 		err = g.Generate()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		d, err := os.ReadFile(filepath.Join(tempdir, "schema.json"))
 		assert.NoError(t, err)
@@ -187,16 +188,16 @@ output "someOutput" {
 			"test_data/TestConvertViaPulumiCLI/schema.json", schema)
 
 		autogold.Expect(`
-Provider:     simple
-Success rate: 100.00% (6/6)
+		Provider:     simple
+		Success rate: 100.00% (6/6)
 
-Converted 100.00% of csharp examples (1/1)
-Converted 100.00% of go examples (1/1)
-Converted 100.00% of java examples (1/1)
-Converted 100.00% of python examples (1/1)
-Converted 100.00% of typescript examples (1/1)
-Converted 100.00% of yaml examples (1/1)
-`).Equal(t, ct.getShortResultSummary())
+		Converted 100.00% of csharp examples (1/1)
+		Converted 100.00% of go examples (1/1)
+		Converted 100.00% of java examples (1/1)
+		Converted 100.00% of python examples (1/1)
+		Converted 100.00% of typescript examples (1/1)
+		Converted 100.00% of yaml examples (1/1)
+		`).Equal(t, ct.getShortResultSummary())
 
 		require.Equalf(t, 1, len(ct.EncounteredPages), "expected 1 page")
 		var page *DocumentationPage

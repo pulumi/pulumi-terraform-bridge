@@ -16,19 +16,36 @@ package tfgen
 
 import (
 	"github.com/blang/semver"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 type loader struct {
-	innerLoader   schema.Loader
-	emptyPackages map[string]bool
+	innerLoader     schema.Loader
+	emptyPackages   map[string]bool
+	aliasedPackages map[string]string
 }
 
 var _ schema.Loader = &loader{}
 
+func (l *loader) AliasPackage(alias string, canonicalName string) {
+	if l.aliasedPackages == nil {
+		l.aliasedPackages = map[string]string{}
+	}
+	l.aliasedPackages[alias] = canonicalName
+}
+
 func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package, error) {
+	fmt.Println("^^LoadPackage", name, ver)
+	if name == "azurerm" {
+		panic("!")
+	}
+	if renamed, ok := l.aliasedPackages[name]; ok {
+		name = renamed
+	}
+
 	if l.emptyPackages[name] {
 		return &schema.Package{
 			Name:    name,
