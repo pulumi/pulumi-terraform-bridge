@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // Update updates an existing resource with new values.
@@ -49,7 +50,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	checkedInputs, err = applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}

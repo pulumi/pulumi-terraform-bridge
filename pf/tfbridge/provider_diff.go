@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
@@ -54,7 +55,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	checkedInputs, err = applyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
 	if err != nil {
 		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
