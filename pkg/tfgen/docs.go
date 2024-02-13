@@ -1271,20 +1271,25 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
-		// to reconvert them. But we need to surround them in the examples shortcode for rendering on the registry
-
-		// Find the index of "## Example Usage"
-		exampleIndex := strings.Index(docs, "## Example Usage")
-
-		// if not found surround all content
-		if exampleIndex == -1 {
-			return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
-		}
-
-		// Separate resource description and surround the examples
-		return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
-			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
-			docs[exampleIndex:])
+		// to reconvert them.
+		//
+		// TODO: here we should re-write any docs that have {{%% example %%}} in them and replace it with what docsgen will expect now.
+		//
+		return docs
+		////But we need to surround them in the examples shortcode for rendering on the registry
+		//
+		//// Find the index of "## Example Usage"
+		//exampleIndex := strings.Index(docs, "## Example Usage")
+		//
+		//// if not found surround all content
+		//if exampleIndex == -1 {
+		//	return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
+		//}
+		//
+		//// Separate resource description and surround the examples
+		//return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
+		//	strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
+		//	docs[exampleIndex:])
 	}
 
 	if cliConverterEnabled() {
@@ -1319,7 +1324,7 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
-
+	// TODO: can probably simplify this, a lot, but leave for now
 	//var docsSections [][]string
 	//// split up by H2 sections
 	//splitByH2Sections := splitGroupLines(docs, "## ")
@@ -1356,7 +1361,7 @@ func (g *Generator) convertExamplesInner(
 		header, wroteHeader := section[0], false
 
 		//TODO: we do want to change this Example Usage shit. Is it hard coded in the docs generator in p/p?
-		isFrontMatter, isExampleUsage := !strings.HasPrefix(header, "## "), header == "## Example Usage"
+		isFrontMatter := !strings.HasPrefix(header, "## ")
 
 		if stripSubsectionsWithErrors && header == "## Import" {
 			isImportSection = true
@@ -1365,9 +1370,9 @@ func (g *Generator) convertExamplesInner(
 		}
 
 		sectionStart, sectionEnd := "", ""
-		if isExampleUsage {
-			sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
-		}
+		//if isExampleUsage {
+		//	sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
+		//}
 		//TODO what the FUCK is this groupLines bullshit!! THIS is the inner loop we gotta get rid of.
 		// it turns out it takes []string and groups them into [][]string, via a separator. if the separator isn't
 		// found, it just wraps the whole slice. for lambda it means we now have a [][]string slice of h3 sections. for
@@ -1411,7 +1416,7 @@ func (g *Generator) convertExamplesInner(
 
 					if g.language.shouldConvertExamples() {
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
-						//TODO: this works correctly because of the aboce `continue` that waits for the next code fence. Holy shit.
+						//TODO: this works correctly because of the above `continue` that waits for the next code fence. Holy shit.
 
 						// We've got some code -- assume it's HCL and try to
 						// convert it.
@@ -1469,11 +1474,11 @@ func (g *Generator) convertExamplesInner(
 				wroteHeader = true
 			}
 			//TODO: what can we have hasExamples = true and isExampleUsage =false? probably, right?
-			if hasExamples && isExampleUsage {
+			if hasExamples && !isImportSection {
 				writeTrailingNewline(output)
-				fprintf(output, "{{%% example %%}}%s", subsectionOutput.String())
+				fprintf(output, "<!--Begin TFConversion -->%s", subsectionOutput.String())
 				writeTrailingNewline(output)
-				fprintf(output, "{{%% /example %%}}")
+				fprintf(output, "<!--End TFConversion -->")
 			} else {
 				fprintf(output, "%s", subsectionOutput.String())
 			}
