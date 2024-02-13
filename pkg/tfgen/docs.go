@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1319,13 +1320,42 @@ func (g *Generator) convertExamplesInner(
 		contract.IgnoreError(err)
 	}
 
+	//var docsSections [][]string
+	//// split up by H2 sections
+	//splitByH2Sections := splitGroupLines(docs, "## ")
+	//if path.String() == "#/resources/aws:lambda/function:Function" {
+	//	q.Q(splitByH2Sections)
+	//}
+	//
+	//// also split up H3s and flatten them for conversion purposes
+	//for _, h2section := range splitByH2Sections {
+	//	subsections := groupLines(h2section, "### ")
+	//	//if path.String() == "#/resources/aws:lambda/function:Function" && len(subsections) != 0 {
+	//	//	q.Q(i, subsections)
+	//	//}
+	//	docsSections = append(docsSections, subsections...)
+	//
+	//}
+	//if path.String() == "#/resources/aws:lambda/function:Function" {
+	//	q.Q(docsSections)
+	//}
+
+	// TODO: outer loop. this is the H2 loop. Saved a copy in upstreamdocs.
+
+	//TODO: what does splitGroupLines do? Saved a copy in splitGroupLines.
+	// it seems to _split_ the lines into groups of []string, and uses ## as the separator, in this case.
+
 	for _, section := range splitGroupLines(docs, "## ") {
+		// TODO: what does an empty section here mean. I do not understand the double sections, at all.
 		if len(section) == 0 {
 			continue
 		}
 
 		isImportSection := false
+		//TODO: fucking wroteHeader is some weirdass bullshit
 		header, wroteHeader := section[0], false
+
+		//TODO: we do want to change this Example Usage shit. Is it hard coded in the docs generator in p/p?
 		isFrontMatter, isExampleUsage := !strings.HasPrefix(header, "## "), header == "## Example Usage"
 
 		if stripSubsectionsWithErrors && header == "## Import" {
@@ -1338,8 +1368,26 @@ func (g *Generator) convertExamplesInner(
 		if isExampleUsage {
 			sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
 		}
+		//TODO what the FUCK is this groupLines bullshit!! THIS is the inner loop we gotta get rid of.
+		// it turns out it takes []string and groups them into [][]string, via a separator. if the separator isn't
+		// found, it just wraps the whole slice. for lambda it means we now have a [][]string slice of h3 sections. for
 
+		if path.String() == "#/resources/aws:lambda/function:Function" {
+			q.Q("Lambda", groupLines(section, "### "))
+		}
+		if path.String() == "#/resources/aws:autoscaling/policy:Policy/stepAdjustments" {
+			q.Q("policystepadjustments", groupLines(section, "### "))
+		}
+
+		//TODO section is a []string. section[0] is the header, which is the "### Basic Examples". These are all lines
+		// broken up via newline from the OG doc, kept in upstreamdocs (modulo some weird pre-editing shit for import
+		// section.
 		for _, subsection := range groupLines(section[1:], "### ") {
+			// TODO: so each subsection is a []string.  groupLines returns a [][]string. Haaaaate.
+
+			if path.String() == "#/resources/aws:autoscaling/policy:Policy/stepAdjustments" {
+				q.Q("policystepadjustments", subsection)
+			}
 
 			// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
 			// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
@@ -1347,18 +1395,23 @@ func (g *Generator) convertExamplesInner(
 			subsectionOutput := &bytes.Buffer{}
 			skippedExamples, hasExamples := false, false
 			inCodeBlock, codeBlockStart := false, 0
+			// TODO: there now is a third nested loop. What THE HELL.
 			for i, line := range subsection {
 				if isImportSection {
 					// we don't want to do anything with the import section
+					// TODO: the import section shouldn't even show up here?
 					continue
 				}
+
 				if inCodeBlock {
 					if strings.Index(line, "```") != 0 {
+						// TODO: is this the counter??? it seems that way. Omg, these are the closing code fences.
 						continue
 					}
 
 					if g.language.shouldConvertExamples() {
 						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
+						//TODO: this works correctly because of the aboce `continue` that waits for the next code fence. Holy shit.
 
 						// We've got some code -- assume it's HCL and try to
 						// convert it.
@@ -1367,10 +1420,12 @@ func (g *Generator) convertExamplesInner(
 							e = g.coverageTracker.getOrCreateExample(
 								path.String(), hcl)
 						}
-
+						// TODO: this is also some nonsense - we do need the example title for the convertHCL but not anything else
 						exampleTitle := ""
 						if strings.Contains(subsection[0], "###") {
 							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
+							// TODO: we learned here that CloudWatch does not get its exampleTitle.
+							// TODO It remains an empty string.
 						}
 
 						langs := genLanguageToSlice(g.language)
@@ -1387,7 +1442,7 @@ func (g *Generator) convertExamplesInner(
 					}
 
 					hasExamples = true
-					inCodeBlock = false
+					inCodeBlock = false // TODO this is a reset. I would loooooove to refactor this into its own function
 				} else {
 					if strings.Index(line, "```") == 0 {
 						inCodeBlock, codeBlockStart = true, i
@@ -1413,6 +1468,7 @@ func (g *Generator) convertExamplesInner(
 				fprintf(output, "%s%s", sectionStart, header)
 				wroteHeader = true
 			}
+			//TODO: what can we have hasExamples = true and isExampleUsage =false? probably, right?
 			if hasExamples && isExampleUsage {
 				writeTrailingNewline(output)
 				fprintf(output, "{{%% example %%}}%s", subsectionOutput.String())
@@ -1430,7 +1486,7 @@ func (g *Generator) convertExamplesInner(
 			importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
 			importDetails = strings.Replace(importDetails, " \n", "\n", -1)
 			fprintf(output, "%s", importDetails)
-			continue
+			continue // TODO: we are still in a loop here, OH MY GOD
 		}
 
 		if !wroteHeader {
@@ -1442,6 +1498,7 @@ func (g *Generator) convertExamplesInner(
 			fprintf(output, "%s", sectionEnd)
 		}
 	}
+	// TODO: does this have translated examples, or not? Answer - yes it does.
 	return output.String()
 }
 
