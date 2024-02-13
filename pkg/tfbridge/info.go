@@ -154,6 +154,14 @@ type ProviderInfo struct {
 	//
 	// See also pulumi/pulumi-terraform-bridge#1524
 	GenerateRuntimeMetadata bool
+
+	// This feature enables the Pulumi provider to detect when provider configuration is
+	// changing and suggest a replacement plans when some properties require a replace.
+	// Replacing a provider then replaces all resources provisioned against this provider. See
+	// also the section on Explicit Provider Configuration in the docs:
+	//
+	// https://www.pulumi.com/docs/concepts/resources/providers/
+	EnableDiffConfig bool
 }
 
 // Send logs or status logs to the user.
