@@ -587,7 +587,10 @@ func (p *Provider) DiffConfig(
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	glog.V(9).Infof("%s executing", label)
 
-	return plugin.NewProviderServer(&configDiffer{}).DiffConfig(ctx, req)
+	return plugin.NewProviderServer(&configDiffer{
+		schemaMap:   p.config,
+		schemaInfos: p.info.Config,
+	}).DiffConfig(ctx, req)
 }
 
 type configDiffer struct {
