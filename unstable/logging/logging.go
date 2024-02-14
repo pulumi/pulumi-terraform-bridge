@@ -207,10 +207,17 @@ func setupRootLoggers(ctx context.Context, output io.Writer) context.Context {
 }
 
 // Choose the default level carefully: logs at this level or higher (more severe) will be shown to the user of Pulumi
-// CLI directly by default. Experimentally it seems that Info is too verbose, for example Cloudflare provider emits
-// routine authentication messages at INFO level.
+// CLI directly by default. Experimentally it seems that WARN is too verbose:
+//
+// - AWS (via terraform-plugin-sdk@v2) emits developer logs at WARN which are not shown to terraform users.
+//
+// Citation:
+// - https://github.com/hashicorp/terraform-plugin-sdk/blob/43cfd3282307f68ea77eb4c15548100386f3a317/helper/customdiff/force_new.go#L32-L35
+// - https://github.com/pulumi/pulumi-aws/issues/3389
+//
+//nolint:lll
 func defaultTFLogLevel() hclog.Level {
-	return hclog.Warn
+	return hclog.Error
 }
 
 func makeLoggerOptions(name string, level hclog.Level, output io.Writer) *hclog.LoggerOptions {
@@ -270,26 +277,7 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 }
 
 func parseTfLogEnvVar() hclog.Level {
-	env, present := os.LookupEnv(tfLogEnvVar)
-	if !present {
-		return hclog.NoLevel
-	}
-	switch strings.ToUpper(env) {
-	case "ERROR":
-		return hclog.Error
-	case "WARN":
-		return hclog.Warn
-	case "INFO":
-		return hclog.Info
-	case "TRACE":
-		return hclog.Trace
-	case "DEBUG":
-		return hclog.Debug
-	case "OFF":
-		return hclog.Off
-	default:
-		return hclog.NoLevel
-	}
+	return hclog.LevelFromString(os.Getenv(tfLogEnvVar))
 }
 
 var quotedUrnPattern = regexp.MustCompile(`[ ]urn=["]([^"]+)["]`)
