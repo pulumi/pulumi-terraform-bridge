@@ -22,19 +22,12 @@ import (
 )
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfigWithContext(ctx context.Context,
-	urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoredChanges []string) (plugin.DiffResult, error) {
-
-	// ctx = p.initLogging(ctx, p.logSink, urn)
-
-	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
-
-	// This needs to include ignoredChanges:
-	// checkedInputs, err := applyIgnoreChanges(olds, news, ignoredChanges)
-	// if err != nil {
-	// 	return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
-	// }
-
-	return plugin.DiffResult{}, nil
+func (p *provider) DiffConfigWithContext(
+	_ context.Context,
+	_ resource.URN,
+	_, _ resource.PropertyMap,
+	_ bool,
+	_ []string,
+) (plugin.DiffResult, error) {
+	return plugin.DiffResult{}, plugin.ErrNotYetImplemented
 }
