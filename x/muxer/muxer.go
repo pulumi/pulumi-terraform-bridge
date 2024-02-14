@@ -216,11 +216,13 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 	}
 
 	var (
-		deleteBeforeReplace bool                         // The OR of each server
-		replaces            set[string]                  // The AND of each server
-		diffs               set[string]                  // The AND of each server, sans replaces
-		stables             set[string]                  // The AND of each server, sans replaces and diffs
-		changes             rpc.DiffResponse_DiffChanges = rpc.DiffResponse_DIFF_NONE
+		deleteBeforeReplace bool // The OR of each server
+
+		replaces = make(set[string]) // The AND of each server
+		diffs    = make(set[string]) // The AND of each server, sans replaces
+		stables  = make(set[string]) // The AND of each server, sans replaces and diffs
+
+		changes rpc.DiffResponse_DiffChanges = rpc.DiffResponse_DIFF_NONE
 
 		errs = new(multierror.Error)
 	)
