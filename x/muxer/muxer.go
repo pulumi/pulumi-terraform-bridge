@@ -215,6 +215,11 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		}
 	}
 
+	responses := asyncJoin(subs)
+	if resp := dominatingDiffResponse(responses); resp != nil {
+		return resp, nil
+	}
+
 	var (
 		deleteBeforeReplace bool // The OR of each server
 
@@ -232,7 +237,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		hasDetailedDiff = true
 	)
 
-	for _, r := range asyncJoin(subs) {
+	for _, r := range responses {
 		if err := r.B; err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue
@@ -639,4 +644,27 @@ func showStruct(value *structpb.Value) string {
 		return err.Error()
 	}
 	return string(j)
+}
+
+func dominatingDiffResponse(responses []tuple[*rpc.DiffResponse, error]) *rpc.DiffResponse {
+	unimplemented := 0
+	errors := 0
+	var resp *rpc.DiffResponse
+	for _, r := range responses {
+		if r.B != nil {
+			errors++
+			if s, ok := status.FromError(r.B); ok {
+				if s.Code() == codes.Unimplemented {
+					unimplemented++
+					continue
+				}
+			}
+		} else {
+			resp = r.A
+		}
+	}
+	if errors == len(responses)-1 && errors == unimplemented {
+		return resp
+	}
+	return nil
 }
