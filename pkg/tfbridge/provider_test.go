@@ -179,31 +179,57 @@ func TestCamelPascalPulumiName(t *testing.T) {
 }
 
 func TestDiffConfig(t *testing.T) {
-	t.Skip("Temporarily skipped")
+	yes := true
+	tfProvider := shimv2.NewProvider(&schema.Provider{
+		Schema: map[string]*schema.Schema{
+			"region": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	})
 	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+		tf:     tfProvider,
+		config: tfProvider.Schema(),
+		info: ProviderInfo{
+			EnableDiffConfig: true,
+			Config: map[string]*SchemaInfo{
+				"region": {
+					ForceNew: &yes,
+				},
+			},
+		},
 	}
 
-	oldConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("foo")}
-	newConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("bar")}
-
-	olds, err := plugin.MarshalProperties(oldConfig, plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
-	news, err := plugin.MarshalProperties(newConfig, plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
-
-	req := &pulumirpc.DiffRequest{
-		Id:   "provider",
-		Urn:  "provider",
-		Olds: olds,
-		News: news,
-	}
-
-	resp, err := provider.DiffConfig(context.Background(), req)
-	assert.NoError(t, err)
-	assert.True(t, resp.HasDetailedDiff)
-	assert.Len(t, resp.DetailedDiff, 1)
+	t.Run("changing region forces a cascading replace", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "us-west-1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {
+                    "diffs": ["region"],
+		    "replaces": ["region"],
+		    "changes": "DIFF_SOME",
+                    "detailedDiff": {
+                      "region": {"inputDiff": true, "kind": "UPDATE_REPLACE"}
+                    }
+		  }
+		}`)
+	})
 }
 
 func TestBuildConfig(t *testing.T) {
