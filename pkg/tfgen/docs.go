@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1325,8 +1324,7 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
-	// chop off import section, since we already processed it
-	// find index of the import section title
+	// split off import section, since we already processed it
 	importSectionStart := strings.Index(docs, "## Import")
 	var importSection string
 	if importSectionStart > 0 {
@@ -1334,37 +1332,26 @@ func (g *Generator) convertExamplesInner(
 		importSection = docs[importSectionStart:]
 		docs = description
 	}
-	if path.String() == "#/resources/aws:lambda/function:Function" {
-		q.Q(importSection)
-
-	}
 
 	// Find code fences in the presented doc
+	// Split the docs into lines
 	docsLines := strings.Split(docs, "\n")
 
+	// This tracks the index of the line where we find an opening code fence
 	tfBlockStart := 0
-	tfBlockEnd := 0
-
-	var codeBlock bool
+	var inCodeBlock bool
 	codeFence := "```"
 
 	for i, line := range docsLines {
 		//if line == "" {
 		//	continue
 		//}
-		if codeBlock == true {
+		if inCodeBlock == true {
+			//Our TF code block is over right when we see the closing code fence.
 			if strings.HasPrefix(line, codeFence) {
-
-				//Our TF code block is over right when we see the closing code fence.
-				// Read into our block indices.
-				tfBlockEnd = i
-				if path.String() == "#/resources/aws:lambda/function:Function" {
-					q.Q(tfBlockEnd)
-				}
 				// generate the code block
 				if g.language.shouldConvertExamples() {
-					hcl := strings.Join(docsLines[tfBlockStart:tfBlockEnd], "\n")
-					//TODO: this works correctly because of the above `continue` that waits for the next code fence. Holy shit.
+					hcl := strings.Join(docsLines[tfBlockStart:i], "\n")
 
 					// We've got some code -- assume it's HCL and try to
 					// convert it.
@@ -1373,12 +1360,10 @@ func (g *Generator) convertExamplesInner(
 						e = g.coverageTracker.getOrCreateExample(
 							path.String(), hcl)
 					}
-					// TODO: this is also some nonsense - we do need the example title for the convertHCL but not anything else
+					// TODO: We can probably use path.String() instead of title here. This is for metrics output only!
 					exampleTitle := ""
 					//if strings.Contains(subsection[0], "###") {
 					//	exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
-					//	// TODO: we learned here that CloudWatch does not get its exampleTitle.
-					//	// TODO It remains an empty string.
 					//}
 
 					langs := genLanguageToSlice(g.language)
@@ -1397,181 +1382,29 @@ func (g *Generator) convertExamplesInner(
 					}
 				}
 
-				// reset
+				// reset so we can look for the next TF code block
 				tfBlockStart = 0
-				tfBlockEnd = 0
-
-				codeBlock = false
+				inCodeBlock = false
 
 			}
 		} else {
-			// if we are _not_ in a code block, a matching code fence means it's an opening code fence
+			// if we are _not_ in a code block, finding a code fence means it's an opening code fence
 			if strings.HasPrefix(line, codeFence) {
 				tfBlockStart = i + 1
-				codeBlock = true
+				inCodeBlock = true
 			} else {
-				// we just have a plain string and append it to Output
-				fprintf(output, "%s\n", line)
+				// we just have a plain docs line and append it to Output
+				fprintf(output, "%s", line)
 				writeTrailingNewline(output)
 			}
 		}
-
 	}
 
+	// Append Import section if it exists
 	if importSection != "" {
-
 		fprintf(output, "%s", importSection)
 		writeTrailingNewline(output)
 	}
-	//// TODO: outer loop. this is the H2 loop. Saved a copy in upstreamdocs.
-	//
-	////TODO: what does splitGroupLines do? Saved a copy in splitGroupLines.
-	//// it seems to _split_ the lines into groups of []string, and uses ## as the separator, in this case.
-	//
-	//for _, section := range splitGroupLines(docs, "## ") {
-	//	// TODO: what does an empty section here mean. I do not understand the double sections, at all.
-	//	if len(section) == 0 {
-	//		continue
-	//	}
-	//
-	//	isImportSection := false
-	//
-	//	//TODO: fucking wroteHeader is some weirdass bullshit
-	//	header, wroteHeader := section[0], false
-	//
-	//	//TODO: we do want to change this Example Usage shit. Is it hard coded in the docs generator in p/p?
-	//	isFrontMatter := !strings.HasPrefix(header, "## ")
-	//
-	//	if stripSubsectionsWithErrors && header == "## Import" {
-	//		isImportSection = true
-	//		isFrontMatter = false
-	//		wroteHeader = true
-	//	}
-	//
-	//	sectionStart, sectionEnd := "", ""
-	//	//if isExampleUsage {
-	//	//	sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
-	//	//}
-	//	//TODO what the FUCK is this groupLines bullshit!! THIS is the inner loop we gotta get rid of.
-	//	// it turns out it takes []string and groups them into [][]string, via a separator. if the separator isn't
-	//	// found, it just wraps the whole slice. for lambda it means we now have a [][]string slice of h3 sections. for
-	//
-	//	//TODO section is a []string. section[0] is the header, which is the "### Basic Examples". These are all lines
-	//	// broken up via newline from the OG doc, kept in upstreamdocs (modulo some weird pre-editing shit for import
-	//	// section.
-	//	for _, subsection := range groupLines(section[1:], "### ") {
-	//		// TODO: so each subsection is a []string.  groupLines returns a [][]string. Haaaaate.
-	//
-	//		// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
-	//		// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
-	//		// them to the description. If we can't, we'll simply log a warning and keep moving along.
-	//		subsectionOutput := &bytes.Buffer{}
-	//		skippedExamples, hasExamples := false, false
-	//		inCodeBlock, codeBlockStart := false, 0
-	//		// TODO: there now is a third nested loop. What THE HELL.
-	//		for i, line := range subsection {
-	//			if isImportSection {
-	//				// we don't want to do anything with the import section
-	//				// TODO: the import section shouldn't even show up here?
-	//				continue
-	//			}
-	//
-	//			if inCodeBlock {
-	//				if strings.Index(line, "```") != 0 {
-	//					// TODO: is this the counter??? it seems that way. Omg, these are the closing code fences.
-	//					continue
-	//				}
-	//
-	//				if g.language.shouldConvertExamples() {
-	//					hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
-	//					//TODO: this works correctly because of the above `continue` that waits for the next code fence. Holy shit.
-	//
-	//					// We've got some code -- assume it's HCL and try to
-	//					// convert it.
-	//					var e *Example
-	//					if useCoverageTracker {
-	//						e = g.coverageTracker.getOrCreateExample(
-	//							path.String(), hcl)
-	//					}
-	//					// TODO: this is also some nonsense - we do need the example title for the convertHCL but not anything else
-	//					exampleTitle := ""
-	//					if strings.Contains(subsection[0], "###") {
-	//						exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
-	//						// TODO: we learned here that CloudWatch does not get its exampleTitle.
-	//						// TODO It remains an empty string.
-	//					}
-	//
-	//					langs := genLanguageToSlice(g.language)
-	//					codeBlock, err := convertHCL(e, hcl, path.String(),
-	//						exampleTitle, langs)
-	//
-	//					if err != nil {
-	//						skippedExamples = true
-	//					} else {
-	//						fprintf(subsectionOutput, "\n%s", codeBlock)
-	//					}
-	//				} else {
-	//					skippedExamples = true
-	//				}
-	//
-	//				hasExamples = true
-	//				inCodeBlock = false // TODO this is a reset. I would loooooove to refactor this into its own function
-	//			} else {
-	//				if strings.Index(line, "```") == 0 {
-	//					inCodeBlock, codeBlockStart = true, i
-	//				} else {
-	//					fprintf(subsectionOutput, "\n%s", line)
-	//				}
-	//			}
-	//		}
-	//		if inCodeBlock {
-	//			skippedExamples = true
-	//		}
-	//
-	//		// If the subsection contained skipped examples and the caller has requested that we remove such subsections,
-	//		// do not append its text to the output. Note that we never elide front matter.
-	//		if skippedExamples && stripSubsectionsWithErrors && !isFrontMatter {
-	//			continue
-	//		}
-	//
-	//		if !wroteHeader {
-	//			if output.Len() > 0 {
-	//				fprintf(output, "\n")
-	//			}
-	//			fprintf(output, "%s%s", sectionStart, header)
-	//			wroteHeader = true
-	//		}
-	//		//TODO: what can we have hasExamples = true and isExampleUsage =false? probably, right?
-	//		if hasExamples && !isImportSection {
-	//			writeTrailingNewline(output)
-	//			fprintf(output, "<!--Begin TFConversion -->%s", subsectionOutput.String())
-	//			writeTrailingNewline(output)
-	//			fprintf(output, "<!--End TFConversion -->")
-	//		} else {
-	//			fprintf(output, "%s", subsectionOutput.String())
-	//		}
-	//	}
-	//
-	//	if isImportSection {
-	//		section[0] = "\n\n## Import"
-	//		importDetails := strings.Join(section, " ")
-	//		importDetails = strings.Replace(importDetails, "  ", "\n\n", -1)
-	//		importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
-	//		importDetails = strings.Replace(importDetails, " \n", "\n", -1)
-	//		fprintf(output, "%s", importDetails)
-	//		continue // TODO: we are still in a loop here, OH MY GOD
-	//	}
-	//
-	//	if !wroteHeader {
-	//		if isFrontMatter {
-	//			fprintf(output, "%s", header)
-	//		}
-	//	} else if sectionEnd != "" {
-	//		writeTrailingNewline(output)
-	//		fprintf(output, "%s", sectionEnd)
-	//	}
-	//}
-	// TODO: does this have translated examples, or not? Answer - yes it does.
 	return output.String()
 }
 
