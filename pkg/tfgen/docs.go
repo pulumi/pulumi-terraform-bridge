@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1333,25 +1334,79 @@ func (g *Generator) convertExamplesInner(
 		docs = description
 	}
 
-	// Find code fences in the presented doc
-	// Split the docs into lines
-	docsLines := strings.Split(docs, "\n")
+	if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
+		q.Q(docs)
 
-	// This tracks the index of the line where we find an opening code fence
-	tfBlockStart := 0
+	}
+
+	// Find code fences in the presented doc
+
+	type tfBlockIndex struct {
+		start int
+		end   int
+	}
+
+	// This tracks the index of the spot where we find an opening code fence
+	//tfBlockStart := 0
 	var inCodeBlock bool
 	codeFence := "```"
+	var codeIndices []tfBlockIndex
+	var currentBlock tfBlockIndex
 
-	for i, line := range docsLines {
-		//if line == "" {
-		//	continue
-		//}
+	for i := 0; i < (len(docs) - len(codeFence)); i++ {
 		if inCodeBlock == true {
 			//Our TF code block is over right when we see the closing code fence.
-			if strings.HasPrefix(line, codeFence) {
+			if docs[i:i+len(codeFence)] == codeFence {
+				currentBlock.end = i
+				codeIndices = append(codeIndices, currentBlock)
+				//if path.String() == "#/resources/aws:lambda/function:Function" {
+				//	q.Q(codeIndices)
+				//}
+				// reset
+				currentBlock.start = 0
+				currentBlock.end = 0
+				inCodeBlock = false
+			}
+
+		} else {
+			// if we aren't in a code block, a set of code fences signals the beginning of a code block.
+			if docs[i:i+len(codeFence)] == codeFence {
+				inCodeBlock = true
+				currentBlock.start = i
+
+			}
+		}
+	}
+
+	// Now we know where the code fences are.
+
+	textStart := 0
+	for _, tfBlock := range codeIndices {
+
+		// append start of doc to output
+		fprintf(output, docs[textStart:tfBlock.start])
+		// find the actual start index of the code
+		nextNewLine := strings.Index(docs[tfBlock.start:], "\n")
+		if nextNewLine == -1 {
+			panic("no newline found, but newline was expected")
+			//TODO: fix this up
+		} else {
+			syntaxHighlight := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
+			//q.Q(syntaxHighlight)
+
+			//Let's run a few checks on possible syntax highlighting.
+			//This allows us to filter out anything that is explicitly marked as not-Terraform code.
+			if strings.Contains(syntaxHighlight, "terraform") ||
+				strings.Contains(syntaxHighlight, "hcl") || syntaxHighlight == "```\n" {
+				// these are all valid code block openers
+
+				//q.Q("we found code", syntaxHighlight)
+				// TODO: what happens to other code blocks? We need to append those!
+
+				//process code and append
 				// generate the code block
 				if g.language.shouldConvertExamples() {
-					hcl := strings.Join(docsLines[tfBlockStart:i], "\n")
+					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
 
 					// We've got some code -- assume it's HCL and try to
 					// convert it.
@@ -1381,29 +1436,29 @@ func (g *Generator) convertExamplesInner(
 						fprintf(output, "<!--End TFConversion -->")
 					}
 				}
-
-				// reset so we can look for the next TF code block
-				tfBlockStart = 0
-				inCodeBlock = false
-
-			}
-		} else {
-			// if we are _not_ in a code block, finding a code fence means it's an opening code fence
-			if strings.HasPrefix(line, codeFence) {
-				tfBlockStart = i + 1
-				inCodeBlock = true
 			} else {
-				// we just have a plain docs line and append it to Output
-				fprintf(output, "%s", line)
+				// We should probably just take already-valid code blocks as-is.
+				writeTrailingNewline(output)
+				//q.Q("found valid code but it's not TF:", path.String(), docs[tfBlock.start:tfBlock.end])
+				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 				writeTrailingNewline(output)
 			}
+
 		}
+		// The text starts up again after the closing fences
+		textStart = tfBlock.end + len(codeFence)
 	}
+	// Append any remainder of the docs string to the output
+	fprintf(output, docs[textStart:])
 
 	// Append Import section if it exists
 	if importSection != "" {
 		fprintf(output, "%s", importSection)
 		writeTrailingNewline(output)
+	}
+	if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
+		q.Q(docs)
+
 	}
 	return output.String()
 }
