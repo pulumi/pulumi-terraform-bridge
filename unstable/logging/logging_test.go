@@ -31,6 +31,8 @@ import (
 func TestLogging(t *testing.T) {
 	urn := resource.URN("urn:pulumi:prod::web::custom:resources:Resource$random:index/password:Password::my-pw")
 
+	warn := map[string]string{"TF_LOG": "WARN"}
+
 	cases := []struct {
 		name string
 		opts LogOptions
@@ -39,8 +41,11 @@ func TestLogging(t *testing.T) {
 		env  map[string]string
 	}{
 		{
-			name: "WARN and higher propagates by default",
+			name: "logging is disabled by default",
 			opts: LogOptions{},
+			env: map[string]string{
+				"TF_LOG": "",
+			},
 			emit: func(ctx context.Context) {
 				tflog.Trace(ctx, "Something went wrong TRACE")
 				tflog.Debug(ctx, "Something went wrong DEBUG")
@@ -49,10 +54,6 @@ func TestLogging(t *testing.T) {
 				tflog.Error(ctx, "Something went wrong ERROR ")
 			},
 			logs: []log{
-				{
-					msg: `Something went wrong WARN`,
-					sev: diag.Warning,
-				},
 				{
 					msg: `Something went wrong ERROR`,
 					sev: diag.Error,
@@ -114,6 +115,7 @@ func TestLogging(t *testing.T) {
 		{
 			name: "URN propagates when set",
 			opts: LogOptions{URN: urn},
+			env:  warn,
 			emit: func(ctx context.Context) {
 				tflog.Warn(ctx, "OK")
 			},
@@ -121,6 +123,7 @@ func TestLogging(t *testing.T) {
 		},
 		{
 			name: "Provider propagates when set",
+			env:  warn,
 			opts: LogOptions{ProviderName: "random"},
 			emit: func(ctx context.Context) {
 				tflog.Warn(ctx, "OK")
@@ -130,6 +133,7 @@ func TestLogging(t *testing.T) {
 		{
 			name: "ProviderVersion propagates when set",
 			opts: LogOptions{ProviderName: "random", ProviderVersion: "4.12.0"},
+			env:  warn,
 			emit: func(ctx context.Context) {
 				tflog.Warn(ctx, "OK")
 			},
@@ -137,6 +141,7 @@ func TestLogging(t *testing.T) {
 		},
 		{
 			name: "User Logging",
+			env:  warn,
 			opts: LogOptions{URN: urn},
 			emit: func(ctx context.Context) {
 				log := getLogger(ctx)
