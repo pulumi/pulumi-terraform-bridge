@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -929,11 +930,14 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
-	var err error
-	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
+	var schemaBytes bytes.Buffer
+	enc := json.NewEncoder(&schemaBytes)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(pulumiPackageSpec)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal intermediate schema")
 	}
+	g.providerShim.schema = schemaBytes.Bytes()
 
 	// Add any supplemental examples:
 	err = addExtraHclExamplesToResources(g.info.ExtraResourceHclExamples, &pulumiPackageSpec)
@@ -959,11 +963,15 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
 
-		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
+		var schemaBytes bytes.Buffer
+		enc := json.NewEncoder(&schemaBytes)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "    ")
+		err := enc.Encode(pulumiPackageSpec)
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
-		files = map[string][]byte{"schema.json": bytes}
+		files = map[string][]byte{"schema.json": schemaBytes.Bytes()}
 
 		if info := g.info.MetadataInfo; info != nil {
 			files[info.Path] = (*metadata.Data)(info.Data).MarshalIndent()

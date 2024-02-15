@@ -15,6 +15,8 @@
 package metadata
 
 import (
+	"bytes"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/segmentio/encoding/json"
 )
@@ -46,13 +48,13 @@ func (d *Data) marshal(indent bool) []byte {
 	if d == nil {
 		d = &Data{m: make(map[string]json.RawMessage)}
 	}
-	var bytes []byte
-	var err error
+	var bytes bytes.Buffer
+	enc := json.NewEncoder(&bytes)
+	enc.SetEscapeHTML(false)
 	if indent {
-		bytes, err = json.MarshalIndent(d.m, "", "    ")
-	} else {
-		bytes, err = json.Marshal(d.m)
+		enc.SetIndent("", "    ")
 	}
+	err := enc.Encode(d.m)
 	// `d.m` is a `map[string]json.RawMessage`. `json.MarshalIndent` errors only when
 	// it is asked to serialize an unmarshalable type (complex, function or channel)
 	// or a cyclic data structure. Because `string` and `json.RawMessage` are
@@ -61,7 +63,7 @@ func (d *Data) marshal(indent bool) []byte {
 	//
 	// See https://pkg.go.dev/encoding/json#Marshal for details.
 	contract.AssertNoErrorf(err, "internal: failed to marshal metadata")
-	return bytes
+	return bytes.Bytes()
 }
 
 // Set a piece of metadata to a value.

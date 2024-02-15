@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -59,7 +60,10 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 		return nil, err
 	}
 
-	schema, err := json.Marshal(generated.PackageSpec)
+	var schema bytes.Buffer
+	enc := json.NewEncoder(&schema)
+	enc.SetEscapeHTML(false)
+	err = enc.Encode(generated.PackageSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +74,7 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 
 	return &GenerateSchemaResult{
 		ProviderMetadata: tfbridge.ProviderMetadata{
-			PackageSchema: schema,
+			PackageSchema: schema.Bytes(),
 		},
 	}, nil
 }
