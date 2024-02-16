@@ -1,9 +1,8 @@
 Provides a Wavefront Dashboard JSON resource. This allows dashboards to be created, updated, and deleted.
 
-{{% examples %}}
 ## Example Usage
-{{% example %}}
 
+<!--Begin TFConversion -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as wavefront from "@pulumi/wavefront";
@@ -806,18 +805,16 @@ resources:
             }
           }
 ```
+<!--End TFConversion -->
 
 *
 *Note:
 ** If there are dynamic variables in the Wavefront dashboard json, then these variables must be present in a separate file as mentioned in the section below.
-{{% /example %}}
-{{% /examples %}}
 
 ## Import
 
 Dashboard JSON can be imported by using the `id`, e.g.:
 
 ```sh
- $ pulumi import wavefront:index/dashboardJson:DashboardJson dashboard_json tftestimport
+$ pulumi import wavefront:index/dashboardJson:DashboardJson dashboard_json tftestimport
 ```
- 

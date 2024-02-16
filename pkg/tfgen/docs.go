@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1261,7 +1262,8 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 	}
 
 	if strings.Contains(docs, "{{% examples %}}") {
-		// The provider author has explicitly written an entire markdown document including examples.
+		//TODO: clean up this expectation/behavior once codegen no longer expects these
+		//The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
 	}
@@ -1272,23 +1274,25 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
 		// to reconvert them.
 		//
-		// TODO: here we should re-write any docs that have {{%% example %%}} in them and replace it with what docsgen will expect now.
-		//
-		return docs
-		////But we need to surround them in the examples shortcode for rendering on the registry
-		//
-		//// Find the index of "## Example Usage"
-		//exampleIndex := strings.Index(docs, "## Example Usage")
-		//
-		//// if not found surround all content
-		//if exampleIndex == -1 {
-		//	return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
-		//}
-		//
-		//// Separate resource description and surround the examples
-		//return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
-		//	strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
-		//	docs[exampleIndex:])
+		//TODO: This only works if the incoming docs already have an {{% example }} shortcode, and if they are
+		// in an "Example Usage" section.
+		// The shortcode should be replaced with the new HTML comment, either in the incoming docs, or here to avoid
+		// breaking users.
+
+		//We need to surround the examples in the examples shortcode for rendering on the registry
+
+		// Find the index of "## Example Usage"
+		exampleIndex := strings.Index(docs, "## Example Usage")
+
+		// if not found surround all content
+		if exampleIndex == -1 {
+			return fmt.Sprintf("{{%% examples %%}}\n%s\n{{%% /examples %%}}", docs)
+		}
+
+		// Separate resource description and surround the examples
+		return fmt.Sprintf("%s\n\n{{%% examples %%}}\n%s\n{{%% /examples %%}}",
+			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
+			docs[exampleIndex:])
 	}
 
 	if cliConverterEnabled() {
@@ -1377,7 +1381,29 @@ func (g *Generator) convertExamplesInner(
 
 	// Now we know where the headers and code fences are.
 	textStart := 0
+	stripSection := false
 	for _, tfBlock := range codeIndices {
+		if stripSection {
+			// textStart needs to be reset to next header
+			// oh nOOOOOO this fucks up everything if there's more than 1 code block in here! omg fuckity fuck fuck fuck
+			// maybe _do_ model the header a bit better?
+			// also... something about
+			nextHeader := strings.Index(docs[textStart:], h2)
+			if nextHeader == -1 {
+				q.Q("looking for h3 instead")
+				nextHeader = strings.Index(docs[textStart:], h3)
+			}
+			if nextHeader == -1 {
+				// end of doc
+				break
+			}
+			textStart = textStart + nextHeader
+			if textStart > currentBlock.start {
+				// there's more blocks in this section, but we want to strip them all
+				continue
+			}
+			stripSection = false
+		}
 
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart > 0 && textStart < tfBlock.headerStart
@@ -1423,6 +1449,9 @@ func (g *Generator) convertExamplesInner(
 					if err != nil {
 						//we do not write this section, ever.
 						//TODO: This means we can get rid of `stripSubsectionsWithErrors`.
+						// We have to strip both what comes before and what comes after.
+						stripSection = true
+						textStart = tfBlock.end + len(codeFence)
 						continue
 					} else {
 						// append any headers first
