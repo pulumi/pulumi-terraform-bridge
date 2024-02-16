@@ -1325,43 +1325,47 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
-	// split off import section, since we already processed it
-	importSectionStart := strings.Index(docs, "## Import")
-	var importSection string
-	if importSectionStart > 0 {
-		description := docs[:importSectionStart]
-		importSection = docs[importSectionStart:]
-		docs = description
-	}
+	//// split off import section, since we already processed it
+	//importSectionStart := strings.Index(docs, "## Import")
+	//var importSection string
+	//if importSectionStart > 0 {
+	//	description := docs[:importSectionStart]
+	//	importSection = docs[importSectionStart:]
+	//	docs = description
+	//}
 
-	if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
-		q.Q(docs)
-
-	}
+	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
+	//	q.Q(docs)
+	//
+	//}
 
 	// Find code fences in the presented doc
-
 	type tfBlockIndex struct {
-		start int
-		end   int
+		start       int
+		end         int
+		headerStart int // a value of -1 indicates there's no header
 	}
 
-	// This tracks the index of the spot where we find an opening code fence
-	//tfBlockStart := 0
 	var inCodeBlock bool
 	codeFence := "```"
+	h2 := "##"
+	h3 := "###"
 	var codeIndices []tfBlockIndex
 	var currentBlock tfBlockIndex
+	currentBlock.headerStart = -1
 
+	// TODO: abstract this into its own function
 	for i := 0; i < (len(docs) - len(codeFence)); i++ {
+
 		if inCodeBlock == true {
 			//Our TF code block is over right when we see the closing code fence.
 			if docs[i:i+len(codeFence)] == codeFence {
 				currentBlock.end = i
 				codeIndices = append(codeIndices, currentBlock)
-				//if path.String() == "#/resources/aws:lambda/function:Function" {
-				//	q.Q(codeIndices)
-				//}
+				if path.String() == "#/resources/aws:lambda/function:Function" {
+					q.Q(docs[currentBlock.start:currentBlock.end])
+					q.Q(codeIndices)
+				}
 				// reset
 				currentBlock.start = 0
 				currentBlock.end = 0
@@ -1369,47 +1373,57 @@ func (g *Generator) convertExamplesInner(
 			}
 
 		} else {
+			// Keep track of header locations. These should never be inside code blocks.
+			if docs[i:i+len(h2)] == h2 || docs[i:i+len(h3)] == h3 {
+				// This should work, because we don't reset it = this index remains on the block until we find a new header
+				currentBlock.headerStart = i
+				// q.Q(currentBlock)
+			}
 			// if we aren't in a code block, a set of code fences signals the beginning of a code block.
 			if docs[i:i+len(codeFence)] == codeFence {
 				inCodeBlock = true
 				currentBlock.start = i
-
 			}
 		}
 	}
 
-	// Now we know where the code fences are.
-
+	// Now we know where the headers and code fences are.
 	textStart := 0
 	for _, tfBlock := range codeIndices {
 
+		// if the document has headers, we append the headers after trying to convert the code.
+		// TODO: we can be more clever in the walking code, above
+		hasHeader := tfBlock.headerStart > 0 && textStart < tfBlock.headerStart
 		// append start of doc to output
-		fprintf(output, docs[textStart:tfBlock.start])
+		if hasHeader {
+			fprintf(output, docs[textStart:tfBlock.headerStart])
+		} else {
+			fprintf(output, docs[textStart:tfBlock.start])
+		}
 		// find the actual start index of the code
-		nextNewLine := strings.Index(docs[tfBlock.start:], "\n")
+		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
 		if nextNewLine == -1 {
-			panic("no newline found, but newline was expected")
-			//TODO: fix this up
+			// just write the line as-is; this is an in-line fence
+			// TODO: refactor, see releated code below
+			writeTrailingNewline(output)
+			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+			writeTrailingNewline(output)
 		} else {
 			syntaxHighlight := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
 			//q.Q(syntaxHighlight)
 
 			//Let's run a few checks on possible syntax highlighting.
 			//This allows us to filter out anything that is explicitly marked as not-Terraform code.
+			// TODO: see if this works with actual equals, not just contains
 			if strings.Contains(syntaxHighlight, "terraform") ||
 				strings.Contains(syntaxHighlight, "hcl") || syntaxHighlight == "```\n" {
-				// these are all valid code block openers
 
-				//q.Q("we found code", syntaxHighlight)
-				// TODO: what happens to other code blocks? We need to append those!
-
-				//process code and append
-				// generate the code block
+				//generate the code block and append
+				// TODO: abstract this?
 				if g.language.shouldConvertExamples() {
 					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
 
-					// We've got some code -- assume it's HCL and try to
-					// convert it.
+					// Most of our results should be HCL, so we try to convert it.
 					var e *Example
 					if useCoverageTracker {
 						e = g.coverageTracker.getOrCreateExample(
@@ -1426,18 +1440,27 @@ func (g *Generator) convertExamplesInner(
 						exampleTitle, langs)
 
 					if err != nil {
-						//do not write these code sections.
+						//we do not write this section, ever.
+						//TODO: This means we can get rid of `stripSubsectionsWithErrors`.
 						continue
 					} else {
+						// append any headers first
+						if hasHeader {
+							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+							writeTrailingNewline(output)
+						}
 						fprintf(output, "<!--Begin TFConversion -->")
-						writeTrailingNewline(output)
 						fprintf(output, "\n%s", codeBlock)
 						writeTrailingNewline(output)
 						fprintf(output, "<!--End TFConversion -->")
 					}
 				}
 			} else {
-				// We should probably just take already-valid code blocks as-is.
+				if hasHeader {
+					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+					writeTrailingNewline(output)
+				}
+				// Take already-valid code blocks as-is.
 				writeTrailingNewline(output)
 				//q.Q("found valid code but it's not TF:", path.String(), docs[tfBlock.start:tfBlock.end])
 				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
@@ -1445,21 +1468,21 @@ func (g *Generator) convertExamplesInner(
 			}
 
 		}
-		// The text starts up again after the closing fences
+		// The non-code text starts up again after the closing fences
 		textStart = tfBlock.end + len(codeFence)
 	}
-	// Append any remainder of the docs string to the output
+	// Fencepost: Append any remainder of the docs string to the output
 	fprintf(output, docs[textStart:])
 
-	// Append Import section if it exists
-	if importSection != "" {
-		fprintf(output, "%s", importSection)
-		writeTrailingNewline(output)
-	}
-	if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
-		q.Q(docs)
-
-	}
+	//// Append Import section if it exists
+	//if importSection != "" {
+	//	fprintf(output, "%s", importSection)
+	//	writeTrailingNewline(output)
+	//}
+	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
+	//	q.Q(docs)
+	//
+	//}
 	return output.String()
 }
 
