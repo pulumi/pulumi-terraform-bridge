@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1368,6 +1367,7 @@ func (g *Generator) convertExamplesInner(
 
 		} else {
 			// Keep track of header locations. These should never be inside code blocks.
+			//TODO: fix this logic
 			if docs[i:i+len(h2)] == h2 || docs[i:i+len(h3)] == h3 {
 				currentBlock.headerStart = i
 			}
@@ -1382,36 +1382,33 @@ func (g *Generator) convertExamplesInner(
 	// Now we know where the headers and code fences are.
 	textStart := 0
 	stripSection := false
+	headerToStrip := 0
 	for _, tfBlock := range codeIndices {
-		if stripSection {
-			// textStart needs to be reset to next header
-			// oh nOOOOOO this fucks up everything if there's more than 1 code block in here! omg fuckity fuck fuck fuck
-			// maybe _do_ model the header a bit better?
-			// also... something about
-			nextHeader := strings.Index(docs[textStart:], h2)
-			if nextHeader == -1 {
-				q.Q("looking for h3 instead")
-				nextHeader = strings.Index(docs[textStart:], h3)
-			}
-			if nextHeader == -1 {
-				// end of doc
-				break
-			}
-			textStart = textStart + nextHeader
-			if textStart > currentBlock.start {
-				// there's more blocks in this section, but we want to strip them all
-				continue
-			}
-			stripSection = false
-		}
 
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart > 0 && textStart < tfBlock.headerStart
-		// append start of doc to output
-		if hasHeader {
-			fprintf(output, docs[textStart:tfBlock.headerStart])
-		} else {
-			fprintf(output, docs[textStart:tfBlock.start])
+
+		// append non-code text to output
+		if !stripSection {
+			if hasHeader {
+				fprintf(output, docs[textStart:tfBlock.headerStart])
+			} else {
+				fprintf(output, docs[textStart:tfBlock.start])
+			}
+		}
+
+		if stripSection {
+			// if we still have the same header, we can skip to the next code block. We also elide all text this way I think.
+			//TODO: somehow we're still getting the
+			if headerToStrip == tfBlock.headerStart {
+				textStart = tfBlock.end + len(codeFence)
+
+				continue
+			}
+			if headerToStrip < tfBlock.headerStart {
+				stripSection = false
+			}
+
 		}
 		// find the actual start index of the code
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
@@ -1452,6 +1449,7 @@ func (g *Generator) convertExamplesInner(
 						// We have to strip both what comes before and what comes after.
 						stripSection = true
 						textStart = tfBlock.end + len(codeFence)
+						headerToStrip = tfBlock.headerStart
 						continue
 					} else {
 						// append any headers first
@@ -1474,7 +1472,6 @@ func (g *Generator) convertExamplesInner(
 				writeTrailingNewline(output)
 				//q.Q("found valid code but it's not TF:", path.String(), docs[tfBlock.start:tfBlock.end])
 				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
-				writeTrailingNewline(output)
 			}
 
 		}
