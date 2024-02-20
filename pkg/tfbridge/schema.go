@@ -655,6 +655,16 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
+	// Iterate over the TF schema and add an empty list for each list type not in the results.
+	tfs.Range(func(key string, value shim.Schema) bool {
+		schema := tfs.Get(key)
+		if schema.Type() == shim.TypeList && result[key] == nil {
+			result[key] = []interface{}{}
+		}
+		return true
+	})
+
+
 	if glog.V(5) {
 		for k, v := range result {
 			glog.V(5).Infof("Terraform input %v = %#v", k, v)
