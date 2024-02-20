@@ -664,7 +664,6 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return true
 	})
 
-
 	if glog.V(5) {
 		for k, v := range result {
 			glog.V(5).Infof("Terraform input %v = %#v", k, v)
