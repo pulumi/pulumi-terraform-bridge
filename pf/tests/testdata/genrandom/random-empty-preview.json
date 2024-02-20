@@ -149,7 +149,7 @@
         "version": "4.8.2"
       }
     },
-    "response": {},
+    "errors": ["rpc error: code = Unimplemented desc = DiffConfig is not yet implemented"],
     "metadata": {
       "kind": "resource",
       "mode": "client",
