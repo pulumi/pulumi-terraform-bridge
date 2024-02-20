@@ -816,7 +816,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/accountGrant:AccountGrant",
-			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option<break><break> ```sh<break> $ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true' <break>```<break><break>",
+			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option\n\n```sh\n$ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true'\n```\n\n",
 		},
 		{
 			input: []string{
@@ -829,7 +829,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/apiIntegration:ApiIntegration",
-			expected: "## Import\n\n```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
+			expected: "## Import\n\n```sh\n$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name\n```\n\n",
 		},
 		{
 			input: []string{
@@ -844,17 +844,12 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "gcp:accesscontextmanager/accessLevel:AccessLevel",
-			expected: "## Import\n\nThis is a first line in a multi-line import section<break><break> * `{{name}}`<break><break> * `{{id}}`<break><break> For example:<break><break> ```sh<break> $ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name <break>```<break><break>",
+			expected: "## Import\n\nThis is a first line in a multi-line import section\n\n* `{{name}}`\n\n* `{{id}}`\n\nFor example:\n\n```sh\n$ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name\n```\n\n",
 		},
 		{
 			input:        readlines(t, "test_data/parse-imports/accessanalyzer.md"),
 			token:        "aws:accessanalyzer/analyzer:Analyzer",
 			expectedFile: "test_data/parse-imports/accessanalyzer-expected.md",
-		},
-		{
-			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
-			token:        "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
-			expectedFile: "test_data/parse-imports/gameliftconfig-expected.md",
 		},
 		{
 			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),

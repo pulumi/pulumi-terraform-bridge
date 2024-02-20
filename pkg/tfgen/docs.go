@@ -995,7 +995,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		return
 	}
 
-	var importDocString []string
+	var importDocString string
 	for _, section := range subsection {
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
 			strings.Contains(section, "**Note:**") {
@@ -1048,19 +1048,19 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			// Because splitGroupLines will strip any newlines off our description text, we use `<break>` as a
 			// placeholder, which we will replace with newlines in convertExamplesInner.
 			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
-			//importDetails := []string{"```sh<break>", importCommand, "<break>```<break><break>"}
-			importDocString = append(importDocString, importCommand)
+			importDetails := "```sh\n" + importCommand + "```\n\n"
+			importDocString = importDocString + importDetails
 		} else {
 			if !isBlank(section) {
 				// Ensure every section receives a line break.
 				section = section + "\n\n"
-				importDocString = append(importDocString, section)
+				importDocString = importDocString + section
 			}
 		}
 	}
 
 	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(importDocString, " "))
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
 	}
 }
 
