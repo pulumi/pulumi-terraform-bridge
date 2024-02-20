@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1328,6 +1329,15 @@ func (g *Generator) convertExamplesInner(
 		contract.IgnoreError(err)
 	}
 
+	if path.String() == "#/resources/aws:datasync/task:Task" {
+		q.Q(docs)
+	}
+
+	//if path.String() == "#/resources/aws:lambda/function:Function" {
+	//	q.Q(docs)
+	//	fmt.Print(docs)
+	//}
+
 	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
 	//	q.Q(docs)
 	//
@@ -1355,21 +1365,18 @@ func (g *Generator) convertExamplesInner(
 			if docs[i:i+len(codeFence)] == codeFence {
 				currentBlock.end = i
 				codeIndices = append(codeIndices, currentBlock)
-				//if path.String() == "#/resources/aws:lambda/function:Function" {
-				//	q.Q(docs[currentBlock.start:currentBlock.end])
-				//	q.Q(codeIndices)
-				//}
 				// reset
 				currentBlock.start = 0
 				currentBlock.end = 0
 				inCodeBlock = false
 			}
-
 		} else {
 			// Keep track of header locations. These should never be inside code blocks.
-			//TODO: fix this logic
 			if docs[i:i+len(h2)] == h2 || docs[i:i+len(h3)] == h3 {
-				currentBlock.headerStart = i
+				// We need to make sure we don't reread an H3 as H2 on the next pass
+				if !(currentBlock.headerStart+1 == i) {
+					currentBlock.headerStart = i
+				}
 			}
 			// if we aren't in a code block, a set of code fences signals the beginning of a code block.
 			if docs[i:i+len(codeFence)] == codeFence {
@@ -1398,17 +1405,14 @@ func (g *Generator) convertExamplesInner(
 		}
 
 		if stripSection {
-			// if we still have the same header, we can skip to the next code block. We also elide all text this way I think.
-			//TODO: somehow we're still getting the
+			// if we still have the same header, we can skip to the next code block.
 			if headerToStrip == tfBlock.headerStart {
 				textStart = tfBlock.end + len(codeFence)
-
 				continue
 			}
 			if headerToStrip < tfBlock.headerStart {
 				stripSection = false
 			}
-
 		}
 		// find the actual start index of the code
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
@@ -1444,15 +1448,14 @@ func (g *Generator) convertExamplesInner(
 						exampleTitle, langs)
 
 					if err != nil {
-						//we do not write this section, ever.
-						//TODO: This means we can get rid of `stripSubsectionsWithErrors`.
-						// We have to strip both what comes before and what comes after.
+						// We do not write this section, ever.
+						// We have to strip the entire section: any header, the code block, and any text.
 						stripSection = true
 						textStart = tfBlock.end + len(codeFence)
 						headerToStrip = tfBlock.headerStart
 						continue
 					} else {
-						// append any headers first
+						// append any headers and text first
 						if hasHeader {
 							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
 							writeTrailingNewline(output)
@@ -1470,7 +1473,6 @@ func (g *Generator) convertExamplesInner(
 				}
 				// Take already-valid code blocks as-is.
 				writeTrailingNewline(output)
-				//q.Q("found valid code but it's not TF:", path.String(), docs[tfBlock.start:tfBlock.end])
 				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 			}
 
@@ -1478,13 +1480,20 @@ func (g *Generator) convertExamplesInner(
 		// The non-code text starts up again after the closing fences
 		textStart = tfBlock.end + len(codeFence)
 	}
-	// Fencepost: Append any remainder of the docs string to the output
+	// Append any remainder of the docs string to the output
 	fprintf(output, docs[textStart:])
 
 	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
 	//	q.Q(docs)
 	//
 	//}
+	//if path.String() == "#/resources/aws:lambda/function:Function" {
+	//	q.Q(output.String())
+	//	fmt.Print(output.String())
+	//}
+	if path.String() == "#/resources/aws:datasync/task:Task" {
+		q.Q(output.String())
+	}
 	return output.String()
 }
 
