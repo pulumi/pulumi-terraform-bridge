@@ -1048,32 +1048,32 @@ const lambdaFunctionName = config.get("lambdaFunctionName") || "lambda_function_
 // If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
 const example = new aws.cloudwatch.LogGroup("example", {retentionInDays: 14});
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
- statements: [{
- effect: "Allow",
- actions: [
- "logs:CreateLogGroup",
- "logs:CreateLogStream",
- "logs:PutLogEvents",
- ],
- resources: ["arn:aws:logs:*:*:*"],
- }],
+    statements: [{
+        effect: "Allow",
+        actions: [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+        ],
+        resources: ["arn:aws:logs:*:*:*"],
+    }],
 });
 const lambdaLoggingPolicy = new aws.iam.Policy("lambdaLoggingPolicy", {
- path: "/",
- description: "IAM policy for logging from a lambda",
- policy: lambdaLoggingPolicyDocument.then(lambdaLoggingPolicyDocument => lambdaLoggingPolicyDocument.json),
+    path: "/",
+    description: "IAM policy for logging from a lambda",
+    policy: lambdaLoggingPolicyDocument.then(lambdaLoggingPolicyDocument => lambdaLoggingPolicyDocument.json),
 });
 const lambdaLogs = new aws.iam.RolePolicyAttachment("lambdaLogs", {
- role: aws_iam_role.iam_for_lambda.name,
- policyArn: lambdaLoggingPolicy.arn,
+    role: aws_iam_role.iam_for_lambda.name,
+    policyArn: lambdaLoggingPolicy.arn,
 });
 const testLambda = new aws.lambda.Function("testLambda", {loggingConfig: {
- logFormat: "Text",
+    logFormat: "Text",
 }}, {
- dependsOn: [
- lambdaLogs,
- example,
- ],
+    dependsOn: [
+        lambdaLogs,
+        example,
+    ],
 });
 ```
 ```python
@@ -1083,33 +1083,33 @@ import pulumi_aws as aws
 config = pulumi.Config()
 lambda_function_name = config.get("lambdaFunctionName")
 if lambda_function_name is None:
- lambda_function_name = "lambda_function_name"
+    lambda_function_name = "lambda_function_name"
 # This is to optionally manage the CloudWatch Log Group for the Lambda Function.
 # If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
 example = aws.cloudwatch.LogGroup("example", retention_in_days=14)
 lambda_logging_policy_document = aws.iam.get_policy_document(statements=[aws.iam.GetPolicyDocumentStatementArgs(
- effect="Allow",
- actions=[
- "logs:CreateLogGroup",
- "logs:CreateLogStream",
- "logs:PutLogEvents",
- ],
- resources=["arn:aws:logs:*:*:*"],
+    effect="Allow",
+    actions=[
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+    ],
+    resources=["arn:aws:logs:*:*:*"],
 )])
 lambda_logging_policy = aws.iam.Policy("lambdaLoggingPolicy",
- path="/",
- description="IAM policy for logging from a lambda",
- policy=lambda_logging_policy_document.json)
+    path="/",
+    description="IAM policy for logging from a lambda",
+    policy=lambda_logging_policy_document.json)
 lambda_logs = aws.iam.RolePolicyAttachment("lambdaLogs",
- role=aws_iam_role["iam_for_lambda"]["name"],
- policy_arn=lambda_logging_policy.arn)
+    role=aws_iam_role["iam_for_lambda"]["name"],
+    policy_arn=lambda_logging_policy.arn)
 test_lambda = aws.lambda_.Function("testLambda", logging_config=aws.lambda_.FunctionLoggingConfigArgs(
- log_format="Text",
+    log_format="Text",
 ),
 opts=pulumi.ResourceOptions(depends_on=[
- lambda_logs,
- example,
- ]))
+        lambda_logs,
+        example,
+    ]))
 ```
 ```csharp
 using System.Collections.Generic;
@@ -1119,63 +1119,63 @@ using Aws = Pulumi.Aws;
 
 return await Deployment.RunAsync(() => 
 {
- var config = new Config();
- var lambdaFunctionName = config.Get("lambdaFunctionName") ?? "lambda_function_name";
- // This is to optionally manage the CloudWatch Log Group for the Lambda Function.
- // If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
- var example = new Aws.CloudWatch.LogGroup("example", new()
- {
- RetentionInDays = 14,
- });
+    var config = new Config();
+    var lambdaFunctionName = config.Get("lambdaFunctionName") ?? "lambda_function_name";
+    // This is to optionally manage the CloudWatch Log Group for the Lambda Function.
+    // If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
+    var example = new Aws.CloudWatch.LogGroup("example", new()
+    {
+        RetentionInDays = 14,
+    });
 
- var lambdaLoggingPolicyDocument = Aws.Iam.GetPolicyDocument.Invoke(new()
- {
- Statements = new[]
- {
- new Aws.Iam.Inputs.GetPolicyDocumentStatementInputArgs
- {
- Effect = "Allow",
- Actions = new[]
- {
- "logs:CreateLogGroup",
- "logs:CreateLogStream",
- "logs:PutLogEvents",
- },
- Resources = new[]
- {
- "arn:aws:logs:*:*:*",
- },
- },
- },
- });
+    var lambdaLoggingPolicyDocument = Aws.Iam.GetPolicyDocument.Invoke(new()
+    {
+        Statements = new[]
+        {
+            new Aws.Iam.Inputs.GetPolicyDocumentStatementInputArgs
+            {
+                Effect = "Allow",
+                Actions = new[]
+                {
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                },
+                Resources = new[]
+                {
+                    "arn:aws:logs:*:*:*",
+                },
+            },
+        },
+    });
 
- var lambdaLoggingPolicy = new Aws.Iam.Policy("lambdaLoggingPolicy", new()
- {
- Path = "/",
- Description = "IAM policy for logging from a lambda",
- PolicyDocument = lambdaLoggingPolicyDocument.Apply(getPolicyDocumentResult => getPolicyDocumentResult.Json),
- });
+    var lambdaLoggingPolicy = new Aws.Iam.Policy("lambdaLoggingPolicy", new()
+    {
+        Path = "/",
+        Description = "IAM policy for logging from a lambda",
+        PolicyDocument = lambdaLoggingPolicyDocument.Apply(getPolicyDocumentResult => getPolicyDocumentResult.Json),
+    });
 
- var lambdaLogs = new Aws.Iam.RolePolicyAttachment("lambdaLogs", new()
- {
- Role = aws_iam_role.Iam_for_lambda.Name,
- PolicyArn = lambdaLoggingPolicy.Arn,
- });
+    var lambdaLogs = new Aws.Iam.RolePolicyAttachment("lambdaLogs", new()
+    {
+        Role = aws_iam_role.Iam_for_lambda.Name,
+        PolicyArn = lambdaLoggingPolicy.Arn,
+    });
 
- var testLambda = new Aws.Lambda.Function("testLambda", new()
- {
- LoggingConfig = new Aws.Lambda.Inputs.FunctionLoggingConfigArgs
- {
- LogFormat = "Text",
- },
- }, new CustomResourceOptions
- {
- DependsOn = new[]
- {
- lambdaLogs,
- example,
- },
- });
+    var testLambda = new Aws.Lambda.Function("testLambda", new()
+    {
+        LoggingConfig = new Aws.Lambda.Inputs.FunctionLoggingConfigArgs
+        {
+            LogFormat = "Text",
+        },
+    }, new CustomResourceOptions
+    {
+        DependsOn = new[]
+        {
+            lambdaLogs,
+            example,
+        },
+    });
 
 });
 ```
@@ -1222,15 +1222,15 @@ func main() {
 			return err
 		}
 		lambdaLoggingPolicy, err := iam.NewPolicy(ctx, "lambdaLoggingPolicy", &iam.PolicyArgs{
-			Path: pulumi.String("/"),
+			Path:        pulumi.String("/"),
 			Description: pulumi.String("IAM policy for logging from a lambda"),
-			Policy: *pulumi.String(lambdaLoggingPolicyDocument.Json),
+			Policy:      *pulumi.String(lambdaLoggingPolicyDocument.Json),
 		})
 		if err != nil {
 			return err
 		}
 		lambdaLogs, err := iam.NewRolePolicyAttachment(ctx, "lambdaLogs", &iam.RolePolicyAttachmentArgs{
-			Role: pulumi.Any(aws_iam_role.Iam_for_lambda.Name),
+			Role:      pulumi.Any(aws_iam_role.Iam_for_lambda.Name),
 			PolicyArn: lambdaLoggingPolicy.Arn,
 		})
 		if err != nil {
@@ -1277,104 +1277,105 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class App {
- public static void main(String[] args) {
- Pulumi.run(App::stack);
- }
+    public static void main(String[] args) {
+        Pulumi.run(App::stack);
+    }
 
- public static void stack(Context ctx) {
- final var config = ctx.config();
- final var lambdaFunctionName = config.get("lambdaFunctionName").orElse("lambda_function_name");
- var example = new LogGroup("example", LogGroupArgs.builder() 
- .retentionInDays(14)
- .build());
+    public static void stack(Context ctx) {
+        final var config = ctx.config();
+        final var lambdaFunctionName = config.get("lambdaFunctionName").orElse("lambda_function_name");
+        var example = new LogGroup("example", LogGroupArgs.builder()        
+            .retentionInDays(14)
+            .build());
 
- final var lambdaLoggingPolicyDocument = IamFunctions.getPolicyDocument(GetPolicyDocumentArgs.builder()
- .statements(GetPolicyDocumentStatementArgs.builder()
- .effect("Allow")
- .actions( 
- "logs:CreateLogGroup",
- "logs:CreateLogStream",
- "logs:PutLogEvents")
- .resources("arn:aws:logs:*:*:*")
- .build())
- .build());
+        final var lambdaLoggingPolicyDocument = IamFunctions.getPolicyDocument(GetPolicyDocumentArgs.builder()
+            .statements(GetPolicyDocumentStatementArgs.builder()
+                .effect("Allow")
+                .actions(                
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents")
+                .resources("arn:aws:logs:*:*:*")
+                .build())
+            .build());
 
- var lambdaLoggingPolicy = new Policy("lambdaLoggingPolicy", PolicyArgs.builder() 
- .path("/")
- .description("IAM policy for logging from a lambda")
- .policy(lambdaLoggingPolicyDocument.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
- .build());
+        var lambdaLoggingPolicy = new Policy("lambdaLoggingPolicy", PolicyArgs.builder()        
+            .path("/")
+            .description("IAM policy for logging from a lambda")
+            .policy(lambdaLoggingPolicyDocument.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
+            .build());
 
- var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder() 
- .role(aws_iam_role.iam_for_lambda().name())
- .policyArn(lambdaLoggingPolicy.arn())
- .build());
+        var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder()        
+            .role(aws_iam_role.iam_for_lambda().name())
+            .policyArn(lambdaLoggingPolicy.arn())
+            .build());
 
- var testLambda = new Function("testLambda", FunctionArgs.builder() 
- .loggingConfig(FunctionLoggingConfigArgs.builder()
- .logFormat("Text")
- .build())
- .build(), CustomResourceOptions.builder()
- .dependsOn( 
- lambdaLogs,
- example)
- .build());
+        var testLambda = new Function("testLambda", FunctionArgs.builder()        
+            .loggingConfig(FunctionLoggingConfigArgs.builder()
+                .logFormat("Text")
+                .build())
+            .build(), CustomResourceOptions.builder()
+                .dependsOn(                
+                    lambdaLogs,
+                    example)
+                .build());
 
- }
+    }
 }
 ```
 ```yaml
 configuration:
- lambdaFunctionName:
- type: string
- default: lambda_function_name
+  lambdaFunctionName:
+    type: string
+    default: lambda_function_name
 resources:
- testLambda:
- type: aws:lambda:Function
- properties:
- loggingConfig:
- logFormat: Text
- options:
- dependson:
- - ${lambdaLogs}
- - ${example}
- # This is to optionally manage the CloudWatch Log Group for the Lambda Function.
- # If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
- example:
- type: aws:cloudwatch:LogGroup
- properties:
- retentionInDays: 14
- lambdaLoggingPolicy:
- type: aws:iam:Policy
- properties:
- path: /
- description: IAM policy for logging from a lambda
- policy: ${lambdaLoggingPolicyDocument.json}
- lambdaLogs:
- type: aws:iam:RolePolicyAttachment
- properties:
- role: ${aws_iam_role.iam_for_lambda.name}
- policyArn: ${lambdaLoggingPolicy.arn}
+  testLambda:
+    type: aws:lambda:Function
+    properties:
+      loggingConfig:
+        logFormat: Text
+    options:
+      dependson:
+        - ${lambdaLogs}
+        - ${example}
+  # This is to optionally manage the CloudWatch Log Group for the Lambda Function.
+  # If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
+  example:
+    type: aws:cloudwatch:LogGroup
+    properties:
+      retentionInDays: 14
+  lambdaLoggingPolicy:
+    type: aws:iam:Policy
+    properties:
+      path: /
+      description: IAM policy for logging from a lambda
+      policy: ${lambdaLoggingPolicyDocument.json}
+  lambdaLogs:
+    type: aws:iam:RolePolicyAttachment
+    properties:
+      role: ${aws_iam_role.iam_for_lambda.name}
+      policyArn: ${lambdaLoggingPolicy.arn}
 variables:
- lambdaLoggingPolicyDocument:
- fn::invoke:
- Function: aws:iam:getPolicyDocument
- Arguments:
- statements:
- - effect: Allow
- actions:
- - logs:CreateLogGroup
- - logs:CreateLogStream
- - logs:PutLogEvents
- resources:
- - arn:aws:logs:*:*:*
+  lambdaLoggingPolicyDocument:
+    fn::invoke:
+      Function: aws:iam:getPolicyDocument
+      Arguments:
+        statements:
+          - effect: Allow
+            actions:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            resources:
+              - arn:aws:logs:*:*:*
 ```
 <!--End TFConversion -->
+
 ## Specifying the Deployment Package
 
 AWS Lambda expects source code to be provided as a deployment package whose structure varies depending on which `runtime` is in use. See [Runtimes](https://docs.aws.amazon.com/lambda/latest/dg/API_CreateFunction.html#SSS-CreateFunction-request-Runtime) for the valid values of `runtime`. The expected structure of the deployment package can be found in [the AWS Lambda documentation for each runtime](https://docs.aws.amazon.com/lambda/latest/dg/deployment-package-v2.html).
 
-Once you have created your deployment package you can specify it either directly as a local file (using the `filename` argument) or indirectly via Amazon S3 (using the `s3_bucket`, `s3_key` and `s3_object_version` arguments). When providing the deployment package via S3 it may be useful to use the `aws.s3.BucketObjectv2` resource to upload it.
+Once you have created your deployment package you can specify it either directly as a local file (using the `filename` argument) or indirectly via Amazon S3 (using the `s3_bucket`, `s3_key` and `s3_object_version` arguments). When providing the deployment package via S3 it may be useful to use the `aws_s3_object` resource to upload it.
 
 For larger deployment packages it is recommended by Amazon to upload via S3, since the S3 API has better support for uploading large files efficiently.
 
@@ -1385,4 +1386,3 @@ Using `pulumi import`, import Lambda Functions using the `function_name`. For ex
 ```sh
 $ pulumi import aws:lambda/function:Function test_lambda my_test_lambda_function
 ```
-"

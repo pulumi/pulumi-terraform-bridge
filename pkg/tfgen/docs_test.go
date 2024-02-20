@@ -981,6 +981,65 @@ func TestConvertExamples(t *testing.T) {
 	}
 }
 
+func TestConvertExamplesInner(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
+	}
+
+	inmem := afero.NewMemMapFs()
+	info := testprovider.ProviderMiniRandom()
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	type testCase struct {
+		name string
+		path examplePath
+
+		stripSubsectionWithErrors bool
+	}
+
+	testCases := []testCase{
+		{
+			name: "aws_lambda_function",
+			path: examplePath{
+				fullPath: "#/resources/aws:lambda/function:Function",
+				token:    "aws:lambda/function:Function",
+			},
+			stripSubsectionWithErrors: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s.md", tc.name)))
+			require.NoError(t, err)
+			result := g.convertExamplesInner(string(docs), tc.path, tc.stripSubsectionWithErrors, g.convertHCL, false)
+
+			out := filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s_out.md", tc.name))
+			if accept {
+				err = os.WriteFile(out, []byte(result), 0600)
+				require.NoError(t, err)
+			}
+			expect, err := os.ReadFile(out)
+			require.NoError(t, err)
+			assert.Equal(t, string(expect), result)
+		})
+	}
+}
+
 type pluginDesc struct {
 	version           string
 	pluginDownloadURL string
