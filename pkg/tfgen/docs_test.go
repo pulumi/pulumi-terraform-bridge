@@ -1009,7 +1009,6 @@ func TestConvertExamplesInner(t *testing.T) {
 				fullPath: "#/resources/aws:lambda/function:Function",
 				token:    "aws:lambda/function:Function",
 			},
-			stripSubsectionWithErrors: true,
 		},
 	}
 
@@ -1020,7 +1019,7 @@ func TestConvertExamplesInner(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
 			require.NoError(t, err)
-			result := g.convertExamplesInner(string(docs), tc.path, tc.stripSubsectionWithErrors, g.convertHCL, false)
+			result := g.convertExamplesInner(string(docs), tc.path, g.convertHCL, false)
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))

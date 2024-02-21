@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -1046,8 +1045,6 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			// Because splitGroupLines will strip any newlines off our description text, we use `<break>` as a
-			// placeholder, which we will replace with newlines in convertExamplesInner.
 			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
 			importDetails := "```sh\n" + importCommand + "```\n\n"
 			importDocString = importDocString + importDetails
@@ -1247,7 +1244,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) (result string) {
+func (g *Generator) convertExamples(docs string, path examplePath) (result string) {
 	if docs == "" {
 		return ""
 	}
@@ -1266,6 +1263,42 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		//The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
+	}
+
+	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
+	// specifies the PULUMI_CONVERT_EXAMPES_CACHE_DIR environment variable, pointing to a folder for the cache.
+	{
+		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPES_CACHE_DIR")
+		if enableCache && dir != "" {
+			path := path.String()
+			sep := string(rune(0))
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
+			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
+			fmt.Fprintf(&buf, "path=%v%s", path, sep)
+			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
+
+			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
+
+			filePath := filepath.Join(dir, hash)
+
+			bytes, err := os.ReadFile(filePath)
+			if err == nil {
+				// cache hit
+				return string(bytes)
+			}
+			// ignore the error, assume cache miss or file not found
+			defer func() {
+				// only write the cache for sizable results, >0.5kb
+				if len(result) > 512 {
+					// try to write to the cache
+					err := os.WriteFile(filePath, []byte(result), 0600)
+					if err != nil {
+						panic(fmt.Errorf("failed to write examples-cache: %w", err))
+					}
+				}
+			}()
+		}
 	}
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
@@ -1296,13 +1329,12 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 	}
 
 	if cliConverterEnabled() {
-		return g.cliConverter().StartConvertingExamples(docs, path,
-			stripSubsectionsWithErrors)
+		return g.cliConverter().StartConvertingExamples(docs, path)
 	}
 
 	// Use coverage tracker: on by default.
 	cov := true
-	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL, cov)
+	return g.convertExamplesInner(docs, path, g.convertHCL, cov)
 }
 
 // The inner implementation of examples conversion is parameterized by convertHCL so that it can be
@@ -1311,7 +1343,6 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
-	stripSubsectionsWithErrors bool,
 	convertHCL func(
 		e *Example, hcl, path, exampleTitle string, languages []string,
 	) (string, error),
@@ -1328,20 +1359,6 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
-
-	if path.String() == "#/resources/aws:datasync/task:Task" {
-		q.Q(docs)
-	}
-
-	//if path.String() == "#/resources/aws:lambda/function:Function" {
-	//	q.Q(docs)
-	//	fmt.Print(docs)
-	//}
-
-	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
-	//	q.Q(docs)
-	//
-	//}
 
 	// Find code fences in the presented doc
 	type tfBlockIndex struct {
@@ -1389,11 +1406,11 @@ func (g *Generator) convertExamplesInner(
 	// Now we know where the headers and code fences are.
 	textStart := 0
 	stripSection := false
-	headerToStrip := 0
+	stripSectionHeader := 0
 	for _, tfBlock := range codeIndices {
 
 		// if the section has a header we append the header after trying to convert the code.
-		hasHeader := tfBlock.headerStart > 0 && textStart < tfBlock.headerStart
+		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
 		// append non-code text to output
 		if !stripSection {
@@ -1402,22 +1419,21 @@ func (g *Generator) convertExamplesInner(
 			} else {
 				fprintf(output, docs[textStart:tfBlock.start])
 			}
-		}
-
-		if stripSection {
-			// if we still have the same header, we can skip to the next code block.
-			if headerToStrip == tfBlock.headerStart {
+		} else {
+			// if we are stripping this section and still have the same header, we append nothing and skip to the next
+			// code block.
+			if stripSectionHeader == tfBlock.headerStart {
 				textStart = tfBlock.end + len(codeFence)
 				continue
 			}
-			if headerToStrip < tfBlock.headerStart {
+			if stripSectionHeader < tfBlock.headerStart {
 				stripSection = false
 			}
 		}
 		// find the actual start index of the code
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
 		if nextNewLine == -1 {
-			// just write the line as-is; this is an in-line fence
+			// write the line as-is; this is an in-line fence
 			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 			writeTrailingNewline(output)
 		} else {
@@ -1449,13 +1465,12 @@ func (g *Generator) convertExamplesInner(
 
 					if err != nil {
 						// We do not write this section, ever.
-						// We have to strip the entire section: any header, the code block, and any text.
+						// We have to strip the entire section: any header, the code block, and any surrounding text.
+						// TODO: what if this is the last iteration? Then textStart is not what we want, is it.
 						stripSection = true
-						textStart = tfBlock.end + len(codeFence)
-						headerToStrip = tfBlock.headerStart
-						continue
+						stripSectionHeader = tfBlock.headerStart
 					} else {
-						// append any headers and text first
+						// append any headers and following text first
 						if hasHeader {
 							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
 							writeTrailingNewline(output)
@@ -1467,33 +1482,24 @@ func (g *Generator) convertExamplesInner(
 					}
 				}
 			} else {
+				// Take already-valid code blocks as-is.
 				if hasHeader {
 					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
 					writeTrailingNewline(output)
 				}
-				// Take already-valid code blocks as-is.
 				writeTrailingNewline(output)
 				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 			}
 
 		}
-		// The non-code text starts up again after the closing fences
+		// The non-code text starts up again after the last closing fences
 		textStart = tfBlock.end + len(codeFence)
 	}
 	// Append any remainder of the docs string to the output
-	fprintf(output, docs[textStart:])
-
-	//if path.String() == "#/types/aws:batch/ComputeEnvironmentComputeResources:ComputeEnvironmentComputeResources/bidPercentage" {
-	//	q.Q(docs)
-	//
-	//}
-	//if path.String() == "#/resources/aws:lambda/function:Function" {
-	//	q.Q(output.String())
-	//	fmt.Print(output.String())
-	//}
-	if path.String() == "#/resources/aws:datasync/task:Task" {
-		q.Q(output.String())
+	if !stripSection {
+		fprintf(output, docs[textStart:])
 	}
+
 	return output.String()
 }
 

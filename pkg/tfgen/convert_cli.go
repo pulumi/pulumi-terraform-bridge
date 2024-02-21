@@ -69,7 +69,6 @@ type cliConverter struct {
 		convertExamplesInner(
 			docs string,
 			path examplePath,
-			stripSubsectionsWithErrors bool,
 			convertHCL func(
 				e *Example, hcl, path, exampleTitle string, languages []string,
 			) (string, error),
@@ -81,9 +80,8 @@ type cliConverter struct {
 	loader schema.Loader
 
 	convertExamplesList []struct {
-		docs                       string
-		path                       examplePath
-		stripSubsectionsWithErrors bool
+		docs string
+		path examplePath
 	}
 
 	currentPackageSpec *pschema.PackageSpec
@@ -124,20 +122,17 @@ func (g *Generator) cliConverter() *cliConverter {
 func (cc *cliConverter) StartConvertingExamples(
 	docs string,
 	path examplePath,
-	stripSubsectionsWithErrors bool,
 ) string {
 	// Record inner HCL conversions and discard the result.
 	cov := false // do not use coverage tracker yet, it will be used in the second pass.
-	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL, cov)
+	cc.generator.convertExamplesInner(docs, path, cc.recordHCL, cov)
 	// Record the convertExamples job for later.
 	e := struct {
-		docs                       string
-		path                       examplePath
-		stripSubsectionsWithErrors bool
+		docs string
+		path examplePath
 	}{
-		docs:                       docs,
-		path:                       path,
-		stripSubsectionsWithErrors: stripSubsectionsWithErrors,
+		docs: docs,
+		path: path,
 	}
 	cc.convertExamplesList = append(cc.convertExamplesList, e)
 	// Return a placeholder referencing the convertExampleJob by position.
@@ -165,8 +160,7 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 
 		// Use coverage tracker here on the second pass.
 		useCoverageTracker := true
-		source := cc.generator.convertExamplesInner(ex.docs, ex.path,
-			ex.stripSubsectionsWithErrors, cc.generator.convertHCL, useCoverageTracker)
+		source := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCoverageTracker)
 		// JSON-escaping to splice into JSON string literals.
 		bytes, err := json.Marshal(source)
 		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")
