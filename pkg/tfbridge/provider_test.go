@@ -196,10 +196,9 @@ func TestDiffConfig(t *testing.T) {
 		tf:     tfProvider,
 		config: tfProvider.Schema(),
 		info: ProviderInfo{
-			EnableDiffConfig: true,
 			Config: map[string]*SchemaInfo{
 				"region": {
-					ForceNew: &yes,
+					ForcesProviderReplace: &yes,
 				},
 			},
 		},

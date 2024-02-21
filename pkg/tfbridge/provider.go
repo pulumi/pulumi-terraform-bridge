@@ -579,10 +579,6 @@ func validateProviderConfig(
 func (p *Provider) DiffConfig(
 	ctx context.Context, req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	if !p.info.EnableDiffConfig {
-		msg := "DiffConfig is disabled, set ProviderInfo.EnableDiffConfig to enable"
-		return nil, status.Error(codes.Unimplemented, msg)
-	}
 	urn := resource.URN(req.GetUrn())
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	glog.V(9).Infof("%s executing", label)
@@ -604,16 +600,13 @@ type configDiffer struct {
 // realistic TF Providers do not use ForceNew for provider-level properties.
 func (p *configDiffer) isForceNew(path resource.PropertyPath) bool {
 	schemaPath := PropertyPathToSchemaPath(path, p.schemaMap, p.schemaInfos)
-	schema, info, err := LookupSchemas(schemaPath, p.schemaMap, p.schemaInfos)
+	_, info, err := LookupSchemas(schemaPath, p.schemaMap, p.schemaInfos)
 	if err != nil {
 		contract.IgnoreError(err)
 		return false
 	}
-	if info != nil && info.ForceNew != nil {
-		return *info.ForceNew
-	}
-	if schema != nil {
-		return schema.ForceNew()
+	if info != nil && info.ForcesProviderReplace != nil {
+		return *info.ForcesProviderReplace
 	}
 	return false
 }

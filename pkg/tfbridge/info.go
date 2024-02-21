@@ -154,14 +154,6 @@ type ProviderInfo struct {
 	//
 	// See also pulumi/pulumi-terraform-bridge#1524
 	GenerateRuntimeMetadata bool
-
-	// This feature enables the Pulumi provider to detect when provider configuration is
-	// changing and suggest a replacement plans when some properties require a replace.
-	// Replacing a provider then replaces all resources provisioned against this provider. See
-	// also the section on Explicit Provider Configuration in the docs:
-	//
-	// https://www.pulumi.com/docs/concepts/resources/providers/
-	EnableDiffConfig bool
 }
 
 // Send logs or status logs to the user.
@@ -493,6 +485,14 @@ type SchemaInfo struct {
 
 	// whether a change in the configuration would force a new resource
 	ForceNew *bool
+
+	// Controls whether a change in the provider configuration should trigger a provider
+	// replacement. While there is no matching concept in TF, Pulumi supports replacing explicit
+	// providers and cascading the replacement to all resources provisioned with the given
+	// provider configuration.
+	//
+	// This property is only relevant for [ProviderInfo.Config] properties.
+	ForcesProviderReplace *bool
 
 	// whether or not this property has been removed from the Terraform schema
 	Removed bool
