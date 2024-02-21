@@ -259,7 +259,12 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 
 		// If any provider is lacking a detailed diff, we don't attempt to combine
 		// a detailed and non-detailed diff.
-		if !resp.HasDetailedDiff || !hasDetailedDiff {
+		//
+		// Simply checking HasDetailedDiff is not enough since marshalDiff from below
+		// forgets to set it:
+		//
+		// https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/plugin/provider_server.go#L70
+		if (!resp.HasDetailedDiff && len(resp.DetailedDiff) == 0) || !hasDetailedDiff {
 			hasDetailedDiff = false
 			detailedDiff = nil
 		} else {

@@ -127,6 +127,20 @@ func TestDiffConfig(t *testing.T) {
 		},
 	}
 
+	changeAwsRegionResponseCorrected := &pulumirpc.DiffResponse{
+		Diffs:           []string{}, // looks like muxer normalizes this to not include replaces
+		Stables:         []string{}, // looks like nils got normalized to empty list, no problem
+		Replaces:        []string{"region"},
+		Changes:         pulumirpc.DiffResponse_DIFF_SOME,
+		HasDetailedDiff: true, // this got populated by muxer even if upstream forgets it
+		DetailedDiff: map[string]*pulumirpc.PropertyDiff{
+			"region": {
+				InputDiff: true,
+				Kind:      pulumirpc.PropertyDiff_UPDATE_REPLACE,
+			},
+		},
+	}
+
 	testCases := []testCase{
 		{
 			name:           "unimplemented server2 respects the implemented server1",
@@ -139,6 +153,13 @@ func TestDiffConfig(t *testing.T) {
 			request:        changeAwsRegionReq,
 			response2:      changeAwsRegionResponse,
 			mergedResponse: changeAwsRegionResponse,
+		},
+		{
+			name:           "identical servers are treated as each of them",
+			request:        changeAwsRegionReq,
+			response1:      changeAwsRegionResponse,
+			response2:      changeAwsRegionResponse,
+			mergedResponse: changeAwsRegionResponseCorrected,
 		},
 	}
 
