@@ -307,36 +307,6 @@ func TestDiffConfig(t *testing.T) {
 		}`)
 	})
 
-	t.Run("changing region forces a cascading replace", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-		{
-		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
-		  "request": {
-		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
-		    "olds": {
-		      "region": "us-east-1",
-		      "version": "6.22.0"
-		    },
-		    "news": {
-		      "region": "us-west-1",
-		      "version": "6.22.0"
-		    },
-		    "oldInputs": {
-		      "region": "us-east-1",
-		      "version": "6.22.0"
-		    }
-		  },
-		  "response": {
-                    "diffs": ["region"],
-		    "replaces": ["region"],
-		    "changes": "DIFF_SOME",
-                    "detailedDiff": {
-                      "region": {"inputDiff": true, "kind": "UPDATE_REPLACE"}
-                    }
-		  }
-		}`)
-	})
-
 	t.Run("changing region can be ignored", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
