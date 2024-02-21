@@ -609,10 +609,8 @@ type configDiffer struct {
 	schemaInfos map[string]*SchemaInfo
 }
 
-// Schema may specify that changing a property requires a replacement. This honors overrides to
-// ProviderInfo.Schema[x].ForceNew as well as raw schema.ForceNew(), although at the moment
-// realistic TF Providers do not use ForceNew for provider-level properties.
-func (p *configDiffer) isForceNew(path resource.PropertyPath) bool {
+// Schema may specify that changing a property requires a replacement.
+func (p *configDiffer) forcesProviderReplace(path resource.PropertyPath) bool {
 	schemaPath := PropertyPathToSchemaPath(path, p.schemaMap, p.schemaInfos)
 	_, info, err := LookupSchemas(schemaPath, p.schemaMap, p.schemaInfos)
 	if err != nil {
@@ -648,7 +646,7 @@ func (p *configDiffer) DiffConfig(
 	for key, change := range detailedDiff {
 		keyPath, err := resource.ParsePropertyPath(key)
 		contract.AssertNoErrorf(err, "Unexpected failed parse of PropertyPath %q", key)
-		if p.isForceNew(keyPath) {
+		if p.forcesProviderReplace(keyPath) {
 			detailedDiff[key] = change.ToReplace()
 		}
 	}
