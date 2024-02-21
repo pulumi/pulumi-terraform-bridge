@@ -64,13 +64,13 @@ type cliConverter struct {
 
 	generator interface {
 		convertHCL(
-			e *Example, hcl, path, exampleTitle string, languages []string,
+			e *Example, hcl, path string, languages []string,
 		) (string, error)
 		convertExamplesInner(
 			docs string,
 			path examplePath,
 			convertHCL func(
-				e *Example, hcl, path, exampleTitle string, languages []string,
+				e *Example, hcl, path string, languages []string,
 			) (string, error),
 			useCoverageTracker bool,
 		) string
@@ -459,7 +459,7 @@ func (cc *cliConverter) convertPCL(
 
 // Act as a convertHCL stub that does not actually convert but spies on the literals involved.
 func (cc *cliConverter) recordHCL(
-	e *Example, hcl, path, exampleTitle string, languages []string,
+	e *Example, hcl, path string, languages []string,
 ) (string, error) {
 	cache := cc.generator.getOrCreateExamplesCache()
 

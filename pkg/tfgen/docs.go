@@ -1344,7 +1344,7 @@ func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
 	convertHCL func(
-		e *Example, hcl, path, exampleTitle string, languages []string,
+		e *Example, hcl, path string, languages []string,
 	) (string, error),
 	useCoverageTracker bool,
 ) string {
@@ -1453,20 +1453,13 @@ func (g *Generator) convertExamplesInner(
 						e = g.coverageTracker.getOrCreateExample(
 							path.String(), hcl)
 					}
-					// TODO: We can probably use path.String() instead of title here. This is for metrics output only!
-					exampleTitle := ""
-					//if strings.Contains(subsection[0], "###") {
-					//	exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
-					//}
 
 					langs := genLanguageToSlice(g.language)
-					codeBlock, err := convertHCL(e, hcl, path.String(),
-						exampleTitle, langs)
+					codeBlock, err := convertHCL(e, hcl, path.String(), langs)
 
 					if err != nil {
 						// We do not write this section, ever.
 						// We have to strip the entire section: any header, the code block, and any surrounding text.
-						// TODO: what if this is the last iteration? Then textStart is not what we want, is it.
 						stripSection = true
 						stripSectionHeader = tfBlock.headerStart
 					} else {
@@ -1750,7 +1743,7 @@ func hclConversionsToString(hclConversions map[string]string) string {
 // If all languages fail to convert, the returned string will be "" and an error will be returned.
 // If some languages fail to convert, the returned string contain any successful conversions and no error will be
 // returned, but conversion failures will be logged via the Generator.
-func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, languages []string) (string, error) {
+func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1781,13 +1774,8 @@ func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, langu
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
-		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-				"from any generated docs or SDKs.", path, err))
-		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s': %v. The example will be "+
-				"dropped from any generated docs or SDKs.", exampleTitle, path, err))
-		}
+		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
+			"from any generated docs or SDKs.", path, err))
 
 		return "", err
 	}
@@ -1797,15 +1785,9 @@ func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, langu
 
 	for lang := range failedLangs {
 		failedLangsStrings = append(failedLangsStrings, lang)
-		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				path, strings.Join(failedLangsStrings, ", ")))
-		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
-		}
+		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
+			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+			path, strings.Join(failedLangsStrings, ", ")))
 
 		// At least one language out of the given set has been generated, which is considered a success
 		//nolint:ineffassign

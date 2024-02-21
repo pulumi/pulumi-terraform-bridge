@@ -918,8 +918,6 @@ func TestConvertExamples(t *testing.T) {
 		name string
 		path examplePath
 
-		stripSubsectionWithErrors bool
-
 		needsProviders map[string]pluginDesc
 	}
 
@@ -930,7 +928,6 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
 				token:    "wavefront:index/dashboardJson:DashboardJson",
 			},
-			stripSubsectionWithErrors: true,
 			needsProviders: map[string]pluginDesc{
 				"wavefront": {version: "3.0.0"},
 			},
@@ -961,7 +958,7 @@ func TestConvertExamples(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
 			require.NoError(t, err)
-			result := g.convertExamples(string(docs), tc.path, tc.stripSubsectionWithErrors)
+			result := g.convertExamples(string(docs), tc.path)
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
@@ -998,8 +995,6 @@ func TestConvertExamplesInner(t *testing.T) {
 	type testCase struct {
 		name string
 		path examplePath
-
-		stripSubsectionWithErrors bool
 	}
 
 	testCases := []testCase{
