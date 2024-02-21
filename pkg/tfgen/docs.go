@@ -44,6 +44,11 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
+const (
+	startPulumiCodeChooser = "<!--Start PulumiCodeChooser -->"
+	endPulumiCodeChooser   = "<!--End PulumiCodeChooser -->"
+)
+
 // argumentDocs contains the documentation metadata for an argument of the resource.
 type argumentDocs struct {
 	// The description for this argument.
@@ -1259,7 +1264,7 @@ func (g *Generator) convertExamples(docs string, path examplePath) (result strin
 	}
 
 	if strings.Contains(docs, "{{% examples %}}") {
-		//The provider author has explicitly written an entire markdown document including examples.
+		// The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
 	}
@@ -1336,9 +1341,78 @@ func (g *Generator) convertExamples(docs string, path examplePath) (result strin
 	return g.convertExamplesInner(docs, path, g.convertHCL, cov)
 }
 
+// codeBlock represents a code block found in the upstream docs, delineated by code fences (```).
+// It also tracks which header it is part of.
+type codeBlock struct {
+	start       int // The index of the first backtick of an opening code fence
+	end         int // The index of the first backtick of a closing code fence
+	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
+}
+
+func findCodeBlock(doc string, i int) (codeBlock, bool) {
+	codeFence := "```"
+	var block codeBlock
+	//find opening code fence
+	if doc[i:i+len(codeFence)] == codeFence {
+		block.start = i
+		// find closing code fence
+		for j := i + len(codeFence); j < (len(doc) - len(codeFence)); j++ {
+			if doc[j:j+len(codeFence)] == codeFence {
+				block.end = j
+				return block, true
+			}
+		}
+		return block, false
+	}
+	return block, false
+}
+
+func findHeader(doc string, i int) (int, bool) {
+	h2 := "##"
+	h3 := "###"
+	foundH2, foundH3 := false, false
+
+	if i == 0 {
+		//handle header at very beginning of doc
+		foundH2 = doc[i:i+len(h2)] == h2
+		foundH3 = doc[i:i+len(h3)] == h3
+
+	} else {
+		//all other headers must be preceded by a newline
+		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
+		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
+	}
+
+	if foundH3 {
+		return i + len(h3), true
+	}
+	if foundH2 {
+		return i + len(h2), true
+	}
+	return -1, false
+}
+func findFencesAndHeaders(doc string) []codeBlock {
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	headerStart := -1
+	for i := 0; i < (len(doc) - len(codeFence)); i++ {
+		block, found := findCodeBlock(doc, i)
+		if found {
+			block.headerStart = headerStart
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+		headerEnd, found := findHeader(doc, i)
+		if found {
+			headerStart = i
+			i = headerEnd
+		}
+	}
+	return codeBlocks
+}
+
 // The inner implementation of examples conversion is parameterized by convertHCL so that it can be
 // executed either normally or in symbolic mode.
-
 func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
@@ -1348,76 +1422,30 @@ func (g *Generator) convertExamplesInner(
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
-
-	writeTrailingNewline := func(buf *bytes.Buffer) {
-		if b := buf.Bytes(); len(b) > 0 && b[len(b)-1] != '\n' {
-			buf.WriteByte('\n')
-		}
-	}
 	fprintf := func(w io.Writer, f string, args ...interface{}) {
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
-
-	// Find code fences in the presented doc
-	type tfBlockIndex struct {
-		start       int
-		end         int
-		headerStart int // a value of -1 indicates there's no header
-	}
-
-	var inCodeBlock bool
+	codeBlocks := findFencesAndHeaders(docs)
 	codeFence := "```"
-	h2 := "##"
-	h3 := "###"
-	var codeIndices []tfBlockIndex
-	var currentBlock tfBlockIndex
-	currentBlock.headerStart = -1
 
-	for i := 0; i < (len(docs) - len(codeFence)); i++ {
-
-		if inCodeBlock == true {
-			//Our TF code block is over right when we see the closing code fence.
-			if docs[i:i+len(codeFence)] == codeFence {
-				currentBlock.end = i
-				codeIndices = append(codeIndices, currentBlock)
-				// reset
-				currentBlock.start = 0
-				currentBlock.end = 0
-				inCodeBlock = false
-			}
-		} else {
-			// Keep track of header locations. These should never be inside code blocks.
-			if docs[i:i+len(h2)] == h2 || docs[i:i+len(h3)] == h3 {
-				// We need to make sure we don't reread an H3 as H2 on the next pass
-				if !(currentBlock.headerStart+1 == i) {
-					currentBlock.headerStart = i
-				}
-			}
-			// if we aren't in a code block, a set of code fences signals the beginning of a code block.
-			if docs[i:i+len(codeFence)] == codeFence {
-				inCodeBlock = true
-				currentBlock.start = i
-			}
-		}
-	}
-
-	// Now we know where the headers and code fences are.
+	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
 	stripSection := false
 	stripSectionHeader := 0
-	for _, tfBlock := range codeIndices {
+	for _, tfBlock := range codeBlocks {
 
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
 		// append non-code text to output
 		if !stripSection {
+			end := tfBlock.start
 			if hasHeader {
-				fprintf(output, docs[textStart:tfBlock.headerStart])
-			} else {
-				fprintf(output, docs[textStart:tfBlock.start])
+				end = tfBlock.headerStart
 			}
+			fprintf(output, docs[textStart:end])
+
 		} else {
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
 			// code block.
@@ -1434,15 +1462,13 @@ func (g *Generator) convertExamplesInner(
 		if nextNewLine == -1 {
 			// write the line as-is; this is an in-line fence
 			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
-			writeTrailingNewline(output)
 		} else {
-			syntaxHighlight := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
+			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
+			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or unmarked.
+			if fenceLanguage == "```terraform\n" ||
+				fenceLanguage == "```hcl\n" || fenceLanguage == "```\n" {
 
-			//Filter out anything that is explicitly marked as not-Terraform code.
-			if syntaxHighlight == "```terraform\n" ||
-				syntaxHighlight == "```hcl\n" || syntaxHighlight == "```\n" {
-
-				//generate the code block and append
+				// generate the code block and append
 				if g.language.shouldConvertExamples() {
 					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
 
@@ -1452,9 +1478,8 @@ func (g *Generator) convertExamplesInner(
 						e = g.coverageTracker.getOrCreateExample(
 							path.String(), hcl)
 					}
-
 					langs := genLanguageToSlice(g.language)
-					codeBlock, err := convertHCL(e, hcl, path.String(), langs)
+					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
 
 					if err != nil {
 						// We do not write this section, ever.
@@ -1465,24 +1490,19 @@ func (g *Generator) convertExamplesInner(
 						// append any headers and following text first
 						if hasHeader {
 							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
-							writeTrailingNewline(output)
 						}
-						fprintf(output, "<!--Begin TFConversion -->")
-						fprintf(output, "\n%s", codeBlock)
-						writeTrailingNewline(output)
-						fprintf(output, "<!--End TFConversion -->")
+						fprintf(output, startPulumiCodeChooser)
+						fprintf(output, "\n%s\n", convertedBlock)
+						fprintf(output, endPulumiCodeChooser)
 					}
 				}
 			} else {
 				// Take already-valid code blocks as-is.
 				if hasHeader {
 					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
-					writeTrailingNewline(output)
 				}
-				writeTrailingNewline(output)
 				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 			}
-
 		}
 		// The non-code text starts up again after the last closing fences
 		textStart = tfBlock.end + len(codeFence)
@@ -1491,7 +1511,6 @@ func (g *Generator) convertExamplesInner(
 	if !stripSection {
 		fprintf(output, docs[textStart:])
 	}
-
 	return output.String()
 }
 

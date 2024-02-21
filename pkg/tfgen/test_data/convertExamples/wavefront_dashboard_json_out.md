@@ -2,7 +2,7 @@ Provides a Wavefront Dashboard JSON resource. This allows dashboards to be creat
 
 ## Example Usage
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as wavefront from "@pulumi/wavefront";
@@ -805,7 +805,7 @@ resources:
             }
           }
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 *
 *Note:

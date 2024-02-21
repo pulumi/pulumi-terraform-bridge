@@ -1034,6 +1034,68 @@ type pluginDesc struct {
 	pluginDownloadURL string
 }
 
+func TestFindFencesAndHeaders(t *testing.T) {
+	type testCase struct {
+		name     string
+		path     string
+		expected []codeBlock
+	}
+
+	testCases := []testCase{
+		{
+			name: "finds locations of all fences and headers in a long doc",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"aws_lambda_function_description.md"),
+			expected: []codeBlock{
+				{start: 1966, end: 2977, headerStart: 1947},
+				{start: 3001, end: 3224, headerStart: 2982},
+				{start: 3387, end: 4105, headerStart: 3229},
+				{start: 4358, end: 5953, headerStart: 4110},
+				{start: 6622, end: 8041, headerStart: 6421},
+				{start: 9151, end: 9238, headerStart: 9052},
+			},
+		},
+		{
+			name: "finds locations when there are no headers",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-code-block.md"),
+			expected: []codeBlock{
+				{start: 0, end: 46, headerStart: -1},
+			},
+		},
+		{
+			name: "starts with an h2 header",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-h2.md"),
+			expected: []codeBlock{
+				{start: 91, end: 142, headerStart: 0},
+			},
+		},
+		{
+			name: "starts with an h3 header",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-h3.md"),
+			expected: []codeBlock{
+				{start: 92, end: 114, headerStart: 0},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testDocBytes, err := os.ReadFile(tc.path)
+			require.NoError(t, err)
+			testDoc := string(testDocBytes)
+			fmt.Println(testDoc)
+			actual := findFencesAndHeaders(testDoc)
+			assert.Equal(t, tc.expected, actual)
+		})
+
+	}
+
+}
+
 func ensureProvidersInstalled(t *testing.T, needsProviders map[string]pluginDesc) {
 	pulumi, err := exec.LookPath("pulumi")
 	require.NoError(t, err)

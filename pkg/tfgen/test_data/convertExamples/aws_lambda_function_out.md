@@ -14,7 +14,7 @@ For a detailed example of setting up Lambda and API Gateway, see [Serverless App
 
 ### Basic Example
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as archive from "@pulumi/archive";
@@ -308,11 +308,11 @@ variables:
         sourceFile: lambda.js
         outputPath: lambda_function_payload.zip
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 ### Lambda Layers
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
@@ -418,13 +418,13 @@ resources:
       layers:
         - ${exampleLayerVersion.arn}
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 ### Lambda Ephemeral Storage
 
 Lambda Function Ephemeral Storage(`/tmp`) allows you to configure the storage upto `10` GB. The default value set to `512` MB.
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
@@ -664,13 +664,13 @@ variables:
             actions:
               - sts:AssumeRole
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 ### Lambda File Systems
 
 Lambda File Systems allow you to connect an Amazon Elastic File System (EFS) file system to a Lambda function to share data across function invocations, access existing data including large files, and save function state.
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
@@ -1027,7 +1027,7 @@ resources:
         gid: 1000
         uid: 1000
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 ### Lambda retries
 
@@ -1037,7 +1037,7 @@ Lambda Functions allow you to configure error handling for asynchronous invocati
 
 For more information about CloudWatch Logs for Lambda, see the [Lambda User Guide](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-logs.html).
 
-<!--Begin TFConversion -->
+<!--Start PulumiCodeChooser -->
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
@@ -1369,7 +1369,7 @@ variables:
             resources:
               - arn:aws:logs:*:*:*
 ```
-<!--End TFConversion -->
+<!--End PulumiCodeChooser -->
 
 ## Specifying the Deployment Package
 
