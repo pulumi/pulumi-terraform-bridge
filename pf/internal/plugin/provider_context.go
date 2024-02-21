@@ -111,7 +111,7 @@ func (prov *provider) CheckConfig(urn resource.URN, olds, news resource.Property
 func (prov *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	return prov.ProviderWithContext.DiffConfigWithContext(
-		prov.ctx, urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+		prov.ctx, urn, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 }
 
 func (prov *provider) Configure(inputs resource.PropertyMap) error {
