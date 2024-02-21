@@ -658,7 +658,7 @@
       "olds": {},
       "news": {}
     },
-    "errors": ["rpc error: code = Unimplemented desc = DiffConfig is not yet implemented"],
+    "response": {},
     "metadata": {
       "kind": "resource",
       "mode": "client",
@@ -944,7 +944,7 @@
       "olds": {},
       "news": {}
     },
-    "errors": ["rpc error: code = Unimplemented desc = DiffConfig is not yet implemented"],
+    "response": {},
     "metadata": {
       "kind": "resource",
       "mode": "client",
@@ -1300,7 +1300,7 @@
       "olds": {},
       "news": {}
     },
-    "errors": ["rpc error: code = Unimplemented desc = DiffConfig is not yet implemented"],
+    "response": {},
     "metadata": {
       "kind": "resource",
       "mode": "client",
@@ -1627,7 +1627,7 @@
       "olds": {},
       "news": {}
     },
-    "errors": ["rpc error: code = Unimplemented desc = DiffConfig is not yet implemented"],
+    "response": {},
     "metadata": {
       "kind": "resource",
       "mode": "client",
