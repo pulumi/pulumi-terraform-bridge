@@ -1259,7 +1259,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) (result strin
 	}
 
 	if strings.Contains(docs, "{{% examples %}}") {
-		//TODO: clean up this expectation/behavior once codegen no longer expects these
 		//The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
