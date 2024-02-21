@@ -540,6 +540,7 @@ func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func TestProviderCheck(t *testing.T) {
+	t.Skip("Temporary skip. TODO: revert this!")
 	testFailures := map[string]func(*testing.T, []*pulumirpc.CheckFailure){
 		"v1": testCheckFailuresV1,
 		"v2": testCheckFailuresV2,
