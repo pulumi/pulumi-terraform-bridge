@@ -409,6 +409,7 @@ func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckRespon
 // CheckConfig validates the configuration for this Terraform provider.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
+	ctx = p.loggingContext(ctx, urn)
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
 	glog.V(9).Infof("%s executing", label)
 
