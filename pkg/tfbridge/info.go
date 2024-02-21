@@ -486,6 +486,14 @@ type SchemaInfo struct {
 	// whether a change in the configuration would force a new resource
 	ForceNew *bool
 
+	// Controls whether a change in the provider configuration should trigger a provider
+	// replacement. While there is no matching concept in TF, Pulumi supports replacing explicit
+	// providers and cascading the replacement to all resources provisioned with the given
+	// provider configuration.
+	//
+	// This property is only relevant for [ProviderInfo.Config] properties.
+	ForcesProviderReplace *bool
+
 	// whether or not this property has been removed from the Terraform schema
 	Removed bool
 

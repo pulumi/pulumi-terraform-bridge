@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package propertyvalue
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func applyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
+func ApplyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
 	var paths []resource.PropertyPath
 	var errs []error
 	for i, p := range ignoreChanges {

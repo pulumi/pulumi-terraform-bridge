@@ -37,7 +37,7 @@ type ProviderWithContext interface {
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []p.CheckFailure, error)
 
-	DiffConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
+	DiffConfigWithContext(ctx context.Context, urn resource.URN, oldInputs, olds, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (p.DiffResult, error)
 
 	ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error
@@ -111,7 +111,7 @@ func (prov *provider) CheckConfig(urn resource.URN, olds, news resource.Property
 func (prov *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	return prov.ProviderWithContext.DiffConfigWithContext(
-		prov.ctx, urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+		prov.ctx, urn, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 }
 
 func (prov *provider) Configure(inputs resource.PropertyMap) error {

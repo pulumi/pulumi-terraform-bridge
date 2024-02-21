@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package propertyvalue
 
 import (
 	"testing"
@@ -131,7 +131,7 @@ func TestIgnoreChanges(t *testing.T) {
 			path, err := resource.ParsePropertyPath(c.path)
 			require.NoError(t, err)
 
-			new, err = applyIgnoreChanges(old, new, c.ignoreChanges)
+			new, err = ApplyIgnoreChanges(old, new, c.ignoreChanges)
 			require.NoError(t, err)
 
 			prev, _ := path.Get(resource.NewObjectProperty(old))
@@ -155,7 +155,7 @@ func TestIgnoreChangesCopiesEntries(t *testing.T) {
 	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
 		"a": resource.NewStringProperty("A"),
 	})}
-	news2, err := applyIgnoreChanges(olds, news, []string{"k[*]"})
+	news2, err := ApplyIgnoreChanges(olds, news, []string{"k[*]"})
 	assert.NoError(t, err)
 	assert.Equal(t, olds, news2)
 }
@@ -165,7 +165,7 @@ func TestIgnoreChangesRemovesEntries(t *testing.T) {
 	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
 		"a": resource.NewStringProperty("A"),
 	})}
-	news2, err := applyIgnoreChanges(olds, news, []string{"k.a"})
+	news2, err := ApplyIgnoreChanges(olds, news, []string{"k.a"})
 	assert.NoError(t, err)
 	assert.Equal(t, olds, news2)
 }
@@ -250,7 +250,7 @@ func TestIgnoreChangesNestedGlob(t *testing.T) {
 
 	path := `["*"]["not-glob"][1].m5`
 
-	news, err := applyIgnoreChanges(olds, news, []string{path})
+	news, err := ApplyIgnoreChanges(olds, news, []string{path})
 	assert.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{
 		"k1": resource.NewObjectProperty(resource.PropertyMap{

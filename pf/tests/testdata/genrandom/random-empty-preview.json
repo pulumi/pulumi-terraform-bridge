@@ -142,6 +142,9 @@
     "method": "/pulumirpc.ResourceProvider/DiffConfig",
     "request": {
       "urn": "urn:pulumi:generate::genradom::pulumi:providers:random::default",
+      "oldInputs": {
+        "version": "4.8.2"
+      },
       "olds": {
         "version": "4.8.2"
       },

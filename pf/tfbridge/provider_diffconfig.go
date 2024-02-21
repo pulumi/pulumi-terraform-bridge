@@ -17,24 +17,20 @@ package tfbridge
 import (
 	"context"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfigWithContext(ctx context.Context,
-	urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoredChanges []string) (plugin.DiffResult, error) {
-
-	// ctx = p.initLogging(ctx, p.logSink, urn)
-
-	// TODO[pulumi/pulumi-terraform-bridge#825] implement properly.
-
-	// This needs to include ignoredChanges:
-	// checkedInputs, err := applyIgnoreChanges(olds, news, ignoredChanges)
-	// if err != nil {
-	// 	return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
-	// }
-
-	return plugin.DiffResult{}, nil
+// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have
+// on the provider.
+func (p *provider) DiffConfigWithContext(
+	ctx context.Context,
+	urn resource.URN,
+	oldInputs, state, inputs resource.PropertyMap,
+	allowUnknowns bool,
+	ignoreChanges []string,
+) (plugin.DiffResult, error) {
+	diffConfig := tfbridge.DiffConfig(p.info.P.Schema(), p.info.Config)
+	return diffConfig(urn, oldInputs, state, inputs, allowUnknowns, ignoreChanges)
 }

@@ -179,31 +179,187 @@ func TestCamelPascalPulumiName(t *testing.T) {
 }
 
 func TestDiffConfig(t *testing.T) {
-	t.Skip("Temporarily skipped")
+	yes := true
+	tfProvider := shimv2.NewProvider(&schema.Provider{
+		Schema: map[string]*schema.Schema{
+			"access_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"region": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	})
 	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+		tf:     tfProvider,
+		config: tfProvider.Schema(),
+		info: ProviderInfo{
+			Config: map[string]*SchemaInfo{
+				"region": {
+					ForcesProviderReplace: &yes,
+				},
+			},
+		},
 	}
 
-	oldConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("foo")}
-	newConfig := resource.PropertyMap{"configValue": resource.NewStringProperty("bar")}
+	t.Run("no changes", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {}
+		}`)
+	})
 
-	olds, err := plugin.MarshalProperties(oldConfig, plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
-	news, err := plugin.MarshalProperties(newConfig, plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
+	t.Run("changing access key results in an in-place update", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "accessKey": "ak1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {
+                    "diffs": ["accessKey"],
+		    "changes": "DIFF_SOME",
+                    "detailedDiff": {
+                      "accessKey": {"inputDiff": true}
+                    }
+		  }
+		}`)
+	})
 
-	req := &pulumirpc.DiffRequest{
-		Id:   "provider",
-		Urn:  "provider",
-		Olds: olds,
-		News: news,
-	}
+	t.Run("changing access key can be ignored", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "accessKey": "ak1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "version": "6.22.0"
+		    },
+                    "ignoreChanges": ["accessKey"]
+		  },
+		  "response": {}
+		}`)
+	})
 
-	resp, err := provider.DiffConfig(context.Background(), req)
-	assert.NoError(t, err)
-	assert.True(t, resp.HasDetailedDiff)
-	assert.Len(t, resp.DetailedDiff, 1)
+	t.Run("changing region forces a cascading replace", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "us-west-1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {
+                    "diffs": ["region"],
+		    "replaces": ["region"],
+		    "changes": "DIFF_SOME",
+                    "detailedDiff": {
+                      "region": {"inputDiff": true, "kind": "UPDATE_REPLACE"}
+                    }
+		  }
+		}`)
+	})
+
+	t.Run("changing region can be ignored", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+                    "ignoreChanges": ["region"],
+		    "olds": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "us-west-1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {}
+		}`)
+	})
+
+	// It is sub-optimal that this shows as no-change where it actually might be a change,
+	// but Pulumi CLI emits this warning, so it is not so bad:
+	//
+	// The provider for this resource has inputs that are not known during preview.
+	// This preview may not correctly represent the changes that will be applied during an update.
+	//
+	// This seems to be a better trade-off than indicating that a replace is needed, where it
+	// actually will not be needed if the unknown resolves to the same region as the one prior.
+	t.Run("unknown region ignored in planning", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "region": "us-east-1",
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {}
+		}`)
+	})
 }
 
 func TestBuildConfig(t *testing.T) {

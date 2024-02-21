@@ -569,88 +569,95 @@ func validateProviderConfig(
 	return p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs)
 }
 
-// DiffConfig diffs the configuration for this Terraform provider.
-func (p *Provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
+// A DiffConfig implementation enables the Pulumi provider to detect when provider configuration is
+// changing and suggest a replacement plans when some properties require a replace. Replacing a
+// provider then replaces all resources provisioned against this provider. See also the section on
+// Explicit Provider Configuration in the docs:
+//
+// https://www.pulumi.com/docs/concepts/resources/providers/
+//
+// There is no matching context in Terraform so this remains a Pulumi-level feature.
+func (p *Provider) DiffConfig(
+	ctx context.Context, req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
+	urn := resource.URN(req.GetUrn())
+	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
+	glog.V(9).Infof("%s executing", label)
 
-	// TO_DO - revert this comment!!
-	//urn := resource.URN(req.GetUrn())
-	//label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
-	//glog.V(9).Infof("%s executing", label)
-	//
-	//// There is no logic in the TF provider that suggests that provider level config
-	//// should force a new provider. Therefore, we are going to do this based on our
-	//// own schema overrides. We should use ForceNew as part of the SchemaInfo to do this
-	//
-	//// Create a Resource Schema from the config
-	//r := &schema.Resource{Schema: p.tf.Schema}
-	//
-	//var olds resource.PropertyMap
-	//var err error
-	//if req.GetOlds() != nil {
-	//	olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
-	//		Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-	//
-	//attrs, meta, err := MakeTerraformAttributes(r, olds, r.Schema, p.info.Config, p.configValues, false)
-	//if err != nil {
-	//	return nil, errors.Wrapf(err, "preparing %s's old property state", urn)
-	//}
-	//state := &terraform.InstanceState{ID: req.GetId(), Attributes: attrs, Meta: meta}
-	//
-	//// Create a resource Config for the new configuration
-	//news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-	//	Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true, SkipNulls: true})
-	//if err != nil {
-	//	return nil, err
-	//}
-	//config, err := MakeTerraformConfig(nil, news, r.Schema, p.info.Config, nil, p.configValues, false)
-	//if err != nil {
-	//	return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
-	//}
-	//diff, err := r.Diff(state, config, nil)
-	//if err != nil {
-	//	return nil, errors.Wrapf(err, "diffing %s", urn)
-	//}
-	//
-	//detailedDiff := makeDetailedDiff(r.Schema, p.info.Config, olds, news, diff)
-	//
-	//var replaces []string
-	//var changes pulumirpc.DiffResponse_DiffChanges
-	//var properties []string
-	//hasChanges := len(detailedDiff) > 0
-	//if hasChanges {
-	//	changes = pulumirpc.DiffResponse_DIFF_SOME
-	//	for k := range detailedDiff {
-	//		// Turn the attribute name into a top-level property name by trimming everything after the first dot.
-	//		if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
-	//			k = k[:firstSep]
-	//		}
-	//		properties = append(properties, k)
-	//		if p.info.Config != nil && p.info.Config[k] != nil {
-	//			config := p.info.Config[k]
-	//			// now is it a ForceNew or not
-	//			if config.ForceNew != nil && *config.ForceNew {
-	//				replaces = append(replaces, k)
-	//			} else {
-	//				properties = append(properties, k)
-	//			}
-	//		}
-	//	}
-	//} else {
-	//	changes = pulumirpc.DiffResponse_DIFF_NONE
-	//}
-	//
-	//return &pulumirpc.DiffResponse{
-	//	Changes:         changes,
-	//	Replaces:        replaces,
-	//	Diffs:           properties,
-	//	DetailedDiff:    detailedDiff,
-	//	HasDetailedDiff: true,
-	//}, nil
+	return plugin.NewProviderServer(&configDiffer{
+		schemaMap:   p.config,
+		schemaInfos: p.info.Config,
+	}).DiffConfig(ctx, req)
+}
+
+// Re-exported to reuse for Plugin Framework based providers.
+func DiffConfig(
+	config shim.SchemaMap, configInfos map[string]*SchemaInfo,
+) func(
+	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
+	differ := &configDiffer{
+		schemaMap:   config,
+		schemaInfos: configInfos,
+	}
+	return differ.DiffConfig
+}
+
+type configDiffer struct {
+	plugin.UnimplementedProvider
+	schemaMap   shim.SchemaMap
+	schemaInfos map[string]*SchemaInfo
+}
+
+// Schema may specify that changing a property requires a replacement.
+func (p *configDiffer) forcesProviderReplace(path resource.PropertyPath) bool {
+	schemaPath := PropertyPathToSchemaPath(path, p.schemaMap, p.schemaInfos)
+	_, info, err := LookupSchemas(schemaPath, p.schemaMap, p.schemaInfos)
+	if err != nil {
+		contract.IgnoreError(err)
+		return false
+	}
+	if info != nil && info.ForcesProviderReplace != nil {
+		return *info.ForcesProviderReplace
+	}
+	return false
+}
+
+func (p *configDiffer) DiffConfig(
+	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
+	contract.Assertf(allowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
+
+	// Seems that DiffIncludeUnknowns only accepts func (PropertyKey) bool to support ignoring
+	// changes which is awkward for recursive changes, would be better if it supported
+	// func(PropertyPath) bool. Instead of doing this, support IgnoreChanges by copying old
+	// values to new values to disable the diff.
+	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(oldInputs, newInputs, ignoreChanges)
+	if err != nil {
+		return plugin.DiffResult{}, fmt.Errorf("Error applying ignoreChanges: %v", err)
+	}
+
+	objDiff := oldInputs.DiffIncludeUnknowns(newInputsIC)
+	inputDiff := true
+	detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objDiff, inputDiff)
+
+	// Ensure that if schema specifies ForceNew, a change becomes a replacement.
+	for key, change := range detailedDiff {
+		keyPath, err := resource.ParsePropertyPath(key)
+		contract.AssertNoErrorf(err, "Unexpected failed parse of PropertyPath %q", key)
+		if p.forcesProviderReplace(keyPath) {
+			detailedDiff[key] = change.ToReplace()
+		}
+	}
+
+	return plugin.DiffResult{
+		// This is never true for DiffConfig at the provider level, making this explicit.
+		DeleteBeforeReplace: false,
+		// Everything else will be inferred from DetailedDiff by plugin.NewProviderServer.
+		DetailedDiff: detailedDiff,
+	}, nil
 }
 
 // Configure configures the underlying Terraform provider with the live Pulumi variable state.

@@ -215,12 +215,19 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		}
 	}
 
+	responses := asyncJoin(subs)
+	if resp := dominatingDiffResponse(responses); resp != nil {
+		return resp, nil
+	}
+
 	var (
-		deleteBeforeReplace bool                         // The OR of each server
-		replaces            set[string]                  // The AND of each server
-		diffs               set[string]                  // The AND of each server, sans replaces
-		stables             set[string]                  // The AND of each server, sans replaces and diffs
-		changes             rpc.DiffResponse_DiffChanges = rpc.DiffResponse_DIFF_NONE
+		deleteBeforeReplace bool // The OR of each server
+
+		replaces = make(set[string]) // The AND of each server
+		diffs    = make(set[string]) // The AND of each server, sans replaces
+		stables  = make(set[string]) // The AND of each server, sans replaces and diffs
+
+		changes rpc.DiffResponse_DiffChanges = rpc.DiffResponse_DIFF_NONE
 
 		errs = new(multierror.Error)
 	)
@@ -230,7 +237,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		hasDetailedDiff = true
 	)
 
-	for _, r := range asyncJoin(subs) {
+	for _, r := range responses {
 		if err := r.B; err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue
@@ -252,7 +259,12 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 
 		// If any provider is lacking a detailed diff, we don't attempt to combine
 		// a detailed and non-detailed diff.
-		if !resp.HasDetailedDiff || !hasDetailedDiff {
+		//
+		// Simply checking HasDetailedDiff is not enough since marshalDiff from below
+		// forgets to set it:
+		//
+		// https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/plugin/provider_server.go#L70
+		if (!resp.HasDetailedDiff && len(resp.DetailedDiff) == 0) || !hasDetailedDiff {
 			hasDetailedDiff = false
 			detailedDiff = nil
 		} else {
@@ -637,4 +649,27 @@ func showStruct(value *structpb.Value) string {
 		return err.Error()
 	}
 	return string(j)
+}
+
+func dominatingDiffResponse(responses []tuple[*rpc.DiffResponse, error]) *rpc.DiffResponse {
+	unimplemented := 0
+	errors := 0
+	var resp *rpc.DiffResponse
+	for _, r := range responses {
+		if r.B != nil {
+			errors++
+			if s, ok := status.FromError(r.B); ok {
+				if s.Code() == codes.Unimplemented {
+					unimplemented++
+					continue
+				}
+			}
+		} else {
+			resp = r.A
+		}
+	}
+	if errors == len(responses)-1 && errors == unimplemented {
+		return resp
+	}
+	return nil
 }
