@@ -37,7 +37,7 @@ type ProviderWithContext interface {
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []p.CheckFailure, error)
 
-	DiffConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
+	DiffConfigWithContext(ctx context.Context, urn resource.URN, oldInputs, olds, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (p.DiffResult, error)
 
 	ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error

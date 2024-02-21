@@ -589,6 +589,20 @@ func (p *Provider) DiffConfig(
 	}).DiffConfig(ctx, req)
 }
 
+// Re-exported to reuse for Plugin Framework based providers.
+func DiffConfig(
+	config shim.SchemaMap, configInfos map[string]*SchemaInfo,
+) func(
+	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
+	differ := &configDiffer{
+		schemaMap:   config,
+		schemaInfos: configInfos,
+	}
+	return differ.DiffConfig
+}
+
 type configDiffer struct {
 	plugin.UnimplementedProvider
 	schemaMap   shim.SchemaMap

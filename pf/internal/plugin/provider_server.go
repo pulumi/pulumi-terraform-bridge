@@ -213,8 +213,15 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
-func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+func (p *providerServer) DiffConfig(
+	ctx context.Context, req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
+
+	oldInputs, err := p.configEncoding.UnmarshalProperties(req.GetOldInputs())
+	if err != nil {
+		return nil, fmt.Errorf("DiffConfig failed to unmarshal old inputs: %w", err)
+	}
 
 	state, err := p.configEncoding.UnmarshalProperties(req.GetOlds())
 	if err != nil {
@@ -226,7 +233,8 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, fmt.Errorf("DiffConfig failed to unmarshal news: %w", err)
 	}
 
-	diff, err := p.provider.DiffConfigWithContext(ctx, urn, state, inputs, true, req.GetIgnoreChanges())
+	i := req.GetIgnoreChanges()
+	diff, err := p.provider.DiffConfigWithContext(ctx, urn, oldInputs, state, inputs, true, i)
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
