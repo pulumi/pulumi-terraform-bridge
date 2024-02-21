@@ -31,7 +31,6 @@ func (p *provider) DiffConfigWithContext(
 	allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
 	diffConfig := tfbridge.DiffConfig(p.info.P.Schema(), p.info.Config)
 	return diffConfig(urn, oldInputs, state, inputs, allowUnknowns, ignoreChanges)
 }
