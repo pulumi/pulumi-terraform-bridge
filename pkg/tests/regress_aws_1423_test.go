@@ -27,7 +27,7 @@ import (
 )
 
 func TestRegressAws1423(t *testing.T) {
-	t.Skip("Skip since this was InstanceStateStrategy which was retired.")
+	t.Skip("Refresh is dirty on this resource see https://github.com/pulumi/pulumi-aws/issues/3361.")
 	ctx := context.Background()
 
 	resource := webaclschema.ResourceWebACL()
