@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	v2Schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -249,6 +252,9 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	t.Run("withIgnoreAllExpected", func(t *testing.T) {
 		for k := range expected {
 			ignoreChanges = append(ignoreChanges, k)
+			if k == "prop.nest" {
+				ignoreChanges = append(ignoreChanges, "prop")
+			}
 		}
 		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
 			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
@@ -2065,4 +2071,119 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 			"prop.nest": AR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
+}
+
+type diffTestCase struct {
+	resourceSchema              map[string]*schema.Schema
+	resourceFields              map[string]*SchemaInfo
+	state                       resource.PropertyMap
+	inputs                      resource.PropertyMap
+	expected                    map[string]*pulumirpc.PropertyDiff
+	expectedDiffChanges         pulumirpc.DiffResponse_DiffChanges
+	ignoreChanges               []string
+	XSkipDetailedDiffForChanges bool
+}
+
+func diffTest2(t *testing.T, tc diffTestCase) {
+	ctx := context.Background()
+	res := &schema.Resource{
+		Schema: tc.resourceSchema,
+	}
+	provider := shimv1.NewProvider(&schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"p_resource": res,
+		},
+	})
+	state, err := plugin.MarshalProperties(tc.state, plugin.MarshalOptions{})
+	require.NoError(t, err)
+
+	inputs, err := plugin.MarshalProperties(tc.inputs, plugin.MarshalOptions{})
+	require.NoError(t, err)
+
+	p := Provider{
+		tf: provider,
+		info: ProviderInfo{
+			XSkipDetailedDiffForChanges: tc.XSkipDetailedDiffForChanges,
+			Resources: map[string]*ResourceInfo{
+				"p_resource": {
+					Tok: "pkg:index:PResource",
+				},
+			},
+		},
+	}
+
+	p.initResourceMaps()
+
+	resp, err := p.Diff(ctx, &pulumirpc.DiffRequest{
+		Id:            "myResource",
+		Urn:           "urn:pulumi:test::test::pkg:index:PResource::n1",
+		Olds:          state,
+		News:          inputs,
+		IgnoreChanges: tc.ignoreChanges,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, tc.expectedDiffChanges, resp.Changes)
+	require.Equal(t, tc.expected, resp.DetailedDiff)
+}
+
+func TestChangingMaxItems1FilterProperty(t *testing.T) {
+	schema := map[string]*schema.Schema{
+		"rule": {
+			Type:     schema.TypeList,
+			Required: true,
+			MaxItems: 1000,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"filter": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"prefix": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	diffTest2(t, diffTestCase{
+		XSkipDetailedDiffForChanges: true,
+		resourceSchema:              schema,
+		state: resource.PropertyMap{
+			"rules": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(
+						resource.PropertyMap{
+							"filter": resource.NewNullProperty(),
+						},
+					),
+				},
+			),
+		},
+		inputs: resource.PropertyMap{
+			"rules": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"filter": resource.NewObjectProperty(
+						resource.PropertyMap{
+							"__defaults": resource.NewArrayProperty(
+								[]resource.PropertyValue{},
+							),
+						},
+					),
+				}),
+			}),
+		},
+		expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+		expected: map[string]*pulumirpc.PropertyDiff{
+			"rules[0].filter": {
+				Kind: pulumirpc.PropertyDiff_UPDATE,
+			},
+		},
+	})
 }
