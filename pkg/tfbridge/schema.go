@@ -655,15 +655,17 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
-	// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
-	tfs.Range(func(key string, value shim.Schema) bool {
-		// First do a lookup of the name/info.
-		_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
-		if IsMaxItemsOne(tfi, psi) && result[key] == nil {
-			result[key] = []interface{}{}
-		}
-		return true
-	})
+	if tfs != nil {
+		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
+		tfs.Range(func(key string, value shim.Schema) bool {
+			// First do a lookup of the name/info.
+			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
+			if IsMaxItemsOne(tfi, psi) && result[key] == nil {
+				result[key] = []interface{}{}
+			}
+			return true
+		})
+	}
 
 	if glog.V(5) {
 		for k, v := range result {
