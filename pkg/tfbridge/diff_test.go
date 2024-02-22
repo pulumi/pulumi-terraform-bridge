@@ -2103,7 +2103,8 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 			XSkipDetailedDiffForChanges: tc.XSkipDetailedDiffForChanges,
 			Resources: map[string]*ResourceInfo{
 				"p_resource": {
-					Tok: "pkg:index:PResource",
+					Tok:    "pkg:index:PResource",
+					Fields: tc.resourceFields,
 				},
 			},
 		},
