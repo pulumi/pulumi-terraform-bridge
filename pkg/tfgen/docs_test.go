@@ -993,8 +993,9 @@ func TestConvertExamplesInner(t *testing.T) {
 	assert.NoError(t, err)
 
 	type testCase struct {
-		name string
-		path examplePath
+		name           string
+		path           examplePath
+		needsProviders map[string]pluginDesc
 	}
 
 	testCases := []testCase{
@@ -1004,11 +1005,21 @@ func TestConvertExamplesInner(t *testing.T) {
 				fullPath: "#/resources/aws:lambda/function:Function",
 				token:    "aws:lambda/function:Function",
 			},
+			needsProviders: map[string]pluginDesc{
+				"aws": {
+					pluginDownloadURL: "github://api.github.com/pulumi",
+					version:           "5.35.0",
+				},
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
+
+		t.Run(fmt.Sprintf("%s/setup", tc.name), func(t *testing.T) {
+			ensureProvidersInstalled(t, tc.needsProviders)
+		})
 
 		t.Run(tc.name, func(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
