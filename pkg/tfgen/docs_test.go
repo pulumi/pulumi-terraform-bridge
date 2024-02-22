@@ -954,7 +954,7 @@ func TestConvertExamples(t *testing.T) {
 			needsProviders: map[string]pluginDesc{
 				"aws": {
 					pluginDownloadURL: "github://api.github.com/pulumi",
-					version:           "5.35.0",
+					version:           "6.21.0",
 				},
 			},
 		},
