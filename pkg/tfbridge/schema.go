@@ -655,10 +655,16 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
-	// Iterate over the TF schema and add an empty list for each list type not in the results.
+	// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
 	tfs.Range(func(key string, value shim.Schema) bool {
-		schema := tfs.Get(key)
-		if schema.Type() == shim.TypeList && result[key] == nil {
+		// First do a lookup of the name/info.
+		name, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
+		if name == "" {
+			glog.Warningf("Failed to find pulumi name for terraform key %s", key)
+			return true
+		}
+		
+		if IsMaxItemsOne(tfi, psi) && result[key] == nil {
 			result[key] = []interface{}{}
 		}
 		return true
