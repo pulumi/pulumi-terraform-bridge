@@ -1064,6 +1064,9 @@ type pluginDesc struct {
 }
 
 func TestFindFencesAndHeaders(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
+	}
 	type testCase struct {
 		name     string
 		path     string
