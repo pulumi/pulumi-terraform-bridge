@@ -663,7 +663,6 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 			glog.Warningf("Failed to find pulumi name for terraform key %s", key)
 			return true
 		}
-		
 		if IsMaxItemsOne(tfi, psi) && result[key] == nil {
 			result[key] = []interface{}{}
 		}
