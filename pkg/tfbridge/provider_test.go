@@ -601,7 +601,8 @@ func TestCheckCallback(t *testing.T) {
 			    "response": {
 			      "inputs": {
 				"__defaults": [],
-				"arrayPropertyValues": ["global"]
+				"arrayPropertyValues": ["global"],
+				"nestedResources": null
 			      }
 			    }
 			  }
