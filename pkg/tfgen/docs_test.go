@@ -956,6 +956,10 @@ func TestConvertExamples(t *testing.T) {
 					pluginDownloadURL: "github://api.github.com/pulumi",
 					version:           "6.22.2",
 				},
+				"archive": {
+					pluginDownloadURL: "github://api.github.com/pulumi",
+					version:           "0.0.4",
+				},
 			},
 		},
 	}
