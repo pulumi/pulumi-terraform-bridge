@@ -945,6 +945,19 @@ func TestConvertExamples(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "aws_lambda_function",
+			path: examplePath{
+				fullPath: "#/resources/aws:lambda/function:Function",
+				token:    "aws:lambda/function:Function",
+			},
+			needsProviders: map[string]pluginDesc{
+				"aws": {
+					pluginDownloadURL: "github://api.github.com/pulumi",
+					version:           "6.22.2",
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1000,16 +1013,17 @@ func TestConvertExamplesInner(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name: "aws_lambda_function",
+			name: "code_tagged_json_stays_in_description",
 			path: examplePath{
-				fullPath: "#/resources/aws:lambda/function:Function",
-				token:    "aws:lambda/function:Function",
+				fullPath: "#/resources/fake:module/resource:Resource",
+				token:    "fake:module/resource:Resource",
 			},
-			needsProviders: map[string]pluginDesc{
-				"aws": {
-					pluginDownloadURL: "github://api.github.com/pulumi",
-					version:           "6.22.2",
-				},
+		},
+		{
+			name: "inline_fences_are_preserved",
+			path: examplePath{
+				fullPath: "#/resources/fake:module/resource:Resource",
+				token:    "fake:module/resource:Resource",
 			},
 		},
 	}
