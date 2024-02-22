@@ -1087,7 +1087,6 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			testDocBytes, err := os.ReadFile(tc.path)
 			require.NoError(t, err)
 			testDoc := string(testDocBytes)
-			fmt.Println(testDoc)
 			actual := findFencesAndHeaders(testDoc)
 			assert.Equal(t, tc.expected, actual)
 		})
