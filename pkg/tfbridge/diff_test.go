@@ -252,9 +252,6 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 	t.Run("withIgnoreAllExpected", func(t *testing.T) {
 		for k := range expected {
 			ignoreChanges = append(ignoreChanges, k)
-			if k == "prop.nest" {
-				ignoreChanges = append(ignoreChanges, "prop")
-			}
 		}
 		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
 			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
