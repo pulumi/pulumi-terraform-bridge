@@ -757,7 +757,8 @@ func TestCheckCallback(t *testing.T) {
 			    "response": {
 			      "inputs": {
 				"__defaults": [],
-				"arrayPropertyValues": ["global"]
+				"arrayPropertyValues": ["global"],
+				"nestedResources": null
 			      }
 			    }
 			  }
@@ -1044,6 +1045,7 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": ["stringPropertyValue"],
 		      "arrayPropertyValues": [],
+			  "nestedResources": null,
 		      "stringPropertyValue": "oldString!"
 		    }
 		  }
@@ -1066,6 +1068,7 @@ func TestCheck(t *testing.T) {
 		  "response": {
 		    "inputs": {
 		      "__defaults": [],
+			  "nestedResources": null,
 		      "arrayPropertyValues": []
 		    }
 		  }
@@ -1110,6 +1113,7 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": [],
 		      "arrayPropertyValues": [],
+			  "nestedResources": null,
 		      "stringPropertyValue": {
                         "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
                         "value": "newString"
