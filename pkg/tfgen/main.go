@@ -161,9 +161,16 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 				SkipDocs:        skipDocs,
 				SkipExamples:    skipExamples,
 				CoverageTracker: coverageTracker,
+
+				PrebuiltSchemaFile: prebuiltSchemaFile,
 			}
 
 			err := gen(opts)
+
+			// Skip writing example stats when generating language-specific SDKs.
+			if prebuiltSchemaFile != "" && Language(args[0]) != Schema {
+				return err
+			}
 
 			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
 			if coverageTrackingOutputEnabled {

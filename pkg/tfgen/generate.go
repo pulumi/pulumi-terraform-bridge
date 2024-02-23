@@ -755,7 +755,7 @@ type GeneratorOptions struct {
 	SkipDocs           bool
 	SkipExamples       bool
 	CoverageTracker    *CoverageTracker
-	PebuiltSchemaFile  string
+	PrebuiltSchemaFile string
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -836,7 +836,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		coverageTracker:  opts.CoverageTracker,
 		editRules:        getEditRules(info.DocRules),
 
-		prebuiltSchemaFile: opts.PebuiltSchemaFile,
+		prebuiltSchemaFile: opts.PrebuiltSchemaFile,
 	}, nil
 }
 
