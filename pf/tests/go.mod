@@ -10,7 +10,7 @@ require (
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/pulumi/providertest v0.0.10
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.74.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.75.0
 	github.com/stretchr/testify v1.8.4
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
 )
