@@ -79,6 +79,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 	var debug bool
 	var skipDocs bool
 	var skipExamples bool
+	var prebuiltSchemaFile string
+
 	cmd := &cobra.Command{
 		Use:   os.Args[0] + " <LANGUAGE>",
 		Args:  cmdutil.SpecificArgs([]string{"language"}),
@@ -199,7 +201,8 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 		&skipDocs, "skip-docs", false, "Do not convert docs from TF Markdown")
 	cmd.PersistentFlags().BoolVar(
 		&skipExamples, "skip-examples", false, "Do not convert examples from HCL")
-
+	cmd.PersistentFlags().StringVar(
+		&prebuiltSchemaFile, "schema", "", "Path to pre-built schema.json used when generating SDKs")
 	cmd.PersistentFlags().StringVar(
 		&overlaysDir, "overlays", "",
 		"Use the target directory for overlays rather than the default of overlays/ (unsupported)")
