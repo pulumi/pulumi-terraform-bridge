@@ -27,7 +27,6 @@ import (
 )
 
 func TestRegressAws1423(t *testing.T) {
-	t.Skip("Refresh is dirty on this resource see https://github.com/pulumi/pulumi-aws/issues/3361.")
 	ctx := context.Background()
 
 	resource := webaclschema.ResourceWebACL()
@@ -39,16 +38,7 @@ func TestRegressAws1423(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState),
-		shimv2.WithPlanResourceChange(func(s string) bool {
-			switch s {
-			case "aws_wafv2_web_acl":
-				return true
-			default:
-				return false
-			}
-		}),
-	)
+	p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
 
 	info := tfbridge.ProviderInfo{
 		P:           p,
@@ -72,6 +62,8 @@ func TestRegressAws1423(t *testing.T) {
 		info,     /* info */
 		[]byte{}, /* pulumiSchema */
 	)
+
+	shimv2.SetInstanceStateStrategy(p.ResourcesMap().Get("aws_wafv2_web_acl"), shimv2.CtyInstanceState)
 
 	testCase1 := `
 	{
