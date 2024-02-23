@@ -252,39 +252,6 @@ func Test_makePropertyType(t *testing.T) {
 	})
 }
 
-func Test_ProviderWithObjectTypesInConfigCanGenerateRenames(t *testing.T) {
-	strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
-	objType := (&shimschema.Schema{
-		Type:     shim.TypeMap,
-		Optional: true,
-		Elem: (&shimschema.Resource{
-			Schema: shimschema.SchemaMap{
-				"foo_bar": strType,
-			},
-		}).Shim(),
-	}).Shim()
-
-	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	})
-
-	r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
-		DiagnosticsSink: nilSink,
-		ProviderInfo: tfbridge.ProviderInfo{
-			Name: "test",
-			P: (&shimschema.Provider{
-				ResourcesMap:   shimschema.ResourceMap{},
-				DataSourcesMap: shimschema.ResourceMap{},
-				Schema: &shimschema.SchemaMap{
-					"prop": objType,
-				},
-			}).Shim(),
-		},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "foo_bar", r.Renames.RenamedProperties["test:index/ProviderProp:ProviderProp"]["fooBar"])
-}
-
 func Test_ProviderWithOmittedTypes(t *testing.T) {
 
 	gen := func(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {

@@ -53,9 +53,9 @@ const (
 )
 
 type schemaGenerator struct {
-	pkg            tokens.Package
-	version        string
-	info           tfbridge.ProviderInfo
+	pkg     tokens.Package
+	version string
+	info    tfbridge.ProviderInfo
 }
 
 type schemaNestedType struct {
@@ -214,9 +214,9 @@ func genPulumiSchema(
 ) (pschema.PackageSpec, error) {
 
 	g := &schemaGenerator{
-		pkg:            name,
-		version:        version,
-		info:           info,
+		pkg:     name,
+		version: version,
+		info:    info,
 	}
 	pulumiPackageSpec, err := g.genPackageSpec(pack)
 	if err != nil {

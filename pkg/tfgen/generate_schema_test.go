@@ -21,7 +21,6 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -159,29 +158,6 @@ func TestNestedDescriptions(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/nested-descriptions-schema.json", schema)
-}
-
-func TestRenameGeneration(t *testing.T) {
-	info := testprovider.ProviderRegress611()
-
-	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
-		Language:     Schema,
-		ProviderInfo: info,
-		Root:         afero.NewMemMapFs(),
-		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	})
-	require.NoError(t, err)
-
-	err = g.Generate()
-	require.NoError(t, err)
-
-	renames, err := g.Renames()
-	require.NoError(t, err)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-611-renames.json", renames)
 }
 
 func TestAppendExample_InsertMiddle(t *testing.T) {
