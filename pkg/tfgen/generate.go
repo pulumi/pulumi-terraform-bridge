@@ -79,7 +79,8 @@ type Generator struct {
 	// message.
 	noDocsRepo bool
 
-	cliConverterState *cliConverter
+	cliConverterState  *cliConverter
+	prebuiltSchemaFile string
 }
 
 type Language string
@@ -754,6 +755,7 @@ type GeneratorOptions struct {
 	SkipDocs           bool
 	SkipExamples       bool
 	CoverageTracker    *CoverageTracker
+	PebuiltSchemaFile  string
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -833,6 +835,8 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
 		editRules:        getEditRules(info.DocRules),
+
+		prebuiltSchemaFile: opts.PebuiltSchemaFile,
 	}, nil
 }
 
@@ -858,6 +862,24 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
+	// Short-circuit when projecting to a language and the schema was already built.
+	if g.prebuiltSchemaFile != "" && g.language != Schema {
+		var schema pschema.PackageSpec
+		bytes, err := os.ReadFile(g.prebuiltSchemaFile)
+		if err != nil {
+			return fmt.Errorf("Cannot read PrebuiltSchemaFile %q: %w",
+				g.prebuiltSchemaFile, err)
+		}
+		if err := json.Unmarshal(bytes, &schema); err != nil {
+			return fmt.Errorf("Cannot json.Unmarshal PrebuiltSchemaFile %q: %w",
+				g.prebuiltSchemaFile, err)
+		}
+		gen := *g
+		// Ensure UnstableGenerateFromSchema does no example conversion pass again.
+		gen.skipExamples = true
+		return gen.UnstableGenerateFromSchema(&GenerateSchemaResult{PackageSpec: schema})
+	}
+
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
