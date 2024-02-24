@@ -336,3 +336,27 @@ func (s TypePathSet) Paths() []TypePath {
 	})
 	return res
 }
+
+// RawTypePath represents a type anchored from an opaque user provided type.
+type RawTypePath struct {
+	t              tokens.Type
+	structuralPath TypePath
+}
+
+func NewRawPath(typ tokens.Type, structuralPath TypePath) *RawTypePath {
+	return &RawTypePath{typ, structuralPath}
+}
+
+var _ TypePath = (*RawTypePath)(nil)
+
+func (p *RawTypePath) Parent() TypePath { return nil }
+
+// Useful for comparing paths.
+func (p *RawTypePath) UniqueKey() string { return p.t.String() }
+
+// Human friendly representation.
+func (p *RawTypePath) String() string { return p.t.Name().String() }
+
+func (p *RawTypePath) Raw() tokens.Type { return p.t }
+
+func (p *RawTypePath) StructuralPath() TypePath { return p.structuralPath }
