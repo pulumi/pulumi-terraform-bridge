@@ -22,6 +22,9 @@ import (
 	"io"
 	"os"
 
+	// This is here to pin the version we get.
+	// see https://github.com/pulumi/pulumi-terraform-bridge/issues/1704
+	_ "github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
