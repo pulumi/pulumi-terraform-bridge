@@ -350,7 +350,8 @@ var (
 type VisitResourceRoot struct {
 	token tokens.Type
 
-	Info *ResourceInfo
+	Info   *ResourceInfo
+	Schema shim.Resource
 
 	TfToken string
 }
@@ -562,6 +563,7 @@ func traverseResourceOrDataSource(
 			token:   info.Tok,
 			Info:    info,
 			TfToken: tfToken,
+			Schema:  schema,
 		}
 		if info.Fields == nil {
 			info.Fields = map[string]*SchemaInfo{}
