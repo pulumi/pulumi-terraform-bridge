@@ -1,8 +1,12 @@
-# tfbridge
-
-## Automatic Aliasing (`ApplyAutoAliases`)
+# Automatic Aliasing (`ApplyAutoAliases`)
 
 Automatically applies backwards compatibility best practices.
+
+To apply automatic aliasing to your provider, call the method
+`tfbridge.ProviderInfo.MustApplyAutoAliases` on your `ProviderInfo` instance before
+returning it.
+
+> Using `ApplyAutoAliases` requires [provider metadata](./metadata.md)
 
 The goal is to prevent breaking changes by Pulumi maintainers or by the upstream
 provider from causing breaking changes in minor version bumps. We do this by deferring
