@@ -10,7 +10,7 @@ require (
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/pulumi/providertest v0.0.10
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.74.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.75.0
 	github.com/stretchr/testify v1.8.4
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
 )
@@ -202,7 +202,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.9.9 // indirect
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.7 // indirect
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
 	github.com/pulumi/pulumi-yaml v1.5.0 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.107.0
 	github.com/pulumi/pulumi/sdk/v3 v3.107.0

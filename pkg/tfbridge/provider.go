@@ -895,7 +895,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	detailedDiff, changes := makeDetailedDiff(ctx, schema, fields, olds, news, diff)
+	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
+	detailedDiff, changes := dd.diffs, dd.changes
 
 	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 	// to changes being dropped by Pulumi.
@@ -906,6 +907,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
 	if p.info.XSkipDetailedDiffForChanges && len(diff.Attributes()) > 0 {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
+		for path, diff := range dd.collectionDiffs {
+			detailedDiff[path] = diff
+		}
 	}
 
 	// If there were changes in this diff, check to see if we have a replacement.
