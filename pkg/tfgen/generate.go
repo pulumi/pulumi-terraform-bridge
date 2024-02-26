@@ -71,7 +71,6 @@ type Generator struct {
 	skipDocs         bool
 	skipExamples     bool
 	coverageTracker  *CoverageTracker
-	renamesBuilder   *renamesBuilder
 	editRules        editRules
 
 	convertedCode map[string][]byte
@@ -708,7 +707,6 @@ type GenerateSchemaOptions struct {
 
 type GenerateSchemaResult struct {
 	PackageSpec pschema.PackageSpec
-	Renames     Renames
 }
 
 func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
@@ -732,23 +730,13 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to gather package metadata")
 	}
 
-	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
+	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate schema")
 	}
 
-	r, err := g.Renames()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate renames")
-	}
-
-	if err := nameCheck(g.info, s, g.renamesBuilder, g.sink); err != nil {
-		return nil, err
-	}
-
 	return &GenerateSchemaResult{
 		PackageSpec: s,
-		Renames:     r,
 	}, nil
 }
 
@@ -844,7 +832,6 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipDocs:         opts.SkipDocs,
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
-		renamesBuilder:   newRenamesBuilder(pkg, opts.ProviderInfo.GetResourcePrefix()),
 		editRules:        getEditRules(info.DocRules),
 	}, nil
 }
@@ -879,7 +866,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Convert the package to a Pulumi schema.
-	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.renamesBuilder)
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create Pulumi schema")
 	}
@@ -889,19 +876,8 @@ func (g *Generator) Generate() error {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
-	// As a side-effect genPulumiSchema also populated rename tables.
-	renames, err := g.Renames()
-	if err != nil {
-		return errors.Wrapf(err, "failed to generate renames")
-	}
-
-	if err := nameCheck(g.info, pulumiPackageSpec, g.renamesBuilder, g.sink); err != nil {
-		return err
-	}
-
 	genSchemaResult := &GenerateSchemaResult{
 		PackageSpec: pulumiPackageSpec,
-		Renames:     renames,
 	}
 
 	// Now push the schema through the rest of the generator.
@@ -915,16 +891,6 @@ func (g *Generator) Generate() error {
 // pulumi-terraform-bridge can consume it. We do not recommend other packages consume this
 // API.
 func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
-	// MetadataInfo gets stored on disk from previous versions of the provider. Renames do not need to be
-	// history-aware and they are simply re-computed from scratch as part of generating the schema.
-	// If we are storing such metadata, override the previous Renames with the new Renames.
-	if info := g.info.MetadataInfo; info != nil {
-		err := metadata.Set(info.Data, "renames", genSchemaResult.Renames)
-		if err != nil {
-			return fmt.Errorf("[pkg/tfgen] failed to add renames to MetadataInfo.Data: %w", err)
-		}
-	}
-
 	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
@@ -1015,11 +981,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	g.pluginHost.Close()
 
 	return nil
-}
-
-// Remanes can be called after a successful call to Generate to extract name mappings.
-func (g *Generator) Renames() (Renames, error) {
-	return g.renamesBuilder.BuildRenames()
 }
 
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
@@ -1235,8 +1196,6 @@ func (g *Generator) gatherResource(rawname string,
 	resourceToken := tokens.NewTypeToken(mod, name)
 	resourcePath := paths.NewResourcePath(rawname, resourceToken, isProvider)
 
-	g.renamesBuilder.registerResource(resourcePath)
-
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
@@ -1433,7 +1392,6 @@ func (g *Generator) gatherDataSource(rawname string,
 	name, moduleName := dataSourceName(g.info.Name, rawname, info)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 	dataSourcePath := paths.NewDataSourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
-	g.renamesBuilder.registerDataSource(dataSourcePath)
 
 	// Collect documentation information for this data source.
 	source := NewGitRepoDocsSource(g)
@@ -1665,10 +1623,6 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
-
-		if g.renamesBuilder != nil {
-			g.renamesBuilder.registerProperty(parentPath, propName)
-		}
 
 		var schema shim.Schema
 		if sch != nil {
