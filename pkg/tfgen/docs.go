@@ -1590,12 +1590,36 @@ func (g *Generator) legacyConvert(
 func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName string) (string, error) {
 	fileName := fmt.Sprintf("/%s.tf", strings.ReplaceAll(path, "/", "-"))
 
+	failure := func(diags hcl.Diagnostics) error {
+		// Remove the temp filename from the error, since it will be confusing to users of the bridge who do not know
+		// we write an example to a temp file internally in order to pass to convert.Convert().
+		//
+		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
+		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
+
+		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
+		g.coverageTracker.languageConversionFailure(e, languageName, diags)
+		return fmt.Errorf(errMsg)
+	}
+
 	var convertedHcl string
 	var diags hcl.Diagnostics
 	var err error
 
 	if cliConverterEnabled() {
+		// The cliConverter has a slightly different error behavior as it can return both
+		// err and diags but does not panic. Handle this by re-coding err as a diag and
+		// proceeding to handle diags normally.
 		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
+		if err != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  err.Error(),
+			})
+		}
+		if diags.HasErrors() {
+			return "", failure(diags)
+		}
 	} else {
 		convertedHcl, diags, err = g.legacyConvert(e, hclCode, fileName, languageName)
 	}
@@ -1612,15 +1636,7 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 		return "", fmt.Errorf("failed to convert HCL for %s to %v: %w", path, languageName, err)
 	}
 	if diags.HasErrors() {
-		// Remove the temp filename from the error, since it will be confusing to users of the bridge who do not know
-		// we write an example to a temp file internally in order to pass to convert.Convert().
-		//
-		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
-		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
-
-		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
-		g.coverageTracker.languageConversionFailure(e, languageName, diags)
-		return "", fmt.Errorf(errMsg)
+		return "", failure(diags)
 	}
 
 	g.coverageTracker.languageConversionSuccess(e, languageName, convertedHcl)
