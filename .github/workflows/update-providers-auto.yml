@@ -23,7 +23,7 @@ jobs:
     name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge to the latest version automatically
     steps:
       - name: Trigger upgrade
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: pulumi/pulumi-${{ matrix.provider }}
