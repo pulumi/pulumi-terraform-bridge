@@ -1268,9 +1268,9 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 	}
 
 	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
-	// specifies the PULUMI_CONVERT_EXAMPES_CACHE_DIR environment variable, pointing to a folder for the cache.
+	// specifies the PULUMI_CONVERT_EXAMPLES_CACHE_DIR environment variable, pointing to a folder for the cache.
 	{
-		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPES_CACHE_DIR")
+		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPLES_CACHE_DIR")
 		if enableCache && dir != "" {
 			path := path.String()
 			sep := string(rune(0))
