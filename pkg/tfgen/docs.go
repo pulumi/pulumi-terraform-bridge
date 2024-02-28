@@ -16,7 +16,6 @@ package tfgen
 
 import (
 	"bytes"
-	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1267,43 +1266,6 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return docs
 	}
 
-	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
-	// specifies the PULUMI_CONVERT_EXAMPLES_CACHE_DIR environment variable, pointing to a folder for the cache.
-	{
-		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPLES_CACHE_DIR")
-		if enableCache && dir != "" {
-			path := path.String()
-			sep := string(rune(0))
-			var buf bytes.Buffer
-			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
-			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
-			fmt.Fprintf(&buf, "path=%v%s", path, sep)
-			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
-			fmt.Fprintf(&buf, "stripSubsectionsWithErrors=%v%s", stripSubsectionsWithErrors, sep)
-
-			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
-
-			filePath := filepath.Join(dir, hash)
-
-			bytes, err := os.ReadFile(filePath)
-			if err == nil {
-				// cache hit
-				return string(bytes)
-			}
-			// ignore the error, assume cache miss or file not found
-			defer func() {
-				// only write the cache for sizable results, >0.5kb
-				if len(result) > 512 {
-					// try to write to the cache
-					err := os.WriteFile(filePath, []byte(result), 0600)
-					if err != nil {
-						panic(fmt.Errorf("failed to write examples-cache: %w", err))
-					}
-				}
-			}()
-		}
-	}
-
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
@@ -1344,7 +1306,7 @@ func (g *Generator) convertExamplesInner(
 		e *Example, hcl, path, exampleTitle string, languages []string,
 	) (string, error),
 	useCoverageTracker bool,
-) (result string) {
+) string {
 	output := &bytes.Buffer{}
 
 	writeTrailingNewline := func(buf *bytes.Buffer) {
@@ -1606,7 +1568,10 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 	var diags hcl.Diagnostics
 	var err error
 
-	if cliConverterEnabled() {
+	cache := g.getOrCreateExamplesCache()
+	if r, ok := cache.Lookup(hclCode, languageName); ok {
+		convertedHcl = r
+	} else if cliConverterEnabled() {
 		// The cliConverter has a slightly different error behavior as it can return both
 		// err and diags but does not panic. Handle this by re-coding err as a diag and
 		// proceeding to handle diags normally.
@@ -1639,6 +1604,7 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 		return "", failure(diags)
 	}
 
+	cache.Store(hclCode, languageName, convertedHcl)
 	g.coverageTracker.languageConversionSuccess(e, languageName, convertedHcl)
 	return convertedHcl, nil
 }
