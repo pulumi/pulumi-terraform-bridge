@@ -162,7 +162,9 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
 	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
 	// so for now we type test here
-	if grpcProvider, ok := p.provider.(pl.GrpcProvider); ok {
+	if grpcProvider, ok := p.provider.(interface {
+		Attach(address string) error
+	}); ok {
 		err := grpcProvider.Attach(req.GetAddress())
 		if err != nil {
 			return nil, err
