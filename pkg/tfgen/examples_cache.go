@@ -51,13 +51,17 @@ type examplesCache struct {
 
 func (g *Generator) getOrCreateExamplesCache() *examplesCache {
 	if g.examplesCache == nil {
-		g.examplesCache = newExamplesCache(g.info.Name, g.version)
+		g.examplesCache = newExamplesCache(g.info.Name, g.version, "" /* infer from env var */)
 	}
 	return g.examplesCache
 }
 
-func newExamplesCache(providerName string, providerVersion string) *examplesCache {
-	dir, enabled := os.LookupEnv("PULUMI_CONVERT_EXAMPLES_CACHE_DIR")
+func newExamplesCache(providerName string, providerVersion, cacheDir string) *examplesCache {
+	dir := cacheDir
+	enabled := true
+	if dir == "" {
+		dir, enabled = os.LookupEnv(pulumiConvertExamplesCacheDirEnvVar)
+	}
 	if !enabled {
 		return &examplesCache{}
 	}
