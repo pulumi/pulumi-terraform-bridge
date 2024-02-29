@@ -22,7 +22,7 @@ package tfgen
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -99,14 +99,17 @@ func (ec *examplesCache) Store(originalHCL, language, result string) {
 	contract.AssertNoErrorf(err, "failed to write to the examples cache")
 }
 
+func (*examplesCache) checksum(bytes []byte) string {
+	hash := md5.Sum(bytes) //nolint:gosec
+	return hex.EncodeToString(hash[:])
+}
+
 func (ec *examplesCache) exampleKey(originalHCL, language string) string {
 	sep := "|"
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "originalHCL=%v%s", originalHCL, sep)
 	fmt.Fprintf(&buf, "language=%v%s", language, sep)
-	bytes := buf.Bytes()
-	hash := md5.Sum([]byte(bytes))
-	return hex.EncodeToString(hash[:])
+	return ec.checksum(buf.Bytes())
 }
 
 func (ec *examplesCache) inferToolingVersions() {
@@ -165,15 +168,13 @@ func (ec *examplesCache) filehash(p string) string {
 	if err != nil {
 		return ""
 	}
-	hash := md5.Sum([]byte(bytes))
-	return hex.EncodeToString(hash[:])
+	return ec.checksum(bytes)
 }
 
 func (ec *examplesCache) uniqueDirHash() string {
 	bytes, err := json.Marshal(ec)
 	contract.AssertNoErrorf(err, "examplesCache should marshal to JSON")
-	hash := md5.Sum([]byte(bytes))
-	return hex.EncodeToString(hash[:])
+	return ec.checksum(bytes)
 }
 
 func (ec *examplesCache) fulldir() string {
