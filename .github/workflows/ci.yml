@@ -52,3 +52,41 @@ jobs:
         uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+
+  downstream:
+    name: Test ${{ matrix.provider }} (bridged)
+    timeout-minutes: 240
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+    strategy:
+      matrix:
+        provider: ["aws", "gcp", "azure", "azuread", "random"]
+      fail-fast: false
+    steps:
+      - name: Trigger upgrade
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          repository: pulumi/pulumi-${{ matrix.provider }}
+          event-type: upgrade-bridge
+          client-payload: |-
+            {
+                "target-bridge-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
+                "pr-reviewers": ${{ toJSON( github.triggering_actor || 'VenelinMartinov' ) }},
+                "pr-description": "This is a downstream bridge test for pulumi/pulumi-terraform-bridge#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})",
+                "automerge": false
+            }
+      - name: Await PR opened for pulumi-${{ matrix.provider }}
+        run: |
+          echo Await PR opened for pulumi-${{ matrix.provider }}
+          until gh search prs --repo pulumi/pulumi-${{ matrix.provider }} --review-requested ${{ toJSON( github.triggering_actor || 'VenelinMartinov' ) }} --match body "This is a downstream bridge test for pulumi/pulumi-terraform-bridge#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})"  --json url | grep url; do sleep 30; done;
+      - name: Await PR codegen tests succeed.
+        run: |
+          echo "Await PR opened for pulumi-${{ matrix.provider }}"
+          number=$(gh search prs --repo pulumi/pulumi-${{ matrix.provider }} --review-requested ${{ toJSON( github.triggering_actor || 'VenelinMartinov' ) }} --match body "This is a downstream bridge test for pulumi/pulumi-terraform-bridge#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})"  --json number --jq '.[0].number')
+          # Ensure that expected checks are pending before checking the status passes.
+          # We use 'test' as all workflows have tests.
+          until gh pr checks --repo "pulumi/pulumi-${{ matrix.provider }}" "$number" | grep 'test'; do sleep 30; done;
+          gh pr checks --repo "pulumi/pulumi-${{ matrix.provider }}" "$number" --watch --fail-fast
