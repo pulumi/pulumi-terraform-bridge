@@ -80,6 +80,8 @@ type Generator struct {
 	noDocsRepo bool
 
 	cliConverterState *cliConverter
+
+	examplesCache *examplesCache
 }
 
 type Language string

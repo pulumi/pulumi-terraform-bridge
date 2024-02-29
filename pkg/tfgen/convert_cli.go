@@ -75,6 +75,7 @@ type cliConverter struct {
 			) (string, error),
 			useCoverageTracker bool,
 		) string
+		getOrCreateExamplesCache() *examplesCache
 	}
 
 	loader schema.Loader
@@ -180,7 +181,9 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 
 // During FinishConvertingExamples pass, generator calls back into this function to continue
 // PCL->lang translation from a pre-computed HCL->PCL translation table cc.pcls.
-func (cc *cliConverter) Convert(hclCode string, lang string) (string, hcl.Diagnostics, error) {
+func (cc *cliConverter) Convert(
+	hclCode string, lang string,
+) (converted string, diags hcl.Diagnostics, ferr error) {
 	example, ok := cc.pcls[hclCode]
 	// Cannot assert here because panics are still possible for some reason.
 	// Example: gcp:gameservices/gameServerCluster:GameServerCluster
@@ -199,6 +202,9 @@ func (cc *cliConverter) Convert(hclCode string, lang string) (string, hcl.Diagno
 
 // Convert all observed HCL snippets from cc.hcls to PCL in one pass, populate cc.pcls.
 func (cc *cliConverter) bulkConvert() error {
+	if len(cc.hcls) == 0 {
+		return nil
+	}
 	examples := map[string]string{}
 	n := 0
 	for hcl := range cc.hcls {
@@ -461,8 +467,21 @@ func (cc *cliConverter) convertPCL(
 func (cc *cliConverter) recordHCL(
 	e *Example, hcl, path, exampleTitle string, languages []string,
 ) (string, error) {
-	h := cc.hcls
-	h[hcl] = struct{}{}
+	cache := cc.generator.getOrCreateExamplesCache()
+
+	allLanguagesCached := true
+	for _, lang := range languages {
+		if _, ok := cache.Lookup(hcl, lang); !ok {
+			allLanguagesCached = false
+		}
+	}
+
+	// Schedule bulk conversion of this HCL snippet unless it is certain that every language
+	// translation has a cache hit, in which case the hcl->pcl translation will never be needed.
+	if !allLanguagesCached {
+		cc.hcls[hcl] = struct{}{}
+	}
+
 	return "{convertHCL}", nil
 }
 
