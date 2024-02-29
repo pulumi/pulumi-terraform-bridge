@@ -2,8 +2,6 @@ module github.com/terraform-providers/terraform-provider-random/randomshim
 
 go 1.21
 
-toolchain go1.21.7
-
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.3.5
 	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20221123190201-cb914720edaa

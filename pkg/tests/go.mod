@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests
 
 go 1.21
 
-toolchain go1.21.7
-
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
