@@ -1564,14 +1564,17 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 		return fmt.Errorf(errMsg)
 	}
 
+	cache := g.getOrCreateExamplesCache()
+	if convertedHcl, ok := cache.Lookup(hclCode, languageName); ok {
+		g.coverageTracker.languageConversionSuccess(e, languageName, convertedHcl)
+		return convertedHcl, nil
+	}
+
 	var convertedHcl string
 	var diags hcl.Diagnostics
 	var err error
 
-	cache := g.getOrCreateExamplesCache()
-	if r, ok := cache.Lookup(hclCode, languageName); ok {
-		convertedHcl = r
-	} else if cliConverterEnabled() {
+	if cliConverterEnabled() {
 		// The cliConverter has a slightly different error behavior as it can return both
 		// err and diags but does not panic. Handle this by re-coding err as a diag and
 		// proceeding to handle diags normally.
