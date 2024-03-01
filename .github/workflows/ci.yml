@@ -76,6 +76,7 @@ jobs:
                 "target-bridge-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
                 "pr-reviewers": ${{ toJSON( github.triggering_actor || 'VenelinMartinov' ) }},
                 "pr-description": "This is a downstream bridge test for pulumi/pulumi-terraform-bridge#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})",
+                "pr-title-prefix": "[DOWNSTREAM TEST][BRIDGE]"
                 "automerge": false
             }
       - name: Await PR opened for pulumi-${{ matrix.provider }}
