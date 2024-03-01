@@ -57,6 +57,7 @@ func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 // Like Main but allows to customize the generation logic past the parsing of cmd-line arguments.
 func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderInfo,
 	gen func(GeneratorOptions) error) {
+	panic("new panic!")
 
 	if err := newTFGenCmd(pkg, version, prov, gen).Execute(); err != nil {
 		_, fmterr := fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
