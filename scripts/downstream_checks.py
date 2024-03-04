@@ -1,5 +1,4 @@
 import argparse
-import json
 import requests
 import subprocess as sp
 
@@ -36,12 +35,15 @@ resp = requests.post('https://api.github.com/graphql',
 r = resp.json()
 
 for e in r['data']['search']['edges']:
-    if e.get('node', {}).get('title', '') != f'Upgrade pulumi-terraform-bridge to {c}':
+    if not str(e.get('node', {}).get('title', '')).endswith(
+        f'Upgrade pulumi-terraform-bridge to {c}'
+      ):
         continue
 
     checks = e.get('node', {}).get('commits', {}).get('nodes', [{}])[0]['commit']['statusCheckRollup']['state']
     if checks == 'SUCCESS':
         url = e['node']['url']
+        print('CLOSING', e['node']['url'])
         sp.check_call(['gh', 'pr', 'close', url])
     else:
         print('FAILED', e['node']['url'])
