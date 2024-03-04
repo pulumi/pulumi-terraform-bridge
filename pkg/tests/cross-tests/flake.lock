@@ -1,0 +1,63 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1705496572,
+        "narHash": "sha256-rPIe9G5EBLXdBdn9ilGc0nq082lzQd0xGGe092R/5QE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "842d9d80cfd4560648c785f8a4e6f3b096790e19",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "842d9d80cfd4560648c785f8a4e6f3b096790e19",
+        "type": "github"
+      }
+    },
+    "pulumi-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709588321,
+        "narHash": "sha256-LRIwKYzwFNK/OGd19ndYgwDSX5AWhdNZAucZeSTbmWg=",
+        "owner": "pulumi",
+        "repo": "pulumi",
+        "rev": "ddb43d57b2009e28752d4112dfbbc5db62c0b59b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pulumi",
+        "repo": "pulumi",
+        "rev": "ddb43d57b2009e28752d4112dfbbc5db62c0b59b",
+        "type": "github"
+      }
+    },
+    "pulumi-yaml-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709589467,
+        "narHash": "sha256-sy7ZZFh84Uo3kqJtS3y3MaV3ST7NF2xBotq5HBHD+Yg=",
+        "owner": "pulumi",
+        "repo": "pulumi-yaml",
+        "rev": "400ac91e791a1912e2e91811517a73a9dc4df026",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pulumi",
+        "repo": "pulumi-yaml",
+        "rev": "400ac91e791a1912e2e91811517a73a9dc4df026",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "pulumi-src": "pulumi-src",
+        "pulumi-yaml-src": "pulumi-yaml-src"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
