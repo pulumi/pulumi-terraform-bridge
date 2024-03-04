@@ -411,6 +411,115 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 	}
 }
 
+func TestMaxItemsOneEmptyOldState(t *testing.T) {
+	t.Run("empty-olds", func(t *testing.T) {
+		typeString := (&schema.Schema{
+			Type: shim.TypeString,
+		}).Shim()
+
+		resSchema := &schema.Schema{
+			Type:     shim.TypeList,
+			MaxItems: 1,
+			Elem: (&schema.Schema{
+				Type: shim.TypeList,
+				Elem: typeString,
+			}).Shim(),
+		}
+
+		olds := resource.PropertyMap{}
+		news := resource.PropertyMap{
+			"__defaults": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewStringProperty("other"),
+				},
+			),
+		}
+		tfs := schema.SchemaMap{"element": resSchema.Shim()}
+		result, _, err := makeTerraformInputs(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"element": []interface{}{},
+		}, result)
+	})
+
+	t.Run("non-empty-olds", func(t *testing.T) {
+		typeString := (&schema.Schema{
+			Type: shim.TypeString,
+		}).Shim()
+
+		resSchema := &schema.Schema{
+			Type:     shim.TypeList,
+			MaxItems: 1,
+			Elem: (&schema.Schema{
+				Type: shim.TypeList,
+				Elem: typeString,
+			}).Shim(),
+		}
+
+		olds := resource.PropertyMap{
+			"element": resource.NewStringProperty("el"),
+			"__defaults": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewStringProperty("other"),
+				},
+			),
+		}
+		news := resource.PropertyMap{
+			"__defaults": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewStringProperty("other"),
+				},
+			),
+		}
+		tfs := schema.SchemaMap{"element": resSchema.Shim()}
+		result, _, err := makeTerraformInputs(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"element": []interface{}{},
+		}, result)
+	})
+
+	t.Run("non-missing-news", func(t *testing.T) {
+		typeString := (&schema.Schema{
+			Type: shim.TypeString,
+		}).Shim()
+
+		resSchema := &schema.Schema{
+			Type:     shim.TypeList,
+			MaxItems: 1,
+			Elem: (&schema.Schema{
+				Type: shim.TypeList,
+				Elem: typeString,
+			}).Shim(),
+		}
+
+		olds := resource.PropertyMap{
+			"__defaults": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewStringProperty("other"),
+				},
+			),
+		}
+		news := resource.PropertyMap{
+			"element": resource.NewStringProperty("el"),
+			"__defaults": resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewStringProperty("other"),
+				},
+			),
+		}
+		tfs := schema.SchemaMap{"element": resSchema.Shim()}
+		result, _, err := makeTerraformInputs(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"element": []interface{}{"el"},
+		}, result)
+	})
+}
+
 type MyString string
 
 // TestTerraformOutputsWithSecretsSupported verifies that we translate Terraform outputs into Pulumi outputs and
