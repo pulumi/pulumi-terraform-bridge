@@ -35,7 +35,7 @@ resp = requests.post('https://api.github.com/graphql',
 r = resp.json()
 
 for e in r['data']['search']['edges']:
-    if str(e.get('node', {}).get('title', '')).endswith(
+    if not str(e.get('node', {}).get('title', '')).endswith(
         f'Upgrade pulumi-terraform-bridge to {c}'
       ):
         continue
