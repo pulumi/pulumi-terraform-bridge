@@ -43,6 +43,7 @@ for e in r['data']['search']['edges']:
     checks = e.get('node', {}).get('commits', {}).get('nodes', [{}])[0]['commit']['statusCheckRollup']['state']
     if checks == 'SUCCESS':
         url = e['node']['url']
+        print('CLOSING', e['node']['url'])
         sp.check_call(['gh', 'pr', 'close', url])
     else:
         print('FAILED', e['node']['url'])
