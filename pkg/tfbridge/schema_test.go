@@ -435,12 +435,18 @@ func TestMaxItemsOneEmptyOldState(t *testing.T) {
 			),
 		}
 		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		result, _, err := makeTerraformInputs(
+		resultNoDefaults, _, err := makeTerraformInputs(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{}, resultNoDefaults)
+
+		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
 			olds, news, tfs, nil /* ps */)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"element": []interface{}{},
-		}, result)
+			"__defaults": []interface{}{},
+			"element":    []interface{}{},
+		}, resultWithDefaults)
 	})
 
 	t.Run("non-empty-olds", func(t *testing.T) {
@@ -473,12 +479,18 @@ func TestMaxItemsOneEmptyOldState(t *testing.T) {
 			),
 		}
 		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		result, _, err := makeTerraformInputs(
+		resultNoDefaults, _, err := makeTerraformInputs(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{}, resultNoDefaults)
+
+		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
 			olds, news, tfs, nil /* ps */)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"element": []interface{}{},
-		}, result)
+			"__defaults": []interface{}{},
+			"element":    []interface{}{},
+		}, resultWithDefaults)
 	})
 
 	t.Run("non-missing-news", func(t *testing.T) {
@@ -511,12 +523,20 @@ func TestMaxItemsOneEmptyOldState(t *testing.T) {
 			),
 		}
 		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		result, _, err := makeTerraformInputs(
+		resultNoDefaults, _, err := makeTerraformInputs(
 			olds, news, tfs, nil /* ps */)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
 			"element": []interface{}{"el"},
-		}, result)
+		}, resultNoDefaults)
+
+		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
+			olds, news, tfs, nil /* ps */)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"__defaults": []interface{}{},
+			"element":    []interface{}{"el"},
+		}, resultWithDefaults)
 	})
 }
 
