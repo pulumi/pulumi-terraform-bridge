@@ -3308,7 +3308,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 			  "response": {
 				"inputs": {
 				  "__defaults": [],
-				  "otherProp": "other"
+				  "otherProp": "other",
+				  "maxItemsOneProp": null
 				}
 			  }
 			}
@@ -3339,7 +3340,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": []
+				  "__defaults": [],
+				  "maxItemsOneProp": null
 				}
 			  }
 			}
@@ -3389,7 +3391,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": []
+				  "__defaults": [],
+				  "maxItemsOneProp": null
 				}
 			  }
 			}
@@ -3472,7 +3475,8 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": []
+				  "__defaults": [],
+				  "specs": null
 				}
 			  }
 			}

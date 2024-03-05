@@ -655,7 +655,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
-	if tfs != nil {
+	if tfs != nil && ctx.ApplyTFDefaults {
 		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
 		tfs.Range(func(key string, value shim.Schema) bool {
 			// First do a lookup of the name/info.
