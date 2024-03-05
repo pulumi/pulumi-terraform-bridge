@@ -5,7 +5,7 @@ go 1.20
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../
 
 require (
-	github.com/pulumi/providertest v0.0.10
+	github.com/pulumi/providertest v0.0.11
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.31.0
