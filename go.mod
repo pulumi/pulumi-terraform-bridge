@@ -36,7 +36,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/providertest v0.0.10
+	github.com/pulumi/providertest v0.0.11
 	github.com/pulumi/pulumi-java/pkg v0.9.9
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/pulumi/pulumi-yaml v1.5.0
