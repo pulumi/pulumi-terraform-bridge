@@ -3481,7 +3481,6 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 	})
 }
 
-
 func TestSingularAndPluralProp(t *testing.T) {
 	p := testprovider.SchemaSingularAndPluralPropProvider()
 	shimProv := shimv2.NewProvider(p)
