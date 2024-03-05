@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"sort"
 	"strings"
@@ -3261,5 +3262,350 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 			}
 		}`)
 		t.Errorf("The code did not panic!")
+	})
+}
+
+func TestMaxItemsOneConflictsWith(t *testing.T) {
+	p := testprovider.SchemaMaxItemsOneConflictsWithProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("No conflict when other specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				  "other_prop": "other"
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "otherProp": "other"
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+
+	t.Run("No conflict when no props specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestMinMaxItemsOneOptional(t *testing.T) {
+	p := testprovider.SchemaMinMaxItemsOneOptionalProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("No error when not specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+
+	t.Run("No error when specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"max_items_one_prop": ["prop"]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "maxItemsOneProp": "prop"
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
+	p := testprovider.SchemaComputedMaxItemsOneNotSpecifiedProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("No error when plural specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+
+func TestSingularAndPluralProp(t *testing.T) {
+	p := testprovider.SchemaSingularAndPluralPropProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{
+					Fields: map[string]*SchemaInfo{
+						"nodes": {
+							Elem: &SchemaInfo{
+								Fields: map[string]*SchemaInfo{
+									"roles": {
+										Name:       "rolesDeprecated",
+										CSharpName: "RolesDeprecated",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("No error when plural specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"nodes": [{
+                        "role": ["role1", "role2"]
+                    }]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "nodes": [
+					{"__defaults": [], "roles": ["role1", "role2"]}
+				  ]
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestSingularAndPluralPropTopLevel(t *testing.T) {
+	p := testprovider.SchemaSingularAndPluralPropTopLevelProvider()
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{
+					Fields: map[string]*SchemaInfo{
+						"roles": {
+							Name:       "rolesDeprecated",
+							CSharpName: "RolesDeprecated",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("No error when plural specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"role": ["role1", "role2"]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "roles": ["role1", "role2"]
+				}
+			  }
+			}
+		  ]
+		  `)
 	})
 }

@@ -779,8 +779,13 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, urn, fmt.Sprintf("%v verification warning: %v", urn, warn)); err != nil {
-			return nil, err
+		warning := fmt.Sprintf("%v verification warning: %v", urn, warn)
+		if p.host == nil {
+			glog.Warning(warning)
+		} else {
+			if err = p.host.Log(ctx, diag.Warning, urn, warning); err != nil {
+				return nil, err
+			}
 		}
 	}
 

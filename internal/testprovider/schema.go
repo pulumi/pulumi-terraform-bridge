@@ -20,6 +20,7 @@ import (
 
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	terraformv1 "github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	terraformv2 "github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -1065,6 +1066,132 @@ func SchemaFuncPanicsProvider() *schemav2.Provider {
 			"res": {
 				SchemaFunc: func() map[string]*schemav2.Schema {
 					panic("schema func panic")
+				},
+			},
+		},
+	}
+}
+
+func SchemaMaxItemsOneConflictsWithProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": {
+						Type:          schemav2.TypeList,
+						MaxItems:      1,
+						Elem:          &schemav2.Schema{Type: schemav2.TypeString},
+						Optional:      true,
+						ConflictsWith: []string{"other_prop"},
+					},
+					"other_prop": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"max_items_one_prop"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func SchemaMinMaxItemsOneOptionalProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						MaxItems: 1,
+						MinItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+			},
+		},
+	}
+}
+
+func SchemaSingularAndPluralPropProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"nodes": {
+						Type:     schema.TypeList,
+						MinItems: 1,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schemav2.Schema{
+								"role": {
+									Type:     schema.TypeList,
+									Required: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+								"roles": {
+									Type:       schema.TypeString,
+									Optional:   true,
+									Deprecated: "Use role instead",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func SchemaSingularAndPluralPropTopLevelProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"role": {
+						Type:     schema.TypeList,
+						Required: true,
+						Elem: &schema.Schema{
+							Type: schema.TypeString,
+						},
+					},
+					"roles": {
+						Type:       schema.TypeString,
+						Optional:   true,
+						Deprecated: "Use role instead",
+					},
+				},
+			},
+		},
+	}
+}
+
+func SchemaComputedMaxItemsOneNotSpecifiedProvider() *schemav2.Provider {
+	return &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"specs": {
+						Computed:    true,
+						MaxItems:    1,
+						Description: "Information about the resources available to this Linode.",
+						Type:        schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"disk": {
+									Type:     schema.TypeInt,
+									Computed: true,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
