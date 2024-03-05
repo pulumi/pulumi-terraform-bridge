@@ -1115,63 +1115,6 @@ func SchemaMinMaxItemsOneOptionalProvider() *schemav2.Provider {
 	}
 }
 
-func SchemaSingularAndPluralPropProvider() *schemav2.Provider {
-	return &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{},
-		ResourcesMap: map[string]*schemav2.Resource{
-			"res": {
-				Schema: map[string]*schemav2.Schema{
-					"nodes": {
-						Type:     schema.TypeList,
-						MinItems: 1,
-						Optional: true,
-						Elem: &schema.Resource{
-							Schema: map[string]*schemav2.Schema{
-								"role": {
-									Type:     schema.TypeList,
-									Required: true,
-									Elem: &schema.Schema{
-										Type: schema.TypeString,
-									},
-								},
-								"roles": {
-									Type:       schema.TypeString,
-									Optional:   true,
-									Deprecated: "Use role instead",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func SchemaSingularAndPluralPropTopLevelProvider() *schemav2.Provider {
-	return &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{},
-		ResourcesMap: map[string]*schemav2.Resource{
-			"res": {
-				Schema: map[string]*schemav2.Schema{
-					"role": {
-						Type:     schema.TypeList,
-						Required: true,
-						Elem: &schema.Schema{
-							Type: schema.TypeString,
-						},
-					},
-					"roles": {
-						Type:       schema.TypeString,
-						Optional:   true,
-						Deprecated: "Use role instead",
-					},
-				},
-			},
-		},
-	}
-}
-
 func SchemaComputedMaxItemsOneNotSpecifiedProvider() *schemav2.Provider {
 	return &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
