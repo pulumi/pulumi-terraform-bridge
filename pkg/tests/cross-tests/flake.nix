@@ -49,7 +49,7 @@
     make-shell = system: let
       pkgs = import nixpkgs { system = system; };
     in
-      pkgs.mkShell {
+      pkgs.mkShellNoCC {
         buildInputs = [ (make-pulumi-with-yaml pkgs) ];
       };
 
