@@ -1,12 +1,15 @@
 package crosstests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,7 +23,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -46,6 +52,7 @@ const (
 	rtoken            = providerShortName + ":index:" + rtok
 	providerName      = "registry.terraform.io/hashicorp/" + providerShortName
 	providerVer       = "0.0.1"
+	passphrase        = "PULUMI_CONFIG_PASSPHRASE=123456"
 )
 
 func runDiffCheck(t *testing.T, tc diffTestCase) {
@@ -61,6 +68,7 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	require.NoError(t, err)
 	puwd := t.TempDir()
 	pulumiWriteYaml(t, puwd, tc.Config1)
+	pulumiStackInit(t, puwd)
 	pulumiUp(t, puwd, handle)
 	pulumiWriteYaml(t, puwd, tc.Config2)
 	pulumiUp(t, puwd, handle)
@@ -194,6 +202,8 @@ func TestSimpleStringRename(t *testing.T) {
 
 func toPulumiProvider(tc diffTestCase) tfbridge.ProviderInfo {
 	return tfbridge.ProviderInfo{
+		Name: providerShortName,
+
 		P: shimv2.NewProvider(toTFProvider(tc), shimv2.WithPlanResourceChange(
 			func(tfResourceType string) bool { return true },
 		)),
@@ -211,8 +221,22 @@ func startPulumiProvider(
 	tc diffTestCase,
 ) (*rpcutil.ServeHandle, error) {
 	info := toPulumiProvider(tc)
-	schema := []byte("{}")
-	prov := tfbridge.NewProvider(ctx, nil, providerShortName, providerVer, info.P, info, schema)
+
+	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
+		Color: colors.Never,
+	})
+
+	schema, err := tfgen.GenerateSchema(info, sink)
+	if err != nil {
+		return nil, fmt.Errorf("tfgen.GenerateSchema failed: %w", err)
+	}
+
+	schemaBytes, err := json.MarshalIndent(schema, "", " ")
+	if err != nil {
+		return nil, fmt.Errorf("json.MarshalIndent(schema, ..) failed: %w", err)
+	}
+
+	prov := tfbridge.NewProvider(ctx, nil, providerShortName, providerVer, info.P, info, schemaBytes)
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -229,13 +253,16 @@ func startPulumiProvider(
 
 func pulumiWriteYaml(t *testing.T, puwd string, tfConfig any) {
 	data := map[string]any{
-		"name":    "test1",
+		"name":    "project",
 		"runtime": "yaml",
 		"resources": map[string]any{
 			"example": map[string]any{
 				"type":       fmt.Sprintf("%s:index:%s", providerShortName, rtok),
 				"properties": tfConfig, // TODO transform to Pulumi
 			},
+		},
+		"backend": map[string]any{
+			"url": "file://./data",
 		},
 	}
 	b, err := yaml.Marshal(data)
@@ -245,47 +272,33 @@ func pulumiWriteYaml(t *testing.T, puwd string, tfConfig any) {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 }
 
-func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) {
-	passphrase := "PULUMI_CONFIG_PASSPHRASE=123456"
+func pulumiStackInit(t *testing.T, puwd string) {
+	t.Logf("Initializing a test pulumi stack in temp directory: %q", puwd)
 	err := os.MkdirAll(filepath.Join(puwd, "data"), 0755)
 	require.NoError(t, err, "error when making ./data folder")
-	{
-		t.Logf("pulumi login file://./data")
-		cmd := exec.Command("pulumi", "login", "file://./data")
-		cmd.Dir = puwd
-		err := cmd.Run()
-		require.NoError(t, err, "error from `pulumi login`")
-	}
-	{
-		t.Logf("pulumi stack init teststack")
-		cmd := exec.Command("pulumi", "stack", "init", "teststack")
-		cmd.Dir = puwd
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = []string{passphrase}
-		err := cmd.Run()
-		require.NoError(t, err, "error from `pulumi stack init teststack`")
-	}
-	{
-		t.Logf("pulumi stack select teststack")
-		cmd := exec.Command("pulumi", "stack", "select", "teststack")
-		cmd.Dir = puwd
-		err := cmd.Run()
-		require.NoError(t, err, "error from `pulumi stack select teststack`")
-	}
+	execCmd(t, puwd, []string{passphrase},
+		"pulumi", "stack", "init", "organization/project/teststack")
+	execCmd(t, puwd, nil,
+		"pulumi", "stack", "select", "teststack")
+}
 
-	t.Logf("pulumi up --skip-preview --yes")
-	cmd := exec.Command("pulumi", "up", "--skip-preview", "--yes")
-	cmd.Dir = puwd
-	t.Logf("ENV: %s", formatPulumiDebugProvEnvVar(handle))
-
+func execCmd(t *testing.T, wdir string, environ []string, program string, args ...string) {
+	t.Logf("%s %s", program, strings.Join(args, " "))
+	cmd := exec.Command(program, args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Dir = wdir
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, formatPulumiDebugProvEnvVar(handle))
-	cmd.Env = append(cmd.Env, passphrase)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	require.NoErrorf(t, err, "error from `pulumi up`")
+	cmd.Env = append(cmd.Env, environ...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	require.NoError(t, err, "error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
+		program, strings.Join(args, " "), stdout.String(), stderr.String())
+}
+
+func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) {
+	execCmd(t, puwd, []string{formatPulumiDebugProvEnvVar(handle), passphrase},
+		"pulumi", "up", "--skip-preview", "--yes")
 }
 
 func formatPulumiDebugProvEnvVar(h *rpcutil.ServeHandle) string {
