@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -30,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -3482,5 +3484,86 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 			}
 		  ]
 		  `)
+	})
+}
+
+func TestProviderConfigMinMaxItemsOne(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{
+			"max_items_one_config": {
+				Type:     schemav2.TypeList,
+				Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				MaxItems: 1,
+				MinItems: 1,
+				Optional: true,
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:        shimProv,
+		config:    shimv2.NewSchemaMap(p.Schema),
+		info:      ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{},
+	}
+
+	t.Run("No error when config not specified", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "inputs": {}
+		  }
+		}`)
+	})
+}
+
+func TestProviderCheckConfigDefaults(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{
+			"default_config": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+				Default:  "default",
+			},
+			"default_config_invalid": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+				Default:  "default",
+				ValidateDiagFunc: func(v interface{}, p cty.Path) diag.Diagnostics {
+					if v.(string) != "default" {
+						return nil
+					}
+					return diag.Errorf("Error!")
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:        shimProv,
+		config:    shimv2.NewSchemaMap(p.Schema),
+		info:      ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{},
+	}
+
+	t.Run("No error when config not specified", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "inputs": {}
+		  }
+		}`)
 	})
 }
