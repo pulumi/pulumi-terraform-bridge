@@ -2,13 +2,13 @@ package sdkv2
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -99,17 +99,16 @@ func upgradeResourceStateRPC(
 	}
 
 	// Handle returned diagnostics.
+	var dd diag.Diagnostics
 	for _, d := range resp.Diagnostics {
-		msg := fmt.Sprintf("%s: %s", d.Summary, d.Detail)
-		switch d.Severity {
-		case tfprotov5.DiagnosticSeverityError:
-			err = errors.Join(err, d.Attribute.NewError(fmt.Errorf("%s", msg)))
-		case tfprotov5.DiagnosticSeverityWarning:
-			// Accessing the logger (GetLogger) requires an import cycle on
-			// tfbridge, so ignore for now.
+		if d == nil {
+			continue
 		}
+		rd := recoverDiagnostic(*d)
+		dd = append(dd, rd)
+		logDiag(ctx, rd)
 	}
-	if err != nil {
+	if err := diagToError(dd); err != nil {
 		return cty.Value{}, err
 	}
 
