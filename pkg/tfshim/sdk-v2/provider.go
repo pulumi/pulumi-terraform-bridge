@@ -115,7 +115,7 @@ func (p v2Provider) Apply(
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, err := upgradeResourceState(p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
@@ -139,7 +139,7 @@ func (p v2Provider) Refresh(
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
-	state, err := upgradeResourceState(p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
