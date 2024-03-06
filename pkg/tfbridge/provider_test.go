@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"sort"
 	"strings"
@@ -3268,7 +3267,27 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 }
 
 func TestMaxItemsOneConflictsWith(t *testing.T) {
-	p := testprovider.SchemaMaxItemsOneConflictsWithProvider()
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": {
+						Type:          schemav2.TypeList,
+						MaxItems:      1,
+						Elem:          &schemav2.Schema{Type: schemav2.TypeString},
+						Optional:      true,
+						ConflictsWith: []string{"other_prop"},
+					},
+					"other_prop": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"max_items_one_prop"},
+					},
+				},
+			},
+		},
+	}
 	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
@@ -3353,7 +3372,22 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 }
 
 func TestMinMaxItemsOneOptional(t *testing.T) {
-	p := testprovider.SchemaMinMaxItemsOneOptionalProvider()
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						MaxItems: 1,
+						MinItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+			},
+		},
+	}
 	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
@@ -3437,7 +3471,28 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 }
 
 func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
-	p := testprovider.SchemaComputedMaxItemsOneNotSpecifiedProvider()
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"specs": {
+						Computed: true,
+						MaxItems: 1,
+						Type:     schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"disk": {
+									Type:     schema.TypeInt,
+									Computed: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
@@ -3454,7 +3509,7 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 		},
 	}
 
-	t.Run("No error when plural specified", func(t *testing.T) {
+	t.Run("Computed property not specified", func(t *testing.T) {
 		testutils.ReplaySequence(t, provider, `[
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",

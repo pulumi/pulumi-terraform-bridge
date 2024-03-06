@@ -411,133 +411,108 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 	}
 }
 
-func TestMaxItemsOneEmptyOldState(t *testing.T) {
-	t.Run("empty-olds", func(t *testing.T) {
-		typeString := (&schema.Schema{
-			Type: shim.TypeString,
-		}).Shim()
+// Test that makeTerraformInputs, makeTerraformInputsWithDefaults work well with MaxItems=1 properties.
+//
+// missing MaxItems=1 properties should present to TF as empty collections when applying
+// the actual changes (makeTerraformInputsWithDefaults)
+// missing MaxItems=1 properties should present to TF as missing when running validators (makeTerraformInputs)
+func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
+	typeString := (&schema.Schema{
+		Type: shim.TypeString,
+	}).Shim()
 
-		resSchema := &schema.Schema{
-			Type:     shim.TypeList,
-			MaxItems: 1,
-			Elem: (&schema.Schema{
-				Type: shim.TypeList,
-				Elem: typeString,
-			}).Shim(),
-		}
+	resSchema := &schema.Schema{
+		Type:     shim.TypeList,
+		MaxItems: 1,
+		Elem: (&schema.Schema{
+			Type: shim.TypeList,
+			Elem: typeString,
+		}).Shim(),
+	}
+	tfs := schema.SchemaMap{"element": resSchema.Shim()}
 
-		olds := resource.PropertyMap{}
-		news := resource.PropertyMap{
-			"__defaults": resource.NewArrayProperty(
-				[]resource.PropertyValue{
-					resource.NewStringProperty("other"),
-				},
-			),
-		}
-		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		resultNoDefaults, _, err := makeTerraformInputs(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{}, resultNoDefaults)
+	tests := map[string]struct {
+		olds                 resource.PropertyMap
+		news                 resource.PropertyMap
+		expectedNoDefaults   map[string]interface{}
+		expectedWithDefaults map[string]interface{}
+	}{
+		"empty-olds": {
+			olds: resource.PropertyMap{},
+			news: resource.PropertyMap{
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			},
+			expectedNoDefaults: map[string]interface{}{},
+			expectedWithDefaults: map[string]interface{}{
+				"__defaults": []interface{}{},
+				"element":    []interface{}{},
+			},
+		},
+		"non-empty-olds": {
+			olds: resource.PropertyMap{
+				"element": resource.NewStringProperty("el"),
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			},
+			news: resource.PropertyMap{
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			},
+			expectedNoDefaults: map[string]interface{}{},
+			expectedWithDefaults: map[string]interface{}{
+				"__defaults": []interface{}{},
+				"element":    []interface{}{},
+			},
+		},
+		"non-missing-news": {
+			olds: resource.PropertyMap{
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			},
+			news: resource.PropertyMap{
+				"element": resource.NewStringProperty("el"),
+				"__defaults": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewStringProperty("other"),
+					},
+				),
+			},
+			expectedNoDefaults: map[string]interface{}{
+				"element": []interface{}{"el"},
+			},
+			expectedWithDefaults: map[string]interface{}{
+				"__defaults": []interface{}{},
+				"element":    []interface{}{"el"},
+			},
+		},
+	}
 
-		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{
-			"__defaults": []interface{}{},
-			"element":    []interface{}{},
-		}, resultWithDefaults)
-	})
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			resultNoDefaults, _, err := makeTerraformInputs(
+				tt.olds, tt.news, tfs, nil /* ps */)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedNoDefaults, resultNoDefaults)
 
-	t.Run("non-empty-olds", func(t *testing.T) {
-		typeString := (&schema.Schema{
-			Type: shim.TypeString,
-		}).Shim()
-
-		resSchema := &schema.Schema{
-			Type:     shim.TypeList,
-			MaxItems: 1,
-			Elem: (&schema.Schema{
-				Type: shim.TypeList,
-				Elem: typeString,
-			}).Shim(),
-		}
-
-		olds := resource.PropertyMap{
-			"element": resource.NewStringProperty("el"),
-			"__defaults": resource.NewArrayProperty(
-				[]resource.PropertyValue{
-					resource.NewStringProperty("other"),
-				},
-			),
-		}
-		news := resource.PropertyMap{
-			"__defaults": resource.NewArrayProperty(
-				[]resource.PropertyValue{
-					resource.NewStringProperty("other"),
-				},
-			),
-		}
-		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		resultNoDefaults, _, err := makeTerraformInputs(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{}, resultNoDefaults)
-
-		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{
-			"__defaults": []interface{}{},
-			"element":    []interface{}{},
-		}, resultWithDefaults)
-	})
-
-	t.Run("non-missing-news", func(t *testing.T) {
-		typeString := (&schema.Schema{
-			Type: shim.TypeString,
-		}).Shim()
-
-		resSchema := &schema.Schema{
-			Type:     shim.TypeList,
-			MaxItems: 1,
-			Elem: (&schema.Schema{
-				Type: shim.TypeList,
-				Elem: typeString,
-			}).Shim(),
-		}
-
-		olds := resource.PropertyMap{
-			"__defaults": resource.NewArrayProperty(
-				[]resource.PropertyValue{
-					resource.NewStringProperty("other"),
-				},
-			),
-		}
-		news := resource.PropertyMap{
-			"element": resource.NewStringProperty("el"),
-			"__defaults": resource.NewArrayProperty(
-				[]resource.PropertyValue{
-					resource.NewStringProperty("other"),
-				},
-			),
-		}
-		tfs := schema.SchemaMap{"element": resSchema.Shim()}
-		resultNoDefaults, _, err := makeTerraformInputs(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{
-			"element": []interface{}{"el"},
-		}, resultNoDefaults)
-
-		resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
-			olds, news, tfs, nil /* ps */)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]interface{}{
-			"__defaults": []interface{}{},
-			"element":    []interface{}{"el"},
-		}, resultWithDefaults)
-	})
+			resultWithDefaults, _, err := makeTerraformInputsWithDefaults(
+				tt.olds, tt.news, tfs, nil /* ps */)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedWithDefaults, resultWithDefaults)
+		})
+	}
 }
 
 type MyString string
