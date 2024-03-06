@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -3578,25 +3577,29 @@ func TestProviderConfigMinMaxItemsOne(t *testing.T) {
 	})
 }
 
-func TestProviderCheckConfigDefaults(t *testing.T) {
+func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
+	t.Setenv("REQUIRED_CONFIG", "required")
+	// Note that this config should be invalid.
+	//
+	// From the Required docs: Required cannot be used with Computed Default, DefaultFunc
+	// attributes in a Provider schema
+	//
+	// From the DefaultFunc docs: For legacy reasons, DefaultFunc can be used with Required
+	//
+	// This is needed right now since some providers (e.g. Azure) depend on this.
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{
-			"default_config": {
-				Type:     schemav2.TypeString,
-				Optional: true,
-				Default:  "default",
+			"required_env": {
+				Type:        schemav2.TypeString,
+				Required:    true,
+				DefaultFunc: schemav2.EnvDefaultFunc("REQUIRED_CONFIG", nil),
 			},
-			"default_config_invalid": {
-				Type:     schemav2.TypeString,
-				Optional: true,
-				Default:  "default",
-				ValidateDiagFunc: func(v interface{}, p cty.Path) diag.Diagnostics {
-					if v.(string) != "default" {
-						return nil
-					}
-					return diag.Errorf("Error!")
-				},
-			},
+			// This is actually invalid!
+			// "required": {
+			// 	Type:     schemav2.TypeString,
+			// 	Required: true,
+			// 	Default:  "default",
+			// },
 		},
 	}
 	shimProv := shimv2.NewProvider(p)
@@ -3607,7 +3610,7 @@ func TestProviderCheckConfigDefaults(t *testing.T) {
 		resources: map[tokens.Type]Resource{},
 	}
 
-	t.Run("No error when config not specified", func(t *testing.T) {
+	t.Run("No error with env config", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
 		  "method": "/pulumirpc.ResourceProvider/CheckConfig",

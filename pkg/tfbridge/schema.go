@@ -288,18 +288,19 @@ func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
 }
 
 type conversionContext struct {
-	Ctx                   context.Context
-	ComputeDefaultOptions ComputeDefaultOptions
-	ProviderConfig        resource.PropertyMap
-	ApplyDefaults         bool
-	ApplyTFDefaults       bool
-	Assets                AssetTable
+	Ctx                      context.Context
+	ComputeDefaultOptions    ComputeDefaultOptions
+	ProviderConfig           resource.PropertyMap
+	ApplyDefaults            bool
+	ApplyTFDefaults          bool
+	ApplyMaxItemsOneDefaults bool
+	Assets                   AssetTable
 }
 
 func makeTerraformInputsHelper(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	applyTFDefaults bool,
+	applyTFDefaults, applyMaxItemsOneDefaults bool,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -312,12 +313,13 @@ func makeTerraformInputsHelper(
 	}
 
 	cctx := &conversionContext{
-		Ctx:                   ctx,
-		ComputeDefaultOptions: cdOptions,
-		ProviderConfig:        config,
-		ApplyDefaults:         true,
-		ApplyTFDefaults:       applyTFDefaults,
-		Assets:                AssetTable{},
+		Ctx:                      ctx,
+		ComputeDefaultOptions:    cdOptions,
+		ProviderConfig:           config,
+		ApplyDefaults:            true,
+		ApplyTFDefaults:          applyTFDefaults,
+		ApplyMaxItemsOneDefaults: applyMaxItemsOneDefaults,
+		Assets:                   AssetTable{},
 	}
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
@@ -330,14 +332,21 @@ func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true)
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, true)
 }
 
 func makeTerraformInputsWithoutTFDefaults(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false)
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false)
+}
+
+func makeTerraformInputsWithoutMaxItemsOneDefaults(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -655,7 +664,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
-	if tfs != nil && ctx.ApplyTFDefaults {
+	if tfs != nil && ctx.ApplyMaxItemsOneDefaults {
 		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
 		tfs.Range(func(key string, value shim.Schema) bool {
 			// First do a lookup of the name/info.

@@ -517,7 +517,7 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := makeTerraformInputsWithoutTFDefaults(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := makeTerraformInputsWithoutMaxItemsOneDefaults(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
