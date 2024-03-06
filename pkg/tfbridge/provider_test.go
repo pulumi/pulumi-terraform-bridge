@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -3257,5 +3258,182 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 			}
 		}`)
 		t.Errorf("The code did not panic!")
+	})
+}
+
+func TestSingularAndPluralProp(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"nodes": {
+						Type:     schema.TypeList,
+						MinItems: 1,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schemav2.Schema{
+								"role": {
+									Type:     schema.TypeList,
+									Required: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+								"roles": {
+									Type:       schema.TypeString,
+									Optional:   true,
+									Deprecated: "Use role instead",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{
+					Fields: map[string]*SchemaInfo{
+						"nodes": {
+							Elem: &SchemaInfo{
+								Fields: map[string]*SchemaInfo{
+									"roles": {
+										Name:       "rolesDeprecated",
+										CSharpName: "RolesDeprecated",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("No error when plural specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"nodes": [{
+                        "roles": ["role1", "role2"]
+                    }]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "nodes": [
+					{"__defaults": [], "roles": ["role1", "role2"]}
+				  ]
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestSingularAndPluralPropTopLevel(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"role": {
+						Type:     schema.TypeList,
+						Required: true,
+						Elem: &schema.Schema{
+							Type: schema.TypeString,
+						},
+					},
+					"roles": {
+						Type:       schema.TypeString,
+						Optional:   true,
+						Deprecated: "Use role instead",
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{
+					Fields: map[string]*SchemaInfo{
+						"roles": {
+							Name:       "rolesDeprecated",
+							CSharpName: "RolesDeprecated",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("No error when plural specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"roles": ["role1", "role2"]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "roles": ["role1", "role2"]
+				}
+			  }
+			}
+		  ]
+		  `)
 	})
 }

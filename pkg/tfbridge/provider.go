@@ -780,9 +780,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, urn, fmt.Sprintf("%v verification warning: %v", urn, warn)); err != nil {
-			return nil, err
-		}
+		GetLogger(ctx).Warn(fmt.Sprintf("%v verification warning: %v", urn, warn))
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
