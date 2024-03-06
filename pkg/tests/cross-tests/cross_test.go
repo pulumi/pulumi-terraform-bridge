@@ -12,15 +12,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"gopkg.in/yaml.v3"
-
+	//"github.com/stretchr/testify/assert"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -43,6 +43,9 @@ type diffTestCase struct {
 	//
 	// See	https://developer.hashicorp.com/terraform/language/syntax/json
 	Config1, Config2 any
+
+	// Bypass interacting with the bridged Pulumi provider.
+	SkipPulumi bool
 }
 
 const (
@@ -63,6 +66,10 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	tfApply(t, tfwd, reattachConfig)
 	tfWriteJson(t, tfwd, tc.Config2)
 	tfApply(t, tfwd, reattachConfig)
+
+	if tc.SkipPulumi {
+		return
+	}
 
 	handle, err := startPulumiProvider(ctx, tc)
 	require.NoError(t, err)
@@ -89,12 +96,8 @@ func tfWriteJson(t *testing.T, cwd string, rconfig any) {
 }
 
 func tfApply(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) {
-	t.Logf("terraform apply -auto-approve -refresh=false")
-	cmd := exec.Command("terraform", "apply", "-auto-approve", "-refresh=false")
-	cmd.Dir = cwd
-	cmd.Env = append(cmd.Env, formatReattachEnvVar(providerName, reattachConfig))
-	err := cmd.Run()
-	require.NoErrorf(t, err, "error from `terraform apply`")
+	execCmd(t, cwd, []string{formatReattachEnvVar(providerName, reattachConfig)},
+		"terraform", "apply", "-auto-approve", "-refresh=false")
 }
 
 func toTFProvider(tc diffTestCase) *schema.Provider {
@@ -109,19 +112,26 @@ func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
 	tc.Resource.CustomizeDiff = func(
 		ctx context.Context, rd *schema.ResourceDiff, i interface{},
 	) error {
+		// fmt.Printf(`\n\n   CustomizeDiff: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
+		// fmt.Println("\n\nGetRawPlan:   ", rd.GetRawPlan().GoString())
+		// fmt.Println("\n\nGetRawConfig: ", rd.GetRawConfig().GoString())
+		// fmt.Println("\n\nGetRawState:  ", rd.GetRawState().GoString())
 		return nil
 	}
 
-	tc.Resource.CreateContext = func(
-		ctx context.Context, rd *schema.ResourceData, i interface{},
-	) diag.Diagnostics {
-		rd.SetId("example")
-		return diag.Diagnostics{}
+	if tc.Resource.CreateContext == nil {
+		tc.Resource.CreateContext = func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.SetId("newid")
+			return diag.Diagnostics{}
+		}
 	}
 
 	tc.Resource.UpdateContext = func(
 		ctx context.Context, rd *schema.ResourceData, i interface{},
 	) diag.Diagnostics {
+		//fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
 		return diag.Diagnostics{}
 	}
 
@@ -197,6 +207,46 @@ func TestSimpleStringRename(t *testing.T) {
 		Config2: map[string]any{
 			"name": "B",
 		},
+	})
+}
+
+func TestSetReordering(t *testing.T) {
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+		CreateContext: func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			rd.SetId("newid")
+			require.IsType(t, &schema.Set{}, rd.Get("set"))
+			return diag.Diagnostics{}
+		},
+	}
+	runDiffCheck(t, diffTestCase{
+		Resource: resource,
+		Config1: map[string]any{
+			"set": []string{"A", "B"},
+		},
+		Config2: map[string]any{
+			"set": []string{"B", "A"},
+		},
+
+		// Got an problem from not translating TF JSON to Pulumi yaml correctly.
+		//
+		// Error: Property set does not exist on 'crossprovider:index:TestRes'
+		//   on Pulumi.yaml line 7:
+		//    7:             set:
+		// Cannot assign '{set: List<string>}' to 'crossprovider:index:TestRes':
+		//   Existing properties are: sets
+		SkipPulumi: true,
 	})
 }
 
