@@ -193,10 +193,13 @@ func TestRegressAws2352(t *testing.T) {
 	    }
 	  },
 	  "response": {
-	    "stables": "*",
-	    "changes": "DIFF_NONE",
-	    "hasDetailedDiff": "*"
-	  }
+            "stables": [
+              "direction",
+              "securityGroupIds"
+            ],
+            "changes": "DIFF_NONE",
+            "hasDetailedDiff": "*"
+          }
 	}`
 	testutils.Replay(t, server, testCase)
 }
