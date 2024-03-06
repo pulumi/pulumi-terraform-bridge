@@ -331,7 +331,7 @@ func (p *planResourceChangeImpl) upgradeState(
 		instanceState.Attributes = map[string]string{}
 	}
 	instanceState.Meta = state.meta
-	newInstanceState, err := upgradeResourceState(ctx, p.tf, res, instanceState)
+	newInstanceState, err := upgradeResourceState(ctx, t, p.tf, res, instanceState)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (s *grpcServer) handle(ctx context.Context, diags []*tfprotov5.Diagnostic, 
 		dd = append(dd, rd)
 		logDiag(ctx, rd)
 	}
-	derr := errors(dd)
+	derr := diagToError(dd)
 	if derr != nil && err != nil {
 		return multierror.Append(derr, err)
 	}

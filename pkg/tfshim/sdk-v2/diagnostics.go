@@ -30,7 +30,7 @@ func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
 	return warnings, errors
 }
 
-func errors(diags diag.Diagnostics) error {
+func diagToError(diags diag.Diagnostics) error {
 	var err error
 	for _, d := range diags {
 		if d.Severity == diag.Error {
