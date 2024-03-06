@@ -778,7 +778,6 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
 		GetLogger(ctx).Warn(fmt.Sprintf("%v verification warning: %v", urn, warn))
-		}
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
