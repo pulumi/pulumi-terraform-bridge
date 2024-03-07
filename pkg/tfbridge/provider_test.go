@@ -3303,7 +3303,7 @@ func TestSingularAndPluralProp(t *testing.T) {
 				TFName: "res",
 				Schema: &ResourceInfo{
 					Fields: map[string]*SchemaInfo{
-						"nodes": {
+						"nodes": {Elem: &SchemaInfo{
 							Elem: &SchemaInfo{
 								Fields: map[string]*SchemaInfo{
 									"roles": {
@@ -3312,7 +3312,7 @@ func TestSingularAndPluralProp(t *testing.T) {
 									},
 								},
 							},
-						},
+						}},
 					},
 				},
 			},
