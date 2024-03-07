@@ -29,15 +29,13 @@ import (
 )
 
 func TestFlattenedEncoder(t *testing.T) {
-	enc := &encoding{nil, nil}
-
-	listEncoder, err := enc.newPropertyEncoder(
+	listEncoder, err := newPropertyEncoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeList),
 		"p",
 		tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
-	setEncoder, err := enc.newPropertyEncoder(
+	setEncoder, err := newPropertyEncoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeSet),
 		"p",
 		tftypes.Set{ElementType: tftypes.String})
@@ -80,15 +78,13 @@ func TestFlattenedEncoder(t *testing.T) {
 }
 
 func TestFlattenedDecoder(t *testing.T) {
-	enc := &encoding{nil, nil}
-
-	listDecoder, err := enc.newPropertyDecoder(
+	listDecoder, err := newPropertyDecoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeList),
 		"p",
 		tftypes.List{ElementType: tftypes.String})
 	require.NoError(t, err)
 
-	setDecoder, err := enc.newPropertyDecoder(
+	setDecoder, err := newPropertyDecoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeSet),
 		"p",
 		tftypes.Set{ElementType: tftypes.String})
