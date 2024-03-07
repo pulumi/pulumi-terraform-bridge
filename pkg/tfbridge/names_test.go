@@ -174,10 +174,13 @@ func TestBijectiveNameConversion(t *testing.T) {
 		}
 	}
 
+	type PulumiName = string
+	type TFName = string
+
 	tests := []struct {
-		schema   map[string]*schemav2.Schema
-		info     map[string]*SchemaInfo
-		expected map[string]string
+		schema   map[TFName]*schemav2.Schema
+		info     map[TFName]*SchemaInfo
+		expected map[PulumiName]TFName
 	}{
 		{ // Conflicting plural types
 			schema: certSchema(),
@@ -283,6 +286,33 @@ func TestBijectiveNameConversion(t *testing.T) {
 			},
 			expected: map[string]string{
 				"values": "value",
+			},
+		},
+
+		{ // A Pulumi name that maps to a TF name of a different property
+			schema: map[string]*schemav2.Schema{
+				"role": {
+					Type:     schemav2.TypeList,
+					Required: true,
+					Elem: &schemav2.Schema{
+						Type: schemav2.TypeString,
+					},
+				},
+				"roles": {
+					Type:       schemav2.TypeString,
+					Optional:   true,
+					Deprecated: "Use role instead",
+				},
+			},
+			info: map[string]*SchemaInfo{
+				"roles": {
+					Name:       "rolesDeprecated",
+					CSharpName: "RolesDeprecated",
+				},
+			},
+			expected: map[string]string{
+				"rolesDeprecated": "roles",
+				"roles":           "role",
 			},
 		},
 	}
