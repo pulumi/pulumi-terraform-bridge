@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"

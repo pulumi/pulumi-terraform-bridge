@@ -58,7 +58,7 @@
           "type": "string"
         },
         "translateField": {
-          "type":     "string",
+          "type": "string",
           "description": "When cloudflare.Ruleset is mentioned, it should be translated.\n"
         }
       },

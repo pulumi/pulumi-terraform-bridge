@@ -34,10 +34,10 @@
           "type": "string"
         }
       },
-      "required":[
+      "type": "object",
+      "required": [
         "value"
-      ],
-      "type": "object"
+      ]
     }
   },
   "provider": {
