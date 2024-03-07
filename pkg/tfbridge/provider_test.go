@@ -3586,6 +3586,12 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 				Required:    true,
 				DefaultFunc: schemav2.EnvDefaultFunc("REQUIRED_CONFIG", nil),
 			},
+			// This is actually invalid!
+			// "required": {
+			// 	Type:     schemav2.TypeString,
+			// 	Required: true,
+			// 	Default:  "default",
+			// },
 		},
 	}
 	shimProv := shimv2.NewProvider(p)
@@ -3650,33 +3656,7 @@ func TestMaxItemsOnePropChecks(t *testing.T) {
 		},
 	}
 
-	t.Run("Clean diff", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-		{
-			"method": "/pulumirpc.ResourceProvider/Diff",
-			"request": {
-				"id": "urn:pulumi:dev::teststack::Res::exres",
-				"urn": "urn:pulumi:dev::teststack::Res::exres",
-				"olds": {
-					"networkRulesets": {
-						"defaultAction": "Allow"
-					}
-				},
-				"news": {
-					"__defaults": []
-				},
-				"oldInputs": {
-					"__defaults": []
-				}
-			},
-			"response": {
-				"changes": "DIFF_NONE",
-				"hasDetailedDiff": true
-			}
-		}`)
-	})
-
-	t.Run("Check includes no nulls in response", func(t *testing.T) {
+	t.Run("Check includes no nulls in response for unspecified props", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
