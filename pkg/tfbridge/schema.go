@@ -1258,6 +1258,7 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), cctx.Assets, nil
 }
 
+// TODO: this is now unused internally, can we delete it?
 // UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
 func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
