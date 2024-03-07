@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
