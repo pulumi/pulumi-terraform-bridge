@@ -250,6 +250,5 @@ func getDocsPath(repo string, kind DocKind) ([]string, error) {
 		paths = append(paths, p)
 	}
 
-
 	return paths, err
 }
