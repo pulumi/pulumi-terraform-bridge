@@ -758,8 +758,7 @@ func TestCheckCallback(t *testing.T) {
 			    "response": {
 			      "inputs": {
 				"__defaults": [],
-				"arrayPropertyValues": ["global"],
-				"nestedResources": null
+				"arrayPropertyValues": ["global"]
 			      }
 			    }
 			  }
@@ -1046,7 +1045,6 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": ["stringPropertyValue"],
 		      "arrayPropertyValues": [],
-			  "nestedResources": null,
 		      "stringPropertyValue": "oldString!"
 		    }
 		  }
@@ -1069,7 +1067,6 @@ func TestCheck(t *testing.T) {
 		  "response": {
 		    "inputs": {
 		      "__defaults": [],
-			  "nestedResources": null,
 		      "arrayPropertyValues": []
 		    }
 		  }
@@ -1114,7 +1111,6 @@ func TestCheck(t *testing.T) {
 		    "inputs": {
                       "__defaults": [],
 		      "arrayPropertyValues": [],
-			  "nestedResources": null,
 		      "stringPropertyValue": {
                         "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
                         "value": "newString"
@@ -3328,8 +3324,7 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 			  "response": {
 				"inputs": {
 				  "__defaults": [],
-				  "otherProp": "other",
-				  "maxItemsOneProp": null
+				  "otherProp": "other"
 				}
 			  }
 			}
@@ -3360,8 +3355,7 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": [],
-				  "maxItemsOneProp": null
+				  "__defaults": []
 				}
 			  }
 			}
@@ -3426,8 +3420,7 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": [],
-				  "maxItemsOneProp": null
+				  "__defaults": []
 				}
 			  }
 			}
@@ -3531,8 +3524,7 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 			  },
 			  "response": {
 				"inputs": {
-				  "__defaults": [],
-				  "specs": null
+				  "__defaults": []
 				}
 			  }
 			}
@@ -3594,12 +3586,6 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 				Required:    true,
 				DefaultFunc: schemav2.EnvDefaultFunc("REQUIRED_CONFIG", nil),
 			},
-			// This is actually invalid!
-			// "required": {
-			// 	Type:     schemav2.TypeString,
-			// 	Required: true,
-			// 	Default:  "default",
-			// },
 		},
 	}
 	shimProv := shimv2.NewProvider(p)
@@ -3622,6 +3608,92 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 		  "response": {
 		    "inputs": {}
 		  }
+		}`)
+	})
+}
+
+func TestMaxItemsOnePropChecks(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"networkRulesets": {
+						Computed: true,
+						Optional: true,
+						MaxItems: 1,
+						Type:     schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"defaultAction": {
+									Type:     schema.TypeString,
+									Required: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info:   ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("Clean diff", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"id": "urn:pulumi:dev::teststack::Res::exres",
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+					"networkRulesets": {
+						"defaultAction": "Allow"
+					}
+				},
+				"news": {
+					"__defaults": []
+				},
+				"oldInputs": {
+					"__defaults": []
+				}
+			},
+			"response": {
+				"changes": "DIFF_NONE",
+				"hasDetailedDiff": true
+			}
+		}`)
+	})
+
+	t.Run("Check includes no nulls in response", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+					"__defaults": [],
+					"networkRulesets": null
+				},
+				"news": {},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": []
+				}
+			}
 		}`)
 	})
 }

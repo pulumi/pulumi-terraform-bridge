@@ -332,7 +332,7 @@ func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, true)
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false)
 }
 
 func makeTerraformInputsWithoutTFDefaults(
@@ -340,13 +340,6 @@ func makeTerraformInputsWithoutTFDefaults(
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false)
-}
-
-func makeTerraformInputsWithoutMaxItemsOneDefaults(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -1230,6 +1223,22 @@ func MakeTerraformOutput(
 	}
 
 	return output
+}
+
+// TODO: clean this up
+func makeTerraformConfigWithMaxItemsOneDefaults(ctx context.Context, p *Provider, m resource.PropertyMap,
+tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
+	cctx := conversionContext{
+		Ctx:            ctx,
+		ProviderConfig: p.configValues,
+		Assets:         AssetTable{},
+		ApplyMaxItemsOneDefaults: true,
+	}
+	inputs, err := cctx.makeTerraformInputs(nil, m, tfs, ps)
+	if err != nil {
+		return nil, nil, err
+	}
+	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), cctx.Assets, nil
 }
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.

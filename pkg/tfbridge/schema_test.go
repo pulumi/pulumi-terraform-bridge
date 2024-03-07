@@ -42,6 +42,7 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
+// TODO: check if this can use makeTerraformInputsHelper
 func tMakeTerraformInputsWithoutAnyDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
@@ -59,10 +60,10 @@ func tMakeTerraformInputs(olds, news resource.PropertyMap,
 	return MakeTerraformInputs(context.Background(), nil, nil, olds, news, tfs, ps)
 }
 
-func tMakeTerraformInputsWithoutMaxItemsOneDefaults(olds, news resource.PropertyMap,
+func tMakeTerraformInputsWithMaxItemsOneDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithoutMaxItemsOneDefaults(context.Background(), nil, nil, olds, news, tfs, ps)
+	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, true, true)
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
@@ -436,7 +437,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 		news                  resource.PropertyMap
 		expectedNoDefaults    map[string]interface{}
 		expectedWithDefaults  map[string]interface{}
-		expectedNoMIODefaults map[string]interface{}
+		expectedWithMIODefaults map[string]interface{}
 	}{
 		"empty-olds": {
 			olds: resource.PropertyMap{},
@@ -450,10 +451,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			expectedNoDefaults: map[string]interface{}{},
 			expectedWithDefaults: map[string]interface{}{
 				"__defaults": []interface{}{},
-				"element":    []interface{}{},
 			},
-			expectedNoMIODefaults: map[string]interface{}{
+			expectedWithMIODefaults: map[string]interface{}{
 				"__defaults": []interface{}{},
+				"element":    []interface{}{},
 			},
 		},
 		"non-empty-olds": {
@@ -475,10 +476,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			expectedNoDefaults: map[string]interface{}{},
 			expectedWithDefaults: map[string]interface{}{
 				"__defaults": []interface{}{},
-				"element":    []interface{}{},
 			},
-			expectedNoMIODefaults: map[string]interface{}{
+			expectedWithMIODefaults: map[string]interface{}{
 				"__defaults": []interface{}{},
+				"element":    []interface{}{},
 			},
 		},
 		"non-missing-news": {
@@ -504,7 +505,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"__defaults": []interface{}{},
 				"element":    []interface{}{"el"},
 			},
-			expectedNoMIODefaults: map[string]interface{}{
+			expectedWithMIODefaults: map[string]interface{}{
 				"__defaults": []interface{}{},
 				"element":    []interface{}{"el"},
 			},
@@ -523,10 +524,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedWithDefaults, resultWithDefaults)
 
-			resultNoMIODefaults, _, err := tMakeTerraformInputsWithoutMaxItemsOneDefaults(
+			resultNoMIODefaults, _, err := tMakeTerraformInputsWithMaxItemsOneDefaults(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedNoMIODefaults, resultNoMIODefaults)
+			assert.Equal(t, tt.expectedWithMIODefaults, resultNoMIODefaults)
 		})
 	}
 }

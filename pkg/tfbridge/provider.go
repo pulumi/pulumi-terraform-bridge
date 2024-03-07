@@ -517,7 +517,7 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := makeTerraformInputsWithoutMaxItemsOneDefaults(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -1003,15 +1003,17 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
+	props, err := plugin.UnmarshalProperties(req.GetProperties(),
+		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unmarshaling %s's new property state", urn)
+	}
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	config, assets, err := UnmarshalTerraformConfig(ctx,
-		p, req.GetProperties(), res.TF.Schema(), res.Schema.Fields,
-		fmt.Sprintf("%s.news", label))
+	config, assets, err := makeTerraformConfigWithMaxItemsOneDefaults(ctx, p, props, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
-
 	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 	timeouts, err := res.TF.DecodeTimeouts(config)
 	if err != nil {
@@ -1053,7 +1055,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
