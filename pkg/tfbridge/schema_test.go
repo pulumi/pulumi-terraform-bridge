@@ -45,12 +45,7 @@ import (
 func tMakeTerraformInputsWithoutAnyDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	ctx := &conversionContext{Assets: AssetTable{}}
-	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
-	if err != nil {
-		return nil, nil, err
-	}
-	return inputs, ctx.Assets, err
+	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, false, false, false)
 }
 
 func tMakeTerraformInputs(olds, news resource.PropertyMap,
@@ -62,7 +57,7 @@ func tMakeTerraformInputs(olds, news resource.PropertyMap,
 func tMakeTerraformInputsWithMaxItemsOneDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, true, true)
+	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, true, true, true)
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {

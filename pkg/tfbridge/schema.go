@@ -300,7 +300,7 @@ type conversionContext struct {
 func makeTerraformInputsHelper(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	applyTFDefaults, applyMaxItemsOneDefaults bool,
+	applyDefaults, applyTFDefaults, applyMaxItemsOneDefaults  bool,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -316,7 +316,7 @@ func makeTerraformInputsHelper(
 		Ctx:                      ctx,
 		ComputeDefaultOptions:    cdOptions,
 		ProviderConfig:           config,
-		ApplyDefaults:            true,
+		ApplyDefaults:            applyDefaults,
 		ApplyTFDefaults:          applyTFDefaults,
 		ApplyMaxItemsOneDefaults: applyMaxItemsOneDefaults,
 		Assets:                   AssetTable{},
@@ -332,14 +332,14 @@ func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false)
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, true, false)
 }
 
 func makeTerraformInputsWithoutTFDefaults(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false)
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false, false)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
