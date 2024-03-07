@@ -54,4 +54,4 @@ func (*trivialLocalPropertyNames) PropertyKey(property TerraformPropertyName, t 
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
-var _ LocalPropertyNames = &trivialLocalPropertyNames{}
+var _ localPropertyNames = &trivialLocalPropertyNames{}
