@@ -32,7 +32,7 @@ func TestRelaxedSecretHandling(t *testing.T) {
 		},
 	}
 
-	encoder, err := newObjectEncoder(ty, map[TerraformPropertyName]Encoder{
+	encoder, err := newObjectEncoder(ty, map[terraformPropertyName]Encoder{
 		"x": newStringEncoder(),
 	}, &trivialLocalPropertyNames{})
 	require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestRelaxedSecretHandling(t *testing.T) {
 
 type trivialLocalPropertyNames struct{}
 
-func (*trivialLocalPropertyNames) PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey {
+func (*trivialLocalPropertyNames) PropertyKey(property terraformPropertyName, t tftypes.Type) resource.PropertyKey {
 	return resource.PropertyKey(property)
 }
 

@@ -103,8 +103,8 @@ func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Ob
 }
 
 func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
-	objectType tftypes.Object) (map[TerraformPropertyName]Encoder, error) {
-	propertyEncoders := map[TerraformPropertyName]Encoder{}
+	objectType tftypes.Object) (map[terraformPropertyName]Encoder, error) {
+	propertyEncoders := map[terraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
@@ -120,8 +120,8 @@ func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
 }
 
 func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
-	objectType tftypes.Object) (map[TerraformPropertyName]Decoder, error) {
-	propertyEncoders := map[TerraformPropertyName]Decoder{}
+	objectType tftypes.Object) (map[terraformPropertyName]Decoder, error) {
+	propertyEncoders := map[terraformPropertyName]Decoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
@@ -136,7 +136,7 @@ func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
 	return propertyEncoders, nil
 }
 
-func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name TerraformPropertyName,
+func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name terraformPropertyName,
 	t tftypes.Type) (Encoder, error) {
 	enc, err := e.deriveEncoder(pctx, t)
 	if err != nil {
@@ -145,7 +145,7 @@ func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name TerraformPro
 	return enc, nil
 }
 
-func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name TerraformPropertyName,
+func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name terraformPropertyName,
 	t tftypes.Type) (Decoder, error) {
 	dec, err := e.deriveDecoder(pctx, t)
 	if err != nil {
