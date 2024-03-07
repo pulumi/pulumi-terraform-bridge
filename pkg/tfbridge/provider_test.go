@@ -3618,7 +3618,7 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 	})
 }
 
-func TestMaxItemsOnePropChecks(t *testing.T) {
+func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
