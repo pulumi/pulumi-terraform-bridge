@@ -30,7 +30,7 @@ import (
 
 // An alias to assist marking Terraform-level property names (see for example AttributeTypes in tftypes.Object). Pulumi
 // may rename properties and it is important to keep track of which name is being used during conversion.
-type TerraformPropertyName = string
+type terraformPropertyName = string
 
 type Encoding interface {
 	NewConfigEncoder(tftypes.Object) (Encoder, error)
@@ -42,7 +42,7 @@ type Encoding interface {
 
 // Like PropertyNames but specialized to either a type by token or config property.
 type localPropertyNames interface {
-	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
+	PropertyKey(property terraformPropertyName, t tftypes.Type) resource.PropertyKey
 }
 
 type Encoder interface {

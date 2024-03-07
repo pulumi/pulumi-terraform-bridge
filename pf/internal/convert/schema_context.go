@@ -67,16 +67,16 @@ func newDataSourceSchemaMapContext(
 	return newSchemaMapContext(sm, fields)
 }
 
-func (sc *schemaMapContext) PropertyKey(tfname TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
+func (sc *schemaMapContext) PropertyKey(tfname terraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	return sc.ToPropertyKey(tfname)
 }
 
-func (sc *schemaMapContext) ToPropertyKey(tfname TerraformPropertyName) resource.PropertyKey {
+func (sc *schemaMapContext) ToPropertyKey(tfname terraformPropertyName) resource.PropertyKey {
 	n := tfbridge.TerraformToPulumiNameV2(tfname, sc.schemaMap, sc.schemaInfos)
 	return resource.PropertyKey(n)
 }
 
-func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) (*schemaPropContext, error) {
+func (sc *schemaMapContext) GetAttr(tfname terraformPropertyName) (*schemaPropContext, error) {
 	step := walk.NewSchemaPath().GetAttr(tfname)
 	s, err := walk.LookupSchemaMapPath(step, sc.schemaMap)
 	if err != nil {
