@@ -1189,8 +1189,8 @@ func MakeTerraformOutput(
 				}
 			}
 			var psflds map[string]*SchemaInfo
-			if ps != nil {
-				psflds = ps.Fields
+			if ps != nil && ps.Elem != nil {
+				psflds = ps.Elem.Fields
 			}
 			obj := MakeTerraformOutputs(
 				ctx, p, outs, tfflds, psflds, assets, rawNames || shimutil.IsOfTypeMap(tfs), supportsSecrets,
