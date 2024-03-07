@@ -816,7 +816,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/accountGrant:AccountGrant",
-			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option<break><break> ```sh<break> $ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true' <break>```<break><break>",
+			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option\n\n```sh\n$ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true'\n```\n\n",
 		},
 		{
 			input: []string{
@@ -829,7 +829,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/apiIntegration:ApiIntegration",
-			expected: "## Import\n\n```sh<break> $ pulumi import snowflake:index/apiIntegration:ApiIntegration example name <break>```<break><break>",
+			expected: "## Import\n\n```sh\n$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name\n```\n\n",
 		},
 		{
 			input: []string{
@@ -844,17 +844,12 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "gcp:accesscontextmanager/accessLevel:AccessLevel",
-			expected: "## Import\n\nThis is a first line in a multi-line import section<break><break> * `{{name}}`<break><break> * `{{id}}`<break><break> For example:<break><break> ```sh<break> $ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name <break>```<break><break>",
+			expected: "## Import\n\nThis is a first line in a multi-line import section\n\n* `{{name}}`\n\n* `{{id}}`\n\nFor example:\n\n```sh\n$ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name\n```\n\n",
 		},
 		{
 			input:        readlines(t, "test_data/parse-imports/accessanalyzer.md"),
 			token:        "aws:accessanalyzer/analyzer:Analyzer",
 			expectedFile: "test_data/parse-imports/accessanalyzer-expected.md",
-		},
-		{
-			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
-			token:        "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
-			expectedFile: "test_data/parse-imports/gameliftconfig-expected.md",
 		},
 		{
 			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
@@ -923,8 +918,6 @@ func TestConvertExamples(t *testing.T) {
 		name string
 		path examplePath
 
-		stripSubsectionWithErrors bool
-
 		needsProviders map[string]pluginDesc
 	}
 
@@ -935,7 +928,6 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
 				token:    "wavefront:index/dashboardJson:DashboardJson",
 			},
-			stripSubsectionWithErrors: true,
 			needsProviders: map[string]pluginDesc{
 				"wavefront": {version: "3.0.0"},
 			},
@@ -953,6 +945,23 @@ func TestConvertExamples(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "aws_lambda_function",
+			path: examplePath{
+				fullPath: "#/resources/aws:lambda/function:Function",
+				token:    "aws:lambda/function:Function",
+			},
+			needsProviders: map[string]pluginDesc{
+				"aws": {
+					pluginDownloadURL: "github://api.github.com/pulumi",
+					version:           "6.22.2",
+				},
+				"archive": {
+					pluginDownloadURL: "github://api.github.com/pulumi",
+					version:           "0.0.4",
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -966,7 +975,75 @@ func TestConvertExamples(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
 			require.NoError(t, err)
-			result := g.convertExamples(string(docs), tc.path, tc.stripSubsectionWithErrors)
+			result := g.convertExamples(string(docs), tc.path)
+
+			out := filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s_out.md", tc.name))
+			if accept {
+				err = os.WriteFile(out, []byte(result), 0600)
+				require.NoError(t, err)
+			}
+			expect, err := os.ReadFile(out)
+			require.NoError(t, err)
+			assert.Equal(t, string(expect), result)
+		})
+	}
+}
+
+func TestConvertExamplesInner(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
+	}
+
+	inmem := afero.NewMemMapFs()
+	info := testprovider.ProviderMiniRandom()
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	type testCase struct {
+		name           string
+		path           examplePath
+		needsProviders map[string]pluginDesc
+	}
+
+	testCases := []testCase{
+		{
+			name: "code_tagged_json_stays_in_description",
+			path: examplePath{
+				fullPath: "#/resources/fake:module/resource:Resource",
+				token:    "fake:module/resource:Resource",
+			},
+		},
+		{
+			name: "inline_fences_are_preserved",
+			path: examplePath{
+				fullPath: "#/resources/fake:module/resource:Resource",
+				token:    "fake:module/resource:Resource",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(fmt.Sprintf("%s/setup", tc.name), func(t *testing.T) {
+			ensureProvidersInstalled(t, tc.needsProviders)
+		})
+
+		t.Run(tc.name, func(t *testing.T) {
+			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
+				fmt.Sprintf("%s.md", tc.name)))
+			require.NoError(t, err)
+			result := g.convertExamplesInner(string(docs), tc.path, g.convertHCL, false)
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
@@ -984,6 +1061,70 @@ func TestConvertExamples(t *testing.T) {
 type pluginDesc struct {
 	version           string
 	pluginDownloadURL string
+}
+
+func TestFindFencesAndHeaders(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
+	}
+	type testCase struct {
+		name     string
+		path     string
+		expected []codeBlock
+	}
+
+	testCases := []testCase{
+		{
+			name: "finds locations of all fences and headers in a long doc",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"aws_lambda_function_description.md"),
+			expected: []codeBlock{
+				{start: 1966, end: 2977, headerStart: 1947},
+				{start: 3001, end: 3224, headerStart: 2982},
+				{start: 3387, end: 4105, headerStart: 3229},
+				{start: 4358, end: 5953, headerStart: 4110},
+				{start: 6622, end: 8041, headerStart: 6421},
+				{start: 9151, end: 9238, headerStart: 9052},
+			},
+		},
+		{
+			name: "finds locations when there are no headers",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-code-block.md"),
+			expected: []codeBlock{
+				{start: 0, end: 46, headerStart: -1},
+			},
+		},
+		{
+			name: "starts with an h2 header",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-h2.md"),
+			expected: []codeBlock{
+				{start: 91, end: 142, headerStart: 0},
+			},
+		},
+		{
+			name: "starts with an h3 header",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"starts-with-h3.md"),
+			expected: []codeBlock{
+				{start: 92, end: 114, headerStart: 0},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testDocBytes, err := os.ReadFile(tc.path)
+			require.NoError(t, err)
+			testDoc := string(testDocBytes)
+			actual := findFencesAndHeaders(testDoc)
+			assert.Equal(t, tc.expected, actual)
+		})
+
+	}
+
 }
 
 func ensureProvidersInstalled(t *testing.T, needsProviders map[string]pluginDesc) {

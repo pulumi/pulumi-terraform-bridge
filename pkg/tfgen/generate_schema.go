@@ -953,13 +953,13 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 }
 
 func (g *Generator) convertExamplesInPropertySpec(path examplePath, spec pschema.PropertySpec) pschema.PropertySpec {
-	spec.Description = g.convertExamples(spec.Description, path, false)
-	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path, false)
+	spec.Description = g.convertExamples(spec.Description, path)
+	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path)
 	return spec
 }
 
 func (g *Generator) convertExamplesInObjectSpec(path examplePath, spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
-	spec.Description = g.convertExamples(spec.Description, path, false)
+	spec.Description = g.convertExamples(spec.Description, path)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
@@ -967,8 +967,8 @@ func (g *Generator) convertExamplesInObjectSpec(path examplePath, spec pschema.O
 }
 
 func (g *Generator) convertExamplesInResourceSpec(path examplePath, spec pschema.ResourceSpec) pschema.ResourceSpec {
-	spec.Description = g.convertExamples(spec.Description, path, true)
-	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path, false)
+	spec.Description = g.convertExamples(spec.Description, path)
+	spec.DeprecationMessage = g.convertExamples(spec.DeprecationMessage, path)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)
 	}
@@ -983,7 +983,7 @@ func (g *Generator) convertExamplesInResourceSpec(path examplePath, spec pschema
 }
 
 func (g *Generator) convertExamplesInFunctionSpec(path examplePath, spec pschema.FunctionSpec) pschema.FunctionSpec {
-	spec.Description = g.convertExamples(spec.Description, path, true)
+	spec.Description = g.convertExamples(spec.Description, path)
 	if spec.Inputs != nil {
 		inputs := g.convertExamplesInObjectSpec(path.Inputs(), *spec.Inputs)
 		spec.Inputs = &inputs

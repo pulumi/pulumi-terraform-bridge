@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,11 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+)
+
+const (
+	startPulumiCodeChooser = "<!--Start PulumiCodeChooser -->"
+	endPulumiCodeChooser   = "<!--End PulumiCodeChooser -->"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
@@ -995,7 +1001,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		return
 	}
 
-	var importDocString []string
+	var importDocString string
 	for _, section := range subsection {
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
 			strings.Contains(section, "**Note:**") {
@@ -1045,22 +1051,20 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			// Because splitGroupLines will strip any newlines off our description text, we use `<break>` as a
-			// placeholder, which we will replace with newlines in convertExamplesInner.
-			importCommand := fmt.Sprintf("$ pulumi import %s%s", tok, importString)
-			importDetails := []string{"```sh<break>", importCommand, "<break>```<break><break>"}
-			importDocString = append(importDocString, importDetails...)
+			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
+			importDetails := "```sh\n" + importCommand + "```\n\n"
+			importDocString = importDocString + importDetails
 		} else {
 			if !isBlank(section) {
 				// Ensure every section receives a line break.
-				section = section + "<break><break>"
-				importDocString = append(importDocString, section)
+				section = section + "\n\n"
+				importDocString = importDocString + section
 			}
 		}
 	}
 
 	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", strings.Join(importDocString, " "))
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
 	}
 }
 
@@ -1132,9 +1136,9 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) 
 }
 
 func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
-	fmt.Fprintf(w, "```sh<break>\n")
+	fmt.Fprintf(w, "```sh\n")
 	fmt.Fprintf(w, "$ pulumi import %s %s %s\n", typeToken, name, id)
-	fmt.Fprintf(w, "<break>```<break>\n")
+	fmt.Fprintf(w, "```\n")
 }
 
 // Parses import example codeblocks.
@@ -1246,7 +1250,7 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs string, path examplePath, stripSubsectionsWithErrors bool) (result string) {
+func (g *Generator) convertExamples(docs string, path examplePath) (result string) {
 	if docs == "" {
 		return ""
 	}
@@ -1266,11 +1270,54 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 		return docs
 	}
 
+	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
+	// specifies the PULUMI_CONVERT_EXAMPES_CACHE_DIR environment variable, pointing to a folder for the cache.
+	{
+		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPES_CACHE_DIR")
+		if enableCache && dir != "" {
+			path := path.String()
+			sep := string(rune(0))
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
+			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
+			fmt.Fprintf(&buf, "path=%v%s", path, sep)
+			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
+
+			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
+
+			filePath := filepath.Join(dir, hash)
+
+			bytes, err := os.ReadFile(filePath)
+			if err == nil {
+				// cache hit
+				return string(bytes)
+			}
+			// ignore the error, assume cache miss or file not found
+			defer func() {
+				// only write the cache for sizable results, >0.5kb
+				if len(result) > 512 {
+					// try to write to the cache
+					err := os.WriteFile(filePath, []byte(result), 0600)
+					if err != nil {
+						panic(fmt.Errorf("failed to write examples-cache: %w", err))
+					}
+				}
+			}()
+		}
+	}
+
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
 		strings.Contains(docs, "```go") || strings.Contains(docs, "```yaml") ||
 		strings.Contains(docs, "```csharp") || strings.Contains(docs, "```java") {
 		// we have explicitly rewritten these examples and need to just return them directly rather than trying
-		// to reconvert them. But we need to surround them in the examples shortcode for rendering on the registry
+		// to reconvert them.
+		//
+		//TODO: This only works if the incoming docs already have an {{% example }} shortcode, and if they are
+		// in an "Example Usage" section.
+		// The shortcode should be replaced with the new HTML comment, either in the incoming docs, or here to avoid
+		// breaking users.
+
+		//We need to surround the examples in the examples shortcode for rendering on the registry
 
 		// Find the index of "## Example Usage"
 		exampleIndex := strings.Index(docs, "## Example Usage")
@@ -1287,13 +1334,82 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 	}
 
 	if cliConverterEnabled() {
-		return g.cliConverter().StartConvertingExamples(docs, path,
-			stripSubsectionsWithErrors)
+		return g.cliConverter().StartConvertingExamples(docs, path)
 	}
 
 	// Use coverage tracker: on by default.
 	cov := true
-	return g.convertExamplesInner(docs, path, stripSubsectionsWithErrors, g.convertHCL, cov)
+	return g.convertExamplesInner(docs, path, g.convertHCL, cov)
+}
+
+// codeBlock represents a code block found in the upstream docs, delineated by code fences (```).
+// It also tracks which header it is part of.
+type codeBlock struct {
+	start       int // The index of the first backtick of an opening code fence
+	end         int // The index of the first backtick of a closing code fence
+	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
+}
+
+func findCodeBlock(doc string, i int) (codeBlock, bool) {
+	codeFence := "```"
+	var block codeBlock
+	//find opening code fence
+	if doc[i:i+len(codeFence)] == codeFence {
+		block.start = i
+		// find closing code fence
+		for j := i + len(codeFence); j < (len(doc) - len(codeFence)); j++ {
+			if doc[j:j+len(codeFence)] == codeFence {
+				block.end = j
+				return block, true
+			}
+		}
+		return block, false
+	}
+	return block, false
+}
+
+func findHeader(doc string, i int) (int, bool) {
+	h2 := "##"
+	h3 := "###"
+	foundH2, foundH3 := false, false
+
+	if i == 0 {
+		//handle header at very beginning of doc
+		foundH2 = doc[i:i+len(h2)] == h2
+		foundH3 = doc[i:i+len(h3)] == h3
+
+	} else {
+		//all other headers must be preceded by a newline
+		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
+		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
+	}
+
+	if foundH3 {
+		return i + len(h3), true
+	}
+	if foundH2 {
+		return i + len(h2), true
+	}
+	return -1, false
+}
+func findFencesAndHeaders(doc string) []codeBlock {
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	headerStart := -1
+	for i := 0; i < (len(doc) - len(codeFence)); i++ {
+		block, found := findCodeBlock(doc, i)
+		if found {
+			block.headerStart = headerStart
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+		headerEnd, found := findHeader(doc, i)
+		if found {
+			headerStart = i
+			i = headerEnd
+		}
+	}
+	return codeBlocks
 }
 
 // The inner implementation of examples conversion is parameterized by convertHCL so that it can be
@@ -1301,146 +1417,100 @@ func (g *Generator) convertExamples(docs string, path examplePath, stripSubsecti
 func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
-	stripSubsectionsWithErrors bool,
 	convertHCL func(
-		e *Example, hcl, path, exampleTitle string, languages []string,
+		e *Example, hcl, path string, languages []string,
 	) (string, error),
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
-
-	writeTrailingNewline := func(buf *bytes.Buffer) {
-		if b := buf.Bytes(); len(b) > 0 && b[len(b)-1] != '\n' {
-			buf.WriteByte('\n')
-		}
-	}
 	fprintf := func(w io.Writer, f string, args ...interface{}) {
 		_, err := fmt.Fprintf(w, f, args...)
 		contract.IgnoreError(err)
 	}
+	codeBlocks := findFencesAndHeaders(docs)
+	codeFence := "```"
 
-	for _, section := range splitGroupLines(docs, "## ") {
-		if len(section) == 0 {
-			continue
-		}
+	// Traverse the code blocks and take appropriate action before appending to output
+	textStart := 0
+	stripSection := false
+	stripSectionHeader := 0
+	for _, tfBlock := range codeBlocks {
 
-		isImportSection := false
-		header, wroteHeader := section[0], false
-		isFrontMatter, isExampleUsage := !strings.HasPrefix(header, "## "), header == "## Example Usage"
+		// if the section has a header we append the header after trying to convert the code.
+		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
-		if stripSubsectionsWithErrors && header == "## Import" {
-			isImportSection = true
-			isFrontMatter = false
-			wroteHeader = true
-		}
-
-		sectionStart, sectionEnd := "", ""
-		if isExampleUsage {
-			sectionStart, sectionEnd = "{{% examples %}}\n", "{{% /examples %}}"
-		}
-
-		for _, subsection := range groupLines(section[1:], "### ") {
-
-			// Each `Example ...` section contains one or more examples written in HCL, optionally separated by
-			// comments about the examples. We will attempt to convert them using our `tf2pulumi` tool, and append
-			// them to the description. If we can't, we'll simply log a warning and keep moving along.
-			subsectionOutput := &bytes.Buffer{}
-			skippedExamples, hasExamples := false, false
-			inCodeBlock, codeBlockStart := false, 0
-			for i, line := range subsection {
-				if isImportSection {
-					// we don't want to do anything with the import section
-					continue
-				}
-				if inCodeBlock {
-					if strings.Index(line, "```") != 0 {
-						continue
-					}
-
-					if g.language.shouldConvertExamples() {
-						hcl := strings.Join(subsection[codeBlockStart+1:i], "\n")
-
-						// We've got some code -- assume it's HCL and try to
-						// convert it.
-						var e *Example
-						if useCoverageTracker {
-							e = g.coverageTracker.getOrCreateExample(
-								path.String(), hcl)
-						}
-
-						exampleTitle := ""
-						if strings.Contains(subsection[0], "###") {
-							exampleTitle = strings.Replace(subsection[0], "### ", "", -1)
-						}
-
-						langs := genLanguageToSlice(g.language)
-						codeBlock, err := convertHCL(e, hcl, path.String(),
-							exampleTitle, langs)
-
-						if err != nil {
-							skippedExamples = true
-						} else {
-							fprintf(subsectionOutput, "\n%s", codeBlock)
-						}
-					} else {
-						skippedExamples = true
-					}
-
-					hasExamples = true
-					inCodeBlock = false
-				} else {
-					if strings.Index(line, "```") == 0 {
-						inCodeBlock, codeBlockStart = true, i
-					} else {
-						fprintf(subsectionOutput, "\n%s", line)
-					}
-				}
+		// append non-code text to output
+		if !stripSection {
+			end := tfBlock.start
+			if hasHeader {
+				end = tfBlock.headerStart
 			}
-			if inCodeBlock {
-				skippedExamples = true
-			}
+			fprintf(output, docs[textStart:end])
 
-			// If the subsection contained skipped examples and the caller has requested that we remove such subsections,
-			// do not append its text to the output. Note that we never elide front matter.
-			if skippedExamples && stripSubsectionsWithErrors && !isFrontMatter {
+		} else {
+			// if we are stripping this section and still have the same header, we append nothing and skip to the next
+			// code block.
+			if stripSectionHeader == tfBlock.headerStart {
+				textStart = tfBlock.end + len(codeFence)
 				continue
 			}
+			if stripSectionHeader < tfBlock.headerStart {
+				stripSection = false
+			}
+		}
+		// find the actual start index of the code
+		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
+		if nextNewLine == -1 {
+			// write the line as-is; this is an in-line fence
+			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+		} else {
+			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
+			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or unmarked.
+			if fenceLanguage == "```terraform\n" ||
+				fenceLanguage == "```hcl\n" || fenceLanguage == "```\n" {
 
-			if !wroteHeader {
-				if output.Len() > 0 {
-					fprintf(output, "\n")
+				// generate the code block and append
+				if g.language.shouldConvertExamples() {
+					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
+
+					// Most of our results should be HCL, so we try to convert it.
+					var e *Example
+					if useCoverageTracker {
+						e = g.coverageTracker.getOrCreateExample(
+							path.String(), hcl)
+					}
+					langs := genLanguageToSlice(g.language)
+					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
+
+					if err != nil {
+						// We do not write this section, ever.
+						// We have to strip the entire section: any header, the code block, and any surrounding text.
+						stripSection = true
+						stripSectionHeader = tfBlock.headerStart
+					} else {
+						// append any headers and following text first
+						if hasHeader {
+							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+						}
+						fprintf(output, startPulumiCodeChooser)
+						fprintf(output, "\n%s\n", convertedBlock)
+						fprintf(output, endPulumiCodeChooser)
+					}
 				}
-				fprintf(output, "%s%s", sectionStart, header)
-				wroteHeader = true
-			}
-			if hasExamples && isExampleUsage {
-				writeTrailingNewline(output)
-				fprintf(output, "{{%% example %%}}%s", subsectionOutput.String())
-				writeTrailingNewline(output)
-				fprintf(output, "{{%% /example %%}}")
 			} else {
-				fprintf(output, "%s", subsectionOutput.String())
+				// Take already-valid code blocks as-is.
+				if hasHeader {
+					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+				}
+				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
 			}
 		}
-
-		if isImportSection {
-			section[0] = "\n\n## Import"
-			importDetails := strings.Join(section, " ")
-			importDetails = strings.Replace(importDetails, "  ", "\n\n", -1)
-			importDetails = strings.Replace(importDetails, "<break>", "\n", -1)
-			importDetails = strings.Replace(importDetails, " \n", "\n", -1)
-			fprintf(output, "%s", importDetails)
-			continue
-		}
-
-		if !wroteHeader {
-			if isFrontMatter {
-				fprintf(output, "%s", header)
-			}
-		} else if sectionEnd != "" {
-			writeTrailingNewline(output)
-			fprintf(output, "%s", sectionEnd)
-		}
+		// The non-code text starts up again after the last closing fences
+		textStart = tfBlock.end + len(codeFence)
+	}
+	// Append any remainder of the docs string to the output
+	if !stripSection {
+		fprintf(output, docs[textStart:])
 	}
 	return output.String()
 }
@@ -1692,7 +1762,7 @@ func hclConversionsToString(hclConversions map[string]string) string {
 // If all languages fail to convert, the returned string will be "" and an error will be returned.
 // If some languages fail to convert, the returned string contain any successful conversions and no error will be
 // returned, but conversion failures will be logged via the Generator.
-func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, languages []string) (string, error) {
+func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string) (string, error) {
 	g.debug("converting HCL for %s", path)
 
 	// Fixup the HCL as necessary.
@@ -1723,13 +1793,8 @@ func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, langu
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
-		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-				"from any generated docs or SDKs.", path, err))
-		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s': %v. The example will be "+
-				"dropped from any generated docs or SDKs.", exampleTitle, path, err))
-		}
+		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
+			"from any generated docs or SDKs.", path, err))
 
 		return "", err
 	}
@@ -1739,15 +1804,9 @@ func (g *Generator) convertHCL(e *Example, hcl, path, exampleTitle string, langu
 
 	for lang := range failedLangs {
 		failedLangsStrings = append(failedLangsStrings, lang)
-		if exampleTitle == "" {
-			g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				path, strings.Join(failedLangsStrings, ", ")))
-		} else {
-			g.warn(fmt.Sprintf("unable to convert HCL example '%s' for Pulumi entity '%s' in the following language(s): "+
-				"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-				exampleTitle, path, strings.Join(failedLangsStrings, ", ")))
-		}
+		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
+			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
+			path, strings.Join(failedLangsStrings, ", ")))
 
 		// At least one language out of the given set has been generated, which is considered a success
 		//nolint:ineffassign
