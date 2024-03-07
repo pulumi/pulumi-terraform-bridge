@@ -24,8 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -43,14 +41,8 @@ type Encoding interface {
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
-type LocalPropertyNames interface {
+type localPropertyNames interface {
 	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-}
-
-func NewResourceLocalPropertyNames(resource string,
-	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo) LocalPropertyNames {
-	return newResourceSchemaMapContext(resource, schemaOnlyProvider, providerInfo)
 }
 
 type Encoder interface {
