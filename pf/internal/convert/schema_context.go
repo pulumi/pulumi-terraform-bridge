@@ -29,7 +29,7 @@ type schemaMapContext struct {
 	schemaInfos map[string]*tfbridge.SchemaInfo
 }
 
-var _ LocalPropertyNames = &schemaMapContext{}
+var _ localPropertyNames = &schemaMapContext{}
 
 func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbridge.SchemaInfo) *schemaMapContext {
 	return &schemaMapContext{
