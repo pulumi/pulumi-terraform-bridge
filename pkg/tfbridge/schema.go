@@ -1225,7 +1225,7 @@ func MakeTerraformOutput(
 	return output
 }
 
-// TODO: clean this up
+// TODO: clean this up a bit, reuse makeTerraformInputsHelper
 func makeTerraformConfigWithMaxItemsOneDefaults(ctx context.Context, p *Provider, m resource.PropertyMap,
 tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	cctx := conversionContext{
