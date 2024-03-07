@@ -37,12 +37,9 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 }
 
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
-	mctx := newSchemaMapContext(e.SchemaOnlyProvider.Schema(), e.ProviderInfo.Config)
-	propertyEncoders, err := buildPropertyEncoders(mctx, configType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
-	}
-	enc, err := newObjectEncoder(configType, propertyEncoders, mctx)
+	schema := e.SchemaOnlyProvider.Schema()
+	schemaInfos := e.ProviderInfo.Config
+	enc, err := NewObjectEncoder(schema, schemaInfos, configType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}
@@ -51,53 +48,45 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 
 func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
+	enc, err := NewObjectEncoder(mctx.schemaMap, mctx.schemaInfos, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
-	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
+		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w",
+			resource, err)
 	}
 	return enc, nil
 }
 
 func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", resource, err)
-	}
-	propertyDecoders["id"] = newStringDecoder()
-	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
+	dec, err := NewObjectDecoder(mctx.schemaMap, mctx.schemaInfos, objectType)
+	// Tests pass without this line. Was this intentional? Perhaps to support resources with
+	// non-string IDs? propertyDecoders["id"] = newStringDecoder().
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}
 	return dec, nil
 }
 
-func (e *encoding) NewDataSourceEncoder(dataSource string, objectType tftypes.Object) (Encoder, error) {
+func (e *encoding) NewDataSourceEncoder(
+	dataSource string, objectType tftypes.Object,
+) (Encoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
+	enc, err := NewObjectEncoder(mctx.schemaMap, mctx.schemaInfos, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
-	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
+		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w",
+			dataSource, err)
 	}
 	return enc, nil
 }
 
-func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Object) (Decoder, error) {
+func (e *encoding) NewDataSourceDecoder(
+	dataSource string, objectType tftypes.Object,
+) (Decoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
+	dec, err := NewObjectDecoder(mctx.schemaMap, mctx.schemaInfos, objectType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w", dataSource, err)
-	}
-	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive a decoder for data source %q: %w", dataSource, err)
+		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w",
+			dataSource, err)
 	}
 	return dec, nil
 }

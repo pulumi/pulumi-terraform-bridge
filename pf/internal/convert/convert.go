@@ -26,6 +26,9 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // An alias to assist marking Terraform-level property names (see for example AttributeTypes in tftypes.Object). Pulumi
@@ -49,8 +52,42 @@ type Encoder interface {
 	fromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
 }
 
+func NewObjectEncoder(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	objectType tftypes.Object,
+) (Encoder, error) {
+	mctx := newSchemaMapContext(schemaMap, schemaInfos)
+	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
+	if err != nil {
+		return nil, err
+	}
+	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
+	if err != nil {
+		return nil, err
+	}
+	return enc, nil
+}
+
 type Decoder interface {
 	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
+}
+
+func NewObjectDecoder(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	objectType tftypes.Object,
+) (Decoder, error) {
+	mctx := newSchemaMapContext(schemaMap, schemaInfos)
+	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
+	if err != nil {
+		return nil, err
+	}
+	return dec, nil
 }
 
 func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, error) {
