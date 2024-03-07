@@ -16,7 +16,7 @@ package tfgen
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
