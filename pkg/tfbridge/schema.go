@@ -503,8 +503,8 @@ func (ctx *conversionContext) makeTerraformInput(
 				}
 			}
 			var psflds map[string]*SchemaInfo
-			if ps != nil && ps.Elem != nil {
-				psflds = ps.Elem.Fields
+			if ps != nil {
+				psflds = ps.Fields
 			}
 			var err error
 			input, err = ctx.makeObjectTerraformInputs(oldObject, v.ObjectValue(),
