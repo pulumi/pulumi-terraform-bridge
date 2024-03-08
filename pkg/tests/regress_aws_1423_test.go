@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
 	testutils "github.com/pulumi/providertest/replay"
+
 	webaclschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/webaclschema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -432,12 +432,12 @@ func TestRegressAws1423(t *testing.T) {
 	}`
 
 	t.Run("testCase2/createPreview", func(t *testing.T) {
-		// This is wrong; this test case is from a preview after an up wihtout edits, it should not detect
+		// This is wrong; this test case is from a preview after an up without edits, it should not detect
 		// diffs.
 		testutils.Replay(t, server, testCase2CreatePreview)
 	})
 	t.Run("testCase2/diff", func(t *testing.T) {
-		// This is wrong; this test case is from a preview after an up wihtout edits, it should not detect
+		// This is wrong; this test case is from a preview after an up without edits, it should not detect
 		// diffs.
 		testutils.Replay(t, server, testCase2)
 	})
