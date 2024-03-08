@@ -46,7 +46,7 @@ func makeTerraformInputs(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	ctx := &conversionContext{Assets: AssetTable{}}
-	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
+	inputs, err := ctx.makeTerraformInputs(olds, news, NewObjectTraversal(tfs, ps))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -61,16 +61,16 @@ func makeTerraformInputsWithDefaults(olds, news resource.PropertyMap,
 		ApplyDefaults:   true,
 		ApplyTFDefaults: true,
 	}
-	inputs, err := ctx.makeTerraformInputs(olds, news, tfs, ps)
+	inputs, err := ctx.makeTerraformInputs(olds, news, NewObjectTraversal(tfs, ps))
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputs, ctx.Assets, err
 }
 
-func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
+func makeTerraformInput(v resource.PropertyValue, elem FullElem) (interface{}, error) {
 	ctx := &conversionContext{}
-	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, elem, false)
 }
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
@@ -1308,38 +1308,40 @@ func TestCustomTransforms(t *testing.T) {
 		"a": 99,
 		"b": false,
 	}
-	tfs := shimv1.NewSchema(&schemav1.Schema{Type: schemav1.TypeString})
-	psi := &SchemaInfo{Transform: TransformJSONDocument}
+	tfs := FullSchema{
+		schema: shimv1.NewSchema(&schemav1.Schema{Type: schemav1.TypeString}),
+		info:   &SchemaInfo{Transform: TransformJSONDocument},
+	}
 
-	v1, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs, psi)
+	v1, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v1)
 
 	array := []resource.PropertyValue{resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc))}
-	v1Array, err := makeTerraformInput(resource.NewArrayProperty(array), tfs, psi)
+	v1Array, err := makeTerraformInput(resource.NewArrayProperty(array), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, `[{"a":99,"b":false}]`, v1Array)
 
-	v2, err := makeTerraformInput(resource.NewStringProperty(`{"a":99,"b":false}`), tfs, psi)
+	v2, err := makeTerraformInput(resource.NewStringProperty(`{"a":99,"b":false}`), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":99,"b":false}`, v2)
 
 	doc["c"] = resource.Computed{Element: resource.PropertyValue{V: ""}}
-	v3, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs, psi)
+	v3, err := makeTerraformInput(resource.NewObjectProperty(resource.NewPropertyMapFromMap(doc)), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, TerraformUnknownVariableValue, v3)
 
-	v4, err := makeTerraformInput(resource.MakeComputed(resource.NewStringProperty("")), tfs, psi)
+	v4, err := makeTerraformInput(resource.MakeComputed(resource.NewStringProperty("")), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, TerraformUnknownVariableValue, v4)
 
 	// This checks the fix to the regression caused via CoerceTerraformString to ensure we handle nil in Transforms
-	v5, err := makeTerraformInput(resource.NewNullProperty(), tfs, psi)
+	v5, err := makeTerraformInput(resource.NewNullProperty(), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, "", v5)
 
 	emptyDoc := ""
-	v6, err := makeTerraformInput(resource.NewStringProperty(emptyDoc), tfs, psi)
+	v6, err := makeTerraformInput(resource.NewStringProperty(emptyDoc), tfs)
 	assert.NoError(t, err)
 	assert.Equal(t, "", v6)
 }

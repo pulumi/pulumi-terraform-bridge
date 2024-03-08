@@ -24,7 +24,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // containsComputedValues returns true if the given property value is or contains a computed value.
@@ -69,8 +68,22 @@ type propertyVisitor func(attributeKey, propertyPath string, value resource.Prop
 // To solve this problem, we recurse through each element in the given property value, compute its path, and
 // check to see if the InstanceDiff has an entry for that path.
 func visitPropertyValue(
-	ctx context.Context, name, path string, v resource.PropertyValue, tfs shim.Schema,
-	ps *SchemaInfo, rawNames bool, visitor propertyVisitor) {
+	ctx context.Context, name, path string, v resource.PropertyValue, schema FullElem,
+	rawNames bool, visitor propertyVisitor,
+) {
+
+	var ps *SchemaInfo
+	var tfs shim.Schema
+	var fullSchema FullSchema
+	switch schema := schema.(type) {
+	case FullObject:
+		visitPropertyValueObject(ctx, name, path, v, schema, rawNames, visitor)
+		return
+	case FullSchema:
+		fullSchema = schema
+		ps = schema.Info()
+		tfs = schema.TFSchema()
+	}
 
 	if IsMaxItemsOne(tfs, ps) {
 		if v.IsNull() {
@@ -86,9 +99,10 @@ func visitPropertyValue(
 
 	switch {
 	case v.IsArray():
+		tfs := schema.TFSchema()
 		isset := tfs != nil && tfs.Type() == shim.TypeSet
 
-		etfs, eps := elemSchemas(tfs, ps)
+		elemSchema := fullSchema.Elem()
 
 		for i, e := range v.ArrayValue() {
 			ep := path
@@ -103,7 +117,7 @@ func visitPropertyValue(
 				// fill in default values for empty fields (note that this is a property of the field reader, not of
 				// the schema) as it does when computing the hash code for a set element.
 				ctx := &conversionContext{Ctx: ctx}
-				ev, err := ctx.makeTerraformInput(ep, resource.PropertyValue{}, e, etfs, eps, rawNames)
+				ev, err := ctx.makeTerraformInput(ep, resource.PropertyValue{}, e, elemSchema, rawNames)
 				if err != nil {
 					return
 				}
@@ -127,21 +141,12 @@ func visitPropertyValue(
 			}
 
 			en := name + "." + ti
-			visitPropertyValue(ctx, en, ep, e, etfs, eps, rawNames, visitor)
+			visitPropertyValue(ctx, en, ep, e, elemSchema, rawNames, visitor)
 		}
 	case v.IsObject():
-		var tfflds shim.SchemaMap
-		if tfs != nil {
-			if res, isres := tfs.Elem().(shim.Resource); isres {
-				tfflds = res.Schema()
-			}
-		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
-
-		rawElementNames := rawNames || shimutil.IsOfTypeMap(tfs)
+		// Since schema is a FullSchema, not a FullObject, we know that this represents a
+		// map[string]T, not an object type.
+		rawElementNames := true
 		for k, e := range v.ObjectValue() {
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
@@ -150,9 +155,29 @@ func visitPropertyValue(
 				elementPath = fmt.Sprintf("%s.%s", path, k)
 			}
 
-			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawElementNames)
-			visitPropertyValue(ctx, name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
+			visitPropertyValue(ctx, name+"."+string(k), elementPath, e, fullSchema.Elem(), rawElementNames, visitor)
 		}
+	}
+}
+
+func visitPropertyValueObject(
+	ctx context.Context, name, path string, v resource.PropertyValue, schema FullObject,
+	rawNames bool, visitor propertyVisitor,
+) {
+	if !visitor(name, path, v) {
+		return
+	}
+
+	for k, e := range v.ObjectValue() {
+		var elementPath string
+		if strings.ContainsAny(string(k), `."[]`) {
+			elementPath = fmt.Sprintf(`%s.["%s"]`, path, strings.ReplaceAll(string(k), `"`, `\"`))
+		} else {
+			elementPath = fmt.Sprintf("%s.%s", path, k)
+		}
+
+		en, elemSchema := getInfoFromPulumiName(k, schema, rawNames)
+		visitPropertyValue(ctx, name+"."+en, elementPath, e, elemSchema, rawNames, visitor)
 	}
 }
 
@@ -164,8 +189,7 @@ func makePropertyDiff(
 	diff map[string]*pulumirpc.PropertyDiff, // makePropertyDiff populates this output map
 	collectionDiffs map[string]*pulumirpc.PropertyDiff, // optional collection-level diffs
 	forceDiff *bool,
-	tfs shim.Schema,
-	ps *SchemaInfo,
+	schema FullElem,
 	finalize, rawNames bool,
 ) {
 
@@ -257,7 +281,7 @@ func makePropertyDiff(
 		return false
 	}
 
-	visitPropertyValue(ctx, name, path, v, tfs, ps, rawNames, visitor)
+	visitPropertyValue(ctx, name, path, v, schema, rawNames, visitor)
 }
 
 func newIgnoreChanges(
@@ -294,13 +318,14 @@ func computeIgnoreChanges(
 		}
 		return true
 	}
+	schema := NewObjectTraversal(tfs, ps)
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
+		en, elem := getInfoFromPulumiName(k, schema, false)
+		visitPropertyValue(ctx, en, string(k), v, elem, false, visitor)
 	}
 	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
+		en, elem := getInfoFromPulumiName(k, schema, false)
+		visitPropertyValue(ctx, en, string(k), v, elem, false, visitor)
 	}
 	return ignoredKeySet
 }
@@ -350,20 +375,23 @@ func makeDetailedDiffExtra(
 	forceDiff := new(bool)
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	collectionDiffs := map[string]*pulumirpc.PropertyDiff{}
+
+	obj := NewObjectTraversal(tfs, ps)
+
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, elem := getInfoFromPulumiName(k, obj, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, false, shimutil.IsOfTypeMap(etf))
+			elem, false, false)
 	}
 	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, elem := getInfoFromPulumiName(k, obj, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, false, shimutil.IsOfTypeMap(etf))
+			elem, false, false)
 	}
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, elem := getInfoFromPulumiName(k, obj, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, true, shimutil.IsOfTypeMap(etf))
+			elem, true, false)
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE
