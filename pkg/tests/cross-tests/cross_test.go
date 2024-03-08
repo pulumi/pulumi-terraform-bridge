@@ -12,18 +12,21 @@ import (
 	"strings"
 	"testing"
 
-	//"github.com/stretchr/testify/assert"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -74,10 +77,10 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	handle, err := startPulumiProvider(ctx, tc)
 	require.NoError(t, err)
 	puwd := t.TempDir()
-	pulumiWriteYaml(t, puwd, tc.Config1)
+	pulumiWriteYaml(t, tc, puwd, tc.Config1)
 	pulumiStackInit(t, puwd)
 	pulumiUp(t, puwd, handle)
-	pulumiWriteYaml(t, puwd, tc.Config2)
+	pulumiWriteYaml(t, tc, puwd, tc.Config2)
 	pulumiUp(t, puwd, handle)
 }
 
@@ -238,15 +241,6 @@ func TestSetReordering(t *testing.T) {
 		Config2: map[string]any{
 			"set": []string{"B", "A"},
 		},
-
-		// Got an problem from not translating TF JSON to Pulumi yaml correctly.
-		//
-		// Error: Property set does not exist on 'crossprovider:index:TestRes'
-		//   on Pulumi.yaml line 7:
-		//    7:             set:
-		// Cannot assign '{set: List<string>}' to 'crossprovider:index:TestRes':
-		//   Existing properties are: sets
-		SkipPulumi: true,
 	})
 }
 
@@ -301,14 +295,17 @@ func startPulumiProvider(
 	return &handle, nil
 }
 
-func pulumiWriteYaml(t *testing.T, puwd string, tfConfig any) {
+func pulumiWriteYaml(t *testing.T, tc diffTestCase, puwd string, tfConfig any) {
+	schema := sdkv2.NewResource(tc.Resource).Schema()
+	pConfig, err := convertConfigToPulumi(schema, nil, tfConfig)
+	require.NoErrorf(t, err, "convertConfigToPulumi failed")
 	data := map[string]any{
 		"name":    "project",
 		"runtime": "yaml",
 		"resources": map[string]any{
 			"example": map[string]any{
 				"type":       fmt.Sprintf("%s:index:%s", providerShortName, rtok),
-				"properties": tfConfig, // TODO transform to Pulumi
+				"properties": pConfig,
 			},
 		},
 		"backend": map[string]any{
@@ -353,4 +350,29 @@ func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) {
 
 func formatPulumiDebugProvEnvVar(h *rpcutil.ServeHandle) string {
 	return fmt.Sprintf("PULUMI_DEBUG_PROVIDERS=%s:%d", providerShortName, h.Port)
+}
+
+func convertConfigToPulumi(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	tfConfig any,
+) (any, error) {
+	objectType := convert.InferObjectType(schemaMap)
+	bytes, err := json.Marshal(tfConfig)
+	if err != nil {
+		return nil, err
+	}
+	v, err := tftypes.ValueFromJSON(bytes, objectType)
+	if err != nil {
+		return nil, err
+	}
+	decoder, err := convert.NewObjectDecoder(schemaMap, schemaInfos, objectType)
+	if err != nil {
+		return nil, err
+	}
+	pm, err := convert.DecodePropertyMap(decoder, v)
+	if err != nil {
+		return nil, err
+	}
+	return pm.Mappable(), nil
 }
