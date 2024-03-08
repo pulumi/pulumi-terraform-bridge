@@ -2584,13 +2584,11 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 			},
 			ps: map[string]*SchemaInfo{
 				"map_prop": {
-					Elem: &SchemaInfo{ // The element of the map
-						Elem: &SchemaInfo{ // The element of the array
-							Elem: &SchemaInfo{ // The underlying map of the resource
-								Fields: map[string]*SchemaInfo{
-									"x_prop": {
-										Name: "x",
-									},
+					Elem: &SchemaInfo{
+						Elem: &SchemaInfo{
+							Fields: map[string]*SchemaInfo{
+								"x_prop": {
+									Name: "x",
 								},
 							},
 						},
