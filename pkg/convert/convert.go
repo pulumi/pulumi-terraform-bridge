@@ -56,12 +56,19 @@ type Encoder interface {
 type ObjectSchema struct {
 	SchemaMap   shim.SchemaMap                  // required
 	SchemaInfos map[string]*tfbridge.SchemaInfo // optional
-	Object      tftypes.Object                  // optional, if not given will be inferred from SchemaMap
+	Object      *tftypes.Object                 // optional, if not given will be inferred from SchemaMap
+}
+
+func (os ObjectSchema) objectType() tftypes.Object {
+	if os.Object != nil {
+		return *os.Object
+	}
+	return InferObjectType(os.SchemaMap)
 }
 
 func NewObjectEncoder(os ObjectSchema) (Encoder, error) {
 	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
-	objectType := os.Object // TODO infer if not available
+	objectType := os.objectType()
 	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
 	if err != nil {
 		return nil, err
@@ -78,7 +85,7 @@ type Decoder interface {
 }
 
 func NewObjectDecoder(os ObjectSchema) (Decoder, error) {
-	objectType := os.Object // TODO infer if not available
+	objectType := os.objectType()
 	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
 	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
 	if err != nil {
