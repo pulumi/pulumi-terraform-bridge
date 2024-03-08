@@ -66,24 +66,6 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	return s.objectV1(sch)
 }
 
-// This version of Object uses TF built-ins AttrsAsObjectValue and schema.ApplyDiff with cty.Value intermediate form.
-func (s v2InstanceState) objectViaCty(sch shim.SchemaMap) (map[string]interface{}, error) {
-	rSchema := s.resource.CoreConfigSchema()
-	ty := rSchema.ImpliedType()
-
-	// Read InstanceState as a cty.Value.
-	v, err := s.tf.AttrsAsObjectValue(ty)
-	contract.AssertNoErrorf(err, "AttrsAsObjectValue failed")
-
-	// If there is a diff, apply it.
-	if s.diff != nil {
-		v, err = schema.ApplyDiff(v, s.diff, rSchema)
-		contract.AssertNoErrorf(err, "schema.ApplyDiff failed")
-	}
-
-	return objectFromCtyValue(v), nil
-}
-
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
 	// Now we need to translate cty.Value to a JSON-like form. This could have been avoided if surrounding Pulumi
 	// code accepted a cty.Value and translated that to resource.PropertyValue, but that is currently not the case.
