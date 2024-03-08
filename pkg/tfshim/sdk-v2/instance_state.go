@@ -63,10 +63,6 @@ func (s v2InstanceState) ID() string {
 }
 
 func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
-	strategy := GetInstanceStateStrategy(v2Resource{s.resource})
-	if strategy == CtyInstanceState {
-		return s.objectViaCty(sch)
-	}
 	return s.objectV1(sch)
 }
 
