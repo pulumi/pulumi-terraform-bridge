@@ -52,12 +52,16 @@ type Encoder interface {
 	fromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
 }
 
-func NewObjectEncoder(
-	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
-	objectType tftypes.Object,
-) (Encoder, error) {
-	mctx := newSchemaMapContext(schemaMap, schemaInfos)
+// Schema information that is needed to construct Encoder or Decoder instances.
+type ObjectSchema struct {
+	SchemaMap   shim.SchemaMap                  // required
+	SchemaInfos map[string]*tfbridge.SchemaInfo // optional
+	Object      tftypes.Object                  // optional, if not given will be inferred from SchemaMap
+}
+
+func NewObjectEncoder(os ObjectSchema) (Encoder, error) {
+	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
+	objectType := os.Object // TODO infer if not available
 	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
 	if err != nil {
 		return nil, err
@@ -73,12 +77,9 @@ type Decoder interface {
 	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
 }
 
-func NewObjectDecoder(
-	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
-	objectType tftypes.Object,
-) (Decoder, error) {
-	mctx := newSchemaMapContext(schemaMap, schemaInfos)
+func NewObjectDecoder(os ObjectSchema) (Decoder, error) {
+	objectType := os.Object // TODO infer if not available
+	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
 	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
 	if err != nil {
 		return nil, err

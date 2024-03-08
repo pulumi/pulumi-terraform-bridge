@@ -39,7 +39,7 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
 	schema := e.SchemaOnlyProvider.Schema()
 	schemaInfos := e.ProviderInfo.Config
-	enc, err := NewObjectEncoder(schema, schemaInfos, configType)
+	enc, err := NewObjectEncoder(ObjectSchema{schema, schemaInfos, configType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}
@@ -48,17 +48,16 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 
 func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	enc, err := NewObjectEncoder(mctx.schemaMap, mctx.schemaInfos, objectType)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, objectType})
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w",
-			resource, err)
+		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
 	return enc, nil
 }
 
 func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	dec, err := NewObjectDecoder(mctx.schemaMap, mctx.schemaInfos, objectType)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, objectType})
 	// Tests pass without this line. Was this intentional? Perhaps to support resources with
 	// non-string IDs? propertyDecoders["id"] = newStringDecoder().
 	if err != nil {
@@ -71,10 +70,9 @@ func (e *encoding) NewDataSourceEncoder(
 	dataSource string, objectType tftypes.Object,
 ) (Encoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	enc, err := NewObjectEncoder(mctx.schemaMap, mctx.schemaInfos, objectType)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, objectType})
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w",
-			dataSource, err)
+		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
 	return enc, nil
 }
@@ -83,10 +81,9 @@ func (e *encoding) NewDataSourceDecoder(
 	dataSource string, objectType tftypes.Object,
 ) (Decoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	dec, err := NewObjectDecoder(mctx.schemaMap, mctx.schemaInfos, objectType)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, objectType})
 	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w",
-			dataSource, err)
+		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w", dataSource, err)
 	}
 	return dec, nil
 }
