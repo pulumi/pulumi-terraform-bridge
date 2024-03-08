@@ -54,8 +54,8 @@ func TestGetDocsPath(t *testing.T) {
 				filepath.Join("website", "docs", "r", "bar.md"),
 			},
 			expectedResource: []string{
-				filepath.Join("docs", "resources"),
 				filepath.Join("website", "docs", "r"),
+				filepath.Join("docs", "resources"),
 			},
 		},
 	}
