@@ -300,7 +300,7 @@ type conversionContext struct {
 func makeTerraformInputsHelper(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	applyDefaults, applyTFDefaults, applyMaxItemsOneDefaults  bool,
+	applyDefaults, applyTFDefaults, applyMaxItemsOneDefaults bool,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {

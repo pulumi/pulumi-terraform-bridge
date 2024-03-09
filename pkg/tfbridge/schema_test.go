@@ -404,12 +404,11 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 }
 
 // Test that makeTerraformInputs variants work well with MaxItems=1 properties.
-//
-// missing MaxItems=1 properties should present to TF as empty collections when applying
-// the actual changes (makeTerraformInputsWithDefaults)
-// missing MaxItems=1 properties should present to TF as missing when running validators (makeTerraformInputs)
-// missing MaxItems=1 properties should present to TF as empty collections when running
-// provider config validation (makeTerraformInputsWithMaxItemsOneDefaults)
+// missing MaxItems=1 properties should present to TF as missing in most cases (MakeTerraformInputs)
+// missing MaxItems=1 properties should present to TF as missing
+// when running validators (makeTerraformInputsWithoutTFDefaults)
+// missing MaxItems=1 properties should present to TF as empty collections when creating
+// a resource (makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults)
 func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 	typeString := (&schema.Schema{
 		Type: shim.TypeString,
