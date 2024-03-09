@@ -34,7 +34,8 @@ type fileLoaderFunc func(fs afero.Fs, path string) (configurable, []string, erro
 // This is not currently enabled for release builds.
 //
 // For example:
-//    go install -ldflags="-X github.com/hashicorp/terraform/config.enableHCL2Experiment=true" github.com/hashicorp/terraform
+//
+//	go install -ldflags="-X github.com/hashicorp/terraform/config.enableHCL2Experiment=true" github.com/hashicorp/terraform
 var enableHCL2Experiment = ""
 
 // loadTreeFromString takes a string and treats it as an HCL file with the

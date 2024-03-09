@@ -131,7 +131,7 @@ func (p *planResourceChangeImpl) Diff(
 	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
 	config := configFromShim(c)
-	s, err := p.upgradeState(t, s)
+	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (p *planResourceChangeImpl) Apply(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	s, err := p.upgradeState(t, s)
+	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (p *planResourceChangeImpl) Refresh(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	s, err := p.upgradeState(t, s)
+	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -329,6 +329,7 @@ func (p *planResourceChangeImpl) unpackInstanceState(
 // terraform.InstanceState interface some adapters are needed to convert to/from cty.Value and meta
 // private bag.
 func (p *planResourceChangeImpl) upgradeState(
+	ctx context.Context,
 	t string, s shim.InstanceState,
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
@@ -342,7 +343,7 @@ func (p *planResourceChangeImpl) upgradeState(
 		instanceState.Attributes = map[string]string{}
 	}
 	instanceState.Meta = state.meta
-	newInstanceState, err := upgradeResourceState(p.tf, res, instanceState)
+	newInstanceState, err := upgradeResourceState(ctx, p.tf, res, instanceState)
 	if err != nil {
 		return nil, err
 	}

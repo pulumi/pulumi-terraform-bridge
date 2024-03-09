@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/spf13/afero"
@@ -284,6 +285,34 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 		err = g.Generate()
 		require.NoError(t, err)
 	})
+}
+
+func TestNotYetImplementedErrorHandling(t *testing.T) {
+	// Example of an actual diag emitted in pulumi-gcp. For the purposes of bridging, need to
+	// make sure this is actually an error so that this example drops out.
+	exampleDiag := hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  "Function not yet implemented",
+		Detail:   "Function tolist not yet implemented",
+		Subject: &hcl.Range{
+			Start: hcl.Pos{
+				Line:   7,
+				Column: 20,
+				Byte:   176,
+			},
+			End: hcl.Pos{
+				Line:   7,
+				Column: 81,
+				Byte:   237,
+			},
+		},
+	}
+	cc := &cliConverter{}
+	result := cc.postProcessDiagnostics(hcl.Diagnostics{
+		&exampleDiag,
+	})
+	require.Equal(t, 1, len(result))
+	require.Equal(t, hcl.DiagError, result[0].Severity)
 }
 
 type testPluginHost struct{}

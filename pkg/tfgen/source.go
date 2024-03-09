@@ -220,6 +220,7 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFi
 }
 
 // getDocsPath finds the correct docs path for the repo/kind
+// add the legacy path first since the terraform registry docs also pick those first
 func getDocsPath(repo string, kind DocKind) ([]string, error) {
 	var err error
 	exists := func(p string) bool {
@@ -235,17 +236,17 @@ func getDocsPath(repo string, kind DocKind) ([]string, error) {
 
 	var paths []string
 
-	// ${repo}/docs/resources
-	//
-	// This is TF's new and preferred way to describe docs.
-	if p := filepath.Join(repo, "docs", string(kind)); exists(p) {
-		paths = append(paths, p)
-	}
-
 	// ${repo}/website/docs/r
 	//
 	// This is the legacy way to describe docs.
 	if p := filepath.Join(repo, "website", "docs", string(kind)[:1]); exists(p) {
+		paths = append(paths, p)
+	}
+
+	// ${repo}/docs/resources
+	//
+	// This is TF's new and preferred way to describe docs.
+	if p := filepath.Join(repo, "docs", string(kind)); exists(p) {
 		paths = append(paths, p)
 	}
 
