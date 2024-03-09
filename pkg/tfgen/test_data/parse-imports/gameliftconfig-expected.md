@@ -2,6 +2,6 @@
 
 GameLift Matchmaking Configurations can be imported using the ID, e.g.,
 
-```sh<break>
+```sh
 $ pulumi import aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration example <matchmakingconfiguration-id>
-<break>```<break>
+```

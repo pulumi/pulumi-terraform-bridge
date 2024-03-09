@@ -64,14 +64,13 @@ type cliConverter struct {
 
 	generator interface {
 		convertHCL(
-			e *Example, hcl, path, exampleTitle string, languages []string,
+			e *Example, hcl, path string, languages []string,
 		) (string, error)
 		convertExamplesInner(
 			docs string,
 			path examplePath,
-			stripSubsectionsWithErrors bool,
 			convertHCL func(
-				e *Example, hcl, path, exampleTitle string, languages []string,
+				e *Example, hcl, path string, languages []string,
 			) (string, error),
 			useCoverageTracker bool,
 		) string
@@ -81,9 +80,8 @@ type cliConverter struct {
 	loader schema.Loader
 
 	convertExamplesList []struct {
-		docs                       string
-		path                       examplePath
-		stripSubsectionsWithErrors bool
+		docs string
+		path examplePath
 	}
 
 	currentPackageSpec *pschema.PackageSpec
@@ -124,20 +122,17 @@ func (g *Generator) cliConverter() *cliConverter {
 func (cc *cliConverter) StartConvertingExamples(
 	docs string,
 	path examplePath,
-	stripSubsectionsWithErrors bool,
 ) string {
 	// Record inner HCL conversions and discard the result.
 	cov := false // do not use coverage tracker yet, it will be used in the second pass.
-	cc.generator.convertExamplesInner(docs, path, stripSubsectionsWithErrors, cc.recordHCL, cov)
+	cc.generator.convertExamplesInner(docs, path, cc.recordHCL, cov)
 	// Record the convertExamples job for later.
 	e := struct {
-		docs                       string
-		path                       examplePath
-		stripSubsectionsWithErrors bool
+		docs string
+		path examplePath
 	}{
-		docs:                       docs,
-		path:                       path,
-		stripSubsectionsWithErrors: stripSubsectionsWithErrors,
+		docs: docs,
+		path: path,
 	}
 	cc.convertExamplesList = append(cc.convertExamplesList, e)
 	// Return a placeholder referencing the convertExampleJob by position.
@@ -165,8 +160,7 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 
 		// Use coverage tracker here on the second pass.
 		useCoverageTracker := true
-		source := cc.generator.convertExamplesInner(ex.docs, ex.path,
-			ex.stripSubsectionsWithErrors, cc.generator.convertHCL, useCoverageTracker)
+		source := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCoverageTracker)
 		// JSON-escaping to splice into JSON string literals.
 		bytes, err := json.Marshal(source)
 		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")
@@ -197,7 +191,7 @@ func (cc *cliConverter) Convert(
 		return "", example.Diagnostics, nil
 	}
 	source, diags, err := cc.convertPCL(cc.currentPackageSpec, example.PCL, lang)
-	return source, cc.removeFileName(diags).Extend(example.Diagnostics), err
+	return source, cc.postProcessDiagnostics(diags.Extend(example.Diagnostics)), err
 }
 
 // Convert all observed HCL snippets from cc.hcls to PCL in one pass, populate cc.pcls.
@@ -222,7 +216,7 @@ func (cc *cliConverter) bulkConvert() error {
 		r := result[fileName]
 		cc.pcls[hcl] = translatedExample{
 			PCL:         r.PCL,
-			Diagnostics: cc.removeFileName(r.Diagnostics),
+			Diagnostics: cc.postProcessDiagnostics(r.Diagnostics),
 		}
 	}
 	return nil
@@ -465,7 +459,7 @@ func (cc *cliConverter) convertPCL(
 
 // Act as a convertHCL stub that does not actually convert but spies on the literals involved.
 func (cc *cliConverter) recordHCL(
-	e *Example, hcl, path, exampleTitle string, languages []string,
+	e *Example, hcl, path string, languages []string,
 ) (string, error) {
 	cache := cc.generator.getOrCreateExamplesCache()
 
@@ -485,20 +479,35 @@ func (cc *cliConverter) recordHCL(
 	return "{convertHCL}", nil
 }
 
-func (cc *cliConverter) removeFileName(diag hcl.Diagnostics) hcl.Diagnostics {
+func (cc *cliConverter) postProcessDiagnostics(diag hcl.Diagnostics) hcl.Diagnostics {
 	var out []*hcl.Diagnostic
 	for _, d := range diag {
-		if d == nil {
-			continue
-		}
 		copy := *d
-		if copy.Subject != nil {
-			copy.Subject.Filename = ""
-		}
-		if copy.Context != nil {
-			copy.Context.Filename = ""
-		}
+		cc.removeFileName(&copy)
+		cc.ensureNotYetImplementedIsAnError(&copy)
 		out = append(out, &copy)
 	}
 	return out
+}
+
+func (*cliConverter) removeFileName(d *hcl.Diagnostic) {
+	if d == nil {
+		return
+	}
+	if d.Subject != nil {
+		d.Subject.Filename = ""
+	}
+	if d.Context != nil {
+		d.Context.Filename = ""
+	}
+}
+
+var (
+	notYetImplementedPattern = regexp.MustCompile("(?i)not yet implemented")
+)
+
+func (*cliConverter) ensureNotYetImplementedIsAnError(d *hcl.Diagnostic) {
+	if notYetImplementedPattern.MatchString(d.Error()) {
+		d.Severity = hcl.DiagError
+	}
 }

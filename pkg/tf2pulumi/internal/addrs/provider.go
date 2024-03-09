@@ -226,9 +226,10 @@ func (pt Provider) Equals(other Provider) bool {
 // terraform-config-inspect.
 //
 // The following are valid source string formats:
-// 		name
-// 		namespace/name
-// 		hostname/namespace/name
+//
+//	name
+//	namespace/name
+//	hostname/namespace/name
 func ParseProviderSourceString(str string) (Provider, hcl.Diagnostics) {
 	var ret Provider
 	var diags hcl.Diagnostics

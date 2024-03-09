@@ -66,7 +66,7 @@ func (p v2Provider) Diff(
 		}
 	} else {
 		// Upgrades are needed only if we have non-empty prior state.
-		state, err = upgradeResourceState(p.tf, r, state)
+		state, err = upgradeResourceState(ctx, p.tf, r, state)
 		if err != nil {
 			return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 		}

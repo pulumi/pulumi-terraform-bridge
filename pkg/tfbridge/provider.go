@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -971,6 +972,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+
+	// Ensure that outputs are deterministic to enable gRPC testing.
+	sort.Strings(replaces)
+	sort.Strings(stables)
+	sort.Strings(properties)
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,

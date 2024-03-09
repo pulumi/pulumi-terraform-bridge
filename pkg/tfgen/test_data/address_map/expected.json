@@ -25,5 +25,5 @@
     "ips": "The set of IPs on the Address Map.",
     "memberships": "Zones and Accounts which will be assigned IPs on this Address Map."
   },
-  "Import": "## Import\n\n```sh\u003cbreak\u003e $ pulumi import MISSING_TOK example \u003caccount_id\u003e/\u003caddress_map_id\u003e \u003cbreak\u003e```\u003cbreak\u003e\u003cbreak\u003e"
+  "Import": "## Import\n\n```sh\n$ pulumi import MISSING_TOK example \u003caccount_id\u003e/\u003caddress_map_id\u003e\n```\n\n"
 }

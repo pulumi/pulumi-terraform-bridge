@@ -97,10 +97,10 @@ var _ ProviderConfig = AbsProviderConfig{}
 // address. The following are examples of traversals that can be successfully
 // parsed as absolute provider configuration addresses:
 //
-//     provider["registry.terraform.io/hashicorp/aws"]
-//     provider["registry.terraform.io/hashicorp/aws"].foo
-//     module.bar.provider["registry.terraform.io/hashicorp/aws"]
-//     module.bar.module.baz.provider["registry.terraform.io/hashicorp/aws"].foo
+//	provider["registry.terraform.io/hashicorp/aws"]
+//	provider["registry.terraform.io/hashicorp/aws"].foo
+//	module.bar.provider["registry.terraform.io/hashicorp/aws"]
+//	module.bar.module.baz.provider["registry.terraform.io/hashicorp/aws"].foo
 //
 // This type of address is used, for example, to record the relationships
 // between resources and provider configurations in the state structure.
@@ -232,10 +232,10 @@ func ParseLegacyAbsProviderConfigStr(str string) (AbsProviderConfig, hcl.Diagnos
 // provider address. The following are examples of traversals that can be
 // successfully parsed as legacy absolute provider configuration addresses:
 //
-//     provider.aws
-//     provider.aws.foo
-//     module.bar.provider.aws
-//     module.bar.module.baz.provider.aws.foo
+//	provider.aws
+//	provider.aws.foo
+//	module.bar.provider.aws
+//	module.bar.module.baz.provider.aws.foo
 //
 // This type of address is used in legacy state and may appear in state v4 if
 // the provider config addresses have not been normalized to include provider
@@ -379,10 +379,10 @@ func (pc AbsProviderConfig) LegacyString() string {
 
 // String() returns a string representation of an AbsProviderConfig in the following format:
 //
-// 	provider["example.com/namespace/name"]
-// 	provider["example.com/namespace/name"].alias
-// 	module.module-name.provider["example.com/namespace/name"]
-// 	module.module-name.provider["example.com/namespace/name"].alias
+//	provider["example.com/namespace/name"]
+//	provider["example.com/namespace/name"].alias
+//	module.module-name.provider["example.com/namespace/name"]
+//	module.module-name.provider["example.com/namespace/name"].alias
 func (pc AbsProviderConfig) String() string {
 	var parts []string
 	if len(pc.Module) > 0 {
