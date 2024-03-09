@@ -344,7 +344,7 @@ func makeTerraformInputsWithoutTFDefaults(
 
 func makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-    olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false, true)
 }
