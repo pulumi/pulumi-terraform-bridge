@@ -1232,7 +1232,6 @@ func MakeTerraformOutput(
 	return output
 }
 
-
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
