@@ -342,6 +342,13 @@ func makeTerraformInputsWithoutTFDefaults(
 	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false, false)
 }
 
+func makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+    olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false, true)
+}
+
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform. Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it. Please take
@@ -1225,21 +1232,6 @@ func MakeTerraformOutput(
 	return output
 }
 
-// TODO: clean this up a bit, reuse makeTerraformInputsHelper
-func makeTerraformConfigWithMaxItemsOneDefaults(ctx context.Context, p *Provider, m resource.PropertyMap,
-tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
-	cctx := conversionContext{
-		Ctx:            ctx,
-		ProviderConfig: p.configValues,
-		Assets:         AssetTable{},
-		ApplyMaxItemsOneDefaults: true,
-	}
-	inputs, err := cctx.makeTerraformInputs(nil, m, tfs, ps)
-	if err != nil {
-		return nil, nil, err
-	}
-	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), cctx.Assets, nil
-}
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,

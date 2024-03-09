@@ -54,10 +54,10 @@ func tMakeTerraformInputs(olds, news resource.PropertyMap,
 	return MakeTerraformInputs(context.Background(), nil, nil, olds, news, tfs, ps)
 }
 
-func tMakeTerraformInputsWithMaxItemsOneDefaults(olds, news resource.PropertyMap,
+func tMakeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, true, true, true)
+	return makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(context.Background(), nil, nil, olds, news, tfs, ps)
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
@@ -427,10 +427,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 	tfs := schema.SchemaMap{"element": resSchema.Shim()}
 
 	tests := map[string]struct {
-		olds                  resource.PropertyMap
-		news                  resource.PropertyMap
-		expectedNoDefaults    map[string]interface{}
-		expectedWithDefaults  map[string]interface{}
+		olds                    resource.PropertyMap
+		news                    resource.PropertyMap
+		expectedNoDefaults      map[string]interface{}
+		expectedWithDefaults    map[string]interface{}
 		expectedWithMIODefaults map[string]interface{}
 	}{
 		"empty-olds": {
@@ -447,8 +447,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"__defaults": []interface{}{},
 			},
 			expectedWithMIODefaults: map[string]interface{}{
-				"__defaults": []interface{}{},
-				"element":    []interface{}{},
+				"element": []interface{}{},
 			},
 		},
 		"non-empty-olds": {
@@ -472,8 +471,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"__defaults": []interface{}{},
 			},
 			expectedWithMIODefaults: map[string]interface{}{
-				"__defaults": []interface{}{},
-				"element":    []interface{}{},
+				"element": []interface{}{},
 			},
 		},
 		"non-missing-news": {
@@ -500,8 +498,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"element":    []interface{}{"el"},
 			},
 			expectedWithMIODefaults: map[string]interface{}{
-				"__defaults": []interface{}{},
-				"element":    []interface{}{"el"},
+				"element": []interface{}{"el"},
 			},
 		},
 	}
@@ -518,7 +515,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedWithDefaults, resultWithDefaults)
 
-			resultNoMIODefaults, _, err := tMakeTerraformInputsWithMaxItemsOneDefaults(
+			resultNoMIODefaults, _, err := tMakeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedWithMIODefaults, resultNoMIODefaults)
