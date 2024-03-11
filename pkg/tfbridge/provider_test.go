@@ -3260,7 +3260,7 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 	})
 }
 
-// TOOD[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
+// TODO[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
 func TestCustomTimeouts(t *testing.T) {
 	t.Parallel()
 
