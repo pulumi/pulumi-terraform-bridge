@@ -19,15 +19,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
 	testutils "github.com/pulumi/providertest/replay"
+
 	webaclschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/webaclschema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestRegressAws1423(t *testing.T) {
-	t.Skip("Refresh is dirty on this resource see https://github.com/pulumi/pulumi-aws/issues/3361.")
 	ctx := context.Background()
 
 	resource := webaclschema.ResourceWebACL()
@@ -39,16 +38,11 @@ func TestRegressAws1423(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState),
+	p := shimv2.NewProvider(tfProvider,
+		shimv2.WithDiffStrategy(shimv2.PlanState),
 		shimv2.WithPlanResourceChange(func(s string) bool {
-			switch s {
-			case "aws_wafv2_web_acl":
-				return true
-			default:
-				return false
-			}
-		}),
-	)
+			return s == "aws_wafv2_web_acl"
+		}))
 
 	info := tfbridge.ProviderInfo{
 		P:           p,
@@ -262,189 +256,9 @@ func TestRegressAws1423(t *testing.T) {
 	}
         `
 
-	testCase2 := `
-	{
-	  "method": "/pulumirpc.ResourceProvider/Diff",
-	  "request": {
-	    "id": "6ff5298f-7bcd-4e73-ba75-8784c2c77bcb",
-	    "urn": "urn:pulumi:dev::aws-2264::aws:wafv2/webAcl:WebAcl::my-web-acl-2",
-	    "olds": {
-	      "arn": "arn:aws:wafv2:us-east-1:616138583583:regional/webacl/my-web-acl-2/6ff5298f-7bcd-4e73-ba75-8784c2c77bcb",
-	      "associationConfig": null,
-	      "capacity": 1,
-	      "captchaConfig": null,
-	      "customResponseBodies": [],
-	      "defaultAction": {
-		"allow": null,
-		"block": {
-		  "customResponse": null
-		}
-	      },
-	      "description": "",
-	      "id": "6ff5298f-7bcd-4e73-ba75-8784c2c77bcb",
-	      "lockToken": "a58a7783-ac87-4ba9-8801-324ae5c63a07",
-	      "name": "my-web-acl-2",
-	      "rules": [
-		{
-		  "action": {
-		    "allow": {
-		      "customRequestHandling": null
-		    },
-		    "block": null,
-		    "captcha": null,
-		    "challenge": null,
-		    "count": null
-		  },
-		  "captchaConfig": null,
-		  "name": "US-access-only",
-		  "overrideAction": null,
-		  "priority": 0,
-		  "ruleLabels": [],
-		  "statement": {
-		    "andStatement": null,
-		    "byteMatchStatement": null,
-		    "geoMatchStatement": {
-		      "countryCodes": [
-			"US"
-		      ],
-		      "forwardedIpConfig": null
-		    },
-		    "ipSetReferenceStatement": null,
-		    "labelMatchStatement": null,
-		    "managedRuleGroupStatement": null,
-		    "notStatement": null,
-		    "orStatement": null,
-		    "rateBasedStatement": null,
-		    "regexMatchStatement": null,
-		    "regexPatternSetReferenceStatement": null,
-		    "ruleGroupReferenceStatement": null,
-		    "sizeConstraintStatement": null,
-		    "sqliMatchStatement": null,
-		    "xssMatchStatement": null
-		  },
-		  "visibilityConfig": {
-		    "cloudwatchMetricsEnabled": true,
-		    "metricName": "US-access-only",
-		    "sampledRequestsEnabled": true
-		  }
-		}
-	      ],
-	      "scope": "REGIONAL",
-	      "tags": {},
-	      "tagsAll": {},
-	      "tokenDomains": [],
-	      "visibilityConfig": {
-		"cloudwatchMetricsEnabled": true,
-		"metricName": "my-web-acl-2",
-		"sampledRequestsEnabled": true
-	      }
-	    },
-	    "news": {
-	      "__defaults": [],
-	      "defaultAction": {
-		"__defaults": [],
-		"block": {
-		  "__defaults": []
-		}
-	      },
-	      "name": "my-web-acl-2",
-	      "rules": [
-		{
-		  "__defaults": [],
-		  "action": {
-		    "__defaults": [],
-		    "allow": {
-		      "__defaults": []
-		    }
-		  },
-		  "name": "US-access-only",
-		  "priority": 0,
-		  "statement": {
-		    "__defaults": [],
-		    "geoMatchStatement": {
-		      "__defaults": [],
-		      "countryCodes": [
-			"US"
-		      ]
-		    }
-		  },
-		  "visibilityConfig": {
-		    "__defaults": [],
-		    "cloudwatchMetricsEnabled": true,
-		    "metricName": "US-access-only",
-		    "sampledRequestsEnabled": true
-		  }
-		}
-	      ],
-	      "scope": "REGIONAL",
-	      "visibilityConfig": {
-		"__defaults": [],
-		"cloudwatchMetricsEnabled": true,
-		"metricName": "my-web-acl-2",
-		"sampledRequestsEnabled": true
-	      }
-	    },
-	    "oldInputs": {
-	      "__defaults": [],
-	      "defaultAction": {
-		"__defaults": [],
-		"block": {
-		  "__defaults": []
-		}
-	      },
-	      "name": "my-web-acl-2",
-	      "rules": [
-		{
-		  "__defaults": [],
-		  "action": {
-		    "__defaults": [],
-		    "allow": {
-		      "__defaults": []
-		    }
-		  },
-		  "name": "US-access-only",
-		  "priority": 0,
-		  "statement": {
-		    "__defaults": [],
-		    "geoMatchStatement": {
-		      "__defaults": [],
-		      "countryCodes": [
-			"US"
-		      ]
-		    }
-		  },
-		  "visibilityConfig": {
-		    "__defaults": [],
-		    "cloudwatchMetricsEnabled": true,
-		    "metricName": "US-access-only",
-		    "sampledRequestsEnabled": true
-		  }
-		}
-	      ],
-	      "scope": "REGIONAL",
-	      "visibilityConfig": {
-		"__defaults": [],
-		"cloudwatchMetricsEnabled": true,
-		"metricName": "my-web-acl-2",
-		"sampledRequestsEnabled": true
-	      }
-	    }
-	  },
-	  "response": {
-	    "stables": "*",
-	    "changes": "DIFF_NONE",
-	    "hasDetailedDiff": true
-	  }
-	}`
-
 	t.Run("testCase2/createPreview", func(t *testing.T) {
-		// This is wrong; this test case is from a preview after an up wihtout edits, it should not detect
+		// This is wrong; this test case is from a preview after an up without edits, it should not detect
 		// diffs.
 		testutils.Replay(t, server, testCase2CreatePreview)
-	})
-	t.Run("testCase2/diff", func(t *testing.T) {
-		// This is wrong; this test case is from a preview after an up wihtout edits, it should not detect
-		// diffs.
-		testutils.Replay(t, server, testCase2)
 	})
 }

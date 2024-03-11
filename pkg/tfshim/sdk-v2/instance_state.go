@@ -63,29 +63,7 @@ func (s v2InstanceState) ID() string {
 }
 
 func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
-	strategy := GetInstanceStateStrategy(v2Resource{s.resource})
-	if strategy == CtyInstanceState {
-		return s.objectViaCty(sch)
-	}
 	return s.objectV1(sch)
-}
-
-// This version of Object uses TF built-ins AttrsAsObjectValue and schema.ApplyDiff with cty.Value intermediate form.
-func (s v2InstanceState) objectViaCty(sch shim.SchemaMap) (map[string]interface{}, error) {
-	rSchema := s.resource.CoreConfigSchema()
-	ty := rSchema.ImpliedType()
-
-	// Read InstanceState as a cty.Value.
-	v, err := s.tf.AttrsAsObjectValue(ty)
-	contract.AssertNoErrorf(err, "AttrsAsObjectValue failed")
-
-	// If there is a diff, apply it.
-	if s.diff != nil {
-		v, err = schema.ApplyDiff(v, s.diff, rSchema)
-		contract.AssertNoErrorf(err, "schema.ApplyDiff failed")
-	}
-
-	return objectFromCtyValue(v), nil
 }
 
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
