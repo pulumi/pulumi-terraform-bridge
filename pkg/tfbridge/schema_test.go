@@ -42,22 +42,25 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func tMakeTerraformInputsWithoutAnyDefaults(olds, news resource.PropertyMap,
+func makeTerraformInputsNoDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(context.Background(), nil, nil, olds, news, tfs, ps, false, false, false)
+	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
+		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False()})
 }
 
-func tMakeTerraformInputs(olds, news resource.PropertyMap,
+func makeTerraformInputsForConfig(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return MakeTerraformInputs(context.Background(), nil, nil, olds, news, tfs, ps)
+	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
+		makeTerraformInputsOptions{})
 }
 
-func tMakeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(olds, news resource.PropertyMap,
+func makeTerraformInputsForCreate(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(context.Background(), nil, nil, olds, news, tfs, ps)
+	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
+		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False(), MaxItemsOneDefaults: True()})
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
@@ -69,7 +72,7 @@ func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInf
 func TestTerraformInputs(t *testing.T) {
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
-			result, _, err := tMakeTerraformInputsWithoutAnyDefaults(
+			result, _, err := makeTerraformInputsNoDefaults(
 				nil, /*olds*/
 				resource.NewPropertyMapFromMap(map[string]interface{}{
 					"boolPropertyValue":   false,
@@ -255,7 +258,7 @@ func TestTerraformInputs(t *testing.T) {
 				"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
 			}, result)
 
-			_, _, err = tMakeTerraformInputsWithoutAnyDefaults(
+			_, _, err = makeTerraformInputsNoDefaults(
 				nil, /*olds*/
 				resource.NewPropertyMapFromMap(map[string]interface{}{
 					"nilPropertyValue": nil,
@@ -393,7 +396,7 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 				),
 			}
 			tfs := schema.SchemaMap{"element": tt.tfs.Shim()}
-			result, _, err := tMakeTerraformInputsWithoutAnyDefaults(
+			result, _, err := makeTerraformInputsNoDefaults(
 				olds, news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, map[string]interface{}{
@@ -504,17 +507,17 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			resultNoDefaults, _, err := tMakeTerraformInputsWithoutAnyDefaults(
+			resultNoDefaults, _, err := makeTerraformInputsNoDefaults(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedNoDefaults, resultNoDefaults)
 
-			resultWithDefaults, _, err := tMakeTerraformInputs(
+			resultWithDefaults, _, err := makeTerraformInputsForConfig(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedWithDefaults, resultWithDefaults)
 
-			resultNoMIODefaults, _, err := tMakeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
+			resultNoMIODefaults, _, err := makeTerraformInputsForCreate(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedWithMIODefaults, resultNoMIODefaults)
@@ -1094,7 +1097,7 @@ func TestDefaults(t *testing.T) {
 				"hhh": resource.NewStringProperty("HHH"),
 				"zzz": resource.NewAssetProperty(asset),
 			}
-			inputs, assets, err := tMakeTerraformInputs(olds, props, tfs, ps)
+			inputs, assets, err := makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 
@@ -1135,7 +1138,7 @@ func TestDefaults(t *testing.T) {
 			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
 			// will be pulled from the old inputs instead of regenerated.
 			delete(olds, defaultsKey)
-			inputs, assets, err = tMakeTerraformInputs(olds, props, tfs, ps)
+			inputs, assets, err = makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
 			// Assert that types match their TF equivalent when in a TF shape.
@@ -1209,7 +1212,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			}
 			props := resource.PropertyMap{}
 
-			inputs, assets, err := tMakeTerraformInputs(olds, props, tfs, ps)
+			inputs, assets, err := makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
 			sortDefaultsList(outputs)
@@ -1228,7 +1231,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			}), outputs)
 
 			delete(olds, defaultsKey)
-			inputs, assets, err = tMakeTerraformInputs(olds, props, tfs, ps)
+			inputs, assets, err = makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
 			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
@@ -1263,7 +1266,7 @@ func TestComputedAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty(TerraformUnknownVariableValue),
 	}
-	inputs, assets, err := tMakeTerraformInputsWithoutAnyDefaults(olds, props, tfs, ps)
+	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
@@ -1283,7 +1286,7 @@ func TestInvalidAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}
-	inputs, assets, err := tMakeTerraformInputsWithoutAnyDefaults(olds, props, tfs, ps)
+	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.Equal(t, resource.PropertyMap{
@@ -1357,11 +1360,7 @@ func TestOverridingTFSchema(t *testing.T) {
 		assert.Equal(t, tfOutputs, result)
 	})
 	t.Run("MakeTerraformInputs", func(t *testing.T) {
-		ctx := context.Background()
-		result, _, err := MakeTerraformInputs(
-			ctx,
-			nil,
-			nil,
+		result, _, err := makeTerraformInputsForConfig(
 			nil,
 			tfOutputs,
 			tfSchema,
@@ -1404,7 +1403,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	props := resource.PropertyMap{
 		"zzz": arch,
 	}
-	inputs, assets, err := tMakeTerraformInputsWithoutAnyDefaults(olds, props, tfs, ps)
+	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
 	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
@@ -2646,13 +2645,9 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 	}
 
 	shimmedR := shimv2.NewResource(r)
-	ctx := context.Background()
-	var instance *PulumiResource
-
 	type testCase struct {
 		name   string
 		ps     map[string]*SchemaInfo
-		config resource.PropertyMap
 		news   resource.PropertyMap
 		olds   resource.PropertyMap
 		expect interface{}
@@ -2724,9 +2719,58 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			i, _, err := MakeTerraformInputs(ctx, instance, tc.config, tc.olds, tc.news, shimmedR.Schema(), tc.ps)
+			i, _, err := makeTerraformInputsForConfig(tc.olds, tc.news, shimmedR.Schema(), tc.ps)
 			require.NoError(t, err)
 			require.Equal(t, tc.expect, i)
 		})
 	}
+}
+
+func TestRegress940(t *testing.T) {
+	r := &schemav2.Resource{
+		Schema: map[string]*schemav2.Schema{
+			"build": {
+				Type:     schemav2.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"build_arg": {
+							Type:     schemav2.TypeMap,
+							Optional: true,
+							Elem: &schemav2.Schema{
+								Type: schemav2.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimmedR := shimv2.NewResource(r)
+
+	var olds, news resource.PropertyMap
+
+	news = resource.PropertyMap{
+		"build": resource.NewObjectProperty(resource.PropertyMap{
+			"buildArg": resource.NewObjectProperty(resource.PropertyMap{
+				"foo":    resource.NewStringProperty("bar"),
+				"":       resource.NewStringProperty("baz"),
+				"fooBar": resource.NewStringProperty("foo_bar_value"),
+			}),
+		}),
+	}
+
+	result, _, err := makeTerraformInputsForConfig(olds, news, shimmedR.Schema(), map[string]*SchemaInfo{})
+
+	t.Run("no error with empty keys", func(t *testing.T) {
+		assert.NoError(t, err)
+	})
+
+	t.Run("map keys are not renamed to Pulumi-style names", func(t *testing.T) {
+		// buildArg becomes build_arg  because it is an object property
+		// in contrast, fooBar stays the same because it is a map key
+		// note also that build becomes array-wrapped because of MaxItems=1 flattening
+		assert.Equal(t, "foo_bar_value", result["build"].([]any)[0].(map[string]any)["build_arg"].(map[string]any)["fooBar"])
+	})
 }

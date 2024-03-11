@@ -518,7 +518,8 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, tfVars, nil, tfVars, p.config,
+		p.info.Config, makeTerraformInputsOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -767,9 +768,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	tfname := res.TFName
-	inputs, _, err := makeTerraformInputsWithoutTFDefaults(ctx,
+	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{TFDefaults: False()})
 	if err != nil {
 		return nil, err
 	}
@@ -785,9 +787,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
 
 	// Now re-generate the inputs WITH the TF defaults
-	inputs, assets, err := MakeTerraformInputs(ctx,
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, res.TF.Schema(),
+		res.Schema.Fields, makeTerraformInputsOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -814,7 +817,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 // (i.e. from a previous version without MaxItemsOne)
 // we need to mark them for update manually in order to correct the state
 // from an array to a flat type.
-// The diff is otherwise ignored since MakeTerraformInputs won't touch
+// The diff is otherwise ignored since makeTerraformInputs won't touch
 // the type if it in the right shape.
 func markWronglyTypedMaxItemsOneStateDiff(
 	schema shim.SchemaMap, info map[string]*SchemaInfo, olds resource.PropertyMap,
@@ -1016,8 +1019,9 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	inputs, assets, err := makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
+	inputs, assets, err := makeTerraformInputsWithOptions(
 		ctx, nil, nil, nil, props, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False(), MaxItemsOneDefaults: True()},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
@@ -1396,13 +1400,14 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// First, create the inputs.
 	tfname := ds.TFName
-	inputs, _, err := MakeTerraformInputs(
+	inputs, _, err := makeTerraformInputsWithOptions(
 		ctx,
 		&PulumiResource{Properties: args},
 		p.configValues,
 		nil, args,
 		ds.TF.Schema(),
-		ds.Schema.Fields)
+		ds.Schema.Fields,
+		makeTerraformInputsOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}

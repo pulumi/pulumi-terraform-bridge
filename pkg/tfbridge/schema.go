@@ -297,10 +297,16 @@ type conversionContext struct {
 	Assets                   AssetTable
 }
 
-func makeTerraformInputsHelper(
+type makeTerraformInputsOptions struct {
+	Defaults            *bool
+	TFDefaults          *bool
+	MaxItemsOneDefaults *bool
+}
+
+func makeTerraformInputsWithOptions(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	applyDefaults, applyTFDefaults, applyMaxItemsOneDefaults bool,
+	opts makeTerraformInputsOptions,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -312,6 +318,19 @@ func makeTerraformInputsHelper(
 		}
 	}
 
+	applyDefaults := true
+	if opts.Defaults != nil {
+		applyDefaults = *opts.Defaults
+	}
+	applyTFDefaults := true
+	if opts.TFDefaults != nil {
+		applyTFDefaults = *opts.TFDefaults
+	}
+	applyMaxItemsOneDefaults := false
+	if opts.MaxItemsOneDefaults != nil {
+		applyMaxItemsOneDefaults = *opts.MaxItemsOneDefaults
+	}
+
 	cctx := &conversionContext{
 		Ctx:                      ctx,
 		ComputeDefaultOptions:    cdOptions,
@@ -321,32 +340,12 @@ func makeTerraformInputsHelper(
 		ApplyMaxItemsOneDefaults: applyMaxItemsOneDefaults,
 		Assets:                   AssetTable{},
 	}
+
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputs, cctx.Assets, err
-}
-
-func MakeTerraformInputs(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, true, false)
-}
-
-func makeTerraformInputsWithoutTFDefaults(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, true, false, false)
-}
-
-func makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults(
-	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
-	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsHelper(ctx, instance, config, olds, news, tfs, ps, false, false, true)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -1235,32 +1234,12 @@ func MakeTerraformOutput(
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
-
-	// Convert the resource bag into an untyped map, and then create the resource config object.
-	cctx := conversionContext{
-		Ctx:            ctx,
-		ProviderConfig: p.configValues,
-		Assets:         AssetTable{},
-	}
-	inputs, err := cctx.makeTerraformInputs(nil, m, tfs, ps)
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
+		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False()})
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), cctx.Assets, nil
-}
-
-// TODO: this is now unused internally, can we delete it?
-// UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
-func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	label string) (shim.ResourceConfig, AssetTable, error) {
-
-	props, err := plugin.UnmarshalProperties(m,
-		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
-	if err != nil {
-		return nil, nil, err
-	}
-	return MakeTerraformConfig(ctx, p, props, tfs, ps)
+	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), assets, nil
 }
 
 // makeConfig is a helper for MakeTerraformConfigFromInputs that performs a deep-ish copy of its input, recursively
