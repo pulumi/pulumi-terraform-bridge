@@ -3408,29 +3408,10 @@ func TestCustomTimeouts(t *testing.T) {
 		return *tc.schemaTimeout
 	}
 
-	skips := func(tc testCase) string {
-		if tc.userSpecifiedTimeout != nil {
-			return ""
-		}
-		if tc.schemaTimeout == nil {
-			return ""
-		}
-		switch tc.cud {
-		case "Update", "Delete":
-			return "TODO[pulumi/pulumi-terraform-bridge#1651] - schema-specified timeouts are not " +
-				"yet supported for Update and Delete"
-		default:
-			return ""
-		}
-	}
-
 	for _, tc := range testCases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			if reason := skips(tc); reason != "" {
-				t.Skip(reason)
-			}
 			a := actualTimeout(tc)
 			require.NotNil(t, a)
 			assert.Equal(t, expectedTimeout(tc), *a)
