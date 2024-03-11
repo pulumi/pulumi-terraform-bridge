@@ -64,11 +64,20 @@ const (
 func runDiffCheck(t *testing.T, tc diffTestCase) {
 	ctx := context.Background()
 	tfwd := t.TempDir()
-	tfWriteJson(t, tfwd, tc.Config1)
+
 	reattachConfig := startTFProvider(t, tc)
-	tfApply(t, tfwd, reattachConfig)
+
+	tfWriteJson(t, tfwd, tc.Config1)
+	p1 := runTFPlan(t, tfwd, reattachConfig)
+	runTFApply(t, tfwd, reattachConfig, p1)
+
 	tfWriteJson(t, tfwd, tc.Config2)
-	tfApply(t, tfwd, reattachConfig)
+	p2 := runTFPlan(t, tfwd, reattachConfig)
+	runTFApply(t, tfwd, reattachConfig, p2)
+
+	bytes, err := json.MarshalIndent(p2.RawPlan, "", "  ")
+	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
+	t.Logf("TF plan: %v", string(bytes))
 
 	if tc.SkipPulumi {
 		return
@@ -98,9 +107,26 @@ func tfWriteJson(t *testing.T, cwd string, rconfig any) {
 	require.NoErrorf(t, err, "writing test.tf.json")
 }
 
-func tfApply(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) {
+type tfPlan struct {
+	PlanFile string
+	RawPlan  any
+}
+
+func runTFPlan(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) tfPlan {
+	planFile := filepath.Join(cwd, "test.tfplan")
+	env := []string{formatReattachEnvVar(providerName, reattachConfig)}
+	execCmd(t, cwd, env, "terraform", "plan", "-refresh=false", "-out", planFile)
+
+	cmd := execCmd(t, cwd, env, "terraform", "show", "-json", planFile)
+	tp := tfPlan{PlanFile: planFile}
+	err := json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
+	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
+	return tp
+}
+
+func runTFApply(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig, p tfPlan) {
 	execCmd(t, cwd, []string{formatReattachEnvVar(providerName, reattachConfig)},
-		"terraform", "apply", "-auto-approve", "-refresh=false")
+		"terraform", "apply", "-auto-approve", "-refresh=false", p.PlanFile)
 }
 
 func toTFProvider(tc diffTestCase) *schema.Provider {
@@ -329,7 +355,7 @@ func pulumiStackInit(t *testing.T, puwd string) {
 		"pulumi", "stack", "select", "teststack")
 }
 
-func execCmd(t *testing.T, wdir string, environ []string, program string, args ...string) {
+func execCmd(t *testing.T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
 	t.Logf("%s %s", program, strings.Join(args, " "))
 	cmd := exec.Command(program, args...)
 	var stdout, stderr bytes.Buffer
@@ -341,6 +367,7 @@ func execCmd(t *testing.T, wdir string, environ []string, program string, args .
 	err := cmd.Run()
 	require.NoError(t, err, "error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
 		program, strings.Join(args, " "), stdout.String(), stderr.String())
+	return cmd
 }
 
 func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) {
