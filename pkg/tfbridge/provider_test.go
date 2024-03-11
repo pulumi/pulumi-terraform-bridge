@@ -3260,7 +3260,7 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 	})
 }
 
-// Does Pulumi support setting custom Read timeouts? Read is not yet tested here.
+// TOOD[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
 func TestCustomTimeouts(t *testing.T) {
 	t.Parallel()
 
