@@ -37,7 +37,34 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		version, hasVersion = v, true
 	}
 
-	rawState, err := upgradeResourceStateRPC(ctx, typeName, m, p, res, version)
+	// Now, we perform the UpgradeResourceState operation by re-implementing TF's UpgradeResourceState.
+
+	resp, err := schema.NewGRPCProviderServer(p).
+		UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
+			TypeName: typeName,
+			Version:  version,
+			RawState: &tfprotov5.RawState{Flatmap: m},
+		})
+	if err != nil {
+		return nil, fmt.Errorf("upgrade resource state GRPC: %w", err)
+	}
+
+	// Handle returned diagnostics.
+	var dd diag.Diagnostics
+	for _, d := range resp.Diagnostics {
+		if d == nil {
+			continue
+		}
+		rd := recoverDiagnostic(*d)
+		dd = append(dd, rd)
+		logDiag(ctx, rd)
+	}
+	if err := diagToError(dd); err != nil {
+		return nil, err
+	}
+
+	// Unmarshal to get back the underlying type.
+	rawState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	if err != nil {
 		return nil, err
 	}
@@ -79,39 +106,4 @@ func findID(v cty.Value) (string, bool) {
 		return "", false
 	}
 	return id.AsString(), true
-}
-
-// Perform the UpgradeResourceState operation by invoking TF's underlying gRPC server.
-func upgradeResourceStateRPC(
-	ctx context.Context, typeName string, m map[string]string,
-	p *schema.Provider, res *schema.Resource,
-	version int64,
-) (cty.Value, error) {
-	// Call SDKv2's underlying UpgradeResourceState.
-	resp, err := schema.NewGRPCProviderServer(p).
-		UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
-			TypeName: typeName,
-			Version:  version,
-			RawState: &tfprotov5.RawState{Flatmap: m},
-		})
-	if err != nil {
-		return cty.Value{}, fmt.Errorf("upgrade resource state: %w", err)
-	}
-
-	// Handle returned diagnostics.
-	var dd diag.Diagnostics
-	for _, d := range resp.Diagnostics {
-		if d == nil {
-			continue
-		}
-		rd := recoverDiagnostic(*d)
-		dd = append(dd, rd)
-		logDiag(ctx, rd)
-	}
-	if err := diagToError(dd); err != nil {
-		return cty.Value{}, err
-	}
-
-	// Unmarshal to get back the underlying type.
-	return msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 }
