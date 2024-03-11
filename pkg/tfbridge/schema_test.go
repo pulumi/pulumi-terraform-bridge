@@ -432,8 +432,8 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 		olds                    resource.PropertyMap
 		news                    resource.PropertyMap
 		expectedNoDefaults      map[string]interface{}
-		expectedWithDefaults    map[string]interface{}
-		expectedWithMIODefaults map[string]interface{}
+		expectedForConfig    map[string]interface{}
+		expectedForCreate map[string]interface{}
 	}{
 		"empty-olds": {
 			olds: resource.PropertyMap{},
@@ -445,10 +445,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				),
 			},
 			expectedNoDefaults: map[string]interface{}{},
-			expectedWithDefaults: map[string]interface{}{
+			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
 			},
-			expectedWithMIODefaults: map[string]interface{}{
+			expectedForCreate: map[string]interface{}{
 				"element": []interface{}{},
 			},
 		},
@@ -469,10 +469,10 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				),
 			},
 			expectedNoDefaults: map[string]interface{}{},
-			expectedWithDefaults: map[string]interface{}{
+			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
 			},
-			expectedWithMIODefaults: map[string]interface{}{
+			expectedForCreate: map[string]interface{}{
 				"element": []interface{}{},
 			},
 		},
@@ -495,11 +495,11 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			expectedNoDefaults: map[string]interface{}{
 				"element": []interface{}{"el"},
 			},
-			expectedWithDefaults: map[string]interface{}{
+			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
 				"element":    []interface{}{"el"},
 			},
-			expectedWithMIODefaults: map[string]interface{}{
+			expectedForCreate: map[string]interface{}{
 				"element": []interface{}{"el"},
 			},
 		},
@@ -512,15 +512,15 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedNoDefaults, resultNoDefaults)
 
-			resultWithDefaults, _, err := makeTerraformInputsForConfig(
+			resultForConfig, _, err := makeTerraformInputsForConfig(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedWithDefaults, resultWithDefaults)
+			assert.Equal(t, tt.expectedForConfig, resultForConfig)
 
-			resultNoMIODefaults, _, err := makeTerraformInputsForCreate(
+			resultForCreate, _, err := makeTerraformInputsForCreate(
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedWithMIODefaults, resultNoMIODefaults)
+			assert.Equal(t, tt.expectedForCreate, resultForCreate)
 		})
 	}
 }
