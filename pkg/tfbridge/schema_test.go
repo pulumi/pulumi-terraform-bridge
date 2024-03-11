@@ -429,11 +429,11 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 	tfs := schema.SchemaMap{"element": resSchema.Shim()}
 
 	tests := map[string]struct {
-		olds                    resource.PropertyMap
-		news                    resource.PropertyMap
-		expectedNoDefaults      map[string]interface{}
-		expectedForConfig    map[string]interface{}
-		expectedForCreate map[string]interface{}
+		olds               resource.PropertyMap
+		news               resource.PropertyMap
+		expectedNoDefaults map[string]interface{}
+		expectedForConfig  map[string]interface{}
+		expectedForCreate  map[string]interface{}
 	}{
 		"empty-olds": {
 			olds: resource.PropertyMap{},
