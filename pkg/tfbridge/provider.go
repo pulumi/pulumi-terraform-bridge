@@ -1684,7 +1684,7 @@ func transformFromState(
 func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[shim.TimeoutKey]time.Duration {
 	timeoutOverrides := map[shim.TimeoutKey]time.Duration{}
 	if maybeTimeoutSeconds != 0 {
-		timeoutOverrides[shim.TimeoutCreate] = time.Duration(maybeTimeoutSeconds * float64(time.Second))
+		timeoutOverrides[key] = time.Duration(maybeTimeoutSeconds * float64(time.Second))
 	}
 	return timeoutOverrides
 }
