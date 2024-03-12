@@ -298,9 +298,9 @@ type conversionContext struct {
 }
 
 type makeTerraformInputsOptions struct {
-	Defaults            *bool
-	TFDefaults          *bool
-	MaxItemsOneDefaults *bool
+	DisableDefaults           bool
+	DisableTFDefaults         bool
+	EnableMaxItemsOneDefaults bool
 }
 
 func makeTerraformInputsWithOptions(
@@ -318,26 +318,13 @@ func makeTerraformInputsWithOptions(
 		}
 	}
 
-	applyDefaults := true
-	if opts.Defaults != nil {
-		applyDefaults = *opts.Defaults
-	}
-	applyTFDefaults := true
-	if opts.TFDefaults != nil {
-		applyTFDefaults = *opts.TFDefaults
-	}
-	applyMaxItemsOneDefaults := false
-	if opts.MaxItemsOneDefaults != nil {
-		applyMaxItemsOneDefaults = *opts.MaxItemsOneDefaults
-	}
-
 	cctx := &conversionContext{
 		Ctx:                      ctx,
 		ComputeDefaultOptions:    cdOptions,
 		ProviderConfig:           config,
-		ApplyDefaults:            applyDefaults,
-		ApplyTFDefaults:          applyTFDefaults,
-		ApplyMaxItemsOneDefaults: applyMaxItemsOneDefaults,
+		ApplyDefaults:            !opts.DisableDefaults,
+		ApplyTFDefaults:          !opts.DisableTFDefaults,
+		ApplyMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults,
 		Assets:                   AssetTable{},
 	}
 
@@ -1235,7 +1222,7 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False()})
+		makeTerraformInputsOptions{DisableDefaults: false, DisableTFDefaults: false})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -46,7 +46,7 @@ func makeTerraformInputsNoDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False()})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 }
 
 func makeTerraformInputsForConfig(olds, news resource.PropertyMap,
@@ -60,7 +60,7 @@ func makeTerraformInputsForCreate(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False(), MaxItemsOneDefaults: True()})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: true})
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {

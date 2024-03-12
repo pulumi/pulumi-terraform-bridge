@@ -771,7 +771,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
 		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{TFDefaults: False()})
+		makeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
 	}
@@ -1028,7 +1028,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	inputs, assets, err := makeTerraformInputsWithOptions(
 		ctx, nil, nil, nil, props, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{Defaults: False(), TFDefaults: False(), MaxItemsOneDefaults: True()},
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: true},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
