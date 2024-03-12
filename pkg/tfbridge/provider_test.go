@@ -3677,3 +3677,181 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 		}`)
 	})
 }
+
+// TODO[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
+func TestCustomTimeouts(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name                 string
+		cud                  string // Create, Update, or Delete
+		schemaTimeout        *time.Duration
+		userSpecifiedTimeout *time.Duration
+	}
+
+	testCases := []testCase{}
+
+	sec1 := 1 * time.Second
+	sec2 := 2 * time.Second
+	timeouts := []*time.Duration{nil, &sec1, &sec2}
+	cuds := []string{"Create", "Update", "Delete"}
+
+	for _, schemaTimeout := range timeouts {
+		for _, userSpecifiedTimeout := range timeouts {
+			for _, cud := range cuds {
+				n := fmt.Sprintf("%s-schema-%v-user-%v", cud, schemaTimeout, userSpecifiedTimeout)
+				testCases = append(testCases, testCase{
+					cud:                  cud,
+					name:                 n,
+					schemaTimeout:        schemaTimeout,
+					userSpecifiedTimeout: userSpecifiedTimeout,
+				})
+			}
+		}
+	}
+
+	seconds := func(d *time.Duration) float64 {
+		if d == nil {
+			return 0
+		}
+		return d.Seconds()
+	}
+
+	actualTimeout := func(tc testCase) *time.Duration {
+		var capturedTimeout *time.Duration
+
+		tok := "testprov:index:TestRes"
+		urn := fmt.Sprintf("urn:pulumi:dev::teststack::%s::testresource", tok)
+		id := "r1"
+
+		upstreamProvider := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"testprov_testres": {
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type: schema.TypeMap,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{},
+							},
+							MaxItems: 1,
+						},
+					},
+					Timeouts: &schema.ResourceTimeout{
+						Default: tc.schemaTimeout,
+						Create:  tc.schemaTimeout,
+						Update:  tc.schemaTimeout,
+						Delete:  tc.schemaTimeout,
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutCreate)
+						capturedTimeout = &t
+						rd.SetId(id)
+						return diag.Diagnostics{}
+					},
+					UpdateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutUpdate)
+						capturedTimeout = &t
+						return diag.Diagnostics{}
+					},
+					DeleteContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutDelete)
+						capturedTimeout = &t
+						return diag.Diagnostics{}
+					},
+				},
+			},
+		}
+
+		providerInfo := ProviderInfo{
+			Name: "testprov",
+			Resources: map[string]*ResourceInfo{
+				"testprov_testres": {
+					Tok: tokens.Type(tok),
+				},
+			},
+		}
+
+		shimmedProvider := shimv2.NewProvider(upstreamProvider)
+
+		bridgedProvider := &Provider{
+			tf:   shimmedProvider,
+			info: providerInfo,
+		}
+
+		bridgedProvider.initResourceMaps()
+
+		switch tc.cud {
+		case "Create":
+			_, err := bridgedProvider.Create(context.Background(), &pulumirpc.CreateRequest{
+				Urn:        urn,
+				Properties: &structpb.Struct{},
+				Timeout:    seconds(tc.userSpecifiedTimeout),
+			})
+			require.NoError(t, err)
+		case "Update":
+			_, err := bridgedProvider.Update(context.Background(), &pulumirpc.UpdateRequest{
+				Id:      id,
+				Urn:     urn,
+				Olds:    &structpb.Struct{},
+				News:    &structpb.Struct{},
+				Timeout: seconds(tc.userSpecifiedTimeout),
+			})
+			require.NoError(t, err)
+		case "Delete":
+			_, err := bridgedProvider.Delete(context.Background(), &pulumirpc.DeleteRequest{
+				Id:         id,
+				Urn:        urn,
+				Properties: &structpb.Struct{},
+				Timeout:    seconds(tc.userSpecifiedTimeout),
+			})
+			require.NoError(t, err)
+		}
+
+		return capturedTimeout
+	}
+
+	expectedTimeout := func(tc testCase) time.Duration {
+		if tc.schemaTimeout == nil && tc.userSpecifiedTimeout == nil {
+			return 20 * time.Minute
+		}
+		if tc.userSpecifiedTimeout != nil {
+			return *tc.userSpecifiedTimeout
+		}
+		return *tc.schemaTimeout
+	}
+
+	skips := func(tc testCase) string {
+		if tc.userSpecifiedTimeout != nil {
+			return ""
+		}
+		if tc.schemaTimeout == nil {
+			return ""
+		}
+		switch tc.cud {
+		case "Update", "Delete":
+			return "TODO[pulumi/pulumi-terraform-bridge#1651] - schema-specified timeouts are not " +
+				"yet supported for Update and Delete"
+		default:
+			return ""
+		}
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			if reason := skips(tc); reason != "" {
+				t.Skip(reason)
+			}
+			a := actualTimeout(tc)
+			require.NotNil(t, a)
+			assert.Equal(t, expectedTimeout(tc), *a)
+		})
+	}
+}
