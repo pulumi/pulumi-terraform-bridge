@@ -1222,7 +1222,7 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: false, DisableTFDefaults: false})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 	if err != nil {
 		return nil, nil, err
 	}
