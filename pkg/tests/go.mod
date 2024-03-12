@@ -44,6 +44,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/deckarep/golang-set/v2 v2.5.0 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -64,6 +65,7 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pgavlin/fx v0.1.6 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/posener/complete v1.2.3 // indirect
@@ -83,6 +85,7 @@ require (
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
+	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
 require (
