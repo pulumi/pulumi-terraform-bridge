@@ -18,7 +18,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
@@ -111,7 +113,8 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 
 	pulumiWriteYaml(t, tc, puwd, tc.Config2)
 	x := pt.Up()
-	require.Empty(t, x.Summary.ResourceChanges)
+
+	verifyBasicDiffAgreement(t, p2, x.Summary)
 }
 
 func tfWriteJson(t *testing.T, cwd string, rconfig any) {
@@ -298,7 +301,7 @@ func TestSetReordering(t *testing.T) {
 			"set": []string{"A", "B"},
 		},
 		Config2: map[string]any{
-			"set": []string{"B", "A", "C"},
+			"set": []string{"B", "A"},
 		},
 	})
 }
@@ -435,4 +438,47 @@ func convertConfigToPulumi(
 		return nil, err
 	}
 	return pm.Mappable(), nil
+}
+
+// Still discovering the structure of JSON-serialized TF plans. The information required from these is, primarily, is
+// whether the resource is staying unchanged, being updated or replaced. Secondarily, would be also great to know
+// detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
+//
+// For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
+func parseChangesFromTFPlan(plan tfPlan) string {
+	type p struct {
+		ResourceChanges []struct {
+			Change struct {
+				Actions []string `json:"actions"`
+			} `json:"change"`
+		} `json:"resource_changes"`
+	}
+	jb, err := json.Marshal(plan.RawPlan)
+	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
+	var pp p
+	err = json.Unmarshal(jb, &pp)
+	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
+	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
+	actions := pp.ResourceChanges[0].Change.Actions
+	contract.Assertf(len(actions) == 1, "expected exactly one action")
+	return actions[0]
+}
+
+func verifyBasicDiffAgreement(t *testing.T, plan tfPlan, us auto.UpdateSummary) {
+	tfAction := parseChangesFromTFPlan(plan)
+	switch tfAction {
+	case "update":
+		require.NotNilf(t, us.ResourceChanges, "UpdateSummary.ResourceChanges should not be nil")
+		rc := *us.ResourceChanges
+		assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected one resource to stay the same - the stack")
+		assert.Equalf(t, 1, rc[string(apitype.Update)], "expected the test resource to get an update plan")
+		assert.Equalf(t, 2, len(rc), "expected two entries in UpdateSummary.ResourceChanges")
+	case "no-op":
+		require.NotNilf(t, us.ResourceChanges, "UpdateSummary.ResourceChanges should not be nil")
+		rc := *us.ResourceChanges
+		assert.Equalf(t, 2, rc[string(apitype.OpSame)], "expected the test resource and the stack to stay the same")
+		assert.Equalf(t, 1, len(rc), "expected one entry in UpdateSummary.ResourceChanges")
+	default:
+		panic("TODO: do not understand this TF action yet: " + tfAction)
+	}
 }
