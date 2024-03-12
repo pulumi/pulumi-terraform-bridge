@@ -1245,10 +1245,17 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
+
+	timeouts, err := res.TF.DecodeTimeouts(config)
+	if err != nil {
+		return nil, errors.Errorf("error decoding timeout: %s", err)
+	}
+
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 		IgnoreChanges: ic,
 		TimeoutOptions: shim.TimeoutOptions{
 			TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
+			ResourceTimeout:  timeouts,
 		},
 	})
 	if err != nil {
@@ -1350,6 +1357,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	// Create a new destroy diff.
 	diff := p.tf.NewDestroyDiff(ctx, res.TFName, shim.TimeoutOptions{
 		TimeoutOverrides: newTimeoutOverrides(shim.TimeoutDelete, req.Timeout),
+		ResourceTimeout:  res.TF.Timeouts(),
 	})
 	if _, err := p.tf.Apply(ctx, res.TFName, state, diff); err != nil {
 		return nil, errors.Wrapf(err, "deleting %s", urn)
