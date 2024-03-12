@@ -18,10 +18,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/providertest/providers"
+	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -62,7 +66,7 @@ const (
 )
 
 func runDiffCheck(t *testing.T, tc diffTestCase) {
-	ctx := context.Background()
+	// ctx := context.Background()
 	tfwd := t.TempDir()
 
 	reattachConfig := startTFProvider(t, tc)
@@ -75,22 +79,39 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	p2 := runTFPlan(t, tfwd, reattachConfig)
 	runTFApply(t, tfwd, reattachConfig, p2)
 
-	bytes, err := json.MarshalIndent(p2.RawPlan, "", "  ")
-	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
-	t.Logf("TF plan: %v", string(bytes))
+	{
+		planBytes, err := json.MarshalIndent(p2.RawPlan, "", "  ")
+		contract.AssertNoErrorf(err, "failed to marshal terraform plan")
+		t.Logf("TF plan: %v", string(planBytes))
+	}
 
 	if tc.SkipPulumi {
 		return
 	}
 
-	handle, err := startPulumiProvider(ctx, tc)
-	require.NoError(t, err)
 	puwd := t.TempDir()
 	pulumiWriteYaml(t, tc, puwd, tc.Config1)
-	pulumiStackInit(t, puwd)
-	pulumiUp(t, puwd, handle)
+
+	pt := pulumitest.NewPulumiTest(t, puwd,
+		// Needed while using Nix-built pulumi.
+		opttest.Env("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", "true"),
+		opttest.TestInPlace(),
+		opttest.SkipInstall(),
+		opttest.AttachProvider(
+			providerShortName,
+			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
+				handle, err := startPulumiProvider(ctx, tc)
+				require.NoError(t, err)
+				return providers.Port(handle.Port), nil
+			},
+		),
+	)
+
+	pt.Up()
+
 	pulumiWriteYaml(t, tc, puwd, tc.Config2)
-	pulumiUp(t, puwd, handle)
+	x := pt.Up()
+	require.Empty(t, x.Summary.ResourceChanges)
 }
 
 func tfWriteJson(t *testing.T, cwd string, rconfig any) {
@@ -110,6 +131,10 @@ func tfWriteJson(t *testing.T, cwd string, rconfig any) {
 type tfPlan struct {
 	PlanFile string
 	RawPlan  any
+}
+
+func (*tfPlan) OpType() *apitype.OpType {
+	return nil
 }
 
 func runTFPlan(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) tfPlan {
@@ -146,6 +171,14 @@ func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
 		// fmt.Println("\n\nGetRawConfig: ", rd.GetRawConfig().GoString())
 		// fmt.Println("\n\nGetRawState:  ", rd.GetRawState().GoString())
 		return nil
+	}
+
+	if tc.Resource.DeleteContext == nil {
+		tc.Resource.DeleteContext = func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			return diag.Diagnostics{}
+		}
 	}
 
 	if tc.Resource.CreateContext == nil {
@@ -265,7 +298,7 @@ func TestSetReordering(t *testing.T) {
 			"set": []string{"A", "B"},
 		},
 		Config2: map[string]any{
-			"set": []string{"B", "A"},
+			"set": []string{"B", "A", "C"},
 		},
 	})
 }
@@ -370,8 +403,8 @@ func execCmd(t *testing.T, wdir string, environ []string, program string, args .
 	return cmd
 }
 
-func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) {
-	execCmd(t, puwd, []string{formatPulumiDebugProvEnvVar(handle), passphrase},
+func pulumiUp(t *testing.T, puwd string, handle *rpcutil.ServeHandle) *exec.Cmd {
+	return execCmd(t, puwd, []string{formatPulumiDebugProvEnvVar(handle), passphrase},
 		"pulumi", "up", "--skip-preview", "--yes")
 }
 
