@@ -1026,14 +1026,13 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	inputs, assets, err := makeTerraformInputsWithOptions(
-		ctx, nil, nil, nil, props, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: true},
+	config, assets, err := makeTerraformConfigWithOpts(
+		ctx, p, props, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformConfigOpts{EnableMaxItemsOneDefaults: true},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
 	}
-	config := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 	timeouts, err := res.TF.DecodeTimeouts(config)
 	if err != nil {
@@ -1251,7 +1250,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
+	config, assets, err := makeTerraformConfigWithOpts(
+		ctx, p, news, schema, fields,
+		makeTerraformConfigOpts{EnableMaxItemsOneDefaults: true},
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}

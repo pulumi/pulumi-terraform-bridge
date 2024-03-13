@@ -1218,6 +1218,22 @@ func MakeTerraformOutput(
 	return output
 }
 
+type makeTerraformConfigOpts struct {
+	EnableMaxItemsOneDefaults bool
+}
+
+func makeTerraformConfigWithOpts(ctx context.Context, p *Provider, m resource.PropertyMap,
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo, opts makeTerraformConfigOpts) (shim.ResourceConfig, AssetTable, error) {
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
+		makeTerraformInputsOptions{
+			DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults},
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), assets, nil
+}
+
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
