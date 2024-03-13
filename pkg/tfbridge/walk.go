@@ -92,8 +92,10 @@ func propertyPathToSchemaPathInner(
 	}
 
 	// Detect single-nested blocks (object types).
-	if res, isRes := schema.Elem().(shim.Resource); schema.Type() == shim.TypeMap && isRes {
-		return propertyPathToSchemaPath(basePath, propertyPath, res.Schema(), schemaInfo.Fields)
+	//
+	// This is the case where (schema & schema.Elem) ~ {x: T}.
+	if res, isRes := util.CastToTypeObject(schema); isRes {
+		return propertyPathToSchemaPath(basePath, propertyPath, res, schemaInfo.Fields)
 	}
 
 	// Detect collections.
@@ -108,8 +110,16 @@ func propertyPathToSchemaPathInner(
 			elemPP = propertyPath[1:]
 		}
 		switch e := schema.Elem().(type) {
+
+		// (schema, schemaInfo) represents a list or set nested object (schema ~
+		// List[{x: T}] or schema ~ Set[{x: T}]), so we traverse the inner object
+		// with the associated .Elem.Fields.
 		case shim.Resource: // object element type
-			return propertyPathToSchemaPath(basePath.Element(), elemPP, e.Schema(), schemaInfo.Fields)
+			elem := schemaInfo.Elem
+			if elem == nil {
+				elem = &SchemaInfo{}
+			}
+			return propertyPathToSchemaPath(basePath.Element(), elemPP, e.Schema(), elem.Fields)
 		case shim.Schema: // non-object element type
 			return propertyPathToSchemaPathInner(basePath.Element(), elemPP, e, schemaInfo.Elem)
 		case nil: // unknown element type
@@ -219,8 +229,16 @@ func schemaPathToPropertyPathInner(
 			basePath = append(basePath, "*")
 		}
 		switch e := schema.Elem().(type) {
+
+		// (schema, schemaInfo) represents a list or set nested object (schema ~
+		// List[{x: T}] or schema ~ Set[{x: T}]), so we traverse the inner object
+		// with the associated .Elem.Fields.
 		case shim.Resource: // object element type
-			return schemaPathToPropertyPath(basePath, schemaPath[1:], e.Schema(), schemaInfo.Fields)
+			elem := schemaInfo.Elem
+			if elem == nil {
+				elem = &SchemaInfo{}
+			}
+			return schemaPathToPropertyPath(basePath, schemaPath[1:], e.Schema(), elem.Fields)
 		case shim.Schema: // non-object element type
 			return schemaPathToPropertyPathInner(basePath, schemaPath[1:], e, schemaInfo.Elem)
 		case nil: // unknown element type
