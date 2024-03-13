@@ -70,6 +70,10 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 			Type: shim.TypeMap,
 			Elem: xySchema,
 		}).Shim(),
+		"list_obj": (&schema.Schema{
+			Type: shim.TypeList,
+			Elem: xySchema,
+		}).Shim(),
 	}
 
 	schemaInfos := map[string]*SchemaInfo{
@@ -78,6 +82,14 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 		},
 		"list_str_named": {
 			Name: "listStr",
+		},
+		"list_obj": {
+			Name: "listObj",
+			Elem: &SchemaInfo{
+				Fields: map[string]*SchemaInfo{
+					"x_prop": {Name: "xOverride"},
+				},
+			},
 		},
 	}
 
@@ -163,6 +175,11 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 			name:     "max-items-1 list 3 via schemainfo",
 			pp:       []any{"flatListViaSchemaInfo", "xProp"},
 			expected: walk.NewSchemaPath().GetAttr("flat_list_via_schema_info").Element().GetAttr("x_prop"),
+		},
+		{
+			name:     "override list nested object property",
+			pp:       resource.PropertyPath{"listObj", 0, "xOverride"},
+			expected: walk.NewSchemaPath().GetAttr("list_obj").Element().GetAttr("x_prop"),
 		},
 	}
 
