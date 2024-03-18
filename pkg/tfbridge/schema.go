@@ -1279,11 +1279,15 @@ func MakeTerraformConfigFromInputs(
 	return p.NewResourceConfig(ctx, raw)
 }
 
+type makeTerraformStateOpts struct {
+	EnableMaxItemsOneDefaults bool
+}
+
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformState(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap,
+func makeTerraformStateWithOpts(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOpts,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1301,8 +1305,9 @@ func MakeTerraformState(
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
-	cctx := &conversionContext{Ctx: ctx}
-	inputs, err := cctx.makeTerraformInputs(nil, m, res.TF.Schema(), res.Schema.Fields)
+	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{
+			DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults})
 	if err != nil {
 		return nil, err
 	}
@@ -1327,7 +1332,7 @@ func UnmarshalTerraformState(
 		return nil, err
 	}
 
-	return MakeTerraformState(ctx, r, id, props)
+	return makeTerraformStateWithOpts(ctx, r, id, props, makeTerraformStateOpts{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
