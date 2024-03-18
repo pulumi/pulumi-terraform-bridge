@@ -87,7 +87,7 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(customDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOpts{})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -128,7 +128,7 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(noCustomDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOpts{})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -182,7 +182,7 @@ func TestCustomizeDiff(t *testing.T) {
 					TF:     shimv2.NewResource(customDiffRes),
 					Schema: &ResourceInfo{Fields: info},
 				}
-				tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOpts{})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -225,7 +225,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
-	tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+	tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOpts{})
 	assert.NoError(t, err)
 
 	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)

@@ -1283,7 +1283,7 @@ type makeTerraformStateOpts struct {
 	EnableMaxItemsOneDefaults bool
 }
 
-// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
+// makeTerraformStateWithOpts converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
 func makeTerraformStateWithOpts(
