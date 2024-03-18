@@ -53,9 +53,10 @@ const (
 )
 
 type schemaGenerator struct {
-	pkg     tokens.Package
-	version string
-	info    tfbridge.ProviderInfo
+	pkg      tokens.Package
+	version  string
+	info     tfbridge.ProviderInfo
+	language Language
 }
 
 type schemaNestedType struct {
@@ -214,9 +215,10 @@ func genPulumiSchema(
 ) (pschema.PackageSpec, error) {
 
 	g := &schemaGenerator{
-		pkg:     name,
-		version: version,
-		info:    info,
+		pkg:      name,
+		version:  version,
+		info:     info,
+		language: pack.language,
 	}
 	pulumiPackageSpec, err := g.genPackageSpec(pack)
 	if err != nil {
@@ -648,6 +650,11 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 	if prop.info != nil && prop.info.Secret != nil {
 		secret = *prop.info.Secret
 	}
+	ic := infoContext{
+		language: g.language,
+		pkg:      g.pkg,
+		info:     g.info,
+	}
 
 	propPath := paths.NewProperyPath(prop.parentPath, prop.propertyName)
 	return pschema.PropertySpec{
@@ -655,7 +662,7 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 		Description:          description,
 		Default:              defaultValue,
 		DefaultInfo:          defaultInfo,
-		DeprecationMessage:   prop.deprecationMessage(),
+		DeprecationMessage:   ic.fixupPropertyReference(prop.deprecationMessage()),
 		Language:             language,
 		Secret:               secret,
 		WillReplaceOnChanges: prop.forceNew(),
