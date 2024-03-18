@@ -42,7 +42,7 @@ func ProviderMiniAws() tfbridge.ProviderInfo {
 							content,
 							// This replacement is done in the aws provider
 							// here. This replacement is necessary because the
-							// bridge will drop any docs that contain the work
+							// bridge will drop any docs that contain the word
 							// 'Terraform'
 							// https://github.com/pulumi/pulumi-aws/blob/df5d52299c72b936df9c9289d83d10225dc1dce7/provider/replacements.json#L1688
 							//nolint:lll
