@@ -113,13 +113,17 @@ func TestCSharpMiniRandom(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/minirandom-schema-csharp.json", schema)
 }
 
-// TestPropertyDocumentationEdits tests that documentation edits are applied to individual properties.
-// This includes both the property description and deprecation message. This tests the following workflow
-//  1. The generator finds markdown documentation for the `aws_s3_bucket` resource
+// TestPropertyDocumentationEdits tests that documentation edits are applied to
+// individual properties. This includes both the property description and
+// deprecation message. This tests the following workflow
+//  1. The generator finds markdown documentation for the `aws_s3_bucket`
+//     resource
 //  2. The generator applies `DocsEdit` rules to the markdown documentation
-//  3. The generator parses the markdown documentation and pulls out the `acl` argument description and merges that into the schema
-//  3. The generator cleans up the `acl` description and deprecation message, replacing terraform references with pulumi references
-//     e.g. `aws_s3_bucket_acl` -> `aws.s3.BucketAclV2`
+//  3. The generator parses the markdown documentation and pulls out the `acl`
+//     argument description and merges that into the schema
+//  3. The generator cleans up the `acl` description and deprecation message,
+//     replacing terraform references with pulumi references e.g.
+//     `aws_s3_bucket_acl` -> `aws.s3.BucketAclV2`
 func TestPropertyDocumentationEdits(t *testing.T) {
 	provider := testprovider.ProviderMiniAws()
 	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
@@ -130,7 +134,10 @@ func TestPropertyDocumentationEdits(t *testing.T) {
 
 	// asserts that `aws_s3_bucket_acl` has been changed to `aws.s3.BucketAclV2`
 	assert.Equal(t,
-		"The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply. Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`, and `log-delivery-write`. Defaults to `private`.  Conflicts with `grant`. The provider will only perform drift detection if a configuration value is provided. Use the resource `aws.s3.BucketAclV2` instead.\n",
+		"The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply."+
+			" Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`,"+
+			" and `log-delivery-write`. Defaults to `private`.  Conflicts with `grant`. The provider will only perform drift "+
+			"detection if a configuration value is provided. Use the resource `aws.s3.BucketAclV2` instead.\n",
 		schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].Description,
 	)
 	assert.Equal(t,

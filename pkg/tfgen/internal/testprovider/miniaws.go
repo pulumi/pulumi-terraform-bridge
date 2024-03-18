@@ -40,9 +40,12 @@ func ProviderMiniAws() tfbridge.ProviderInfo {
 					Edit: func(_ string, content []byte) ([]byte, error) {
 						content = bytes.ReplaceAll(
 							content,
-							// This replacement is done in the aws provider here. This replacement is necessary because the bridge will drop any docs that
-							// contain the work 'Terraform'
+							// This replacement is done in the aws provider
+							// here. This replacement is necessary because the
+							// bridge will drop any docs that contain the work
+							// 'Terraform'
 							// https://github.com/pulumi/pulumi-aws/blob/df5d52299c72b936df9c9289d83d10225dc1dce7/provider/replacements.json#L1688
+							//nolint:lll
 							[]byte(" Terraform will only perform drift detection if a configuration value is provided."),
 							[]byte(" The provider will only perform drift detection if a configuration value is provided."),
 						)
