@@ -55,5 +55,6 @@
 
   in {
     devShells.x86_64-darwin.default = make-shell "x86_64-darwin";
+    devShells.aarch64-darwin.default = make-shell "aarch64-darwin";
   };
 }
