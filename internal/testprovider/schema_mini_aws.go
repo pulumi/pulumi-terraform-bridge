@@ -45,13 +45,8 @@ func resourceMiniAwsBucket() map[string]*schema.Schema {
 			Required: true,
 		},
 		"acl": {
-			Type:     schema.TypeString,
-			Optional: true,
-			// // NOTE: In the real provider this field is not populated in the terraform schema so we pull it from the
-			// // markdown docs. This is the value of the description after being pulled from the markdown docs and after
-			// // the doc edits have been applied.
-			// Description: "The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply. Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`, and `log-delivery-write`. Defaults to `private`. " +
-			// 	"Conflicts with `grant`. The provider will only perform drift detection if a configuration value is provided. Use the resource `aws_s3_bucket_acl` instead.",
+			Type:          schema.TypeString,
+			Optional:      true,
 			ConflictsWith: []string{"grant"},
 			Deprecated:    "Use the aws_s3_bucket_acl resource instead",
 		},
