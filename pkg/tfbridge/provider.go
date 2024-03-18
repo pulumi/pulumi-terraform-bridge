@@ -1028,7 +1028,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	config, assets, err := makeTerraformConfigWithOpts(
 		ctx, p, props, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformConfigOpts{EnableMaxItemsOneDefaults: true},
+		makeTerraformConfigOpts{},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
@@ -1238,7 +1238,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	state, err := makeTerraformStateWithOpts(
-		ctx, res, req.GetId(), olds, makeTerraformStateOpts{EnableMaxItemsOneDefaults: true})
+		ctx, res, req.GetId(), olds, makeTerraformStateOpts{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1253,7 +1253,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	config, assets, err := makeTerraformConfigWithOpts(
 		ctx, p, news, schema, fields,
-		makeTerraformConfigOpts{EnableMaxItemsOneDefaults: true},
+		makeTerraformConfigOpts{},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
