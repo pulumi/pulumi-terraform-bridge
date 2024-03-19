@@ -518,8 +518,7 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config,
-		p.info.Config)
+	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -798,8 +797,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now re-generate the inputs WITH the TF defaults
 	inputs, assets, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(),
-		res.Schema.Fields)
+		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
@@ -826,7 +824,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 // (i.e. from a previous version without MaxItemsOne)
 // we need to mark them for update manually in order to correct the state
 // from an array to a flat type.
-// The diff is otherwise ignored since makeTerraformInputs won't touch
+// The diff is otherwise ignored since MakeTerraformInputs won't touch
 // the type if it in the right shape.
 func markWronglyTypedMaxItemsOneStateDiff(
 	schema shim.SchemaMap, info map[string]*SchemaInfo, olds resource.PropertyMap,
@@ -1252,10 +1250,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := makeTerraformConfigWithOpts(
-		ctx, p, news, schema, fields,
-		makeTerraformConfigOpts{},
-	)
+	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
