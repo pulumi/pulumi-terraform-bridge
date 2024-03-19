@@ -55,6 +55,9 @@ func runCreate(t *testing.T, tc diffTestCase) {
 	pt.Up()
 }
 
+// This attempts to recreate https://github.com/pulumi/pulumi-aws/issues/3421
+// panic is triggered in
+// https://github.com/hashicorp/terraform-provider-aws/blob/8812420dd140c1c4640f9a4d693eb82a350b1016/internal/service/elbv2/listener.go#L1029
 func TestMaxItemsOnePropCreateValue(t *testing.T) {
 	vals := make([]cty.Value, 0, 2)
 	runCreate(t, diffTestCase{
