@@ -335,6 +335,13 @@ func makeTerraformInputsWithOptions(
 	return inputs, cctx.Assets, err
 }
 
+func MakeTerraformInputs(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
+}
+
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform. Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it. Please take
@@ -1245,6 +1252,20 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), assets, nil
 }
 
+// UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
+// Unused internally.
+func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+	label string) (shim.ResourceConfig, AssetTable, error) {
+
+	props, err := plugin.UnmarshalProperties(m,
+		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	return MakeTerraformConfig(ctx, p, props, tfs, ps)
+}
+
 // makeConfig is a helper for MakeTerraformConfigFromInputs that performs a deep-ish copy of its input, recursively
 // removing Pulumi-internal properties as it goes.
 func makeConfig(v interface{}) interface{} {
@@ -1283,9 +1304,6 @@ type makeTerraformStateOpts struct {
 	EnableMaxItemsOneDefaults bool
 }
 
-// makeTerraformStateWithOpts converts a Pulumi property bag into its Terraform equivalent.  This requires
-// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
-// Terraform represents resource properties (schemas are simply sugar on top).
 func makeTerraformStateWithOpts(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOpts,
 ) (shim.InstanceState, error) {
@@ -1313,6 +1331,15 @@ func makeTerraformStateWithOpts(
 	}
 
 	return res.TF.InstanceState(id, inputs, meta)
+}
+
+// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
+// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
+// Terraform represents resource properties (schemas are simply sugar on top).
+func MakeTerraformState(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap,
+) (shim.InstanceState, error) {
+	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOpts{})
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.

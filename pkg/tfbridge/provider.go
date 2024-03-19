@@ -518,8 +518,8 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, tfVars, nil, tfVars, p.config,
-		p.info.Config, makeTerraformInputsOptions{})
+	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config,
+		p.info.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -781,6 +781,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
 		warning := fmt.Sprintf("%v verification warning: %v", urn, warn)
+		// TODO: This is needed for tests, since tests don't have a host defined.
+		// We should clean this up once we fix that.
 		if p.host == nil {
 			glog.Warning(warning)
 		} else {
@@ -794,10 +796,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
 
 	// Now re-generate the inputs WITH the TF defaults
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx,
+	inputs, assets, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
 		p.configValues, olds, news, res.TF.Schema(),
-		res.Schema.Fields, makeTerraformInputsOptions{})
+		res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
@@ -875,7 +877,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOpts{})
+	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1237,8 +1239,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(
-		ctx, res, req.GetId(), olds, makeTerraformStateOpts{})
+	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1410,14 +1411,13 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// First, create the inputs.
 	tfname := ds.TFName
-	inputs, _, err := makeTerraformInputsWithOptions(
+	inputs, _, err := MakeTerraformInputs(
 		ctx,
 		&PulumiResource{Properties: args},
 		p.configValues,
 		nil, args,
 		ds.TF.Schema(),
-		ds.Schema.Fields,
-		makeTerraformInputsOptions{})
+		ds.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
