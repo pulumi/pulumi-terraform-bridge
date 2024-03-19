@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -3257,6 +3258,423 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 			}
 		}`)
 		t.Errorf("The code did not panic!")
+	})
+}
+
+func TestMaxItemsOneConflictsWith(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": {
+						Type:          schemav2.TypeList,
+						MaxItems:      1,
+						Elem:          &schemav2.Schema{Type: schemav2.TypeString},
+						Optional:      true,
+						ConflictsWith: []string{"other_prop"},
+					},
+					"other_prop": {
+						Type:          schemav2.TypeString,
+						Optional:      true,
+						ConflictsWith: []string{"max_items_one_prop"},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("No conflict when other specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				  "other_prop": "other"
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "otherProp": "other"
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+
+	t.Run("No conflict when no props specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestMinMaxItemsOneOptional(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"max_items_one_prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						MaxItems: 1,
+						MinItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("No error when not specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+
+	t.Run("No error when specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+					"max_items_one_prop": ["prop"]
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": [],
+				  "maxItemsOneProp": "prop"
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"specs": {
+						Computed: true,
+						MaxItems: 1,
+						Type:     schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"disk": {
+									Type:     schema.TypeInt,
+									Computed: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P: shimProv,
+		},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("Computed property not specified", func(t *testing.T) {
+		testutils.ReplaySequence(t, provider, `[
+			{
+			  "method": "/pulumirpc.ResourceProvider/Configure",
+			  "request": {
+				"args": {},
+				"variables": {}
+			  },
+			  "response": {
+				"supportsPreview": true
+			  }
+			},
+			{
+			  "method": "/pulumirpc.ResourceProvider/Check",
+			  "request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {},
+				"news": {
+				},
+				"randomSeed": "iYRxB6/8Mm7pwKIs+yK6IyMDmW9JSSTM6klzRUgZhRk="
+			  },
+			  "response": {
+				"inputs": {
+				  "__defaults": []
+				}
+			  }
+			}
+		  ]
+		  `)
+	})
+}
+
+func TestProviderConfigMinMaxItemsOne(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{
+			"max_items_one_config": {
+				Type:     schemav2.TypeList,
+				Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				MaxItems: 1,
+				MinItems: 1,
+				Optional: true,
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:        shimProv,
+		config:    shimv2.NewSchemaMap(p.Schema),
+		info:      ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{},
+	}
+
+	t.Run("No error when config not specified", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "inputs": {}
+		  }
+		}`)
+	})
+}
+
+func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
+	t.Setenv("REQUIRED_CONFIG", "required")
+	// Note that this config should be invalid.
+	//
+	// From the Required docs: Required cannot be used with Computed Default, DefaultFunc
+	// attributes in a Provider schema
+	//
+	// From the DefaultFunc docs: For legacy reasons, DefaultFunc can be used with Required
+	//
+	// This is needed right now since some providers (e.g. Azure) depend on this.
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{
+			"required_env": {
+				Type:        schemav2.TypeString,
+				Required:    true,
+				DefaultFunc: schemav2.EnvDefaultFunc("REQUIRED_CONFIG", nil),
+			},
+			// This is actually invalid!
+			// "required": {
+			// 	Type:     schemav2.TypeString,
+			// 	Required: true,
+			// 	Default:  "default",
+			// },
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:        shimProv,
+		config:    shimv2.NewSchemaMap(p.Schema),
+		info:      ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{},
+	}
+
+	t.Run("No error with env config", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "inputs": {}
+		  }
+		}`)
+	})
+}
+
+func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"networkRulesets": {
+						Computed: true,
+						Optional: true,
+						MaxItems: 1,
+						Type:     schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"defaultAction": {
+									Type:     schema.TypeString,
+									Required: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info:   ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	t.Run("Check includes no nulls in response for unspecified props", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+					"__defaults": [],
+					"networkRulesets": null
+				},
+				"news": {},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": []
+				}
+			}
+		}`)
 	})
 }
 

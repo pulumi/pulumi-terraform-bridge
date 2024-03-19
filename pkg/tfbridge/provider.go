@@ -766,12 +766,11 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		}
 	}
 
-	// Now fetch the default values so that (a) we can return them to the caller and (b) so that validation
-	// includes the default values.  Otherwise, the provider wouldn't be presented with its own defaults.
 	tfname := res.TFName
-	inputs, _, err := makeTerraformInputsWithoutTFDefaults(ctx,
+	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
 	}
@@ -780,8 +779,15 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, urn, fmt.Sprintf("%v verification warning: %v", urn, warn)); err != nil {
-			return nil, err
+		warning := fmt.Sprintf("%v verification warning: %v", urn, warn)
+		// TODO: This is needed for tests, since tests don't have a host defined.
+		// We should clean this up once we fix that.
+		if p.host == nil {
+			glog.Warning(warning)
+		} else {
+			if err = p.host.Log(ctx, diag.Warning, urn, warning); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1013,15 +1019,20 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
+	props, err := plugin.UnmarshalProperties(req.GetProperties(),
+		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unmarshaling %s's new property state", urn)
+	}
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
-	config, assets, err := UnmarshalTerraformConfig(ctx,
-		p, req.GetProperties(), res.TF.Schema(), res.Schema.Fields,
-		fmt.Sprintf("%s.news", label))
+	config, assets, err := makeTerraformConfigWithOpts(
+		ctx, p, props, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformConfigOpts{},
+	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
 	}
-
 	// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
 	timeouts, err := res.TF.DecodeTimeouts(config)
 	if err != nil {
@@ -1063,7 +1074,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
