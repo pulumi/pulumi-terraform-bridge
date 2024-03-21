@@ -227,6 +227,7 @@ func TestResourceEncoder(t *testing.T) {
 				},
 				resource.PropertyKey("id"): resource.PropertyValue{V: "myid"},
 			},
+			//nolint:lll
 			expect: autogold.Expect(`tftypes.Object["foo":tftypes.String, "id":tftypes.String]<"foo":tftypes.String<"bar">, "id":tftypes.String<"myid">>`),
 		},
 	}
@@ -446,6 +447,7 @@ func TestTypeDerivations(t *testing.T) {
 			resource.PropertyMap{"xes": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewNumberProperty(1),
 			})},
+			//nolint:lll
 			autogold.Expect(`tftypes.Object["x":tftypes.List[tftypes.Number]]<"x":tftypes.List[tftypes.Number]<tftypes.Number<"1">>>`),
 		},
 		{
@@ -460,6 +462,7 @@ func TestTypeDerivations(t *testing.T) {
 				"one": resource.NewNumberProperty(1),
 				"two": resource.NewNumberProperty(2),
 			})},
+			//nolint:lll
 			autogold.Expect(`tftypes.Object["x":tftypes.Map[tftypes.Number]]<"x":tftypes.Map[tftypes.Number]<"one":tftypes.Number<"1">, "two":tftypes.Number<"2">>>`),
 		},
 		{
@@ -474,6 +477,7 @@ func TestTypeDerivations(t *testing.T) {
 				resource.NewNumberProperty(1),
 				resource.NewNumberProperty(2),
 			})},
+			//nolint:lll
 			autogold.Expect(`tftypes.Object["x":tftypes.Set[tftypes.Number]]<"x":tftypes.Set[tftypes.Number]<tftypes.Number<"1">, tftypes.Number<"2">>>`),
 		},
 		{
@@ -487,6 +491,7 @@ func TestTypeDerivations(t *testing.T) {
 				}).Shim(),
 			},
 			resource.PropertyMap{"x": resource.NewObjectProperty(resource.PropertyMap{"prop": resource.NewNumberProperty(1)})},
+			//nolint:lll
 			autogold.Expect(`tftypes.Object["x":tftypes.Object["prop":tftypes.Number]]<"x":tftypes.Object["prop":tftypes.Number]<"prop":tftypes.Number<"1">>>`),
 		},
 	}
@@ -558,6 +563,7 @@ func TestTupleDerivations(t *testing.T) {
 				tftypes.Number,
 				tftypes.String,
 			}},
+			//nolint:lll
 			autogold.Expect(`tftypes.Object["x":tftypes.Tuple[tftypes.Number, tftypes.String]]<"x":tftypes.Tuple[tftypes.Number, tftypes.String]<tftypes.Number<"1">, tftypes.String<"OK">>>`),
 		},
 	}
