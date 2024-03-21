@@ -426,11 +426,3 @@ func byType(typ tftypes.Type) (Encoder, Decoder, error) {
 		return nil, nil, fmt.Errorf("Yet to support type: %v", typ.String())
 	}
 }
-
-// Some resources such as random_bytes are special that they do not specify an ID, where Pulumi insists on an ID. Make
-// sure conversion works for these.
-func TestResourceWithoutID(t *testing.T) {
-	shimSchema.Provider
-	NewEncoding()
-
-}
