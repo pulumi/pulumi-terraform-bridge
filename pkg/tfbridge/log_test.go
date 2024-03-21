@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -31,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
-// TestLogDirector ensures that logging redirects to the right place.
+// Ensure that logging redirects to the right place.
 func TestLogRedirector(t *testing.T) {
 	lines := []string{
 		"no prefix #1\n",
@@ -56,57 +57,163 @@ func TestLogRedirector(t *testing.T) {
 		"no prefix #5\n",
 	}
 
-	var traces []string
-	var debugs []string
-	var infos []string
-	var warnings []string
-	var errors []string
-
-	ld := &LogRedirector{
-		enabled: true,
-		writers: map[string]func(string) error{
-			tfTracePrefix: func(msg string) error {
-				traces = append(traces, msg)
-				return nil
-			},
-			tfDebugPrefix: func(msg string) error {
-				debugs = append(debugs, msg)
-				return nil
-			},
-			tfInfoPrefix: func(msg string) error {
-				infos = append(infos, msg)
-				return nil
-			},
-			tfWarnPrefix: func(msg string) error {
-				warnings = append(warnings, msg)
-				return nil
-			},
-			tfErrorPrefix: func(msg string) error {
-				errors = append(errors, msg)
-				return nil
-			},
-		},
+	testCases := []struct {
+		tfLog  level
+		expect autogold.Value
+	}{
+		{noLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[debug] [] [INFO] info line #1
+[debug] [] no prefix #3
+[debug] [] [INFO] info line #2
+[debug] [] [WARN] warning line #1
+[debug] [] [WARN] warning line #2
+[debug] [] [ERROR] error line #1
+[debug] [] [ERROR] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[debug] [] [INFO] info line #3
+[debug] [] [WARN] warning line #3
+[debug] [] [ERROR] error line #3
+[debug] [] no prefix #5
+`)},
+		{traceLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[info] [] info line #1
+[debug] [] no prefix #3
+[info] [] info line #2
+[warning] [] warning line #1
+[warning] [] warning line #2
+[error] [] error line #1
+[error] [] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[info] [] info line #3
+[warning] [] warning line #3
+[error] [] error line #3
+[debug] [] no prefix #5
+`)},
+		{debugLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[info] [] info line #1
+[debug] [] no prefix #3
+[info] [] info line #2
+[warning] [] warning line #1
+[warning] [] warning line #2
+[error] [] error line #1
+[error] [] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[info] [] info line #3
+[warning] [] warning line #3
+[error] [] error line #3
+[debug] [] no prefix #5
+`)},
+		{infoLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[info] [] info line #1
+[debug] [] no prefix #3
+[info] [] info line #2
+[warning] [] warning line #1
+[warning] [] warning line #2
+[error] [] error line #1
+[error] [] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[info] [] info line #3
+[warning] [] warning line #3
+[error] [] error line #3
+[debug] [] no prefix #5
+`)},
+		{warnLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[debug] [] [INFO] info line #1
+[debug] [] no prefix #3
+[debug] [] [INFO] info line #2
+[warning] [] warning line #1
+[warning] [] warning line #2
+[error] [] error line #1
+[error] [] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[debug] [] [INFO] info line #3
+[warning] [] warning line #3
+[error] [] error line #3
+[debug] [] no prefix #5
+`)},
+		{errorLevel, autogold.Expect(`[debug] [] no prefix #1
+[debug] [] [TRACE] trace line #1
+[debug] [] [TRACE] trace line #2
+[debug] [] no prefix #2
+[debug] [] [DEBUG] debug line #1
+[debug] [] [DEBUG] debug line #2
+[debug] [] [INFO] info line #1
+[debug] [] no prefix #3
+[debug] [] [INFO] info line #2
+[debug] [] [WARN] warning line #1
+[debug] [] [WARN] warning line #2
+[error] [] error line #1
+[error] [] error line #2
+[debug] [] no prefix #4
+[debug] [] [TRACE] trace line #3
+[debug] [] [DEBUG] debug line #3
+[debug] [] [INFO] info line #3
+[debug] [] [WARN] warning line #3
+[error] [] error line #3
+[debug] [] no prefix #5
+`)},
 	}
 
-	// For each line, spit 16 byte increments into the redirector.
-	for _, line := range lines {
-		for len(line) > 0 {
-			sz := 16
-			if sz > len(line) {
-				sz = len(line)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("TF_LOG=%v", tc.tfLog), func(t *testing.T) {
+			ld := &LogRedirector{
+				level: tc.tfLog,
+				sink:  &testLogSink{buf: &bytes.Buffer{}},
 			}
-			n, err := ld.Write([]byte(line[:sz]))
-			assert.Nil(t, err)
-			assert.Equal(t, n, sz)
-			line = line[sz:]
-		}
-	}
 
-	assert.Equal(t, 3, len(traces))
-	assert.Equal(t, 3+5, len(debugs)) // debugs get defaults
-	assert.Equal(t, 3, len(infos))
-	assert.Equal(t, 3, len(warnings))
-	assert.Equal(t, 3, len(errors))
+			// For each line, spit 16 byte increments into the redirector.
+			for _, line := range lines {
+				for len(line) > 0 {
+					sz := 16
+					if sz > len(line) {
+						sz = len(line)
+					}
+					n, err := ld.Write([]byte(line[:sz]))
+					assert.Nil(t, err)
+					assert.Equal(t, n, sz)
+					line = line[sz:]
+				}
+			}
+
+			got := ld.sink.(*testLogSink).buf.String()
+			tc.expect.Equal(t, got)
+		})
+	}
 }
 
 // Check if framework logs emitted by SDKv2 based resources actually are captured by Pulumi.

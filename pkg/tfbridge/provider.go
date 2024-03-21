@@ -282,15 +282,7 @@ func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context
 		return ctx
 	}
 
-	log.SetOutput(&LogRedirector{
-		writers: map[string]func(string) error{
-			tfTracePrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
-			tfDebugPrefix: func(msg string) error { return p.host.Log(ctx, diag.Debug, "", msg) },
-			tfInfoPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Info, "", msg) },
-			tfWarnPrefix:  func(msg string) error { return p.host.Log(ctx, diag.Warning, "", msg) },
-			tfErrorPrefix: func(msg string) error { return p.host.Log(ctx, diag.Error, "", msg) },
-		},
-	})
+	log.SetOutput(NewTerraformLogRedirector(ctx, p.host))
 
 	return logging.InitLogging(ctx, logging.LogOptions{
 		LogSink:         p.host,
