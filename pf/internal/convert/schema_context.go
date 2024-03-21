@@ -66,7 +66,7 @@ func newDataSourceSchemaMapContext(
 	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
-		fields = providerInfo.Resources[dataSource].GetFields()
+		fields = providerInfo.DataSources[dataSource].GetFields()
 	}
 	return newSchemaMapContext(sm, fields)
 }
