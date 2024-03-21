@@ -59,7 +59,10 @@ func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
 	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	// Tests pass without this line. Was this intentional? Perhaps to support resources with
-	// non-string IDs? propertyDecoders["id"] = newStringDecoder().
+	// non-string IDs?
+	//propertyDecoders["id"] = newStringDecoder()
+	//
+	// THIS needs extra attention.
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}

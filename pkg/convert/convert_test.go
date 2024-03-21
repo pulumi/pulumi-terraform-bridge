@@ -22,9 +22,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type convertTurnaroundTestCase struct {
@@ -424,4 +425,12 @@ func byType(typ tftypes.Type) (Encoder, Decoder, error) {
 
 		return nil, nil, fmt.Errorf("Yet to support type: %v", typ.String())
 	}
+}
+
+// Some resources such as random_bytes are special that they do not specify an ID, where Pulumi insists on an ID. Make
+// sure conversion works for these.
+func TestResourceWithoutID(t *testing.T) {
+	shimSchema.Provider
+	NewEncoding()
+
 }

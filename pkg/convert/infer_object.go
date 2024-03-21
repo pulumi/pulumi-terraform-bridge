@@ -29,6 +29,7 @@ func InferObjectType(sm shim.SchemaMap) tftypes.Object {
 	}
 	sm.Range(func(key string, value shim.Schema) bool {
 		o.AttributeTypes[key] = InferType(value)
+		// This causes issues apparently, and likely should not be done or be an option.
 		if value.Optional() {
 			o.OptionalAttributes[key] = struct{}{}
 		}
