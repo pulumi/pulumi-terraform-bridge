@@ -40,7 +40,7 @@ const testLambda = new aws.lambda.Function("testLambda", {
     code: new pulumi.asset.FileArchive("lambda_function_payload.zip"),
     role: iamForLambda.arn,
     handler: "index.test",
-    runtime: "nodejs18.x",
+    runtime: aws.lambda.Runtime.NodeJS18dX,
     environment: {
         variables: {
             foo: "bar",
@@ -69,7 +69,7 @@ test_lambda = aws.lambda_.Function("testLambda",
     code=pulumi.FileArchive("lambda_function_payload.zip"),
     role=iam_for_lambda.arn,
     handler="index.test",
-    runtime="nodejs18.x",
+    runtime=aws.lambda_.Runtime.NODE_JS18D_X,
     environment=aws.lambda_.FunctionEnvironmentArgs(
         variables={
             "foo": "bar",
@@ -128,7 +128,7 @@ return await Deployment.RunAsync(() =>
         Code = new FileArchive("lambda_function_payload.zip"),
         Role = iamForLambda.Arn,
         Handler = "index.test",
-        Runtime = "nodejs18.x",
+        Runtime = Aws.Lambda.Runtime.NodeJS18dX,
         Environment = new Aws.Lambda.Inputs.FunctionEnvironmentArgs
         {
             Variables = 
@@ -174,7 +174,7 @@ func main() {
 			return err
 		}
 		iamForLambda, err := iam.NewRole(ctx, "iamForLambda", &iam.RoleArgs{
-			AssumeRolePolicy: *pulumi.String(assumeRole.Json),
+			AssumeRolePolicy: pulumi.String(assumeRole.Json),
 		})
 		if err != nil {
 			return err
@@ -191,7 +191,7 @@ func main() {
 			Code:    pulumi.NewFileArchive("lambda_function_payload.zip"),
 			Role:    iamForLambda.Arn,
 			Handler: pulumi.String("index.test"),
-			Runtime: pulumi.String("nodejs18.x"),
+			Runtime: pulumi.String(lambda.RuntimeNodeJS18dX),
 			Environment: &lambda.FunctionEnvironmentArgs{
 				Variables: pulumi.StringMap{
 					"foo": pulumi.String("bar"),
@@ -444,7 +444,7 @@ const testLambda = new aws.lambda.Function("testLambda", {
     code: new pulumi.asset.FileArchive("lambda_function_payload.zip"),
     role: iamForLambda.arn,
     handler: "index.test",
-    runtime: "nodejs18.x",
+    runtime: aws.lambda.Runtime.NodeJS18dX,
     ephemeralStorage: {
         size: 10240,
     },
@@ -467,7 +467,7 @@ test_lambda = aws.lambda_.Function("testLambda",
     code=pulumi.FileArchive("lambda_function_payload.zip"),
     role=iam_for_lambda.arn,
     handler="index.test",
-    runtime="nodejs18.x",
+    runtime=aws.lambda_.Runtime.NODE_JS18D_X,
     ephemeral_storage=aws.lambda_.FunctionEphemeralStorageArgs(
         size=10240,
     ))
@@ -516,7 +516,7 @@ return await Deployment.RunAsync(() =>
         Code = new FileArchive("lambda_function_payload.zip"),
         Role = iamForLambda.Arn,
         Handler = "index.test",
-        Runtime = "nodejs18.x",
+        Runtime = Aws.Lambda.Runtime.NodeJS18dX,
         EphemeralStorage = new Aws.Lambda.Inputs.FunctionEphemeralStorageArgs
         {
             Size = 10240,
@@ -558,7 +558,7 @@ func main() {
 			return err
 		}
 		iamForLambda, err := iam.NewRole(ctx, "iamForLambda", &iam.RoleArgs{
-			AssumeRolePolicy: *pulumi.String(assumeRole.Json),
+			AssumeRolePolicy: pulumi.String(assumeRole.Json),
 		})
 		if err != nil {
 			return err
@@ -567,7 +567,7 @@ func main() {
 			Code:    pulumi.NewFileArchive("lambda_function_payload.zip"),
 			Role:    iamForLambda.Arn,
 			Handler: pulumi.String("index.test"),
-			Runtime: pulumi.String("nodejs18.x"),
+			Runtime: pulumi.String(lambda.RuntimeNodeJS18dX),
 			EphemeralStorage: &lambda.FunctionEphemeralStorageArgs{
 				Size: pulumi.Int(10240),
 			},
@@ -1231,7 +1231,7 @@ func main() {
 		lambdaLoggingPolicy, err := iam.NewPolicy(ctx, "lambdaLoggingPolicy", &iam.PolicyArgs{
 			Path:        pulumi.String("/"),
 			Description: pulumi.String("IAM policy for logging from a lambda"),
-			Policy:      *pulumi.String(lambdaLoggingPolicyDocument.Json),
+			Policy:      pulumi.String(lambdaLoggingPolicyDocument.Json),
 		})
 		if err != nil {
 			return err
