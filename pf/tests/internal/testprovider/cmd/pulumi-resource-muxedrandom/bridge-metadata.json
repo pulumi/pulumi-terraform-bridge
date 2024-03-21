@@ -2,6 +2,7 @@
     "mux": {
         "resources": {
             "muxedrandom:index/myNumber:MyNumber": 0,
+            "muxedrandom:index/randomBytes:RandomBytes": 1,
             "muxedrandom:index/randomHumanNumber:RandomHumanNumber": 0,
             "muxedrandom:index/randomId:RandomId": 1,
             "muxedrandom:index/randomInteger:RandomInteger": 1,

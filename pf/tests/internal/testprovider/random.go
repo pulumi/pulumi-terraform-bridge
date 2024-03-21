@@ -22,6 +22,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider/sdkv2randomprovider"
@@ -63,6 +64,24 @@ func RandomProvider() tfbridge.ProviderInfo {
 		return randomType(mod+"/"+fn, res)
 	}
 
+	computeRandomBytesID := func(_ context.Context, state resource.PropertyMap) (resource.ID, error) {
+		c := ". This is an error in pulumi-random resource provider, please report at " +
+			"https://github.com/pulumi/pulumi-random."
+		b, ok := state["base64"]
+		if !ok {
+			return "", fmt.Errorf("No base64 property in state" + c)
+		}
+		// Although base64 is marked as sensitive in the TF schema and is wrapped in secrets in
+		// Pulumi which cannot yet support secret markers on resource IDs.
+		if b.IsSecret() {
+			b = b.SecretValue().Element
+		}
+		if !b.IsString() {
+			return "", fmt.Errorf("Expected base64 property to be a string" + c)
+		}
+		return resource.ID(b.StringValue()), nil
+	}
+
 	return tfbridge.ProviderInfo{
 		Name:        "random",
 		P:           tfpf.ShimProvider(randomshim.NewProvider()),
@@ -80,6 +99,10 @@ func RandomProvider() tfbridge.ProviderInfo {
 			"random_string":   {Tok: randomResource(randomMod, "RandomString")},
 			"random_integer":  {Tok: randomResource(randomMod, "RandomInteger")},
 			"random_uuid":     {Tok: randomResource(randomMod, "RandomUuid")},
+			"random_bytes": {
+				Tok:       randomResource(randomMod, "RandomBytes"),
+				ComputeID: computeRandomBytesID,
+			},
 		},
 		JavaScript: &tfbridge.JavaScriptInfo{
 			Dependencies: map[string]string{

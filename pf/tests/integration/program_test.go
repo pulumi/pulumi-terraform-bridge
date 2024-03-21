@@ -212,6 +212,20 @@ func TestTracePropagation(t *testing.T) {
 
 }
 
+// Note that random_bytes is an interesting resource that does not specify an ID where Pulumi requires it. Add a test
+// for it to make sure this continues working.
+func TestResourceWithoutID(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+
+	bin := filepath.Join(wd, "..", "bin")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "resource-without-id"),
+	})
+}
+
 func prepareStateFolder(root string) error {
 	err := os.Mkdir(filepath.Join(root, "state"), 0777)
 	if os.IsExist(err) {
