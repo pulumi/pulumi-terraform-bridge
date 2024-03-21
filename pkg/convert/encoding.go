@@ -38,7 +38,10 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
 	schema := e.SchemaOnlyProvider.Schema()
-	schemaInfos := e.ProviderInfo.Config
+	var schemaInfos map[string]*tfbridge.SchemaInfo
+	if e.ProviderInfo != nil {
+		schemaInfos = e.ProviderInfo.Config
+	}
 	enc, err := NewObjectEncoder(ObjectSchema{schema, schemaInfos, &configType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
@@ -58,11 +61,6 @@ func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object
 func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
 	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
-	// Tests pass without this line. Was this intentional? Perhaps to support resources with
-	// non-string IDs?
-	//propertyDecoders["id"] = newStringDecoder()
-	//
-	// THIS needs extra attention.
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}

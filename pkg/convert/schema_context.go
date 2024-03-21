@@ -16,11 +16,13 @@ package convert
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type schemaMapContext struct {
@@ -45,6 +47,7 @@ func newResourceSchemaMapContext(
 	providerInfo *tfbridge.ProviderInfo,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.ResourcesMap().Get(resource)
+	contract.Assertf(r != nil, "no resource %q found in ResourceMap", resource)
 	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
@@ -59,6 +62,7 @@ func newDataSourceSchemaMapContext(
 	providerInfo *tfbridge.ProviderInfo,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.DataSourcesMap().Get(dataSource)
+	contract.Assertf(r != nil, "no data source %q found in DataSourcesMap", dataSource)
 	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
