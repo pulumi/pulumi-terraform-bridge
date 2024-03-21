@@ -420,3 +420,172 @@ func TestConfigEncoder(t *testing.T) {
 		})
 	}
 }
+
+// Boost coverage of deriveEncoder, deriveDecoder over collections especially.
+func TestTypeDerivations(t *testing.T) {
+	type testCase struct {
+		name      string
+		schemaMap schema.SchemaMap
+		sample    resource.PropertyMap
+		expected  autogold.Value
+	}
+
+	intSchema := (&schema.Schema{
+		Type: shim.TypeInt,
+	}).Shim()
+
+	testCases := []testCase{
+		{
+			"int list",
+			schema.SchemaMap{
+				"x": (&schema.Schema{
+					Type: shim.TypeList,
+					Elem: intSchema,
+				}).Shim(),
+			},
+			resource.PropertyMap{"xes": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewNumberProperty(1),
+			})},
+			autogold.Expect(`tftypes.Object["x":tftypes.List[tftypes.Number]]<"x":tftypes.List[tftypes.Number]<tftypes.Number<"1">>>`),
+		},
+		{
+			"int map",
+			schema.SchemaMap{
+				"x": (&schema.Schema{
+					Type: shim.TypeMap,
+					Elem: intSchema,
+				}).Shim(),
+			},
+			resource.PropertyMap{"x": resource.NewObjectProperty(resource.PropertyMap{
+				"one": resource.NewNumberProperty(1),
+				"two": resource.NewNumberProperty(2),
+			})},
+			autogold.Expect(`tftypes.Object["x":tftypes.Map[tftypes.Number]]<"x":tftypes.Map[tftypes.Number]<"one":tftypes.Number<"1">, "two":tftypes.Number<"2">>>`),
+		},
+		{
+			"int set",
+			schema.SchemaMap{
+				"x": (&schema.Schema{
+					Type: shim.TypeSet,
+					Elem: intSchema,
+				}).Shim(),
+			},
+			resource.PropertyMap{"xes": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewNumberProperty(1),
+				resource.NewNumberProperty(2),
+			})},
+			autogold.Expect(`tftypes.Object["x":tftypes.Set[tftypes.Number]]<"x":tftypes.Set[tftypes.Number]<tftypes.Number<"1">, tftypes.Number<"2">>>`),
+		},
+		{
+			"object",
+			schema.SchemaMap{
+				"x": (&schema.Schema{
+					Type: shim.TypeMap,
+					Elem: (&schema.Resource{Schema: schema.SchemaMap{
+						"prop": intSchema,
+					}}).Shim(),
+				}).Shim(),
+			},
+			resource.PropertyMap{"x": resource.NewObjectProperty(resource.PropertyMap{"prop": resource.NewNumberProperty(1)})},
+			autogold.Expect(`tftypes.Object["x":tftypes.Object["prop":tftypes.Number]]<"x":tftypes.Object["prop":tftypes.Number]<"prop":tftypes.Number<"1">>>`),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			os := ObjectSchema{SchemaMap: tc.schemaMap}
+
+			enc, err := NewObjectEncoder(os)
+			require.NoError(t, err)
+
+			dec, err := NewObjectDecoder(os)
+			require.NoError(t, err)
+
+			tfv, err := EncodePropertyMap(enc, tc.sample)
+			require.NoError(t, err)
+
+			tc.expected.Equal(t, tfv.String())
+
+			back, err := DecodePropertyMap(dec, tfv)
+			require.NoError(t, err)
+			require.Equal(t, tc.sample, back)
+		})
+	}
+}
+
+// Tuple types need coverage as well.
+func TestTupleDerivations(t *testing.T) {
+	type testCase struct {
+		name      string
+		schemaMap schema.SchemaMap
+		sample    resource.PropertyMap
+		typ       tftypes.Type
+		expected  autogold.Value
+	}
+
+	intType := (&schema.Schema{
+		Type: shim.TypeInt,
+	}).Shim()
+
+	stringType := (&schema.Schema{
+		Type: shim.TypeString,
+	}).Shim()
+
+	tupleType := (&schema.Schema{
+		Type: shim.TypeMap,
+		Elem: (&schema.Resource{
+			Schema: schema.SchemaMap{
+				"t0": intType,
+				"t1": stringType,
+			},
+		}).Shim(),
+	}).Shim()
+
+	testCases := []testCase{
+		{
+			"simple-tuple",
+			schema.SchemaMap{
+				"x": tupleType,
+			},
+			resource.PropertyMap{"x": resource.NewObjectProperty(
+				resource.PropertyMap{
+					"t0": resource.NewNumberProperty(1),
+					"t1": resource.NewStringProperty("OK"),
+				},
+			)},
+			tftypes.Tuple{ElementTypes: []tftypes.Type{
+				tftypes.Number,
+				tftypes.String,
+			}},
+			autogold.Expect(`tftypes.Object["x":tftypes.Tuple[tftypes.Number, tftypes.String]]<"x":tftypes.Tuple[tftypes.Number, tftypes.String]<tftypes.Number<"1">, tftypes.String<"OK">>>`),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			os := ObjectSchema{
+				SchemaMap: tc.schemaMap,
+				Object: &tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+					"x": tc.typ,
+				}},
+			}
+
+			enc, err := NewObjectEncoder(os)
+			require.NoError(t, err)
+
+			dec, err := NewObjectDecoder(os)
+			require.NoError(t, err)
+
+			tfv, err := EncodePropertyMap(enc, tc.sample)
+			require.NoError(t, err)
+
+			tc.expected.Equal(t, tfv.String())
+
+			back, err := DecodePropertyMap(dec, tfv)
+			require.NoError(t, err)
+			require.Equal(t, tc.sample, back)
+		})
+	}
+}
