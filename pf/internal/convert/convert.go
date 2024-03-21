@@ -24,15 +24,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // An alias to assist marking Terraform-level property names (see for example AttributeTypes in tftypes.Object). Pulumi
 // may rename properties and it is important to keep track of which name is being used during conversion.
-type TerraformPropertyName = string
+type terraformPropertyName = string
 
 type Encoding interface {
 	NewConfigEncoder(tftypes.Object) (Encoder, error)
@@ -43,22 +44,58 @@ type Encoding interface {
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
-type LocalPropertyNames interface {
-	PropertyKey(property TerraformPropertyName, t tftypes.Type) resource.PropertyKey
-}
-
-func NewResourceLocalPropertyNames(resource string,
-	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo) LocalPropertyNames {
-	return newResourceSchemaMapContext(resource, schemaOnlyProvider, providerInfo)
+type localPropertyNames interface {
+	PropertyKey(property terraformPropertyName, t tftypes.Type) resource.PropertyKey
 }
 
 type Encoder interface {
 	fromPropertyValue(resource.PropertyValue) (tftypes.Value, error)
 }
 
+// Schema information that is needed to construct Encoder or Decoder instances.
+type ObjectSchema struct {
+	SchemaMap   shim.SchemaMap                  // required
+	SchemaInfos map[string]*tfbridge.SchemaInfo // optional
+	Object      *tftypes.Object                 // optional, if not given will be inferred from SchemaMap
+}
+
+func (os ObjectSchema) objectType() tftypes.Object {
+	if os.Object != nil {
+		return *os.Object
+	}
+	return InferObjectType(os.SchemaMap, nil)
+}
+
+func NewObjectEncoder(os ObjectSchema) (Encoder, error) {
+	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
+	objectType := os.objectType()
+	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
+	if err != nil {
+		return nil, err
+	}
+	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
+	if err != nil {
+		return nil, err
+	}
+	return enc, nil
+}
+
 type Decoder interface {
 	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
+}
+
+func NewObjectDecoder(os ObjectSchema) (Decoder, error) {
+	objectType := os.objectType()
+	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
+	propertyDecoders, err := buildPropertyDecoders(mctx, objectType)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
+	if err != nil {
+		return nil, err
+	}
+	return dec, nil
 }
 
 func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, error) {

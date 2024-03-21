@@ -37,12 +37,12 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 }
 
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
-	mctx := newSchemaMapContext(e.SchemaOnlyProvider.Schema(), e.ProviderInfo.Config)
-	propertyEncoders, err := e.buildPropertyEncoders(mctx, configType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
+	schema := e.SchemaOnlyProvider.Schema()
+	var schemaInfos map[string]*tfbridge.SchemaInfo
+	if e.ProviderInfo != nil {
+		schemaInfos = e.ProviderInfo.Config
 	}
-	enc, err := newObjectEncoder(configType, propertyEncoders, mctx)
+	enc, err := NewObjectEncoder(ObjectSchema{schema, schemaInfos, &configType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}
@@ -51,11 +51,7 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 
 func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyEncoders, err := e.buildPropertyEncoders(mctx, objectType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
-	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
 	}
@@ -64,53 +60,45 @@ func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object
 
 func (e *encoding) NewResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyDecoders, err := e.buildPropertyDecoders(mctx, objectType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an decoder for resource %q: %w", resource, err)
-	}
-	propertyDecoders["id"] = newStringDecoder()
-	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive a decoder for resource %q: %w", resource, err)
 	}
 	return dec, nil
 }
 
-func (e *encoding) NewDataSourceEncoder(dataSource string, objectType tftypes.Object) (Encoder, error) {
+func (e *encoding) NewDataSourceEncoder(
+	dataSource string, objectType tftypes.Object,
+) (Encoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyEncoders, err := e.buildPropertyEncoders(mctx, objectType)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
-	}
-	enc, err := newObjectEncoder(objectType, propertyEncoders, mctx)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for data source %q: %w", dataSource, err)
 	}
 	return enc, nil
 }
 
-func (e *encoding) NewDataSourceDecoder(dataSource string, objectType tftypes.Object) (Decoder, error) {
+func (e *encoding) NewDataSourceDecoder(
+	dataSource string, objectType tftypes.Object,
+) (Decoder, error) {
 	mctx := newDataSourceSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
-	propertyDecoders, err := e.buildPropertyDecoders(mctx, objectType)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an decoder for data source %q: %w", dataSource, err)
-	}
-	dec, err := newObjectDecoder(objectType, propertyDecoders, mctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot derive a decoder for data source %q: %w", dataSource, err)
 	}
 	return dec, nil
 }
 
-func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
-	objectType tftypes.Object) (map[TerraformPropertyName]Encoder, error) {
-	propertyEncoders := map[TerraformPropertyName]Encoder{}
+func buildPropertyEncoders(
+	mctx *schemaMapContext, objectType tftypes.Object,
+) (map[terraformPropertyName]Encoder, error) {
+	propertyEncoders := map[terraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
 			return nil, err
 		}
-		enc, err := e.newPropertyEncoder(pctx, tfName, t)
+		enc, err := newPropertyEncoder(pctx, tfName, t)
 		if err != nil {
 			return nil, err
 		}
@@ -119,15 +107,16 @@ func (e *encoding) buildPropertyEncoders(mctx *schemaMapContext,
 	return propertyEncoders, nil
 }
 
-func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
-	objectType tftypes.Object) (map[TerraformPropertyName]Decoder, error) {
-	propertyEncoders := map[TerraformPropertyName]Decoder{}
+func buildPropertyDecoders(
+	mctx *schemaMapContext, objectType tftypes.Object,
+) (map[terraformPropertyName]Decoder, error) {
+	propertyEncoders := map[terraformPropertyName]Decoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
 			return nil, err
 		}
-		dec, err := e.newPropertyDecoder(pctx, tfName, t)
+		dec, err := newPropertyDecoder(pctx, tfName, t)
 		if err != nil {
 			return nil, err
 		}
@@ -136,18 +125,19 @@ func (e *encoding) buildPropertyDecoders(mctx *schemaMapContext,
 	return propertyEncoders, nil
 }
 
-func (e *encoding) newPropertyEncoder(pctx *schemaPropContext, name TerraformPropertyName,
-	t tftypes.Type) (Encoder, error) {
-	enc, err := e.deriveEncoder(pctx, t)
+func newPropertyEncoder(
+	pctx *schemaPropContext, name terraformPropertyName, t tftypes.Type,
+) (Encoder, error) {
+	enc, err := deriveEncoder(pctx, t)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive an encoder for property %q: %w", name, err)
 	}
 	return enc, nil
 }
 
-func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name TerraformPropertyName,
+func newPropertyDecoder(pctx *schemaPropContext, name terraformPropertyName,
 	t tftypes.Type) (Decoder, error) {
-	dec, err := e.deriveDecoder(pctx, t)
+	dec, err := deriveDecoder(pctx, t)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive a decoder for property %q: %w", name, err)
 	}
@@ -157,13 +147,13 @@ func (e *encoding) newPropertyDecoder(pctx *schemaPropContext, name TerraformPro
 	return dec, nil
 }
 
-func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
+func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
 		elctx, err := pctx.Element()
 		if err != nil {
 			return nil, err
 		}
-		encoder, err := e.deriveEncoder(elctx, elementType)
+		encoder, err := deriveEncoder(elctx, elementType)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +178,7 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 		if err != nil {
 			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
-		propertyEncoders, err := e.buildPropertyEncoders(mctx, tt)
+		propertyEncoders, err := buildPropertyEncoders(mctx, tt)
 		if err != nil {
 			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
@@ -198,7 +188,7 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 		if err != nil {
 			return nil, err
 		}
-		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		elementEncoder, err := deriveEncoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +198,7 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 		if err != nil {
 			return nil, err
 		}
-		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		elementEncoder, err := deriveEncoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -218,25 +208,25 @@ func (e *encoding) deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encod
 		if err != nil {
 			return nil, err
 		}
-		elementEncoder, err := e.deriveEncoder(elctx, tt.ElementType)
+		elementEncoder, err := deriveEncoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
 		return newSetEncoder(tt.ElementType, elementEncoder)
 	case tftypes.Tuple:
-		return e.deriveTupleEncoder(pctx, tt)
+		return deriveTupleEncoder(pctx, tt)
 	default:
 		return nil, fmt.Errorf("Cannot build an encoder for type %v", t)
 	}
 }
 
-func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
+func deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
 	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
 		elctx, err := pctx.Element()
 		if err != nil {
 			return nil, err
 		}
-		decoder, err := e.deriveDecoder(elctx, elementType)
+		decoder, err := deriveDecoder(elctx, elementType)
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +250,7 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 		if err != nil {
 			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
-		propertyDecoders, err := e.buildPropertyDecoders(mctx, tt)
+		propertyDecoders, err := buildPropertyDecoders(mctx, tt)
 		if err != nil {
 			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
 		}
@@ -270,7 +260,7 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 		if err != nil {
 			return nil, err
 		}
-		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		elementDecoder, err := deriveDecoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +270,7 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 		if err != nil {
 			return nil, err
 		}
-		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		elementDecoder, err := deriveDecoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -290,13 +280,13 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 		if err != nil {
 			return nil, err
 		}
-		elementDecoder, err := e.deriveDecoder(elctx, tt.ElementType)
+		elementDecoder, err := deriveDecoder(elctx, tt.ElementType)
 		if err != nil {
 			return nil, err
 		}
 		return newSetDecoder(elementDecoder)
 	case tftypes.Tuple:
-		return e.deriveTupleDecoder(pctx, tt)
+		return deriveTupleDecoder(pctx, tt)
 	default:
 		return nil, fmt.Errorf("Cannot build a decoder type %v", t)
 	}
@@ -305,8 +295,11 @@ func (e *encoding) deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decod
 // A generic base function for deriving tuple encoders and decoders.
 //
 // It handles reference validation and property discovery.
-func deriveTupleBase[T any](pctx *schemaPropContext, f func(*schemaPropContext, tftypes.Type) (T, error),
-	t tftypes.Tuple) ([]T, error) {
+func deriveTupleBase[T any](
+	pctx *schemaPropContext,
+	f func(*schemaPropContext, tftypes.Type) (T, error),
+	t tftypes.Tuple,
+) ([]T, error) {
 	elements := make([]T, len(t.ElementTypes))
 	for i := range t.ElementTypes {
 		var err error
@@ -322,16 +315,20 @@ func deriveTupleBase[T any](pctx *schemaPropContext, f func(*schemaPropContext, 
 	return elements, nil
 }
 
-func (e *encoding) deriveTupleEncoder(pctx *schemaPropContext, t tftypes.Tuple) (*tupleEncoder, error) {
-	encoders, err := deriveTupleBase(pctx, e.deriveEncoder, t)
+func deriveTupleEncoder(
+	pctx *schemaPropContext, t tftypes.Tuple,
+) (*tupleEncoder, error) {
+	encoders, err := deriveTupleBase(pctx, deriveEncoder, t)
 	if err != nil {
 		return nil, fmt.Errorf("could not build tuple encoder: %w", err)
 	}
 	return &tupleEncoder{t.ElementTypes, encoders}, nil
 }
 
-func (e *encoding) deriveTupleDecoder(pctx *schemaPropContext, t tftypes.Tuple) (*tupleDecoder, error) {
-	decoders, err := deriveTupleBase(pctx, e.deriveDecoder, t)
+func deriveTupleDecoder(
+	pctx *schemaPropContext, t tftypes.Tuple,
+) (*tupleDecoder, error) {
+	decoders, err := deriveTupleBase(pctx, deriveDecoder, t)
 	if err != nil {
 		return nil, fmt.Errorf("could not build tuple decoder: %w", err)
 	}
