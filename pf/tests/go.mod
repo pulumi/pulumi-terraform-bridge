@@ -72,7 +72,7 @@ replace (
 	github.com/pulumi/pulumi-terraform-bridge/pf => ../
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
-	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20230117062402-cab81572f740
+	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/randomshim
 )
 
@@ -225,7 +225,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20221123190201-cb914720edaa // indirect
+	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect

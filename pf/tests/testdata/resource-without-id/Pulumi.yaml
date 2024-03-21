@@ -1,0 +1,7 @@
+name: resource-without-id
+runtime: yaml
+resources:
+  sampleRandomBytes:
+    type: random:RandomBytes
+    properties:
+      length: 64
