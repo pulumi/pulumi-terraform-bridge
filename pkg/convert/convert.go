@@ -63,7 +63,7 @@ func (os ObjectSchema) objectType() tftypes.Object {
 	if os.Object != nil {
 		return *os.Object
 	}
-	return InferObjectType(os.SchemaMap)
+	return InferObjectType(os.SchemaMap, nil)
 }
 
 func NewObjectEncoder(os ObjectSchema) (Encoder, error) {

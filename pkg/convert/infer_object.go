@@ -20,29 +20,34 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type InferObjectTypeOptions struct{}
+
 // Working with this package requires knowing the tftypes.Object type approximation, and while it is normally available
 // from the underlying Plugin Framework provider, in some test scenarios it is helpful to infer and compute it.
-func InferObjectType(sm shim.SchemaMap) tftypes.Object {
+func InferObjectType(sm shim.SchemaMap, opts *InferObjectTypeOptions) tftypes.Object {
 	o := tftypes.Object{
 		AttributeTypes:     map[string]tftypes.Type{},
 		OptionalAttributes: map[string]struct{}{},
 	}
 	sm.Range(func(key string, value shim.Schema) bool {
-		o.AttributeTypes[key] = InferType(value)
-		// This causes issues apparently, and likely should not be done or be an option.
-		if value.Optional() {
-			o.OptionalAttributes[key] = struct{}{}
-		}
+		o.AttributeTypes[key] = InferType(value, opts)
+		// Looks like the use cases for this module do not accept values that also infer o.OptionalAttributes
+		// from schema for the moment, so continue ignoring that.
 		return true
 	})
 	return o
 }
 
+// Not clear how to best represent an invalid or unknown type, going for an empty object type.
+func invalidType() tftypes.Type {
+	return tftypes.Object{}
+}
+
 // Similar to [InferObjectType] but generalizes to all types.
-func InferType(s shim.Schema) tftypes.Type {
+func InferType(s shim.Schema, opts *InferObjectTypeOptions) tftypes.Type {
 	switch s.Type() {
 	case shim.TypeInvalid:
-		return nil // invalid type, how do we represent it?
+		return invalidType()
 	case shim.TypeBool:
 		return tftypes.Bool
 	case shim.TypeInt:
@@ -54,11 +59,11 @@ func InferType(s shim.Schema) tftypes.Type {
 	case shim.TypeList:
 		switch elem := s.Elem().(type) {
 		case nil:
-			return tftypes.List{ElementType: nil} // unknown element type, how do we represent it?
+			return tftypes.List{ElementType: invalidType()}
 		case shim.Schema:
-			return tftypes.List{ElementType: InferType(elem)}
+			return tftypes.List{ElementType: InferType(elem, opts)}
 		case shim.Resource:
-			return InferObjectType(elem.Schema())
+			return tftypes.List{ElementType: InferObjectType(elem.Schema(), opts)}
 		default:
 			contract.Failf("unexpected Elem(): %#T", elem)
 			return nil
@@ -66,11 +71,11 @@ func InferType(s shim.Schema) tftypes.Type {
 	case shim.TypeSet:
 		switch elem := s.Elem().(type) {
 		case nil:
-			return tftypes.Set{ElementType: nil} // unknown element type, how do we represent it?
+			return tftypes.Set{ElementType: invalidType()}
 		case shim.Schema:
-			return tftypes.Set{ElementType: InferType(elem)}
+			return tftypes.Set{ElementType: InferType(elem, opts)}
 		case shim.Resource:
-			return tftypes.Set{ElementType: InferObjectType(elem.Schema())}
+			return tftypes.Set{ElementType: InferObjectType(elem.Schema(), opts)}
 		default:
 			contract.Failf("unexpected Elem(): %#T", elem)
 			return nil
@@ -78,11 +83,11 @@ func InferType(s shim.Schema) tftypes.Type {
 	case shim.TypeMap:
 		switch elem := s.Elem().(type) {
 		case nil:
-			return tftypes.Map{ElementType: nil} // unknown element type, how do we represent it?
+			return tftypes.Map{ElementType: invalidType()}
 		case shim.Schema:
-			return tftypes.Map{ElementType: InferType(elem)}
+			return tftypes.Map{ElementType: InferType(elem, opts)}
 		case shim.Resource:
-			return InferObjectType(elem.Schema()) // quirk: see docs on Elem(), single-nested block
+			return InferObjectType(elem.Schema(), opts) // quirk: see docs on Elem(), single-nested block
 		default:
 			contract.Failf("unexpected Elem(): %#T", elem)
 			return nil
