@@ -295,6 +295,43 @@ func TestDataSourceDecoder(t *testing.T) {
 				},
 			}),
 		},
+		{
+			testName: "respect name overrides",
+			schema: &schema.SchemaMap{
+				"foo": (&schema.Schema{
+					Type:     shim.TypeString,
+					Optional: true,
+				}).Shim(),
+			},
+			info: &tfbridge.ProviderInfo{
+				DataSources: map[string]*tfbridge.DataSourceInfo{
+					myDataSource: {
+						Fields: map[string]*tfbridge.SchemaInfo{
+							"foo": {
+								Name: "renamedFoo",
+							},
+						},
+					},
+				},
+			},
+			typ: tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"foo": tftypes.String,
+				},
+			},
+			val: tftypes.NewValue(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"foo": tftypes.String,
+				},
+			}, map[string]tftypes.Value{
+				"foo": tftypes.NewValue(tftypes.String, "bar"),
+			}),
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("renamedFoo"): resource.PropertyValue{
+					V: "bar",
+				},
+			}),
+		},
 	}
 
 	for _, tc := range testCases {
