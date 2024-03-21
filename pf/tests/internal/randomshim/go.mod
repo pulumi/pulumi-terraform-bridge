@@ -7,9 +7,7 @@ require (
 	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 )
 
-replace (
-	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
-)
+replace github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
