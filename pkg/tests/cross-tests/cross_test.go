@@ -69,15 +69,17 @@ const (
 	providerVer       = "0.0.1"
 )
 
-func runDiffCheck(t *testing.T, tc diffTestCase) {
+func runTestCase(t *testing.T, tc diffTestCase) (tfPlan, auto.UpdateSummary) {
 	// ctx := context.Background()
 	tfwd := t.TempDir()
 
 	reattachConfig := startTFProvider(t, tc)
 
-	tfWriteJSON(t, tfwd, tc.Config1)
-	p1 := runTFPlan(t, tfwd, reattachConfig)
-	runTFApply(t, tfwd, reattachConfig, p1)
+	if tc.Config1 != nil {
+		tfWriteJSON(t, tfwd, tc.Config1)
+		p1 := runTFPlan(t, tfwd, reattachConfig)
+		runTFApply(t, tfwd, reattachConfig, p1)
+	}
 
 	tfWriteJSON(t, tfwd, tc.Config2)
 	p2 := runTFPlan(t, tfwd, reattachConfig)
@@ -90,15 +92,21 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	}
 
 	if tc.SkipPulumi {
-		return
+		return p2, auto.UpdateSummary{}
 	}
 
 	puwd := t.TempDir()
-	pulumiWriteYaml(t, tc, puwd, tc.Config1)
+
+	if tc.Config1 != nil {
+		pulumiWriteYaml(t, tc, puwd, tc.Config1)
+	} else {
+		pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	}
 
 	pt := pulumitest.NewPulumiTest(t, puwd,
 		// Needed while using Nix-built pulumi.
 		opttest.Env("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", "true"),
+		opttest.Env("PULUMI_BACKEND_URL", "file://~"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(
@@ -111,12 +119,18 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 		),
 	)
 
-	pt.Up()
-
-	pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	if tc.Config1 != nil {
+		pt.Up()
+		pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	}
 	x := pt.Up()
+	return p2, x.Summary
+}
 
-	verifyBasicDiffAgreement(t, p2, x.Summary)
+func runDiffCheck(t *testing.T, tc diffTestCase) {
+	tfPlan, pulumiUpdateSummary := runTestCase(t, tc)
+
+	verifyBasicDiffAgreement(t, tfPlan, pulumiUpdateSummary)
 }
 
 func tfWriteJSON(t *testing.T, cwd string, rconfig any) {
