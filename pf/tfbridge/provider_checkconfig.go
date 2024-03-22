@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
