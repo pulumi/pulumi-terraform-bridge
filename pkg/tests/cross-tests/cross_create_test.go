@@ -21,7 +21,7 @@ func runCreate(t *testing.T, tc diffTestCase) {
 
 	reattachConfig := startTFProvider(t, tc)
 
-	tfWriteJson(t, tfwd, tc.Config1)
+	tfWriteJSON(t, tfwd, tc.Config1)
 	p1 := runTFPlan(t, tfwd, reattachConfig)
 	runTFApply(t, tfwd, reattachConfig, p1)
 
@@ -103,5 +103,4 @@ func TestMaxItemsOnePropCreateValue(t *testing.T) {
 		},
 	})
 	t.Logf("vals: %v", vals)
-	panic("here!")
 }
