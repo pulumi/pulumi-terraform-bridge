@@ -105,6 +105,7 @@ func runTestCase(t *testing.T, tc diffTestCase) (tfPlan, auto.UpdateSummary) {
 	pt := pulumitest.NewPulumiTest(t, puwd,
 		// Needed while using Nix-built pulumi.
 		opttest.Env("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", "true"),
+		opttest.Env("PULUMI_BACKEND_URL", "file://~"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(
@@ -119,7 +120,6 @@ func runTestCase(t *testing.T, tc diffTestCase) (tfPlan, auto.UpdateSummary) {
 
 	if tc.Config1 != nil {
 		pt.Up()
-
 		pulumiWriteYaml(t, tc, puwd, tc.Config2)
 	}
 	x := pt.Up()
