@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"io"
 	"os"
 	"path/filepath"
@@ -43,6 +44,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -767,6 +769,15 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
 			p.parseImports(reformattedH3Section)
+			if strings.Contains(strings.Join(reformattedH3Section, " "), "import Network Firewall Resource Policies") {
+				q.Q("HI HELLO HERE", p.ret.Import)
+
+			}
+			if strings.Contains(strings.Join(reformattedH3Section, " "), "import Network Firewall Logging Configurations") {
+				q.Q("HI HELLO HERE", p.ret.Import)
+
+			}
+
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[docsPath(header)]
@@ -967,8 +978,12 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
 	var token string
+
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
+	}
+	if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+		q.Q(subsection)
 	}
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
@@ -983,11 +998,21 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 	}()
 
+	if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+		q.Q("AGAIN:", subsection)
+	}
+
 	// check for import overwrites
 	info := p.info
 	if info != nil {
+		if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+			q.Q("A THIRD TIME:", subsection)
+		}
 		docInfo := info.GetDocs()
 		if docInfo != nil {
+			if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+				q.Q("A THIRD POINT FIVE TIME", docInfo.ImportDetails)
+			}
 			importDetails := docInfo.ImportDetails
 			if importDetails != "" {
 				p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDetails)
@@ -995,14 +1020,35 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			}
 		}
 	}
+	if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+		q.Q("A FOURTH TIME:", subsection)
+	}
+
+	if token == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+		q.Q(token)
+	}
 
 	if i, ok := tryParseV2Imports(token, subsection); ok {
+		if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+			q.Q("A FIFTH TIME:", subsection)
+		}
 		p.ret.Import = i
 		return
 	}
 
 	var importDocString string
+	if token == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+		q.Q(subsection)
+	}
+
+	if token == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+		q.Q("wtf subsection?")
+		q.Q(subsection)
+	}
 	for _, section := range subsection {
+		if token == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+			q.Q(section)
+		}
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
 			strings.Contains(section, "**Note:**") {
 			// This is a Terraform import specific comment that we don't need to parse or include in our docs
@@ -1023,6 +1069,10 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		section = strings.Replace(section, "```", "", -1)
 
 		if strings.Contains(section, "terraform import") {
+
+			if token == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+				q.Q(section)
+			}
 			// First, remove the `$`
 			section := strings.Replace(section, "$ ", "", -1)
 			// Next, remove `terraform import` from the codeblock
@@ -1051,6 +1101,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
+
 			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
 			importDetails := "```sh\n" + importCommand + "```\n\n"
 			importDocString = importDocString + importDetails
@@ -1061,6 +1112,10 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 				importDocString = importDocString + section
 			}
 		}
+	}
+
+	if token == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+		q.Q("we made it all the way to the bitter end")
 	}
 
 	if len(importDocString) > 0 {
@@ -1087,8 +1142,21 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) 
 		switch pn.Type {
 		case bf.CodeBlock:
 			code := string(pn.Literal)
+			if typeToken == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+				q.Q("GET THAT CODE:", code)
+			}
+			if typeToken == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+				q.Q("GET THAT CODE:", code)
+			}
 			switch string(pn.CodeBlockData.Info) {
 			case "terraform":
+				if typeToken == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+					q.Q("CASE TERRAFORM:", string(pn.CodeBlockData.Info))
+				}
+				if typeToken == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+					q.Q("CASE TERRAFORM:", string(pn.CodeBlockData.Info))
+				}
+
 				// Ignore terraform blocks such as:
 				//
 				// ```terraform
@@ -1099,8 +1167,20 @@ func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) 
 				// ```
 				recognized = true
 			case "console", "":
+				if typeToken == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+					q.Q("CASE CONSOLE OR EMPTY:", string(pn.CodeBlockData.Info))
+				}
+				if typeToken == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+					q.Q("CASE CONSOLE OR EMPTY:", string(pn.CodeBlockData.Info))
+				}
 				// Recognize import example codeblocks.
 				if parsed, ok := parseImportCode(code); ok {
+					if typeToken == "aws:networkfirewall/loggingConfiguration:LoggingConfiguration" {
+						q.Q("PARSEIMORTCODE RETRUNS OK:", string(pn.CodeBlockData.Info))
+					}
+					if typeToken == "aws:networkfirewall/resourcePolicy:ResourcePolicy" {
+						q.Q("PARSEIMORTCODE RETRUNS OK", string(pn.CodeBlockData.Info))
+					}
 					emitImportCodeBlock(&out, typeToken, parsed.Name, parsed.ID)
 					recognized = ok
 					foundCode = true
