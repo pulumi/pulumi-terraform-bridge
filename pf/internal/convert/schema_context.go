@@ -16,11 +16,13 @@ package convert
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type schemaMapContext struct {
@@ -29,7 +31,7 @@ type schemaMapContext struct {
 	schemaInfos map[string]*tfbridge.SchemaInfo
 }
 
-var _ LocalPropertyNames = &schemaMapContext{}
+var _ localPropertyNames = &schemaMapContext{}
 
 func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbridge.SchemaInfo) *schemaMapContext {
 	return &schemaMapContext{
@@ -45,6 +47,7 @@ func newResourceSchemaMapContext(
 	providerInfo *tfbridge.ProviderInfo,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.ResourcesMap().Get(resource)
+	contract.Assertf(r != nil, "no resource %q found in ResourceMap", resource)
 	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
@@ -59,6 +62,7 @@ func newDataSourceSchemaMapContext(
 	providerInfo *tfbridge.ProviderInfo,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.DataSourcesMap().Get(dataSource)
+	contract.Assertf(r != nil, "no data source %q found in DataSourcesMap", dataSource)
 	sm := r.Schema()
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
@@ -67,16 +71,16 @@ func newDataSourceSchemaMapContext(
 	return newSchemaMapContext(sm, fields)
 }
 
-func (sc *schemaMapContext) PropertyKey(tfname TerraformPropertyName, _ tftypes.Type) resource.PropertyKey {
+func (sc *schemaMapContext) PropertyKey(tfname terraformPropertyName, _ tftypes.Type) resource.PropertyKey {
 	return sc.ToPropertyKey(tfname)
 }
 
-func (sc *schemaMapContext) ToPropertyKey(tfname TerraformPropertyName) resource.PropertyKey {
+func (sc *schemaMapContext) ToPropertyKey(tfname terraformPropertyName) resource.PropertyKey {
 	n := tfbridge.TerraformToPulumiNameV2(tfname, sc.schemaMap, sc.schemaInfos)
 	return resource.PropertyKey(n)
 }
 
-func (sc *schemaMapContext) GetAttr(tfname TerraformPropertyName) (*schemaPropContext, error) {
+func (sc *schemaMapContext) GetAttr(tfname terraformPropertyName) (*schemaPropContext, error) {
 	step := walk.NewSchemaPath().GetAttr(tfname)
 	s, err := walk.LookupSchemaMapPath(step, sc.schemaMap)
 	if err != nil {

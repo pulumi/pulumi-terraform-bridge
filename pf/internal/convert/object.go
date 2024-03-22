@@ -24,18 +24,18 @@ import (
 
 type objectEncoder struct {
 	objectType       tftypes.Object
-	propertyEncoders map[TerraformPropertyName]Encoder
-	propertyNames    LocalPropertyNames
+	propertyEncoders map[terraformPropertyName]Encoder
+	propertyNames    localPropertyNames
 }
 
 type objectDecoder struct {
 	objectType       tftypes.Object
-	propertyDecoders map[TerraformPropertyName]Decoder
-	propertyNames    LocalPropertyNames
+	propertyDecoders map[terraformPropertyName]Decoder
+	propertyNames    localPropertyNames
 }
 
 func newObjectEncoder(objectType tftypes.Object,
-	propertyEncoders map[TerraformPropertyName]Encoder, propertyNames LocalPropertyNames) (Encoder, error) {
+	propertyEncoders map[terraformPropertyName]Encoder, propertyNames localPropertyNames) (Encoder, error) {
 	for prop := range objectType.AttributeTypes {
 		if _, ok := propertyEncoders[prop]; !ok {
 			return nil, fmt.Errorf("Missing property encoder for %q", prop)
@@ -49,7 +49,7 @@ func newObjectEncoder(objectType tftypes.Object,
 }
 
 func newObjectDecoder(objectType tftypes.Object,
-	propertyDecoders map[TerraformPropertyName]Decoder, propertyNames LocalPropertyNames) (Decoder, error) {
+	propertyDecoders map[terraformPropertyName]Decoder, propertyNames localPropertyNames) (Decoder, error) {
 	return &objectDecoder{
 		objectType:       objectType,
 		propertyDecoders: propertyDecoders,

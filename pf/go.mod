@@ -15,6 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.12.0
 	github.com/hashicorp/terraform-plugin-go v0.22.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
+	github.com/hexops/autogold/v2 v2.2.1
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.78.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.8.4
@@ -51,12 +52,15 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0 // indirect
+	github.com/hexops/gotextdiff v1.0.3 // indirect
+	github.com/hexops/valast v1.4.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
+	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/pgavlin/fx v0.1.6 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
@@ -69,6 +73,7 @@ require (
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
+	mvdan.cc/gofumpt v0.5.0 // indirect
 )
 
 require (
