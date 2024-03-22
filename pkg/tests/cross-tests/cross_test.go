@@ -68,15 +68,17 @@ const (
 	providerVer       = "0.0.1"
 )
 
-func runDiffCheck(t *testing.T, tc diffTestCase) {
+func runTestCase(t *testing.T, tc diffTestCase) (tfPlan, auto.UpdateSummary) {
 	// ctx := context.Background()
 	tfwd := t.TempDir()
 
 	reattachConfig := startTFProvider(t, tc)
 
-	tfWriteJSON(t, tfwd, tc.Config1)
-	p1 := runTFPlan(t, tfwd, reattachConfig)
-	runTFApply(t, tfwd, reattachConfig, p1)
+	if tc.Config1 != nil {
+		tfWriteJSON(t, tfwd, tc.Config1)
+		p1 := runTFPlan(t, tfwd, reattachConfig)
+		runTFApply(t, tfwd, reattachConfig, p1)
+	}
 
 	tfWriteJSON(t, tfwd, tc.Config2)
 	p2 := runTFPlan(t, tfwd, reattachConfig)
@@ -89,11 +91,16 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	}
 
 	if tc.SkipPulumi {
-		return
+		return p2, auto.UpdateSummary{}
 	}
 
 	puwd := t.TempDir()
-	pulumiWriteYaml(t, tc, puwd, tc.Config1)
+
+	if tc.Config1 != nil {
+		pulumiWriteYaml(t, tc, puwd, tc.Config1)
+	} else {
+		pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	}
 
 	pt := pulumitest.NewPulumiTest(t, puwd,
 		// Needed while using Nix-built pulumi.
@@ -110,12 +117,19 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 		),
 	)
 
-	pt.Up()
+	if tc.Config1 != nil {
+		pt.Up()
 
-	pulumiWriteYaml(t, tc, puwd, tc.Config2)
+		pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	}
 	x := pt.Up()
+	return p2, x.Summary
+}
 
-	verifyBasicDiffAgreement(t, p2, x.Summary)
+func runDiffCheck(t *testing.T, tc diffTestCase) {
+	tfPlan, pulumiUpdateSummary := runTestCase(t, tc)
+
+	verifyBasicDiffAgreement(t, tfPlan, pulumiUpdateSummary)
 }
 
 func tfWriteJSON(t *testing.T, cwd string, rconfig any) {
@@ -128,7 +142,7 @@ func tfWriteJSON(t *testing.T, cwd string, rconfig any) {
 	}
 	config1bytes, err := json.MarshalIndent(config, "", "  ")
 	require.NoErrorf(t, err, "serializing test.tf.json")
-	err = os.WriteFile(filepath.Join(cwd, "test.tf.json"), config1bytes, 0600)
+	err = os.WriteFile(filepath.Join(cwd, "test.tf.json"), config1bytes, 0o600)
 	require.NoErrorf(t, err, "writing test.tf.json")
 }
 
@@ -197,7 +211,7 @@ func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
 	tc.Resource.UpdateContext = func(
 		ctx context.Context, rd *schema.ResourceData, i interface{},
 	) diag.Diagnostics {
-		//fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
+		// fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
 		return diag.Diagnostics{}
 	}
 
@@ -262,7 +276,6 @@ func TestSimpleStringNoChange(t *testing.T) {
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"name": {
-
 					Type:     schema.TypeString,
 					Optional: true,
 				},
@@ -361,7 +374,7 @@ func TestAws2442(t *testing.T) {
 			}
 		}
 		hashes[n] = name
-		//fmt.Println("setting hash name", n, name)
+		// fmt.Println("setting hash name", n, name)
 		return n
 	}
 
@@ -657,7 +670,7 @@ func pulumiWriteYaml(t *testing.T, tc diffTestCase, puwd string, tfConfig any) {
 	b, err := yaml.Marshal(data)
 	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
 	p := filepath.Join(puwd, "Pulumi.yaml")
-	err = os.WriteFile(p, b, 0600)
+	err = os.WriteFile(p, b, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 }
 
