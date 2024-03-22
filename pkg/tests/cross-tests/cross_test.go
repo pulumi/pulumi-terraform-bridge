@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -258,6 +259,7 @@ func formatReattachEnvVar(name string, pluginReattachConfig *plugin.ReattachConf
 }
 
 func TestSimpleStringNoChange(t *testing.T) {
+	skipUnlessLinux(t)
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -278,6 +280,7 @@ func TestSimpleStringNoChange(t *testing.T) {
 }
 
 func TestSimpleStringRename(t *testing.T) {
+	skipUnlessLinux(t)
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -297,6 +300,7 @@ func TestSimpleStringRename(t *testing.T) {
 }
 
 func TestSetReordering(t *testing.T) {
+	skipUnlessLinux(t)
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"set": {
@@ -328,6 +332,7 @@ func TestSetReordering(t *testing.T) {
 }
 
 func TestAws2442(t *testing.T) {
+	skipUnlessLinux(t)
 	hashes := map[int]string{}
 
 	stringHashcode := func(s string) int {
@@ -750,5 +755,11 @@ func verifyBasicDiffAgreement(t *testing.T, plan tfPlan, us auto.UpdateSummary) 
 		assert.Equalf(t, 1, len(rc), "expected one entry in UpdateSummary.ResourceChanges")
 	default:
 		panic("TODO: do not understand this TF action yet: " + tfAction)
+	}
+}
+
+func skipUnlessLinux(t *testing.T) {
+	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
+		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}
 }
