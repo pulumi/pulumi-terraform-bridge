@@ -94,7 +94,7 @@ func (p v2Provider) Configure(ctx context.Context, c shim.ResourceConfig) error 
 	// See ConfigureProvider e.g.
 	// https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L564
 	ctxHack := context.WithValue(ctx, schema.StopContextKey, p.stopContext(context.Background()))
-	return errors(p.tf.Configure(ctxHack, configFromShim(c)))
+	return diagToError(p.tf.Configure(ctxHack, configFromShim(c)))
 }
 
 func (p v2Provider) stopContext(ctx context.Context) context.Context {
@@ -115,12 +115,12 @@ func (p v2Provider) Apply(
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
 	state, diags := r.Apply(ctx, state, diffFromShim(d), p.tf.Meta())
-	return stateToShim(r, state), errors(diags)
+	return stateToShim(r, state), diagToError(diags)
 }
 
 func (p v2Provider) Refresh(
@@ -139,7 +139,7 @@ func (p v2Provider) Refresh(
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
-	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
@@ -149,7 +149,7 @@ func (p v2Provider) Refresh(
 	}
 
 	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
-	return stateToShim(r, state), errors(diags)
+	return stateToShim(r, state), diagToError(diags)
 }
 
 func (p v2Provider) ReadDataDiff(
@@ -175,7 +175,7 @@ func (p v2Provider) ReadDataApply(
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 	state, diags := r.ReadDataApply(ctx, diffFromShim(d), p.tf.Meta())
-	return stateToShim(r, state), errors(diags)
+	return stateToShim(r, state), diagToError(diags)
 }
 
 func (p v2Provider) Meta(_ context.Context) interface{} {

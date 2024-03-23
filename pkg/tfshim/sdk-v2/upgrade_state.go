@@ -6,13 +6,15 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/go-cty/cty/msgpack"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.Resource,
+func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provider, res *schema.Resource,
 	instanceState *terraform.InstanceState) (*terraform.InstanceState, error) {
-
 	if instanceState == nil {
 		return nil, nil
 	}
@@ -22,7 +24,7 @@ func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.R
 	// Ensure that we have an ID in the attributes.
 	m["id"] = instanceState.ID
 
-	version, hasVersion := 0, false
+	version, hasVersion := int64(0), false
 	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
 		versionString, ok := versionValue.(string)
 		if !ok {
@@ -32,56 +34,53 @@ func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.R
 		if err != nil {
 			return nil, err
 		}
-		version, hasVersion = int(v), true
+		version, hasVersion = v, true
 	}
 
-	// First, build a JSON state from the InstanceState.
-	json, version, err := schema.UpgradeFlatmapState(ctx, version, m, res, p.Meta())
+	// Now, we perform the UpgradeResourceState operation by re-implementing TF's UpgradeResourceState.
+
+	resp, err := schema.NewGRPCProviderServer(p).
+		UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
+			TypeName: typeName,
+			Version:  version,
+			RawState: &tfprotov5.RawState{Flatmap: m},
+		})
+	if err != nil {
+		return nil, fmt.Errorf("upgrade resource state GRPC: %w", err)
+	}
+
+	// Handle returned diagnostics.
+	var dd diag.Diagnostics
+	for _, d := range resp.Diagnostics {
+		if d == nil {
+			continue
+		}
+		rd := recoverDiagnostic(*d)
+		dd = append(dd, rd)
+		logDiag(ctx, rd)
+	}
+	if err := diagToError(dd); err != nil {
+		return nil, err
+	}
+
+	// Unmarshal to get back the underlying type.
+	rawState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	if err != nil {
 		return nil, err
 	}
 
-	// Next, migrate the JSON state up to the current version.
-	json, err = schema.UpgradeJSONState(ctx, version, json, res, p.Meta())
+	newState, err := res.ShimInstanceStateFromValue(rawState)
 	if err != nil {
 		return nil, err
 	}
 
-	configBlock := res.CoreConfigSchema()
-
-	// Strip out removed fields.
-	schema.RemoveAttributes(ctx, json, configBlock.ImpliedType())
-
-	// now we need to turn the state into the default json representation, so
-	// that it can be re-decoded using the actual schema.
-	v, err := schema.JSONMapToStateValue(json, configBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now we need to make sure blocks are represented correctly, which means
-	// that missing blocks are empty collections, rather than null.
-	// First we need to CoerceValue to ensure that all object types match.
-	v, err = configBlock.CoerceValue(v)
-	if err != nil {
-		return nil, err
-	}
-
-	// Normalize the value and fill in any missing blocks.
-	v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
-
-	// Convert the value back to an InstanceState.
-	newState, err := res.ShimInstanceStateFromValue(v)
-	if err != nil {
-		return nil, err
-	}
 	newState.RawConfig = instanceState.RawConfig
 
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID
 
 	// If state upgraders have modified the ID, respect the modification.
-	if updatedID, ok := findID(v); ok {
+	if updatedID, ok := findID(rawState); ok {
 		newState.ID = updatedID
 	}
 
@@ -90,7 +89,7 @@ func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.R
 		if newState.Meta == nil {
 			newState.Meta = map[string]interface{}{}
 		}
-		newState.Meta["schema_version"] = strconv.Itoa(version)
+		newState.Meta["schema_version"] = strconv.Itoa(int(version))
 	}
 	return newState, nil
 }
