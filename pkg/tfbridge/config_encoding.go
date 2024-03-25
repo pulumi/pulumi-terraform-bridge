@@ -22,7 +22,6 @@ import (
 	"github.com/golang/protobuf/ptypes/struct"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -219,53 +218,4 @@ func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource
 	}
 
 	return result, nil
-}
-
-// Inverse of UnmarshalProperties, with additional support for secrets. Since the encoding cannot represent nested
-// secrets, any nested secrets will be approximated by making the entire top-level property secret.
-func (enc *ConfigEncoding) MarshalProperties(props resource.PropertyMap) (*structpb.Struct, error) {
-	opts := plugin.MarshalOptions{
-		Label:        "config",
-		KeepUnknowns: true,
-		SkipNulls:    true,
-		RejectAssets: true,
-		KeepSecrets:  true,
-	}
-
-	copy := make(resource.PropertyMap)
-	for k, v := range props {
-		var err error
-		copy[k], err = enc.jsonEncodePropertyValue(k, v)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return plugin.MarshalProperties(copy, opts)
-}
-
-func (enc *ConfigEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
-	v resource.PropertyValue) (resource.PropertyValue, error) {
-	if v.ContainsUnknowns() {
-		return resource.NewStringProperty(plugin.UnknownStringValue), nil
-	}
-	if v.ContainsSecrets() {
-		encoded, err := enc.jsonEncodePropertyValue(k, propertyvalue.RemoveSecrets(v))
-		if err != nil {
-			return v, err
-		}
-		return resource.MakeSecret(encoded), err
-	}
-	_, knownKey := enc.fieldTypes[k]
-	switch {
-	case knownKey && v.IsNull():
-		return resource.NewStringProperty(""), nil
-	case knownKey && !v.IsNull() && !v.IsString():
-		encoded, err := json.Marshal(v.Mappable())
-		if err != nil {
-			return v, fmt.Errorf("JSON encoding error while marshalling property %q: %w", k, err)
-		}
-		return resource.NewStringProperty(string(encoded)), nil
-	default:
-		return v, nil
-	}
 }

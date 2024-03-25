@@ -86,6 +86,8 @@ import (
 //
 // Replay does not assume that the provider is a bridged provider and can be generally useful.
 func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
+	t.Helper()
+
 	ctx := context.Background()
 	var entry jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entry)
@@ -159,6 +161,8 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 // ReplaySequence is exactly like Replay, but expects jsonLog to encode a sequence of events `[e1, e2, e3]`, and will
 // call Replay on each of those events in the given order.
 func ReplaySequence(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog string) {
+	t.Helper()
+
 	var entries []jsonLogEntry
 	err := json.Unmarshal([]byte(jsonLog), &entries)
 	assert.NoError(t, err)
@@ -175,6 +179,8 @@ func replay[Req protoreflect.ProtoMessage, Resp protoreflect.ProtoMessage](
 	req Req,
 	serve func(context.Context, Req) (Resp, error),
 ) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	err := jsonpb.Unmarshal([]byte(entry.Request), req)

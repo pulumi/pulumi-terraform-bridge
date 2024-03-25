@@ -51,6 +51,8 @@ func AssertJSONMatchesPattern(
 	actual json.RawMessage,
 	opts ...JSONMatchOption,
 ) {
+	t.Helper()
+
 	var p, a interface{}
 
 	options := jsonMatchOptions{}
@@ -80,6 +82,7 @@ func AssertJSONMatchesPattern(
 
 	var match func(path string, p, a interface{})
 	match = func(path string, p, a interface{}) {
+		t.Helper()
 		switch pp := p.(type) {
 		case string:
 			if pp != "*" {
@@ -161,6 +164,7 @@ func AssertJSONMatchesPattern(
 }
 
 func assertJSONEquals(t *testing.T, path string, expected, actual interface{}) {
+	t.Helper()
 	assert.Equalf(t, prettyJSON(t, expected), prettyJSON(t, actual), "at %s", path)
 }
 
