@@ -32,9 +32,9 @@ func configModeAttrSchema(configMode schema.SchemaConfigMode) map[string]*schema
 }
 
 func TestConfigModeAttr(t *testing.T) {
-	// nonNilRuleset := map[string]map[string]string{
-	// 	"network_rulesets": {"default_action": "Deny"},
-	// }
+	nonNilRuleset := []map[string]string{
+		{"default_action": "Deny"},
+	}
 	params := []struct {
 		configMode schema.SchemaConfigMode
 		value      any
@@ -43,8 +43,8 @@ func TestConfigModeAttr(t *testing.T) {
 		{schema.SchemaConfigModeBlock, nil},
 		{schema.SchemaConfigModeAttr, []any{}},
 		{schema.SchemaConfigModeBlock, []any{}},
-		// {schema.SchemaConfigModeAttr, nonNilRuleset},
-		// {schema.SchemaConfigModeBlock, nonNilRuleset},
+		{schema.SchemaConfigModeAttr, nonNilRuleset},
+		{schema.SchemaConfigModeBlock, nonNilRuleset},
 	}
 
 	for _, param := range params {
