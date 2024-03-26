@@ -15,13 +15,21 @@
 package tfgen
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestExamplesCache(t *testing.T) {
 	t.Parallel()
+
+	exInfo := &tfbridge.ProviderInfo{
+		Name:    "ex",
+		Version: "0.0.1",
+	}
 
 	hcl := `
 		resource "random_password" "password" {
@@ -45,7 +53,7 @@ func TestExamplesCache(t *testing.T) {
 
 	t.Run("enabled", func(t *testing.T) {
 		dir := t.TempDir()
-		cache := newExamplesCache("ex", "0.0.1", dir)
+		cache := newExamplesCache(exInfo, dir)
 
 		_, ok := cache.Lookup(hcl, "typescript")
 		assert.False(t, ok)
@@ -58,7 +66,7 @@ func TestExamplesCache(t *testing.T) {
 	})
 
 	t.Run("disabled", func(t *testing.T) {
-		cache := newExamplesCache("ex", "0.0.1", "")
+		cache := newExamplesCache(exInfo, "")
 		assert.False(t, cache.enabled)
 
 		_, ok := cache.Lookup(hcl, "typescript")

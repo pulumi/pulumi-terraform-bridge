@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -42,21 +43,24 @@ type examplesCache struct {
 	enabled             bool
 	dir                 string
 	ProviderName        string                       `json:"providerName"`
-	ProviderVersion     string                       `json:"providerVersion"`
 	PulumiVersion       string                       `json:"pulumiVersion"`
+	SoftwareVersions    map[string]string            `json:"softwareVersions"`
 	BuildFileHashes     map[string]string            `json:"buildFileHashes"`
 	Plugins             map[string]map[string]string `json:"plugins"`
 	CliConverterEnabled bool                         `json:"cliConverterEnabled"`
+	ProviderInfoHash    string                       `json:"providerInfoHash"`
 }
 
 func (g *Generator) getOrCreateExamplesCache() *examplesCache {
 	if g.examplesCache == nil {
-		g.examplesCache = newExamplesCache(g.info.Name, g.version, "" /* infer from env var */)
+		g.examplesCache = newExamplesCache(&g.info, "" /* infer from env var */)
 	}
+
 	return g.examplesCache
 }
 
-func newExamplesCache(providerName string, providerVersion, cacheDir string) *examplesCache {
+func newExamplesCache(info *tfbridge.ProviderInfo, cacheDir string) *examplesCache {
+	providerName := info.Name
 	dir := cacheDir
 	enabled := true
 	if dir == "" {
@@ -66,11 +70,11 @@ func newExamplesCache(providerName string, providerVersion, cacheDir string) *ex
 		return &examplesCache{}
 	}
 	ec := &examplesCache{
-		enabled:         true,
-		dir:             dir,
-		ProviderName:    providerName,
-		ProviderVersion: providerVersion,
+		enabled:      true,
+		dir:          dir,
+		ProviderName: providerName,
 	}
+	ec.computeProviderInfoHash(info)
 	ec.inferToolingVersions()
 	ec.prepareDir()
 	return ec
@@ -121,6 +125,7 @@ func (ec *examplesCache) inferToolingVersions() {
 	ec.Plugins = ec.inferPlugins()
 	ec.BuildFileHashes = ec.inferBuildFileHashes()
 	ec.CliConverterEnabled = cliConverterEnabled()
+	ec.SoftwareVersions = ec.inferSoftwareVersions()
 }
 
 func (*examplesCache) inferPulumiVersion() string {
@@ -157,8 +162,6 @@ func (ec *examplesCache) inferBuildFileHashes() map[string]string {
 	candidates := []string{
 		"go.work",
 		"go.work.sum",
-		filepath.Join("provider", "go.mod"),
-		filepath.Join("provider", "go.sum"),
 	}
 	rr := map[string]string{}
 	for _, c := range candidates {
@@ -167,12 +170,44 @@ func (ec *examplesCache) inferBuildFileHashes() map[string]string {
 	return rr
 }
 
+func (ec *examplesCache) inferSoftwareVersions() map[string]string {
+	used := []string{
+		"github.com/pulumi/pulumi/pkg/v3",
+		"github.com/pulumi/pulumi-terraform-bridge/v3",
+		"github.com/pulumi/pulumi-terraform-bridge/pf",
+	}
+	p := map[string]string{}
+	for _, u := range used {
+		cmd := exec.Command("go", "list", "-m", "-json", u)
+		cmd.Dir = "provider"
+		j, err := cmd.CombinedOutput()
+		if err != nil {
+			continue
+		}
+		type result struct {
+			Version string `json:"Version"`
+		}
+		var r result
+		err = json.Unmarshal(j, &r)
+		contract.AssertNoErrorf(err, "go list -json -m <pkg> result parsing failed")
+		p[u] = r.Version
+	}
+	return p
+}
+
 func (ec *examplesCache) filehash(p string) string {
 	bytes, err := os.ReadFile(p)
 	if err != nil {
 		return ""
 	}
 	return ec.checksum(bytes)
+}
+
+func (ec *examplesCache) computeProviderInfoHash(info *tfbridge.ProviderInfo) {
+	mpi := tfbridge.MarshalProviderInfo(info)
+	bytes, err := json.Marshal(mpi)
+	contract.AssertNoErrorf(err, "failed to marshal MarshallableProviderInfo to JSON")
+	ec.ProviderInfoHash = ec.checksum(bytes)
 }
 
 func (ec *examplesCache) uniqueDirHash() string {
