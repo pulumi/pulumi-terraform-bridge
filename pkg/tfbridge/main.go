@@ -70,6 +70,7 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	// Initialize Terraform logging.
 	prov.P.InitLogging(ctx)
 
+	panic("new panic!")
 	if err := Serve(pkg, version, prov, pulumiSchema); err != nil {
 		cmdutil.ExitError(err.Error())
 	}
