@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -356,6 +357,11 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		elemInfo = info.Elem
 	}
 
+	if objectName == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		q.Q("making a property type")
+		q.Q(sch.Type())
+	}
+
 	if sch == nil {
 		contract.Assertf(info != nil, "missing info when sch is nil on type: "+typePath.String())
 		return t
@@ -392,6 +398,9 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	switch sch.Type() {
 	case shim.TypeList, shim.TypeSet:
 		if tfbridge.IsMaxItemsOne(sch, info) {
+			if objectName == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+				q.Q(objectName, ": is a type list or typeset and is DEFINITELY being flattened")
+			}
 			flatten = true
 		}
 	}
@@ -409,7 +418,22 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
+		if objectName == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+			q.Q(objectName, ": pretty sure this is a shim.Resource")
+			q.Q(elemPath)
+			q.Q(docsPath(objectName))
+			//q.Q(elem) // TODO: this is a SChema omg who named this shit
+			q.Q(elemInfo)
+			//q.Q(entityDocs)
+		}
 		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
+		//if objectName == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		//	q.Q(element)
+		//}
+	}
+
+	if objectName == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		q.Q(objectName, ": we got EVEN FARTHER")
 	}
 
 	if flatten {
@@ -442,6 +466,16 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		kind: kindObject,
 	}
 
+	//if objPath == "lambda_function" {
+	//	q.Q("LAMBDA FUNCTION")
+	//	q.Q(entityDocs.Attributes)
+	//}
+
+	if objPath == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		q.Q("WE MADE IT BACK TO makeObjectPropertyType")
+		q.Q(entityDocs.Attributes)
+	}
+
 	if info != nil {
 		t.typ = info.Type
 		t.nestedType = info.NestedType
@@ -455,12 +489,19 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	}
 
 	for _, key := range stableSchemas(res.Schema()) {
+
 		propertySchema := res.Schema()
 
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
 		// This seems wrong, so we ignore the second return value here for now.
 		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
+
+		if objPath == "vpc_config" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+			q.Q(key)
+			q.Q(doc)
+			objPath.join(key)
+		}
 
 		// If we have no result from entityDocs, we look up the TF schema Description.
 		if doc == "" {
@@ -1207,9 +1248,9 @@ func (g *Generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		source := NewGitRepoDocsSource(g)
-		pd, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+		pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
 		if err == nil {
-			entityDocs = pd
+			entityDocs = pulumiDocs
 		} else if !g.checkNoDocsError(err) {
 			return nil, err
 		}
@@ -1225,9 +1266,20 @@ func (g *Generator) gatherResource(rawname string,
 	// Create an empty module and associated resource type.
 	res := newResourceType(resourcePath, mod, name, entityDocs, schema, info, isProvider)
 
+	if strings.Contains(rawname, "dead_letter") {
+		q.Q("HERE HERE HERE", rawname)
+		// TODO: the above proves that Types do not get gathered all the way down in this function. Sigh.
+	}
+
+	// TODO: none of the subkeys get collected here. Where do they get collected?
+
 	// Next, gather up all properties.
 	var stateVars []*variable
 	for _, key := range stableSchemas(schema.Schema()) {
+		if rawname == "aws_lambda_function" {
+			q.Q(key)
+
+		}
 		propschema := schema.Schema().Get(key)
 		if propschema.Removed() != "" {
 			continue
@@ -1237,6 +1289,10 @@ func (g *Generator) gatherResource(rawname string,
 		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description()
 
+		if rawname == "aws_lambda_function" {
+			q.Q(doc)
+		}
+
 		propinfo := info.Fields[key]
 
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not
@@ -1244,6 +1300,9 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
+			//TODO: decide if iwe want to do this here, like upstream does. the issue is, that the schema.Schema()
+			// map does NOT have our nested outputs as keys - or any nested fields at all. so the part where we're getting those descriptions? that's what's broken.
+			// we also need to label them clearly as Outputs (Optional? Computed? so unclear!)
 			outprop := g.propertyVariable(resourcePath.Outputs(), key, schema.Schema(),
 				info.Fields, doc, rawdoc, true /*out*/, entityDocs)
 			if outprop != nil {
@@ -1261,6 +1320,7 @@ func (g *Generator) gatherResource(rawname string,
 
 			inprop := g.propertyVariable(resourcePath.Inputs(),
 				key, schema.Schema(), info.Fields, doc, rawdoc, false /*out*/, entityDocs)
+
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -1309,6 +1369,10 @@ func (g *Generator) gatherResource(rawname string,
 			g.warn(msg)
 		}
 	}
+
+	//if rawname == "aws_lambda_function" {
+	//	q.Q(g.info)
+	//}
 
 	return res, nil
 }
@@ -1627,6 +1691,14 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
 	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
 
+	//if key == "vpc_config" && strings.Contains(parentPath.String(), "aws_lambda_function") {
+	//	q.Q(parentPath)
+	//	q.Q(key)
+	//	q.Q(doc)
+	//	q.Q(rawdoc)
+	//	q.Q(entityDocs)
+	//}
+
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
@@ -1651,6 +1723,13 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 				propName, typePath)
 			return nil
 		}
+
+		//if name == "vpcConfig" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		//	q.Q(typePath)
+		//	q.Q(schema)
+		//	q.Q(varInfo)
+		//	q.Q(entityDocs)
+		//}
 
 		return &variable{
 			name:         name,
@@ -1838,9 +1917,20 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
+	if path == "vpc_config.vpc_id" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+		q.Q("omg are we here?")
+		q.Q(entityDocs.Attributes)
+
+	}
+
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {
+			if path == "vpc_config.vpc_id" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+				q.Q("FOUND", p)
+				q.Q(v)
+			}
 			return v.description, false
 		}
 		p = p.withOutRoot()
@@ -1863,25 +1953,37 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		docsPathArr(keys).Sort()
 		return entityDocs.Arguments[keys[0]].description, false
 	}
-
-	if attribute := entityDocs.Attributes[path.leaf()]; attribute != "" {
-		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
-		// may be met for one of the following reasons:
-		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
-		// 2. The upstream schema is correct, but the docs are incorrect in that they have the item in question documented
-		//    as an attribute, and this behavior is intentional (with the intent of being forgiving about mistakes in the
-		//    upstream docs).
-		//
-		// (There may be other, unknown, reasons why this behavior exists.)
-		//
-		// In case #1 above, we are generating an incorrect schema because the upstream schema is incorrect, and we would
-		// arguably be better off not having any description in our docs. In case #2 above, this is fairly risky fallback
-		// behavior with may result in incorrect docs, per pulumi-terraform-bridge#550.
-		//
-		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
-		// altogether) due to the difficulty in determining whether the correct description is actually found.
-		return attribute, true
+	for attrPath := path; attrPath != ""; {
+		if val, ok := entityDocs.Attributes[string(attrPath)]; ok {
+			if path == "vpc_config.vpc_id" && strings.Contains(entityDocs.Description, "Provides a Lambda Function resource") {
+				q.Q("FOUND", val)
+				q.Q(val)
+				q.Q(attrPath)
+				q.Q(string(attrPath))
+			}
+			return val, true
+		}
+		attrPath = attrPath.withOutRoot()
 	}
+
+	//if attribute := entityDocs.Attributes[path.leaf()]; attribute != "" {
+	//	// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
+	//	// may be met for one of the following reasons:
+	//	// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
+	//	// 2. The upstream schema is correct, but the docs are incorrect in that they have the item in question documented
+	//	//    as an attribute, and this behavior is intentional (with the intent of being forgiving about mistakes in the
+	//	//    upstream docs).
+	//	//
+	//	// (There may be other, unknown, reasons why this behavior exists.)
+	//	//
+	//	// In case #1 above, we are generating an incorrect schema because the upstream schema is incorrect, and we would
+	//	// arguably be better off not having any description in our docs. In case #2 above, this is fairly risky fallback
+	//	// behavior with may result in incorrect docs, per pulumi-terraform-bridge#550.
+	//	//
+	//	// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
+	//	// altogether) due to the difficulty in determining whether the correct description is actually found.
+	//	return attribute, true
+	//}
 
 	return "", false
 }
