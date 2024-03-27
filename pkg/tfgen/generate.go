@@ -1837,7 +1837,6 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
-
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {

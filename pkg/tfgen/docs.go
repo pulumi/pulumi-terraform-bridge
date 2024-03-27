@@ -1033,7 +1033,6 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		section = strings.Replace(section, "```", "", -1)
 
 		if strings.Contains(section, "terraform import") {
-
 			// First, remove the `$`
 			section := strings.Replace(section, "$ ", "", -1)
 			// Next, remove `terraform import` from the codeblock
