@@ -1728,6 +1728,28 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
+			name:  "integer_type_success",
+			input: resource.NewNumberProperty(1),
+			inputProperties: map[string]pschema.PropertySpec{
+				"integer_type_success": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "integer",
+					},
+				},
+			},
+		},
+		{
+			name:  "bool_type_success",
+			input: resource.NewBoolProperty(true),
+			inputProperties: map[string]pschema.PropertySpec{
+				"bool_type_success": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "boolean",
+					},
+				},
+			},
+		},
+		{
 			name:  "string_type_failure",
 			input: resource.NewNumberProperty(1),
 			failures: []TypeFailure{

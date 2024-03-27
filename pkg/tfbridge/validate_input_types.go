@@ -411,13 +411,29 @@ func (v *PulumiInputValidator) findOneOf(
 	return nil, allSpecs, false
 }
 
+// The input type (i.e. PropertyValue.TypeString() do not match 100% to the pschema.TypeSpec.Type)
+func typeEqual(schemaType, inputType string) bool {
+	if schemaType == inputType {
+		return true
+	}
+	if schemaType == "array" && inputType == "[]" {
+		return true
+	}
+
+	if (schemaType == "number" || schemaType == "integer") && inputType == "number" {
+		return true
+
+	}
+	if schemaType == "boolean" && inputType == "bool" {
+		return true
+	}
+	return false
+}
+
 // matchType performs some initial type matching for a given input type.
 // returns the possible types if a type is not matched
 func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.TypeSpec) (possibleTypes, bool) {
 	possibleTypes := possibleTypes{}
-	if inputType == "[]" {
-		inputType = "array"
-	}
 
 	if len(specs) == 0 {
 		return possibleTypes, false
@@ -426,7 +442,7 @@ func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.Type
 	for _, spec := range specs {
 		possibleTypes = possibleTypes.add(spec.Type)
 		// if the type matches then we are done
-		if spec.Type == inputType {
+		if typeEqual(spec.Type, inputType) {
 			return []string{}, true
 		}
 
@@ -442,7 +458,7 @@ func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.Type
 						return []string{}, true
 					}
 				}
-				if refType.Type == inputType {
+				if typeEqual(refType.Type, inputType) {
 					return []string{}, true
 				}
 			}
