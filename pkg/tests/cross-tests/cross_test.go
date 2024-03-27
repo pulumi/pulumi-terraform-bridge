@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
@@ -176,6 +178,10 @@ func toTFProvider(tc diffTestCase) *schema.Provider {
 }
 
 func startTFProvider(t T, tc diffTestCase) *plugin.ReattachConfig {
+	os.Setenv("TF_LOG_PROVIDER", "off")
+	os.Setenv("TF_LOG_SDK", "off")
+	os.Setenv("TF_LOG_SDK_PROTO", "off")
+
 	tc.Resource.CustomizeDiff = func(
 		ctx context.Context, rd *schema.ResourceDiff, i interface{},
 	) error {
@@ -222,9 +228,11 @@ func startTFProvider(t T, tc diffTestCase) *plugin.ReattachConfig {
 	closeCh := make(chan struct{})
 
 	serveOpts := []tf5server.ServeOpt{
+		tf5server.WithGoPluginLogger(hclog.FromStandardLogger(log.New(io.Discard, "", 0), hclog.DefaultOptions)),
 		tf5server.WithDebug(ctx, reattachConfigCh, closeCh),
+		tf5server.WithoutLogStderrOverride(),
 		// TODO - can this not assume testing.T
-		// tf5server.WithLoggingSink(t),
+		//tf5server.WithLoggingSink(t),
 	}
 
 	go func() {
