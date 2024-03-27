@@ -45,6 +45,6 @@ func (*rapidTWithCleanup) Deadline() (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (*rapidTWithCleanup) Cleanup(work func()) {
-	panic("unexpected cleanup scheduled")
+func (rtc *rapidTWithCleanup) Cleanup(work func()) {
+	rtc.outerT.Cleanup(work)
 }
