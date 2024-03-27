@@ -44,7 +44,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -278,25 +277,11 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		docInfo = info.GetDocs()
 	}
 
-	//if rawname == "aws_lambda_function" && kind == ResourceDocs {
-	//
-	//	q.Q(rawname)
-	//	q.Q(kind)
-	//	q.Q(source)
-	//	q.Q(docInfo)
-	//
-	//}
-
 	var docFile *DocFile
 	var err error
 	switch kind {
 	case ResourceDocs:
 		docFile, err = source.getResource(rawname, docInfo)
-		//if rawname == "aws_lambda_function" {
-		//	q.Q(docFile.FileName)
-		//	q.Q(string(docFile.Content))
-		//}
-
 	case DataSourceDocs:
 		docFile, err = source.getDatasource(rawname, docInfo)
 	default:
@@ -367,10 +352,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 
 			overlayArgsToArgs(sourceDocs, &doc)
 		}
-	}
-	if rawname == "aws_lambda_function" && kind == ResourceDocs {
-		q.Q("doc.Attributes")
-		q.Q(doc.Attributes)
 	}
 
 	return doc, nil
@@ -556,7 +537,6 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 }
 
 func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
-
 	p.ret = entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -604,7 +584,6 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		if err := p.parseSection(section); err != nil {
 			return entityDocs{}, err
 		}
-
 	}
 
 	// Get links.
@@ -990,7 +969,6 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {
 	var token string
-
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
 	}
@@ -1019,13 +997,14 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			}
 		}
 	}
+
 	if i, ok := tryParseV2Imports(token, subsection); ok {
 		p.ret.Import = i
 		return
 	}
+
 	var importDocString string
 	for _, section := range subsection {
-
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
 			strings.Contains(section, "**Note:**") {
 			// This is a Terraform import specific comment that we don't need to parse or include in our docs
@@ -1075,7 +1054,6 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-
 			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
 			importDetails := "```sh\n" + importCommand + "```\n\n"
 			importDocString = importDocString + importDetails
@@ -1087,6 +1065,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			}
 		}
 	}
+
 	if len(importDocString) > 0 {
 		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
 	}
