@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"io"
 	"os"
 	"path/filepath"
@@ -271,7 +270,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
-
 	var docInfo *tfbridge.DocInfo
 	if info != nil {
 		docInfo = info.GetDocs()
@@ -315,7 +313,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
 
 	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
-
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -441,8 +438,13 @@ var (
 		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
+	bulletPointRegexStr       = "^\\s*[*+-]"             // matches any bullet point-like character
+	attributePathNameRegexStr = "\\s*`([a-zA-z0-9._]*)`" // matches any TF attribute path name
+	attributePathNameRegexp   = regexp.MustCompile(attributePathNameRegexStr)
+
+	// matches any line starting with a bullet point followed by a TF path or resource name)
 	attributeBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9._]*)`\\s*[:–-]?\\s*(.*)",
+		bulletPointRegexStr + attributePathNameRegexStr + "\\s*[:–-]?\\s*(.*)",
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
@@ -955,8 +957,10 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 		matches := attributeBulletRegexp.FindStringSubmatch(line)
 		if len(matches) >= 2 {
 			// found a property bullet, extract the name and description
-			ret.Attributes[matches[1]] = matches[2]
-			lastMatch = matches[1]
+			attribute := flattenListAttributeKey(matches[1])
+			description := matches[2]
+			ret.Attributes[attribute] = description
+			lastMatch = attribute
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
@@ -965,6 +969,10 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 			lastMatch = ""
 		}
 	}
+}
+
+func flattenListAttributeKey(attribute string) string {
+	return strings.ReplaceAll(attribute, ".0", "")
 }
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {

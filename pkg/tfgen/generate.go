@@ -1221,7 +1221,6 @@ func (g *Generator) gatherResource(rawname string,
 				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
 	}
-
 	// Create an empty module and associated resource type.
 	res := newResourceType(resourcePath, mod, name, entityDocs, schema, info, isProvider)
 
@@ -1838,6 +1837,7 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {

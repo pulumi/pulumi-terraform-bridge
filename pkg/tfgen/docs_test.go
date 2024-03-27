@@ -672,6 +672,43 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 	assert.Len(t, ret.Attributes, 4)
 }
 
+func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region` - The region of the Droplet",
+		"* `region.zone` - The zone of the Droplet region",
+	}, &ret)
+	assert.Len(t, ret.Attributes, 5)
+}
+
+func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	expected := entityDocs{
+		Attributes: map[string]string{
+			"region":      "The region of the Droplet",
+			"region.zone": "The zone of the Droplet region",
+		},
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `region` - The region of the Droplet",
+		"* `region.0.zone` - The zone of the Droplet region",
+	}, &ret)
+	assert.Equal(t, expected.Attributes, ret.Attributes)
+}
+
 func TestGetNestedBlockName(t *testing.T) {
 	var tests = []struct {
 		input, expected string
