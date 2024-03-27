@@ -50,14 +50,20 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 		}
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
 		objType := tftypes.Object{AttributeTypes: fieldTypes}
-		objGen := rapid.Custom[tftypes.Value](func(t *rapid.T) tftypes.Value {
-			fields := map[string]tftypes.Value{}
-			for f, fg := range fieldGenerators {
-				fv := fg.Draw(t, f)
-				fields[f] = fv
-			}
-			return tftypes.NewValue(objType, fields)
-		})
+		var objGen *rapid.Generator[tftypes.Value]
+		if len(fieldGenerators) > 0 {
+			objGen = rapid.Custom[tftypes.Value](func(t *rapid.T) tftypes.Value {
+				fields := map[string]tftypes.Value{}
+				for f, fg := range fieldGenerators {
+					fv := fg.Draw(t, f)
+					fields[f] = fv
+				}
+				return tftypes.NewValue(objType, fields)
+			})
+		} else {
+			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
+		}
+		objGen = tvg.withNullAndUnknown(objType, objGen)
 		return tv{st(objSchema), objType, objGen}
 	})
 }
@@ -66,8 +72,8 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	s := schema.Schema{
 		Type: schema.TypeString,
 	}
+	nilValue := tftypes.NewValue(tftypes.String, nil)
 	values := []tftypes.Value{
-		tftypes.NewValue(tftypes.String, nil),
 		tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
 		tftypes.NewValue(tftypes.String, ""),
 		tftypes.NewValue(tftypes.String, "text"),
@@ -75,8 +81,21 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	valueGen := rapid.SampledFrom(values)
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
-		return tv{st(s), tftypes.String, valueGen}
+		s := st(s)
+		if s.Required {
+			return tv{s, tftypes.String, valueGen}
+		}
+		return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(nilValue))}
 	})
+}
+
+func (*tvGen) withNullAndUnknown(
+	t tftypes.Type,
+	v *rapid.Generator[tftypes.Value],
+) *rapid.Generator[tftypes.Value] {
+	nullV := tftypes.NewValue(t, nil)
+	unknownV := tftypes.NewValue(t, tftypes.UnknownValue)
+	return rapid.OneOf(v, rapid.Just(nullV), rapid.Just(unknownV))
 }
 
 func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {

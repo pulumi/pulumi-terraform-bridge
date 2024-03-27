@@ -1,6 +1,8 @@
 package crosstests
 
 import (
+	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 )
 
 func TestDiffConvergence(outerT *testing.T) {
+	log.SetOutput(io.Discard)
 	tvg := &tvGen{}
 
 	rapid.Check(outerT, func(t *rapid.T) {
