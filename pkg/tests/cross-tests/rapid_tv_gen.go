@@ -10,9 +10,9 @@ import (
 // Combines a TF value representing resource inputs with its schema. The value has to conform to the schema. The name
 // "tv" stands for a typed value.
 type tv struct {
-	schema schema.Schema
-	typ    tftypes.Type
-	value  tftypes.Value
+	schema   schema.Schema
+	typ      tftypes.Type
+	valueGen *rapid.Generator[tftypes.Value]
 }
 
 type schemaT func(schema.Schema) schema.Schema
@@ -32,14 +32,14 @@ func (tvg *tvGen) GenTV(maxDepth int) *rapid.Generator[tv] {
 func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		fieldSchemas := map[string]*schema.Schema{}
-		objectFields := map[string]tftypes.Value{}
 		fieldTypes := map[string]tftypes.Type{}
+		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
 		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
 			fieldName := fmt.Sprintf("f%d", i)
 			fieldTV := tvg.GenTV(maxDepth-1).Draw(t, fieldName)
 			fieldSchemas[fieldName] = &fieldTV.schema
-			objectFields[fieldName] = fieldTV.value
+			fieldGenerators[fieldName] = fieldTV.valueGen
 			fieldTypes[fieldName] = fieldTV.typ
 		}
 		objSchema := schema.Schema{
@@ -50,8 +50,15 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 		}
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
 		objType := tftypes.Object{AttributeTypes: fieldTypes}
-		objValue := tftypes.NewValue(objType, objectFields)
-		return tv{st(objSchema), objType, objValue}
+		objGen := rapid.Custom[tftypes.Value](func(t *rapid.T) tftypes.Value {
+			fields := map[string]tftypes.Value{}
+			for f, fg := range fieldGenerators {
+				fv := fg.Draw(t, f)
+				fields[f] = fv
+			}
+			return tftypes.NewValue(objType, fields)
+		})
+		return tv{st(objSchema), objType, objGen}
 	})
 }
 
@@ -65,10 +72,10 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 		tftypes.NewValue(tftypes.String, ""),
 		tftypes.NewValue(tftypes.String, "text"),
 	}
+	valueGen := rapid.SampledFrom(values)
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
-		value := rapid.SampledFrom(values).Draw(t, "sampleValue")
-		return tv{st(s), tftypes.String, value}
+		return tv{st(s), tftypes.String, valueGen}
 	})
 }
 

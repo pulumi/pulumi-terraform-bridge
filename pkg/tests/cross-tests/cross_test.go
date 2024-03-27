@@ -69,7 +69,15 @@ const (
 	providerVer       = "0.0.1"
 )
 
-func runDiffCheck(t *testing.T, tc diffTestCase) {
+type T interface {
+	Logf(string, ...any)
+	TempDir() string
+	require.TestingT
+	assert.TestingT
+	pulumitest.T
+}
+
+func runDiffCheck(t T, tc diffTestCase) {
 	// ctx := context.Background()
 	tfwd := t.TempDir()
 
@@ -119,7 +127,7 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	verifyBasicDiffAgreement(t, p2, x.Summary)
 }
 
-func tfWriteJSON(t *testing.T, cwd string, rconfig any) {
+func tfWriteJSON(t T, cwd string, rconfig any) {
 	config := map[string]any{
 		"resource": map[string]any{
 			rtype: map[string]any{
@@ -142,7 +150,7 @@ func (*tfPlan) OpType() *apitype.OpType {
 	return nil
 }
 
-func runTFPlan(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) tfPlan {
+func runTFPlan(t T, cwd string, reattachConfig *plugin.ReattachConfig) tfPlan {
 	planFile := filepath.Join(cwd, "test.tfplan")
 	env := []string{formatReattachEnvVar(providerName, reattachConfig)}
 	execCmd(t, cwd, env, "terraform", "plan", "-refresh=false", "-out", planFile)
@@ -154,7 +162,7 @@ func runTFPlan(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig) 
 	return tp
 }
 
-func runTFApply(t *testing.T, cwd string, reattachConfig *plugin.ReattachConfig, p tfPlan) {
+func runTFApply(t T, cwd string, reattachConfig *plugin.ReattachConfig, p tfPlan) {
 	execCmd(t, cwd, []string{formatReattachEnvVar(providerName, reattachConfig)},
 		"terraform", "apply", "-auto-approve", "-refresh=false", p.PlanFile)
 }
@@ -167,7 +175,7 @@ func toTFProvider(tc diffTestCase) *schema.Provider {
 	}
 }
 
-func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
+func startTFProvider(t T, tc diffTestCase) *plugin.ReattachConfig {
 	tc.Resource.CustomizeDiff = func(
 		ctx context.Context, rd *schema.ResourceDiff, i interface{},
 	) error {
@@ -215,7 +223,8 @@ func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
 
 	serveOpts := []tf5server.ServeOpt{
 		tf5server.WithDebug(ctx, reattachConfigCh, closeCh),
-		tf5server.WithLoggingSink(t),
+		// TODO - can this not assume testing.T
+		// tf5server.WithLoggingSink(t),
 	}
 
 	go func() {
@@ -642,7 +651,7 @@ func startPulumiProvider(
 	return &handle, nil
 }
 
-func pulumiWriteYaml(t *testing.T, tc diffTestCase, puwd string, tfConfig any) {
+func pulumiWriteYaml(t T, tc diffTestCase, puwd string, tfConfig any) {
 	schema := sdkv2.NewResource(tc.Resource).Schema()
 	pConfig, err := convertConfigToPulumi(schema, nil, tfConfig)
 	require.NoErrorf(t, err, "convertConfigToPulumi failed")
@@ -666,7 +675,7 @@ func pulumiWriteYaml(t *testing.T, tc diffTestCase, puwd string, tfConfig any) {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 }
 
-func execCmd(t *testing.T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
+func execCmd(t T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
 	t.Logf("%s %s", program, strings.Join(args, " "))
 	cmd := exec.Command(program, args...)
 	var stdout, stderr bytes.Buffer
@@ -738,7 +747,7 @@ func parseChangesFromTFPlan(plan tfPlan) string {
 	return actions[0]
 }
 
-func verifyBasicDiffAgreement(t *testing.T, plan tfPlan, us auto.UpdateSummary) {
+func verifyBasicDiffAgreement(t T, plan tfPlan, us auto.UpdateSummary) {
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	tfAction := parseChangesFromTFPlan(plan)
 	switch tfAction {
