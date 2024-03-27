@@ -440,7 +440,6 @@ var (
 
 	bulletPointRegexStr       = "^\\s*[*+-]"             // matches any bullet point-like character
 	attributePathNameRegexStr = "\\s*`([a-zA-z0-9._]*)`" // matches any TF attribute path name
-	attributePathNameRegexp   = regexp.MustCompile(attributePathNameRegexStr)
 
 	// matches any line starting with a bullet point followed by a TF path or resource name)
 	attributeBulletRegexp = regexp.MustCompile(
