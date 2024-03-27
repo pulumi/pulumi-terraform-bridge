@@ -1207,9 +1207,9 @@ func (g *Generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		source := NewGitRepoDocsSource(g)
-		pd, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+		pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
 		if err == nil {
-			entityDocs = pd
+			entityDocs = pulumiDocs
 		} else if !g.checkNoDocsError(err) {
 			return nil, err
 		}
@@ -1221,7 +1221,6 @@ func (g *Generator) gatherResource(rawname string,
 				"[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.",
 			g.info.Name)
 	}
-
 	// Create an empty module and associated resource type.
 	res := newResourceType(resourcePath, mod, name, entityDocs, schema, info, isProvider)
 
@@ -1864,7 +1863,7 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		return entityDocs.Arguments[keys[0]].description, false
 	}
 
-	if attribute := entityDocs.Attributes[path.leaf()]; attribute != "" {
+	for attrPath := path; attrPath != ""; {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
 		// 1. The upstream schema is incorrect and the item in question should not be an input (e.g. tags_all in AWS).
@@ -1874,13 +1873,20 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		//
 		// (There may be other, unknown, reasons why this behavior exists.)
 		//
+		// Additionally, a lot of nested type descriptions are listed under the "Attributes Reference" section and as such
+		// will have been parsed into entityDocs.Attributes. In the AWS provider, this behavior is responsible for many
+		// type property descriptions.
+		//
 		// In case #1 above, we are generating an incorrect schema because the upstream schema is incorrect, and we would
 		// arguably be better off not having any description in our docs. In case #2 above, this is fairly risky fallback
 		// behavior with may result in incorrect docs, per pulumi-terraform-bridge#550.
 		//
 		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
 		// altogether) due to the difficulty in determining whether the correct description is actually found.
-		return attribute, true
+		if description, ok := entityDocs.Attributes[string(attrPath)]; ok {
+			return description, true
+		}
+		attrPath = attrPath.withOutRoot()
 	}
 
 	return "", false
