@@ -186,11 +186,17 @@ func (ec *examplesCache) inferSoftwareVersions() map[string]string {
 		}
 		type result struct {
 			Version string `json:"Version"`
+			Replace struct {
+				Version string `json:"Version"`
+			} `json:"Replace"`
 		}
 		var r result
 		err = json.Unmarshal(j, &r)
 		contract.AssertNoErrorf(err, "go list -json -m <pkg> result parsing failed")
 		p[u] = r.Version
+		if r.Replace.Version != "" {
+			p[u] = r.Replace.Version
+		}
 	}
 	return p
 }
