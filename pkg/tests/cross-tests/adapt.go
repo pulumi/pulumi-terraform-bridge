@@ -39,12 +39,68 @@ func (ta *typeAdapter) ToCty() cty.Type {
 	}
 }
 
+func (ta *typeAdapter) NewValue(value any) tftypes.Value {
+	t := ta.typ
+	if value == nil {
+		return tftypes.NewValue(t, nil)
+	}
+	switch t := value.(type) {
+	case tftypes.Value:
+		return t
+	case *tftypes.Value:
+		return *t
+	}
+	switch {
+	case t.Is(tftypes.List{}):
+		elT := t.(tftypes.List).ElementType
+		switch v := value.(type) {
+		case []any:
+			values := []tftypes.Value{}
+			for _, el := range v {
+				values = append(values, FromType(elT).NewValue(el))
+			}
+			return tftypes.NewValue(t, values)
+		}
+	case t.Is(tftypes.Set{}):
+		elT := t.(tftypes.Set).ElementType
+		switch v := value.(type) {
+		case []any:
+			values := []tftypes.Value{}
+			for _, el := range v {
+				values = append(values, FromType(elT).NewValue(el))
+			}
+			return tftypes.NewValue(t, values)
+		}
+	case t.Is(tftypes.Map{}):
+		elT := t.(tftypes.Map).ElementType
+		switch v := value.(type) {
+		case map[string]any:
+			values := map[string]tftypes.Value{}
+			for k, el := range v {
+				values[k] = FromType(elT).NewValue(el)
+			}
+			return tftypes.NewValue(t, values)
+		}
+	case t.Is(tftypes.Object{}):
+		aT := t.(tftypes.Object).AttributeTypes
+		switch v := value.(type) {
+		case map[string]any:
+			values := map[string]tftypes.Value{}
+			for k, el := range v {
+				values[k] = FromType(aT[k]).NewValue(el)
+			}
+			return tftypes.NewValue(t, values)
+		}
+	}
+	return tftypes.NewValue(t, value)
+}
+
 func FromType(t tftypes.Type) *typeAdapter {
 	return &typeAdapter{t}
 }
 
 type valueAdapter struct {
-	value *tftypes.Value
+	value tftypes.Value
 }
 
 func (va *valueAdapter) ToCty() cty.Value {
@@ -71,25 +127,25 @@ func (va *valueAdapter) ToCty() cty.Value {
 		contract.AssertNoErrorf(err, "unexpected error converting bool")
 		return cty.BoolVal(b)
 	case t.Is(tftypes.List{}):
-		var vals []*tftypes.Value
+		var vals []tftypes.Value
 		err := v.As(&vals)
 		contract.AssertNoErrorf(err, "unexpected error converting list")
-		var outVals []cty.Value
+		outVals := make([]cty.Value, len(vals))
 		for i, el := range vals {
 			outVals[i] = FromValue(el).ToCty()
 		}
 		return cty.ListVal(outVals)
 	case t.Is(tftypes.Set{}):
-		var vals []*tftypes.Value
+		var vals []tftypes.Value
 		err := v.As(&vals)
 		contract.AssertNoErrorf(err, "unexpected error converting set")
-		var outVals []cty.Value
+		outVals := make([]cty.Value, len(vals))
 		for i, el := range vals {
 			outVals[i] = FromValue(el).ToCty()
 		}
 		return cty.SetVal(outVals)
 	case t.Is(tftypes.Map{}):
-		var vals map[string]*tftypes.Value
+		var vals map[string]tftypes.Value
 		err := v.As(&vals)
 		contract.AssertNoErrorf(err, "unexpected error converting map")
 		outVals := make(map[string]cty.Value, len(vals))
@@ -98,7 +154,7 @@ func (va *valueAdapter) ToCty() cty.Value {
 		}
 		return cty.MapVal(outVals)
 	case t.Is(tftypes.Object{}):
-		var vals map[string]*tftypes.Value
+		var vals map[string]tftypes.Value
 		err := v.As(&vals)
 		contract.AssertNoErrorf(err, "unexpected error converting object")
 		outVals := make(map[string]cty.Value, len(vals))
@@ -113,6 +169,6 @@ func (va *valueAdapter) ToCty() cty.Value {
 	}
 }
 
-func FromValue(v *tftypes.Value) *valueAdapter {
+func FromValue(v tftypes.Value) *valueAdapter {
 	return &valueAdapter{v}
 }
