@@ -82,7 +82,7 @@ resource "res" "ex" {
 			autogold.Expect(`
 resource "res" "ex" {
   x = "OK"
-  y {
+  y = {
     foo = 42
   }
 }
