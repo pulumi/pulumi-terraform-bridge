@@ -315,6 +315,30 @@ func TestNotYetImplementedErrorHandling(t *testing.T) {
 	require.Equal(t, hcl.DiagError, result[0].Severity)
 }
 
+func TestNotSupportedLifecyleHookErrorHandling(t *testing.T) {
+	warningReplaceTriggeredBy := &hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  "converting replace_triggered_by lifecycle hook is not supported",
+		Subject:  &hcl.Range{},
+	}
+
+	warningCreateBeforeDelete := &hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  "converting create_before_destroy lifecycle hook is not supported",
+		Subject:  &hcl.Range{},
+	}
+
+	cc := &cliConverter{}
+	result := cc.postProcessDiagnostics(hcl.Diagnostics{
+		warningReplaceTriggeredBy,
+		warningCreateBeforeDelete,
+	})
+
+	require.Equal(t, 2, len(result))
+	require.Equal(t, hcl.DiagError, result[0].Severity)
+	require.Equal(t, hcl.DiagError, result[1].Severity)
+}
+
 type testPluginHost struct{}
 
 func (*testPluginHost) ServerAddr() string { panic("Unexpected call") }
