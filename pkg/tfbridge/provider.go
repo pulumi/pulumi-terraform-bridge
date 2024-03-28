@@ -23,6 +23,8 @@ import (
 	"time"
 	"unicode"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -712,6 +714,7 @@ func (p *Provider) Configure(ctx context.Context,
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
+	failures := []*pulumirpc.CheckFailure{}
 	t := urn.Type()
 	res, has := p.resources[t]
 	if !has {
@@ -751,6 +754,26 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
+	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
+	if p.pulumiSchema != nil {
+		var schema pschema.PackageSpec
+		if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
+			return nil, err
+		}
+		iv := NewInputValidator(urn, schema)
+		typeFailures := iv.ValidateInputs(news)
+		if typeFailures != nil {
+			for _, e := range *typeFailures {
+				pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+				cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+				failures = append(failures, &pulumirpc.CheckFailure{
+					Reason:   cf.Reason,
+					Property: string(cf.Property),
+				})
+			}
+		}
+	}
+
 	if check := res.Schema.PreCheckCallback; check != nil {
 		news, err = check(ctx, news, p.configValues.Copy())
 		if err != nil {
@@ -761,7 +784,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	tfname := res.TFName
 	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields,
+		p.configValues, olds, news, schemaMap, res.Schema.Fields,
 		makeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
@@ -784,22 +807,22 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
-	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
+	failures = append(failures, p.adaptCheckFailures(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, errs)...)
 
 	// Now re-generate the inputs WITH the TF defaults
 	inputs, assets, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, schemaMap, res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(
-		ctx, p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, false, p.supportsSecrets,
+		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, false, p.supportsSecrets,
 	)
 
-	pinputsWithSecrets := MarkSchemaSecrets(ctx, res.TF.Schema(), res.Schema.Fields,
+	pinputsWithSecrets := MarkSchemaSecrets(ctx, schemaMap, res.Schema.Fields,
 		resource.NewObjectProperty(pinputs)).ObjectValue()
 
 	minputs, err := plugin.MarshalProperties(pinputsWithSecrets, plugin.MarshalOptions{
