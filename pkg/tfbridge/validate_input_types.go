@@ -69,61 +69,63 @@ func NewInputValidator(urn resource.URN, schema pschema.PackageSpec) *PulumiInpu
 // getArrayTypeSpec gets a type spec for an array type. Arrays can have their
 // type defined in a couple different ways. This will check the different ways
 // and return the correct type spec If the array supports multiple types (i.e.
-// `oneOf`) then it will return the possible types if it can't find one. This
+// `oneOf`) then it will find the correct one and return it. This
 // can be used to provide a more helpful error message
 func (v *PulumiInputValidator) getArrayTypeSpec(
 	spec *pschema.TypeSpec,
 	propertyValue resource.PropertyValue,
 ) (
-	complexSpec *pschema.ComplexTypeSpec,
 	typeSpec *pschema.TypeSpec,
 	requiredProps []string,
-	possible []string,
 ) {
 	if spec.Items != nil {
 		typeSpec = spec.Items
 	}
 	if len(spec.OneOf) > 0 {
-		typeSpec, possible, _ = v.findOneOf(propertyValue, spec.OneOf)
+		typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
 	}
 
-	if spec.Ref != "" {
-		complexSpec = v.getType(spec.Ref)
-		if complexSpec != nil {
-			requiredProps = complexSpec.Required
-		}
-	}
-	return complexSpec, typeSpec, requiredProps, possible
+	return typeSpec, requiredProps
 }
 
 // getObjectTypeSpec gets a type spec for an object type. Objects can have their
 // type defined in a couple different ways. This will check the different ways
 // and return the correct type spec.
 func (v *PulumiInputValidator) getObjectTypeSpec(
-	spec *pschema.TypeSpec) (*pschema.ComplexTypeSpec, *pschema.TypeSpec, []string) {
+	spec *pschema.TypeSpec,
+	propertyValue resource.PropertyValue,
+) (
+	complexSpec *pschema.ComplexTypeSpec,
+	typeSpec *pschema.TypeSpec,
+	requiredProps []string,
+) {
 
-	var complexSpec *pschema.ComplexTypeSpec
-	var objectTypeSpec *pschema.TypeSpec
-	requiredObjectProps := []string{}
 	if spec.AdditionalProperties != nil {
 		if spec.AdditionalProperties.Ref != "" {
 			complexSpec = v.getType(spec.AdditionalProperties.Ref)
 			// if we don't find the reference then just continue instead of failing
-			if complexSpec == nil {
-				return nil, nil, []string{}
+			if complexSpec != nil {
+				requiredProps = complexSpec.Required
 			}
-			requiredObjectProps = complexSpec.Required
+		} else if len(spec.AdditionalProperties.OneOf) > 0 {
+			typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
 		} else {
-			objectTypeSpec = spec.AdditionalProperties
+			typeSpec = spec.AdditionalProperties
 		}
 	} else if spec.Ref != "" {
 		complexSpec = v.getType(spec.Ref)
-		if complexSpec == nil {
-			return nil, nil, []string{}
+		if complexSpec != nil {
+			requiredProps = complexSpec.Required
 		}
-		requiredObjectProps = complexSpec.Required
+	} else if len(spec.OneOf) > 0 {
+		typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
+		// If the OneOf that we found is an object with a `Type` then return that sub type
+		// Otherwise we should just return the OneOf type that we found
+		if typeSpec.AdditionalProperties != nil && typeSpec.AdditionalProperties.Type != "" {
+			typeSpec = typeSpec.AdditionalProperties
+		}
 	}
-	return complexSpec, objectTypeSpec, requiredObjectProps
+	return complexSpec, typeSpec, requiredProps
 }
 
 // validateTypeSpec is the main function for validating a PropertyValue against the pulumi schema.
@@ -190,30 +192,9 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	switch propertyValueType {
 	// array type
 	case "[]":
-		complexSpec, arrayTypeSpec, requiredProps, possible := v.getArrayTypeSpec(&typeSpec, propertyValue)
-		if len(possible) > 0 {
-			failures = append(failures, TypeFailure{
-				ResourcePath: pathBuilder.toPath(),
-				Reason: fmt.Sprintf(
-					"expected %s type, got %s type", strings.Join(possible, " OR "),
-					propertyValue.TypeString(),
-				),
-			})
-			return &failures
-		}
+		arrayTypeSpec, requiredProps := v.getArrayTypeSpec(&typeSpec, propertyValue)
 		for idx, arrayValue := range propertyValue.ArrayValue() {
 			pb := pathBuilder.addListIndex(idx)
-			if complexSpec != nil {
-				complexProps, ok := complexSpec.Properties[propertyKey]
-				if !ok {
-					failures = append(failures, TypeFailure{
-						ResourcePath: pathBuilder.toPath(),
-						Reason:       fmt.Sprintf("property %s is not defined in the schema", propertyKey),
-					})
-					continue
-				}
-				arrayTypeSpec = &complexProps.TypeSpec
-			}
 			if arrayTypeSpec != nil {
 				failure := v.validateTypeSpec(propertyKey, arrayValue, *arrayTypeSpec, pb, requiredProps)
 				if failure != nil {
@@ -222,7 +203,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 			}
 		}
 	case "object":
-		complexSpec, objectTypeSpec, requiredObjectProps := v.getObjectTypeSpec(&typeSpec)
+		complexSpec, objectTypeSpec, requiredObjectProps := v.getObjectTypeSpec(&typeSpec, propertyValue)
 		propObjectValue := propertyValue.ObjectValue()
 		stableKeys := propObjectValue.StableKeys()
 
@@ -459,6 +440,15 @@ func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.Type
 					}
 				}
 				if typeEqual(refType.Type, inputType) {
+					return []string{}, true
+				}
+			}
+		}
+
+		if spec.AdditionalProperties != nil && len(spec.AdditionalProperties.OneOf) > 0 {
+			for _, oneOfSpec := range spec.AdditionalProperties.OneOf {
+				possibleTypes = possibleTypes.add(oneOfSpec.Type)
+				if typeEqual(oneOfSpec.Type, inputType) {
 					return []string{}, true
 				}
 			}
