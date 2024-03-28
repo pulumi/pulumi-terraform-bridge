@@ -689,6 +689,23 @@ func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
 	assert.Len(t, ret.Attributes, 5)
 }
 
+func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region.zone` - The zone of the Droplet region",
+		"* `region` - The region of the Droplet",
+	}, &ret)
+	assert.Len(t, ret.Attributes, 5)
+}
+
 func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
