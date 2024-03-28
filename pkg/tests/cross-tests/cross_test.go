@@ -7,19 +7,13 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -56,7 +50,12 @@ type diffTestCase struct {
 	// Otherwise assume an Update flow for a resource.
 	//
 	// See	https://developer.hashicorp.com/terraform/language/syntax/json
+	//
+	// This also accepts tftypes.Value encoded data.
 	Config1, Config2 any
+
+	// Optional object type for the resource.
+	ObjectType *tftypes.Object
 
 	// Bypass interacting with the bridged Pulumi provider.
 	SkipPulumi bool
@@ -71,33 +70,12 @@ const (
 	providerVer       = "0.0.1"
 )
 
-type T interface {
-	Logf(string, ...any)
-	TempDir() string
-	require.TestingT
-	assert.TestingT
-	pulumitest.T
-}
-
 func runDiffCheck(t T, tc diffTestCase) {
-	// ctx := context.Background()
 	tfwd := t.TempDir()
 
-	reattachConfig := startTFProvider(t, tc)
-
-	tfWriteJSON(t, tfwd, tc.Config1)
-	p1 := runTFPlan(t, tfwd, reattachConfig)
-	runTFApply(t, tfwd, reattachConfig, p1)
-
-	tfWriteJSON(t, tfwd, tc.Config2)
-	p2 := runTFPlan(t, tfwd, reattachConfig)
-	runTFApply(t, tfwd, reattachConfig, p2)
-
-	{
-		planBytes, err := json.MarshalIndent(p2.RawPlan, "", "  ")
-		contract.AssertNoErrorf(err, "failed to marshal terraform plan")
-		t.Logf("TF plan: %v", string(planBytes))
-	}
+	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config1)
+	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config2)
 
 	if tc.SkipPulumi {
 		return
@@ -126,47 +104,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 	pulumiWriteYaml(t, tc, puwd, tc.Config2)
 	x := pt.Up()
 
-	verifyBasicDiffAgreement(t, p2, x.Summary)
-}
-
-func tfWriteJSON(t T, cwd string, rconfig any) {
-	config := map[string]any{
-		"resource": map[string]any{
-			rtype: map[string]any{
-				"example": rconfig,
-			},
-		},
-	}
-	config1bytes, err := json.MarshalIndent(config, "", "  ")
-	require.NoErrorf(t, err, "serializing test.tf.json")
-	err = os.WriteFile(filepath.Join(cwd, "test.tf.json"), config1bytes, 0600)
-	require.NoErrorf(t, err, "writing test.tf.json")
-}
-
-type tfPlan struct {
-	PlanFile string
-	RawPlan  any
-}
-
-func (*tfPlan) OpType() *apitype.OpType {
-	return nil
-}
-
-func runTFPlan(t T, cwd string, reattachConfig *plugin.ReattachConfig) tfPlan {
-	planFile := filepath.Join(cwd, "test.tfplan")
-	env := []string{formatReattachEnvVar(providerName, reattachConfig)}
-	execCmd(t, cwd, env, "terraform", "plan", "-refresh=false", "-out", planFile)
-
-	cmd := execCmd(t, cwd, env, "terraform", "show", "-json", planFile)
-	tp := tfPlan{PlanFile: planFile}
-	err := json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
-	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
-	return tp
-}
-
-func runTFApply(t T, cwd string, reattachConfig *plugin.ReattachConfig, p tfPlan) {
-	execCmd(t, cwd, []string{formatReattachEnvVar(providerName, reattachConfig)},
-		"terraform", "apply", "-auto-approve", "-refresh=false", p.PlanFile)
+	verifyBasicDiffAgreement(t, *tfDiffPlan, x.Summary)
 }
 
 func toTFProvider(tc diffTestCase) *schema.Provider {
@@ -177,122 +115,43 @@ func toTFProvider(tc diffTestCase) *schema.Provider {
 	}
 }
 
-func startTFProvider(t T, tc diffTestCase) *plugin.ReattachConfig {
-	os.Setenv("TF_LOG_PROVIDER", "off")
-	os.Setenv("TF_LOG_SDK", "off")
-	os.Setenv("TF_LOG_SDK_PROTO", "off")
-
-	tc.Resource.CustomizeDiff = func(
-		ctx context.Context, rd *schema.ResourceDiff, i interface{},
-	) error {
-		// fmt.Printf(`\n\n   CustomizeDiff: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
-		// fmt.Println("\n\nGetRawPlan:   ", rd.GetRawPlan().GoString())
-		// fmt.Println("\n\nGetRawConfig: ", rd.GetRawConfig().GoString())
-		// fmt.Println("\n\nGetRawState:  ", rd.GetRawState().GoString())
-		return nil
-	}
-
-	if tc.Resource.DeleteContext == nil {
-		tc.Resource.DeleteContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			return diag.Diagnostics{}
-		}
-	}
-
-	if tc.Resource.CreateContext == nil {
-		tc.Resource.CreateContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			rd.SetId("newid")
-			return diag.Diagnostics{}
-		}
-	}
-
-	tc.Resource.UpdateContext = func(
-		ctx context.Context, rd *schema.ResourceData, i interface{},
-	) diag.Diagnostics {
-		//fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
-		return diag.Diagnostics{}
-	}
-
-	p := toTFProvider(tc)
-
-	serverFactory := func() tfprotov5.ProviderServer {
-		return p.GRPCProvider()
-	}
-
-	ctx := context.Background()
-
-	reattachConfigCh := make(chan *plugin.ReattachConfig)
-	closeCh := make(chan struct{})
-
-	serveOpts := []tf5server.ServeOpt{
-		tf5server.WithGoPluginLogger(hclog.FromStandardLogger(log.New(io.Discard, "", 0), hclog.DefaultOptions)),
-		tf5server.WithDebug(ctx, reattachConfigCh, closeCh),
-		tf5server.WithoutLogStderrOverride(),
-		// TODO - can this not assume testing.T
-		//tf5server.WithLoggingSink(t),
-	}
-
-	go func() {
-		err := tf5server.Serve(providerName, serverFactory, serveOpts...)
-		require.NoError(t, err)
-	}()
-
-	reattachConfig := <-reattachConfigCh
-	return reattachConfig
-}
-
-func formatReattachEnvVar(name string, pluginReattachConfig *plugin.ReattachConfig) string {
-	type reattachConfigAddr struct {
-		Network string
-		String  string
-	}
-
-	type reattachConfig struct {
-		Protocol        string
-		ProtocolVersion int
-		Pid             int
-		Test            bool
-		Addr            reattachConfigAddr
-	}
-
-	reattachBytes, err := json.Marshal(map[string]reattachConfig{
-		name: {
-			Protocol:        string(pluginReattachConfig.Protocol),
-			ProtocolVersion: pluginReattachConfig.ProtocolVersion,
-			Pid:             pluginReattachConfig.Pid,
-			Test:            pluginReattachConfig.Test,
-			Addr: reattachConfigAddr{
-				Network: pluginReattachConfig.Addr.Network(),
-				String:  pluginReattachConfig.Addr.String(),
+func TestUnchangedBasicObject(t *testing.T) {
+	t.Skipf("TODO - this does not translate correctly to Pulumi yet")
+	skipUnlessLinux(t)
+	cfg := map[string]any{"f0": map[string]any{"x": "ok"}}
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Required: true,
+					Type:     schema.TypeMap,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {Optional: true, Type: schema.TypeString},
+						},
+					},
+				},
 			},
 		},
+		Config1: cfg,
+		Config2: cfg,
 	})
-
-	contract.AssertNoErrorf(err, "failed to build TF_REATTACH_PROVIDERS string")
-	return fmt.Sprintf("TF_REATTACH_PROVIDERS=%s", string(reattachBytes))
 }
 
 func TestSimpleStringNoChange(t *testing.T) {
 	skipUnlessLinux(t)
+	config := map[string]any{"name": "A"}
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"name": {
-
 					Type:     schema.TypeString,
 					Optional: true,
 				},
 			},
 		},
-		Config1: map[string]any{
-			"name": "A",
-		},
-		Config2: map[string]any{
-			"name": "A",
-		},
+		Config1: config,
+		Config2: config,
 	})
 }
 
@@ -329,21 +188,14 @@ func TestSetReordering(t *testing.T) {
 				},
 			},
 		},
-		CreateContext: func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			rd.SetId("newid")
-			require.IsType(t, &schema.Set{}, rd.Get("set"))
-			return diag.Diagnostics{}
-		},
 	}
 	runDiffCheck(t, diffTestCase{
 		Resource: resource,
 		Config1: map[string]any{
-			"set": []string{"A", "B"},
+			"set": []any{"A", "B"},
 		},
 		Config2: map[string]any{
-			"set": []string{"B", "A"},
+			"set": []any{"B", "A"},
 		},
 	})
 }
@@ -579,8 +431,8 @@ func TestAws2442(t *testing.T) {
 		},
 	}
 
-	jsonifyParameters := func(parameters []parameter) []map[string]interface{} {
-		var result []map[string]interface{}
+	jsonifyParameters := func(parameters []parameter) []interface{} {
+		var result []interface{}
 		for _, p := range parameters {
 			result = append(result, map[string]interface{}{
 				"name":         p.name,
@@ -661,7 +513,7 @@ func startPulumiProvider(
 
 func pulumiWriteYaml(t T, tc diffTestCase, puwd string, tfConfig any) {
 	schema := sdkv2.NewResource(tc.Resource).Schema()
-	pConfig, err := convertConfigToPulumi(schema, nil, tfConfig)
+	pConfig, err := convertConfigToPulumi(schema, nil, tc.ObjectType, tfConfig)
 	require.NoErrorf(t, err, "convertConfigToPulumi failed")
 	data := map[string]any{
 		"name":    "project",
@@ -683,48 +535,50 @@ func pulumiWriteYaml(t T, tc diffTestCase, puwd string, tfConfig any) {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 }
 
-func execCmd(t T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
-	t.Logf("%s %s", program, strings.Join(args, " "))
-	cmd := exec.Command(program, args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Dir = wdir
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, environ...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	require.NoError(t, err, "error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
-		program, strings.Join(args, " "), stdout.String(), stderr.String())
-	return cmd
-}
-
 func convertConfigToPulumi(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*tfbridge.SchemaInfo,
+	objectType *tftypes.Object,
 	tfConfig any,
 ) (any, error) {
-	objectType := convert.InferObjectType(schemaMap, nil)
-	bytes, err := json.Marshal(tfConfig)
-	if err != nil {
-		return nil, err
+	var v *tftypes.Value
+
+	switch tfConfig := tfConfig.(type) {
+	case *tftypes.Value:
+		v = tfConfig
+		if objectType == nil {
+			ty := v.Type().(tftypes.Object)
+			objectType = &ty
+		}
+	default:
+		if objectType == nil {
+			t := convert.InferObjectType(schemaMap, nil)
+			objectType = &t
+		}
+		bytes, err := json.Marshal(tfConfig)
+		if err != nil {
+			return nil, err
+		}
+		// Knowingly using a deprecated function so we can connect back up to tftypes.Value; if this disappears it
+		// should not be prohibitively difficult to rewrite or vendor.
+		//
+		//nolint:staticcheck
+		value, err := tftypes.ValueFromJSON(bytes, *objectType)
+		if err != nil {
+			return nil, err
+		}
+		v = &value
 	}
-	// Knowingly using a deprecated function so we can connect back up to tftypes.Value; if this disappears it
-	// should not be prohibitively difficult to rewrite or vendor.
-	//
-	//nolint:staticcheck
-	v, err := tftypes.ValueFromJSON(bytes, objectType)
-	if err != nil {
-		return nil, err
-	}
+
 	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
 		SchemaMap:   schemaMap,
 		SchemaInfos: schemaInfos,
-		Object:      &objectType,
+		Object:      objectType,
 	})
 	if err != nil {
 		return nil, err
 	}
-	pm, err := convert.DecodePropertyMap(decoder, v)
+	pm, err := convert.DecodePropertyMap(decoder, *v)
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +605,7 @@ func parseChangesFromTFPlan(plan tfPlan) string {
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
 	actions := pp.ResourceChanges[0].Change.Actions
-	contract.Assertf(len(actions) == 1, "expected exactly one action")
+	contract.Assertf(len(actions) == 1, "expected exactly one action, got %v", strings.Join(actions, ", "))
 	return actions[0]
 }
 
