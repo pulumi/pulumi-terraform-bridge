@@ -1045,7 +1045,10 @@ func TestValidateInputType_objects(t *testing.T) {
 				},
 			})),
 			failures: []TypeFailure{
-				{Reason: "expected object OR string type, got number type", ResourcePath: "object_multi_type_nested_failure2.prop.bar"},
+				{
+					Reason:       "expected object OR string type, got number type",
+					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
+				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectStringType": {
