@@ -1652,6 +1652,32 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 	rawNames bool) resource.PropertyValue {
 
+	if ps == nil {
+		ps = &SchemaInfo{}
+	}
+
+	for IsMaxItemsOne(tfs, ps) {
+		ps = ps.Elem
+		if ps == nil {
+			ps = &SchemaInfo{}
+		}
+
+		switch e := tfs.Elem().(type) {
+		case shim.Schema:
+			tfs = e
+		case shim.Resource:
+			if state.IsObject() {
+				return resource.NewProperty(
+					extractSchemaInputsObject(state.ObjectValue(), e.Schema(), ps.Fields),
+				)
+			} else {
+				// The shape of state and tfs have de-synchronized, so we
+				// just return state as is.
+				return state
+			}
+		}
+	}
+
 	switch {
 	case state.IsArray():
 		etfs, eps := elemSchemas(tfs, ps)
@@ -1663,34 +1689,25 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 		}
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
-		var tfflds shim.SchemaMap
-		if tfs != nil {
-			if res, isres := tfs.Elem().(shim.Resource); isres {
-				tfflds = res.Schema()
-			}
-		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
-		isMap := tfflds == nil
-
 		obj := state.ObjectValue()
-		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
-		for k, e := range obj {
-			_, etfs, eps := getInfoFromPulumiName(k, tfflds, psflds, rawNames || shimutil.IsOfTypeMap(tfs))
-			if isInput := isMap || etfs != nil && (etfs.Optional() || etfs.Required()); !isInput {
-				glog.V(9).Infof("skipping '%v' (not an input)", k)
-				continue
-			}
-
-			ev := extractSchemaInputs(e, etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
-			if mustSet := isMap || etfs != nil && (etfs.Required() || !isDefaultOrZeroValue(etfs, eps, ev)); !mustSet {
-				glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
-				continue
-			}
-			v[k] = ev
+		if tfflds, ok := shimutil.CastToTypeObject(tfs); ok {
+			return resource.NewProperty(
+				extractSchemaInputsObject(obj, tfflds, ps.Fields),
+			)
 		}
+
+		// state does not represent an object, so it represents a map.
+		//
+		// That means that state's keys don't have special semantics.
+		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
+		etfs, eps := elemSchemas(tfs, ps)
+		for k, e := range obj {
+			v[k] = extractSchemaInputs(e, etfs, eps, rawNames)
+		}
+
+		// To match previous behavior, we insert the default key for Map types.
+		//
+		// TODO: We should probably remove the extraneous defaultsKey here.
 		v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 		return resource.NewObjectProperty(v)
 	default:
@@ -1698,24 +1715,49 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 	}
 }
 
+// extractSchemaInputsObject extracts schema inputs from an object type (not a map).
+func extractSchemaInputsObject(
+	state resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) resource.PropertyMap {
+	v := make(map[resource.PropertyKey]resource.PropertyValue, len(state))
+	for k, e := range state {
+		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		typeKnown := tfs != nil && etfs != nil
+
+		if !typeKnown || !(etfs.Optional() || etfs.Required()) {
+			glog.V(9).Infof("skipping '%v' (not an input)", k)
+			continue
+		}
+
+		ev := extractSchemaInputs(e, etfs, eps, false)
+
+		if !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
+			glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
+			continue
+		}
+
+		v[k] = ev
+	}
+	v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
+
+	return v
+}
+
 func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, isRefresh bool) (resource.PropertyMap, error) {
 
-	sch := (&schema.Schema{
-		Elem: (&schema.Resource{
-			Schema: tfs,
-		}).Shim(),
-	}).Shim()
-	pss := &SchemaInfo{Fields: ps}
-
-	var inputs resource.PropertyValue
 	if isRefresh {
+		sch := (&schema.Schema{
+			Elem: (&schema.Resource{
+				Schema: tfs,
+			}).Shim(),
+		}).Shim()
+		pss := &SchemaInfo{Fields: ps}
 		// If this is a refresh, only extract new values for inputs that are already present.
-		inputs, _ = extractInputs(resource.NewObjectProperty(oldInputs),
+		inputs, _ := extractInputs(resource.NewObjectProperty(oldInputs),
 			resource.NewObjectProperty(outs), sch, pss, false)
-	} else {
-		// Otherwise, take a schema-directed approach that fills out all input-only properties.
-		inputs = extractSchemaInputs(resource.NewObjectProperty(outs), sch, pss, false)
+		return inputs.ObjectValue(), nil
 	}
-	return inputs.ObjectValue(), nil
+	// Otherwise, take a schema-directed approach that fills out all input-only properties.
+	return extractSchemaInputsObject(outs, tfs, ps), nil
 }
