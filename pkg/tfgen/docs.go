@@ -270,7 +270,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
-
 	var docInfo *tfbridge.DocInfo
 	if info != nil {
 		docInfo = info.GetDocs()
@@ -439,8 +438,12 @@ var (
 		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
+	bulletPointRegexStr       = "^\\s*[*+-]"             // matches any bullet point-like character
+	attributePathNameRegexStr = "\\s*`([a-zA-z0-9._]*)`" // matches any TF attribute path name
+
+	// matches any line starting with a bullet point followed by a TF path or resource name)
 	attributeBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*[:–-]?\\s*(.*)",
+		bulletPointRegexStr + attributePathNameRegexStr + "\\s*[:–-]?\\s*(.*)",
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
@@ -953,8 +956,10 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 		matches := attributeBulletRegexp.FindStringSubmatch(line)
 		if len(matches) >= 2 {
 			// found a property bullet, extract the name and description
-			ret.Attributes[matches[1]] = matches[2]
-			lastMatch = matches[1]
+			attribute := flattenListAttributeKey(matches[1])
+			description := matches[2]
+			ret.Attributes[attribute] = description
+			lastMatch = attribute
 		} else if !isBlank(line) && lastMatch != "" {
 			// this is a continuation of the previous bullet
 			ret.Attributes[lastMatch] += "\n" + strings.TrimSpace(line)
@@ -963,6 +968,15 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 			lastMatch = ""
 		}
 	}
+}
+
+// flattenListAttributeKey removes a TF index from a docs string.
+// In a TF schema.TypeList the `.0` index is used to access the list itself, but it does not translate into our docs
+// path lookup, so we remove it here.
+// A search through the pulumi-aws schema as well as upstream/website do not show any descriptions != `.0`; it appears
+// that indices > 0 are not currently used in the TF schema definitions.
+func flattenListAttributeKey(attribute string) string {
+	return strings.ReplaceAll(attribute, ".0", "")
 }
 
 func (p *tfMarkdownParser) parseImports(subsection []string) {

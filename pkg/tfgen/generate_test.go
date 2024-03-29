@@ -434,3 +434,56 @@ func TestWithoutPackageName(t *testing.T) {
 	assert.Equal(t, "http", withoutPackageName("http", "http"))
 	assert.Equal(t, "s3_bucket", withoutPackageName("aws", "aws_s3_bucket"))
 }
+
+func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
+	testEntityDoc := entityDocs{
+		Description: "This is a test resource description",
+		Arguments: map[docsPath]*argumentDocs{
+			"configuration":          {description: "Configuration block for broker configuration."},
+			"configuration.revision": {description: "Revision of the Configuration."},
+		},
+		Attributes: map[string]string{
+			"instances":            "List of information about allocated brokers (both active & standby).",
+			"instances.ip_address": "IP Address of the broker.",
+		},
+		Import: "Please do not import this resource. It will not work.",
+	}
+
+	type testCase struct {
+		name     string
+		path     docsPath
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Argument Path Populates",
+			path:     docsPath("configuration"),
+			expected: "Configuration block for broker configuration.",
+		},
+		{
+			name:     "Nested Argument Path Populates",
+			path:     docsPath("configuration.revision"),
+			expected: "Revision of the Configuration.",
+		},
+		{
+			name:     "Attribute Description Populates",
+			path:     docsPath("instances"),
+			expected: "List of information about allocated brokers (both active & standby).",
+		},
+		{
+			name:     "Nested Attribute Description Populates",
+			path:     docsPath("instances.ip_address"),
+			expected: "IP Address of the broker.",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			actual, _ := getNestedDescriptionFromParsedDocs(testEntityDoc, tc.path)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
