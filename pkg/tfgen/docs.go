@@ -970,6 +970,11 @@ func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
 	}
 }
 
+// flattenListAttributeKey removes a TF index from a docs string.
+// In a TF schema.TypeList the `.0` index is used to access the list itself, but it does not translate into our docs
+// path lookup, so we remove it here.
+// A search through the pulumi-aws schema as well as upstream/website do not show any descriptions != `.0`; it appears
+// that indices > 0 are not currently used in the TF schema definitions.
 func flattenListAttributeKey(attribute string) string {
 	return strings.ReplaceAll(attribute, ".0", "")
 }
