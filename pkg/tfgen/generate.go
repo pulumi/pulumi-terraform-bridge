@@ -1842,6 +1842,9 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	//if path == "module" {
 	//	q.Q("this is before the fallthrough", path)
 	//}
+	if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+		q.Q("access policy paths:", path)
+	}
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {
@@ -1849,8 +1852,11 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		}
 		p = p.withOutRoot()
 	}
-	if strings.Contains(string(path), "module") {
-		q.Q("this is in the middle after parsing Arguments", path)
+	//if strings.Contains(string(path), "module") {
+	//	q.Q("this is in the middle after parsing Arguments", path)
+	//}
+	if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+		q.Q("paths after argument parsing", path)
 	}
 
 	// To maintain old behavior, we also check if the last segment of `path` matches
@@ -1894,7 +1900,7 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
 		// altogether) due to the difficulty in determining whether the correct description is actually found.
 		if description, ok := entityDocs.Attributes[string(attrPath)]; ok {
-			if strings.Contains(entityDocs.Description, "Provides a Cloudflare worker script resource") {
+			if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
 				q.Q("this is a fallthrough description", path, description)
 			}
 			return description, true

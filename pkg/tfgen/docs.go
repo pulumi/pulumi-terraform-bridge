@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -324,10 +323,10 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		return entityDocs{}, err
 	}
 
-	if rawname == "cloudflare_worker_script" {
-		q.Q(rawname)
-		q.Q(doc)
-	}
+	//if rawname == "cloudflare_worker_script" {
+	//	q.Q(rawname)
+	//	q.Q(doc)
+	//}
 
 	if docInfo != nil {
 		// Helper func for readability due to large number of params
