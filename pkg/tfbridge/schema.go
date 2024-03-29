@@ -1724,6 +1724,13 @@ func extractSchemaInputsObject(
 		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		typeKnown := tfs != nil && etfs != nil
 
+		// We drop fields that are not present in the schema.
+		//
+		// We might want to reconsider, since any mismatch between what is
+		// returned and the schema indicates a bug somewhere.
+		//
+		// Since Pulumi is so schema based, it might be better to error on
+		// !typeKnown instead of dropping a field.
 		if !typeKnown || !(etfs.Optional() || etfs.Required()) {
 			glog.V(9).Infof("skipping '%v' (not an input)", k)
 			continue
