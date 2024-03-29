@@ -597,7 +597,6 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	footerLinks := getFooterLinks(markdown)
 
 	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
-
 	return doc, nil
 }
 
@@ -822,14 +821,16 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
-func parseArgFromMarkdownLine(line string) (string, string, bool) {
+func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
-
+	indentedBullet := false
 	if len(matches) > 4 {
-		return matches[1], matches[4], true
+		if strings.HasPrefix(matches[0], " ") {
+			indentedBullet = true
+		}
+		return matches[1], matches[4], true, indentedBullet
 	}
-
-	return "", "", false
+	return "", "", false, indentedBullet
 }
 
 var genericNestedRegexp = regexp.MustCompile("supports? the following:")
@@ -838,23 +839,29 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-	regexp.MustCompile("`([a-z_]+)`.*following"),
+	regexp.MustCompile("`([a-z_0-9]+)`.*following"),
 
 	// For example:
 	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+	regexp.MustCompile("(?i)## ([a-z_0-9]+).* argument reference"),
+
+	// For example:
+	// codebuild_project.html.markdown: "#### build_batch_config: restrictions"
+	// codebuild_project.html.markdown: "#### logs_config: s3_logs"
+	regexp.MustCompile("###+ ([a-zA-Z_0-9]+: [a-zA-Z_0-9]+).*"),
 
 	// For example:
 	// elasticsearch_domain.html.markdown: "### advanced_security_options"
-	regexp.MustCompile("###+ ([a-z_]+).*"),
+	regexp.MustCompile("###+ ([a-z_0-9]+).*"),
 
 	// For example:
 	// dynamodb_table.html.markdown: "### `server_side_encryption`"
-	regexp.MustCompile("###+ `([a-z_]+).*`"),
+	regexp.MustCompile("###+ `([a-z_0-9]+).*`"),
 
 	// For example:
 	// route53_record.html.markdown: "### Failover Routing Policy"
-	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+	// appflow_flow.html.markdown: "###### S3 Input Format Config"
+	regexp.MustCompile("###+ ([a-zA-Z_ 0-9]+).*"),
 
 	// For example:
 	// sql_database_instance.html.markdown:
@@ -862,42 +869,95 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 }
 
-// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
+// getNestedBlockName takes line of a Terraform docs Markdown page and returns the name of the nested block it
 // describes. If the line does not describe a nested block, an empty string is returned.
 //
 // Examples of nested blocks include (but are not limited to):
 //
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) string {
+func getNestedBlockName(line string) []string {
 	nested := ""
-	for _, match := range nestedObjectRegexps {
+	var nestedBlockNames []string
+
+	for i, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
-		if len(matches) >= 2 {
+
+		// If we match with the first regex, we have to see if we've got many to many matching for resources going on.
+		if len(matches) >= 2 && i == 0 {
+			firstMatch := matches[0]
+			subNest := ""
+			if strings.Contains(firstMatch, "'s ") {
+				// we have even more nesting!
+				// split the line into all of its components
+				part1, part2, _ := strings.Cut(matches[0], "'s")
+				firstMatch = part1
+				// find our subheading. it should be the second item in the second part.
+				part2Slice := strings.Split(part2, "`")
+				subNest = part2Slice[1]
+			}
+			tokenInBackticks := regexp.MustCompile("`[^`]+`")
+			newStrs := tokenInBackticks.FindAllString(firstMatch, -1)
+			for _, newStr := range newStrs {
+				if newStr != "" {
+					newStr = strings.Trim(newStr, "`")
+					nested = strings.ToLower(newStr)
+					nested = strings.Replace(nested, " ", "_", -1)
+					nested = strings.TrimSuffix(nested, "[]")
+					parts := strings.Split(nested, ".")
+					nested = parts[len(parts)-1]
+					if subNest != "" {
+						// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object
+						//supports the following:" the result should be grpc_route.action
+						nested = nested + "." + subNest
+					}
+					nestedBlockNames = append(nestedBlockNames, nested)
+				}
+			}
+			break
+		} else if len(matches) >= 2 && i == 2 {
+			// there's a colon in the subheader; split the line
+			parts := strings.Split(matches[1], ":")
+			nested = strings.ToLower(parts[0])
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, ":")
+			subNest := strings.ToLower(parts[1])
+			subNest = strings.TrimSpace(subNest)
+			subNest = strings.Replace(subNest, " ", "_", -1)
+
+			nested = nested + "." + subNest
+			nestedBlockNames = append(nestedBlockNames, nested)
+			break
+		} else if len(matches) >= 2 {
 			nested = strings.ToLower(matches[1])
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
 			parts := strings.Split(nested, ".")
 			nested = parts[len(parts)-1]
+			nestedBlockNames = append(nestedBlockNames, nested)
 			break
 		}
 	}
-
-	return nested
+	return nestedBlockNames
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
+	// Variable to remember the last argument we found.
 	var lastMatch string
-	var nested docsPath
+	// Collection to hold all arguments that headline a nested description.
+	var nesteds []docsPath
 
 	addNewHeading := func(name, desc, line string) {
 		// found a property bullet, extract the name and description
-		if nested != "" {
-			// We found this line within a nested field. We should record it as such.
-			if ret.Arguments[nested] == nil {
-				totalArgumentsFromDocs++
+		if len(nesteds) > 0 {
+			for _, nested := range nesteds {
+				// We found this line within a nested field. We should record it as such.
+				if ret.Arguments[nested] == nil {
+					totalArgumentsFromDocs++
+				}
+				ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 			}
-			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
+
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
@@ -906,39 +966,72 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			totalArgumentsFromDocs++
 		}
 	}
-
+	// This function adds the current line as a description to the last matched resource,
+	//in cases where there's no resource match found on this line.
+	//It represents a multi-line description for a field.
 	extendExistingHeading := func(line string) {
-		line = "\n" + strings.TrimSpace(line)
-		if nested != "" {
-			ret.Arguments[nested.join(lastMatch)].description += line
+		if len(nesteds) > 0 {
+			for _, nested := range nesteds {
+				line = "\n" + strings.TrimSpace(line)
+				ret.Arguments[nested.join(lastMatch)].description += line
+			}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				lastMatch = ""
-				nested = ""
+				nesteds = []docsPath{}
 				return
 			}
+			line = "\n" + strings.TrimSpace(line)
 			ret.Arguments[docsPath(lastMatch)].description += line
 		}
 	}
 
+	// hadSpace tells us if the previous line was blank.
 	var hadSpace bool
+
+	// parentName tracks the name of the previous resource, in case we get indented child resources.
+	var parentName string
+
 	for _, line := range subsection {
-		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
-			// We have found a new
-			addNewHeading(name, desc, line)
+		// We have found a new resource on this line.
+		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
+			// We have found a new argument.
+			// If a bullet point is indented, we have most likely found a sub-field of the previous line.
+			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875
+			if isIndented {
+				name = parentName + "." + name
+			} else {
+				parentName = name
+			}
 			lastMatch = name
+			addNewHeading(name, desc, line)
+
 		} else if strings.TrimSpace(line) == "---" {
 			// --- is a markdown section break. This probably indicates the
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
+			// This tells us if there's a resource that is about to have subfields (nesteds)
+			// in subsequent lines.
+			//empty nesteds
+			nesteds = []docsPath{}
+			for _, item := range nestedBlockCurrentLine {
+				nesteds = append(nesteds, docsPath(item))
+			}
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
+			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
-			nested = docsPath(nestedBlockCurrentLine)
+
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); len(nestedBlockCurrentLine) > 0 {
+			// This tells us if there's a resource that is about to have subfields (nesteds)
+			// in subsequent lines.
+			//empty nesteds
+			nesteds = []docsPath{}
+			for _, item := range nestedBlockCurrentLine {
+				nesteds = append(nesteds, docsPath(item))
+			}
 			lastMatch = ""
 		} else if lastMatch != "" {
 			extendExistingHeading(line)

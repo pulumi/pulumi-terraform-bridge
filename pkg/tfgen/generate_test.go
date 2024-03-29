@@ -439,8 +439,9 @@ func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
 	testEntityDoc := entityDocs{
 		Description: "This is a test resource description",
 		Arguments: map[docsPath]*argumentDocs{
-			"configuration":          {description: "Configuration block for broker configuration."},
-			"configuration.revision": {description: "Revision of the Configuration."},
+			"configuration":             {description: "Configuration block for broker configuration."},
+			"configuration.revision":    {description: "Revision of the Configuration."},
+			"configuration.revision.id": {description: "ID of the Revision of the Configuration."},
 		},
 		Attributes: map[string]string{
 			"instances":            "List of information about allocated brokers (both active & standby).",
@@ -465,6 +466,11 @@ func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
 			name:     "Nested Argument Path Populates",
 			path:     docsPath("configuration.revision"),
 			expected: "Revision of the Configuration.",
+		},
+		{
+			name:     "Double Nested Argument Path Populates",
+			path:     docsPath("configuration.revision.id"),
+			expected: "ID of the Revision of the Configuration.",
 		},
 		{
 			name:     "Attribute Description Populates",
