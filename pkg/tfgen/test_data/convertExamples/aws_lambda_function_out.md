@@ -400,6 +400,7 @@ public class App {
     public static void stack(Context ctx) {
         var exampleLayerVersion = new LayerVersion("exampleLayerVersion");
 
+        // ... other configuration ...
         var exampleFunction = new Function("exampleFunction", FunctionArgs.builder()        
             .layers(exampleLayerVersion.arn())
             .build());
@@ -828,9 +829,9 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        DependsOn = new[]
+        DependsOn =
         {
-            alpha,
+            alpha, 
         },
     });
 
@@ -944,16 +945,19 @@ public class App {
     }
 
     public static void stack(Context ctx) {
+        // EFS file system
         var efsForLambda = new FileSystem("efsForLambda", FileSystemArgs.builder()        
             .tags(Map.of("Name", "efs_for_lambda"))
             .build());
 
+        // Mount target connects the file system to the subnet
         var alpha = new MountTarget("alpha", MountTargetArgs.builder()        
             .fileSystemId(efsForLambda.id())
             .subnetId(aws_subnet.subnet_for_lambda().id())
             .securityGroups(aws_security_group.sg_for_lambda().id())
             .build());
 
+        // EFS access point used by lambda file system
         var accessPointForLambda = new AccessPoint("accessPointForLambda", AccessPointArgs.builder()        
             .fileSystemId(efsForLambda.id())
             .rootDirectory(AccessPointRootDirectoryArgs.builder()
@@ -970,6 +974,8 @@ public class App {
                 .build())
             .build());
 
+        // A lambda function connected to an EFS file system
+        // ... other configuration ...
         var example = new Function("example", FunctionArgs.builder()        
             .fileSystemConfig(FunctionFileSystemConfigArgs.builder()
                 .arn(accessPointForLambda.arn())
@@ -1175,10 +1181,10 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        DependsOn = new[]
+        DependsOn =
         {
-            lambdaLogs,
-            example,
+            lambdaLogs, 
+            example, 
         },
     });
 
@@ -1291,6 +1297,8 @@ public class App {
     public static void stack(Context ctx) {
         final var config = ctx.config();
         final var lambdaFunctionName = config.get("lambdaFunctionName").orElse("lambda_function_name");
+        // This is to optionally manage the CloudWatch Log Group for the Lambda Function.
+        // If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
         var example = new LogGroup("example", LogGroupArgs.builder()        
             .retentionInDays(14)
             .build());
