@@ -485,7 +485,6 @@ func (cc *cliConverter) postProcessDiagnostics(diag hcl.Diagnostics) hcl.Diagnos
 		copy := *d
 		cc.removeFileName(&copy)
 		cc.ensureNotYetImplementedIsAnError(&copy)
-		cc.ensureNotSupportedLifecycleHooksIsError(&copy)
 		out = append(out, &copy)
 	}
 	return out
@@ -504,18 +503,11 @@ func (*cliConverter) removeFileName(d *hcl.Diagnostic) {
 }
 
 var (
-	notYetImplementedPattern         = regexp.MustCompile("(?i)not yet implemented")
-	notSupportedLifecycleHookPattern = regexp.MustCompile("(?i)lifecycle hook is not supported")
+	notYetImplementedPattern = regexp.MustCompile("(?i)not yet implemented")
 )
 
 func (*cliConverter) ensureNotYetImplementedIsAnError(d *hcl.Diagnostic) {
 	if notYetImplementedPattern.MatchString(d.Error()) {
-		d.Severity = hcl.DiagError
-	}
-}
-
-func (*cliConverter) ensureNotSupportedLifecycleHooksIsError(d *hcl.Diagnostic) {
-	if notSupportedLifecycleHookPattern.MatchString(d.Error()) {
 		d.Severity = hcl.DiagError
 	}
 }
