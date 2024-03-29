@@ -401,13 +401,16 @@ func typeEqual(schemaType, inputType string) bool {
 		return true
 	}
 
-	if (schemaType == "number" || schemaType == "integer") && inputType == "number" {
+	// When we convert types to the terraform type we automatically convert numbers to strings
+	if (schemaType == "number" || schemaType == "integer" || schemaType == "string") && inputType == "number" {
 		return true
 
 	}
-	if schemaType == "boolean" && inputType == "bool" {
+	// When we convert types to the terraform type we automatically convert bools to strings
+	if (schemaType == "boolean" || schemaType == "string") && inputType == "bool" {
 		return true
 	}
+
 	return false
 }
 

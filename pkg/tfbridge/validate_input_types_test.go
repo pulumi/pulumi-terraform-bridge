@@ -260,10 +260,10 @@ func TestValidateInputType_objects(t *testing.T) {
 			typeRef:  "ObjectMultiType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": 1,
+				"prop": []interface{}{"foo"},
 			})),
 			failures: []TypeFailure{
-				{Reason: "expected string OR object type, got number type", ResourcePath: "object_multi_type_failure_object.prop"},
+				{Reason: "expected string OR object type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectMultiType": {
@@ -386,11 +386,11 @@ func TestValidateInputType_objects(t *testing.T) {
 			typeRef:  "ObjectStringType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"objectStringProp": 1,
+				"objectStringProp": map[string]string{"foo": "bar"},
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string type, got number type",
+					Reason:       "expected string type, got object type",
 					ResourcePath: "object_string_type_failure.objectStringProp",
 				},
 			},
@@ -1041,12 +1041,12 @@ func TestValidateInputType_objects(t *testing.T) {
 				"prop": map[string]interface{}{
 					"objectStringProp": "foo",
 					"foo":              map[string]interface{}{"bar": "baz"},
-					"bar":              1,
+					"bar":              []interface{}{1},
 				},
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected object OR string type, got number type",
+					Reason:       "expected object OR string type, got [] type",
 					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
 				},
 			},
@@ -1350,13 +1350,13 @@ func TestValidateInputType_arrays(t *testing.T) {
 					"objectStringProp": "foo",
 				})),
 				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-					"objectStringProp": 1,
+					"objectStringProp": []interface{}{1},
 				})),
 				resource.NewStringProperty("foo"),
 			}),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string type, got number type",
+					Reason:       "expected string type, got [] type",
 					ResourcePath: "object_string_type_failure.1.objectStringProp",
 				},
 				{
@@ -1421,13 +1421,13 @@ func TestValidateInputType_arrays(t *testing.T) {
 				})),
 				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 					"prop": map[string]interface{}{
-						"foo": 1,
+						"foo": []interface{}{1},
 					},
 				})),
 			}),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string type, got number type",
+					Reason:       "expected string type, got [] type",
 					ResourcePath: "object_nested_object_type_failure.1.prop.foo",
 				},
 			},
@@ -1614,14 +1614,14 @@ func TestValidateInputType_arrays(t *testing.T) {
 				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 					"prop": []interface{}{
 						"foo",
-						1,
+						map[string]interface{}{"foo": "bar"},
 						[]string{"bar"},
 					},
 				})),
 			}),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string type, got number type",
+					Reason:       "expected string type, got object type",
 					ResourcePath: "object_nested_array_type_failure.0.prop.1",
 				},
 				{
@@ -1703,7 +1703,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 							"objectStringProp": "foo",
 						},
 						{
-							"objectStringProp": 1,
+							"objectStringProp": []string{"foo"},
 						},
 						{
 							"foo": "bar",
@@ -1713,7 +1713,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 			}),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string type, got number type",
+					Reason:       "expected string type, got [] type",
 					ResourcePath: "object_nested_array_object_type_failure.0.prop.1.objectStringProp",
 				},
 				{
@@ -1835,6 +1835,17 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
+			name:  "integer_type_success_string",
+			input: resource.NewNumberProperty(1),
+			inputProperties: map[string]pschema.PropertySpec{
+				"integer_type_success_string": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		{
 			name:  "bool_type_success",
 			input: resource.NewBoolProperty(true),
 			inputProperties: map[string]pschema.PropertySpec{
@@ -1846,10 +1857,21 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
+			name:  "bool_type_success_string",
+			input: resource.PropertyValue{V: true},
+			inputProperties: map[string]pschema.PropertySpec{
+				"bool_type_success_string": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		{
 			name:  "string_type_failure",
-			input: resource.NewNumberProperty(1),
+			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewNumberProperty(1)}),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got number type", ResourcePath: "string_type_failure"},
+				{Reason: "expected string type, got [] type", ResourcePath: "string_type_failure"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"string_type_failure": {
@@ -1897,16 +1919,16 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		},
 		{
 			name:  "array_type_failure",
-			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewNumberProperty(1)}),
+			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got number type", ResourcePath: "array_type_failure.0"},
+				{Reason: "expected number type, got string type", ResourcePath: "array_type_failure.0"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"array_type_failure": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "array",
 						Items: &pschema.TypeSpec{
-							Type: "string",
+							Type: "number",
 						},
 					},
 				},
@@ -1931,17 +1953,17 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		{
 			name: "object_type_failure",
 			input: resource.NewObjectProperty(
-				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": 1}),
+				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
 			),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got number type", ResourcePath: "object_type_failure.foo"},
+				{Reason: "expected number type, got string type", ResourcePath: "object_type_failure.foo"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"object_type_failure": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "object",
 						AdditionalProperties: &pschema.TypeSpec{
-							Type: "string",
+							Type: "number",
 						},
 					},
 				},
@@ -1974,14 +1996,14 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		},
 		{
 			name:  "secret_type_failure",
-			input: resource.NewSecretProperty(&resource.Secret{Element: resource.NewNumberProperty(1)}),
+			input: resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("foo")}),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got secret<number> type", ResourcePath: "secret_type_failure"},
+				{Reason: "expected number type, got secret<string> type", ResourcePath: "secret_type_failure"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"secret_type_failure": {
 					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+						Type: "number",
 					},
 				},
 			},
@@ -2016,30 +2038,30 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			name: "output_computed_type_failure",
 			input: resource.NewOutputProperty(resource.Output{
 				Element: resource.NewComputedProperty(resource.Computed{
-					Element: resource.NewNumberProperty(1),
+					Element: resource.NewStringProperty("foo"),
 				}),
 			}),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got output<output<number>> type", ResourcePath: "output_computed_type_failure"},
+				{Reason: "expected number type, got output<output<string>> type", ResourcePath: "output_computed_type_failure"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"output_computed_type_failure": {
 					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+						Type: "number",
 					},
 				},
 			},
 		},
 		{
 			name:  "output_type_failure",
-			input: resource.NewOutputProperty(resource.Output{Element: resource.NewNumberProperty(1)}),
+			input: resource.NewOutputProperty(resource.Output{Element: resource.NewStringProperty("foo")}),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got output<number> type", ResourcePath: "output_type_failure"},
+				{Reason: "expected number type, got output<string> type", ResourcePath: "output_type_failure"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"output_type_failure": {
 					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+						Type: "number",
 					},
 				},
 			},
