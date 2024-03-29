@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -1837,12 +1838,19 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
+	//if path == "module" {
+	//	q.Q("this is before the fallthrough", path)
+	//}
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {
 			return v.description, false
 		}
 		p = p.withOutRoot()
+	}
+	if strings.Contains(string(path), "module") {
+		q.Q("this is in the middle after parsing Arguments", path)
 	}
 
 	// To maintain old behavior, we also check if the last segment of `path` matches
@@ -1851,18 +1859,20 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// For example, this will match `production_branch.status` with
 	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
 	// to incorrect docs.
-	keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
-	leaf := path.leaf()
-	for k := range entityDocs.Arguments {
-		if k.leaf() == leaf {
-			keys = append(keys, k)
-		}
-	}
-	if len(keys) > 0 {
-		docsPathArr(keys).Sort()
-		return entityDocs.Arguments[keys[0]].description, false
-	}
-
+	//keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
+	//leaf := path.leaf()
+	//for k := range entityDocs.Arguments {
+	//	if k.leaf() == leaf {
+	//		keys = append(keys, k)
+	//	}
+	//}
+	//if len(keys) > 0 {
+	//	docsPathArr(keys).Sort()
+	//	return entityDocs.Arguments[keys[0]].description, false
+	//}
+	//if strings.Contains(entityDocs.Description, "Provides a Cloudflare worker script resource") {
+	//	q.Q("this is a fallthrough", path)
+	//}
 	for attrPath := path; attrPath != ""; {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
@@ -1884,6 +1894,9 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
 		// altogether) due to the difficulty in determining whether the correct description is actually found.
 		if description, ok := entityDocs.Attributes[string(attrPath)]; ok {
+			if strings.Contains(entityDocs.Description, "Provides a Cloudflare worker script resource") {
+				q.Q("this is a fallthrough description", path, description)
+			}
 			return description, true
 		}
 		attrPath = attrPath.withOutRoot()

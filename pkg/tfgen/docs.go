@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -321,6 +322,11 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
+	}
+
+	if rawname == "cloudflare_worker_script" {
+		q.Q(rawname)
+		q.Q(doc)
 	}
 
 	if docInfo != nil {
