@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2520,7 +2520,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 }
 
 func TestExtractDefaultIntegerInputs(t *testing.T) {
-	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for default values.
+	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for
+	// default values.
 	tfProvider := makeTestTFProvider(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeInt, Optional: true},
@@ -2586,6 +2587,200 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 		defaultsKey: []interface{}{},
 	})
 	assert.Equal(t, expected, ins)
+}
+
+func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
+
+	provider := func(info *ResourceInfo) *Provider {
+		if info == nil {
+			info = &ResourceInfo{}
+		}
+		if info.Tok == "" {
+			info.Tok = tokens.NewTypeToken("module", "importableResource")
+		}
+
+		listOfObj := func(maxItems int) *schemav1.Schema {
+			return &schemav1.Schema{
+				Type: schemav1.TypeList, Optional: true,
+				MaxItems: maxItems,
+				Elem: &schemav1.Resource{
+					Schema: map[string]*schemav1.Schema{
+						"field1": {
+							Optional: true,
+							Type:     schemav1.TypeBool,
+						},
+						"list_scalar": {
+							Type: schemav1.TypeList, Optional: true,
+							MaxItems: 1,
+							Elem: &schemav1.Schema{
+								Type:     schemav1.TypeInt,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}
+		}
+
+		tfProvider := makeTestTFProvider(
+			map[string]*schemav1.Schema{
+				"list_object":          listOfObj(0),
+				"list_object_maxitems": listOfObj(1),
+			},
+			func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
+				return []*schemav1.ResourceData{d}, nil
+			})
+
+		set := func(d *schemav1.ResourceData, key string, value interface{}) {
+			contract.IgnoreError(d.Set(key, value))
+		}
+
+		tfres := tfProvider.ResourcesMap["importable_resource"]
+		tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+			_, ok := d.GetOk(defaultsKey)
+			assert.False(t, ok)
+
+			set(d, "list_object", []any{
+				map[string]any{
+					"field1":      false,
+					"list_scalar": []any{1}},
+			})
+			set(d, "list_object_maxitems", []any{
+				map[string]any{
+					"field1":      true,
+					"list_scalar": []any{2}},
+			})
+			return nil
+		}
+
+		return &Provider{
+			tf: shimv1.NewProvider(tfProvider),
+			resources: map[tokens.Type]Resource{
+				"importableResource": {
+					TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
+					TFName: "importable_resource",
+					Schema: info,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+
+		info map[string]*SchemaInfo
+
+		expectedOutputs resource.PropertyMap
+		expectedInputs  resource.PropertyMap
+	}{
+		{
+			name: "no overrides",
+			expectedOutputs: resource.PropertyMap{
+				"id": resource.NewProperty("MyID"),
+				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
+					"field1":     resource.NewProperty(true),
+					"listScalar": resource.NewProperty(2.0),
+				}),
+				"listObjects": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"field1":     resource.NewProperty(false),
+						"listScalar": resource.NewProperty(1.0),
+					}),
+				}),
+			},
+			expectedInputs: resource.PropertyMap{
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
+					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					"field1":     resource.NewProperty(true),
+					"listScalar": resource.NewProperty(2.0),
+				}),
+				"listObjects": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+						"field1":     resource.NewProperty(false),
+						"listScalar": resource.NewProperty(1.0),
+					}),
+				}),
+			},
+		},
+		{
+			name: "override `MaxItems: 1` on lists",
+			info: map[string]*SchemaInfo{
+				"list_object": {
+					MaxItemsOne: True(),
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"list_scalar": {MaxItemsOne: False()},
+						},
+					},
+				},
+				"list_object_maxitems": {
+					MaxItemsOne: False(),
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"list_scalar": {Name: "overwritten"},
+						},
+					},
+				},
+			},
+			expectedOutputs: resource.PropertyMap{
+				"id": resource.NewProperty("MyID"),
+				"listObject": resource.NewProperty(resource.PropertyMap{
+					"field1": resource.NewProperty(false),
+					"listScalars": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(1.0),
+					}),
+				}),
+				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"field1":      resource.NewProperty(true),
+						"overwritten": resource.NewProperty(2.0),
+					}),
+				}),
+			},
+			expectedInputs: resource.PropertyMap{
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				"listObject": resource.NewProperty(resource.PropertyMap{
+					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					"listScalars": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(1.0),
+					}),
+				}),
+				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"__defaults":  resource.NewProperty([]resource.PropertyValue{}),
+						"field1":      resource.NewProperty(true),
+						"overwritten": resource.NewProperty(2.0),
+					}),
+				}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			p := provider(&ResourceInfo{Fields: tt.info})
+			urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+			id := resource.ID("MyID")
+
+			resp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+				Id:  string(id),
+				Urn: string(urn),
+			})
+			assert.NoError(t, err)
+
+			outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedOutputs, outs, "outputs")
+
+			ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedInputs, ins, "inputs")
+		})
+	}
 }
 
 func TestOutputNumberTypes(t *testing.T) {
