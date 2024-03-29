@@ -128,6 +128,7 @@ func TestFileArchives(t *testing.T) {
 
 // See https://github.com/pulumi/pulumi-aws/issues/3622
 func TestHashOnlyArchiveDoesNotClobber(t *testing.T) {
+	//nolint:gosec
 	asset, err := resource.NewTextAsset(fmt.Sprintf("%d", rand.Intn(1024*1024)))
 	require.NoError(t, err)
 
