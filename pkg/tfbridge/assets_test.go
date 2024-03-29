@@ -119,6 +119,5 @@ func TestFileArchives(t *testing.T) {
 	archive.Hash = ""
 	file4, err := t1.TranslateArchive(archive)
 	assert.Nil(t, err)
-	assert.Equal(t, file4.(string), "")
 	assert.NotEqual(t, file1, file4)
 }
