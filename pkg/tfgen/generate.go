@@ -404,12 +404,23 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		elemPath = typePath
 	}
 
+	//var guinPath &paths.PropertyPath = paths.NewProperyPath(elemPath, paths.PropertyName{
+	//	Key:  objectName,
+	//	Name: tokens.Name(objectName),
+	//})
 	// Recognize object types encoded as a shim.Resource and compute the element type.
 	var element *propertyType
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
+		//if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+		//	// TODO: these are always just one level! the objPath is bad?
+		//	q.Q("this is a resource:", elem)
+		//	q.Q("this is the type path", typePath)
+		//	q.Q("this is the docs path", objectName)
+		//	q.Q("and the resource schema info", elemInfo)
+		//}
 		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
 	}
 
@@ -454,6 +465,10 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	if info != nil {
 		propertyInfos = info.Fields
 	}
+	// TODO: if I can figure out the full parent docs path or whatever, then I can fix the bug around ID misalignment! this is great!
+	parentPath := paths.NewProperyPath(typePath.Parent().Parent(), paths.PropertyName{
+		Key: "require",
+	})
 
 	for _, key := range stableSchemas(res.Schema()) {
 		propertySchema := res.Schema()
@@ -461,7 +476,21 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		// TODO: Figure out why counting whether this description came from the attributes seems wrong.
 		// With AWS, counting this takes the takes number of arg descriptions from attribs from about 170 to about 1400.
 		// This seems wrong, so we ignore the second return value here for now.
-		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, objPath.join(key))
+		if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") && objPath == "azure" {
+			// TODO: these are always just one level! the objPath is bad?
+			q.Q(objPath)
+			q.Q(key)
+			q.Q(objPath.join(key))
+			q.Q(parentPath.PropertyName.Key)
+			//q.Q(propertySchema)
+			q.Q(docsPath(parentPath.PropertyName.Key))
+			doublenestedObjPath := docsPath(parentPath.PropertyName.Key)
+			q.Q(doublenestedObjPath.join(string(objPath.join(key))))
+
+		}
+		doublenestedObjPath := docsPath(parentPath.PropertyName.Key)
+
+		doc, _ := getNestedDescriptionFromParsedDocs(entityDocs, doublenestedObjPath.join(string(objPath.join(key))))
 
 		// If we have no result from entityDocs, we look up the TF schema Description.
 		if doc == "" {
@@ -1839,13 +1868,24 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 2. rules.type
 	// 3. type
 
-	//if path == "module" {
-	//	q.Q("this is before the fallthrough", path)
+	//if path == "azure.id" && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+	//	q.Q(entityDocs)
 	//}
-	if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
-		q.Q("access policy paths:", path)
-	}
+
+	// TODO: the below never happens. This is in fact our bug. Possibly because it's an ID field?
+	//if path == "exclude.azure.id" {
+	//	q.Q("HEREHEREHERE")
+	//	q.Q(entityDocs)
+	//	q.Q("HEREHEREHERE")
+	//}
+	//if strings.Contains(string(path), "azure.id") && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+	//	q.Q("id paths", path)
+	//}
+
 	for p := path; p != ""; {
+		if strings.Contains(string(path), "azure.id") && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+			q.Q("checking argument nesting:", path, p)
+		}
 		// See if we have an appropriately nested argument:
 		if v, ok := entityDocs.Arguments[p]; ok {
 			return v.description, false
@@ -1855,9 +1895,9 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	//if strings.Contains(string(path), "module") {
 	//	q.Q("this is in the middle after parsing Arguments", path)
 	//}
-	if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
-		q.Q("paths after argument parsing", path)
-	}
+	//if strings.Contains(string(path), "azure.id") && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+	//	q.Q("id paths after argument parsing", path)
+	//}
 
 	// To maintain old behavior, we also check if the last segment of `path` matches
 	// with some other last segment of any other entity.
@@ -1900,10 +1940,13 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
 		// altogether) due to the difficulty in determining whether the correct description is actually found.
 		if description, ok := entityDocs.Attributes[string(attrPath)]; ok {
-			if strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
-				q.Q("this is a fallthrough description", path, description)
+			if strings.Contains(string(path), ".id") && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+				q.Q("this is a successful fallthrough description", path, attrPath, description)
 			}
 			return description, true
+		}
+		if strings.Contains(string(path), ".id") && strings.Contains(entityDocs.Description, "Provides a Cloudflare Access Policy resource.") {
+			q.Q("this is a failed fallthrough attempt", path, attrPath)
 		}
 		attrPath = attrPath.withOutRoot()
 	}

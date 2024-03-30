@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -593,6 +594,9 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
+		if p.rawname == "cloudflare_access_policy" {
+			q.Q(section)
+		}
 		if err := p.parseSection(section); err != nil {
 			return entityDocs{}, err
 		}
@@ -602,7 +606,9 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	footerLinks := getFooterLinks(markdown)
 
 	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
-
+	//if p.rawname == "cloudflare_access_policy" {
+	//	q.Q(doc)
+	//}
 	return doc, nil
 }
 
@@ -743,6 +749,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		sectionKind = sectionFrontMatter
 	case "Schema":
 		p.parseSchemaWithNestedSections(h2Section)
+
 		return nil
 	}
 
