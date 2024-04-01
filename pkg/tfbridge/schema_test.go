@@ -25,6 +25,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1462,7 +1463,7 @@ func TestCustomTransforms(t *testing.T) {
 }
 
 func TestImporterOnRead(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1518,7 +1519,7 @@ func TestImporterOnRead(t *testing.T) {
 }
 
 func TestImporterWithNewID(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1555,7 +1556,7 @@ func TestImporterWithNewID(t *testing.T) {
 }
 
 func TestImporterWithMultipleResourceTypes(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1597,7 +1598,7 @@ func TestImporterWithMultipleResourceTypes(t *testing.T) {
 }
 
 func TestImporterWithMultipleResources(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1639,7 +1640,7 @@ func TestImporterWithMultipleResources(t *testing.T) {
 }
 
 func TestImporterWithMultipleNewIDs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1680,7 +1681,7 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 }
 
 func TestImporterWithNoResource(t *testing.T) {
-	tfProvider := makeTestTFProvider(map[string]*schemav1.Schema{},
+	tfProvider := makeTestTFProviderV1(map[string]*schemav1.Schema{},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
 			return []*schemav1.ResourceData{}, nil
@@ -1711,7 +1712,7 @@ func TestImporterWithNoResource(t *testing.T) {
 	}
 }
 
-func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1.StateFunc) *schemav1.Provider {
+func makeTestTFProviderV1(schemaMap map[string]*schemav1.Schema, importer schemav1.StateFunc) *schemav1.Provider {
 	return &schemav1.Provider{
 		ResourcesMap: map[string]*schemav1.Resource{
 			"importable_resource": {
@@ -1726,6 +1727,31 @@ func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1
 					return nil
 				},
 				Delete: func(d *schemav1.ResourceData, meta interface{}) error {
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func makeTestTFProviderV2(
+	schemaMap map[string]*schemav2.Schema,
+	importer schemav2.StateContextFunc,
+) *schemav2.Provider {
+	return &schemav2.Provider{
+		ResourcesMap: map[string]*schemav2.Resource{
+			"importable_resource": {
+				Schema: schemaMap,
+				Importer: &schemav2.ResourceImporter{
+					StateContext: importer,
+				},
+				ReadContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
+					return nil
+				},
+				CreateContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
+					return nil
+				},
+				DeleteContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
 					return nil
 				},
 			},
@@ -1773,7 +1799,7 @@ func TestStringOutputsWithSchema(t *testing.T) {
 }
 
 func TestExtractInputsFromOutputs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 			"input_b": {Type: schemav1.TypeString, Optional: true},
@@ -2143,7 +2169,7 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_x": {Type: schemav1.TypeString, Required: true},
 			"input_y": {Type: schemav1.TypeString, Required: true},
@@ -2204,7 +2230,7 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 }
 
 func TestAssetRoundtrip(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 		},
@@ -2301,7 +2327,7 @@ func TestAssetRoundtrip(t *testing.T) {
 }
 
 func TestDeleteBeforeReplaceAutoname(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 			"input_b": {Type: schemav1.TypeString, Required: true, ForceNew: true},
@@ -2452,7 +2478,7 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 }
 
 func TestExtractDefaultSecretInputs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Sensitive: true, Required: true},
 			"input_b": {Type: schemav1.TypeString, Sensitive: true, Optional: true},
@@ -2522,7 +2548,7 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 func TestExtractDefaultIntegerInputs(t *testing.T) {
 	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for
 	// default values.
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeInt, Optional: true},
 			"input_b": {Type: schemav1.TypeFloat, Optional: true},
@@ -2599,21 +2625,21 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 			info.Tok = tokens.NewTypeToken("module", "importableResource")
 		}
 
-		listOfObj := func(maxItems int) *schemav1.Schema {
-			return &schemav1.Schema{
-				Type: schemav1.TypeList, Optional: true,
+		listOfObj := func(maxItems int) *schemav2.Schema {
+			return &schemav2.Schema{
+				Type: schemav2.TypeList, Optional: true,
 				MaxItems: maxItems,
-				Elem: &schemav1.Resource{
-					Schema: map[string]*schemav1.Schema{
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
 						"field1": {
 							Optional: true,
-							Type:     schemav1.TypeBool,
+							Type:     schemav2.TypeBool,
 						},
 						"list_scalar": {
-							Type: schemav1.TypeList, Optional: true,
+							Type: schemav2.TypeList, Optional: true,
 							MaxItems: 1,
-							Elem: &schemav1.Schema{
-								Type:     schemav1.TypeInt,
+							Elem: &schemav2.Schema{
+								Type:     schemav2.TypeInt,
 								Optional: true,
 							},
 						},
@@ -2622,21 +2648,26 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 			}
 		}
 
-		tfProvider := makeTestTFProvider(
-			map[string]*schemav1.Schema{
+		tfProvider := makeTestTFProviderV2(
+			map[string]*schemav2.Schema{
 				"list_object":          listOfObj(0),
 				"list_object_maxitems": listOfObj(1),
 			},
-			func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
-				return []*schemav1.ResourceData{d}, nil
+			func(
+				_ context.Context, d *schemav2.ResourceData, meta interface{},
+			) ([]*schemav2.ResourceData, error) {
+				return []*schemav2.ResourceData{d}, nil
 			})
 
-		set := func(d *schemav1.ResourceData, key string, value interface{}) {
-			contract.IgnoreError(d.Set(key, value))
+		set := func(d *schemav2.ResourceData, key string, value interface{}) {
+			contract.AssertNoErrorf(d.Set(key, value),
+				"failed to set %s", key)
 		}
 
 		tfres := tfProvider.ResourcesMap["importable_resource"]
-		tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
+		tfres.ReadContext = func(
+			_ context.Context, d *schemav2.ResourceData, meta interface{},
+		) diag.Diagnostics {
 			_, ok := d.GetOk(defaultsKey)
 			assert.False(t, ok)
 
@@ -2654,10 +2685,10 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 		}
 
 		return &Provider{
-			tf: shimv1.NewProvider(tfProvider),
+			tf: shimv2.NewProvider(tfProvider),
 			resources: map[tokens.Type]Resource{
 				"importableResource": {
-					TF:     shimv1.NewResource(tfProvider.ResourcesMap["importable_resource"]),
+					TF:     shimv2.NewResource(tfProvider.ResourcesMap["importable_resource"]),
 					TFName: "importable_resource",
 					Schema: info,
 				},
