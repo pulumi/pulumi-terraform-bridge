@@ -1649,8 +1649,9 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 	}
 }
 
-func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-	rawNames bool) resource.PropertyValue {
+func extractSchemaInputs(
+	state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+) resource.PropertyValue {
 
 	if ps == nil {
 		ps = &SchemaInfo{}
@@ -1685,7 +1686,7 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 		a := state.ArrayValue()
 		v := make([]resource.PropertyValue, len(a))
 		for i := range a {
-			v[i] = extractSchemaInputs(a[i], etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
+			v[i] = extractSchemaInputs(a[i], etfs, eps)
 		}
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
@@ -1702,7 +1703,7 @@ func extractSchemaInputs(state resource.PropertyValue, tfs shim.Schema, ps *Sche
 		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
 		etfs, eps := elemSchemas(tfs, ps)
 		for k, e := range obj {
-			v[k] = extractSchemaInputs(e, etfs, eps, rawNames)
+			v[k] = extractSchemaInputs(e, etfs, eps)
 		}
 
 		// To match previous behavior, we insert the default key for Map types.
@@ -1736,7 +1737,7 @@ func extractSchemaInputsObject(
 			continue
 		}
 
-		ev := extractSchemaInputs(e, etfs, eps, false)
+		ev := extractSchemaInputs(e, etfs, eps)
 
 		if !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
 			glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
