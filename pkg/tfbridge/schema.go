@@ -1495,8 +1495,9 @@ func min(a int, b int) int {
 	return b
 }
 
-func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-	rawNames bool) (resource.PropertyValue, bool) {
+func extractInputs(
+	oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+) (resource.PropertyValue, bool) {
 
 	if IsMaxItemsOne(tfs, ps) {
 		tfs, ps = elemSchemas(tfs, ps)
@@ -1515,7 +1516,7 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 			}
 
 			defaultElem := false
-			oldArray[i], defaultElem = extractInputs(oldArray[i], newArray[i], etfs, eps, rawNames)
+			oldArray[i], defaultElem = extractInputs(oldArray[i], newArray[i], etfs, eps)
 			if !defaultElem {
 				possibleDefault = false
 			}
@@ -1542,7 +1543,7 @@ func extractInputs(oldInput, newState resource.PropertyValue, tfs shim.Schema, p
 		for name, oldValue := range oldMap {
 			defaultElem := false
 			if newValue, ok := newMap[name]; ok {
-				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, rawNames || shimutil.IsOfTypeMap(tfs))
+				oldMap[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps)
 			} else {
 				delete(oldMap, name)
 			}
@@ -1584,7 +1585,7 @@ func extractInputsObject(
 		defaultElem := false
 		if newValue, ok := newState[name]; ok {
 			_, etfs, eps := getInfoFromPulumiName(name, tfs, ps, false)
-			oldInput[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps, false)
+			oldInput[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps)
 		} else {
 			delete(oldInput, name)
 		}
@@ -1599,7 +1600,9 @@ func extractInputsObject(
 		for name := range defaultNames {
 			defaults = append(defaults, resource.NewStringProperty(name))
 		}
-		sort.Slice(defaults, func(i, j int) bool { return defaults[i].StringValue() < defaults[j].StringValue() })
+		sort.Slice(defaults, func(i, j int) bool {
+			return defaults[i].StringValue() < defaults[j].StringValue()
+		})
 
 		oldInput[defaultsKey] = resource.NewArrayProperty(defaults)
 	}
