@@ -279,7 +279,6 @@ func TestAws2442(t *testing.T) {
 			// Now intentionally reorder parameters away from the canonical order.
 			err := rd.Set("parameter", parameterList[0:3])
 			require.NoError(t, err)
-			fmt.Println("CREATE! set to 3")
 			return make(diag.Diagnostics, 0)
 		},
 		// UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
