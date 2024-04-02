@@ -16,6 +16,13 @@ type tv struct {
 	valueGen *rapid.Generator[tftypes.Value]
 }
 
+// Here "tb" stands for a typed block. Like [tv] but for non-nil/unknown blocks.
+type tb struct {
+	schemaMap map[string]*schema.Schema
+	typ       tftypes.Object
+	valueGen  *rapid.Generator[tftypes.Value]
+}
+
 type schemaT func(schema.Schema) schema.Schema
 
 type tvGen struct {
@@ -27,13 +34,14 @@ func (tvg *tvGen) GenTV(maxDepth int) *rapid.Generator[tv] {
 		tvg.GenString(),
 	}
 	if maxDepth > 1 {
-		opts = append(opts, tvg.GenObjectValue(maxDepth-1))
+		opts = append(opts, tvg.GenSingleNestedBlock(maxDepth-1))
 	}
 	return rapid.OneOf(opts...)
 }
 
-func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
-	return rapid.Custom[tv](func(t *rapid.T) tv {
+// Generate a resource or datasource inputs, which are always blocks in TF.
+func (tvg *tvGen) GenBlock(maxDepth int) *rapid.Generator[tb] {
+	return rapid.Custom[tb](func(t *rapid.T) tb {
 		fieldSchemas := map[string]*schema.Schema{}
 		fieldTypes := map[string]tftypes.Type{}
 		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
@@ -45,13 +53,6 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 			fieldGenerators[fieldName] = fieldTV.valueGen
 			fieldTypes[fieldName] = fieldTV.typ
 		}
-		objSchema := schema.Schema{
-			Type: schema.TypeMap,
-			Elem: &schema.Resource{
-				Schema: fieldSchemas,
-			},
-		}
-		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
 		objType := tftypes.Object{AttributeTypes: fieldTypes}
 		var objGen *rapid.Generator[tftypes.Value]
 		if len(fieldGenerators) > 0 {
@@ -66,15 +67,43 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 		} else {
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
-		return tv{st(objSchema), objType, objGen}
+		// for k, v := range fieldSchemas {
+		// 	fmt.Printf("###### field %q %#v\n\n", k, v)
+		// }
+		return tb{fieldSchemas, objType, objGen}
 	})
 }
 
-// Like [GenObject] but can also return top-level nil or unknown.
-func (tvg *tvGen) GenObjectValue(maxDepth int) *rapid.Generator[tv] {
-	return rapid.Map(tvg.GenObject(maxDepth), func(x tv) tv {
-		x.valueGen = tvg.withNullAndUnknown(x.typ, x.valueGen)
-		return x
+// Single-nested blocks represent object types. In schemav2 providers there is no natural encoding for these, so they
+// are typically encoded as MaxItems=1 lists with a *Resource Elem.
+//
+// See https://developer.hashicorp.com/terraform/plugin/framework/handling-data/blocks/single-nested
+func (tvg *tvGen) GenSingleNestedBlock(maxDepth int) *rapid.Generator[tv] {
+	return rapid.Custom[tv](func(t *rapid.T) tv {
+		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
+		bl := tvg.GenBlock(maxDepth).Draw(t, "block")
+		listWrapType := tftypes.List{ElementType: bl.typ}
+		listWrap := func(v tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(listWrapType, []tftypes.Value{v})
+		}
+		return tv{
+			schema: st(schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: bl.schemaMap,
+				},
+			}),
+			typ: listWrapType,
+			// A few open questions here, can these values ever be unknown (likely yes) and how is that
+			// represented in TF? Also, can these values be null or this is just represented as an empty
+			// list? Should an empty list be part of the values here?
+			//
+			// This should also account for required schemas.
+			//
+			// valueGen: tvg.withNullAndUnknown(listWrapType, rapid.Map(bl.valueGen, listWrap)),
+			valueGen: rapid.Map(bl.valueGen, listWrap),
+		}
 	})
 }
 
@@ -82,7 +111,7 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	s := schema.Schema{
 		Type: schema.TypeString,
 	}
-	nilValue := tftypes.NewValue(tftypes.String, nil)
+	//nilValue := tftypes.NewValue(tftypes.String, nil)
 	values := []tftypes.Value{
 		tftypes.NewValue(tftypes.String, ""),
 		tftypes.NewValue(tftypes.String, "text"),
@@ -94,26 +123,26 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
 		s := st(s)
-		if s.Required {
-			return tv{s, tftypes.String, valueGen}
-		}
-		return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(nilValue))}
+		//if s.Required {
+		return tv{s, tftypes.String, valueGen}
+		//}
+		//return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(nilValue))}
 	})
 }
 
-func (tvg *tvGen) withNullAndUnknown(
-	t tftypes.Type,
-	v *rapid.Generator[tftypes.Value],
-) *rapid.Generator[tftypes.Value] {
-	nullV := tftypes.NewValue(t, nil)
-	if tvg.generateUnknowns {
-		unknownV := tftypes.NewValue(t, tftypes.UnknownValue)
-		return rapid.OneOf(v,
-			rapid.Just(nullV),
-			rapid.Just(unknownV))
-	}
-	return rapid.OneOf(v, rapid.Just(nullV))
-}
+// func (tvg *tvGen) withNullAndUnknown(
+// 	t tftypes.Type,
+// 	v *rapid.Generator[tftypes.Value],
+// ) *rapid.Generator[tftypes.Value] {
+// 	nullV := tftypes.NewValue(t, nil)
+// 	if tvg.generateUnknowns {
+// 		unknownV := tftypes.NewValue(t, tftypes.UnknownValue)
+// 		return rapid.OneOf(v,
+// 			rapid.Just(nullV),
+// 			rapid.Just(unknownV))
+// 	}
+// 	return rapid.OneOf(v, rapid.Just(nullV))
+// }
 
 func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 	return rapid.Custom[schemaT](func(t *rapid.T) schemaT {
@@ -128,7 +157,10 @@ func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 			case "r":
 				s.Required = true
 			case "c":
-				s.Computed = true
+				s.Optional = true
+			// TODO this currently triggers Value for unconfigurable attribute
+			// because the provider
+			// s.Computed = true
 			case "co":
 				s.Computed = true
 				s.Optional = true

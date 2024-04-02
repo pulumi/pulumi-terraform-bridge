@@ -549,6 +549,12 @@ func convertConfigToPulumi(
 	var v *tftypes.Value
 
 	switch tfConfig := tfConfig.(type) {
+	case tftypes.Value:
+		v = &tfConfig
+		if objectType == nil {
+			ty := v.Type().(tftypes.Object)
+			objectType = &ty
+		}
 	case *tftypes.Value:
 		v = tfConfig
 		if objectType == nil {
