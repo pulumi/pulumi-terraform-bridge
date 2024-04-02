@@ -3836,3 +3836,65 @@ func TestCustomTimeouts(t *testing.T) {
 		})
 	}
 }
+
+// ProviderMeta is an old experimental TF feature which does not seem to be used.
+// We want to make sure it doesn't break anything.
+func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"prop": {Type: schemav2.TypeString},
+				},
+				ReadContext: func(
+					ctx context.Context, rd *schema.ResourceData, i interface{},
+				) diag.Diagnostics {
+					require.NoError(t, rd.Set("string_property_value", "imported"))
+					return diag.Diagnostics{}
+				},
+			},
+		},
+		ProviderMetaSchema: map[string]*schemav2.Schema{
+			"module_name": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		},
+	}
+
+	// In GCP the meta we receive is not even close to the schema.
+	// We should make sure this does not cause issues.
+	p.SetMeta(map[string]interface{}{"key": "val", "other_stuf": map[string]interface{}{"key": "val"}})
+
+	provider := &Provider{
+		tf:     shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true })),
+		config: shimv2.NewSchemaMap(p.Schema),
+		resources: map[tokens.Type]Resource{
+			"res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+	t.Run("Read", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Read",
+			"request": {
+			  "id": "res1",
+			  "urn": "urn:pulumi:dev::mystack::res::example",
+			  "properties": {},
+			  "inputs": {}
+			},
+			"response": {
+			  "inputs": {},
+			  "properties": {
+				"id": "res1"
+			  },
+			  "id": "res1"
+			}
+		  }`)
+	})
+}
