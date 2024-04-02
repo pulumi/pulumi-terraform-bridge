@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"q"
 	"runtime"
 	"slices"
 	"strings"
@@ -116,6 +117,9 @@ func runDiffCheck(t *testing.T, tc diffTestCase) {
 	pulumiWriteYaml(t, tc, puwd, tc.Config2)
 	x := pt.Up()
 
+	q.Q(p2)
+
+	q.Q(x.Summary)
 	verifyBasicDiffAgreement(t, p2, x.Summary)
 }
 
@@ -587,6 +591,37 @@ func TestAws2442(t *testing.T) {
 		Resource: resource,
 		Config1:  cfg,
 		Config2:  cfg2,
+	})
+}
+
+// https://github.com/pulumi/pulumi-gcp/issues/1874
+func TestEmptyMaxItemsOneSchemaAgreement(t *testing.T) {
+	skipUnlessLinux(t)
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"bigquery_profile": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{},
+					},
+				},
+			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				q.Q("Creating! %s", rd.GetRawConfig().GetAttr("bigquery_profile"))
+				rd.SetId("someid")
+				return diag.Diagnostics{}
+			},
+		},
+
+		Config1: map[string]any{
+			"bigquery_profile": []map[string]any{{}},
+		},
+		Config2: map[string]any{
+			"bigquery_profile": []map[string]any{{}},
+		},
 	})
 }
 
