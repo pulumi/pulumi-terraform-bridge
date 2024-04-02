@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -49,7 +50,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -1873,6 +1873,7 @@ func getDescriptionFromParsedDocs(entityDocs entityDocs, arg string) (string, bo
 // top-level argument description or attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
 func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (string, bool) {
+
 	// Check if we have any path that matches, removing the root segment after each failed attempt.
 	//
 	// For example: ruleset.rules.type will check against:
@@ -1880,6 +1881,12 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
+	if strings.Contains(entityDocs.Description, "Provides a Cloudflare page rule resource") && strings.Contains(string(path), "lang") {
+		q.Q(entityDocs)
+		q.Q(path)
+		//panic("At the disco")
+	}
 
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
@@ -1929,16 +1936,16 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		// We should work to minimize the number of times this fallback behavior is triggered (and possibly eliminate it
 		// altogether) due to the difficulty in determining whether the correct description is actually found.
 		if description, ok := entityDocs.Attributes[string(attrPath)]; ok {
-			if path != attrPath {
-				q.Q("this is a successful fallthrough description", path, attrPath, description)
-
-			} else {
-				q.Q("this use of attributes lookup is correct")
-			}
+			//if path != attrPath {
+			//	q.Q("this is a successful fallthrough description", path, attrPath, description)
+			//
+			//} else {
+			//	q.Q("this use of attributes lookup is correct")
+			//}
 
 			return description, true
 		}
-		q.Q("this is a failed fallthrough attempt", path, attrPath)
+		//q.Q("this is a failed fallthrough attempt", path, attrPath)
 
 		attrPath = attrPath.withOutRoot()
 	}
