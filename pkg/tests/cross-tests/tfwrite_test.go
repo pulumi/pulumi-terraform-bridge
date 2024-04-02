@@ -58,7 +58,7 @@ resource "res" "ex" {
 `),
 		},
 		{
-			"with-block",
+			"single-nested-block",
 			cty.ObjectVal(map[string]cty.Value{
 				"x": cty.StringVal("OK"),
 				"y": cty.ObjectVal(map[string]cty.Value{
@@ -84,6 +84,72 @@ resource "res" "ex" {
   x = "OK"
   y = {
     foo = 42
+  }
+}
+`),
+		},
+		{
+			"list-nested-block",
+			cty.ObjectVal(map[string]cty.Value{
+				"blk": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.NumberIntVal(1),
+					}),
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.NumberIntVal(2),
+					}),
+				}),
+			}),
+			map[string]*schema.Schema{
+				"blk": {
+					Type: schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"foo": {Type: schema.TypeInt, Required: true},
+						},
+					},
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+  blk {
+    foo = 1
+  }
+  blk {
+    foo = 2
+  }
+}
+`),
+		},
+		{
+			"set-nested-block",
+			cty.ObjectVal(map[string]cty.Value{
+				"blk": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.NumberIntVal(1),
+					}),
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.NumberIntVal(2),
+					}),
+				}),
+			}),
+			map[string]*schema.Schema{
+				"blk": {
+					Type: schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"foo": {Type: schema.TypeInt, Required: true},
+						},
+					},
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+  blk {
+    foo = 1
+  }
+  blk {
+    foo = 2
   }
 }
 `),
