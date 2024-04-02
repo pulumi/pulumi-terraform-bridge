@@ -12,7 +12,7 @@ import (
 )
 
 func TestDiffConvergence(outerT *testing.T) {
-	t.Skipf("Work in progress")
+	outerT.Skipf("Work in progress")
 	log.SetOutput(io.Discard)
 	tvg := &tvGen{}
 

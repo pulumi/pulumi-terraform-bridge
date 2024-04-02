@@ -119,7 +119,7 @@ func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		case dT.IsObjectType():
 			return recoverCtyValueOfObjectType(dT, value)
 		default:
-			return cty.NilVal, fmt.Errorf("Cannot reconcile map %v to %v", value, dT)
+			return cty.NilVal, fmt.Errorf("Cannot reconcile map %v to %v", value, dT.GoString())
 		}
 	case []interface{}:
 		switch {
@@ -130,7 +130,10 @@ func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		case dT.IsListType():
 			return recoverCtyValueOfListType(dT, value)
 		default:
-			return cty.NilVal, fmt.Errorf("Cannot reconcile slice %v to %v", value, dT)
+			if 1+1 == 2 {
+				//panic(fmt.Errorf("Cannot reconcile slice %v to %v", value, dT.GoString()))
+			}
+			return cty.NilVal, fmt.Errorf("Cannot reconcile slice %v to %v", value, dT.GoString())
 		}
 	default:
 		v, err := recoverScalarCtyValue(dT, value)
