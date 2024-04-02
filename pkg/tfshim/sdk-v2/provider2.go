@@ -282,15 +282,7 @@ func (p *planResourceChangeImpl) providerMeta() (*cty.Value, error) {
 		return nil, nil
 	}
 	metaSchema := schema.InternalMap(p.tf.ProviderMetaSchema).CoreConfigSchema()
-	m := p.tf.Meta()
-	if m == nil {
-		v := cty.NullVal(metaSchema.ImpliedType())
-		return &v, nil
-	}
-	v, err := recoverAndCoerceCtyValueWithSchema(metaSchema, m)
-	if err != nil {
-		return nil, fmt.Errorf("ProviderMeta: %w", err)
-	}
+	v := cty.NullVal(metaSchema.ImpliedType())
 	return &v, nil
 }
 
