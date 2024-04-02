@@ -129,7 +129,7 @@ func tfWriteJSON(t *testing.T, cwd string, rconfig any) {
 	}
 	config1bytes, err := json.MarshalIndent(config, "", "  ")
 	require.NoErrorf(t, err, "serializing test.tf.json")
-	err = os.WriteFile(filepath.Join(cwd, "test.tf.json"), config1bytes, 0600)
+	err = os.WriteFile(filepath.Join(cwd, "test.tf.json"), config1bytes, 0o600)
 	require.NoErrorf(t, err, "writing test.tf.json")
 }
 
@@ -198,7 +198,7 @@ func startTFProvider(t *testing.T, tc diffTestCase) *plugin.ReattachConfig {
 	tc.Resource.UpdateContext = func(
 		ctx context.Context, rd *schema.ResourceData, i interface{},
 	) diag.Diagnostics {
-		//fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
+		// fmt.Printf(`\n\n   Update: rd.Get("set") ==> %#v\n\n\n`, rd.Get("set"))
 		return diag.Diagnostics{}
 	}
 
@@ -264,7 +264,6 @@ func TestSimpleStringNoChange(t *testing.T) {
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"name": {
-
 					Type:     schema.TypeString,
 					Optional: true,
 				},
@@ -366,7 +365,7 @@ func TestAws2442(t *testing.T) {
 			}
 		}
 		hashes[n] = name
-		//fmt.Println("setting hash name", n, name)
+		// fmt.Println("setting hash name", n, name)
 		return n
 	}
 
@@ -662,7 +661,7 @@ func pulumiWriteYaml(t *testing.T, tc diffTestCase, puwd string, tfConfig any) {
 	b, err := yaml.Marshal(data)
 	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
 	p := filepath.Join(puwd, "Pulumi.yaml")
-	err = os.WriteFile(p, b, 0600)
+	err = os.WriteFile(p, b, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 }
 
