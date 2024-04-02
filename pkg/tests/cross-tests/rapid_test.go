@@ -11,6 +11,8 @@ import (
 )
 
 func TestDiffConvergence(outerT *testing.T) {
+	outerT.Parallel()
+
 	log.SetOutput(io.Discard)
 	tvg := &tvGen{}
 

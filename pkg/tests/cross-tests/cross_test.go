@@ -99,11 +99,11 @@ func runDiffCheck(t T, tc diffTestCase) {
 		),
 	)
 
-	defer func() {
-		for _, log := range pt.GrpcLog().Entries {
-			t.Logf("%v\n  req: %s\n  res: %s\n", log.Method, log.Request, log.Response)
-		}
-	}()
+	// defer func() {
+	// 	for _, log := range pt.GrpcLog().Entries {
+	// 		t.Logf("%v\n  req: %s\n  res: %s\n", log.Method, log.Request, log.Response)
+	// 	}
+	// }()
 
 	pt.Up()
 
