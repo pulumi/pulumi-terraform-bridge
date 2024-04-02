@@ -1,7 +1,6 @@
 package crosstests
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -14,7 +13,7 @@ import (
 type tv struct {
 	schema   schema.Schema
 	typ      tftypes.Type
-	valueGen *rapid.Generator[wrappedValue]
+	valueGen *rapid.Generator[tftypes.Value]
 }
 
 type schemaT func(schema.Schema) schema.Schema
@@ -37,7 +36,7 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		fieldSchemas := map[string]*schema.Schema{}
 		fieldTypes := map[string]tftypes.Type{}
-		fieldGenerators := map[string]*rapid.Generator[wrappedValue]{}
+		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
 		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
 			fieldName := fmt.Sprintf("f%d", i)
@@ -59,15 +58,15 @@ func (tvg *tvGen) GenObject(maxDepth int) *rapid.Generator[tv] {
 			objGen = rapid.Custom[tftypes.Value](func(t *rapid.T) tftypes.Value {
 				fields := map[string]tftypes.Value{}
 				for f, fg := range fieldGenerators {
-					fv := fg.Draw(t, f)
-					fields[f] = fv.inner
+					fv := tvg.drawValue(t, fg, f)
+					fields[f] = fv
 				}
 				return tftypes.NewValue(objType, fields)
 			})
 		} else {
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
-		return tv{st(objSchema), objType, rapid.Map(objGen, newWrappedValue)}
+		return tv{st(objSchema), objType, objGen}
 	})
 }
 
@@ -91,29 +90,29 @@ func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	if tvg.generateUnknowns {
 		values = append(values, tftypes.NewValue(tftypes.String, tftypes.UnknownValue))
 	}
-	valueGen := rapid.Map(rapid.SampledFrom(values), newWrappedValue)
+	valueGen := rapid.SampledFrom(values)
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
 		s := st(s)
 		if s.Required {
 			return tv{s, tftypes.String, valueGen}
 		}
-		return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(newWrappedValue(nilValue)))}
+		return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(nilValue))}
 	})
 }
 
 func (tvg *tvGen) withNullAndUnknown(
 	t tftypes.Type,
-	v *rapid.Generator[wrappedValue],
-) *rapid.Generator[wrappedValue] {
+	v *rapid.Generator[tftypes.Value],
+) *rapid.Generator[tftypes.Value] {
 	nullV := tftypes.NewValue(t, nil)
 	if tvg.generateUnknowns {
 		unknownV := tftypes.NewValue(t, tftypes.UnknownValue)
 		return rapid.OneOf(v,
-			rapid.Just(newWrappedValue(nullV)),
-			rapid.Just(newWrappedValue(unknownV)))
+			rapid.Just(nullV),
+			rapid.Just(unknownV))
 	}
-	return rapid.OneOf(v, rapid.Just(newWrappedValue(nullV)))
+	return rapid.OneOf(v, rapid.Just(nullV))
 }
 
 func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
@@ -145,29 +144,6 @@ func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 	})
 }
 
-// Wrapping tftypes.Value to provide a friendlier GoString implementation. Whenever rapid draws a value it logs it, and
-// it is really nice to be able to actually read the result.
-type wrappedValue struct {
-	inner tftypes.Value
-}
-
-func newWrappedValue(v tftypes.Value) wrappedValue {
-	return wrappedValue{v}
-}
-
-func (s wrappedValue) GoString() string {
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "<<<\n")
-	tftypes.Walk(s.inner, func(ap *tftypes.AttributePath, v tftypes.Value) (bool, error) {
-		switch {
-		case v.Type().Is(tftypes.Object{}) || v.Type().Is(tftypes.Set{}) ||
-			v.Type().Is(tftypes.Map{}) || v.Type().Is(tftypes.List{}):
-			return true, nil
-		default:
-			fmt.Fprintf(&buf, "%s: %s\n", ap.String(), v.String())
-			return true, nil
-		}
-	})
-	fmt.Fprintf(&buf, ">>>\n")
-	return buf.String() + ":" + fmt.Sprintf("%#v", s.inner)
+func (*tvGen) drawValue(t *rapid.T, g *rapid.Generator[tftypes.Value], label string) tftypes.Value {
+	return rapid.Map(g, newPrettyValueWrapper).Draw(t, label).Value()
 }
