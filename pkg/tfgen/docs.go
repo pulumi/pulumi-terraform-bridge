@@ -545,6 +545,7 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 }
 
 func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
+
 	p.ret = entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -592,12 +593,12 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		//		if err := p.parseSection(section); err != nil {
 		//			return entityDocs{}, err
 		if strings.Contains(string(tfMarkdown), "Manages an Access Analyzer Analyzer") && strings.Contains(section[0], "Argument Reference") {
+
 			q.Q("HERE HERE HERE", strings.Join(section, " "))
 
 			if err := p.parseSection(section); err != nil {
 				return entityDocs{}, err
 			}
-
 		}
 	}
 
@@ -726,6 +727,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		header = header[3:]
 	}
 
+	q.Q(header)
+
 	sectionKind := sectionOther
 
 	switch header {
@@ -747,6 +750,8 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		p.parseSchemaWithNestedSections(h2Section)
 		return nil
 	}
+
+	q.Q(sectionKind)
 
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
@@ -829,14 +834,18 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
-func parseArgFromMarkdownLine(line string) (string, string, bool) {
+func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
-
+	nested := false
 	if len(matches) > 4 {
-		return matches[1], matches[4], true
+		if strings.HasPrefix(matches[0], " ") {
+			nested = true
+		}
+		q.Q(matches)
+		return matches[1], matches[4], true, nested
 	}
 
-	return "", "", false
+	return "", "", false, false
 }
 
 var genericNestedRegexp = regexp.MustCompile("supports? the following:")
@@ -898,6 +907,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var nested docsPath
 
 	addNewHeading := func(name, desc, line string) {
+		q.Q(nested)
 		// found a property bullet, extract the name and description
 		if nested != "" {
 			// We found this line within a nested field. We should record it as such.
@@ -933,31 +943,49 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		//q.Q("*******************************")
 		//q.Q(line) // this should print twice and I should see where it goes
 
-		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
+		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new
-
-			//q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
-			//q.Q(lastMatch)
-			//q.Q(name)
-			//q.Q(desc)
-			//q.Q(line)
+			q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
+			q.Q(lastMatch)
+			q.Q(name)
+			q.Q(desc)
+			q.Q(line)
+			q.Q(isIndented)
+			// TODO: this is where we discover the next thing.
+			//if name == "lang" {
+			//	name = "user.lang"
+			//}
+			if isIndented {
+				name = lastMatch + "." + name
+			} else {
+				lastMatch = name
+			}
 
 			addNewHeading(name, desc, line)
-			lastMatch = name
+			if name == "user.lang" {
+				q.Q(ret.Arguments)
+				q.Q("**********************")
+			}
+
 		} else if strings.TrimSpace(line) == "---" {
 			// --- is a markdown section break. This probably indicates the
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
+			//q.Q("section break detected", line)
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
+			//q.Q("getNestedBlockName with hadSpace", line)
 			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
+			//q.Q("extendExistingHeading, the first time", line)
 			extendExistingHeading(line)
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
+			//q.Q("getNestedBlockName withOUT hadSpace", line)
 			nested = docsPath(nestedBlockCurrentLine)
 			lastMatch = ""
 		} else if lastMatch != "" {
+			//q.Q("extendExistingHeading, the SECOND time", line)
 			extendExistingHeading(line)
 		}
 		hadSpace = isBlank(line)

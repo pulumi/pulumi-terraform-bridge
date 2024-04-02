@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -1870,6 +1869,14 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		}
 		p = p.withOutRoot()
 	}
+
+	//TODO: removing this cleans up the docs and fixes mismatches.
+	// But it does create an issue where _some_ of the docs were correct, and sometimes we lose them!
+	// For p-cloudflare this is rare - it affects only a few resources.
+	// The heuristics on whether this code results in more correct docs than removing it is...probably provider -specific.
+	// The real fix here is to make sure the attributes path is parsed correctly from the docs.
+	// path=actions.cache_key_fields.user.lang =/= cache_key_fields.lang but it's incorrect in the docs parsing.
+
 	// To maintain old behavior, we also check if the last segment of `path` matches
 	// with some other last segment of any other entity.
 	//
