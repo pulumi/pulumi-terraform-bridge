@@ -107,11 +107,9 @@ func runDiffCheck(t T, tc diffTestCase) {
 
 	pt.Up()
 
-	if 1+2 == 4 {
-		pulumiWriteYaml(t, tc, puwd, tc.Config2)
-		x := pt.Up()
-		verifyBasicDiffAgreement(t, *tfDiffPlan, x.Summary)
-	}
+	pulumiWriteYaml(t, tc, puwd, tc.Config2)
+	x := pt.Up()
+	verifyBasicDiffAgreement(t, *tfDiffPlan, x.Summary)
 }
 
 func toTFProvider(tc diffTestCase) *schema.Provider {
@@ -124,13 +122,14 @@ func toTFProvider(tc diffTestCase) *schema.Provider {
 
 func TestUnchangedBasicObject(t *testing.T) {
 	skipUnlessLinux(t)
-	cfg := map[string]any{"f0": map[string]any{"x": "ok"}}
+	cfg := map[string]any{"f0": []any{map[string]any{"x": "ok"}}}
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"f0": {
 					Required: true,
-					Type:     schema.TypeMap,
+					Type:     schema.TypeList,
+					MaxItems: 1,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
 							"x": {Optional: true, Type: schema.TypeString},

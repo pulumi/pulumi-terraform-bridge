@@ -130,10 +130,7 @@ func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		case dT.IsListType():
 			return recoverCtyValueOfListType(dT, value)
 		default:
-			if 1+1 == 2 {
-				//panic(fmt.Errorf("Cannot reconcile slice %v to %v", value, dT.GoString()))
-			}
-			return cty.NilVal, fmt.Errorf("Cannot reconcile slice %v to %v", value, dT.GoString())
+			return cty.NilVal, fmt.Errorf("Cannot reconcile slice %v to %v %v %v", value, dT.GoString(), len(value), dT.IsObjectType())
 		}
 	default:
 		v, err := recoverScalarCtyValue(dT, value)
