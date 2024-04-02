@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"pgregory.net/rapid"
 )
 
@@ -25,21 +26,120 @@ type tb struct {
 
 type schemaT func(schema.Schema) schema.Schema
 
+type attrKind int
+
+const (
+	optionalAttr attrKind = iota + 1
+	requiredAttr
+	computedAttr
+	computedOptionalAttr
+)
+
 type tvGen struct {
 	generateUnknowns bool
 }
 
-func (tvg *tvGen) GenTV(maxDepth int) *rapid.Generator[tv] {
+func (tvg *tvGen) GenBlockOrAttr(maxDepth int) *rapid.Generator[tv] {
 	opts := []*rapid.Generator[tv]{
-		tvg.GenString(),
+		tvg.GenAttr(maxDepth),
 	}
 	if maxDepth > 1 {
-		opts = append(opts, tvg.GenSingleNestedBlock(maxDepth-1))
+		opts = append(opts,
+			tvg.GenSingleNestedBlock(maxDepth-1),
+			tvg.GenListNestedBlock(maxDepth-1),
+			tvg.GenSetNestedBlock(maxDepth-1),
+		)
 	}
 	return rapid.OneOf(opts...)
 }
 
-// Generate a resource or datasource inputs, which are always blocks in TF.
+func (tvg *tvGen) GenAttr(maxDepth int) *rapid.Generator[tv] {
+	opts := []*rapid.Generator[tv]{
+		tvg.GenString(),
+		tvg.GenBool(),
+		tvg.GenInt(),
+		tvg.GenFloat(),
+	}
+	if maxDepth > 1 {
+		opts = append(opts,
+			tvg.GenMapAttr(maxDepth-1),
+			tvg.GenListAttr(maxDepth-1),
+			tvg.GenSetAttr(maxDepth-1),
+		)
+	}
+	return rapid.OneOf(opts...)
+}
+
+func (tvg *tvGen) GenMapAttr(maxDepth int) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		inner := tvg.GenAttr(maxDepth).Draw(t, "attrGen")
+		mapWrapType := tftypes.Map{ElementType: inner.typ}
+		mapWrap := func(vs map[string]tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(mapWrapType, vs)
+		}
+		keyGen := rapid.SampledFrom([]string{"a", "b"})
+		vg := rapid.Map(rapid.MapOf(keyGen, inner.valueGen), mapWrap)
+		return tv{
+			schema: schema.Schema{
+				Type: schema.TypeMap,
+				Elem: &inner.schema,
+			},
+			typ:      mapWrapType,
+			valueGen: vg,
+		}
+	})
+	ge = tvg.WithSchemaTransform(ge)
+	ge = tvg.WithNullAndUnknown(ge)
+	return ge
+}
+
+func (tvg *tvGen) GenListAttr(maxDepth int) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		inner := tvg.GenAttr(maxDepth).Draw(t, "attrGen")
+		listWrapType := tftypes.List{ElementType: inner.typ}
+		listWrap := func(vs []tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(listWrapType, vs)
+		}
+		vg := rapid.Map(rapid.SliceOfN(inner.valueGen, 0, 3), listWrap)
+		return tv{
+			schema: schema.Schema{
+				// TODO get creative with the hash function
+				Type: schema.TypeList,
+				Elem: &inner.schema,
+			},
+			typ:      listWrapType,
+			valueGen: vg,
+		}
+	})
+	ge = tvg.WithSchemaTransform(ge)
+	ge = tvg.WithNullAndUnknown(ge)
+	return ge
+}
+
+func (tvg *tvGen) GenSetAttr(maxDepth int) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		inner := tvg.GenAttr(maxDepth).Draw(t, "attrGen")
+		setWrapType := tftypes.Set{ElementType: inner.typ}
+		setWrap := func(vs []tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(setWrapType, vs)
+		}
+		vg := rapid.Map(rapid.SliceOfN(inner.valueGen, 0, 3), setWrap)
+		return tv{
+			schema: schema.Schema{
+				// TODO get creative with the hash function
+				Type: schema.TypeSet,
+				Elem: &inner.schema,
+			},
+			typ:      setWrapType,
+			valueGen: vg,
+		}
+	})
+	ge = tvg.WithSchemaTransform(ge)
+	ge = tvg.WithNullAndUnknown(ge)
+	return ge
+}
+
+// TF blocks can be resource or datasource inputs, or nested blocks.
 func (tvg *tvGen) GenBlock(maxDepth int) *rapid.Generator[tb] {
 	return rapid.Custom[tb](func(t *rapid.T) tb {
 		fieldSchemas := map[string]*schema.Schema{}
@@ -48,7 +148,7 @@ func (tvg *tvGen) GenBlock(maxDepth int) *rapid.Generator[tb] {
 		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
 			fieldName := fmt.Sprintf("f%d", i)
-			fieldTV := tvg.GenTV(maxDepth-1).Draw(t, fieldName)
+			fieldTV := tvg.GenBlockOrAttr(maxDepth-1).Draw(t, fieldName)
 			fieldSchemas[fieldName] = &fieldTV.schema
 			fieldGenerators[fieldName] = fieldTV.valueGen
 			fieldTypes[fieldName] = fieldTV.typ
@@ -70,6 +170,9 @@ func (tvg *tvGen) GenBlock(maxDepth int) *rapid.Generator[tb] {
 		// for k, v := range fieldSchemas {
 		// 	fmt.Printf("###### field %q %#v\n\n", k, v)
 		// }
+
+		err := schema.InternalMap(fieldSchemas).InternalValidate(nil)
+		contract.AssertNoErrorf(err, "rapid_tv_gen generated an invalid schema: please fix")
 		return tb{fieldSchemas, objType, objGen}
 	})
 }
@@ -107,70 +210,173 @@ func (tvg *tvGen) GenSingleNestedBlock(maxDepth int) *rapid.Generator[tv] {
 	})
 }
 
-func (tvg *tvGen) GenString() *rapid.Generator[tv] {
-	s := schema.Schema{
-		Type: schema.TypeString,
-	}
-	//nilValue := tftypes.NewValue(tftypes.String, nil)
-	values := []tftypes.Value{
-		tftypes.NewValue(tftypes.String, ""),
-		tftypes.NewValue(tftypes.String, "text"),
-	}
-	if tvg.generateUnknowns {
-		values = append(values, tftypes.NewValue(tftypes.String, tftypes.UnknownValue))
-	}
-	valueGen := rapid.SampledFrom(values)
-	return rapid.Custom[tv](func(t *rapid.T) tv {
-		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
-		s := st(s)
-		//if s.Required {
-		return tv{s, tftypes.String, valueGen}
-		//}
-		//return tv{s, tftypes.String, rapid.OneOf(valueGen, rapid.Just(nilValue))}
+func (tvg *tvGen) GenListNestedBlock(maxDepth int) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		bl := tvg.GenBlock(maxDepth).Draw(t, "block")
+		listWrapType := tftypes.List{ElementType: bl.typ}
+		listWrap := func(vs []tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(listWrapType, vs)
+		}
+		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, 3), listWrap)
+		return tv{
+			schema: schema.Schema{
+				Type: schema.TypeList,
+				// TODO: randomly trigger MaxItems: 1
+				Elem: &schema.Resource{
+					Schema: bl.schemaMap,
+				},
+			},
+			typ:      listWrapType,
+			valueGen: vg,
+		}
+	})
+	ge = tvg.WithSchemaTransform(ge)
+	ge = tvg.WithNullAndUnknown(ge)
+	return ge
+}
+
+func (tvg *tvGen) GenSetNestedBlock(maxDepth int) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		bl := tvg.GenBlock(maxDepth).Draw(t, "block")
+		setWrapType := tftypes.Set{ElementType: bl.typ}
+		setWrap := func(vs []tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(setWrapType, vs)
+		}
+		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, 3), setWrap)
+		return tv{
+			schema: schema.Schema{
+				Type: schema.TypeSet,
+				// TODO: randomly trigger MaxItems: 1
+				// TODO: get a bit inventive with custom hash functions
+				Elem: &schema.Resource{
+					Schema: bl.schemaMap,
+				},
+			},
+			typ:      setWrapType,
+			valueGen: vg,
+		}
+	})
+	ge = tvg.WithSchemaTransform(ge)
+	ge = tvg.WithNullAndUnknown(ge)
+	return ge
+}
+
+func (tvg *tvGen) GenAttrKind() *rapid.Generator[attrKind] {
+	return rapid.SampledFrom([]attrKind{
+		optionalAttr,
+		requiredAttr,
+		computedAttr,
+		computedOptionalAttr,
 	})
 }
 
-// func (tvg *tvGen) withNullAndUnknown(
-// 	t tftypes.Type,
-// 	v *rapid.Generator[tftypes.Value],
-// ) *rapid.Generator[tftypes.Value] {
-// 	nullV := tftypes.NewValue(t, nil)
-// 	if tvg.generateUnknowns {
-// 		unknownV := tftypes.NewValue(t, tftypes.UnknownValue)
-// 		return rapid.OneOf(v,
-// 			rapid.Just(nullV),
-// 			rapid.Just(unknownV))
-// 	}
-// 	return rapid.OneOf(v, rapid.Just(nullV))
-// }
+func (tvg *tvGen) GenString() *rapid.Generator[tv] {
+	return tvg.GenScalar(schema.TypeString, []tftypes.Value{
+		tftypes.NewValue(tftypes.String, ""),
+		tftypes.NewValue(tftypes.String, "text"),
+	})
+}
 
-func (*tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
+func (tvg *tvGen) GenBool() *rapid.Generator[tv] {
+	return tvg.GenScalar(schema.TypeBool, []tftypes.Value{
+		tftypes.NewValue(tftypes.Bool, false),
+		tftypes.NewValue(tftypes.Bool, true),
+	})
+}
+
+func (tvg *tvGen) GenInt() *rapid.Generator[tv] {
+	return tvg.GenScalar(schema.TypeInt, []tftypes.Value{
+		tftypes.NewValue(tftypes.Number, 0),
+		tftypes.NewValue(tftypes.Number, -1),
+		tftypes.NewValue(tftypes.Number, 42),
+	})
+}
+
+func (tvg *tvGen) GenFloat() *rapid.Generator[tv] {
+	return tvg.GenScalar(schema.TypeInt, []tftypes.Value{
+		tftypes.NewValue(tftypes.Number, float64(0.0)),
+		tftypes.NewValue(tftypes.Number, float64(-1.0)),
+		tftypes.NewValue(tftypes.Number, float64(42.0)),
+	})
+}
+
+func (tvg *tvGen) GenScalar(vt schema.ValueType, values []tftypes.Value) *rapid.Generator[tv] {
+	s := schema.Schema{
+		Type: vt,
+	}
+	g := tv{
+		schema:   s,
+		typ:      values[0].Type(),
+		valueGen: rapid.SampledFrom(values),
+	}
+	gen := tvg.WithSchemaTransform(rapid.Just(g))
+	gen = tvg.WithNullAndUnknown(gen)
+	return gen
+}
+
+func (tvg *tvGen) WithSchemaTransform(gen *rapid.Generator[tv]) *rapid.Generator[tv] {
+	return rapid.Custom[tv](func(t *rapid.T) tv {
+		tv0 := gen.Draw(t, "tv")
+		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
+		return tv{
+			schema:   st(tv0.schema),
+			typ:      tv0.typ,
+			valueGen: tv0.valueGen,
+		}
+	})
+}
+
+func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[tv] {
+	return rapid.Custom[tv](func(t *rapid.T) tv {
+		tv0 := gen.Draw(t, "tv")
+		gen := tv0.valueGen
+		if tvg.generateUnknowns || tv0.schema.Required {
+			options := []*rapid.Generator[tftypes.Value]{gen}
+			if tvg.generateUnknowns {
+				unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
+				options = append(options, unkGen)
+			}
+			if !tv0.schema.Required {
+				nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
+				options = append(options, nullGen)
+			}
+			gen = rapid.OneOf(options...)
+		}
+		return tv{
+			schema:   tv0.schema,
+			typ:      tv0.typ,
+			valueGen: gen,
+		}
+	})
+}
+
+func (tvg *tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 	return rapid.Custom[schemaT](func(t *rapid.T) schemaT {
-		k := rapid.SampledFrom([]string{"o", "r", "c", "co"}).Draw(t, "optionalKind")
-		// secret := rapid.Bool().Draw(t, "secret")
-		// forceNew := rapid.Bool().Draw(t, "forceNew")
+		attrKind := tvg.GenAttrKind().Draw(t, "attrKind")
+		secret := rapid.Bool().Draw(t, "secret")
+		forceNew := rapid.Bool().Draw(t, "forceNew")
 
 		return func(s schema.Schema) schema.Schema {
-			switch k {
-			case "o":
+			switch attrKind {
+			case optionalAttr:
 				s.Optional = true
-			case "r":
+			case requiredAttr:
 				s.Required = true
-			case "c":
+			case computedAttr:
+				// TODO this currently triggers errors in the tests because the provider needs to be
+				// taught to polyfill computed values instead of passing them as inputs.
 				s.Optional = true
-			// TODO this currently triggers Value for unconfigurable attribute
-			// because the provider
 			// s.Computed = true
-			case "co":
+			case computedOptionalAttr:
 				s.Computed = true
 				s.Optional = true
 			}
-			// if forceNew {
-			// 	s.ForceNew = true
-			// }
-			// if secret {
-			// 	s.Sensitive = true
-			// }
+			if forceNew {
+				s.ForceNew = true
+			}
+			if secret {
+				s.Sensitive = true
+			}
 			return s
 		}
 	})
