@@ -1286,38 +1286,35 @@ func (g *Generator) convertExamples(docs string, path examplePath) (result strin
 
 	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
 	// specifies the PULUMI_CONVERT_EXAMPLES_CACHE_DIR environment variable, pointing to a folder for the cache.
-	{
-		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPLES_CACHE_DIR")
-		if enableCache && dir != "" {
-			path := path.String()
-			sep := string(rune(0))
-			var buf bytes.Buffer
-			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
-			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
-			fmt.Fprintf(&buf, "path=%v%s", path, sep)
-			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
+	if cache := g.getOrCreateExamplesCache(); cache.enabled {
+		path := path.String()
+		sep := string(rune(0))
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
+		fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
+		fmt.Fprintf(&buf, "path=%v%s", path, sep)
+		fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
 
-			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
+		hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
 
-			filePath := filepath.Join(dir, hash)
+		filePath := filepath.Join(cache.dir, hash)
 
-			bytes, err := os.ReadFile(filePath)
-			if err == nil {
-				// cache hit
-				return string(bytes)
-			}
-			// ignore the error, assume cache miss or file not found
-			defer func() {
-				// only write the cache for sizable results, >0.5kb
-				if len(result) > 512 {
-					// try to write to the cache
-					err := os.WriteFile(filePath, []byte(result), 0600)
-					if err != nil {
-						panic(fmt.Errorf("failed to write examples-cache: %w", err))
-					}
-				}
-			}()
+		bytes, err := os.ReadFile(filePath)
+		if err == nil {
+			// cache hit
+			return string(bytes)
 		}
+		// ignore the error, assume cache miss or file not found
+		defer func() {
+			// only write the cache for sizable results, >0.5kb
+			if len(result) > 512 {
+				// try to write to the cache
+				err := os.WriteFile(filePath, []byte(result), 0600)
+				if err != nil {
+					panic(fmt.Errorf("failed to write examples-cache: %w", err))
+				}
+			}
+		}()
 	}
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
