@@ -896,7 +896,7 @@
                 },
                 "special": {
                     "type": "boolean",
-                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
                 },
                 "upper": {
                     "type": "boolean",

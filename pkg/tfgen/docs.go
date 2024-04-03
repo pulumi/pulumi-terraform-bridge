@@ -297,7 +297,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			if docInfo == nil || !docInfo.AllowMissing {
 				g.error(msg)
-				return entityDocs{}, fmt.Errorf(msg)
+				return entityDocs{}, errors.New(msg)
 			}
 		}
 
@@ -986,9 +986,12 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
 		if elide(p.ret.Import) {
-			message := fmt.Sprintf("parseImports %q should not render <elided> text"+
-				" in its emitted markdown.\n"+
-				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
+			message := fmt.Sprintf(
+				`parseImports %q should not render <elided> text in its emitted markdown.
+**Input**:\n%s\n\n**Rendered**:
+%s
+
+`,
 				token, strings.Join(subsection, "\n"), p.ret.Import)
 			if p.sink != nil {
 				p.sink.warn(message)
@@ -1400,12 +1403,12 @@ func (g *Generator) convertExamplesInner(
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
-	fprintf := func(w io.Writer, f string, args ...interface{}) {
-		_, err := fmt.Fprintf(w, f, args...)
-		contract.IgnoreError(err)
+	fprintf := func(f string, args ...interface{}) {
+		_, err := fmt.Fprintf(output, f, args...)
+		contract.AssertNoErrorf(err, "Cannot fail to write out output buffer")
 	}
 	codeBlocks := findFencesAndHeaders(docs)
-	codeFence := "```"
+	const codeFence = "```"
 
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
@@ -1422,7 +1425,7 @@ func (g *Generator) convertExamplesInner(
 			if hasHeader {
 				end = tfBlock.headerStart
 			}
-			fprintf(output, docs[textStart:end])
+			fprintf("%s", docs[textStart:end])
 
 		} else {
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
@@ -1439,7 +1442,7 @@ func (g *Generator) convertExamplesInner(
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
 		if nextNewLine == -1 {
 			// write the line as-is; this is an in-line fence
-			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
 		} else {
 			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
 			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or unmarked.
@@ -1467,19 +1470,18 @@ func (g *Generator) convertExamplesInner(
 					} else {
 						// append any headers and following text first
 						if hasHeader {
-							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+							fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 						}
-						fprintf(output, startPulumiCodeChooser)
-						fprintf(output, "\n%s\n", convertedBlock)
-						fprintf(output, endPulumiCodeChooser)
+						fprintf("%s\n%s\n%s",
+							startPulumiCodeChooser, convertedBlock, endPulumiCodeChooser)
 					}
 				}
 			} else {
 				// Take already-valid code blocks as-is.
 				if hasHeader {
-					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+					fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 				}
-				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+				fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 			}
 		}
 		// The non-code text starts up again after the last closing fences
@@ -1487,7 +1489,7 @@ func (g *Generator) convertExamplesInner(
 	}
 	// Append any remainder of the docs string to the output
 	if !stripSection {
-		fprintf(output, docs[textStart:])
+		fprintf("%s", docs[textStart:])
 	}
 	return output.String()
 }
@@ -1608,7 +1610,7 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 
 		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
 		g.coverageTracker.languageConversionFailure(e, languageName, diags)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	cache := g.getOrCreateExamplesCache()
