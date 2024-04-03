@@ -76,7 +76,6 @@ func TestSchemaGenInSync(t *testing.T) {
 		pf       tfbridge.ProviderInfo
 		provider tfbridge.ProviderInfo
 	}
-	testprovider.MuxedRandomProvider()
 
 	testCases := []testCase{
 		{
