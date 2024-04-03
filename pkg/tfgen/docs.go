@@ -749,7 +749,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
-		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
+		reformattedH3Section, _, isEmpty := p.reformatSubsection(h3Section)
 		if isEmpty {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
