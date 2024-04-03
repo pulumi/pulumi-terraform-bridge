@@ -754,11 +754,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
 		}
-		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
-			!p.info.ReplaceExamplesSection() {
-			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
-				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
-		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
 		switch sectionKind {
