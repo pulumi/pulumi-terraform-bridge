@@ -341,19 +341,8 @@ This is some intentionally broken HCL that should not convert.
 		require.NoError(t, err)
 
 		autogold.Expect("").Equal(t, stdout.String())
-		autogold.Expect(`warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to typescript: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to python: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to csharp: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to go: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to yaml: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: failed to convert HCL for #/resources/azure:webpubsub/customCertificate:CustomCertificate to java: <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate': 6 errors occurred:
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
-* <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
+		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate': 1 error occurred:
+* [csharp, go, java, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
 
 . The example will be dropped from any generated docs or SDKs.
 `).Equal(t, stderr.String())
