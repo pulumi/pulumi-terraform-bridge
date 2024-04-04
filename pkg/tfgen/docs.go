@@ -748,15 +748,10 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
-		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
+		reformattedH3Section, isEmpty := p.reformatSubsection(h3Section)
 		if isEmpty {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
-		}
-		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
-			!p.info.ReplaceExamplesSection() {
-			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
-				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -1236,9 +1231,9 @@ func isBlank(line string) bool {
 
 // reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example
 // code snippets.
-func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, bool) {
+func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool) {
 	var result []string
-	hasExamples, isEmpty := false, true
+	isEmpty := true
 
 	var inOICSButton bool // True if we are removing an "Open in Cloud Shell" button.
 	for i, line := range lines {
@@ -1250,18 +1245,15 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 			if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
 				inOICSButton = true
 			} else {
-				if strings.Index(line, "```") == 0 {
-					hasExamples = true
-				} else if !isBlank(line) {
+				if !(strings.Index(line, "```") == 0) && !isBlank(line) {
 					isEmpty = false
 				}
-
 				result = append(result, line)
 			}
 		}
 	}
 
-	return result, hasExamples, isEmpty
+	return result, isEmpty
 }
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
