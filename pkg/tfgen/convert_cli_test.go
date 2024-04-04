@@ -341,6 +341,7 @@ This is some intentionally broken HCL that should not convert.
 		require.NoError(t, err)
 
 		autogold.Expect("").Equal(t, stdout.String())
+		//nolint:lll
 		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate': 1 error occurred:
 * [csharp, go, java, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
 
