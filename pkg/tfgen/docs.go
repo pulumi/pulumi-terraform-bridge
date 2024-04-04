@@ -1753,7 +1753,6 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 		hclConversions[lang], convertErr = g.convertHCLToString(e, hcl, path, lang)
 		if convertErr != nil {
 			failedLangs[lang] = convertErr
-			//err = multierror.Append(err, convertErr)
 		}
 	}
 
