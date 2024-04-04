@@ -1382,17 +1382,23 @@ type SkipExamplesArgs struct {
 
 func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) ComputeID {
 	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
-
-		c := fmt.Sprintf(". This is an error in %s resource provider, please report at "+
-			"%s.", providerName, repoURL)
-
+		err := func(msg string, a ...any) error {
+			return delegateIDFieldError{
+				msg:          fmt.Sprintf(msg, a...),
+				providerName: providerName,
+				repoURL:      repoURL,
+			}
+		}
 		fieldValue, ok := state[field]
 		if !ok {
-			return "", fmt.Errorf("Could not find required property '%s' in state"+c, field)
+			return "", err("Could not find required property '%s' in state", field)
 		}
 
-		// ComputeID is only called during when preview=false, so we don't need to
-		// deal with computed properties.
+		contract.Assertf(
+			!fieldValue.IsComputed() && (!fieldValue.IsOutput() || fieldValue.OutputValue().Known),
+			"ComputeID is only called during when preview=false, so we should never need to "+
+				"deal with computed properties",
+		)
 
 		if fieldValue.IsSecret() || (fieldValue.IsOutput() && fieldValue.OutputValue().Secret) {
 			msg := fmt.Sprintf("Setting non-secret resource ID as '%s' (which is secret)", field)
@@ -1405,10 +1411,25 @@ func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) C
 		}
 
 		if !fieldValue.IsString() {
-			return "", fmt.Errorf("Expected '%s' property to be a string, found '%s'"+c,
+			return "", err("Expected '%s' property to be a string, found %s",
 				field, fieldValue.TypeString())
 		}
 
 		return resource.ID(fieldValue.StringValue()), nil
 	}
+}
+
+type delegateIDFieldError struct {
+	msg                   string
+	providerName, repoURL string
+}
+
+func (err delegateIDFieldError) Error() string {
+	return fmt.Sprintf("%s. This is an error in %s resource provider, please report at %s",
+		err.msg, err.providerName, err.repoURL)
+}
+
+func (err delegateIDFieldError) Is(target error) bool {
+	target, ok := target.(delegateIDFieldError)
+	return ok && err == target
 }
