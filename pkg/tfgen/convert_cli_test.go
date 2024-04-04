@@ -287,6 +287,68 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 		require.NoError(t, err)
 	})
 
+	t.Run("broken-hcl-warnings", func(t *testing.T) {
+		md := []byte(strings.ReplaceAll(`
+# azurerm_web_pubsub_custom_certificate
+
+Manages an Azure Web PubSub Custom Certificate.
+
+## Example Usage
+
+%%%hcl
+
+This is some intentionally broken HCL that should not convert.
+%%%`, "%%%", "```"))
+		p := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"azurerm_web_pubsub_custom_certificate": {
+					Schema: map[string]*schema.Schema{"name": {
+						Type:     schema.TypeString,
+						Optional: true,
+					}},
+				},
+			},
+		}
+		pi := tfbridge.ProviderInfo{
+			P:       shimv2.NewProvider(p),
+			Name:    "azurerm",
+			Version: "0.0.1",
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"azurerm_web_pubsub_custom_certificate": {
+					Tok:  "azure:webpubsub/customCertificate:CustomCertificate",
+					Docs: &tfbridge.DocInfo{Markdown: md},
+				},
+			},
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		g, err := NewGenerator(GeneratorOptions{
+			Package:      "azure",
+			Version:      "0.0.1",
+			PluginHost:   &testPluginHost{},
+			Language:     Schema,
+			ProviderInfo: pi,
+			Root:         afero.NewBasePathFs(afero.NewOsFs(), t.TempDir()),
+			Sink: diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
+				Color: colors.Never,
+			}),
+		})
+		require.NoError(t, err)
+
+		err = g.Generate()
+		require.NoError(t, err)
+
+		autogold.Expect("").Equal(t, stdout.String())
+		//nolint:lll
+		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate'. The example will be dropped from any generated docs or SDKs: 1 error occurred:
+* [csharp, go, java, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
+
+
+`).Equal(t, stderr.String())
+	})
+
 	t.Run("regress-1839", func(t *testing.T) {
 		mdPath := filepath.Join(
 			"test_data",

@@ -1603,7 +1603,6 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
 		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
 
-		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
 		g.coverageTracker.languageConversionFailure(e, languageName, diags)
 		return errors.New(errMsg)
 	}
@@ -1746,7 +1745,6 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 
 	hclConversions := map[string]string{}
 	var result strings.Builder
-	var err error
 
 	failedLangs := map[string]error{}
 
@@ -1755,39 +1753,61 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 		hclConversions[lang], convertErr = g.convertHCLToString(e, hcl, path, lang)
 		if convertErr != nil {
 			failedLangs[lang] = convertErr
-			err = multierror.Append(err, convertErr)
 		}
 	}
 
 	result.WriteString(hclConversionsToString(hclConversions))
-	if len(failedLangs) == 0 {
+
+	switch {
+	// Success
+	case len(failedLangs) == 0:
+		return result.String(), nil
+	// Complete failure - every language conversion failed; error
+	case len(failedLangs) == len(languages):
+		err := g.warnUnableToConvertHCLExample(path, failedLangs)
+		return "", err
+	// Partial failure - not returning an error but still emit the warning
+	default:
+		err := g.warnUnableToConvertHCLExample(path, failedLangs)
+		contract.IgnoreError(err)
 		return result.String(), nil
 	}
+}
 
-	isCompleteFailure := len(failedLangs) == len(languages)
-
-	if isCompleteFailure {
-		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-			"from any generated docs or SDKs.", path, err))
-
-		return "", err
+func (g *Generator) warnUnableToConvertHCLExample(path string, failedLangs map[string]error) error {
+	// Index sets of languages by error message to avoid emitting similar errors for each language.
+	languagesByErrMsg := map[string]map[string]struct{}{}
+	for lang, convertErr := range failedLangs {
+		errMsg := convertErr.Error()
+		if _, ok := languagesByErrMsg[errMsg]; !ok {
+			languagesByErrMsg[errMsg] = map[string]struct{}{}
+		}
+		languagesByErrMsg[errMsg][lang] = struct{}{}
 	}
 
-	// Log the results when an example fails to convert to some languages, but not all
-	var failedLangsStrings []string
+	var err error
 
-	for lang := range failedLangs {
-		failedLangsStrings = append(failedLangsStrings, lang)
-		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
-			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-			path, strings.Join(failedLangsStrings, ", ")))
+	seen := map[string]struct{}{}
+	for _, convertErr := range failedLangs {
+		if _, dup := seen[convertErr.Error()]; dup {
+			continue
+		}
+		errMsg := convertErr.Error()
+		seen[errMsg] = struct{}{}
 
-		// At least one language out of the given set has been generated, which is considered a success
-		//nolint:ineffassign
-		err = nil
+		langs := []string{}
+		for l := range languagesByErrMsg[errMsg] {
+			langs = append(langs, l)
+		}
+		sort.Strings(langs)
+		ls := strings.Join(langs, ", ") // all languages that have this error
+		err = multierror.Append(err, fmt.Errorf("[%s] %w", ls, convertErr))
 	}
 
-	return result.String(), nil
+	g.warn("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped "+
+		"from any generated docs or SDKs: %v", path, err)
+
+	return err
 }
 
 // genLanguageToSlice maps a Language on a Generator to a slice of strings suitable to pass to HCL conversion.
