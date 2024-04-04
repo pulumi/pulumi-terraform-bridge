@@ -1609,3 +1609,58 @@ func TestFixupImports(t *testing.T) {
 		})
 	}
 }
+
+func TestGuessIsHCL(t *testing.T) {
+	type testCase struct {
+		code string
+		hcl  bool
+	}
+	testCases := []testCase{
+		{
+			code: `
+data "aws_ami_ids" "ubuntu" {
+  owners = ["099720109477"]
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/ubuntu-*-*-amd64-server-*"]
+  }
+}
+			`,
+			hcl: true,
+		},
+		{
+			code: `
+resource "aws_ami" "example" {
+  name                = "terraform-example"
+  virtualization_type = "hvm"
+  root_device_name    = "/dev/xvda"
+  imds_support        = "v2.0" # Enforce usage of IMDSv2.
+  ebs_block_device {
+    device_name = "/dev/xvda"
+    snapshot_id = "snap-xxxxxxxx"
+    volume_size = 8
+  }
+}
+`,
+			hcl: true,
+		},
+		{
+			code: `
+    Valid names:
+      * amazon-web-services
+      * amd
+      * nvidia
+      * xilinx
+`,
+			hcl: false,
+		},
+	}
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			actual := guessIsHCL(tc.code)
+			assert.Equal(t, tc.hcl, actual)
+		})
+	}
+}
