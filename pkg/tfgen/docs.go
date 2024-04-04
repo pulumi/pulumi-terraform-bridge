@@ -1764,13 +1764,14 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 	isCompleteFailure := len(failedLangs) == len(languages)
 
 	if isCompleteFailure {
+		// Index sets of languages by error message to avoid emitting similar errors for each language.
 		languagesByErrMsg := map[string]map[string]struct{}{}
 		for lang, convertErr := range failedLangs {
-			m := convertErr.Error()
-			if _, ok := languagesByErrMsg[m]; !ok {
-				languagesByErrMsg[m] = map[string]struct{}{}
+			errMsg := convertErr.Error()
+			if _, ok := languagesByErrMsg[errMsg]; !ok {
+				languagesByErrMsg[errMsg] = map[string]struct{}{}
 			}
-			languagesByErrMsg[m][lang] = struct{}{}
+			languagesByErrMsg[errMsg][lang] = struct{}{}
 		}
 
 		var err error
@@ -1780,15 +1781,15 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 			if _, dup := seen[convertErr.Error()]; dup {
 				continue
 			}
-			m := convertErr.Error()
-			seen[m] = struct{}{}
+			errMsg := convertErr.Error()
+			seen[errMsg] = struct{}{}
 
 			langs := []string{}
-			for l := range languagesByErrMsg[m] {
+			for l := range languagesByErrMsg[errMsg] {
 				langs = append(langs, l)
 			}
 			sort.Strings(langs)
-			ls := strings.Join(langs, ", ")
+			ls := strings.Join(langs, ", ") // all languages that have this error
 			err = multierror.Append(err, fmt.Errorf("[%s] %w", ls, convertErr))
 		}
 
