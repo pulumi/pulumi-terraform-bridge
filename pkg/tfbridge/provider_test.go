@@ -3836,3 +3836,92 @@ func TestCustomTimeouts(t *testing.T) {
 		})
 	}
 }
+
+func TestIgnoreMappings(t *testing.T) {
+	t.Parallel()
+
+	provider := func(
+		ignoredMappings []string,
+		resources map[string]*ResourceInfo,
+		datasources map[string]*DataSourceInfo,
+	) *Provider {
+		p := &Provider{
+			info: ProviderInfo{
+				ResourcePrefix: "test",
+				Resources:      resources,
+				DataSources:    datasources,
+				IgnoreMappings: ignoredMappings,
+			},
+			tf: shimv2.NewProvider(&schemav2.Provider{
+				ResourcesMap: map[string]*schemav2.Resource{
+					"test_r1":     {DeprecationMessage: "r1"},
+					"test_r2":     {DeprecationMessage: "r2"},
+					"alt_ignored": {DeprecationMessage: "r-alt"},
+				},
+				DataSourcesMap: map[string]*schemav2.Resource{
+					"test_r1":     {DeprecationMessage: "d1"},
+					"test_r2":     {DeprecationMessage: "d2"},
+					"alt_ignored": {DeprecationMessage: "d-alt"},
+				},
+			}),
+		}
+
+		p.initResourceMaps()
+		return p
+	}
+
+	// This panic isn't necessary to lock in. It's not "desired behavior", but we
+	// should be thoughtful if and when we change it. We should surface an error our
+	// users when this happens.
+	t.Run("panics on alt_ignored not mapped", func(t *testing.T) {
+		t.Parallel()
+		assert.Panics(t, func() { provider(nil, nil, nil) })
+	})
+
+	t.Run("no panic on ignored mappings", func(t *testing.T) {
+		t.Parallel()
+		p := provider([]string{"alt_ignored"}, nil, nil)
+		for _, r := range p.resources {
+			assert.NotEqual(t, r.TF.DeprecationMessage(), "r-alt")
+		}
+	})
+
+	t.Run("can override alt mappings", func(t *testing.T) {
+		t.Parallel()
+		p := provider(nil, map[string]*ResourceInfo{
+			"alt_ignored": {Tok: "test:AltRes"},
+		}, map[string]*DataSourceInfo{
+			"alt_ignored": {Tok: "test:AltDs"},
+		})
+
+		// Check resource
+		r, ok := p.resources["test:AltRes"]
+		if assert.True(t, ok) {
+			assert.Equal(t, r.TF.DeprecationMessage(), "r-alt")
+		}
+
+		// Check datasource
+		d, ok := p.dataSources["test:AltDs"]
+		if assert.True(t, ok) {
+			assert.Equal(t, d.TF.DeprecationMessage(), "d-alt")
+		}
+	})
+
+	t.Run("partial override of ignored mappings", func(t *testing.T) {
+		t.Parallel()
+		p := provider([]string{"alt_ignored", "test_r1"},
+			map[string]*ResourceInfo{
+				"test_r1": {Tok: "test:index:R1"},
+			}, nil)
+
+		// Check resource
+		r, ok := p.resources["test:index:R1"]
+		if assert.True(t, ok) {
+			assert.Equal(t, r.TF.DeprecationMessage(), "r1")
+		}
+
+		for _, d := range p.dataSources {
+			assert.NotEqual(t, d.TF.DeprecationMessage(), "d-r1")
+		}
+	})
+}

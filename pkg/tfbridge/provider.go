@@ -298,22 +298,36 @@ func (p *Provider) label() string {
 
 // initResourceMaps creates maps from Pulumi types and tokens to Terraform resource type.
 func (p *Provider) initResourceMaps() {
+
+	ignoredTokens := ignoredTokens(&p.info)
+
 	// Fetch a list of all resource types handled by this provider and make a map.
 	p.resources = make(map[tokens.Type]Resource)
 	p.tf.ResourcesMap().Range(func(name string, res shim.Resource) bool {
+		schema, ok := p.info.Resources[name]
+
+		// The logic for processing `ignoredTokens` is a little funny, since we are
+		// careful to avoid breaking legacy providers.
+		//
+		// We don't process resources that correspond to `ignoredTokens`, unless
+		// they are explicitly mentioned in the schema map. If they are mentioned,
+		// then that overrides the ignore directive.
+		//
+		// This is because there have been providers in the wild that is
+		// [tfbridge.ProviderInfo.IgnoreMappings] to specify a Datasource to
+		// ignore, then manually map the Resource (or vice versa). We don't want
+		// to break those providers when implementing support for
+		// [tfbridge.ProviderInfo.IgnoreMappings] in the resource map.
+		if ignoredTokens[name] && !ok {
+			return true // continue
+		}
+
 		var tok tokens.Type
 
 		// See if there is override information for this resource.  If yes, use that to decode the token.
-		var schema *ResourceInfo
-		if p.info.Resources != nil {
-			schema = p.info.Resources[name]
-			if schema != nil {
-				tok = schema.Tok
-			}
-		}
-
-		// Otherwise, we default to the standard naming scheme.
-		if tok == "" {
+		if schema != nil && schema.Tok != "" {
+			tok = schema.Tok
+		} else { // Otherwise, we default to the standard naming scheme.
 			// Manufacture a token with the package, module, and resource type name.
 			camelName, pascalName := p.camelPascalPulumiName(name)
 			modTok := tokens.NewModuleToken(p.pkg(), tokens.ModuleName(camelName))
@@ -334,17 +348,17 @@ func (p *Provider) initResourceMaps() {
 	p.tf.DataSourcesMap().Range(func(name string, ds shim.Resource) bool {
 		var tok tokens.ModuleMember
 
+		schema, ok := p.info.DataSources[name]
 		// See if there is override information for this resource.  If yes, use that to decode the token.
-		var schema *DataSourceInfo
-		if p.info.DataSources != nil {
-			schema = p.info.DataSources[name]
-			if schema != nil {
-				tok = schema.Tok
-			}
+
+		// See equivalent block above for an explanation of the logic here.
+		if ignoredTokens[name] && !ok {
+			return true // continue
 		}
 
-		// Otherwise, we default to the standard naming scheme.
-		if tok == "" {
+		if schema != nil && schema.Tok != "" {
+			tok = schema.Tok
+		} else { // Otherwise, we default to the standard naming scheme.
 			// Manufacture a token with the data module and camel-cased name.
 			camelName, _ := p.camelPascalPulumiName(name)
 			tok = tokens.NewModuleMemberToken(p.baseDataMod(), tokens.ModuleMemberName(camelName))

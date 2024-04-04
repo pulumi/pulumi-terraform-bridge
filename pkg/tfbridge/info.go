@@ -83,16 +83,23 @@ type ProviderInfo struct {
 	// ExtraFunctionHclExamples is a slice of additional HCL examples attached to functions which are converted to the
 	// relevant target language(s)
 	ExtraFunctionHclExamples []HclExampler
-	IgnoreMappings           []string           // a list of TF resources and data sources to ignore in mappings errors
-	PluginDownloadURL        string             // an optional URL to download the provider binary from.
-	JavaScript               *JavaScriptInfo    // optional overlay information for augmented JavaScript code-generation.
-	Python                   *PythonInfo        // optional overlay information for augmented Python code-generation.
-	Golang                   *GolangInfo        // optional overlay information for augmented Golang code-generation.
-	CSharp                   *CSharpInfo        // optional overlay information for augmented C# code-generation.
-	Java                     *JavaInfo          // optional overlay information for augmented C# code-generation.
-	TFProviderVersion        string             // the version of the TF provider on which this was based
-	TFProviderLicense        *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
-	TFProviderModuleVersion  string             // the Go module version of the provider. Default is unversioned e.g. v1
+	// IgnoreMappings is a list of TF resources and data sources that are known to be unmapped.
+	//
+	// These resources/data sources do not generate missing mappings errors and will not be automatically
+	// mapped.
+	//
+	// If there is a mapping in Resources or DataSources, it can override IgnoreMappings. This is common
+	// when you need to ignore a datasource but not the resource with the same name, or vice versa.
+	IgnoreMappings          []string
+	PluginDownloadURL       string             // an optional URL to download the provider binary from.
+	JavaScript              *JavaScriptInfo    // optional overlay information for augmented JavaScript code-generation.
+	Python                  *PythonInfo        // optional overlay information for augmented Python code-generation.
+	Golang                  *GolangInfo        // optional overlay information for augmented Golang code-generation.
+	CSharp                  *CSharpInfo        // optional overlay information for augmented C# code-generation.
+	Java                    *JavaInfo          // optional overlay information for augmented C# code-generation.
+	TFProviderVersion       string             // the version of the TF provider on which this was based
+	TFProviderLicense       *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
+	TFProviderModuleVersion string             // the Go module version of the provider. Default is unversioned e.g. v1
 
 	// a provider-specific callback to invoke prior to TF Configure
 	// Any CheckFailureErrors returned from PreConfigureCallback are converted to
