@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -284,6 +285,77 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 
 		err = g.Generate()
 		require.NoError(t, err)
+	})
+
+	t.Run("regress-1839", func(t *testing.T) {
+		mdPath := filepath.Join(
+			"test_data",
+			"TestConvertViaPulumiCLI",
+			"launch_template",
+			"launch_template.html.markdown",
+		)
+		md, err := os.ReadFile(mdPath)
+		require.NoError(t, err)
+
+		p := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"aws_launch_template": {
+					Schema: map[string]*schema.Schema{
+						"instance_requirements": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"cpu_manufacturers": {
+										Type:     schema.TypeSet,
+										Optional: true,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		pi := tfbridge.ProviderInfo{
+			P:       shimv2.NewProvider(p),
+			Name:    "aws",
+			Version: "0.0.1",
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"aws_launch_template": {
+					Tok:  "aws:index:LaunchTemplate",
+					Docs: &tfbridge.DocInfo{Markdown: md},
+				},
+			},
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		out := t.TempDir()
+
+		g, err := NewGenerator(GeneratorOptions{
+			Package:      "aws",
+			Version:      "0.0.1",
+			PluginHost:   &testPluginHost{},
+			Language:     Schema,
+			ProviderInfo: pi,
+			Root:         afero.NewBasePathFs(afero.NewOsFs(), out),
+			Sink: diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
+				Color: colors.Never,
+			}),
+		})
+		require.NoError(t, err)
+
+		err = g.Generate()
+		require.NoError(t, err)
+
+		require.NotContains(t, stdout.String(), cliConverterErrUnexpectedHCLSnippet)
+		require.NotContains(t, stderr.String(), cliConverterErrUnexpectedHCLSnippet)
 	})
 }
 

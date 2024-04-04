@@ -1437,9 +1437,12 @@ func (g *Generator) convertExamplesInner(
 			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
 		} else {
 			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
-			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or unmarked.
-			if fenceLanguage == "```terraform\n" ||
-				fenceLanguage == "```hcl\n" || fenceLanguage == "```\n" {
+			hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
+
+			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
+			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
+			if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
+				(fenceLanguage == "```\n" && guessIsHCL(hcl)) {
 
 				// generate the code block and append
 				if g.language.shouldConvertExamples() {
@@ -2107,4 +2110,12 @@ func replaceFooterLinks(text string, footerLinks map[string]string) string {
 		}
 		return link
 	})
+}
+
+var (
+	guessIsHCLPattern = regexp.MustCompile(`(resource|data)\s+["][^"]+["]\s+["][^"]+["]\s+[{]`)
+)
+
+func guessIsHCL(code string) bool {
+	return guessIsHCLPattern.MatchString(code)
 }
