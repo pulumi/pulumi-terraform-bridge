@@ -1793,8 +1793,8 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 			err = multierror.Append(err, fmt.Errorf("[%s] %w", ls, convertErr))
 		}
 
-		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-			"from any generated docs or SDKs.", path, err))
+		g.warn("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped "+
+			"from any generated docs or SDKs: %v", path, err)
 
 		return "", err
 	}

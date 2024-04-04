@@ -342,10 +342,10 @@ This is some intentionally broken HCL that should not convert.
 
 		autogold.Expect("").Equal(t, stdout.String())
 		//nolint:lll
-		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate': 1 error occurred:
+		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate'. The example will be dropped from any generated docs or SDKs: 1 error occurred:
 * [csharp, go, java, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
 
-. The example will be dropped from any generated docs or SDKs.
+
 `).Equal(t, stderr.String())
 	})
 
