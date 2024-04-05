@@ -60,9 +60,9 @@ resource "aws_route53_zone" "example" {
 	err = afero.WriteFile(fs, "aws_route53_zone.tf", []byte(injectRoute53Zone), 0600)
 	require.NoError(t, err)
 
-	taf := NewFolderBasedAutoFiller(fs)
+	taf := newAferoAutoFiller(fs)
 
-	actual, err := AutoFill(taf, example)
+	actual, err := autoFill(taf, example)
 	require.NoError(t, err)
 
 	t.Logf("ACTUAL: %s", actual)
