@@ -756,6 +756,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
+	logger := GetLogger(ctx)
 	// for now we are just going to log warnings if there are failures.
 	// over time we may want to turn these into actual errors
 	_, validateShouldError := os.LookupEnv("PULUMI_ERROR_TYPE_CHECKER")
@@ -771,7 +772,6 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(news)
-			logger := GetLogger(ctx)
 			if typeFailures != nil {
 				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
 					"issue at https://github.com/pului/pulumi-terraform-bridge/issues.",
@@ -812,12 +812,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		warning := fmt.Sprintf("%v verification warning: %v", urn, warn)
-		// TODO: This is needed for tests, since tests don't have a host defined.
-		// We should clean this up once we fix that.
-		if err := logWarning(ctx, p.host, urn, warning); err != nil {
-			return nil, err
-		}
+		logger.Warn(fmt.Sprintf("%v verification warning: %v", urn, warn))
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
@@ -1726,17 +1721,6 @@ func transformFromState(
 		return nil, fmt.Errorf("transforming inputs: %w", err)
 	}
 	return o, nil
-}
-
-func logWarning(ctx context.Context, host *provider.HostClient, urn resource.URN, msg string) error {
-	if host == nil {
-		glog.Warning(msg)
-	} else {
-		if err := host.Log(ctx, diag.Warning, urn, msg); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // If a custom timeout has been set for this method, overwrite the default timeout.
