@@ -436,7 +436,10 @@ func typeEqual(schemaType string, inputType resource.PropertyValue) bool {
 
 // matchType performs some initial type matching for a given input type.
 // returns the possible types if a type is not matched
-func (v *PulumiInputValidator) matchType(inputType resource.PropertyValue, specs ...pschema.TypeSpec) (possibleTypes, bool) {
+func (v *PulumiInputValidator) matchType(
+	inputType resource.PropertyValue,
+	specs ...pschema.TypeSpec,
+) (possibleTypes, bool) {
 	possibleTypes := possibleTypes{}
 
 	if len(specs) == 0 {
