@@ -137,7 +137,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	typeSpec pschema.TypeSpec,
 	pathBuilder pathBuilder,
 	requiredProps []string,
-) *[]TypeFailure {
+) []TypeFailure {
 	// for now don't validate discriminators
 	if typeSpec.Discriminator != nil {
 		return nil
@@ -151,7 +151,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	}
 
 	// handle non-required properties that are null
-	if propertyValue.TypeString() == "null" {
+	if propertyValue.IsNull() {
 		if slices.Contains(requiredProps, propertyKey) {
 			return &[]TypeFailure{
 				{
