@@ -21,6 +21,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -760,33 +761,31 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	_, validateShouldError := os.LookupEnv("PULUMI_ERROR_TYPE_CHECKER")
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
-		var schema pschema.PackageSpec
-		if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
-			return nil, err
-		}
-		iv := NewInputValidator(urn, schema)
-		typeFailures := iv.ValidateInputs(news)
-		if typeFailures != nil {
-			if err := logWarning(ctx, p.host, urn,
-				"Type checking failed. If any of these are incorrect, please let us know by creating an"+
-					"issue at https://github.com/pului/pulumi-terraform-bridge/issues.",
-			); err != nil {
-				return nil, err
+		schema := sync.OnceValue(func() *pschema.PackageSpec {
+			var schema pschema.PackageSpec
+			if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
+				return nil
 			}
-			for _, e := range *typeFailures {
-				if validateShouldError {
-					pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
-					cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
-					failures = append(failures, &pulumirpc.CheckFailure{
-						Reason:   cf.Reason,
-						Property: string(cf.Property),
-					})
-				} else {
-					warning := fmt.Sprintf("%v verification warning: %s: Examine values at %s", urn, e.Reason, e.ResourcePath)
-					// TODO: This is needed for tests, since tests don't have a host defined.
-					// We should clean this up once we fix that.
-					if err := logWarning(ctx, p.host, urn, warning); err != nil {
-						return nil, err
+			return &schema
+		})()
+		if schema != nil {
+			iv := NewInputValidator(urn, *schema)
+			typeFailures := iv.ValidateInputs(news)
+			logger := GetLogger(ctx)
+			if typeFailures != nil {
+				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
+					"issue at https://github.com/pului/pulumi-terraform-bridge/issues.",
+				)
+				for _, e := range *typeFailures {
+					if validateShouldError {
+						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+						cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+						failures = append(failures, &pulumirpc.CheckFailure{
+							Reason:   cf.Reason,
+							Property: string(cf.Property),
+						})
+					} else {
+						logger.Warn(fmt.Sprintf("%v verification warning: %s: Examine values at %s", urn, e.Reason, e.ResourcePath))
 					}
 				}
 			}

@@ -1193,7 +1193,7 @@ func TestValidateInputType_objects(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateInputType(tc.name, tc.input, pathBuilder)
+			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}
@@ -1790,7 +1790,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateInputType(tc.name, tc.input, pathBuilder)
+			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}
@@ -2106,7 +2106,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateInputType(tc.name, tc.input, pathBuilder)
+			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}

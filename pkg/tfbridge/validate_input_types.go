@@ -76,7 +76,6 @@ func (v *PulumiInputValidator) getArrayTypeSpec(
 	propertyValue resource.PropertyValue,
 ) (
 	typeSpec *pschema.TypeSpec,
-	requiredProps []string,
 ) {
 	if spec.Items != nil {
 		typeSpec = spec.Items
@@ -85,7 +84,7 @@ func (v *PulumiInputValidator) getArrayTypeSpec(
 		typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
 	}
 
-	return typeSpec, requiredProps
+	return typeSpec
 }
 
 // getObjectTypeSpec gets a type spec for an object type. Objects can have their
@@ -153,7 +152,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	// handle non-required properties that are null
 	if propertyValue.IsNull() {
 		if slices.Contains(requiredProps, propertyKey) {
-			return &[]TypeFailure{
+			return []TypeFailure{
 				{
 					ResourcePath: pathBuilder.toPath(),
 					Reason:       fmt.Sprintf("property %s is required", propertyKey),
@@ -165,19 +164,10 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	failures := []TypeFailure{}
 	pathBuilder.add(propertyKey)
 
-	propertyValueType := propertyValue.TypeString()
-	if propertyValue.IsOutput() || propertyValue.IsComputed() || propertyValue.IsSecret() {
-		value := propertyValue.TypeString()
-		// regex should match `secret<string>` or `output<string>`
-		r := regexp.MustCompile(`(?:secret<|output<)+(\w+)>+`)
-		matches := r.FindAllStringSubmatch(value, -1)
-		propertyValueType = matches[0][1]
-	}
-
 	// perform some initial easy type matching. fail fast.
-	possible, ok := v.matchType(propertyValueType, typeSpec)
+	possible, ok := v.matchType(propertyValue, typeSpec)
 	if !ok {
-		return &[]TypeFailure{
+		return []TypeFailure{
 			{
 				ResourcePath: pathBuilder.toPath(),
 				Reason: fmt.Sprintf(
@@ -189,20 +179,20 @@ func (v *PulumiInputValidator) validateTypeSpec(
 		}
 	}
 
-	switch propertyValueType {
 	// array type
-	case "[]":
-		arrayTypeSpec, requiredProps := v.getArrayTypeSpec(&typeSpec, propertyValue)
+	if propertyValue.IsArray() {
+		arrayTypeSpec := v.getArrayTypeSpec(&typeSpec, propertyValue)
 		for idx, arrayValue := range propertyValue.ArrayValue() {
 			pb := pathBuilder.addListIndex(idx)
 			if arrayTypeSpec != nil {
 				failure := v.validateTypeSpec(propertyKey, arrayValue, *arrayTypeSpec, pb, requiredProps)
 				if failure != nil {
-					failures = append(failures, *failure...)
+					failures = append(failures, failure...)
 				}
 			}
 		}
-	case "object":
+	}
+	if propertyValue.IsObject() {
 		complexSpec, objectTypeSpec, requiredObjectProps := v.getObjectTypeSpec(&typeSpec, propertyValue)
 		propObjectValue := propertyValue.ObjectValue()
 		stableKeys := propObjectValue.StableKeys()
@@ -217,7 +207,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 						propertyKey, strings.Join(requiredObjectProps, ", "),
 					),
 				})
-				return &failures
+				return failures
 			}
 			for _, requiredProp := range requiredObjectProps {
 				if !slices.Contains(stableKeys, resource.PropertyKey(requiredProp)) {
@@ -231,7 +221,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 				}
 			}
 			if len(failures) > 0 {
-				return &failures
+				return failures
 			}
 		}
 
@@ -259,20 +249,19 @@ func (v *PulumiInputValidator) validateTypeSpec(
 					pathBuilder,
 					requiredObjectProps,
 				); failure != nil {
-					failures = append(failures, *failure...)
+					failures = append(failures, failure...)
 				}
 			}
 		}
+	}
 	// The number and string cases are for enums. The normal cases are handled
 	// in the matchType function right now we are not validating enums. Enums
 	// are more of a helper, but are not exhaustive in all cases i.e. ec2
 	// instance types
-	case "string":
-	case "number":
-	}
+	// if propertyValue.IsNumber() || propertyValue.IsString() {}
 
 	if len(failures) > 0 {
-		return &failures
+		return failures
 	}
 
 	return nil
@@ -295,7 +284,7 @@ func (v *PulumiInputValidator) getType(typeRef string) *pschema.ComplexTypeSpec 
 func (v *PulumiInputValidator) ValidateInputs(inputs resource.PropertyMap) *[]TypeFailure {
 	failures := []TypeFailure{}
 	for key, value := range inputs {
-		if failure := v.validateInputType(string(key), value, pathBuilder{paths: []string{}}); failure != nil {
+		if failure := v.validateResourceInputType(string(key), value, pathBuilder{paths: []string{}}); failure != nil {
 			failures = append(failures, *failure...)
 		}
 	}
@@ -307,7 +296,9 @@ func (v *PulumiInputValidator) ValidateInputs(inputs resource.PropertyMap) *[]Ty
 	return nil
 }
 
-func (v *PulumiInputValidator) validateInputType(
+// validateResourceInputType will validate a single input against the pulumi schema. It will
+// return a list of type failures if any are found. This function only operates on Resources
+func (v *PulumiInputValidator) validateResourceInputType(
 	inputName string,
 	inputValue resource.PropertyValue,
 	pathBuilder pathBuilder,
@@ -323,7 +314,7 @@ func (v *PulumiInputValidator) validateInputType(
 				pathBuilder,
 				resource.RequiredInputs,
 			); failure != nil {
-				failures = append(failures, *failure...)
+				failures = append(failures, failure...)
 			}
 		} else {
 			return &[]TypeFailure{
@@ -368,46 +359,49 @@ func (v *PulumiInputValidator) findOneOf(
 	allSpecs := []string{}
 	for _, spec := range specs {
 		allSpecs = append(allSpecs, spec.Type)
-		switch inputValue.TypeString() {
-		case "[]":
-			if spec.Type == "array" {
-				if spec.Items != nil {
-					return spec.Items, []string{}, true
-				} else if len(spec.OneOf) > 0 {
-					return v.findOneOf(inputValue, spec.OneOf)
-				}
-				return &spec, []string{}, true
+		if inputValue.IsArray() && spec.Type == "array" {
+			if spec.Items != nil {
+				return spec.Items, []string{}, true
+			} else if len(spec.OneOf) > 0 {
+				return v.findOneOf(inputValue, spec.OneOf)
 			}
-		case "object":
-			if spec.Type == "object" {
-				return &spec, []string{}, true
-			}
-		default:
-			if spec.Type == inputValue.TypeString() {
-				return &spec, []string{}, true
-			}
-
+			return &spec, []string{}, true
+		}
+		if inputValue.IsObject() && spec.Type == "object" {
+			return &spec, []string{}, true
+		}
+		if spec.Type == inputValue.TypeString() {
+			return &spec, []string{}, true
 		}
 	}
 	return nil, allSpecs, false
 }
 
 // The input type (i.e. PropertyValue.TypeString() do not match 100% to the pschema.TypeSpec.Type)
-func typeEqual(schemaType, inputType string) bool {
-	if schemaType == inputType {
+func typeEqual(schemaType string, inputType resource.PropertyValue) bool {
+	propertyValueType := inputType.TypeString()
+	if inputType.IsOutput() || inputType.IsSecret() {
+		value := inputType.TypeString()
+		// regex should match `secret<string>` or `output<string>`
+		r := regexp.MustCompile(`(?:secret<|output<)+(\w+)>+`)
+		matches := r.FindAllStringSubmatch(value, -1)
+		propertyValueType = matches[0][1]
+	}
+
+	if schemaType == propertyValueType {
 		return true
 	}
-	if schemaType == "array" && inputType == "[]" {
+	if schemaType == "array" && inputType.IsArray() {
 		return true
 	}
 
 	// When we convert types to the terraform type we automatically convert numbers to strings
-	if (schemaType == "number" || schemaType == "integer" || schemaType == "string") && inputType == "number" {
+	if (schemaType == "number" || schemaType == "integer" || schemaType == "string") && inputType.IsNumber() {
 		return true
 
 	}
 	// When we convert types to the terraform type we automatically convert bools to strings
-	if (schemaType == "boolean" || schemaType == "string") && inputType == "bool" {
+	if (schemaType == "boolean" || schemaType == "string") && inputType.IsBool() {
 		return true
 	}
 
@@ -416,7 +410,7 @@ func typeEqual(schemaType, inputType string) bool {
 
 // matchType performs some initial type matching for a given input type.
 // returns the possible types if a type is not matched
-func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.TypeSpec) (possibleTypes, bool) {
+func (v *PulumiInputValidator) matchType(inputType resource.PropertyValue, specs ...pschema.TypeSpec) (possibleTypes, bool) {
 	possibleTypes := possibleTypes{}
 
 	if len(specs) == 0 {
@@ -438,7 +432,7 @@ func (v *PulumiInputValidator) matchType(inputType string, specs ...pschema.Type
 			if refType != nil {
 				possibleTypes = possibleTypes.add(refType.Type)
 				if len(refType.Enum) > 0 {
-					if inputType == "string" {
+					if inputType.IsString() {
 						return []string{}, true
 					}
 				}
