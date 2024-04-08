@@ -83,16 +83,23 @@ type ProviderInfo struct {
 	// ExtraFunctionHclExamples is a slice of additional HCL examples attached to functions which are converted to the
 	// relevant target language(s)
 	ExtraFunctionHclExamples []HclExampler
-	IgnoreMappings           []string           // a list of TF resources and data sources to ignore in mappings errors
-	PluginDownloadURL        string             // an optional URL to download the provider binary from.
-	JavaScript               *JavaScriptInfo    // optional overlay information for augmented JavaScript code-generation.
-	Python                   *PythonInfo        // optional overlay information for augmented Python code-generation.
-	Golang                   *GolangInfo        // optional overlay information for augmented Golang code-generation.
-	CSharp                   *CSharpInfo        // optional overlay information for augmented C# code-generation.
-	Java                     *JavaInfo          // optional overlay information for augmented C# code-generation.
-	TFProviderVersion        string             // the version of the TF provider on which this was based
-	TFProviderLicense        *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
-	TFProviderModuleVersion  string             // the Go module version of the provider. Default is unversioned e.g. v1
+	// IgnoreMappings is a list of TF resources and data sources that are known to be unmapped.
+	//
+	// These resources/data sources do not generate missing mappings errors and will not be automatically
+	// mapped.
+	//
+	// If there is a mapping in Resources or DataSources, it can override IgnoreMappings. This is common
+	// when you need to ignore a datasource but not the resource with the same name, or vice versa.
+	IgnoreMappings          []string
+	PluginDownloadURL       string             // an optional URL to download the provider binary from.
+	JavaScript              *JavaScriptInfo    // optional overlay information for augmented JavaScript code-generation.
+	Python                  *PythonInfo        // optional overlay information for augmented Python code-generation.
+	Golang                  *GolangInfo        // optional overlay information for augmented Golang code-generation.
+	CSharp                  *CSharpInfo        // optional overlay information for augmented C# code-generation.
+	Java                    *JavaInfo          // optional overlay information for augmented C# code-generation.
+	TFProviderVersion       string             // the version of the TF provider on which this was based
+	TFProviderLicense       *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
+	TFProviderModuleVersion string             // the Go module version of the provider. Default is unversioned e.g. v1
 
 	// a provider-specific callback to invoke prior to TF Configure
 	// Any CheckFailureErrors returned from PreConfigureCallback are converted to
@@ -378,8 +385,13 @@ type ResourceInfo struct {
 	// resources. It is called in Create(preview=false) and Read provider methods.
 	//
 	// This option is currently only supported for Plugin Framework based resources.
-	ComputeID func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
+	//
+	// To delegate the resource ID to another string field in state, use the helper function
+	// [DelegateIDField].
+	ComputeID ComputeID
 }
+
+type ComputeID = func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
 
 type PropertyTransform = func(context.Context, resource.PropertyMap) (resource.PropertyMap, error)
 
@@ -1366,4 +1378,58 @@ type SkipExamplesArgs struct {
 	// "#/resources/aws:acm/certificate:Certificate/arn" would encode that the example pertains to the arn property
 	// of the Certificate resource in the AWS provider.
 	ExamplePath string
+}
+
+func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) ComputeID {
+	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		err := func(msg string, a ...any) error {
+			return delegateIDFieldError{
+				msg:          fmt.Sprintf(msg, a...),
+				providerName: providerName,
+				repoURL:      repoURL,
+			}
+		}
+		fieldValue, ok := state[field]
+		if !ok {
+			return "", err("Could not find required property '%s' in state", field)
+		}
+
+		contract.Assertf(
+			!fieldValue.IsComputed() && (!fieldValue.IsOutput() || fieldValue.OutputValue().Known),
+			"ComputeID is only called during when preview=false, so we should never need to "+
+				"deal with computed properties",
+		)
+
+		if fieldValue.IsSecret() || (fieldValue.IsOutput() && fieldValue.OutputValue().Secret) {
+			msg := fmt.Sprintf("Setting non-secret resource ID as '%s' (which is secret)", field)
+			GetLogger(ctx).Warn(msg)
+			if fieldValue.IsSecret() {
+				fieldValue = fieldValue.SecretValue().Element
+			} else {
+				fieldValue = fieldValue.OutputValue().Element
+			}
+		}
+
+		if !fieldValue.IsString() {
+			return "", err("Expected '%s' property to be a string, found %s",
+				field, fieldValue.TypeString())
+		}
+
+		return resource.ID(fieldValue.StringValue()), nil
+	}
+}
+
+type delegateIDFieldError struct {
+	msg                   string
+	providerName, repoURL string
+}
+
+func (err delegateIDFieldError) Error() string {
+	return fmt.Sprintf("%s. This is an error in %s resource provider, please report at %s",
+		err.msg, err.providerName, err.repoURL)
+}
+
+func (err delegateIDFieldError) Is(target error) bool {
+	target, ok := target.(delegateIDFieldError)
+	return ok && err == target
 }

@@ -16,7 +16,6 @@ package logging
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -162,21 +161,19 @@ func (l *host[L]) f(severity diag.Severity, msg string) {
 	}
 
 	// We failed to write out a clean error message, so lets write to glog.
-	var sev string
+	var logF func(args ...any)
 	switch severity {
-	case diag.Debug:
-		sev = "Debug"
 	case diag.Info:
-		sev = "Info"
+		logF = glog.Info
 	case diag.Warning:
-		sev = "Warning"
+		logF = glog.Warning
 	case diag.Error:
-		sev = "Error"
-	default:
-		sev = fmt.Sprintf("%#v", severity)
+		logF = glog.Error
+	default: // Includes Debug
+		logF = glog.V(9).Info
 	}
 
-	glog.V(9).Infof("[%s]: %q", sev, msg)
+	logF(msg)
 }
 
 func (l *host[L]) Status() L {

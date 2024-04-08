@@ -15,12 +15,16 @@
 package tfbridge
 
 import (
+	"archive/tar"
+	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
@@ -120,4 +124,56 @@ func TestFileArchives(t *testing.T) {
 	file4, err := t1.TranslateArchive(archive)
 	assert.Nil(t, err)
 	assert.NotEqual(t, file1, file4)
+}
+
+// See https://github.com/pulumi/pulumi-aws/issues/3622
+func TestHashOnlyArchiveDoesNotClobber(t *testing.T) {
+	//nolint:gosec
+	asset, err := resource.NewTextAsset(fmt.Sprintf("%d", rand.Intn(1024*1024)))
+	require.NoError(t, err)
+
+	archive, err := resource.NewAssetArchive(map[string]any{"hello.txt": asset})
+	require.NoError(t, err)
+
+	t1 := &AssetTranslation{Kind: FileArchive, Format: resource.TarArchive}
+
+	file, err := t1.TranslateArchive(archiveWithLostContents(t, archive))
+	require.NoError(t, err)
+
+	t.Logf("file: %v", file)
+
+	file2, err := t1.TranslateArchive(archive)
+	require.NoError(t, err)
+
+	t.Logf("file2: %v", file2)
+
+	list2 := listFilesInTarArchive(t, file2.(string))
+	t.Logf("files in tar: %v", list2)
+
+	require.Equal(t, []string{"hello.txt"}, list2)
+}
+
+func listFilesInTarArchive(t *testing.T, file string) []string {
+	tarFile, err := os.Open(file)
+	require.NoError(t, err)
+	defer tarFile.Close()
+	tarReader := tar.NewReader(tarFile)
+	var files []string
+	for {
+		header, err := tarReader.Next()
+		if err != nil {
+			break
+		}
+		files = append(files, header.Name)
+	}
+	return files
+}
+
+func archiveWithLostContents(t *testing.T, a *resource.Archive) *resource.Archive {
+	serialized := a.Serialize()
+	delete(serialized, "assets")
+	archive, _, err := resource.DeserializeArchive(serialized)
+	require.NoError(t, err)
+	t.Logf("with lost contents: %#v", archive)
+	return archive
 }

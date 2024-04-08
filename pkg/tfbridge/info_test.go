@@ -1,11 +1,15 @@
 package tfbridge
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -187,5 +191,97 @@ func TestMarshalElem(t *testing.T) {
 		r, ok := actual.(shim.Resource)
 		assert.True(t, ok)
 		assert.Equal(t, shim.TypeInt, r.Schema().Get("k").Type())
+	})
+}
+
+func TestDelegateIDField(t *testing.T) {
+	t.Parallel()
+
+	const (
+		providerName = "test-provider"
+		repoURL      = "https://example.git"
+	)
+
+	errMsg := func(msg string, a ...any) error {
+		return delegateIDFieldError{
+			msg:          fmt.Sprintf(msg, a...),
+			providerName: providerName,
+			repoURL:      repoURL,
+		}
+	}
+
+	tests := []struct {
+		delegate       resource.PropertyKey
+		state          resource.PropertyMap
+		expectedID     resource.ID
+		expectedError  error
+		expectedLogMsg string
+	}{
+		{
+			delegate: "key",
+			state: resource.PropertyMap{
+				"key":   resource.NewProperty("some-id"),
+				"other": resource.NewProperty(3.0),
+			},
+			expectedID: "some-id",
+		},
+		{
+			delegate: "other",
+			state: resource.PropertyMap{
+				"other": resource.NewProperty(3.0),
+			},
+			expectedError: errMsg("Expected 'other' property to be a string, found number"),
+		},
+		{
+			delegate: "key",
+			state: resource.PropertyMap{
+				"other": resource.NewProperty(3.0),
+			},
+			expectedError: errMsg("Could not find required property 'key' in state"),
+		},
+		{
+			delegate: "key",
+			state: resource.PropertyMap{
+				"key":   resource.MakeSecret(resource.NewProperty("some-id")),
+				"other": resource.NewProperty(3.0),
+			},
+			expectedID:     "some-id",
+			expectedLogMsg: "[warning] [] Setting non-secret resource ID as 'key' (which is secret)\n",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			var logs bytes.Buffer
+
+			ctx = logging.InitLogging(ctx, logging.LogOptions{
+				LogSink: &testLogSink{&logs},
+			})
+
+			computeID := DelegateIDField(tt.delegate, providerName, repoURL)
+			id, err := computeID(ctx, tt.state)
+
+			if tt.expectedError == nil {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedID, id)
+			} else {
+				assert.ErrorIs(t, err, tt.expectedError)
+			}
+
+			assert.Equal(t, tt.expectedLogMsg, logs.String())
+		})
+	}
+
+	t.Run("panic-on-computed", func(t *testing.T) {
+		assert.Panics(t, func() {
+			computeID := DelegateIDField("computed", providerName, repoURL)
+			_, _ = computeID(context.Background(), resource.PropertyMap{
+				"computed": resource.MakeComputed(resource.NewProperty("computed")),
+			})
+
+		})
 	})
 }

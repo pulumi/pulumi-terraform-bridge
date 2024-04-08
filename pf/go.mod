@@ -9,7 +9,7 @@ replace (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/terraform-plugin-framework v1.6.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.12.0
@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/pulumi/providertest v0.0.11
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.79.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.80.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.61.1

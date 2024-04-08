@@ -173,6 +173,8 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 	return result
 }
 
+const cliConverterErrUnexpectedHCLSnippet = "unexpected HCL snippet in Convert"
+
 // During FinishConvertingExamples pass, generator calls back into this function to continue
 // PCL->lang translation from a pre-computed HCL->PCL translation table cc.pcls.
 func (cc *cliConverter) Convert(
@@ -185,7 +187,7 @@ func (cc *cliConverter) Convert(
 	// Something skips adding failing conversion diagnostics to cc.pcls when pre-converting. The
 	// end-user experience is not affected much, the above example does not regress.
 	if !ok {
-		return "", hcl.Diagnostics{}, fmt.Errorf("unexpected HCL snippet in Convert")
+		return "", hcl.Diagnostics{}, fmt.Errorf("%s %q", cliConverterErrUnexpectedHCLSnippet, hclCode)
 	}
 	if example.Diagnostics.HasErrors() {
 		return "", example.Diagnostics, nil
@@ -485,6 +487,7 @@ func (cc *cliConverter) postProcessDiagnostics(diag hcl.Diagnostics) hcl.Diagnos
 		copy := *d
 		cc.removeFileName(&copy)
 		cc.ensureNotYetImplementedIsAnError(&copy)
+		cc.ensureNotSupportedLifecycleHooksIsError(&copy)
 		out = append(out, &copy)
 	}
 	return out
@@ -503,11 +506,18 @@ func (*cliConverter) removeFileName(d *hcl.Diagnostic) {
 }
 
 var (
-	notYetImplementedPattern = regexp.MustCompile("(?i)not yet implemented")
+	notYetImplementedPattern         = regexp.MustCompile("(?i)not yet implemented")
+	notSupportedLifecycleHookPattern = regexp.MustCompile("(?i)lifecycle hook is not supported")
 )
 
 func (*cliConverter) ensureNotYetImplementedIsAnError(d *hcl.Diagnostic) {
 	if notYetImplementedPattern.MatchString(d.Error()) {
+		d.Severity = hcl.DiagError
+	}
+}
+
+func (*cliConverter) ensureNotSupportedLifecycleHooksIsError(d *hcl.Diagnostic) {
+	if notSupportedLifecycleHookPattern.MatchString(d.Error()) {
 		d.Severity = hcl.DiagError
 	}
 }

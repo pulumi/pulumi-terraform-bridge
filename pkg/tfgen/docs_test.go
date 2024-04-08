@@ -672,6 +672,60 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 	assert.Len(t, ret.Attributes, 4)
 }
 
+func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region` - The region of the Droplet",
+		"* `region.zone` - The zone of the Droplet region",
+	}, &ret)
+	assert.Len(t, ret.Attributes, 5)
+}
+
+func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `id` - The ID of the Droplet",
+		"* `urn` - The uniform resource name of the Droplet",
+		"* `name`- The name of the Droplet",
+		"* `region.zone` - The zone of the Droplet region",
+		"* `region` - The region of the Droplet",
+	}, &ret)
+	assert.Len(t, ret.Attributes, 5)
+}
+
+func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
+	ret := entityDocs{
+		Arguments:  make(map[docsPath]*argumentDocs),
+		Attributes: make(map[string]string),
+	}
+	expected := entityDocs{
+		Attributes: map[string]string{
+			"region":      "The region of the Droplet",
+			"region.zone": "The zone of the Droplet region",
+		},
+	}
+	parseAttributesReferenceSection([]string{
+		"The following attributes are exported:",
+		"",
+		"* `region` - The region of the Droplet",
+		"* `region.0.zone` - The zone of the Droplet region",
+	}, &ret)
+	assert.Equal(t, expected.Attributes, ret.Attributes)
+}
+
 func TestGetNestedBlockName(t *testing.T) {
 	var tests = []struct {
 		input, expected string
@@ -1552,6 +1606,61 @@ func TestFixupImports(t *testing.T) {
 			actual, err := myRule.Edit("*", []byte(tt.text))
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, string(actual))
+		})
+	}
+}
+
+func TestGuessIsHCL(t *testing.T) {
+	type testCase struct {
+		code string
+		hcl  bool
+	}
+	testCases := []testCase{
+		{
+			code: `
+data "aws_ami_ids" "ubuntu" {
+  owners = ["099720109477"]
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/ubuntu-*-*-amd64-server-*"]
+  }
+}
+			`,
+			hcl: true,
+		},
+		{
+			code: `
+resource "aws_ami" "example" {
+  name                = "terraform-example"
+  virtualization_type = "hvm"
+  root_device_name    = "/dev/xvda"
+  imds_support        = "v2.0" # Enforce usage of IMDSv2.
+  ebs_block_device {
+    device_name = "/dev/xvda"
+    snapshot_id = "snap-xxxxxxxx"
+    volume_size = 8
+  }
+}
+`,
+			hcl: true,
+		},
+		{
+			code: `
+    Valid names:
+      * amazon-web-services
+      * amd
+      * nvidia
+      * xilinx
+`,
+			hcl: false,
+		},
+	}
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			actual := guessIsHCL(tc.code)
+			assert.Equal(t, tc.hcl, actual)
 		})
 	}
 }

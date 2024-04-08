@@ -69,6 +69,7 @@ func newExamplesCache(info *tfbridge.ProviderInfo, cacheDir string) *examplesCac
 	if !enabled {
 		return &examplesCache{}
 	}
+	contract.Assertf(dir != "", `Invalid %s=""`, pulumiConvertExamplesCacheDirEnvVar)
 	ec := &examplesCache{
 		enabled:      true,
 		dir:          dir,

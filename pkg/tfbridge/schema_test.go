@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1462,7 +1463,7 @@ func TestCustomTransforms(t *testing.T) {
 }
 
 func TestImporterOnRead(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1518,7 +1519,7 @@ func TestImporterOnRead(t *testing.T) {
 }
 
 func TestImporterWithNewID(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1555,7 +1556,7 @@ func TestImporterWithNewID(t *testing.T) {
 }
 
 func TestImporterWithMultipleResourceTypes(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1597,7 +1598,7 @@ func TestImporterWithMultipleResourceTypes(t *testing.T) {
 }
 
 func TestImporterWithMultipleResources(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1639,7 +1640,7 @@ func TestImporterWithMultipleResources(t *testing.T) {
 }
 
 func TestImporterWithMultipleNewIDs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
 				Type: schemav1.TypeString,
@@ -1680,7 +1681,7 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 }
 
 func TestImporterWithNoResource(t *testing.T) {
-	tfProvider := makeTestTFProvider(map[string]*schemav1.Schema{},
+	tfProvider := makeTestTFProviderV1(map[string]*schemav1.Schema{},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
 			return []*schemav1.ResourceData{}, nil
@@ -1711,7 +1712,7 @@ func TestImporterWithNoResource(t *testing.T) {
 	}
 }
 
-func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1.StateFunc) *schemav1.Provider {
+func makeTestTFProviderV1(schemaMap map[string]*schemav1.Schema, importer schemav1.StateFunc) *schemav1.Provider {
 	return &schemav1.Provider{
 		ResourcesMap: map[string]*schemav1.Resource{
 			"importable_resource": {
@@ -1726,6 +1727,31 @@ func makeTestTFProvider(schemaMap map[string]*schemav1.Schema, importer schemav1
 					return nil
 				},
 				Delete: func(d *schemav1.ResourceData, meta interface{}) error {
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func makeTestTFProviderV2(
+	schemaMap map[string]*schemav2.Schema,
+	importer schemav2.StateContextFunc,
+) *schemav2.Provider {
+	return &schemav2.Provider{
+		ResourcesMap: map[string]*schemav2.Resource{
+			"importable_resource": {
+				Schema: schemaMap,
+				Importer: &schemav2.ResourceImporter{
+					StateContext: importer,
+				},
+				ReadContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
+					return nil
+				},
+				CreateContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
+					return nil
+				},
+				DeleteContext: func(context.Context, *schemav2.ResourceData, interface{}) diag.Diagnostics {
 					return nil
 				},
 			},
@@ -1773,7 +1799,7 @@ func TestStringOutputsWithSchema(t *testing.T) {
 }
 
 func TestExtractInputsFromOutputs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 			"input_b": {Type: schemav1.TypeString, Optional: true},
@@ -2143,7 +2169,7 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_x": {Type: schemav1.TypeString, Required: true},
 			"input_y": {Type: schemav1.TypeString, Required: true},
@@ -2204,7 +2230,7 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 }
 
 func TestAssetRoundtrip(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 		},
@@ -2301,7 +2327,7 @@ func TestAssetRoundtrip(t *testing.T) {
 }
 
 func TestDeleteBeforeReplaceAutoname(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
 			"input_b": {Type: schemav1.TypeString, Required: true, ForceNew: true},
@@ -2452,7 +2478,7 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 }
 
 func TestExtractDefaultSecretInputs(t *testing.T) {
-	tfProvider := makeTestTFProvider(
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Sensitive: true, Required: true},
 			"input_b": {Type: schemav1.TypeString, Sensitive: true, Optional: true},
@@ -2520,8 +2546,9 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 }
 
 func TestExtractDefaultIntegerInputs(t *testing.T) {
-	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for default values.
-	tfProvider := makeTestTFProvider(
+	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for
+	// default values.
+	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeInt, Optional: true},
 			"input_b": {Type: schemav1.TypeFloat, Optional: true},
@@ -2586,6 +2613,205 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 		defaultsKey: []interface{}{},
 	})
 	assert.Equal(t, expected, ins)
+}
+
+func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
+
+	provider := func(info *ResourceInfo) *Provider {
+		if info == nil {
+			info = &ResourceInfo{}
+		}
+		if info.Tok == "" {
+			info.Tok = tokens.NewTypeToken("module", "importableResource")
+		}
+
+		listOfObj := func(maxItems int) *schemav2.Schema {
+			return &schemav2.Schema{
+				Type: schemav2.TypeList, Optional: true,
+				MaxItems: maxItems,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"field1": {
+							Optional: true,
+							Type:     schemav2.TypeBool,
+						},
+						"list_scalar": {
+							Type: schemav2.TypeList, Optional: true,
+							MaxItems: 1,
+							Elem: &schemav2.Schema{
+								Type:     schemav2.TypeInt,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}
+		}
+
+		tfProvider := makeTestTFProviderV2(
+			map[string]*schemav2.Schema{
+				"list_object":          listOfObj(0),
+				"list_object_maxitems": listOfObj(1),
+			},
+			func(
+				_ context.Context, d *schemav2.ResourceData, meta interface{},
+			) ([]*schemav2.ResourceData, error) {
+				return []*schemav2.ResourceData{d}, nil
+			})
+
+		set := func(d *schemav2.ResourceData, key string, value interface{}) {
+			contract.AssertNoErrorf(d.Set(key, value),
+				"failed to set %s", key)
+		}
+
+		tfres := tfProvider.ResourcesMap["importable_resource"]
+		tfres.ReadContext = func(
+			_ context.Context, d *schemav2.ResourceData, meta interface{},
+		) diag.Diagnostics {
+			_, ok := d.GetOk(defaultsKey)
+			assert.False(t, ok)
+
+			set(d, "list_object", []any{
+				map[string]any{
+					"field1":      false,
+					"list_scalar": []any{1}},
+			})
+			set(d, "list_object_maxitems", []any{
+				map[string]any{
+					"field1":      true,
+					"list_scalar": []any{2}},
+			})
+			return nil
+		}
+
+		return &Provider{
+			tf: shimv2.NewProvider(tfProvider),
+			resources: map[tokens.Type]Resource{
+				"importableResource": {
+					TF:     shimv2.NewResource(tfProvider.ResourcesMap["importable_resource"]),
+					TFName: "importable_resource",
+					Schema: info,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+
+		info map[string]*SchemaInfo
+
+		expectedOutputs resource.PropertyMap
+		expectedInputs  resource.PropertyMap
+	}{
+		{
+			name: "no overrides",
+			expectedOutputs: resource.PropertyMap{
+				"id": resource.NewProperty("MyID"),
+				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
+					"field1":     resource.NewProperty(true),
+					"listScalar": resource.NewProperty(2.0),
+				}),
+				"listObjects": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"field1":     resource.NewProperty(false),
+						"listScalar": resource.NewProperty(1.0),
+					}),
+				}),
+			},
+			expectedInputs: resource.PropertyMap{
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
+					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					"field1":     resource.NewProperty(true),
+					"listScalar": resource.NewProperty(2.0),
+				}),
+				"listObjects": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+						"field1":     resource.NewProperty(false),
+						"listScalar": resource.NewProperty(1.0),
+					}),
+				}),
+			},
+		},
+		{
+			name: "override `MaxItems: 1` on lists",
+			info: map[string]*SchemaInfo{
+				"list_object": {
+					MaxItemsOne: True(),
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"list_scalar": {MaxItemsOne: False()},
+						},
+					},
+				},
+				"list_object_maxitems": {
+					MaxItemsOne: False(),
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"list_scalar": {Name: "overwritten"},
+						},
+					},
+				},
+			},
+			expectedOutputs: resource.PropertyMap{
+				"id": resource.NewProperty("MyID"),
+				"listObject": resource.NewProperty(resource.PropertyMap{
+					"field1": resource.NewProperty(false),
+					"listScalars": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(1.0),
+					}),
+				}),
+				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"field1":      resource.NewProperty(true),
+						"overwritten": resource.NewProperty(2.0),
+					}),
+				}),
+			},
+			expectedInputs: resource.PropertyMap{
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				"listObject": resource.NewProperty(resource.PropertyMap{
+					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					"listScalars": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(1.0),
+					}),
+				}),
+				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"__defaults":  resource.NewProperty([]resource.PropertyValue{}),
+						"field1":      resource.NewProperty(true),
+						"overwritten": resource.NewProperty(2.0),
+					}),
+				}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			p := provider(&ResourceInfo{Fields: tt.info})
+			urn := resource.NewURN("s", "pr", "pa", "importableResource", "n")
+			id := resource.ID("MyID")
+
+			resp, err := p.Read(context.Background(), &pulumirpc.ReadRequest{
+				Id:  string(id),
+				Urn: string(urn),
+			})
+			assert.NoError(t, err)
+
+			outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedOutputs, outs, "outputs")
+
+			ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedInputs, ins, "inputs")
+		})
+	}
 }
 
 func TestOutputNumberTypes(t *testing.T) {
