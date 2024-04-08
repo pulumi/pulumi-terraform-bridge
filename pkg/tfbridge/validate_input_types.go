@@ -350,7 +350,33 @@ func (p possibleTypes) toString() string {
 }
 
 // findOneOf attempts to find the correct type spec for a given input input value
-// from a list of possible types
+// from a list of possible types.
+// For example, given the following schema:
+//
+//	"prop": {
+//		TypeSpec: pschema.TypeSpec{
+//			OneOf: []pschema.TypeSpec{
+//				{
+//					Type: "array",
+//					Items: &pschema.TypeSpec{
+//						Type: "object",
+//						// using ref to test specific object keys
+//						Ref: "#/types/pkg:index/type:ObjectStringType",
+//					},
+//				},
+//				{
+//					Type: "string",
+//				},
+//			},
+//		},
+//	}
+//
+// and the following input value:
+//
+//	"prop": []map[string]interface{}{{"key": "value"}}
+//
+// In this case the actual type that we want to compare "prop" to is the `ObjectStringType`
+// so this function will return the `Items` `TypeSpec` for comparison.
 func (v *PulumiInputValidator) findOneOf(
 	inputValue resource.PropertyValue,
 	specs []pschema.TypeSpec,
