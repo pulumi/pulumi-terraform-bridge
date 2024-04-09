@@ -263,7 +263,8 @@ func TestValidateInputType_objects(t *testing.T) {
 				"prop": []interface{}{"foo"},
 			})),
 			failures: []TypeFailure{
-				{Reason: "expected string OR object type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
+				{Reason: "expected string type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
+				{Reason: "expected object type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectMultiType": {
@@ -333,7 +334,11 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected string OR number type, got [] type",
+					Reason:       "expected string type, got [] type",
+					ResourcePath: "object_multi_type_failure.prop",
+				},
+				{
+					Reason:       "expected number type, got [] type",
 					ResourcePath: "object_multi_type_failure.prop",
 				},
 			},
@@ -1046,7 +1051,15 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected object OR string type, got [] type",
+					Reason:       "expected array type, got object type",
+					ResourcePath: "object_multi_type_nested_failure2.prop",
+				},
+				{
+					Reason:       "expected string type, got [] type",
+					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
+				},
+				{
+					Reason:       "expected object type, got [] type",
 					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
 				},
 			},
@@ -1115,6 +1128,10 @@ func TestValidateInputType_objects(t *testing.T) {
 				{
 					Reason:       "expected string type, got [] type",
 					ResourcePath: "object_multi_type_nested_failure.prop.0.objectStringProp",
+				},
+				{
+					Reason:       "expected object type, got [] type",
+					ResourcePath: "object_multi_type_nested_failure.prop",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{

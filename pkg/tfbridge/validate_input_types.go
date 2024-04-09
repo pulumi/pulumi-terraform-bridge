@@ -66,27 +66,6 @@ func NewInputValidator(urn resource.URN, schema pschema.PackageSpec) *PulumiInpu
 	}
 }
 
-// getArrayTypeSpec gets a type spec for an array type. Arrays can have their
-// type defined in a couple different ways. This will check the different ways
-// and return the correct type spec If the array supports multiple types (i.e.
-// `oneOf`) then it will find the correct one and return it. This
-// can be used to provide a more helpful error message
-func (v *PulumiInputValidator) getArrayTypeSpec(
-	spec *pschema.TypeSpec,
-	propertyValue resource.PropertyValue,
-) (
-	typeSpec *pschema.TypeSpec,
-) {
-	if spec.Items != nil {
-		typeSpec = spec.Items
-	}
-	if len(spec.OneOf) > 0 {
-		typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
-	}
-
-	return typeSpec
-}
-
 // getObjectTypeSpec gets a type spec for an object type. Objects can have their
 // type defined in a couple different ways. This will check the different ways
 // and return the correct type spec.
@@ -106,8 +85,6 @@ func (v *PulumiInputValidator) getObjectTypeSpec(
 			if complexSpec != nil {
 				requiredProps = complexSpec.Required
 			}
-		} else if len(spec.AdditionalProperties.OneOf) > 0 {
-			typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
 		} else {
 			typeSpec = spec.AdditionalProperties
 		}
@@ -115,13 +92,6 @@ func (v *PulumiInputValidator) getObjectTypeSpec(
 		complexSpec = v.getType(spec.Ref)
 		if complexSpec != nil {
 			requiredProps = complexSpec.Required
-		}
-	} else if len(spec.OneOf) > 0 {
-		typeSpec, _, _ = v.findOneOf(propertyValue, spec.OneOf)
-		// If the OneOf that we found is an object with a `Type` then return that sub type
-		// Otherwise we should just return the OneOf type that we found
-		if typeSpec.AdditionalProperties != nil && typeSpec.AdditionalProperties.Type != "" {
-			typeSpec = typeSpec.AdditionalProperties
 		}
 	}
 	return complexSpec, typeSpec, requiredProps
@@ -185,11 +155,15 @@ func (v *PulumiInputValidator) validateTypeSpec(
 
 	// array type
 	if propertyValue.IsArray() {
-		arrayTypeSpec := v.getArrayTypeSpec(&typeSpec, propertyValue)
 		for idx, arrayValue := range propertyValue.ArrayValue() {
 			pb := pathBuilder.addListIndex(idx)
-			if arrayTypeSpec != nil {
-				failure := v.validateTypeSpec(propertyKey, arrayValue, *arrayTypeSpec, pb, requiredProps)
+			if typeSpec.Items != nil {
+				failure := v.validateTypeSpec(propertyKey, arrayValue, *typeSpec.Items, pb, requiredProps)
+				if failure != nil {
+					failures = append(failures, failure...)
+				}
+			} else if len(typeSpec.OneOf) > 0 {
+				failure := v.validateOneOf(propertyKey, arrayValue, typeSpec.OneOf, pb)
 				if failure != nil {
 					failures = append(failures, failure...)
 				}
@@ -246,6 +220,12 @@ func (v *PulumiInputValidator) validateTypeSpec(
 				objectTypeSpec = &complexProps.TypeSpec
 			}
 			if objectTypeSpec != nil {
+				if len(objectTypeSpec.OneOf) > 0 {
+					if failure := v.validateOneOf(string(objectKey), objectValue, objectTypeSpec.OneOf, pathBuilder); failure != nil {
+						failures = append(failures, failure...)
+					}
+					continue
+				}
 				if failure := v.validateTypeSpec(
 					string(objectKey),
 					objectValue,
@@ -381,30 +361,22 @@ func (p possibleTypes) toString() string {
 //
 // In this case the actual type that we want to compare "prop" to is the `ObjectStringType`
 // so this function will return the `Items` `TypeSpec` for comparison.
-func (v *PulumiInputValidator) findOneOf(
+func (v *PulumiInputValidator) validateOneOf(
+	propertyKey string,
 	inputValue resource.PropertyValue,
 	specs []pschema.TypeSpec,
-) (*pschema.TypeSpec, []string, bool) {
+	pathBuilder pathBuilder,
+) []TypeFailure {
 
-	allSpecs := []string{}
+	failures := []TypeFailure{}
 	for _, spec := range specs {
-		allSpecs = append(allSpecs, spec.Type)
-		if inputValue.IsArray() && spec.Type == "array" {
-			if spec.Items != nil {
-				return spec.Items, []string{}, true
-			} else if len(spec.OneOf) > 0 {
-				return v.findOneOf(inputValue, spec.OneOf)
-			}
-			return &spec, []string{}, true
+		failure := v.validateTypeSpec(propertyKey, inputValue, spec, pathBuilder, []string{})
+		if failure == nil {
+			return nil
 		}
-		if inputValue.IsObject() && spec.Type == "object" {
-			return &spec, []string{}, true
-		}
-		if spec.Type == inputValue.TypeString() {
-			return &spec, []string{}, true
-		}
+		failures = append(failures, failure...)
 	}
-	return nil, allSpecs, false
+	return failures
 }
 
 // The input type (i.e. PropertyValue.TypeString() do not match 100% to the pschema.TypeSpec.Type)
