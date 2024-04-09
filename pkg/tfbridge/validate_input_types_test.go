@@ -513,7 +513,8 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "object_double_nested_object_type_required_failure.prop object is missing required properties: objectStringProp",
+					Reason: "object_double_nested_object_type_required_failure.prop object" +
+						" is missing required properties: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure.prop",
 				},
 			},
@@ -566,15 +567,18 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "object_double_nested_object_type_required_failure_2.prop[1] object is missing required property: objectStringProp",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[1] object" +
+						" is missing required property: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[1]",
 				},
 				{
-					Reason:       "object_double_nested_object_type_required_failure_2.prop[2] object is missing required property: objectStringProp",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[2] object" +
+						" is missing required property: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 				{
-					Reason:       "object_double_nested_object_type_required_failure_2.prop[2] object is missing required property: foo",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[2] object " +
+						"is missing required property: foo",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 			},
