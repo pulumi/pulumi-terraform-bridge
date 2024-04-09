@@ -285,6 +285,13 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		panic("unknown docs kind")
 	}
 
+	// If requested, speed up debugging schema generation by targeting only one resource or datasource.
+	if t, ok := os.LookupEnv("PULUMI_CONVERT_ONLY"); ok {
+		if t != rawname {
+			docFile = nil
+		}
+	}
+
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("get docs for token %s: %w", rawname, err)
 	}
