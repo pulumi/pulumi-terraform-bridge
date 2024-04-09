@@ -17,12 +17,11 @@ func TestDiffConvergence(outerT *testing.T) {
 	tvg := &tvGen{}
 
 	rapid.Check(outerT, func(t *rapid.T) {
-
 		outerT.Logf("Iterating..")
 		tv := tvg.GenBlock(3).Draw(t, "tv")
 
-		c1 := tv.valueGen.Draw(t, "config1")
-		c2 := tv.valueGen.Draw(t, "config2")
+		c1 := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config1").Value()
+		c2 := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config2").Value()
 		ty := tv.typ
 
 		tc := diffTestCase{
