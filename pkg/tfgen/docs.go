@@ -16,7 +16,6 @@ package tfgen
 
 import (
 	"bytes"
-	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -298,7 +297,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			if docInfo == nil || !docInfo.AllowMissing {
 				g.error(msg)
-				return entityDocs{}, fmt.Errorf(msg)
+				return entityDocs{}, errors.New(msg)
 			}
 		}
 
@@ -749,15 +748,10 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		}
 
 		// Remove the "Open in Cloud Shell" button if any and check for the presence of code snippets.
-		reformattedH3Section, hasExamples, isEmpty := p.reformatSubsection(h3Section)
+		reformattedH3Section, isEmpty := p.reformatSubsection(h3Section)
 		if isEmpty {
 			// Skip empty subsections (they just add unnecessary padding and headers).
 			continue
-		}
-		if hasExamples && sectionKind != sectionExampleUsage && sectionKind != sectionImports &&
-			!p.info.ReplaceExamplesSection() {
-			p.sink.warn("Unexpected code snippets in section '%v' for %v '%v'. The HCL code will be converted if possible, "+
-				"but may not display correctly in the generated docs.", header, p.kind, p.rawname)
 		}
 
 		// Now process the content based on the H2 topic. These are mostly standard across TF's docs.
@@ -987,9 +981,12 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	defer func() {
 		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
 		if elide(p.ret.Import) {
-			message := fmt.Sprintf("parseImports %q should not render <elided> text"+
-				" in its emitted markdown.\n"+
-				"**Input**:\n%s\n\n**Rendered**:\n%s\n\n",
+			message := fmt.Sprintf(
+				`parseImports %q should not render <elided> text in its emitted markdown.
+**Input**:\n%s\n\n**Rendered**:
+%s
+
+`,
 				token, strings.Join(subsection, "\n"), p.ret.Import)
 			if p.sink != nil {
 				p.sink.warn(message)
@@ -1234,9 +1231,9 @@ func isBlank(line string) bool {
 
 // reformatSubsection strips any "Open in Cloud Shell" buttons from the subsection and detects the presence of example
 // code snippets.
-func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, bool) {
+func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool) {
 	var result []string
-	hasExamples, isEmpty := false, true
+	isEmpty := true
 
 	var inOICSButton bool // True if we are removing an "Open in Cloud Shell" button.
 	for i, line := range lines {
@@ -1248,23 +1245,20 @@ func (p *tfMarkdownParser) reformatSubsection(lines []string) ([]string, bool, b
 			if strings.Index(line, "<div") == 0 && strings.Contains(line, "oics-button") {
 				inOICSButton = true
 			} else {
-				if strings.Index(line, "```") == 0 {
-					hasExamples = true
-				} else if !isBlank(line) {
+				if !(strings.Index(line, "```") == 0) && !isBlank(line) {
 					isEmpty = false
 				}
-
 				result = append(result, line)
 			}
 		}
 	}
 
-	return result, hasExamples, isEmpty
+	return result, isEmpty
 }
 
 // convertExamples converts any code snippets in a subsection to Pulumi-compatible code. This conversion is done on a
 // per-subsection basis; subsections with failing examples will be elided upon the caller's request.
-func (g *Generator) convertExamples(docs string, path examplePath) (result string) {
+func (g *Generator) convertExamples(docs string, path examplePath) string {
 	if docs == "" {
 		return ""
 	}
@@ -1282,42 +1276,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) (result strin
 		// The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
 		return docs
-	}
-
-	// This function is very expensive for large providers. Permit experimental disk-based caching if the user
-	// specifies the PULUMI_CONVERT_EXAMPLES_CACHE_DIR environment variable, pointing to a folder for the cache.
-	{
-		dir, enableCache := os.LookupEnv("PULUMI_CONVERT_EXAMPLES_CACHE_DIR")
-		if enableCache && dir != "" {
-			path := path.String()
-			sep := string(rune(0))
-			var buf bytes.Buffer
-			fmt.Fprintf(&buf, "provider=%v%s", g.info.Name, sep)
-			fmt.Fprintf(&buf, "version=%v%s", g.info.Version, sep)
-			fmt.Fprintf(&buf, "path=%v%s", path, sep)
-			fmt.Fprintf(&buf, "docs=%v%s", docs, sep)
-
-			hash := fmt.Sprintf("%x", md5.Sum(buf.Bytes())) //nolint:gosec
-
-			filePath := filepath.Join(dir, hash)
-
-			bytes, err := os.ReadFile(filePath)
-			if err == nil {
-				// cache hit
-				return string(bytes)
-			}
-			// ignore the error, assume cache miss or file not found
-			defer func() {
-				// only write the cache for sizable results, >0.5kb
-				if len(result) > 512 {
-					// try to write to the cache
-					err := os.WriteFile(filePath, []byte(result), 0600)
-					if err != nil {
-						panic(fmt.Errorf("failed to write examples-cache: %w", err))
-					}
-				}
-			}()
-		}
 	}
 
 	if strings.Contains(docs, "```typescript") || strings.Contains(docs, "```python") ||
@@ -1437,12 +1395,12 @@ func (g *Generator) convertExamplesInner(
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
-	fprintf := func(w io.Writer, f string, args ...interface{}) {
-		_, err := fmt.Fprintf(w, f, args...)
-		contract.IgnoreError(err)
+	fprintf := func(f string, args ...interface{}) {
+		_, err := fmt.Fprintf(output, f, args...)
+		contract.AssertNoErrorf(err, "Cannot fail to write out output buffer")
 	}
 	codeBlocks := findFencesAndHeaders(docs)
-	codeFence := "```"
+	const codeFence = "```"
 
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
@@ -1459,7 +1417,7 @@ func (g *Generator) convertExamplesInner(
 			if hasHeader {
 				end = tfBlock.headerStart
 			}
-			fprintf(output, docs[textStart:end])
+			fprintf("%s", docs[textStart:end])
 
 		} else {
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
@@ -1476,12 +1434,15 @@ func (g *Generator) convertExamplesInner(
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
 		if nextNewLine == -1 {
 			// write the line as-is; this is an in-line fence
-			fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
 		} else {
 			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
-			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or unmarked.
-			if fenceLanguage == "```terraform\n" ||
-				fenceLanguage == "```hcl\n" || fenceLanguage == "```\n" {
+			hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
+
+			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
+			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
+			if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
+				(fenceLanguage == "```\n" && guessIsHCL(hcl)) {
 
 				// generate the code block and append
 				if g.language.shouldConvertExamples() {
@@ -1504,19 +1465,18 @@ func (g *Generator) convertExamplesInner(
 					} else {
 						// append any headers and following text first
 						if hasHeader {
-							fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+							fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 						}
-						fprintf(output, startPulumiCodeChooser)
-						fprintf(output, "\n%s\n", convertedBlock)
-						fprintf(output, endPulumiCodeChooser)
+						fprintf("%s\n%s\n%s",
+							startPulumiCodeChooser, convertedBlock, endPulumiCodeChooser)
 					}
 				}
 			} else {
 				// Take already-valid code blocks as-is.
 				if hasHeader {
-					fprintf(output, docs[tfBlock.headerStart:tfBlock.start])
+					fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 				}
-				fprintf(output, docs[tfBlock.start:tfBlock.end]+"```")
+				fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 			}
 		}
 		// The non-code text starts up again after the last closing fences
@@ -1524,7 +1484,7 @@ func (g *Generator) convertExamplesInner(
 	}
 	// Append any remainder of the docs string to the output
 	if !stripSection {
-		fprintf(output, docs[textStart:])
+		fprintf("%s", docs[textStart:])
 	}
 	return output.String()
 }
@@ -1643,9 +1603,8 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 		// fileName starts with a "/" which is not present in the resulting error, so we need to skip the first rune.
 		errMsg := strings.ReplaceAll(diags.Error(), fileName[1:], "")
 
-		g.warn("failed to convert HCL for %s to %v: %v", path, languageName, errMsg)
 		g.coverageTracker.languageConversionFailure(e, languageName, diags)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	cache := g.getOrCreateExamplesCache()
@@ -1786,7 +1745,6 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 
 	hclConversions := map[string]string{}
 	var result strings.Builder
-	var err error
 
 	failedLangs := map[string]error{}
 
@@ -1795,39 +1753,61 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 		hclConversions[lang], convertErr = g.convertHCLToString(e, hcl, path, lang)
 		if convertErr != nil {
 			failedLangs[lang] = convertErr
-			err = multierror.Append(err, convertErr)
 		}
 	}
 
 	result.WriteString(hclConversionsToString(hclConversions))
-	if len(failedLangs) == 0 {
+
+	switch {
+	// Success
+	case len(failedLangs) == 0:
+		return result.String(), nil
+	// Complete failure - every language conversion failed; error
+	case len(failedLangs) == len(languages):
+		err := g.warnUnableToConvertHCLExample(path, failedLangs)
+		return "", err
+	// Partial failure - not returning an error but still emit the warning
+	default:
+		err := g.warnUnableToConvertHCLExample(path, failedLangs)
+		contract.IgnoreError(err)
 		return result.String(), nil
 	}
+}
 
-	isCompleteFailure := len(failedLangs) == len(languages)
-
-	if isCompleteFailure {
-		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s': %v. The example will be dropped "+
-			"from any generated docs or SDKs.", path, err))
-
-		return "", err
+func (g *Generator) warnUnableToConvertHCLExample(path string, failedLangs map[string]error) error {
+	// Index sets of languages by error message to avoid emitting similar errors for each language.
+	languagesByErrMsg := map[string]map[string]struct{}{}
+	for lang, convertErr := range failedLangs {
+		errMsg := convertErr.Error()
+		if _, ok := languagesByErrMsg[errMsg]; !ok {
+			languagesByErrMsg[errMsg] = map[string]struct{}{}
+		}
+		languagesByErrMsg[errMsg][lang] = struct{}{}
 	}
 
-	// Log the results when an example fails to convert to some languages, but not all
-	var failedLangsStrings []string
+	var err error
 
-	for lang := range failedLangs {
-		failedLangsStrings = append(failedLangsStrings, lang)
-		g.warn(fmt.Sprintf("unable to convert HCL example for Pulumi entity '%s' in the following language(s): "+
-			"%s. Examples for these languages will be dropped from any generated docs or SDKs.",
-			path, strings.Join(failedLangsStrings, ", ")))
+	seen := map[string]struct{}{}
+	for _, convertErr := range failedLangs {
+		if _, dup := seen[convertErr.Error()]; dup {
+			continue
+		}
+		errMsg := convertErr.Error()
+		seen[errMsg] = struct{}{}
 
-		// At least one language out of the given set has been generated, which is considered a success
-		//nolint:ineffassign
-		err = nil
+		langs := []string{}
+		for l := range languagesByErrMsg[errMsg] {
+			langs = append(langs, l)
+		}
+		sort.Strings(langs)
+		ls := strings.Join(langs, ", ") // all languages that have this error
+		err = multierror.Append(err, fmt.Errorf("[%s] %w", ls, convertErr))
 	}
 
-	return result.String(), nil
+	g.warn("unable to convert HCL example for Pulumi entity '%s'. The example will be dropped "+
+		"from any generated docs or SDKs: %v", path, err)
+
+	return err
 }
 
 // genLanguageToSlice maps a Language on a Generator to a slice of strings suitable to pass to HCL conversion.
@@ -2150,4 +2130,12 @@ func replaceFooterLinks(text string, footerLinks map[string]string) string {
 		}
 		return link
 	})
+}
+
+var (
+	guessIsHCLPattern = regexp.MustCompile(`(resource|data)\s+["][^"]+["]\s+["][^"]+["]\s+[{]`)
+)
+
+func guessIsHCL(code string) bool {
+	return guessIsHCLPattern.MatchString(code)
 }
