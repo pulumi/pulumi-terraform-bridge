@@ -278,20 +278,8 @@ func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
 }
 
 func (p *planResourceChangeImpl) providerMeta() (*cty.Value, error) {
-	if p.tf.ProviderMetaSchema == nil {
-		return nil, nil
-	}
-	metaSchema := schema.InternalMap(p.tf.ProviderMetaSchema).CoreConfigSchema()
-	m := p.tf.Meta()
-	if m == nil {
-		v := cty.NullVal(metaSchema.ImpliedType())
-		return &v, nil
-	}
-	v, err := recoverAndCoerceCtyValueWithSchema(metaSchema, m)
-	if err != nil {
-		return nil, fmt.Errorf("ProviderMeta: %w", err)
-	}
-	return &v, nil
+	return nil, nil
+	// TODO[pulumi/pulumi-terraform-bridge#1827]: We do not believe that this is load bearing in any providers.
 }
 
 func (*planResourceChangeImpl) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
