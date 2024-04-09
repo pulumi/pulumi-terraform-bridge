@@ -278,12 +278,8 @@ func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
 }
 
 func (p *planResourceChangeImpl) providerMeta() (*cty.Value, error) {
-	if p.tf.ProviderMetaSchema == nil {
-		return nil, nil
-	}
-	metaSchema := schema.InternalMap(p.tf.ProviderMetaSchema).CoreConfigSchema()
-	v := cty.NullVal(metaSchema.ImpliedType())
-	return &v, nil
+	return nil, nil
+	// TODO: Implement this if needed. https://github.com/pulumi/pulumi-terraform-bridge/issues/1827
 }
 
 func (*planResourceChangeImpl) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {

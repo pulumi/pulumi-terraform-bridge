@@ -3836,3 +3836,65 @@ func TestCustomTimeouts(t *testing.T) {
 		})
 	}
 }
+
+// ProviderMeta is an old experimental TF feature which does not seem to be used.
+// We want to make sure it doesn't break anything.
+func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
+	type otherMetaType struct {
+		val string
+	}
+	
+	p := testprovider.ProviderV2()
+	er := p.ResourcesMap["example_resource"]
+	er.Schema = map[string]*schemav2.Schema{
+		"string_property_value": {Type: schema.TypeString, Optional: true},
+	}
+	er.Create = nil
+	er.CreateContext = func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+		rd.SetId("r1")
+		return diag.Diagnostics{}
+	}
+	// In GCP the meta we receive is not even close to the schema.
+	// We should make sure this does not cause issues.
+	p.ProviderMetaSchema = map[string]*schemav2.Schema{
+		"module_name": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+	}
+	p.SetMeta(otherMetaType{val: "foo"})
+
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(string) bool { return true }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource":       {Tok: "ExampleResource"},
+				"second_resource":        {Tok: "SecondResource"},
+				"nested_secret_resource": {Tok: "NestedSecretResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	t.Run("Create", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Create",
+			"request": {
+			  "urn": "urn:pulumi:dev::teststack::ExampleResource::example",
+				"properties": {
+		        "__defaults": []
+			  },
+			  "preview": false
+			},
+			"response": {
+				"id": "*",
+				"properties": "*"
+			}
+		  }`)
+	})
+}
