@@ -3932,13 +3932,13 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 	type otherMetaType struct {
 		val string
 	}
-	
+
 	p := testprovider.ProviderV2()
 	er := p.ResourcesMap["example_resource"]
 	er.Schema = map[string]*schemav2.Schema{
 		"string_property_value": {Type: schema.TypeString, Optional: true},
 	}
-	er.Create = nil
+	er.Create = nil //nolint:all
 	er.CreateContext = func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
 		rd.SetId("r1")
 		return diag.Diagnostics{}
