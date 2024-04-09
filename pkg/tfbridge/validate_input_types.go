@@ -145,7 +145,11 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	// - resource references
 	// - assets
 	// - archives
-	if propertyValue.IsResourceReference() || propertyValue.IsAsset() || propertyValue.IsArchive() {
+	// - computed values
+	if propertyValue.IsResourceReference() ||
+		propertyValue.IsAsset() ||
+		propertyValue.IsArchive() ||
+		propertyValue.IsComputed() {
 		return nil
 	}
 
