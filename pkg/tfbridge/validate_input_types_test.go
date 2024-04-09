@@ -513,7 +513,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "prop object is missing required properties: objectStringProp",
+					Reason:       "object_double_nested_object_type_required_failure.prop object is missing required properties: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure.prop",
 				},
 			},
@@ -566,16 +566,16 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "prop object is missing required property: objectStringProp",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop.1",
+					Reason:       "object_double_nested_object_type_required_failure_2.prop[1] object is missing required property: objectStringProp",
+					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[1]",
 				},
 				{
-					Reason:       "prop object is missing required property: objectStringProp",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop.2",
+					Reason:       "object_double_nested_object_type_required_failure_2.prop[2] object is missing required property: objectStringProp",
+					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 				{
-					Reason:       "prop object is missing required property: foo",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop.2",
+					Reason:       "object_double_nested_object_type_required_failure_2.prop[2] object is missing required property: foo",
+					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -880,7 +880,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_nested_array_object_type_failure.prop.0.objectStringProp",
+					ResourcePath: "object_nested_array_object_type_failure.prop[0].objectStringProp",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1127,7 +1127,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_multi_type_nested_failure.prop.0.objectStringProp",
+					ResourcePath: "object_multi_type_nested_failure.prop[0].objectStringProp",
 				},
 				{
 					Reason:       "expected object type, got [] type",
@@ -1197,7 +1197,7 @@ func TestValidateInputType_objects(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := pathBuilder{paths: []string{}}
+			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",
@@ -1374,11 +1374,11 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_string_type_failure.1.objectStringProp",
+					ResourcePath: "object_string_type_failure[1].objectStringProp",
 				},
 				{
 					Reason:       "expected object type, got string type",
-					ResourcePath: "object_string_type_failure.2",
+					ResourcePath: "object_string_type_failure[2]",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1445,7 +1445,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_nested_object_type_failure.1.prop.foo",
+					ResourcePath: "object_nested_object_type_failure[1].prop.foo",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1526,7 +1526,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "property foo is not defined in the schema",
-					ResourcePath: "object_double_nested_object_type_failure_name.0.prop",
+					ResourcePath: "object_double_nested_object_type_failure_name[0].prop",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1639,11 +1639,11 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got object type",
-					ResourcePath: "object_nested_array_type_failure.0.prop.1",
+					ResourcePath: "object_nested_array_type_failure[0].prop[1]",
 				},
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_nested_array_type_failure.0.prop.2",
+					ResourcePath: "object_nested_array_type_failure[0].prop[2]",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1731,11 +1731,11 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_nested_array_object_type_failure.0.prop.1.objectStringProp",
+					ResourcePath: "object_nested_array_object_type_failure[0].prop[1].objectStringProp",
 				},
 				{
 					Reason:       "property foo is not defined in the schema",
-					ResourcePath: "object_nested_array_object_type_failure.0.prop.2",
+					ResourcePath: "object_nested_array_object_type_failure[0].prop[2]",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1794,7 +1794,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := pathBuilder{paths: []string{}}
+			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",
@@ -1938,7 +1938,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			name:  "array_type_failure",
 			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
 			failures: []TypeFailure{
-				{Reason: "expected number type, got string type", ResourcePath: "array_type_failure.0"},
+				{Reason: "expected number type, got string type", ResourcePath: "array_type_failure[0]"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"array_type_failure": {
@@ -2110,7 +2110,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := pathBuilder{paths: []string{}}
+			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",

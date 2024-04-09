@@ -10,37 +10,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// pathBuilder is a helper for building property paths for
-// better error messages. As you recurse through objects and arrays
-// you can build up a path to the property that failed
-type pathBuilder struct {
-	paths  []string
-	isList bool
-}
-
-// add adds a property path to the path builder
-func (c *pathBuilder) add(path string) {
-	if !c.isList {
-		c.paths = append(c.paths, path)
-	}
-	c.isList = false
-}
-
-// addListIndex adds a list index to the path builder, but does not mutate the
-// original path builder. This allows for subsequent list items to have a
-// distinct path builder
-func (c *pathBuilder) addListIndex(idx int) pathBuilder {
-	cc := *c
-	cc.paths = append(c.paths, fmt.Sprintf("%d", idx))
-	cc.isList = true
-	return cc
-}
-
-// toPath renders the property path as a string
-func (c *pathBuilder) toPath() string {
-	return strings.Join(c.paths, ".")
-}
-
 type PulumiInputValidator struct {
 	// The resource URN that we are validating
 	urn resource.URN
@@ -104,7 +73,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	propertyKey string,
 	propertyValue resource.PropertyValue,
 	typeSpec pschema.TypeSpec,
-	pathBuilder pathBuilder,
+	propertyPath resource.PropertyPath,
 	requiredProps []string,
 ) []TypeFailure {
 	// for now don't validate discriminators
@@ -128,7 +97,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 		if slices.Contains(requiredProps, propertyKey) {
 			return []TypeFailure{
 				{
-					ResourcePath: pathBuilder.toPath(),
+					ResourcePath: propertyPath.String(),
 					Reason:       fmt.Sprintf("property %s is required", propertyKey),
 				},
 			}
@@ -136,14 +105,16 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	}
 
 	failures := []TypeFailure{}
-	pathBuilder.add(propertyKey)
+	if propertyKey != "" {
+		propertyPath = append(propertyPath, propertyKey)
+	}
 
 	// perform some initial easy type matching. fail fast.
 	possible, ok := v.matchType(propertyValue, typeSpec)
 	if !ok {
 		return []TypeFailure{
 			{
-				ResourcePath: pathBuilder.toPath(),
+				ResourcePath: propertyPath.String(),
 				Reason: fmt.Sprintf(
 					"expected %s type, got %s type",
 					possible.toString(),
@@ -156,14 +127,14 @@ func (v *PulumiInputValidator) validateTypeSpec(
 	// array type
 	if propertyValue.IsArray() {
 		for idx, arrayValue := range propertyValue.ArrayValue() {
-			pb := pathBuilder.addListIndex(idx)
+			pb := append(propertyPath, idx)
 			if typeSpec.Items != nil {
-				failure := v.validateTypeSpec(propertyKey, arrayValue, *typeSpec.Items, pb, requiredProps)
+				failure := v.validateTypeSpec("", arrayValue, *typeSpec.Items, pb, requiredProps)
 				if failure != nil {
 					failures = append(failures, failure...)
 				}
 			} else if len(typeSpec.OneOf) > 0 {
-				failure := v.validateOneOf(propertyKey, arrayValue, typeSpec.OneOf, pb)
+				failure := v.validateOneOf("", arrayValue, typeSpec.OneOf, pb)
 				if failure != nil {
 					failures = append(failures, failure...)
 				}
@@ -179,10 +150,10 @@ func (v *PulumiInputValidator) validateTypeSpec(
 		if len(requiredObjectProps) > 0 {
 			if len(stableKeys) == 0 {
 				failures = append(failures, TypeFailure{
-					ResourcePath: pathBuilder.toPath(),
+					ResourcePath: propertyPath.String(),
 					Reason: fmt.Sprintf(
 						"%s object is missing required properties: %s",
-						propertyKey, strings.Join(requiredObjectProps, ", "),
+						propertyPath.String(), strings.Join(requiredObjectProps, ", "),
 					),
 				})
 				return failures
@@ -190,10 +161,10 @@ func (v *PulumiInputValidator) validateTypeSpec(
 			for _, requiredProp := range requiredObjectProps {
 				if !slices.Contains(stableKeys, resource.PropertyKey(requiredProp)) {
 					failures = append(failures, TypeFailure{
-						ResourcePath: pathBuilder.toPath(),
+						ResourcePath: propertyPath.String(),
 						Reason: fmt.Sprintf(
 							"%s object is missing required property: %s",
-							propertyKey, requiredProp,
+							propertyPath.String(), requiredProp,
 						),
 					})
 				}
@@ -209,7 +180,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 				complexProps, ok := complexSpec.Properties[string(objectKey)]
 				if !ok {
 					failures = append(failures, TypeFailure{
-						ResourcePath: pathBuilder.toPath(),
+						ResourcePath: propertyPath.String(),
 						Reason: fmt.Sprintf(
 							"property %s is not defined in the schema",
 							string(objectKey),
@@ -221,7 +192,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 			}
 			if objectTypeSpec != nil {
 				if len(objectTypeSpec.OneOf) > 0 {
-					if failure := v.validateOneOf(string(objectKey), objectValue, objectTypeSpec.OneOf, pathBuilder); failure != nil {
+					if failure := v.validateOneOf(string(objectKey), objectValue, objectTypeSpec.OneOf, propertyPath); failure != nil {
 						failures = append(failures, failure...)
 					}
 					continue
@@ -230,7 +201,7 @@ func (v *PulumiInputValidator) validateTypeSpec(
 					string(objectKey),
 					objectValue,
 					*objectTypeSpec,
-					pathBuilder,
+					propertyPath,
 					requiredObjectProps,
 				); failure != nil {
 					failures = append(failures, failure...)
@@ -268,7 +239,7 @@ func (v *PulumiInputValidator) getType(typeRef string) *pschema.ComplexTypeSpec 
 func (v *PulumiInputValidator) ValidateInputs(inputs resource.PropertyMap) *[]TypeFailure {
 	failures := []TypeFailure{}
 	for key, value := range inputs {
-		if failure := v.validateResourceInputType(string(key), value, pathBuilder{paths: []string{}}); failure != nil {
+		if failure := v.validateResourceInputType(string(key), value, resource.PropertyPath{}); failure != nil {
 			failures = append(failures, *failure...)
 		}
 	}
@@ -285,7 +256,7 @@ func (v *PulumiInputValidator) ValidateInputs(inputs resource.PropertyMap) *[]Ty
 func (v *PulumiInputValidator) validateResourceInputType(
 	inputName string,
 	inputValue resource.PropertyValue,
-	pathBuilder pathBuilder,
+	propertyPath resource.PropertyPath,
 ) *[]TypeFailure {
 	resourceType := v.urn.Type()
 	failures := []TypeFailure{}
@@ -295,7 +266,7 @@ func (v *PulumiInputValidator) validateResourceInputType(
 				inputName,
 				inputValue,
 				prop.TypeSpec,
-				pathBuilder,
+				propertyPath,
 				resource.RequiredInputs,
 			); failure != nil {
 				failures = append(failures, failure...)
@@ -303,7 +274,7 @@ func (v *PulumiInputValidator) validateResourceInputType(
 		} else {
 			return &[]TypeFailure{
 				{
-					ResourcePath: pathBuilder.toPath(),
+					ResourcePath: propertyPath.String(),
 					Reason:       fmt.Sprintf("property %s is not defined in the schema", inputName),
 				},
 			}
@@ -365,12 +336,12 @@ func (v *PulumiInputValidator) validateOneOf(
 	propertyKey string,
 	inputValue resource.PropertyValue,
 	specs []pschema.TypeSpec,
-	pathBuilder pathBuilder,
+	propertyPath resource.PropertyPath,
 ) []TypeFailure {
 
 	failures := []TypeFailure{}
 	for _, spec := range specs {
-		failure := v.validateTypeSpec(propertyKey, inputValue, spec, pathBuilder, []string{})
+		failure := v.validateTypeSpec(propertyKey, inputValue, spec, propertyPath, []string{})
 		if failure == nil {
 			return nil
 		}
