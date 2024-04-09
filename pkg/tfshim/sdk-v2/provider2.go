@@ -279,7 +279,7 @@ func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
 
 func (p *planResourceChangeImpl) providerMeta() (*cty.Value, error) {
 	return nil, nil
-	// TODO: Implement this if needed. https://github.com/pulumi/pulumi-terraform-bridge/issues/1827
+	// TODO[pulumi/pulumi-terraform-bridge#1827]: We do not believe that this is load bearing in any providers.
 }
 
 func (*planResourceChangeImpl) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
