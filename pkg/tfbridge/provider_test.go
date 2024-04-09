@@ -3840,60 +3840,60 @@ func TestCustomTimeouts(t *testing.T) {
 // ProviderMeta is an old experimental TF feature which does not seem to be used.
 // We want to make sure it doesn't break anything.
 func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
-	p := &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{},
-		ResourcesMap: map[string]*schemav2.Resource{
-			"res": {
-				Schema: map[string]*schemav2.Schema{
-					"prop": {Type: schemav2.TypeString},
-				},
-				ReadContext: func(
-					ctx context.Context, rd *schema.ResourceData, i interface{},
-				) diag.Diagnostics {
-					require.NoError(t, rd.Set("string_property_value", "imported"))
-					return diag.Diagnostics{}
-				},
-			},
-		},
-		ProviderMetaSchema: map[string]*schemav2.Schema{
-			"module_name": {
-				Type:     schemav2.TypeString,
-				Optional: true,
-			},
-		},
+	type otherMetaType struct {
+		val string
 	}
-
+	
+	p := testprovider.ProviderV2()
+	er := p.ResourcesMap["example_resource"]
+	er.Schema = map[string]*schemav2.Schema{
+		"string_property_value": {Type: schema.TypeString, Optional: true},
+	}
+	er.Create = nil
+	er.CreateContext = func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+		rd.SetId("r1")
+		return diag.Diagnostics{}
+	}
 	// In GCP the meta we receive is not even close to the schema.
 	// We should make sure this does not cause issues.
-	p.SetMeta(map[string]interface{}{"key": "val", "other_stuf": map[string]interface{}{"key": "val"}})
+	p.ProviderMetaSchema = map[string]*schemav2.Schema{
+		"module_name": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+	}
+	p.SetMeta(otherMetaType{val: "foo"})
 
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(string) bool { return true }))
 	provider := &Provider{
-		tf:     shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true })),
+		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
-		resources: map[tokens.Type]Resource{
-			"res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
-				TFName: "res",
-				Schema: &ResourceInfo{},
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource":       {Tok: "ExampleResource"},
+				"second_resource":        {Tok: "SecondResource"},
+				"nested_secret_resource": {Tok: "NestedSecretResource"},
 			},
 		},
 	}
-	t.Run("Read", func(t *testing.T) {
+	provider.initResourceMaps()
+
+	t.Run("Create", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
-			"method": "/pulumirpc.ResourceProvider/Read",
+			"method": "/pulumirpc.ResourceProvider/Create",
 			"request": {
-			  "id": "res1",
-			  "urn": "urn:pulumi:dev::mystack::res::example",
-			  "properties": {},
-			  "inputs": {}
+			  "urn": "urn:pulumi:dev::teststack::ExampleResource::example",
+				"properties": {
+		        "__defaults": []
+			  },
+			  "preview": false
 			},
 			"response": {
-			  "inputs": {},
-			  "properties": {
-				"id": "res1"
-			  },
-			  "id": "res1"
+				"id": "*",
+				"properties": "*"
 			}
 		  }`)
 	})
