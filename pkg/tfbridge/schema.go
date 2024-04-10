@@ -223,7 +223,7 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 	if len(resourceInfo.UniqueNameFields) > 0 {
 		for _, name := range resourceInfo.UniqueNameFields {
 			key := resource.PropertyKey(name)
-			_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
+			_, _, psi := getInfoFromPulumiName(key, tfs, fields)
 
 			oldVal := olds[key]
 			newVal := news[key]
@@ -241,7 +241,7 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 	}
 
 	for key := range news {
-		_, _, psi := getInfoFromPulumiName(key, tfs, fields, false)
+		_, _, psi := getInfoFromPulumiName(key, tfs, fields)
 		if psi != nil && psi.HasDefault() && psi.Default.AutoNamed && !hasDefault[key] {
 			return true
 		}
@@ -591,7 +591,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		}
 
 		// First translate the Pulumi property name to a Terraform name.
-		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, false)
+		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps)
 		contract.Assertf(name != "", `Object properties cannot be empty`)
 
 		if _, duplicate := result[name]; duplicate {
@@ -1383,7 +1383,7 @@ func getInfoFromTerraformName(key string,
 
 // getInfoFromPulumiName does a reverse map lookup to find the Terraform name and schema info for a Pulumi name, if any.
 func getInfoFromPulumiName(key resource.PropertyKey,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawName bool) (string,
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (string,
 	shim.Schema, *SchemaInfo) {
 	// To do this, we will first look to see if there's a known custom schema that uses this name.  If yes, we
 	// prefer to use that.  To do this, we must use a reverse lookup.  (In the future we may want to make a
@@ -1394,14 +1394,10 @@ func getInfoFromPulumiName(key resource.PropertyKey,
 			return tfname, getSchema(tfs, tfname), schinfo
 		}
 	}
-	var name string
-	if rawName {
-		// If raw names are requested, they will not have been mangled, so preserve the name as-is.
-		name = ks
-	} else {
-		// Otherwise, transform the Pulumi name to the Terraform name using the standard mangling scheme.
-		name = PulumiToTerraformName(ks, tfs, ps)
-	}
+
+	// transform the Pulumi name to the Terraform name using the standard mangling scheme.
+	name := PulumiToTerraformName(ks, tfs, ps)
+
 	return name, getSchema(tfs, name), ps[name]
 }
 
@@ -1565,7 +1561,7 @@ func extractInputsObject(
 	for name, oldValue := range oldInput {
 		defaultElem := false
 		if newValue, ok := newState[name]; ok {
-			_, etfs, eps := getInfoFromPulumiName(name, tfs, ps, false)
+			_, etfs, eps := getInfoFromPulumiName(name, tfs, ps)
 			oldInput[name], defaultElem = extractInputs(oldValue, newValue, etfs, eps)
 		} else {
 			delete(oldInput, name)
@@ -1729,7 +1725,7 @@ func extractSchemaInputsObject(
 ) resource.PropertyMap {
 	v := make(map[resource.PropertyKey]resource.PropertyValue, len(state))
 	for k, e := range state {
-		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps)
 		typeKnown := tfs != nil && etfs != nil
 
 		// We drop fields that are not present in the schema.

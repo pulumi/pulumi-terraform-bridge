@@ -145,7 +145,7 @@ func visitPropertyValue(
 						elementPath = fmt.Sprintf("%s.%s", path, k)
 					}
 
-					en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, false)
+					en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds)
 					visitPropertyValue(ctx, name+"."+en, elementPath, e, etf, eps, visitor)
 				}
 				return
@@ -305,11 +305,11 @@ func computeIgnoreChanges(
 		return true
 	}
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		visitPropertyValue(ctx, en, string(k), v, etf, eps, visitor)
 	}
 	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		visitPropertyValue(ctx, en, string(k), v, etf, eps, visitor)
 	}
 	return ignoredKeySet
@@ -361,17 +361,17 @@ func makeDetailedDiffExtra(
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	collectionDiffs := map[string]*pulumirpc.PropertyDiff{}
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
 			etf, eps, false)
 	}
 	for k, v := range news {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
 			etf, eps, false)
 	}
 	for k, v := range olds {
-		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
+		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
 			etf, eps, true)
 	}
