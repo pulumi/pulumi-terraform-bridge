@@ -351,7 +351,6 @@ func (ctx *conversionContext) makeTerraformInput(
 	old, v resource.PropertyValue,
 	tfs shim.Schema,
 	ps *SchemaInfo,
-	rawNames bool,
 ) (interface{}, error) {
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
 	// nested value, and need to wrap it into a single-element array before passing to
@@ -435,7 +434,7 @@ func (ctx *conversionContext) makeTerraformInput(
 				oldElem = oldArr[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, etfs, eps, rawNames)
+			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, etfs, eps)
 			if err != nil {
 				return nil, err
 			}
@@ -554,15 +553,7 @@ func (ctx *conversionContext) makeMapTerraformInputs(
 			old = olds[key]
 		}
 
-		// If type information is lost (the map's element type is unknown), subsequent
-		// nested PropertyMap values will be treated by makeObjectTerraformInputs. In this
-		// case rawNames=true needs to make sure makeObjectTerraformInputs does not mangle
-		// pulumiStyleLabels into terraform_style_labels. This is the legacy behavior
-		// enforced by tests. It also makes intuitive sense: absent schema information the
-		// code should not be doing name mangling.
-		rawNames := tfsElement == nil
-
-		v, err := ctx.makeTerraformInput(name, old, value, tfsElement, psElement, rawNames)
+		v, err := ctx.makeTerraformInput(name, old, value, tfsElement, psElement)
 		if err != nil {
 			return nil, err
 		}
@@ -626,7 +617,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		}
 
 		// And then translate the property value.
-		v, err := ctx.makeTerraformInput(name, old, value, tfi, psi, false)
+		v, err := ctx.makeTerraformInput(name, old, value, tfi, psi)
 		if err != nil {
 			return nil, err
 		}
@@ -769,7 +760,7 @@ func (ctx *conversionContext) applyDefaults(
 
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
 				v, err := ctx.makeTerraformInput(name, resource.PropertyValue{},
-					old, tfi, psi, rawNames)
+					old, tfi, psi)
 				if err != nil {
 					return err
 				}
@@ -811,7 +802,7 @@ func (ctx *conversionContext) applyDefaults(
 				defaultValue, source = v, "env vars"
 			} else if configKey := info.Default.Config; configKey != "" {
 				if v := ctx.ProviderConfig[resource.PropertyKey(configKey)]; !v.IsNull() {
-					tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+					tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi)
 					if err != nil {
 						return err
 					}
@@ -819,7 +810,7 @@ func (ctx *conversionContext) applyDefaults(
 				}
 			} else if info.Default.Value != nil {
 				v := resource.NewPropertyValue(info.Default.Value)
-				tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi, rawNames)
+				tv, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, v, tfi, psi)
 				if err != nil {
 					return err
 				}
@@ -921,7 +912,7 @@ func (ctx *conversionContext) applyDefaults(
 				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
 
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
-					v, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi, rawNames)
+					v, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi)
 					if err != nil {
 						valueErr = err
 						return false
