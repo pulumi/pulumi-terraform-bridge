@@ -135,7 +135,7 @@ func (pp prettyPrinterForTypes) TypeLiteral(t tftypes.Object) string {
 			return fmt.Sprintf("t%d", i)
 		}
 	}
-	contract.Failf("improper use of the type pretty-printer")
+	contract.Failf("improper use of the type pretty-printer: %v", t.String())
 	return ""
 }
 
