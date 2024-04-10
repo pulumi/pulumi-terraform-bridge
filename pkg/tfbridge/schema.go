@@ -626,7 +626,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	}
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
-	if err := ctx.applyDefaults(result, olds, news, tfs, ps, false); err != nil {
+	if err := ctx.applyDefaults(result, olds, news, tfs, ps); err != nil {
 		return nil, err
 	}
 
@@ -710,7 +710,6 @@ func (ctx *conversionContext) applyDefaults(
 	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-	rawNames bool,
 ) error {
 
 	if !ctx.ApplyDefaults {
@@ -756,7 +755,7 @@ func (ctx *conversionContext) applyDefaults(
 			var source string
 
 			// If we already have a default value from a previous version of this resource, use that instead.
-			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+			key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, false)
 
 			if old, hasold := olds[key]; hasold && useOldDefault(key) {
 				v, err := ctx.makeTerraformInput(name, resource.PropertyValue{},
@@ -908,8 +907,9 @@ func (ctx *conversionContext) applyDefaults(
 					return true
 				}
 
-				// Next, if we already have a default value from a previous version of this resource, use that instead.
-				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, rawNames)
+				// Next, if we already have a default value from a previous version of this
+				// resource, use that instead.
+				key, tfi, psi := getInfoFromTerraformName(name, tfs, ps, false)
 
 				if old, hasold := olds[key]; hasold && useOldDefault(key) {
 					v, err := ctx.makeTerraformInput(name, resource.PropertyValue{}, old, tfi, psi)
