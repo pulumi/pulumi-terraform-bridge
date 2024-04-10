@@ -1,7 +1,8 @@
 # Developing a New Provider
 
 It is relatively easy to adapt a Terraform Provider, X, for use with Pulumi.  The
-[Cloudflare provider](https://github.com/pulumi/pulumi-cloudflare) offers a good blueprint for how to go about this.
+[Cloudflare provider](https://github.com/pulumi/pulumi-cloudflare) offers a good starting
+point for creating a new bridged provider.
 
 You will create two Go binaries -- one purely for design-time usage to act as X's code-generator and the other for
 runtime usage to serve as its dynamic resource plugin -- and link with the Terraform Provider repo and this one.
@@ -50,7 +51,7 @@ See [automatic token mapping](./automatic-token-mapping.md) for more information
 
 ## Augmenting a Terraform Provider
 
-To add new resources/datasoruces or replace existing resources/datasoruces to the bridge
+To add new resources/datasources or replace existing resources/datasources to the bridge
 Terraform provider, see [MuxWith](./muxwith.md).
 
 ## Pulumi Bridge for Terraform Plugin Framework
