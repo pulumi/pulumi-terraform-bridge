@@ -3082,7 +3082,7 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				},
 			}),
 			//nolint:lll
-			expect: autogold.Expect(map[string]interface{}{"property_a": "a", "property_b": true, "property_c": map[string]interface{}{"nested_property_a": true}}),
+			expect: autogold.Expect(map[string]interface{}{"property_a": "a", "property_b": true, "property_c": map[string]interface{}{"nestedPropertyA": true}}),
 		},
 		{
 			testCaseName: "list_nested_block",

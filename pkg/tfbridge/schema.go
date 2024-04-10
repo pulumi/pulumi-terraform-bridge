@@ -479,51 +479,40 @@ func (ctx *conversionContext) makeTerraformInput(
 			oldObject = old.ObjectValue()
 		}
 
-		var input map[string]interface{}
-		if shimutil.IsOfTypeMap(tfs) {
-			var tfsElem shim.Schema
-			if tfs != nil {
-				if s, ok := tfs.Elem().(shim.Schema); ok {
-					tfsElem = s
-				}
+		var tfflds shim.SchemaMap
+
+		// We cannot use [shimutil.CastToTypeObject] because we have machinery that constructs invalid
+		// resource objects, such as [elemSchemas].
+		if tfs != nil {
+			if r, ok := tfs.Elem().(shim.Resource); ok {
+				tfflds = r.Schema()
 			}
-			var psElem *SchemaInfo
-			if ps != nil {
-				psElem = ps.Elem
-			}
-			var err error
-			input, err = ctx.makeMapTerraformInputs(oldObject, v.ObjectValue(),
-				tfsElem, psElem)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			var tfflds shim.SchemaMap
-			if tfs != nil {
-				if res, isres := tfs.Elem().(shim.Resource); isres {
-					tfflds = res.Schema()
-				}
-			}
+		}
+
+		if tfflds != nil {
 			var psflds map[string]*SchemaInfo
 			if ps != nil {
 				psflds = ps.Fields
 			}
-			var err error
-			input, err = ctx.makeObjectTerraformInputs(oldObject, v.ObjectValue(),
-				tfflds, psflds, rawNames)
+			obj, err := ctx.makeObjectTerraformInputs(oldObject, v.ObjectValue(), tfflds, psflds)
 			if err != nil {
 				return nil, err
 			}
+
+			if tfs.Type() == shim.TypeMap {
+				// If we have schema information that indicates that this value is being
+				// presented to a map-typed field whose Elem is a shim.Resource, wrap the
+				// value in an array in order to work around a bug in Terraform.
+				//
+				// TODO[pulumi/pulumi-terraform-bridge#1828]: This almost certainly stems from
+				// a bug in the bridge's implementation and not terraform's implementation.
+				return []interface{}{obj}, nil
+			}
+			return obj, nil
 		}
 
-		// If we have schema information that indicates that this value is being presented to a map-typed field whose
-		// Elem is a shim.Resource, wrap the value in an array in order to work around a bug in Terraform.
-		if tfs != nil && tfs.Type() == shim.TypeMap {
-			if _, hasResourceElem := tfs.Elem().(shim.Resource); hasResourceElem {
-				return []interface{}{input}, nil
-			}
-		}
-		return input, nil
+		etfs, eps := elemSchemas(tfs, ps)
+		return ctx.makeMapTerraformInputs(oldObject, v.ObjectValue(), etfs, eps)
 	case v.IsComputed() || v.IsOutput():
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
@@ -533,7 +522,6 @@ func (ctx *conversionContext) makeTerraformInput(
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil
 	}
-
 }
 
 // makeTerraformInputs takes a property map plus custom schema info and does whatever is necessary
@@ -545,7 +533,7 @@ func (ctx *conversionContext) makeTerraformInputs(
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) (map[string]interface{}, error) {
-	return ctx.makeObjectTerraformInputs(olds, news, tfs, ps, false /*rawNames*/)
+	return ctx.makeObjectTerraformInputs(olds, news, tfs, ps)
 }
 
 // Should only be called from inside makeTerraformInputs. Variation for makeTerraformInputs used
@@ -591,14 +579,14 @@ func (ctx *conversionContext) makeMapTerraformInputs(
 	return result, nil
 }
 
-// Should only be called from inside makeTerraformInputs. This variation should only be handling the
-// case when an object type is expected, or else the schema is lost and the translation is not sure
-// of the expected type. The case when map types are expected is handled by makeMapTerraformInputs.
+// Should only be called from inside makeTerraformInputs. This variation should only be
+// handling the case when an object type is expected. The case when map types are expected
+// or the schema is lost and the translation is not sure of the expected type is handled
+// by makeMapTerraformInputs.
 func (ctx *conversionContext) makeObjectTerraformInputs(
 	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-	rawNames bool,
 ) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
@@ -612,14 +600,8 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		}
 
 		// First translate the Pulumi property name to a Terraform name.
-		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, rawNames)
-
-		// rawNames=true indicate that we are processing a map[string,X], not an object type, and therefore
-		// should not be renaming terraform_style names to pulumiStyle names or assuming that the map keys are
-		// non-empty.
-		if !rawNames {
-			contract.Assertf(name != "", `name != ""`)
-		}
+		name, tfi, psi := getInfoFromPulumiName(key, tfs, ps, false)
+		contract.Assertf(name != "", `Object properties cannot be empty`)
 
 		if _, duplicate := result[name]; duplicate {
 			// If multiple Pulumi `key`s map to the same Terraform attribute `name`, then
@@ -644,7 +626,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		}
 
 		// And then translate the property value.
-		v, err := ctx.makeTerraformInput(name, old, value, tfi, psi, rawNames)
+		v, err := ctx.makeTerraformInput(name, old, value, tfi, psi, false)
 		if err != nil {
 			return nil, err
 		}
@@ -653,7 +635,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	}
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
-	if err := ctx.applyDefaults(result, olds, news, tfs, ps, rawNames); err != nil {
+	if err := ctx.applyDefaults(result, olds, news, tfs, ps, false); err != nil {
 		return nil, err
 	}
 
@@ -661,7 +643,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
 		tfs.Range(func(key string, value shim.Schema) bool {
 			// First do a lookup of the name/info.
-			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
+			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, false)
 			if IsMaxItemsOne(tfi, psi) && result[key] == nil {
 				result[key] = []interface{}{}
 			}
