@@ -1021,7 +1021,7 @@ func MakeTerraformResult(
 		outs = obj
 	}
 
-	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, false, supportsSecrets)
+	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta()) != 0 {
@@ -1042,18 +1042,17 @@ func MakeTerraformOutputs(
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	assets AssetTable,
-	rawNames,
 	supportsSecrets bool,
 ) resource.PropertyMap {
 	result := make(resource.PropertyMap)
 
 	for key, value := range outs {
 		// First do a lookup of the name/info.
-		name, tfi, psi := getInfoFromTerraformName(key, tfs, ps, rawNames)
+		name, tfi, psi := getInfoFromTerraformName(key, tfs, ps, false)
 		contract.Assertf(name != "", `name != ""`)
 
 		// Next perform a translation of the value accordingly.
-		out := MakeTerraformOutput(ctx, p, value, tfi, psi, assets, rawNames, supportsSecrets)
+		out := MakeTerraformOutput(ctx, p, value, tfi, psi, assets, supportsSecrets)
 		//if !out.IsNull() {
 		result[name] = out
 		//}
@@ -1076,11 +1075,11 @@ func MakeTerraformOutput(
 	tfs shim.Schema,
 	ps *SchemaInfo,
 	assets AssetTable,
-	rawNames, supportsSecrets bool,
+	supportsSecrets bool,
 ) resource.PropertyValue {
 
 	buildOutput := func(p shim.Provider, v interface{},
-		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, rawNames, supportsSecrets bool) resource.PropertyValue {
+		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, supportsSecrets bool) resource.PropertyValue {
 		if assets != nil && ps != nil && ps.Asset != nil {
 			if asset, has := assets[ps]; has {
 				// if we have the value, it better actually be an asset or an archive.
@@ -1137,7 +1136,7 @@ func MakeTerraformOutput(
 			if err != nil || coerced == t {
 				return resource.NewStringProperty(t)
 			}
-			return MakeTerraformOutput(ctx, p, coerced, tfs, ps, assets, rawNames, supportsSecrets)
+			return MakeTerraformOutput(ctx, p, coerced, tfs, ps, assets, supportsSecrets)
 		case reflect.Slice:
 			elems := []interface{}{}
 			for i := 0; i < val.Len(); i++ {
@@ -1148,7 +1147,7 @@ func MakeTerraformOutput(
 
 			var arr []resource.PropertyValue
 			for _, elem := range elems {
-				arr = append(arr, MakeTerraformOutput(ctx, p, elem, tfes, pes, assets, rawNames, supportsSecrets))
+				arr = append(arr, MakeTerraformOutput(ctx, p, elem, tfes, pes, assets, supportsSecrets))
 			}
 			// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar nested value, so need to extract
 			// out the single element (or null).
@@ -1164,24 +1163,33 @@ func MakeTerraformOutput(
 			}
 			return resource.NewArrayProperty(arr)
 		case reflect.Map:
-			outs := map[string]interface{}{}
+			// Build a go map of output values.
+			outs := map[string]any{}
 			for _, key := range val.MapKeys() {
 				contract.Assertf(key.Kind() == reflect.String, "key.Kind() == reflect.String")
 				outs[key.String()] = val.MapIndex(key).Interface()
 			}
-			var tfflds shim.SchemaMap
+
 			if tfs != nil {
-				if res, isres := tfs.Elem().(shim.Resource); isres {
-					tfflds = res.Schema()
+				// This is an object, so we need key translations.
+				if res, ok := tfs.Elem().(shim.Resource); ok {
+					var psflds map[string]*SchemaInfo
+					if ps != nil {
+						psflds = ps.Fields
+					}
+					obj := MakeTerraformOutputs(ctx, p, outs,
+						res.Schema(), psflds, assets, supportsSecrets)
+					return resource.NewObjectProperty(obj)
 				}
 			}
-			var psflds map[string]*SchemaInfo
-			if ps != nil {
-				psflds = ps.Fields
+
+			// It's not an object, so it must be a map
+			obj := make(resource.PropertyMap, len(outs))
+			etfs, eps := elemSchemas(tfs, ps)
+			for k, v := range outs {
+				obj[resource.PropertyKey(k)] = MakeTerraformOutput(ctx, p, v,
+					etfs, eps, assets, supportsSecrets)
 			}
-			obj := MakeTerraformOutputs(
-				ctx, p, outs, tfflds, psflds, assets, rawNames || shimutil.IsOfTypeMap(tfs), supportsSecrets,
-			)
 			return resource.NewObjectProperty(obj)
 		default:
 			contract.Failf("Unexpected TF output property value: %#v with type %#T", v, v)
@@ -1189,7 +1197,7 @@ func MakeTerraformOutput(
 		}
 	}
 
-	output := buildOutput(p, v, tfs, ps, assets, rawNames, supportsSecrets)
+	output := buildOutput(p, v, tfs, ps, assets, supportsSecrets)
 
 	if tfs != nil && tfs.Sensitive() && supportsSecrets {
 		return resource.MakeSecret(output)

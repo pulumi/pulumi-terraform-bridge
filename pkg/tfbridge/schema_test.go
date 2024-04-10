@@ -396,9 +396,30 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "object_property_value",
+
+			// NOTE: This input does not match the schema's type. The tfValue *should* be wrapped
+			// in a []any{}. [MakeTerraformOutputs] handles this case, but it shouldn't need to
+			// and tf should never return it.
 			tfValue: map[string]interface{}{
 				"property_a": "a",
 				"property_b": true,
+			},
+			tfType: &schema.Schema{
+				Type:     shim.TypeList,
+				Required: true,
+				MaxItems: 1,
+				Elem: (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"property_a": (&schema.Schema{
+							Type:     shim.TypeString,
+							Optional: true,
+						}).Shim(),
+						"property_b": (&schema.Schema{
+							Type:     shim.TypeBool,
+							Optional: true,
+						}).Shim(),
+					},
+				}).Shim(),
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("objectPropertyValue"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -607,9 +628,8 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 						},
 						schemaMap,
 						schemaInfo,
-						nil,   /* assets */
-						false, /* useRawNames */
-						true,  /* supportsSecrets */
+						nil,  /* assets */
+						true, /* supportsSecrets */
 					)
 					tt.expect.Equal(t, result)
 				})
@@ -638,8 +658,7 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 					},
 				}),
 				map[string]*SchemaInfo{},
-				nil,   /* assets */
-				false, /*useRawNames*/
+				nil, /* assets */
 				false,
 			)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1026,7 +1045,7 @@ func TestDefaults(t *testing.T) {
 			}
 			inputs, assets, err := makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
-			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, true)
 
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
@@ -1072,7 +1091,7 @@ func TestDefaults(t *testing.T) {
 			assert.Equal(t, "true", inputs["x2stringxbool"])
 			assert.Equal(t, "1", inputs["x2stringxint"])
 
-			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, true)
 
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
@@ -1141,7 +1160,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 
 			inputs, assets, err := makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
-			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs := MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, true)
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1161,7 +1180,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			inputs, assets, err = makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
-			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, false, true)
+			outputs = MakeTerraformOutputs(ctx, f.NewTestProvider(), inputs, tfs, ps, assets, true)
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1195,7 +1214,7 @@ func TestComputedAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
 	}, outputs)
@@ -1215,7 +1234,7 @@ func TestInvalidAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.NewStringProperty("invalid"),
 	}, outputs)
@@ -1280,8 +1299,7 @@ func TestOverridingTFSchema(t *testing.T) {
 			tfInputs,
 			tfSchema,
 			typeOverrides,
-			nil,   /* assets */
-			false, /*useRawNames*/
+			nil, /* assets */
 			true,
 		)
 		assert.Equal(t, tfOutputs, result)
@@ -1332,7 +1350,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
-	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, false, true)
+	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
 }
 
@@ -1701,8 +1719,7 @@ func TestStringOutputsWithSchema(t *testing.T) {
 			"not_a_float_value":     {Type: schemav1.TypeFloat},
 		}),
 		map[string]*SchemaInfo{},
-		nil,   /* assets */
-		false, /* useRawNames */
+		nil, /* assets */
 		true,
 	)
 
@@ -2760,7 +2777,6 @@ func TestOutputNumberTypes(t *testing.T) {
 		tfs,
 		map[string]*SchemaInfo{},
 		AssetTable{},
-		false,
 		true,
 	)
 	assert.Equal(t, resource.PropertyMap{
