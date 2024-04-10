@@ -24,7 +24,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // containsComputedValues returns true if the given property value is or contains a computed value.
@@ -70,7 +69,7 @@ type propertyVisitor func(attributeKey, propertyPath string, value resource.Prop
 // check to see if the InstanceDiff has an entry for that path.
 func visitPropertyValue(
 	ctx context.Context, name, path string, v resource.PropertyValue, tfs shim.Schema,
-	ps *SchemaInfo, rawNames bool, visitor propertyVisitor) {
+	ps *SchemaInfo, visitor propertyVisitor) {
 
 	if IsMaxItemsOne(tfs, ps) {
 		if v.IsNull() {
@@ -127,21 +126,33 @@ func visitPropertyValue(
 			}
 
 			en := name + "." + ti
-			visitPropertyValue(ctx, en, ep, e, etfs, eps, rawNames, visitor)
+			visitPropertyValue(ctx, en, ep, e, etfs, eps, visitor)
 		}
 	case v.IsObject():
-		var tfflds shim.SchemaMap
 		if tfs != nil {
-			if res, isres := tfs.Elem().(shim.Resource); isres {
-				tfflds = res.Schema()
+			if res, ok := tfs.Elem().(shim.Resource); ok {
+				tfflds := res.Schema()
+				var psflds map[string]*SchemaInfo
+				if ps != nil {
+					psflds = ps.Fields
+				}
+
+				for k, e := range v.ObjectValue() {
+					var elementPath string
+					if strings.ContainsAny(string(k), `."[]`) {
+						elementPath = fmt.Sprintf(`%s.["%s"]`, path, strings.ReplaceAll(string(k), `"`, `\"`))
+					} else {
+						elementPath = fmt.Sprintf("%s.%s", path, k)
+					}
+
+					en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, false)
+					visitPropertyValue(ctx, name+"."+en, elementPath, e, etf, eps, visitor)
+				}
+				return
 			}
 		}
-		var psflds map[string]*SchemaInfo
-		if ps != nil {
-			psflds = ps.Fields
-		}
 
-		rawElementNames := rawNames || shimutil.IsOfTypeMap(tfs)
+		etfs, eps := elemSchemas(tfs, ps)
 		for k, e := range v.ObjectValue() {
 			var elementPath string
 			if strings.ContainsAny(string(k), `."[]`) {
@@ -150,8 +161,7 @@ func visitPropertyValue(
 				elementPath = fmt.Sprintf("%s.%s", path, k)
 			}
 
-			en, etf, eps := getInfoFromPulumiName(k, tfflds, psflds, rawElementNames)
-			visitPropertyValue(ctx, name+"."+en, elementPath, e, etf, eps, rawElementNames, visitor)
+			visitPropertyValue(ctx, name+"."+string(k), elementPath, e, etfs, eps, visitor)
 		}
 	}
 }
@@ -166,7 +176,7 @@ func makePropertyDiff(
 	forceDiff *bool,
 	tfs shim.Schema,
 	ps *SchemaInfo,
-	finalize, rawNames bool,
+	finalize bool,
 ) {
 
 	visitor := func(name, path string, v resource.PropertyValue) bool {
@@ -257,7 +267,7 @@ func makePropertyDiff(
 		return false
 	}
 
-	visitPropertyValue(ctx, name, path, v, tfs, ps, rawNames, visitor)
+	visitPropertyValue(ctx, name, path, v, tfs, ps, visitor)
 }
 
 func newIgnoreChanges(
@@ -296,11 +306,11 @@ func computeIgnoreChanges(
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, visitor)
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
-		visitPropertyValue(ctx, en, string(k), v, etf, eps, shimutil.IsOfTypeMap(etf), visitor)
+		visitPropertyValue(ctx, en, string(k), v, etf, eps, visitor)
 	}
 	return ignoredKeySet
 }
@@ -353,17 +363,17 @@ func makeDetailedDiffExtra(
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, false, shimutil.IsOfTypeMap(etf))
+			etf, eps, false)
 	}
 	for k, v := range news {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, false, shimutil.IsOfTypeMap(etf))
+			etf, eps, false)
 	}
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps, false)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
-			etf, eps, true, shimutil.IsOfTypeMap(etf))
+			etf, eps, true)
 	}
 
 	changes := pulumirpc.DiffResponse_DIFF_NONE
