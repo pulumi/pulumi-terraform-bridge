@@ -27,6 +27,7 @@ import (
 	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,6 +41,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -67,209 +69,6 @@ func makeTerraformInputsForCreate(olds, news resource.PropertyMap,
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
 	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
-}
-
-// TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
-func TestTerraformInputs(t *testing.T) {
-	for _, f := range factories {
-		t.Run(f.SDKVersion(), func(t *testing.T) {
-			result, _, err := makeTerraformInputsNoDefaults(
-				nil, /*olds*/
-				resource.NewPropertyMapFromMap(map[string]interface{}{
-					"boolPropertyValue":   false,
-					"numberPropertyValue": 42,
-					"floatPropertyValue":  99.6767932,
-					"stringo":             "ognirts",
-					"arrayPropertyValue":  []interface{}{"an array"},
-					"unknownArrayValue":   resource.Computed{Element: resource.NewStringProperty("")},
-					"unknownArrayValue2":  resource.Computed{Element: resource.NewStringProperty("")},
-					"objectPropertyValue": map[string]interface{}{
-						"propertyA": "a",
-						"propertyB": true,
-					},
-					"mapPropertyValue": map[string]interface{}{
-						"propertyA": "a",
-						"propertyB": true,
-						"propertyC": map[string]interface{}{
-							"nestedPropertyA": true,
-						},
-					},
-					"nestedResources": []map[string]interface{}{{
-						"configuration": map[string]interface{}{
-							"configurationValue": true,
-						},
-					}},
-					"optionalConfig": map[string]interface{}{
-						"someValue":      true,
-						"someOtherValue": "a value",
-					},
-					"optionalConfigOther": map[string]interface{}{
-						"someValue":      true,
-						"someOtherValue": "a value",
-					},
-					"mapWithResourceElem": map[string]interface{}{
-						"someValue": "a value",
-					},
-					"arrayWithNestedOptionalComputedArrays": []interface{}{
-						map[string]interface{}{},
-					},
-				}),
-				f.NewSchemaMap(map[string]*schema.Schema{
-					// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-					"float_property_value": {Type: shim.TypeFloat},
-					"unknown_array_value":  {Type: shim.TypeList},
-					"unknown_array_value2": {
-						Type:     shim.TypeList,
-						MinItems: 1,
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"required_property": {Type: shim.TypeString, Required: true},
-								"conflicts_a":       {Type: shim.TypeString, ConflictsWith: []string{"conflicts_b"}},
-								"conflicts_b":       {Type: shim.TypeString, ConflictsWith: []string{"conflicts_a"}},
-							}),
-						}).Shim(),
-					},
-					"map_property_value": {Type: shim.TypeMap},
-					"nested_resource": {
-						Type:     shim.TypeList,
-						MaxItems: 2,
-						// Embed a `*schema.Resource` to validate that type directed
-						// walk of the schema successfully walks inside Resources as well
-						// as Schemas.
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"configuration": {Type: shim.TypeMap},
-							}),
-						}).Shim(),
-					},
-					"optional_config": {
-						Type:     shim.TypeList,
-						MaxItems: 1,
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"some_value":       {Type: shim.TypeBool},
-								"some_other_value": {Type: shim.TypeString},
-							}),
-						}).Shim(),
-					},
-					"optional_config_other": {
-						Type: shim.TypeList,
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"some_value":       {Type: shim.TypeBool},
-								"some_other_value": {Type: shim.TypeString},
-							}),
-						}).Shim(),
-					},
-					"map_with_resource_elem": {
-						Type: shim.TypeMap,
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"some_value": {Type: shim.TypeString},
-							}),
-						}).Shim(),
-					},
-					"array_with_nested_optional_computed_arrays": {
-						Type:     shim.TypeList,
-						Optional: true,
-						Computed: true,
-						MaxItems: 1,
-						Elem: (&schema.Resource{
-							Schema: schemaMap(map[string]*schema.Schema{
-								"nested_value": {
-									Type:     shim.TypeList,
-									MaxItems: 1,
-									Optional: true,
-									Elem: (&schema.Resource{
-										Schema: schemaMap(map[string]*schema.Schema{
-											"nested_inner_value": {
-												Type:     shim.TypeBool,
-												Required: true,
-											},
-										}),
-									}).Shim(),
-								},
-							}),
-						}).Shim(),
-					},
-				}),
-				map[string]*SchemaInfo{
-					// Reverse map string_property_value to the stringo property.
-					"string_property_value": {
-						Name: "stringo",
-					},
-					"optional_config_other": {
-						Name:        "optionalConfigOther",
-						MaxItemsOne: boolPointer(true),
-					},
-					"array_with_nested_optional_computed_arrays": {
-						SuppressEmptyMapElements: boolPointer(true),
-					},
-				})
-			assert.Nil(t, err)
-
-			var nilInterfaceSlice []interface{}
-			assert.Equal(t, map[string]interface{}{
-				"bool_property_value":   false,
-				"number_property_value": 42,
-				"float_property_value":  99.6767932,
-				"string_property_value": "ognirts",
-				"array_property_value":  []interface{}{"an array"},
-				"unknown_array_value":   []interface{}{TerraformUnknownVariableValue},
-				"unknown_array_value2": []interface{}{
-					map[string]interface{}{
-						"required_property": TerraformUnknownVariableValue,
-					},
-				},
-				"object_property_value": map[string]interface{}{
-					"property_a": "a",
-					"property_b": true,
-				},
-				"map_property_value": map[string]interface{}{
-					"propertyA": "a",
-					"propertyB": true,
-					"propertyC": map[string]interface{}{
-						"nestedPropertyA": true,
-					},
-				},
-				"nested_resource": []interface{}{
-					map[string]interface{}{
-						"configuration": map[string]interface{}{
-							"configurationValue": true,
-						},
-					},
-				},
-				"optional_config": []interface{}{
-					map[string]interface{}{
-						"some_value":       true,
-						"some_other_value": "a value",
-					},
-				},
-				"optional_config_other": []interface{}{
-					map[string]interface{}{
-						"some_value":       true,
-						"some_other_value": "a value",
-					},
-				},
-				"map_with_resource_elem": []interface{}{
-					map[string]interface{}{
-						"some_value": "a value",
-					},
-				},
-				"array_with_nested_optional_computed_arrays": nilInterfaceSlice,
-			}, result)
-
-			_, _, err = makeTerraformInputsNoDefaults(
-				nil, /*olds*/
-				resource.NewPropertyMapFromMap(map[string]interface{}{
-					"nilPropertyValue": nil,
-				}),
-				nil, /* tfs */
-				nil, /* ps */
-			)
-			assert.NoError(t, err)
-		})
-	}
 }
 
 func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
@@ -3006,4 +2805,363 @@ func TestRegress940(t *testing.T) {
 		// note also that build becomes array-wrapped because of MaxItems=1 flattening
 		assert.Equal(t, "foo_bar_value", result["build"].([]any)[0].(map[string]any)["build_arg"].(map[string]any)["fooBar"])
 	})
+}
+
+// TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
+func Test_makeTerraformInputsNoDefaults(t *testing.T) {
+	type testCase struct {
+		testCaseName string
+		schemaMap    map[string]*schema.Schema
+		schemaInfos  map[string]*SchemaInfo
+		propMap      resource.PropertyMap
+		expect       autogold.Value
+	}
+
+	testCases := []testCase{
+		{
+			testCaseName: "bool_without_schema",
+			propMap: resource.PropertyMap{
+				"boolPropertyValue": resource.NewBoolProperty(false),
+			},
+			expect: autogold.Expect(map[string]interface{}{"bool_property_value": false}),
+		},
+		{
+			testCaseName: "number_without_schema",
+			propMap: resource.PropertyMap{
+				"numberPropertyValue": resource.NewNumberProperty(42),
+			},
+			expect: autogold.Expect(map[string]interface{}{"number_property_value": 42}),
+		},
+		{
+			testCaseName: "float",
+			schemaMap: map[string]*schema.Schema{
+				"float_property_value": {
+					Type:     shim.TypeFloat,
+					Optional: true,
+				},
+			},
+			propMap: resource.PropertyMap{
+				"floatPropertyValue": resource.NewNumberProperty(99.6767932),
+			},
+			expect: autogold.Expect(map[string]interface{}{"float_property_value": 99.6767932}),
+		},
+		{
+			testCaseName: "string_without_schema_with_rename",
+			schemaInfos: map[string]*SchemaInfo{
+				"string_property_value": {Name: "stringo"},
+			},
+			propMap: resource.PropertyMap{
+				"stringo": resource.NewStringProperty("ognirts"),
+			},
+			expect: autogold.Expect(map[string]interface{}{"string_property_value": "ognirts"}),
+		},
+		{
+			testCaseName: "array_without_schema",
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"arrayPropertyValue": []interface{}{"an array"},
+			}),
+			expect: autogold.Expect(map[string]interface{}{"array_property_value": []interface{}{"an array"}}),
+		},
+		{
+			testCaseName: "array_unknown_value",
+			schemaMap: map[string]*schema.Schema{
+				"unknown_array_value": {
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem: (&schema.Schema{
+						Type: shim.TypeInt,
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				// The string property inside Computed is irrelevant.
+				"unknownArrayValue": resource.Computed{Element: resource.NewStringProperty("")},
+			}),
+			// NOTE: is this the behavior we would want here? Why is the result [unk] instead of unk?
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+		},
+		{
+			testCaseName: "unknown_object_value",
+			schemaMap: map[string]*schema.Schema{
+				"object_value": {
+					Type:     shim.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"required_property": {
+								Type:     shim.TypeString,
+								Required: true,
+							},
+							"conflicts_a": {
+								Optional:      true,
+								Type:          shim.TypeString,
+								ConflictsWith: []string{"object_value.conflicts_b"},
+							},
+							"conflicts_b": {
+								Optional:      true,
+								Type:          shim.TypeString,
+								ConflictsWith: []string{"object_value.conflicts_a"},
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				// The string property inside Computed is irrelevant.
+				"objectValue": resource.Computed{Element: resource.NewStringProperty("")},
+			}),
+			// NOTE: is this what we want? Should this be [unk] or unk?
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"object_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+		},
+		{
+			testCaseName: "object",
+			schemaMap: map[string]*schema.Schema{
+				"object_property_value": {
+					Optional: true,
+					Type:     shim.TypeList,
+					MaxItems: 1,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"property_a": {
+								Type:     shim.TypeString,
+								Required: true,
+							},
+							"property_b": {
+								Type:     shim.TypeBool,
+								Optional: true,
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"objectPropertyValue": map[string]interface{}{
+					"propertyA": "a",
+					"propertyB": true,
+				},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"object_property_value": []interface{}{map[string]interface{}{"property_a": "a", "property_b": true}}}),
+		},
+		{
+			testCaseName: "map_of_untyped_element",
+			schemaMap: map[string]*schema.Schema{
+				"map_property_value": {
+					Type:     shim.TypeMap,
+					Optional: true,
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"propertyA": "a",
+				"propertyB": true,
+				"propertyC": map[string]interface{}{
+					"nestedPropertyA": true,
+				},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"property_a": "a", "property_b": true, "property_c": map[string]interface{}{"nested_property_a": true}}),
+		},
+		{
+			testCaseName: "list_nested_block",
+			schemaMap: map[string]*schema.Schema{
+				"nested_resource": {
+					Optional: true,
+					Type:     shim.TypeList,
+					MaxItems: 2,
+					// Embed a `*schema.Resource` to validate that type directed walk of the schema
+					// successfully walks inside Resources as well as Schemas.
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"configuration": {
+								Type:     shim.TypeMap,
+								Optional: true,
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedResources": []map[string]interface{}{{
+					"configuration": map[string]interface{}{
+						"configurationValue": true,
+					},
+				}},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"nested_resource": []interface{}{map[string]interface{}{"configuration": map[string]interface{}{"configurationValue": true}}}}),
+		},
+		{
+			testCaseName: "optional_config",
+			schemaMap: map[string]*schema.Schema{
+				"optional_config": {
+					Optional: true,
+					Type:     shim.TypeList,
+					MaxItems: 1,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"some_value": {
+								Optional: true,
+								Type:     shim.TypeBool,
+							},
+							"some_other_value": {
+								Optional: true,
+								Type:     shim.TypeString,
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"optionalConfig": map[string]interface{}{
+					"someValue":      true,
+					"someOtherValue": "a value",
+				},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"optional_config": []interface{}{map[string]interface{}{"some_other_value": "a value", "some_value": true}}}),
+		},
+		{
+			testCaseName: "optional_config_with_overrides",
+			schemaMap: map[string]*schema.Schema{
+				"optional_config_other": {
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"some_value": {
+								Type:     shim.TypeBool,
+								Optional: true,
+							},
+							"some_other_value": {
+								Optional: true,
+								Type:     shim.TypeString,
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			schemaInfos: map[string]*SchemaInfo{
+				"optional_config_other": {
+					Name:        "optionalConfigOther2",
+					MaxItemsOne: boolPointer(true),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"optionalConfigOther2": map[string]interface{}{
+					"someValue":      true,
+					"someOtherValue": "a value",
+				},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"optional_config_other": []interface{}{map[string]interface{}{"some_other_value": "a value", "some_value": true}}}),
+		},
+		{
+			testCaseName: "map_of_int_lists",
+			schemaMap: map[string]*schema.Schema{
+				"m": {
+					Type:     shim.TypeMap,
+					Optional: true,
+					Elem: (&schema.Schema{
+						Type: shim.TypeList,
+						Elem: (&schema.Schema{
+							Type: shim.TypeInt,
+						}).Shim(),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"m": map[string]interface{}{
+					"ones": []interface{}{1, 10, 100},
+					"twos": []interface{}{2, 20, 200},
+				},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"m": map[string]interface{}{"ones": []interface{}{1, 10, 100}, "twos": []interface{}{2, 20, 200}}}),
+		},
+		{
+			testCaseName: "array_with_nested_optional_computed_arrays",
+			schemaMap: map[string]*schema.Schema{
+				"array_with_nested_optional_computed_arrays": {
+					Type:     shim.TypeList,
+					Optional: true,
+					Computed: true,
+					MaxItems: 1,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"nested_value": {
+								Type:     shim.TypeList,
+								MaxItems: 1,
+								Optional: true,
+								Elem: (&schema.Resource{
+									Schema: schemaMap(map[string]*schema.Schema{
+										"nested_inner_value": {
+											Type:     shim.TypeBool,
+											Required: true,
+										},
+									}),
+								}).Shim(),
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"arrayWithNestedOptionalComputedArrays": []interface{}{
+					map[string]interface{}{},
+				},
+			}),
+			expect: autogold.Expect(map[string]interface{}{"array_with_nested_optional_computed_arrays": []interface{}{}}),
+			schemaInfos: map[string]*SchemaInfo{
+				"array_with_nested_optional_computed_arrays": {
+					SuppressEmptyMapElements: boolPointer(true),
+				},
+			},
+		},
+		{
+			testCaseName: "nil_without_schema",
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nilPropertyValue": nil,
+			}),
+			expect: autogold.Expect(map[string]interface{}{"nil_property_value": nil}),
+		},
+		// {
+		// 	testCaseName: "???",
+		// 	schemaMap:    map[string]*schema.Schema{},
+		// 	propMap:      resource.NewPropertyMapFromMap(map[string]interface{}{}),
+		// 	expect:       autogold.Expect(nil),
+		// },
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.testCaseName, func(t *testing.T) {
+			results := map[string]any{}
+
+			for _, f := range factories {
+				f := f
+				sm := f.NewSchemaMap(tc.schemaMap)
+				err := sm.Validate()
+				require.NoErrorf(t, err, "Invalid test case schema, please fix the testCase")
+
+				result, assetTable, err := makeTerraformInputsNoDefaults(
+					nil, /*olds*/
+					tc.propMap,
+					sm,
+					tc.schemaInfos,
+				)
+				require.NoError(t, err)
+				require.Empty(t, assetTable)
+				results[f.SDKVersion()] = result
+			}
+
+			tc.expect.Equal(t, results[factories[0].SDKVersion()])
+			for k, v := range results {
+				require.Equalf(t, results[factories[0].SDKVersion()], v, k)
+			}
+		})
+	}
 }
