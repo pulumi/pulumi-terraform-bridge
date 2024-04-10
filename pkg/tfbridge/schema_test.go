@@ -68,7 +68,7 @@ func makeTerraformInputsForCreate(olds, news resource.PropertyMap,
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
-	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps, false)
+	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps)
 }
 
 func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
