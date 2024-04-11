@@ -3127,6 +3127,43 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 			}),
 			expect: autogold.Expect(map[string]interface{}{"nil_property_value": nil}),
 		},
+		{
+			testCaseName: "list_nested_block",
+			propMap: resource.PropertyMap{
+				"block": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"myNested": resource.NewProperty("position-0"),
+					}),
+					resource.NewProperty(resource.PropertyMap{
+						"myNested": resource.NewProperty("position-1"),
+					}),
+				}),
+			},
+			schemaInfos: map[string]*SchemaInfo{
+				"block": {
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"nested": {Name: "myNested"},
+						},
+					},
+				},
+			},
+			schemaMap: map[string]*schema.Schema{
+				"block": &schema.Schema{
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem: (&schema.Resource{
+						Schema: schema.SchemaMap{
+							"nested": (&schema.Schema{
+								Type:     shim.TypeString,
+								Optional: true,
+							}).Shim(),
+						},
+					}).Shim(),
+				},
+			},
+			expect: autogold.Expect(map[string]interface{}{"block": []interface{}{map[string]interface{}{"nested": "position-0"}, map[string]interface{}{"nested": "position-1"}}}),
+		},
 		// {
 		// 	testCaseName: "???",
 		// 	schemaMap:    map[string]*schema.Schema{},
