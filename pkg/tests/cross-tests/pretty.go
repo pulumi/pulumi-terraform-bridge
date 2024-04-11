@@ -102,6 +102,29 @@ type prettyPrinterForTypes struct {
 func newPrettyPrinterForTypes(v tftypes.Value) prettyPrinterForTypes {
 	objectTypes := []tftypes.Object{}
 
+	var visitTypes func(t tftypes.Type, vis func(tftypes.Type))
+	visitTypes = func(t tftypes.Type, vis func(tftypes.Type)) {
+		vis(t)
+		switch {
+		case t.Is(tftypes.Object{}):
+			for _, v := range t.(tftypes.Object).AttributeTypes {
+				visitTypes(v, vis)
+			}
+		case t.Is(tftypes.List{}):
+			visitTypes(t.(tftypes.List).ElementType, vis)
+		case t.Is(tftypes.Map{}):
+			visitTypes(t.(tftypes.Map).ElementType, vis)
+		case t.Is(tftypes.Set{}):
+			visitTypes(t.(tftypes.Set).ElementType, vis)
+		case t.Is(tftypes.Tuple{}):
+			for _, et := range t.(tftypes.Tuple).ElementTypes {
+				visitTypes(et, vis)
+			}
+		default:
+			return
+		}
+	}
+
 	addObjectType := func(t tftypes.Type) {
 		oT, ok := t.(tftypes.Object)
 		if !ok {
@@ -116,7 +139,7 @@ func newPrettyPrinterForTypes(v tftypes.Value) prettyPrinterForTypes {
 	}
 
 	_ = tftypes.Walk(v, func(ap *tftypes.AttributePath, v tftypes.Value) (bool, error) {
-		addObjectType(v.Type())
+		visitTypes(v.Type(), addObjectType)
 		return true, nil
 	})
 
