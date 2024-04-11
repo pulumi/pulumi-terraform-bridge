@@ -130,6 +130,9 @@ func (va *valueAdapter) ToCty() cty.Value {
 		var vals []tftypes.Value
 		err := v.As(&vals)
 		contract.AssertNoErrorf(err, "unexpected error converting list")
+		if len(vals) == 0 {
+			return cty.ListValEmpty(FromType(t).ToCty())
+		}
 		outVals := make([]cty.Value, len(vals))
 		for i, el := range vals {
 			outVals[i] = FromValue(el).ToCty()
@@ -138,6 +141,9 @@ func (va *valueAdapter) ToCty() cty.Value {
 	case t.Is(tftypes.Set{}):
 		var vals []tftypes.Value
 		err := v.As(&vals)
+		if len(vals) == 0 {
+			return cty.SetValEmpty(FromType(t).ToCty())
+		}
 		contract.AssertNoErrorf(err, "unexpected error converting set")
 		outVals := make([]cty.Value, len(vals))
 		for i, el := range vals {
@@ -147,6 +153,9 @@ func (va *valueAdapter) ToCty() cty.Value {
 	case t.Is(tftypes.Map{}):
 		var vals map[string]tftypes.Value
 		err := v.As(&vals)
+		if len(vals) == 0 {
+			return cty.MapValEmpty(FromType(t).ToCty())
+		}
 		contract.AssertNoErrorf(err, "unexpected error converting map")
 		outVals := make(map[string]cty.Value, len(vals))
 		for k, el := range vals {
@@ -156,13 +165,15 @@ func (va *valueAdapter) ToCty() cty.Value {
 	case t.Is(tftypes.Object{}):
 		var vals map[string]tftypes.Value
 		err := v.As(&vals)
+		if len(vals) == 0 {
+			return cty.EmptyObjectVal
+		}
 		contract.AssertNoErrorf(err, "unexpected error converting object")
 		outVals := make(map[string]cty.Value, len(vals))
 		for k, el := range vals {
 			outVals[k] = FromValue(el).ToCty()
 		}
 		return cty.ObjectVal(outVals)
-
 	default:
 		contract.Failf("unexpected type %v", t)
 		return cty.NilVal
