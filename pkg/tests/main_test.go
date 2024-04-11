@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -62,10 +63,13 @@ func ensureCompiledTestProviders(wd string) error {
 	bin := filepath.Join(wd, "..", "..", "bin")
 
 	type testProvider struct {
-		name        string
-		source      string
-		tfgenSource string
+		name             string
+		source           string
+		tfgenSource      string
+		expectTfgenError *string
 	}
+
+	internalErrorMsg := "Internal validation of the provider failed!"
 
 	testProviders := []testProvider{
 		{
@@ -73,23 +77,21 @@ func ensureCompiledTestProviders(wd string) error {
 			filepath.Join(wd, "..", "..", "internal", "testprovider_sdkv2",
 				"cmd", "pulumi-resource-tpsdkv2"),
 			filepath.Join(wd, "..", "..", "internal", "testprovider_sdkv2",
-				"cmd", "pulumi-tfgen-tpsdkv2"),
+				"cmd", "pulumi-tfgen-tpsdkv2"), nil,
 		},
 		{
-			"testprovider_invschema", filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-resource-tpinvschema"), filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-tfgen-tpinvschema"),
+			"testprovider_invschema", filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-resource-tpinvschema"), filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-tfgen-tpinvschema"), &internalErrorMsg,
 		},
 	}
 
-	runcmd := func(cmd *exec.Cmd) error {
+	runcmd := func(cmd *exec.Cmd) (error, string, string) {
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
-			fmt.Println(stdout.String())
-			fmt.Println(stderr.String())
-			return err
+			return err, stdout.String(), stderr.String()
 		}
-		return nil
+		return nil, "", ""
 	}
 
 	var suffix string
@@ -103,7 +105,9 @@ func ensureCompiledTestProviders(wd string) error {
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.tfgenSource
-			if err := runcmd(cmd); err != nil {
+			if err, stdout, stderr := runcmd(cmd); err != nil {
+				fmt.Println(stdout)
+				fmt.Println(stderr)
 				return fmt.Errorf("tfgen build failed for %s: %w", p.name, err)
 			}
 		}
@@ -113,7 +117,17 @@ func ensureCompiledTestProviders(wd string) error {
 			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command(exe, "schema", "--out", p.source)
 			cmd.Dir = bin
-			if err := runcmd(cmd); err != nil {
+			if err, stdout, stderr := runcmd(cmd); err != nil {
+				if p.expectTfgenError != nil {
+					if !strings.Contains(stderr, *p.expectTfgenError) {
+						fmt.Println(stdout)
+						fmt.Println(stderr)
+						return fmt.Errorf("tfgen schema failed for %s: %w", p.name, err)
+					}
+					return nil
+				}
+				fmt.Println(stdout)
+				fmt.Println(stderr)
 				return fmt.Errorf("schema generation failed for %s: %w", p.name, err)
 			}
 		}
@@ -123,7 +137,9 @@ func ensureCompiledTestProviders(wd string) error {
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.source
-			if err := runcmd(cmd); err != nil {
+			if err, stdout, stderr := runcmd(cmd); err != nil {
+				fmt.Println(stdout)
+				fmt.Println(stderr)
 				return fmt.Errorf("provider build failed for %s: %w", p.name, err)
 			}
 		}

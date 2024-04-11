@@ -17,14 +17,15 @@ package tfgen
 import (
 	"context"
 	"fmt"
+	"os"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-	tfshim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -42,7 +43,6 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
-
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -89,14 +89,21 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	// Validate any sdk providers that are being muxed in.
 	schema.RunProviderInternalValidation = true
 	for _, prov := range shim.MuxedProviders {
-		sdkProv, ok := prov.(tfshim.Provider) 
-		if ok {
-			sdkProv.Validate(context.Background(), nil)
+		warnings, errors := prov.Validate(context.Background(), prov.
+			NewResourceConfig(context.Background(), map[string]interface{}{}))
+		if len(warnings) > 0 {
+			for _, w := range warnings {
+				glog.Warning(w)
+			}
+		}
+		if len(errors) > 0 {
+			_, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", errors)
+			contract.IgnoreError(fmterr)
+			os.Exit(-1)
 		}
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
-
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
