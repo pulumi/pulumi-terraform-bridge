@@ -3197,6 +3197,63 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 			},
 			expect: autogold.Expect(map[string]interface{}{"block": []interface{}{map[string]interface{}{"nested": "position-0"}, map[string]interface{}{}}}),
 		},
+		{
+			testCaseName: "double_nested_object",
+			propMap: resource.PropertyMap{
+				"level1": resource.NewProperty(resource.PropertyMap{
+					"level2": resource.NewProperty(resource.PropertyMap{
+						"value": resource.NewProperty("someValue"),
+					}),
+				}),
+			},
+			schemaInfos: map[string]*SchemaInfo{
+				"l1": {
+					Name: "level1",
+					Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"l2": {
+								Name: "level2",
+								Elem: &SchemaInfo{
+									Fields: map[string]*SchemaInfo{
+										"v": {Name: "value"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			schemaMap: map[string]*schema.Schema{
+				"l1": &schema.Schema{
+					Type:     shim.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: (&schema.Resource{
+						Schema: schema.SchemaMap{
+							"l2": (&schema.Schema{
+								Type:     shim.TypeList,
+								Optional: true,
+								MaxItems: 1,
+								Elem: (&schema.Resource{
+									Schema: schema.SchemaMap{
+										"v": (&schema.Schema{
+											Type:     shim.TypeString,
+											Optional: true,
+										}).Shim(),
+									},
+								}).Shim(),
+							}).Shim(),
+						},
+					}).Shim(),
+				},
+			},
+			expect: autogold.Expect(map[string]interface{}{
+				"l1": []interface{}{
+					map[string]interface{}{
+						"l2": []interface{}{
+							map[string]interface{}{
+								"v": "someValue"}}}}}),
+		},
 		// {
 		// 	testCaseName: "???",
 		// 	schemaMap:    map[string]*schema.Schema{},
