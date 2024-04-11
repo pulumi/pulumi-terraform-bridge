@@ -206,7 +206,7 @@ func (pp prettyPrinterForTypes) TypeReferenceString(t tftypes.Type) string {
 func (pp prettyPrinterForTypes) TypeReference(w io.Writer, t tftypes.Type) {
 	switch {
 	case t.Is(tftypes.Object{}):
-		fmt.Fprintf(w, pp.TypeLiteral(t.(tftypes.Object)))
+		fmt.Fprintf(w, "%s", pp.TypeLiteral(t.(tftypes.Object)))
 	case t.Is(tftypes.List{}):
 		fmt.Fprintf(w, "tftypes.List{ElementType: ")
 		pp.TypeReference(w, t.(tftypes.List).ElementType)

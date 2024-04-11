@@ -111,7 +111,7 @@ func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
 	}
 	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
 	t.Logf("infer object type: %v", objectType)
-	v := FromType(objectType).NewValue(x)
+	v := fromType(objectType).NewValue(x)
 	return &v
 }
 
@@ -137,7 +137,8 @@ func (d *tfDriver) write(
 	config tftypes.Value,
 ) {
 	var buf bytes.Buffer
-	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, FromValue(config).ToCty())
+	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, fromValue(config).ToCty())
+	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	bytes := buf.Bytes()
 	err = os.WriteFile(filepath.Join(d.cwd, "test.tf"), bytes, 0600)
