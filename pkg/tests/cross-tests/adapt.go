@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Adapters for converting morally several morally equivalent typed representations of TF values for integrating with
-// all the libraries cross-testing is using.
+// Adapters for converting morally equivalent typed representations of TF values for integrating with all the libraries
+// cross-testing is using.
 package crosstests
 
 import (
