@@ -334,78 +334,60 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		tfValue    map[string]any
-		tfType     map[string]*schema.Schema
-		schemaInfo map[string]*SchemaInfo
+		tfValue    any
+		tfType     *schema.Schema
+		schemaInfo *SchemaInfo
 		expect     autogold.Value
 	}{
 		{
-			name: "nil_property_value",
-			tfValue: map[string]any{
-				"nil_property_value": nil,
-			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("nilPropertyValue"): resource.PropertyValue{}}),
+			name:    "nil_property_value",
+			tfValue: nil,
+			expect:  autogold.Expect(resource.PropertyMap{resource.PropertyKey("nilPropertyValue"): resource.PropertyValue{}}),
 		},
 		{
-			name: "bool_property_value",
-			tfValue: map[string]any{
-				"bool_property_value": false,
-			},
+			name:    "bool_property_value",
+			tfValue: false,
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("boolPropertyValue"): resource.PropertyValue{
 				V: false,
 			}}),
 		},
 		{
-			name: "number_property_value",
-			tfValue: map[string]any{
-				"number_property_value": 42,
-			},
+			name:    "number_property_value",
+			tfValue: 42,
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("numberPropertyValue"): resource.PropertyValue{
 				V: 42,
 			}}),
 		},
 		{
-			name: "float_property_value",
-			tfValue: map[string]any{
-				"float_property_value": 99.6767932,
-			},
-			tfType: map[string]*schema.Schema{
-				"float_property_value": {Type: shim.TypeFloat},
-			},
+			name:    "float_property_value",
+			tfValue: 99.6767932,
+			tfType:  &schema.Schema{Type: shim.TypeFloat},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("floatPropertyValue"): resource.PropertyValue{
 				V: 99.6767932,
 			}}),
 		},
 		{
-			name: "string_property_value",
-			tfValue: map[string]any{
-				"string_property_value": "ognirts",
-			},
-			schemaInfo: map[string]*SchemaInfo{
+			name:    "string_property_value",
+			tfValue: "ognirts",
+			schemaInfo: &SchemaInfo{
 				// Reverse map string_property_value to the stringo property.
-				"string_property_value": {
-					Name: "stringo",
-				},
+				Name: "stringo",
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("stringo"): resource.PropertyValue{
 				V: "ognirts",
 			}}),
 		},
 		{
-			name: "my_string_property_value",
-			tfValue: map[string]any{
-				"my_string_property_value": MyString("ognirts"),
-			},
-			tfType: map[string]*schema.Schema{"my_string_property_value": {Type: shim.TypeString}},
+			name:    "my_string_property_value",
+			tfValue: MyString("ognirts"),
+			tfType:  &schema.Schema{Type: shim.TypeString},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("myStringPropertyValue"): resource.PropertyValue{
 				V: "ognirts",
 			}}),
 		},
 		{
-			name: "array_property_value",
-			tfValue: map[string]any{
-				"array_property_value": []interface{}{"an array"},
-			},
+			name:    "array_property_value",
+			tfValue: []interface{}{"an array"},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("arrayPropertyValue"): resource.PropertyValue{
 				V: []resource.PropertyValue{{
 					V: "an array",
@@ -414,11 +396,9 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "object_property_value",
-			tfValue: map[string]any{
-				"object_property_value": map[string]interface{}{
-					"property_a": "a",
-					"property_b": true,
-				},
+			tfValue: map[string]interface{}{
+				"property_a": "a",
+				"property_b": true,
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("objectPropertyValue"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -431,18 +411,16 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "map_property_value",
-			tfValue: map[string]any{
-				"map_property_value": map[string]interface{}{
-					"propertyA": "a",
-					"propertyB": true,
-					"propertyC": map[string]interface{}{
-						"nestedPropertyA": true,
-					},
+			tfValue: map[string]interface{}{
+				"propertyA": "a",
+				"propertyB": true,
+				"propertyC": map[string]interface{}{
+					"nestedPropertyA": true,
 				},
 			},
-			tfType: map[string]*schema.Schema{
+			tfType: &schema.Schema{
 				// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-				"map_property_value": {Type: shim.TypeMap},
+				Type: shim.TypeMap,
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("mapPropertyValue"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -458,28 +436,24 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "nested_resource",
-			tfValue: map[string]any{
-				"nested_resource": []interface{}{
-					map[string]interface{}{
-						"configuration": map[string]interface{}{
-							"configurationValue": true,
-						},
+			tfValue: []interface{}{
+				map[string]interface{}{
+					"configuration": map[string]interface{}{
+						"configurationValue": true,
 					},
 				},
 			},
-			tfType: map[string]*schema.Schema{
-				"nested_resource": {
-					Type:     shim.TypeList,
-					MaxItems: 2,
-					// Embed a `*schema.Resource` to validate that type directed
-					// walk of the schema successfully walks inside Resources as well
-					// as Schemas.
-					Elem: (&schema.Resource{
-						Schema: schemaMap(map[string]*schema.Schema{
-							"configuration": {Type: shim.TypeMap},
-						}),
-					}).Shim(),
-				},
+			tfType: &schema.Schema{
+				Type:     shim.TypeList,
+				MaxItems: 2,
+				// Embed a `*schema.Resource` to validate that type directed
+				// walk of the schema successfully walks inside Resources as well
+				// as Schemas.
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"configuration": {Type: shim.TypeMap},
+					}),
+				}).Shim(),
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("nestedResources"): resource.PropertyValue{
 				V: []resource.PropertyValue{{
@@ -493,25 +467,21 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "optional_config",
-			tfValue: map[string]any{
-				"optional_config": []interface{}{
-					map[string]interface{}{
-						"some_value":       true,
-						"some_other_value": "a value",
-					},
+			tfValue: []interface{}{
+				map[string]interface{}{
+					"some_value":       true,
+					"some_other_value": "a value",
 				},
 			},
-			tfType: map[string]*schema.Schema{
-				"optional_config": {
-					Type:     shim.TypeList,
-					MaxItems: 1,
-					Elem: (&schema.Resource{
-						Schema: schemaMap(map[string]*schema.Schema{
-							"some_value":       {Type: shim.TypeBool},
-							"some_other_value": {Type: shim.TypeString},
-						}),
-					}).Shim(),
-				},
+			tfType: &schema.Schema{
+				Type:     shim.TypeList,
+				MaxItems: 1,
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"some_value":       {Type: shim.TypeBool},
+						"some_other_value": {Type: shim.TypeString},
+					}),
+				}).Shim(),
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("optionalConfig"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -524,30 +494,24 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "optional_config_other",
-			tfValue: map[string]any{
-				"optional_config_other": []interface{}{
-					map[string]interface{}{
-						"some_value":       true,
-						"some_other_value": "a value",
-					},
+			tfValue: []interface{}{
+				map[string]interface{}{
+					"some_value":       true,
+					"some_other_value": "a value",
 				},
 			},
-			tfType: map[string]*schema.Schema{
-				"optional_config_other": {
-					Type: shim.TypeList,
-					Elem: (&schema.Resource{
-						Schema: schemaMap(map[string]*schema.Schema{
-							"some_value":       {Type: shim.TypeBool},
-							"some_other_value": {Type: shim.TypeString},
-						}),
-					}).Shim(),
-				},
+			tfType: &schema.Schema{
+				Type: shim.TypeList,
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"some_value":       {Type: shim.TypeBool},
+						"some_other_value": {Type: shim.TypeString},
+					}),
+				}).Shim(),
 			},
-			schemaInfo: map[string]*SchemaInfo{
-				"optional_config_other": {
-					Name:        "optionalConfigOther",
-					MaxItemsOne: boolPointer(true),
-				},
+			schemaInfo: &SchemaInfo{
+				Name:        "optionalConfigOther",
+				MaxItemsOne: boolPointer(true),
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("optionalConfigOther"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -559,16 +523,12 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 			}}),
 		},
 		{
-			name: "secret_value",
-			tfValue: map[string]any{
-				"secret_value": "MyPassword",
-			},
-			tfType: map[string]*schema.Schema{
-				"secret_value": {
-					Type:      shim.TypeString,
-					Optional:  true,
-					Sensitive: true,
-				},
+			name:    "secret_value",
+			tfValue: "MyPassword",
+			tfType: &schema.Schema{
+				Type:      shim.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("secretValue"): resource.PropertyValue{
 				V: &resource.Secret{Element: resource.PropertyValue{
@@ -578,26 +538,22 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		},
 		{
 			name: "nested_secret_value",
-			tfValue: map[string]any{
-				"nested_secret_value": []interface{}{
-					map[string]interface{}{
-						"secret_value": "MyPassword",
-					},
+			tfValue: []interface{}{
+				map[string]interface{}{
+					"secret_value": "MyPassword",
 				},
 			},
-			tfType: map[string]*schema.Schema{
-				"nested_secret_value": {
-					Type:     shim.TypeList,
-					MaxItems: 1,
-					Elem: (&schema.Resource{
-						Schema: schemaMap(map[string]*schema.Schema{
-							"secret_value": {
-								Type:      shim.TypeString,
-								Sensitive: true,
-							},
-						}),
-					}).Shim(),
-				},
+			tfType: &schema.Schema{
+				Type:     shim.TypeList,
+				MaxItems: 1,
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"secret_value": {
+							Type:      shim.TypeString,
+							Sensitive: true,
+						},
+					}),
+				}).Shim(),
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("nestedSecretValue"): resource.PropertyValue{
 				V: resource.PropertyMap{resource.PropertyKey("secretValue"): resource.PropertyValue{
@@ -611,19 +567,36 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("name", func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			for _, f := range factories {
 				f := f
 				t.Run(f.SDKVersion(), func(t *testing.T) {
 					t.Parallel()
 					ctx := context.Background()
+
+					var tfType map[string]*schema.Schema
+					if tt.tfType != nil {
+						tfType = map[string]*schema.Schema{
+							tt.name: tt.tfType,
+						}
+					}
+
+					var schemaInfo map[string]*SchemaInfo
+					if tt.schemaInfo != nil {
+						schemaInfo = map[string]*SchemaInfo{
+							tt.name: tt.schemaInfo,
+						}
+					}
+
 					result := MakeTerraformOutputs(
 						ctx,
 						f.NewTestProvider(),
-						tt.tfValue,
-						f.NewSchemaMap(tt.tfType),
-						tt.schemaInfo,
+						map[string]any{
+							tt.name: tt.tfValue,
+						},
+						f.NewSchemaMap(tfType),
+						schemaInfo,
 						nil,   /* assets */
 						false, /* useRawNames */
 						true,  /* supportsSecrets */
