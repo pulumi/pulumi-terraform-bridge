@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -33,6 +34,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -519,13 +521,21 @@ func pulumiWriteYaml(t T, tc diffTestCase, puwd string, tfConfig any) {
 	schema := sdkv2.NewResource(tc.Resource).Schema()
 	pConfig, err := convertConfigToPulumi(schema, nil, tc.ObjectType, tfConfig)
 	require.NoErrorf(t, err, "convertConfigToPulumi failed")
+
+	// Not testing secrets yet, but schema secrets may be set by convertConfigToPulumi.
+	pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
+
+	// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi
+	// YAML. This probably needs refinement.
+	yamlProperties := pConfig.Mappable()
+
 	data := map[string]any{
 		"name":    "project",
 		"runtime": "yaml",
 		"resources": map[string]any{
 			"example": map[string]any{
 				"type":       fmt.Sprintf("%s:index:%s", providerShortName, rtok),
-				"properties": pConfig,
+				"properties": yamlProperties,
 			},
 		},
 		"backend": map[string]any{
@@ -545,7 +555,7 @@ func convertConfigToPulumi(
 	schemaInfos map[string]*tfbridge.SchemaInfo,
 	objectType *tftypes.Object,
 	tfConfig any,
-) (any, error) {
+) (resource.PropertyMap, error) {
 	var v *tftypes.Value
 
 	switch tfConfig := tfConfig.(type) {
@@ -589,11 +599,13 @@ func convertConfigToPulumi(
 	if err != nil {
 		return nil, err
 	}
+
+	// There is not yet a way to opt out of marking schema secrets, so the resulting map might have secrets marked.
 	pm, err := convert.DecodePropertyMap(decoder, *v)
 	if err != nil {
 		return nil, err
 	}
-	return pm.Mappable(), nil
+	return pm, nil
 }
 
 // Still discovering the structure of JSON-serialized TF plans. The information required from these is, primarily, is
