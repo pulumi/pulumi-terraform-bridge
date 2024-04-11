@@ -11,5 +11,5 @@ type T interface {
 	TempDir() string
 	require.TestingT
 	assert.TestingT
-	pulumitest.T
+	pulumitest.PT
 }
