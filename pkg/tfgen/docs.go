@@ -930,8 +930,18 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	var hadSpace bool
 	for _, line := range subsection {
+		//q.Q("*******************************")
+		//q.Q(line) // this should print twice and I should see where it goes
+
 		if name, desc, matchFound := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new
+
+			//q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
+			//q.Q(lastMatch)
+			//q.Q(name)
+			//q.Q(desc)
+			//q.Q(line)
+
 			addNewHeading(name, desc, line)
 			lastMatch = name
 		} else if strings.TrimSpace(line) == "---" {
