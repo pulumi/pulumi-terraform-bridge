@@ -61,7 +61,7 @@ func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 }
 
 func (p *SchemaOnlyProvider) Validate(context.Context, shim.ResourceConfig) ([]string, []error) {
-	panic("schemaOnlyProvider does not implement runtime operation Validate")
+	return nil, nil
 }
 
 func (p *SchemaOnlyProvider) ValidateResource(
@@ -126,7 +126,7 @@ func (p *SchemaOnlyProvider) NewDestroyDiff(context.Context, string, shim.Timeou
 }
 
 func (p *SchemaOnlyProvider) NewResourceConfig(context.Context, map[string]interface{}) shim.ResourceConfig {
-	panic("schemaOnlyProvider does not implement runtime operation ResourceConfig")
+	return nil
 }
 
 func (p *SchemaOnlyProvider) IsSet(context.Context, interface{}) ([]interface{}, bool) {

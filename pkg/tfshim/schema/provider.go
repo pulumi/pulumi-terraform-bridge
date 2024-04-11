@@ -43,7 +43,7 @@ func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 }
 
 func (ProviderShim) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
-	panic("this provider is schema-only and does not support runtime operations")
+	return nil, nil
 }
 
 func (ProviderShim) ValidateResource(
@@ -113,7 +113,7 @@ func (ProviderShim) NewDestroyDiff(ctx context.Context, t string, _ shim.Timeout
 func (ProviderShim) NewResourceConfig(
 	ctx context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
-	panic("this provider is schema-only and does not support runtime operations")
+	return nil
 }
 
 func (ProviderShim) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
