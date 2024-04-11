@@ -69,7 +69,7 @@ func ensureCompiledTestProviders(wd string) error {
 		expectTfgenError *string
 	}
 
-	internalErrorMsg := "Internal validation of the provider failed!"
+	const internalErrorMsg = "Internal validation of the provider failed!"
 
 	testProviders := []testProvider{
 		{
