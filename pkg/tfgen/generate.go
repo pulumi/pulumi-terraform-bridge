@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -1854,6 +1855,13 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
+	if strings.Contains(entityDocs.Description, "Manages an Access Analyzer Analyzer") {
+		q.Q(entityDocs)
+		q.Q(path)
+		panic("At the disco")
+	}
+
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		v, ok := entityDocs.Arguments[p]

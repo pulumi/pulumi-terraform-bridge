@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -588,8 +589,15 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		if err := p.parseSection(section); err != nil {
-			return entityDocs{}, err
+		//		if err := p.parseSection(section); err != nil {
+		//			return entityDocs{}, err
+		if strings.Contains(string(tfMarkdown), "Manages an Access Analyzer Analyzer") && strings.Contains(section[0], "Argument Reference") {
+			q.Q("HERE HERE HERE", strings.Join(section, " "))
+
+			if err := p.parseSection(section); err != nil {
+				return entityDocs{}, err
+			}
+
 		}
 	}
 
