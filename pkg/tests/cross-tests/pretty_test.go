@@ -51,20 +51,20 @@ func TestPrettyPrint(t *testing.T) {
 			}),
 			autogold.Expect(`
 t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-    "n": tftypes.Number,
+  "n": tftypes.Number,
 }}
 t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-    "f0": tftypes.List{ElementType: t1},
-    "f1": tftypes.Bool,
+  "f0": tftypes.List{ElementType: t1},
+  "f1": tftypes.Bool,
 }}
 tftypes.NewValue(t0, map[string]tftypes.Value{
-.   "f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
-. . . tftypes.NewValue(t1, map[string]tftypes.Value{
-. . .   "n": tftypes.NewValue(tftypes.Number, 42),
-. . . }),
-. . }),
-.   "f1": tftypes.NewValue(tftypes.Bool, true),
-. })`),
+  "f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
+.   tftypes.NewValue(t1, map[string]tftypes.Value{
+      "n": tftypes.NewValue(tftypes.Number, 42),
+    }),
+  }),
+  "f1": tftypes.NewValue(tftypes.Bool, true),
+})`),
 		},
 	}
 

@@ -46,7 +46,7 @@ func (s prettyValueWrapper) GoString() string {
 
 	walk = func(level int, v tftypes.Value) {
 		tL := tp.TypeReferenceString(v.Type())
-		indent := strings.Repeat(". ", level+1)
+		indent := strings.Repeat("  ", level)
 		switch {
 		case v.Type().Is(tftypes.Object{}):
 			fmt.Fprintf(&buf, `tftypes.NewValue(%s, map[string]tftypes.Value{`, tL)
@@ -163,6 +163,10 @@ func (pp prettyPrinterForTypes) TypeLiteral(t tftypes.Object) string {
 }
 
 func (pp prettyPrinterForTypes) ObjectTypeDefinition(w io.Writer, ty tftypes.Object) {
+	if len(ty.AttributeTypes) == 0 {
+		fmt.Fprintf(w, "tftypes.Object{}")
+		return
+	}
 	fmt.Fprintf(w, "tftypes.Object{AttributeTypes: map[string]tftypes.Type{")
 	keys := []string{}
 	for k := range ty.AttributeTypes {
@@ -171,8 +175,7 @@ func (pp prettyPrinterForTypes) ObjectTypeDefinition(w io.Writer, ty tftypes.Obj
 	sort.Strings(keys)
 	for _, k := range keys {
 		t := ty.AttributeTypes[k]
-		fmt.Fprintf(w, "\n  ")
-		fmt.Fprintf(w, "  %q: ", k)
+		fmt.Fprintf(w, "\n  %q: ", k)
 		pp.TypeReference(w, t)
 		fmt.Fprintf(w, ",")
 	}
