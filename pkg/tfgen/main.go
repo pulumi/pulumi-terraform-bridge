@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -36,6 +37,7 @@ import (
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 	// Enable additional provider validation.
 	schema.RunProviderInternalValidation = true
+	prov.P.Validate(context.Background(), nil)
 
 	MainWithCustomGenerate(pkg, version, prov, func(opts GeneratorOptions) error {
 		// Create a generator with the specified settings.
