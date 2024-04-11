@@ -20,6 +20,10 @@ func TestDiffConvergence(outerT *testing.T) {
 		outerT.Logf("Iterating..")
 		tv := tvg.GenBlock(3).Draw(t, "tv")
 
+		t.Logf("Schema:\n%v\n", (&prettySchemaWrapper{schema.Schema{Elem: &schema.Resource{
+			Schema: tv.schemaMap,
+		}}}).GoString())
+
 		c1 := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config1").Value()
 		c2 := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config2").Value()
 		ty := tv.typ

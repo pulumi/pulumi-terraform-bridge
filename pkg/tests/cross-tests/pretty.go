@@ -10,8 +10,18 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/valast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+type prettySchemaWrapper struct {
+	sch schema.Schema
+}
+
+func (psw prettySchemaWrapper) GoString() string {
+	return valast.String(psw.sch)
+}
 
 // Large printouts of tftypes.Value are very difficult to read when debugging the tests, especially because of all the
 // extraneous type information printed. This wrapper is a work in progress to implement better pretty-printing.
@@ -85,6 +95,11 @@ func (s prettyValueWrapper) GoString() string {
 			err := v.As(&b)
 			contract.AssertNoErrorf(err, "this cast should always succeed")
 			fmt.Fprintf(&buf, "tftypes.NewValue(tftypes.Bool, %v)", b)
+		case v.Type().Is(tftypes.String):
+			var s string
+			err := v.As(&s)
+			contract.AssertNoErrorf(err, "this cast should always succeed")
+			fmt.Fprintf(&buf, "tftypes.NewValue(tftypes.String, %q)", s)
 		default:
 			panic(fmt.Sprintf("not supported yet: %v", v.Type().String()))
 		}
