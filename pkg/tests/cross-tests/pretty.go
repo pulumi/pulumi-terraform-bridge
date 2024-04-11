@@ -46,7 +46,7 @@ func (s prettyValueWrapper) GoString() string {
 
 	walk = func(level int, v tftypes.Value) {
 		tL := tp.TypeReferenceString(v.Type())
-		indent := strings.Repeat("\t", level+1)
+		indent := strings.Repeat(". ", level+1)
 		switch {
 		case v.Type().Is(tftypes.Object{}):
 			fmt.Fprintf(&buf, `tftypes.NewValue(%s, map[string]tftypes.Value{`, tL)
@@ -59,7 +59,7 @@ func (s prettyValueWrapper) GoString() string {
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				fmt.Fprintf(&buf, "\n%s\t%q: ", indent, k)
+				fmt.Fprintf(&buf, "\n%s  %q: ", indent, k)
 				walk(level+1, elements[k])
 				fmt.Fprintf(&buf, ",")
 			}
@@ -70,7 +70,7 @@ func (s prettyValueWrapper) GoString() string {
 			err := v.As(&els)
 			contract.AssertNoErrorf(err, "this cast should always succeed")
 			for _, el := range els {
-				fmt.Fprintf(&buf, "\n\t%s", indent)
+				fmt.Fprintf(&buf, "\n. %s", indent)
 				walk(level+1, el)
 				fmt.Fprintf(&buf, ",")
 			}
@@ -171,8 +171,8 @@ func (pp prettyPrinterForTypes) ObjectTypeDefinition(w io.Writer, ty tftypes.Obj
 	sort.Strings(keys)
 	for _, k := range keys {
 		t := ty.AttributeTypes[k]
-		fmt.Fprintf(w, "\n\t")
-		fmt.Fprintf(w, "\t%q: ", k)
+		fmt.Fprintf(w, "\n  ")
+		fmt.Fprintf(w, "  %q: ", k)
 		pp.TypeReference(w, t)
 		fmt.Fprintf(w, ",")
 	}
