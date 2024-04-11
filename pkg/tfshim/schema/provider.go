@@ -2,7 +2,6 @@ package schema
 
 import (
 	"context"
-
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
