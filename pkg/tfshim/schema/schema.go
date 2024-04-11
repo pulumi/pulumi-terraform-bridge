@@ -140,6 +140,10 @@ func (s SchemaShim) SetHash(v interface{}) int {
 //nolint:revive
 type SchemaMap map[string]shim.Schema
 
+func (m SchemaMap) Validate() error {
+	panic("Validate is not yet implemented")
+}
+
 func (m SchemaMap) Len() int {
 	return len(m)
 }
