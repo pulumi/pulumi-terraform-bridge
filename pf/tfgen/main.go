@@ -15,13 +15,16 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	tfshim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -82,6 +85,15 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
+
+	// Validate any sdk providers that are being muxed in.
+	schema.RunProviderInternalValidation = true
+	for _, prov := range shim.MuxedProviders {
+		sdkProv, ok := prov.(tfshim.Provider) 
+		if ok {
+			sdkProv.Validate(context.Background(), nil)
+		}
+	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
 

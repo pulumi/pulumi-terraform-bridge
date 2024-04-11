@@ -21,10 +21,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"runtime"
 )
 
 func TestMain(m *testing.M) {
@@ -74,6 +74,9 @@ func ensureCompiledTestProviders(wd string) error {
 				"cmd", "pulumi-resource-tpsdkv2"),
 			filepath.Join(wd, "..", "..", "internal", "testprovider_sdkv2",
 				"cmd", "pulumi-tfgen-tpsdkv2"),
+		},
+		{
+			"testprovider_invschema", filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-resource-tpinvschema"), filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-tfgen-tpinvschema"),
 		},
 	}
 
