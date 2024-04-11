@@ -1,3 +1,18 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Define pretty-printers to make test output easier to interpret.
 package crosstests
 
 import (
@@ -15,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// Write out schema values using [valast.String]. This may break down once we start testing callbacks, but works for
+// simple schemas and makes it easier to read test printout.
 type prettySchemaWrapper struct {
 	sch schema.Schema
 }
@@ -37,9 +54,6 @@ func (s prettyValueWrapper) Value() tftypes.Value {
 	return s.inner
 }
 
-// When using rapid.Draw is used to pull a value it calls GoString and logs the result, which is the primary way to
-// interact with the printout, so the code opts to implement this. The printed values can be copied to make tests of
-// their own that are not rapid-driven.
 func (s prettyValueWrapper) GoString() string {
 	tp := newPrettyPrinterForTypes(s.inner)
 
@@ -110,6 +124,7 @@ func (s prettyValueWrapper) GoString() string {
 	return buf.String()
 }
 
+// Assist [prettyValueWrapper] to write out types nicely.
 type prettyPrinterForTypes struct {
 	objectTypes []tftypes.Object
 }
