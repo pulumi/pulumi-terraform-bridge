@@ -361,7 +361,7 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		{
 			name:    "float_property_value",
 			tfValue: 99.6767932,
-			tfType:  &schema.Schema{Type: shim.TypeFloat},
+			tfType:  &schema.Schema{Type: shim.TypeFloat, Required: true},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("floatPropertyValue"): resource.PropertyValue{
 				V: 99.6767932,
 			}}),
@@ -380,7 +380,7 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 		{
 			name:    "my_string_property_value",
 			tfValue: MyString("ognirts"),
-			tfType:  &schema.Schema{Type: shim.TypeString},
+			tfType:  &schema.Schema{Type: shim.TypeString, Optional: true},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("myStringPropertyValue"): resource.PropertyValue{
 				V: "ognirts",
 			}}),
@@ -420,7 +420,8 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 			},
 			tfType: &schema.Schema{
 				// Type mapPropertyValue as a map so that keys aren't mangled in the usual way.
-				Type: shim.TypeMap,
+				Type:     shim.TypeMap,
+				Optional: true,
 			},
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("mapPropertyValue"): resource.PropertyValue{
 				V: resource.PropertyMap{
@@ -449,9 +450,10 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 				// Embed a `*schema.Resource` to validate that type directed
 				// walk of the schema successfully walks inside Resources as well
 				// as Schemas.
+				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: schemaMap(map[string]*schema.Schema{
-						"configuration": {Type: shim.TypeMap},
+						"configuration": {Type: shim.TypeMap, Optional: true},
 					}),
 				}).Shim(),
 			},
@@ -476,10 +478,11 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 			tfType: &schema.Schema{
 				Type:     shim.TypeList,
 				MaxItems: 1,
+				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: schemaMap(map[string]*schema.Schema{
-						"some_value":       {Type: shim.TypeBool},
-						"some_other_value": {Type: shim.TypeString},
+						"some_value":       {Type: shim.TypeBool, Optional: true},
+						"some_other_value": {Type: shim.TypeString, Optional: true},
 					}),
 				}).Shim(),
 			},
@@ -501,11 +504,12 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 				},
 			},
 			tfType: &schema.Schema{
-				Type: shim.TypeList,
+				Type:     shim.TypeList,
+				Required: true,
 				Elem: (&schema.Resource{
 					Schema: schemaMap(map[string]*schema.Schema{
-						"some_value":       {Type: shim.TypeBool},
-						"some_other_value": {Type: shim.TypeString},
+						"some_value":       {Type: shim.TypeBool, Optional: true},
+						"some_other_value": {Type: shim.TypeString, Optional: true},
 					}),
 				}).Shim(),
 			},
@@ -546,11 +550,13 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 			tfType: &schema.Schema{
 				Type:     shim.TypeList,
 				MaxItems: 1,
+				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: schemaMap(map[string]*schema.Schema{
 						"secret_value": {
 							Type:      shim.TypeString,
 							Sensitive: true,
+							Required:  true,
 						},
 					}),
 				}).Shim(),
@@ -582,6 +588,9 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 						}
 					}
 
+					schemaMap := f.NewSchemaMap(tfType)
+					require.NoError(t, schemaMap.Validate())
+
 					var schemaInfo map[string]*SchemaInfo
 					if tt.schemaInfo != nil {
 						schemaInfo = map[string]*SchemaInfo{
@@ -595,7 +604,7 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 						map[string]any{
 							tt.name: tt.tfValue,
 						},
-						f.NewSchemaMap(tfType),
+						schemaMap,
 						schemaInfo,
 						nil,   /* assets */
 						false, /* useRawNames */
