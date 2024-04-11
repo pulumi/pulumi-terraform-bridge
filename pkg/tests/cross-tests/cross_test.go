@@ -207,6 +207,38 @@ func TestSetReordering(t *testing.T) {
 	})
 }
 
+// If a list-nested block has Required set, it cannot be empty. TF emits an error. Pulumi currently panics.
+//
+//	│ Error: Insufficient f0 blocks
+//	│
+//	│   on test.tf line 1, in resource "crossprovider_testres" "example":
+//	│    1: resource "crossprovider_testres" "example" {
+func TestEmptyRequiredList(t *testing.T) {
+	t.Skip("TODO - fix panic and make a negative test here")
+	skipUnlessLinux(t)
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					"f0": {
+						Type:      schema.TypeString,
+						Required:  true,
+						Sensitive: true,
+					},
+				}},
+			},
+		},
+	}
+
+	runDiffCheck(t, diffTestCase{
+		Resource: resource,
+		Config1:  map[string]any{"f0": []any{}},
+		Config2:  map[string]any{"f0": []any{}},
+	})
+}
+
 func TestAws2442(t *testing.T) {
 	skipUnlessLinux(t)
 	hashes := map[int]string{}
