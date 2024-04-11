@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -193,4 +194,28 @@ func (d *tfDriver) formatReattachEnvVar() string {
 
 	contract.AssertNoErrorf(err, "failed to build TF_REATTACH_PROVIDERS string")
 	return fmt.Sprintf("TF_REATTACH_PROVIDERS=%s", string(reattachBytes))
+}
+
+// Still discovering the structure of JSON-serialized TF plans. The information required from these is, primarily, is
+// whether the resource is staying unchanged, being updated or replaced. Secondarily, would be also great to know
+// detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
+//
+// For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
+func (*tfDriver) parseChangesFromTFPlan(plan tfPlan) string {
+	type p struct {
+		ResourceChanges []struct {
+			Change struct {
+				Actions []string `json:"actions"`
+			} `json:"change"`
+		} `json:"resource_changes"`
+	}
+	jb, err := json.Marshal(plan.RawPlan)
+	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
+	var pp p
+	err = json.Unmarshal(jb, &pp)
+	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
+	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
+	actions := pp.ResourceChanges[0].Change.Actions
+	contract.Assertf(len(actions) == 1, "expected exactly one action, got %v", strings.Join(actions, ", "))
+	return actions[0]
 }
