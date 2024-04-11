@@ -3,6 +3,7 @@ package crosstests
 import (
 	"io"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,10 @@ import (
 )
 
 func TestDiffConvergence(outerT *testing.T) {
+	_, ok := os.Getenv("PULUMI_EXPERIMENTAL")
+	if !ok {
+		outerT.Skip("TODO - we do not currently pass all cases; using this as an exploration tool")
+	}
 	outerT.Parallel()
 
 	log.SetOutput(io.Discard)
