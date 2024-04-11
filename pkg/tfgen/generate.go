@@ -424,10 +424,9 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.TypeSet:
 		t.kind = kindSet
 	default:
-		errorStr := fmt.Sprintf(
+		contract.Failf(
 			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point path: %s, type: %s",
 			typePath.String(), sch.Type())
-		panic(errorStr)
 	}
 	t.element = element
 	return t
