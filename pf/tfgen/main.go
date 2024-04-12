@@ -86,11 +86,11 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	// Validate any sdk providers that are being muxed in.
 	for _, prov := range shim.MuxedProviders {
 		err := prov.InternalValidate()
-		if err!= nil {
+		if err != nil {
 			_, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
 			contract.IgnoreError(fmterr)
 			os.Exit(-1)
-        }
+		}
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
