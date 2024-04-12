@@ -50,8 +50,9 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 		if !ok {
 			continue
 		}
+		contract.Assertf(sch.ConfigMode != 0, "ConfigMode != nil is not yet supported")
 		switch elem := sch.Elem.(type) {
-		case *schema.Resource: // TODO sch.ConfigMode
+		case *schema.Resource:
 			if sch.Type == schema.TypeMap {
 				body.SetAttributeValue(key, value)
 			} else if sch.Type == schema.TypeSet {

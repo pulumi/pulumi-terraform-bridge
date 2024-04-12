@@ -141,7 +141,7 @@ func (tvg *tvGen) GenSetAttr(maxDepth int) *rapid.Generator[tv] {
 		vg := rapid.Map(rapid.SliceOfN(inner.valueGen, 0, 3), setWrap)
 		return tv{
 			schema: schema.Schema{
-				// TODO get creative with the hash function
+				// TODO[pulumi/pulumi-terraform-bridge#1862 alternative hash functions
 				Type: schema.TypeSet,
 				Elem: &inner.schema,
 			},
@@ -182,10 +182,6 @@ func (tvg *tvGen) GenBlock(maxDepth int) *rapid.Generator[tb] {
 		} else {
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
-		// for k, v := range fieldSchemas {
-		// 	fmt.Printf("###### field %q %#v\n\n", k, v)
-		// }
-
 		err := schema.InternalMap(fieldSchemas).InternalValidate(nil)
 		contract.AssertNoErrorf(err, "rapid_tv_gen generated an invalid schema: please fix")
 		return tb{fieldSchemas, objType, objGen}

@@ -99,7 +99,7 @@ func (pd *pulumiDriver) writeYAML(t T, workdir string, tfConfig any) {
 	pConfig, err := pd.convertConfigToPulumi(schema, nil, pd.objectType, tfConfig)
 	require.NoErrorf(t, err, "convertConfigToPulumi failed")
 
-	// Not testing secrets yet, but schema secrets may be set by convertConfigToPulumi.
+	// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
 	pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
 
 	// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi

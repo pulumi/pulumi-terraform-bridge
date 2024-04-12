@@ -33,21 +33,17 @@ type diffTestCase struct {
 	// Schema for the resource to test diffing on.
 	Resource *schema.Resource
 
-	// Two resource configurations. The representation assumes JSON Configuration Syntax
-	// accepted by TF, that is, these values when serialized with JSON should parse as .tf.json
-	// files. If Config1 is nil, assume a Create flow. If Config2 is nil, assume a Delete flow.
-	// Otherwise assume an Update flow for a resource.
+	// Two resource configurations to simulate an Update from the desired state of Config1 to Config2.
 	//
-	// See	https://developer.hashicorp.com/terraform/language/syntax/json
+	// Currently they need to be non-nil, but it would make sense to also test Create and Delete flows, especially
+	// Create, since there is the non-obvious detail that TF still takes Create calls through the diff logic code
+	// including diff customization and PlanResource change.
 	//
-	// This also accepts tftypes.Value encoded data.
+	// Prefer passing [tftypes.Value] representations.
 	Config1, Config2 any
 
-	// Optional object type for the resource.
+	// Optional object type for the resource. If left nil will be inferred from Resource schema.
 	ObjectType *tftypes.Object
-
-	// Bypass interacting with the bridged Pulumi provider.
-	SkipPulumi bool
 }
 
 func runDiffCheck(t T, tc diffTestCase) {
@@ -64,10 +60,6 @@ func runDiffCheck(t T, tc diffTestCase) {
 	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
 	_ = tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config1)
 	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config2)
-
-	if tc.SkipPulumi {
-		return
-	}
 
 	tfp := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{

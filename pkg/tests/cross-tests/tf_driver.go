@@ -57,12 +57,6 @@ func newTfDriver(t T, dir, providerName, resName string, res *schema.Resource) *
 	os.Setenv("TF_LOG_SDK", "off")
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
 
-	// res.CustomizeDiff = func(
-	// 	ctx context.Context, rd *schema.ResourceDiff, i interface{},
-	// ) error {
-	// 	return nil
-	// }
-
 	if res.DeleteContext == nil {
 		res.DeleteContext = func(
 			ctx context.Context, rd *schema.ResourceData, i interface{},
