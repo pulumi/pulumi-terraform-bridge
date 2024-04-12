@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -27,6 +28,9 @@ type UnimplementedProvider struct{}
 func (UnimplementedProvider) Schema() shim.SchemaMap           { panic("unimplemented") }
 func (UnimplementedProvider) ResourcesMap() shim.ResourceMap   { panic("unimplemented") }
 func (UnimplementedProvider) DataSourcesMap() shim.ResourceMap { panic("unimplemented") }
+
+
+func (UnimplementedProvider) InternalValidate() error { panic("unimplemented") }
 
 func (UnimplementedProvider) Validate(
 	ctx context.Context, c shim.ResourceConfig,

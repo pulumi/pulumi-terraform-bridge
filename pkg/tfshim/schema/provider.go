@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -41,8 +42,12 @@ func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
 }
 
+func (s ProviderShim) InternalValidate() error {
+	return nil
+}
+
 func (ProviderShim) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
-	return nil, nil
+	panic("this provider is schema-only and does not support runtime operations")
 }
 
 func (ProviderShim) ValidateResource(
@@ -112,7 +117,7 @@ func (ProviderShim) NewDestroyDiff(ctx context.Context, t string, _ shim.Timeout
 func (ProviderShim) NewResourceConfig(
 	ctx context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
-	return nil
+	panic("this provider is schema-only and does not support runtime operations")
 }
 
 func (ProviderShim) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {

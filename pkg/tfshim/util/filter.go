@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -56,6 +57,10 @@ func (p *FilteringProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 	return &filteringMap{p.Provider.DataSourcesMap(), p.DataSourceFilter}
+}
+
+func (p *FilteringProvider) InternalValidate() error {
+    return p.Provider.InternalValidate()
 }
 
 func (p *FilteringProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {

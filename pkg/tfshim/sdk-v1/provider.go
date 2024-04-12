@@ -70,6 +70,10 @@ func (p v1Provider) DataSourcesMap() shim.ResourceMap {
 	return v1ResourceMap(p.tf.DataSourcesMap)
 }
 
+func (p v1Provider) InternalValidate() error {
+    return p.tf.InternalValidate()
+}
+
 func (p v1Provider) Validate(_ context.Context, c shim.ResourceConfig) ([]string, []error) {
 	return p.tf.Validate(configFromShim(c))
 }

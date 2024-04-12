@@ -15,7 +15,6 @@
 package tfgen
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -25,7 +24,6 @@ import (
 	"runtime/trace"
 
 	"github.com/golang/glog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,17 +33,9 @@ import (
 
 // Main executes the TFGen process for the given package pkg and provider prov.
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
-	// Enable additional provider validation.
-	schema.RunProviderInternalValidation = true
-	warnings, errors := prov.P.Validate(context.Background(), prov.
-		P.NewResourceConfig(context.Background(), map[string]interface{}{}))
-	if len(warnings) > 0 {
-		for _, w := range warnings {
-			glog.Warning(w)
-		}
-	}
-	if len(errors) > 0 {
-		_, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", errors)
+	err := prov.P.InternalValidate()
+	if err != nil {
+		_, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", err)
 		contract.IgnoreError(fmterr)
 		os.Exit(-1)
 	}

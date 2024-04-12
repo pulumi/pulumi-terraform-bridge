@@ -179,6 +179,10 @@ func (p *provider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSources
 }
 
+func (p *provider) InternalValidate() error {
+	return nil
+}
+
 func (p *provider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
 	config, ok := c.(resourceConfig)
 	if !ok {

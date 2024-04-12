@@ -15,12 +15,9 @@
 package tfgen
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	"github.com/golang/glog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
@@ -87,20 +84,13 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
 	// Validate any sdk providers that are being muxed in.
-	schema.RunProviderInternalValidation = true
 	for _, prov := range shim.MuxedProviders {
-		warnings, errors := prov.Validate(context.Background(), prov.
-			NewResourceConfig(context.Background(), map[string]interface{}{}))
-		if len(warnings) > 0 {
-			for _, w := range warnings {
-				glog.Warning(w)
-			}
-		}
-		if len(errors) > 0 {
-			_, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", errors)
+		err := prov.InternalValidate()
+		if err!= nil {
+            _, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", err)
 			contract.IgnoreError(fmterr)
 			os.Exit(-1)
-		}
+        }
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
