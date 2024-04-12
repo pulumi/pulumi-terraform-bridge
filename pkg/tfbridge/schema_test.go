@@ -3130,6 +3130,32 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 			expect: autogold.Expect(map[string]interface{}{"nested_resource": []interface{}{map[string]interface{}{"configuration": map[string]interface{}{"configurationValue": true}}}}),
 		},
 		{
+			testCaseName: "set_nested_block",
+			schemaMap: map[string]*schema.Schema{
+				"nested_resource": {
+					Optional: true,
+					Type:     shim.TypeSet,
+					Elem: (&schema.Resource{
+						Schema: schemaMap(map[string]*schema.Schema{
+							"configuration": {
+								Type:     shim.TypeMap,
+								Optional: true,
+							},
+						}),
+					}).Shim(),
+				},
+			},
+			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedResources": []map[string]interface{}{{
+					"configuration": map[string]interface{}{
+						"configurationValue": true,
+					},
+				}},
+			}),
+			//nolint:lll
+			expect: autogold.Expect(map[string]interface{}{"nested_resource": []interface{}{map[string]interface{}{"configuration": map[string]interface{}{"configurationValue": true}}}}),
+		},
+		{
 			testCaseName: "optional_config",
 			schemaMap: map[string]*schema.Schema{
 				"optional_config": {
@@ -3262,6 +3288,40 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				"nilPropertyValue": nil,
 			}),
 			expect: autogold.Expect(map[string]interface{}{"nil_property_value": nil}),
+		},
+		{
+			testCaseName: "set_attribute",
+			schemaMap: map[string]*schema.Schema{
+				"set_attribute": {
+					Type:     shim.TypeSet,
+					Optional: true,
+					Elem:     (&schema.Schema{Type: shim.TypeInt}).Shim(),
+				},
+			},
+			propMap: resource.PropertyMap{
+				"set_attribute": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(1.0),
+					resource.NewProperty(2.0),
+				}),
+			},
+			expect: autogold.Expect(map[string]interface{}{"set_attribute": []interface{}{1, 2}}),
+		},
+		{
+			testCaseName: "list_attribute",
+			schemaMap: map[string]*schema.Schema{
+				"set_attribute": {
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem:     (&schema.Schema{Type: shim.TypeInt}).Shim(),
+				},
+			},
+			propMap: resource.PropertyMap{
+				"set_attribute": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(1.0),
+					resource.NewProperty(2.0),
+				}),
+			},
+			expect: autogold.Expect(map[string]interface{}{"set_attribute": []interface{}{1, 2}}),
 		},
 		// {
 		// 	testCaseName: "???",
