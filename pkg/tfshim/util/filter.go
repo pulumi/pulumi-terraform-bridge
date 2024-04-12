@@ -60,7 +60,7 @@ func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 }
 
 func (p *FilteringProvider) InternalValidate() error {
-    return p.Provider.InternalValidate()
+	return p.Provider.InternalValidate()
 }
 
 func (p *FilteringProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {

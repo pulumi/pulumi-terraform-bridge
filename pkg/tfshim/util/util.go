@@ -29,7 +29,6 @@ func (UnimplementedProvider) Schema() shim.SchemaMap           { panic("unimplem
 func (UnimplementedProvider) ResourcesMap() shim.ResourceMap   { panic("unimplemented") }
 func (UnimplementedProvider) DataSourcesMap() shim.ResourceMap { panic("unimplemented") }
 
-
 func (UnimplementedProvider) InternalValidate() error { panic("unimplemented") }
 
 func (UnimplementedProvider) Validate(
