@@ -423,6 +423,7 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 				Type:     shim.TypeMap,
 				Optional: true,
 			},
+			//nolint:lll
 			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("mapPropertyValue"): resource.PropertyValue{
 				V: resource.PropertyMap{
 					resource.PropertyKey("propertyA"): resource.PropertyValue{
