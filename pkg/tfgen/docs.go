@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -590,14 +589,14 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		if strings.Contains(string(tfMarkdown), "Provides an AWS App Mesh gateway route resource.") && strings.Contains(section[0], "Argument Reference") {
+		//if strings.Contains(string(tfMarkdown), "Provides an AppFlow flow resource") {
 
-			q.Q("HERE HERE HERE", strings.Join(section, " "))
+		//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
-			if err := p.parseSection(section); err != nil {
-				return entityDocs{}, err
-			}
+		if err := p.parseSection(section); err != nil {
+			return entityDocs{}, err
 		}
+		//}
 	}
 
 	// Get links.
@@ -778,6 +777,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionImports:
 			p.parseImports(reformattedH3Section)
 		default:
+			//TODO: remove - This gets hit by the sectionExampleUsage, which then gets appended to Description section, which is Very Dumb
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[docsPath(header)]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
@@ -830,16 +830,15 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
-	nested := false
+	indentedBullet := false
 	if len(matches) > 4 {
 		if strings.HasPrefix(matches[0], " ") {
-			nested = true
+			indentedBullet = true
 		}
-		//q.Q(matches)
-		return matches[1], matches[4], true, nested
+		return matches[1], matches[4], true, indentedBullet
 	}
 
-	return "", "", false, false
+	return "", "", false, indentedBullet
 }
 
 var genericNestedRegexp = regexp.MustCompile("supports? the following:")
@@ -879,36 +878,48 @@ var nestedObjectRegexps = []*regexp.Regexp{
 //
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) string {
+func getNestedBlockName(line string) []string {
 	nested := ""
+	var nestedBlockNames []string
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
-			nested = strings.Replace(nested, " ", "_", -1)
-			nested = strings.TrimSuffix(nested, "[]")
-			parts := strings.Split(nested, ".")
-			nested = parts[len(parts)-1]
+			for _, word := range strings.Split(matches[0], " ") {
+				// TODO: Suss out the format "The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:
+				if strings.HasPrefix(word, "`") && strings.HasSuffix(word, "`") {
+					word = strings.Trim(word, "`")
+					nested = strings.ToLower(word)
+					nested = strings.Replace(nested, " ", "_", -1)
+					nested = strings.TrimSuffix(nested, "[]")
+					parts := strings.Split(nested, ".")
+					nested = parts[len(parts)-1]
+					nestedBlockNames = append(nestedBlockNames, nested)
+				}
+			}
 			break
 		}
 	}
 
-	return nested
+	return nestedBlockNames
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
+	// Variable to remember the last argument we found.
 	var lastMatch string
-	var nested docsPath
+	// Collection to hold all arguments that headline a nested description.
+	var nesteds []docsPath
 
 	addNewHeading := func(name, desc, line string) {
-		//q.Q(nested)
 		// found a property bullet, extract the name and description
-		if nested != "" {
-			// We found this line within a nested field. We should record it as such.
-			if ret.Arguments[nested] == nil {
-				totalArgumentsFromDocs++
+		if len(nesteds) > 0 {
+			for _, nested := range nesteds {
+
+				// We found this line within a nested field. We should record it as such.
+				if ret.Arguments[nested] == nil {
+					totalArgumentsFromDocs++
+				}
+				ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 			}
-			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
@@ -917,15 +928,19 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			totalArgumentsFromDocs++
 		}
 	}
-
+	// This function adds the current line as a description to the last matched resource,
+	//in cases where there's no resource match found on this line.
+	//It represents a multi-line description for a field.
 	extendExistingHeading := func(line string) {
 		line = "\n" + strings.TrimSpace(line)
-		if nested != "" {
-			ret.Arguments[nested.join(lastMatch)].description += line
+		if len(nesteds) > 0 {
+			for _, nested := range nesteds {
+				ret.Arguments[nested.join(lastMatch)].description += line
+			}
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				lastMatch = ""
-				nested = ""
+				nesteds = []docsPath{}
 				return
 			}
 			ret.Arguments[docsPath(lastMatch)].description += line
@@ -933,28 +948,20 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	}
 
 	var hadSpace bool
+
 	for _, line := range subsection {
 		//q.Q("*******************************")
 		//q.Q(line) // this should print twice and I should see where it goes
-
+		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
-			// We have found a new
-			q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
-			q.Q(lastMatch)
-			q.Q(name)
-			q.Q(desc)
-			q.Q(line)
-			q.Q(isIndented)
-			// TODO: this is where we discover the next thing.
-			//if name == "lang" {
-			//	name = "user.lang"
-			//}
+			// We have found a new argument.
+			// If a bullet point is indented, we have found a sub-field of the previous line.
+			// TODO: add example from Cloudflare
 			if isIndented {
 				name = lastMatch + "." + name
 			} else {
 				lastMatch = name
 			}
-
 			addNewHeading(name, desc, line)
 
 		} else if strings.TrimSpace(line) == "---" {
@@ -962,20 +969,28 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
-			//q.Q("section break detected", line)
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && nestedBlockCurrentLine != "" {
-			//q.Q("getNestedBlockName with hadSpace", line)
-			nested = docsPath(nestedBlockCurrentLine)
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
+			// TODO: I have no idea what the hadSpace does here. The logic seems the same.
+			// This tells us if there's a resource that is about to have subfields (nesteds)
+			// in subsequent lines.
+			//q.Q("getNestedBlockName WITH hadSpace", line)
+			for _, item := range nestedBlockCurrentLine {
+				nesteds = append(nesteds, docsPath(item))
+			}
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
-			//q.Q("extendExistingHeading, the first time", line)
+			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); nestedBlockCurrentLine != "" {
+		} else if nestedBlockCurrentLine := getNestedBlockName(line); len(nestedBlockCurrentLine) > 0 {
+			// This tells us if there's a resource that is about to have subfields (nesteds)
+			// in subsequent lines.
 			//q.Q("getNestedBlockName withOUT hadSpace", line)
-			nested = docsPath(nestedBlockCurrentLine)
+			for _, item := range nestedBlockCurrentLine {
+				nesteds = append(nesteds, docsPath(item)) ///there's some extra shit here and I do not understand it. God. I hate this.
+			}
 			lastMatch = ""
 		} else if lastMatch != "" {
-			//q.Q("extendExistingHeading, the SECOND time", line)
+			//q.Q("extendExistingHeading, the SECOND time, is the line blank?", line)
 			extendExistingHeading(line)
 		}
 		hadSpace = isBlank(line)
