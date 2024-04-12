@@ -32,7 +32,7 @@ jobs:
           skip-cache: true
           skip-pkg-cache: true
           skip-build-cache: true
-          version: v1.55
+          version: v1.57
     - name: Update Pulumi/Pulumi
       id: gomod
       run: >-
