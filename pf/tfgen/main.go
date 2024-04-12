@@ -87,7 +87,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	for _, prov := range shim.MuxedProviders {
 		err := prov.InternalValidate()
 		if err!= nil {
-            _, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
+			_, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
 			contract.IgnoreError(fmterr)
 			os.Exit(-1)
         }
