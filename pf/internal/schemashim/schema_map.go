@@ -39,6 +39,8 @@ func newSchemaMap(tf pfutils.Schema) *schemaMap {
 
 var _ shim.SchemaMap = (*schemaMap)(nil)
 
+func (m *schemaMap) Validate() error { return nil }
+
 func (m *schemaMap) Len() int {
 	n := 0
 	m.Range(func(string, shim.Schema) bool {

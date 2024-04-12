@@ -148,6 +148,8 @@ type SchemaMap interface {
 
 	Set(key string, value Schema)
 	Delete(key string)
+
+	Validate() error
 }
 
 type ImportFunc func(t, id string, meta interface{}) ([]InstanceState, error)

@@ -1,0 +1,70 @@
+name: Build and Test
+
+on:
+  workflow_call:
+    inputs: {}
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+      PULUMI_BOT_TOKEN:
+        required: true
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        # To avoid depending on features introduced in newer golang versions, we need to
+        # test our minimum supported golang versions.
+        #
+        # When we decide to bump our minimum go version, we need to remember to bump the
+        # go version in our go.mod files.
+        go-version: [1.21.x, 1.22.x]
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Install pulumi
+        uses: pulumi/actions@v5
+        with:
+          pulumi-version: ^3.0.0
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: |
+            **/go.sum
+      - name: Build
+        run: make build
+      - name: Build PF
+        run: cd pf && make build
+      - name: Test
+        run: make test
+      - name: Test PF
+        run: cd pf && make test
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache-dependency-path: |
+            **/go.sum
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+            skip-cache: true
+            skip-pkg-cache: true
+            skip-build-cache: true
+            version: v1.57
+      - name: Lint
+        run: make lint
