@@ -6,6 +6,10 @@ on:
     secrets:
       CODECOV_TOKEN:
         required: true
+      PULUMI_BOT_TOKEN:
+        required: true
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
 
 jobs:
   test:
@@ -36,6 +40,25 @@ jobs:
         run: make build
       - name: Build PF
         run: cd pf && make build
+      - name: Test
+        run: make test
+      - name: Test PF
+        run: cd pf && make test
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache-dependency-path: |
+            **/go.sum
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
@@ -45,11 +68,3 @@ jobs:
             version: v1.57
       - name: Lint
         run: make lint
-      - name: Test
-        run: make test
-      - name: Test PF
-        run: cd pf && make test
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
