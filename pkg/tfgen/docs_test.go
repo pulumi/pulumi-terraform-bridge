@@ -107,201 +107,226 @@ func TestArgumentRegex(t *testing.T) {
 		input    []string
 		expected map[docsPath]*argumentDocs
 	}{
+		//{
+		//	input: []string{
+		//		"* `iam_instance_profile` - (Optional) The IAM Instance Profile to",
+		//		"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
+		//		"* `ipv6_address_count`- (Optional) A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
+		//		"* `ipv6_addresses` - (Optional) Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
+		//		"* `tags` - (Optional) A mapping of tags to assign to the resource.",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"iam_instance_profile": {
+		//			description: "The IAM Instance Profile to" + "\n" +
+		//				"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
+		//		},
+		//		"ipv6_address_count": {
+		//			description: "A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
+		//		},
+		//		"ipv6_addresses": {
+		//			description: "Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
+		//		},
+		//		"tags": {
+		//			description: "A mapping of tags to assign to the resource.",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `jwt_configuration` - (Optional) The configuration of a JWT authorizer. Required for the `JWT` authorizer type.",
+		//		"Supported only for HTTP APIs.",
+		//		"",
+		//		"The `jwt_configuration` object supports the following:",
+		//		"",
+		//		"* `audience` - (Optional) A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
+		//		"* `issuer` - (Optional) The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"jwt_configuration": {
+		//			description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
+		//				"Supported only for HTTP APIs.",
+		//		},
+		//		"jwt_configuration.audience": {
+		//			description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
+		//		},
+		//		"jwt_configuration.issuer": {
+		//			description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `website` - (Optional) A website object (documented below).",
+		//		"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
+		//		"",
+		//		"The `website` and `webpage` objects support the following:",
+		//		"",
+		//		"* `index_document` - (Required, unless using `redirect_all_requests_to`) Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+		//		"* `routing_rules` - (Optional) A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)",
+		//		"describing redirect behavior and when redirects are applied.",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"website": {
+		//			description: "A website object (documented below)." + "\n" +
+		//				"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
+		//		},
+		//		"website.index_document": {
+		//			description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+		//		},
+		//		"website.routing_rules": {
+		//			description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+		//				"describing redirect behavior and when redirects are applied.",
+		//		},
+		//		"webpage.index_document": {
+		//			description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
+		//		},
+		//		"webpage.routing_rules": {
+		//			description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
+		//				"describing redirect behavior and when redirects are applied.",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `action` - (Optional) The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
+		//		"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+		//		"* `override_action` - (Optional) Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
+		//		"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+		//	},
+		//	// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
+		//	expected: map[docsPath]*argumentDocs{
+		//		"action": {
+		//			description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
+		//		},
+		//		"override_action": {
+		//			description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
+		//		},
+		//		"override_action.type": {
+		//			description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+		//		},
+		//		"action.type": {
+		//			description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `priority` - (Optional) The priority associated with the rule.",
+		//		"",
+		//		"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"priority": {
+		//			description: "is optional (with a default value of `0`) but must be unique between multiple rules",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `allowed_audiences` (Optional) Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
+		//		"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
+		//		"",
+		//		"---",
+		//		"* `retention_policy` supports the following:",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"retention_policy": {
+		//			description: "A `retention_policy` block as documented below.",
+		//		},
+		//		"allowed_audiences": {
+		//			description: "Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"* `launch_template_config` - (Optional) Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
+		//		"* `spot_maintenance_strategies` - (Optional) Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
+		//		"* `spot_price` - (Optional; Default: On-demand price) The maximum bid price per unit hour.",
+		//		"* `wait_for_fulfillment` - (Optional; Default: false) If set, Terraform will",
+		//		"  wait for the Spot Request to be fulfilled, and will throw an error if the",
+		//		"  timeout of 10m is reached.",
+		//		"* `target_capacity` - The number of units to request. You can choose to set the",
+		//		"  target capacity in terms of instances or a performance characteristic that is",
+		//		"  important to your application workload, such as vCPUs, memory, or I/O.",
+		//		"* `allocation_strategy` - Indicates how to allocate the target capacity across",
+		//		"  the Spot pools specified by the Spot fleet request. The default is",
+		//		"  `lowestPrice`.",
+		//		"* `instance_pools_to_use_count` - (Optional; Default: 1)",
+		//		"  The number of Spot pools across which to allocate your target Spot capacity.",
+		//		"  Valid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects",
+		//		"  the cheapest Spot pools and evenly allocates your target Spot capacity across",
+		//		"  the number of Spot pools that you specify.",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"launch_template_config": {
+		//			description: "Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
+		//		},
+		//		"spot_maintenance_strategies": {
+		//			description: "Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
+		//		},
+		//		"spot_price": {
+		//			description: "The maximum bid price per unit hour.",
+		//		},
+		//		"wait_for_fulfillment": {
+		//			description: "If set, Terraform will\nwait for the Spot Request to be fulfilled, and will throw an error if the\ntimeout of 10m is reached.",
+		//		},
+		//		"target_capacity": {
+		//			description: "The number of units to request. You can choose to set the\ntarget capacity in terms of instances or a performance characteristic that is\nimportant to your application workload, such as vCPUs, memory, or I/O.",
+		//		},
+		//		"allocation_strategy": {
+		//			description: "Indicates how to allocate the target capacity across\nthe Spot pools specified by the Spot fleet request. The default is\n`lowestPrice`.",
+		//		},
+		//		"instance_pools_to_use_count": {
+		//			description: "\nThe number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
+		//		},
+		//	},
+		//},
+		//{
+		//	input: []string{
+		//		"The following arguments are supported:",
+		//		"",
+		//		"- `zone_id` - (Required) The DNS zone ID to which the page rule should be added.",
+		//		"- `target` - (Required) The URL pattern to target with the page rule.",
+		//		"- `actions` - (Required) The actions taken by the page rule, options given below.",
+		//		"",
+		//		"Action blocks support the following:",
+		//		"",
+		//		"- `always_use_https` - (Optional) Boolean of whether this action is enabled. Default: false.",
+		//		"",
+		//	},
+		//	expected: map[docsPath]*argumentDocs{
+		//		"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
+		//		"target":  {description: "The URL pattern to target with the page rule."},
+		//		"actions": {description: "The actions taken by the page rule, options given below."},
+		//		// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
+		//		// because it doesn't correspond to a top level resource property.
+		//		"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+		//	},
+		//},
 		{
 			input: []string{
-				"* `iam_instance_profile` - (Optional) The IAM Instance Profile to",
-				"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
-				"* `ipv6_address_count`- (Optional) A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
-				"* `ipv6_addresses` - (Optional) Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
-				"* `tags` - (Optional) A mapping of tags to assign to the resource.",
+				"The `grpc_route`, `http_route` and `http2_route`'s `action` object supports the following:",
+				"",
+				"- `target` - (Required) Target that traffic is routed to when a request matches the gateway route.",
+				"",
+				"The `target` object supports the following:",
+				"",
+				"- `port` - (Optional) The port number that corresponds to the target for Virtual Service provider port. This is required when the provider (router or node) of the Virtual Service has multiple listeners.",
+				"- `virtual_service` - (Required) Virtual service gateway route target.",
+				"",
+				"The `grpc_route`'s `match` object supports the following:",
+				"",
+				"- `service_name` - (Required) Fully qualified domain name for the service to match from the request.",
+				"- `port` - (Optional) The port number to match from the request.",
 			},
 			expected: map[docsPath]*argumentDocs{
-				"iam_instance_profile": {
-					description: "The IAM Instance Profile to" + "\n" +
-						"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
-				},
-				"ipv6_address_count": {
-					description: "A number of IPv6 addresses to associate with the primary network interface. Amazon EC2 chooses the IPv6 addresses from the range of your subnet.",
-				},
-				"ipv6_addresses": {
-					description: "Specify one or more IPv6 addresses from the range of the subnet to associate with the primary network interface",
-				},
-				"tags": {
-					description: "A mapping of tags to assign to the resource.",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `jwt_configuration` - (Optional) The configuration of a JWT authorizer. Required for the `JWT` authorizer type.",
-				"Supported only for HTTP APIs.",
-				"",
-				"The `jwt_configuration` object supports the following:",
-				"",
-				"* `audience` - (Optional) A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-				"* `issuer` - (Optional) The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"jwt_configuration": {
-					description: "The configuration of a JWT authorizer. Required for the `JWT` authorizer type." + "\n" +
-						"Supported only for HTTP APIs.",
-				},
-				"jwt_configuration.audience": {
-					description: "A list of the intended recipients of the JWT. A valid JWT must provide an aud that matches at least one entry in this list.",
-				},
-				"jwt_configuration.issuer": {
-					description: "The base domain of the identity provider that issues JSON Web Tokens, such as the `endpoint` attribute of the [`aws_cognito_user_pool`](/docs/providers/aws/r/cognito_user_pool.html) resource.",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `website` - (Optional) A website object (documented below).",
-				"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
-				"",
-				"The `website` and `webpage` objects support the following:",
-				"",
-				"* `index_document` - (Required, unless using `redirect_all_requests_to`) Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-				"* `routing_rules` - (Optional) A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)",
-				"describing redirect behavior and when redirects are applied.",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"website": {
-					description: "A website object (documented below)." + "\n" +
-						"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
-				},
-				"website.index_document": {
-					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-				},
-				"website.routing_rules": {
-					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-						"describing redirect behavior and when redirects are applied.",
-				},
-				"webpage.index_document": {
-					description: "Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.",
-				},
-				"webpage.routing_rules": {
-					description: "A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)" + "\n" +
-						"describing redirect behavior and when redirects are applied.",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `action` - (Optional) The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
-				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-				"* `override_action` - (Optional) Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
-				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-			},
-			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action.
-			expected: map[docsPath]*argumentDocs{
-				"action": {
-					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
-				},
-				"override_action": {
-					description: "Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
-				},
-				"override_action.type": {
-					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-				},
-				"action.type": {
-					description: "valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `priority` - (Optional) The priority associated with the rule.",
-				"",
-				"* `priority` is optional (with a default value of `0`) but must be unique between multiple rules",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"priority": {
-					description: "is optional (with a default value of `0`) but must be unique between multiple rules",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `allowed_audiences` (Optional) Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
-				"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
-				"",
-				"---",
-				"* `retention_policy` supports the following:",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"retention_policy": {
-					description: "A `retention_policy` block as documented below.",
-				},
-				"allowed_audiences": {
-					description: "Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
-				},
-			},
-		},
-		{
-			input: []string{
-				"* `launch_template_config` - (Optional) Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
-				"* `spot_maintenance_strategies` - (Optional) Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
-				"* `spot_price` - (Optional; Default: On-demand price) The maximum bid price per unit hour.",
-				"* `wait_for_fulfillment` - (Optional; Default: false) If set, Terraform will",
-				"  wait for the Spot Request to be fulfilled, and will throw an error if the",
-				"  timeout of 10m is reached.",
-				"* `target_capacity` - The number of units to request. You can choose to set the",
-				"  target capacity in terms of instances or a performance characteristic that is",
-				"  important to your application workload, such as vCPUs, memory, or I/O.",
-				"* `allocation_strategy` - Indicates how to allocate the target capacity across",
-				"  the Spot pools specified by the Spot fleet request. The default is",
-				"  `lowestPrice`.",
-				"* `instance_pools_to_use_count` - (Optional; Default: 1)",
-				"  The number of Spot pools across which to allocate your target Spot capacity.",
-				"  Valid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects",
-				"  the cheapest Spot pools and evenly allocates your target Spot capacity across",
-				"  the number of Spot pools that you specify.",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"launch_template_config": {
-					description: "Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
-				},
-				"spot_maintenance_strategies": {
-					description: "Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
-				},
-				"spot_price": {
-					description: "The maximum bid price per unit hour.",
-				},
-				"wait_for_fulfillment": {
-					description: "If set, Terraform will\nwait for the Spot Request to be fulfilled, and will throw an error if the\ntimeout of 10m is reached.",
-				},
-				"target_capacity": {
-					description: "The number of units to request. You can choose to set the\ntarget capacity in terms of instances or a performance characteristic that is\nimportant to your application workload, such as vCPUs, memory, or I/O.",
-				},
-				"allocation_strategy": {
-					description: "Indicates how to allocate the target capacity across\nthe Spot pools specified by the Spot fleet request. The default is\n`lowestPrice`.",
-				},
-				"instance_pools_to_use_count": {
-					description: "\nThe number of Spot pools across which to allocate your target Spot capacity.\nValid only when `allocation_strategy` is set to `lowestPrice`. Spot Fleet selects\nthe cheapest Spot pools and evenly allocates your target Spot capacity across\nthe number of Spot pools that you specify.",
-				},
-			},
-		},
-		{
-			input: []string{
-				"The following arguments are supported:",
-				"",
-				"- `zone_id` - (Required) The DNS zone ID to which the page rule should be added.",
-				"- `target` - (Required) The URL pattern to target with the page rule.",
-				"- `actions` - (Required) The actions taken by the page rule, options given below.",
-				"",
-				"Action blocks support the following:",
-				"",
-				"- `always_use_https` - (Optional) Boolean of whether this action is enabled. Default: false.",
-				"",
-			},
-			expected: map[docsPath]*argumentDocs{
-				"zone_id": {description: "The DNS zone ID to which the page rule should be added."},
-				"target":  {description: "The URL pattern to target with the page rule."},
-				"actions": {description: "The actions taken by the page rule, options given below."},
-				// Note: We parse this as an argument, but it is then discarded when assembling *argumetDocs
-				// because it doesn't correspond to a top level resource property.
-				"always_use_https": {description: "Boolean of whether this action is enabled. Default: false."},
+				"grpc_route.action.target":  {description: "Target that traffic is routed to when a request matches the gateway route."},
+				"http_route.action.target":  {description: "Target that traffic is routed to when a request matches the gateway route."},
+				"http2_route.action.target": {description: "Target that traffic is routed to when a request matches the gateway route."},
+				"target.port":               {description: "The port number that corresponds to the target for Virtual Service provider port. This is required when the provider (router or node) of the Virtual Service has multiple listeners."},
+				"target.virtual_service":    {description: "Virtual service gateway route target."},
+				"grpc_route.match.port":     {description: "The port number to match from the request."},
 			},
 		},
 	}

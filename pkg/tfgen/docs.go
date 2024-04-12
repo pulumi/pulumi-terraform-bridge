@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -589,14 +590,14 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		//if strings.Contains(string(tfMarkdown), "Provides an AppFlow flow resource") {
+		if strings.Contains(string(tfMarkdown), "Provides an AWS App Mesh gateway route resource") {
 
-		//q.Q("HERE HERE HERE", strings.Join(section, " "))
+			//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
-		if err := p.parseSection(section); err != nil {
-			return entityDocs{}, err
+			if err := p.parseSection(section); err != nil {
+				return entityDocs{}, err
+			}
 		}
-		//}
 	}
 
 	// Get links.
@@ -829,6 +830,7 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
+	q.Q("in parseArgFromMarkdownLine")
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	indentedBullet := false
 	if len(matches) > 4 {
@@ -884,20 +886,47 @@ func getNestedBlockName(line string) []string {
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			for _, word := range strings.Split(matches[0], " ") {
-				// TODO: Suss out the format "The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:
-				if strings.HasPrefix(word, "`") && strings.HasSuffix(word, "`") {
-					word = strings.Trim(word, "`")
-					nested = strings.ToLower(word)
+			q.Q(matches)
+			firstMatch := matches[0]
+
+			subNest := ""
+
+			if strings.Contains(firstMatch, "'s ") {
+				// we have even more nesting!
+				// split the line into all of its components
+				part1, part2, _ := strings.Cut(matches[0], "'s")
+				firstMatch = part1
+				// find our subheading. it should be the second item in the second part.
+				part2Slice := strings.Split(part2, "`")
+				q.Q(part2Slice)
+				subNest = part2Slice[1]
+
+			}
+
+			// TODO: Suss out the format "The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:
+			re := regexp.MustCompile("`[^`]+`")
+
+			newStrs := re.FindAllString(firstMatch, -1)
+			for _, newStr := range newStrs {
+				if newStr != "" {
+					newStr = strings.Trim(newStr, "`")
+					nested = strings.ToLower(newStr)
 					nested = strings.Replace(nested, " ", "_", -1)
 					nested = strings.TrimSuffix(nested, "[]")
 					parts := strings.Split(nested, ".")
 					nested = parts[len(parts)-1]
+					if subNest != "" {
+						// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:"
+						// Result should be grpc_route.action
+						nested = nested + "." + subNest
+					}
 					nestedBlockNames = append(nestedBlockNames, nested)
 				}
 			}
-			break
+
 		}
+		break
+
 	}
 
 	return nestedBlockNames
@@ -920,6 +949,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				}
 				ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 			}
+			nesteds = []docsPath{}
+
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
@@ -943,10 +974,11 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = []docsPath{}
 				return
 			}
+			//TODO: lastMatch is busted here.
 			ret.Arguments[docsPath(lastMatch)].description += line
 		}
 	}
-
+	// hadSpace tells us if the previous line was blank.
 	var hadSpace bool
 
 	for _, line := range subsection {
@@ -955,8 +987,18 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new argument.
+			q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
+			q.Q(lastMatch)
+			q.Q(name)
+			q.Q(desc)
+			q.Q(line)
+			q.Q(isIndented)
 			// If a bullet point is indented, we have found a sub-field of the previous line.
 			// TODO: add example from Cloudflare
+			//TODO: if we have nesteds, we need to make lastMatch ALSO reflect those nestings. we're adding nesting layers.
+			// omg this is still all linear and not recursive - it can't be, not really. God, I hate this.
+			// this is where lastMatch needs to also be an array. Fucking sigh.
+
 			if isIndented {
 				name = lastMatch + "." + name
 			} else {
@@ -999,6 +1041,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
 	}
+	q.Q(ret.Arguments)
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
