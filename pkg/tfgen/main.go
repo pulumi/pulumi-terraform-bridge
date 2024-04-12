@@ -35,7 +35,7 @@ import (
 func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 	err := prov.P.InternalValidate()
 	if err != nil {
-		_, fmterr := fmt.Fprintf(os.Stderr, "Errors occurred: %v\n", err)
+		_, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
 		contract.IgnoreError(fmterr)
 		os.Exit(-1)
 	}

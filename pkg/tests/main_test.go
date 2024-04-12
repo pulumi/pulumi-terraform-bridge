@@ -28,13 +28,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func TestMain(m *testing.M) {
+func TestMains(t *testing.T) {
 	if err := setupIntegrationTests(); err != nil {
 		log.Fatal(err)
 	}
 
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	// exitCode := m.Run()
+	// os.Exit(exitCode)
 }
 
 func setupIntegrationTests() error {
@@ -69,7 +69,7 @@ func ensureCompiledTestProviders(wd string) error {
 		expectTfgenError *string
 	}
 
-	internalErrorMsg := "Internal validation of the provider failed!"
+	internalErrorMsg := "Internal validation of the provider failed"
 
 	testProviders := []testProvider{
 		{
