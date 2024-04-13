@@ -25,6 +25,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/spf13/afero"
 
 	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -208,7 +209,7 @@ func (cc *cliConverter) bulkConvert() error {
 		examples[fileName] = hcl
 		n++
 	}
-	result, err := cc.convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
+	result, err := cc.convertViaPulumiCLI(cc.autoFill(examples), []tfbridge.ProviderInfo{
 		cc.info,
 	})
 	if err != nil {
@@ -222,6 +223,25 @@ func (cc *cliConverter) bulkConvert() error {
 		}
 	}
 	return nil
+}
+
+func (cc *cliConverter) autoFill(examples map[string]string) map[string]string {
+	d, ok := os.LookupEnv("PULUMI_CONVERT_AUTOFILL_DIR")
+	if !ok {
+		return examples
+	}
+	autoFillData := newAferoAutoFiller(afero.NewBasePathFs(afero.NewOsFs(), d))
+	out := map[string]string{}
+	for fileName, hcl := range examples {
+		hclPlus, err := autoFill(autoFillData, hcl)
+		if err != nil {
+			contract.IgnoreError(err)
+			out[fileName] = hcl
+		} else {
+			out[fileName] = hclPlus
+		}
+	}
+	return out
 }
 
 // Calls pulumi convert to bulk-convert examples.
