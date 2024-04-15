@@ -28,13 +28,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func TestMains(t *testing.T) {
+func TestMain(m *testing.M) {
 	if err := setupIntegrationTests(); err != nil {
 		log.Fatal(err)
 	}
 
-	// exitCode := m.Run()
-	// os.Exit(exitCode)
+	exitCode := m.Run()
+	fmt.Fprintf(os.Stderr, "test main exited with code %d\n", exitCode)
+	os.Exit(exitCode)
 }
 
 func setupIntegrationTests() error {
