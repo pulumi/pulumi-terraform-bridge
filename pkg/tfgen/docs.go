@@ -603,9 +603,6 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 			}
 		}
 	}
-	//if strings.Contains(string(tfMarkdown), "Provides a CodeBuild Project resource. See also") {
-	//	q.Q(p.ret)
-	//}
 
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
@@ -785,7 +782,6 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionImports:
 			p.parseImports(reformattedH3Section)
 		default:
-			//TODO: remove - This gets hit by the sectionExampleUsage, which then gets appended to Description section, which is Very Dumb
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[docsPath(header)]
 			if isArgument || strings.HasSuffix(header, "Configuration Block") {
@@ -837,7 +833,6 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
-	//q.Q("in parseArgFromMarkdownLine")
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	indentedBullet := false
 	if len(matches) > 4 {
@@ -846,7 +841,6 @@ func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
 		}
 		return matches[1], matches[4], true, indentedBullet
 	}
-
 	return "", "", false, indentedBullet
 }
 
@@ -893,9 +887,7 @@ func getNestedBlockName(line string) []string {
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			//q.Q(matches)
 			firstMatch := matches[0]
-
 			subNest := ""
 
 			if strings.Contains(firstMatch, "'s ") {
@@ -905,15 +897,10 @@ func getNestedBlockName(line string) []string {
 				firstMatch = part1
 				// find our subheading. it should be the second item in the second part.
 				part2Slice := strings.Split(part2, "`")
-				//q.Q(part2Slice)
 				subNest = part2Slice[1]
-
 			}
-
-			// TODO: Suss out the format "The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:
-			re := regexp.MustCompile("`[^`]+`")
-
-			newStrs := re.FindAllString(firstMatch, -1)
+			tokenInBackticks := regexp.MustCompile("`[^`]+`")
+			newStrs := tokenInBackticks.FindAllString(firstMatch, -1)
 			for _, newStr := range newStrs {
 				if newStr != "" {
 					newStr = strings.Trim(newStr, "`")
@@ -930,20 +917,13 @@ func getNestedBlockName(line string) []string {
 					nestedBlockNames = append(nestedBlockNames, nested)
 				}
 			}
-
 		}
 		break
-
 	}
-
 	return nestedBlockNames
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	if subsection[0] == "### artifacts" {
-		q.Q(subsection)
-	}
-
 	// Variable to remember the last argument we found.
 	var lastMatch string
 	// Collection to hold all arguments that headline a nested description.
@@ -953,7 +933,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		// found a property bullet, extract the name and description
 		if len(nesteds) > 0 {
 			for _, nested := range nesteds {
-
 				// We found this line within a nested field. We should record it as such.
 				if ret.Arguments[nested] == nil {
 					totalArgumentsFromDocs++
@@ -973,11 +952,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	//in cases where there's no resource match found on this line.
 	//It represents a multi-line description for a field.
 	extendExistingHeading := func(line string) {
-		//if line == "#### subject" {
-		//	q.Q(nesteds)
-		//	q.Q(lastMatch)
-		//}
-		//line = "\n" + strings.TrimSpace(line)
 		if len(nesteds) > 0 {
 			for _, nested := range nesteds {
 				line = "\n" + strings.TrimSpace(line)
@@ -1002,15 +976,11 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var hadSpace bool
 
 	for _, line := range subsection {
-		//if subsection[0] == "### certificate_authority_configuration" {
-		//	q.Q("*******************************")
-		//	q.Q(line) // this should print twice and I should see where it goes
-		//}
 		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new argument.
 			// If a bullet point is indented, we have found a sub-field of the previous line.
-			// TODO: add example from the bridge issue I filed
+			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875
 
 			if isIndented {
 				name = lastMatch + "." + name
@@ -1040,7 +1010,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
-			//q.Q("getNestedBlockName withOUT hadSpace", line)
 			//empty nesteds TODO: make this nicer
 			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
@@ -1056,10 +1025,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
 	}
-	if subsection[0] == "### artifacts" {
-		q.Q(ret.Arguments)
-	}
-
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {

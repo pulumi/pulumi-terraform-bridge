@@ -1860,17 +1860,10 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 2. rules.type
 	// 3. type
 
-	//if strings.Contains(entityDocs.Description, "Manages an Access Analyzer Analyzer") {
-	//	q.Q(entityDocs)
-	//	q.Q(path)
-	//	panic("At the disco")
-	//}
-
 	// q.Q( "ALSO HERE")
-
-	if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
-		q.Q(entityDocs)
-	}
+	//if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
+	//	q.Q(entityDocs)
+	//}
 
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:

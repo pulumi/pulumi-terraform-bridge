@@ -193,7 +193,6 @@ func TestArgumentRegex(t *testing.T) {
 				"* `override_action` - (Optional) Override the action that a group requests CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Only used if `type` is `GROUP`.",
 				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
 			},
-			// Note: This is the existing behavior and is indeed a bug. The type field should be nested within action and override_action. TODO: this is fixed now.
 			expected: map[docsPath]*argumentDocs{
 				"action": {
 					description: "The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
