@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -39,7 +40,6 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
-
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -83,8 +83,17 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
-	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
+	// Validate any sdk providers that are being muxed in.
+	for _, prov := range shim.MuxedProviders {
+		err := prov.InternalValidate()
+		if err != nil {
+			_, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
+			contract.IgnoreError(fmterr)
+			os.Exit(-1)
+		}
+	}
 
+	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
