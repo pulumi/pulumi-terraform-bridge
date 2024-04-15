@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -590,7 +589,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		//if strings.Contains(string(tfMarkdown), "Provides an AWS App Mesh gateway route resource") {
+		//if strings.Contains(string(tfMarkdown), "Provides a resource to manage AWS Certificate Manager Private Certificate Authorities") {
 
 		//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
@@ -830,7 +829,7 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
 // description
 func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
-	q.Q("in parseArgFromMarkdownLine")
+	//q.Q("in parseArgFromMarkdownLine")
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	indentedBullet := false
 	if len(matches) > 4 {
@@ -886,7 +885,7 @@ func getNestedBlockName(line string) []string {
 	for _, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
 		if len(matches) >= 2 {
-			q.Q(matches)
+			//q.Q(matches)
 			firstMatch := matches[0]
 
 			subNest := ""
@@ -898,7 +897,7 @@ func getNestedBlockName(line string) []string {
 				firstMatch = part1
 				// find our subheading. it should be the second item in the second part.
 				part2Slice := strings.Split(part2, "`")
-				q.Q(part2Slice)
+				//q.Q(part2Slice)
 				subNest = part2Slice[1]
 
 			}
@@ -933,6 +932,9 @@ func getNestedBlockName(line string) []string {
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
+	//if subsection[0] == "### certificate_authority_configuration" {
+	//	q.Q(subsection)
+	//}
 	// Variable to remember the last argument we found.
 	var lastMatch string
 	// Collection to hold all arguments that headline a nested description.
@@ -962,9 +964,14 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	//in cases where there's no resource match found on this line.
 	//It represents a multi-line description for a field.
 	extendExistingHeading := func(line string) {
-		line = "\n" + strings.TrimSpace(line)
+		//if line == "#### subject" {
+		//	q.Q(nesteds)
+		//	q.Q(lastMatch)
+		//}
+		//line = "\n" + strings.TrimSpace(line)
 		if len(nesteds) > 0 {
 			for _, nested := range nesteds {
+				line = "\n" + strings.TrimSpace(line)
 				ret.Arguments[nested.join(lastMatch)].description += line
 			}
 		} else {
@@ -973,7 +980,12 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = []docsPath{}
 				return
 			}
-			//TODO: lastMatch is busted here.
+			if strings.HasPrefix(line, "####") {
+				lastMatch = ""
+				nesteds = []docsPath{}
+				return
+			}
+			line = "\n" + strings.TrimSpace(line)
 			ret.Arguments[docsPath(lastMatch)].description += line
 		}
 	}
@@ -981,19 +993,15 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var hadSpace bool
 
 	for _, line := range subsection {
-		//q.Q("*******************************")
-		//q.Q(line) // this should print twice and I should see where it goes
+		//if subsection[0] == "### certificate_authority_configuration" {
+		//	q.Q("*******************************")
+		//	q.Q(line) // this should print twice and I should see where it goes
+		//}
 		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new argument.
-			q.Q("after parseArgFromMarkdownLine, which uses ArgumentBulletExp")
-			q.Q(lastMatch)
-			q.Q(name)
-			q.Q(desc)
-			q.Q(line)
-			q.Q(isIndented)
 			// If a bullet point is indented, we have found a sub-field of the previous line.
-			// TODO: add example from Cloudflare
+			// TODO: add example from the bridge issue I filed
 
 			if isIndented {
 				name = lastMatch + "." + name
@@ -1008,7 +1016,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// heading is over.
 			lastMatch = ""
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
-			// TODO: I have no idea what the hadSpace does here. The logic seems the same.
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//empty nesteds TODO: make this nicer
@@ -1020,19 +1027,18 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
+
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//q.Q("getNestedBlockName withOUT hadSpace", line)
+			//empty nesteds TODO: make this nicer
 			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
-				//empty nesteds TODO: make this nicer
-
 				nesteds = append(nesteds, docsPath(item)) ///there's some extra shit here and I do not understand it. God. I hate this.
 			}
 			lastMatch = ""
 		} else if lastMatch != "" {
-			//q.Q("extendExistingHeading, the SECOND time, is the line blank?", line)
 			extendExistingHeading(line)
 		}
 		hadSpace = isBlank(line)
@@ -1041,7 +1047,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
 	}
-	q.Q(ret.Arguments)
+	//if subsection[0] == "### certificate_authority_configuration" {
+	//	q.Q(ret.Arguments)
+	//}
+
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
