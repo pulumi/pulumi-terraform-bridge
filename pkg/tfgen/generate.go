@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -1218,6 +1219,10 @@ func (g *Generator) gatherResource(rawname string,
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 
 	resourceToken := tokens.NewTypeToken(mod, name)
+
+	if strings.Contains(string(resourceToken), "codebuild") {
+		q.Q(resourceToken)
+	}
 	resourcePath := paths.NewResourcePath(rawname, resourceToken, isProvider)
 
 	// Collect documentation information
@@ -1860,6 +1865,12 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	//	q.Q(path)
 	//	panic("At the disco")
 	//}
+
+	// q.Q( "ALSO HERE")
+
+	if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
+		q.Q(entityDocs)
+	}
 
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:

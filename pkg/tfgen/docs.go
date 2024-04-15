@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -323,6 +324,10 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		return entityDocs{}, err
 	}
 
+	if strings.Contains(string(markdownBytes), "Provides a CodeBuild Project resource. See also") {
+		q.Q(doc)
+	}
+
 	if docInfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
@@ -589,15 +594,18 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		//if strings.Contains(string(tfMarkdown), "Provides a resource to manage AWS Certificate Manager Private Certificate Authorities") {
+		if strings.Contains(string(tfMarkdown), "Provides a CodeBuild Project resource. See also") {
 
-		//q.Q("HERE HERE HERE", strings.Join(section, " "))
+			//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
-		if err := p.parseSection(section); err != nil {
-			return entityDocs{}, err
+			if err := p.parseSection(section); err != nil {
+				return entityDocs{}, err
+			}
 		}
-		//}
 	}
+	//if strings.Contains(string(tfMarkdown), "Provides a CodeBuild Project resource. See also") {
+	//	q.Q(p.ret)
+	//}
 
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
@@ -932,9 +940,10 @@ func getNestedBlockName(line string) []string {
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	//if subsection[0] == "### certificate_authority_configuration" {
-	//	q.Q(subsection)
-	//}
+	if subsection[0] == "### artifacts" {
+		q.Q(subsection)
+	}
+
 	// Variable to remember the last argument we found.
 	var lastMatch string
 	// Collection to hold all arguments that headline a nested description.
@@ -1047,9 +1056,9 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	for _, v := range ret.Arguments {
 		v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
 	}
-	//if subsection[0] == "### certificate_authority_configuration" {
-	//	q.Q(ret.Arguments)
-	//}
+	if subsection[0] == "### artifacts" {
+		q.Q(ret.Arguments)
+	}
 
 }
 
