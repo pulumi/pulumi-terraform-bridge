@@ -590,14 +590,14 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		if strings.Contains(string(tfMarkdown), "Provides an AWS App Mesh gateway route resource") {
+		//if strings.Contains(string(tfMarkdown), "Provides an AWS App Mesh gateway route resource") {
 
-			//q.Q("HERE HERE HERE", strings.Join(section, " "))
+		//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
-			if err := p.parseSection(section); err != nil {
-				return entityDocs{}, err
-			}
+		if err := p.parseSection(section); err != nil {
+			return entityDocs{}, err
 		}
+		//}
 	}
 
 	// Get links.
