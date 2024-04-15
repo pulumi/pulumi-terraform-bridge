@@ -949,7 +949,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				}
 				ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 			}
-			nesteds = []docsPath{}
 
 		} else {
 			if genericNestedRegexp.MatchString(line) {
@@ -995,9 +994,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			q.Q(isIndented)
 			// If a bullet point is indented, we have found a sub-field of the previous line.
 			// TODO: add example from Cloudflare
-			//TODO: if we have nesteds, we need to make lastMatch ALSO reflect those nestings. we're adding nesting layers.
-			// omg this is still all linear and not recursive - it can't be, not really. God, I hate this.
-			// this is where lastMatch needs to also be an array. Fucking sigh.
 
 			if isIndented {
 				name = lastMatch + "." + name
@@ -1015,7 +1011,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// TODO: I have no idea what the hadSpace does here. The logic seems the same.
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
-			//q.Q("getNestedBlockName WITH hadSpace", line)
+			//empty nesteds TODO: make this nicer
+			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
 				nesteds = append(nesteds, docsPath(item))
 			}
@@ -1027,7 +1024,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//q.Q("getNestedBlockName withOUT hadSpace", line)
+			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
+				//empty nesteds TODO: make this nicer
+
 				nesteds = append(nesteds, docsPath(item)) ///there's some extra shit here and I do not understand it. God. I hate this.
 			}
 			lastMatch = ""
