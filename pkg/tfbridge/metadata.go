@@ -15,8 +15,8 @@
 package tfbridge
 
 import (
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A KV store persisted between `tfgen` and a running provider.
@@ -24,43 +24,15 @@ import (
 // The store is read-write when the schema is being generated, and is persisted to disk
 // with schema.json. During normal provider operation (pulumi-resource-${PKG}), the store
 // if not persisted (making it effectively read-only).
-type ProviderMetadata *metadata.Data
+type ProviderMetadata = info.ProviderMetadata
 
 // Information necessary to persist and use provider level metadata.
-type MetadataInfo struct {
-	// The path (relative to schema.json) of the metadata file.
-	Path string
-	// The parsed metadata.
-	Data ProviderMetadata
-}
+type MetadataInfo = info.Metadata
 
 // Describe a metadata file called `bridge-metadata.json`.
 //
 // `bytes` is the embedded metadata file.
-func NewProviderMetadata(bytes []byte) *MetadataInfo {
-	parsed, err := metadata.New(bytes)
-	// We assert instead of returning an (MetadataInfo, error) because we are
-	// validating compile time embedded data.
-	//
-	// The error could never be handled, because it signals that invalid data was
-	// `go:embed`ed.
-	contract.AssertNoErrorf(err, "This always signals an error at compile time.")
-
-	info := &MetadataInfo{"bridge-metadata.json", ProviderMetadata(parsed)}
-	info.assertValid()
-	return info
-}
-
-func (info *MetadataInfo) assertValid() {
-	contract.Assertf(info != nil,
-		"Attempting to use provider metadata without setting ProviderInfo.MetadataInfo")
-
-	// We assert instead of returning an (MetadataInfo, error) because path should be
-	// a string constant, the "tfgen time" location from which bytes was
-	// extracted. This error is irrecoverable and needs to be fixed at compile time.
-	contract.Assertf(info.Path != "", "Path must be non-empty")
-
-}
+func NewProviderMetadata(bytes []byte) *MetadataInfo { return info.NewProviderMetadata(bytes) }
 
 var declaredRuntimeMetadata = map[string]struct{}{
 	autoSettingsKey: {},
@@ -78,5 +50,8 @@ func ExtractRuntimeMetadata(info *MetadataInfo) *MetadataInfo {
 		metadata.CloneKey(k, info.Data, data)
 	}
 
-	return &MetadataInfo{"runtime-bridge-metadata.json", ProviderMetadata(data)}
+	return &MetadataInfo{
+		Path: "runtime-bridge-metadata.json",
+		Data: ProviderMetadata(data),
+	}
 }

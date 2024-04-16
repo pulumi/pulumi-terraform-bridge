@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: Add a description here
 package info
 
 import (
@@ -110,7 +111,7 @@ type Provider struct {
 	MetadataInfo *Metadata
 
 	// Rules that control file discovery and edits for any subset of docs in a provider.
-	DocRules *DocRuleInfo
+	DocRules *DocRule
 
 	UpstreamRepoPath string // An optional path that overrides upstream location during docs lookup
 
@@ -192,8 +193,8 @@ func (info *Provider) GetConfig() map[string]*Schema {
 //	}
 type MakeEditRules func(defaults []DocsEdit) []DocsEdit
 
-// DocRuleInfo controls file discovery and edits for any subset of docs in a provider.
-type DocRuleInfo struct {
+// DocRule controls file discovery and edits for any subset of docs in a provider.
+type DocRule struct {
 	// The function called to get the set of edit rules to use.
 	//
 	// defaults represents suggested edit rules. If EditRules is `nil`, defaults is
@@ -220,11 +221,11 @@ type DocRuleInfo struct {
 	//
 	// The bridge will check any file names returned by AlternativeNames before
 	// checking it's standard list.
-	AlternativeNames func(DocsPathInfo) []string
+	AlternativeNames func(DocsPath) []string
 }
 
 // Information for file lookup.
-type DocsPathInfo struct {
+type DocsPath struct {
 	TfToken string
 }
 
@@ -300,23 +301,23 @@ func (info Provider) GetProviderModuleVersion() string {
 	return info.TFProviderModuleVersion
 }
 
-// AliasInfo is a partial description of prior named used for a resource. It can be processed in the
+// Alias is a partial description of prior named used for a resource. It can be processed in the
 // context of a resource creation to determine what the full aliased URN would be.
 //
 // It can be used by Pulumi resource providers to change the aspects of it (i.e. what module it is
 // contained in), without causing resources to be recreated for customers who migrate from the
 // original resource to the current resource.
-type AliasInfo struct {
+type Alias struct {
 	Name    *string
 	Type    *string
 	Project *string
 }
 
-// ResourceOrDataSourceInfo is a shared interface to ResourceInfo and DataSourceInfo mappings
-type ResourceOrDataSourceInfo interface {
+// ResourceOrDataSource is a shared interface to ResourceInfo and DataSourceInfo mappings
+type ResourceOrDataSource interface {
 	GetTok() tokens.Token          // a type token to override the default; "" uses the default.
 	GetFields() map[string]*Schema // a map of custom field names; if a type is missing, uses the default.
-	GetDocs() *DocInfo             // overrides for finding and mapping TF docs.
+	GetDocs() *Doc                 // overrides for finding and mapping TF docs.
 	ReplaceExamplesSection() bool  // whether we are replacing the upstream TF examples generation
 }
 
@@ -333,11 +334,11 @@ type Resource struct {
 
 	// list of parameters that we can trust that any change will allow a createBeforeDelete
 	UniqueNameFields    []string
-	Docs                *DocInfo    // overrides for finding and mapping TF docs.
-	DeleteBeforeReplace bool        // if true, Pulumi will delete before creating new replacement resources.
-	Aliases             []AliasInfo // aliases for this resources, if any.
-	DeprecationMessage  string      // message to use in deprecation warning
-	CSharpName          string      // .NET-specific name
+	Docs                *Doc    // overrides for finding and mapping TF docs.
+	DeleteBeforeReplace bool    // if true, Pulumi will delete before creating new replacement resources.
+	Aliases             []Alias // aliases for this resources, if any.
+	DeprecationMessage  string  // message to use in deprecation warning
+	CSharpName          string  // .NET-specific name
 
 	// Optional hook to run before upgrading the state. TODO[pulumi/pulumi-terraform-bridge#864] this is currently
 	// only supported for Plugin-Framework based providers.
@@ -394,7 +395,7 @@ func (info *Resource) GetFields() map[string]*Schema {
 }
 
 // GetDocs returns a resource docs override from the Pulumi provider
-func (info *Resource) GetDocs() *DocInfo { return info.Docs }
+func (info *Resource) GetDocs() *Doc { return info.Docs }
 
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 func (info *Resource) ReplaceExamplesSection() bool {
@@ -405,8 +406,8 @@ func (info *Resource) ReplaceExamplesSection() bool {
 type DataSource struct {
 	Tok                tokens.ModuleMember
 	Fields             map[string]*Schema
-	Docs               *DocInfo // overrides for finding and mapping TF docs.
-	DeprecationMessage string   // message to use in deprecation warning
+	Docs               *Doc   // overrides for finding and mapping TF docs.
+	DeprecationMessage string // message to use in deprecation warning
 }
 
 // GetTok returns a datasource type token
@@ -421,7 +422,7 @@ func (info *DataSource) GetFields() map[string]*Schema {
 }
 
 // GetDocs returns a datasource docs override from the Pulumi provider
-func (info *DataSource) GetDocs() *DocInfo { return info.Docs }
+func (info *DataSource) GetDocs() *Doc { return info.Docs }
 
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 func (info *DataSource) ReplaceExamplesSection() bool {
@@ -458,7 +459,7 @@ type Schema struct {
 	Asset *AssetTranslation
 
 	// an optional default directive to be applied if a value is missing.
-	Default *DefaultInfo
+	Default *Default
 
 	// to override whether a property is stable or not.
 	Stable *bool
@@ -486,7 +487,7 @@ type Schema struct {
 	// providers and cascading the replacement to all resources provisioned with the given
 	// provider configuration.
 	//
-	// This property is only relevant for [ProviderInfo.Config] properties.
+	// This property is only relevant for [Provider.Config] properties.
 	ForcesProviderReplace *bool
 
 	// whether or not this property has been removed from the Terraform schema
@@ -515,8 +516,8 @@ type Config struct {
 // the raw string is still accepted as a possible input value.
 type Transformer func(resource.PropertyValue) (resource.PropertyValue, error)
 
-// DocInfo contains optional overrides for finding and mapping TF docs.
-type DocInfo struct {
+// Doc contains optional overrides for finding and mapping TF docs.
+type Doc struct {
 	Source                         string // an optional override to locate TF docs; "" uses the default.
 	Markdown                       []byte // an optional override for the source markdown.
 	IncludeAttributesFrom          string // optionally include attributes from another raw resource for docs.
@@ -536,15 +537,15 @@ type DocInfo struct {
 }
 
 // GetImportDetails returns a string of import instructions defined in the Pulumi provider. Defaults to empty.
-func (info *DocInfo) GetImportDetails() string { return info.ImportDetails }
+func (info *Doc) GetImportDetails() string { return info.ImportDetails }
 
 // HasDefault returns true if there is a default value for this property.
 func (info Schema) HasDefault() bool {
 	return info.Default != nil
 }
 
-// DefaultInfo lets fields get default values at runtime, before they are even passed to Terraform.
-type DefaultInfo struct {
+// Default lets fields get default values at runtime, before they are even passed to Terraform.
+type Default struct {
 	// AutoNamed is true if this default represents an autogenerated name.
 	AutoNamed bool
 	// Config uses a configuration variable from this package as the default value.
@@ -594,12 +595,12 @@ type PulumiResource struct {
 	Seed       []byte
 }
 
-// OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and
+// Overlay contains optional overlay information.  Each info has a 1:1 correspondence with a module and
 // permits extra files to be included from the overlays/ directory when building up packs/.  This allows augmented
 // code-generation for convenient things like helper functions, modules, and gradual typing.
-type OverlayInfo struct {
-	DestFiles []string                // Additional files to include in the index file. Must exist in the destination.
-	Modules   map[string]*OverlayInfo // extra modules to inject into the structure.
+type Overlay struct {
+	DestFiles []string            // Additional files to include in the index file. Must exist in the destination.
+	Modules   map[string]*Overlay // extra modules to inject into the structure.
 }
 
 // JavaScript contains optional overlay information for Python code-generation.
@@ -609,7 +610,7 @@ type JavaScript struct {
 	DevDependencies   map[string]string // NPM dev-dependencies to add to package.json.
 	PeerDependencies  map[string]string // NPM peer-dependencies to add to package.json.
 	Resolutions       map[string]string // NPM resolutions to add to package.json.
-	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
+	Overlay           *Overlay          // optional overlay information for augmented code-generation.
 	TypeScriptVersion string            // A specific version of TypeScript to include in package.json.
 	PluginName        string            // The name of the plugin, which might be
 	// different from the package name.  The version of the plugin, which might be
@@ -646,7 +647,7 @@ type JavaScript struct {
 // Python contains optional overlay information for Python code-generation.
 type Python struct {
 	Requires      map[string]string // Pip install_requires information.
-	Overlay       *OverlayInfo      // optional overlay information for augmented code-generation.
+	Overlay       *Overlay          // optional overlay information for augmented code-generation.
 	UsesIOClasses bool              // Deprecated: No longer required, all providers use IO classes.
 	PackageName   string            // Name of the Python package to generate
 
@@ -673,9 +674,9 @@ type Python struct {
 
 // Golang contains optional overlay information for Golang code-generation.
 type Golang struct {
-	GenerateResourceContainerTypes bool         // Generate container types for resources e.g. arrays, maps, pointers etc.
-	ImportBasePath                 string       // Base import path for package.
-	Overlay                        *OverlayInfo // optional overlay information for augmented code-generation.
+	GenerateResourceContainerTypes bool     // Generate container types for resources e.g. arrays, maps, pointers etc.
+	ImportBasePath                 string   // Base import path for package.
+	Overlay                        *Overlay // optional overlay information for augmented code-generation.
 
 	// Module path for go.mod
 	//
@@ -745,7 +746,7 @@ type Golang struct {
 // CSharp contains optional overlay information for C# code-generation.
 type CSharp struct {
 	PackageReferences map[string]string // NuGet package reference information.
-	Overlay           *OverlayInfo      // optional overlay information for augmented code-generation.
+	Overlay           *Overlay          // optional overlay information for augmented code-generation.
 	Namespaces        map[string]string // Known .NET namespaces with proper capitalization.
 	RootNamespace     string            // The root namespace if setting to something other than Pulumi in the package name
 
@@ -963,32 +964,32 @@ type MarshallableSchema struct {
 	Elem        *MarshallableSchema            `json:"element,omitempty"`
 	Fields      map[string]*MarshallableSchema `json:"fields,omitempty"`
 	Asset       *AssetTranslation              `json:"asset,omitempty"`
-	Default     *MarshallableDefaultInfo       `json:"default,omitempty"`
+	Default     *MarshallableDefault           `json:"default,omitempty"`
 	MaxItemsOne *bool                          `json:"maxItemsOne,omitempty"`
 	Deprecated  string                         `json:"deprecated,omitempty"`
 	ForceNew    *bool                          `json:"forceNew,omitempty"`
 	Secret      *bool                          `json:"secret,omitempty"`
 }
 
-// MarshalSchemaInfo converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
-func MarshalSchemaInfo(s *Schema) *MarshallableSchema {
+// MarshalSchema converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
+func MarshalSchema(s *Schema) *MarshallableSchema {
 	if s == nil {
 		return nil
 	}
 
 	fields := make(map[string]*MarshallableSchema)
 	for k, v := range s.Fields {
-		fields[k] = MarshalSchemaInfo(v)
+		fields[k] = MarshalSchema(v)
 	}
 	return &MarshallableSchema{
 		Name:        s.Name,
 		CSharpName:  s.CSharpName,
 		Type:        s.Type,
 		AltTypes:    s.AltTypes,
-		Elem:        MarshalSchemaInfo(s.Elem),
+		Elem:        MarshalSchema(s.Elem),
 		Fields:      fields,
 		Asset:       s.Asset,
-		Default:     MarshalDefaultInfo(s.Default),
+		Default:     MarshalDefault(s.Default),
 		MaxItemsOne: s.MaxItemsOne,
 		Deprecated:  s.DeprecationMessage,
 		ForceNew:    s.ForceNew,
@@ -1022,21 +1023,21 @@ func (m *MarshallableSchema) Unmarshal() *Schema {
 	}
 }
 
-// MarshallableDefaultInfo is the JSON-marshallable form of a Pulumi DefaultInfo value.
-type MarshallableDefaultInfo struct {
+// MarshallableDefault is the JSON-marshallable form of a Pulumi DefaultInfo value.
+type MarshallableDefault struct {
 	AutoNamed bool        `json:"autonamed,omitempty"`
 	IsFunc    bool        `json:"isFunc,omitempty"`
 	Value     interface{} `json:"value,omitempty"`
 	EnvVars   []string    `json:"envvars,omitempty"`
 }
 
-// MarshalDefaultInfo converts a Pulumi DefaultInfo value into a MarshallableDefaultInfo value.
-func MarshalDefaultInfo(d *DefaultInfo) *MarshallableDefaultInfo {
+// MarshalDefault converts a Pulumi DefaultInfo value into a MarshallableDefaultInfo value.
+func MarshalDefault(d *Default) *MarshallableDefault {
 	if d == nil {
 		return nil
 	}
 
-	return &MarshallableDefaultInfo{
+	return &MarshallableDefault{
 		AutoNamed: d.AutoNamed,
 		IsFunc:    d.From != nil || d.ComputeDefault != nil,
 		Value:     d.Value,
@@ -1045,12 +1046,12 @@ func MarshalDefaultInfo(d *DefaultInfo) *MarshallableDefaultInfo {
 }
 
 // Unmarshal creates a mostly-initialized Pulumi DefaultInfo value from the given MarshallableDefaultInfo.
-func (m *MarshallableDefaultInfo) Unmarshal() *DefaultInfo {
+func (m *MarshallableDefault) Unmarshal() *Default {
 	if m == nil {
 		return nil
 	}
 
-	defInfo := &DefaultInfo{
+	defInfo := &Default{
 		AutoNamed: m.AutoNamed,
 		Value:     m.Value,
 		EnvVars:   m.EnvVars,
@@ -1075,11 +1076,11 @@ type MarshallableResource struct {
 	IDFields []string `json:"idFields"`
 }
 
-// MarshalResourceInfo converts a Pulumi ResourceInfo value into a MarshallableResourceInfo value.
-func MarshalResourceInfo(r *Resource) *MarshallableResource {
+// MarshalResource converts a Pulumi ResourceInfo value into a MarshallableResourceInfo value.
+func MarshalResource(r *Resource) *MarshallableResource {
 	fields := make(map[string]*MarshallableSchema)
 	for k, v := range r.Fields {
-		fields[k] = MarshalSchemaInfo(v)
+		fields[k] = MarshalSchema(v)
 	}
 	return &MarshallableResource{
 		Tok:        r.Tok,
@@ -1109,11 +1110,11 @@ type MarshallableDataSource struct {
 	Fields map[string]*MarshallableSchema `json:"fields"`
 }
 
-// MarshalDataSourceInfo converts a Pulumi DataSourceInfo value into a MarshallableDataSourceInfo value.
-func MarshalDataSourceInfo(d *DataSource) *MarshallableDataSource {
+// MarshalDataSource converts a Pulumi DataSourceInfo value into a MarshallableDataSourceInfo value.
+func MarshalDataSource(d *DataSource) *MarshallableDataSource {
 	fields := make(map[string]*MarshallableSchema)
 	for k, v := range d.Fields {
-		fields[k] = MarshalSchemaInfo(v)
+		fields[k] = MarshalSchema(v)
 	}
 	return &MarshallableDataSource{
 		Tok:    d.Tok,
@@ -1144,19 +1145,19 @@ type MarshallableProvider struct {
 	TFProviderVersion string                             `json:"tfProviderVersion,omitempty"`
 }
 
-// MarshalProviderInfo converts a Pulumi ProviderInfo value into a MarshallableProviderInfo value.
-func MarshalProviderInfo(p *Provider) *MarshallableProvider {
+// MarshalProvider converts a Pulumi ProviderInfo value into a MarshallableProviderInfo value.
+func MarshalProvider(p *Provider) *MarshallableProvider {
 	config := make(map[string]*MarshallableSchema)
 	for k, v := range p.Config {
-		config[k] = MarshalSchemaInfo(v)
+		config[k] = MarshalSchema(v)
 	}
 	resources := make(map[string]*MarshallableResource)
 	for k, v := range p.Resources {
-		resources[k] = MarshalResourceInfo(v)
+		resources[k] = MarshalResource(v)
 	}
 	dataSources := make(map[string]*MarshallableDataSource)
 	for k, v := range p.DataSources {
-		dataSources[k] = MarshalDataSourceInfo(v)
+		dataSources[k] = MarshalDataSource(v)
 	}
 
 	info := MarshallableProvider{

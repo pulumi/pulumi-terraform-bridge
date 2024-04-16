@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/pkg/errors"
-
 	"github.com/gedex/inflector"
+	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -338,6 +338,43 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			Properties: res.Properties,
 			Seed:       res.Seed,
 		})
+	}
+}
+
+// SetAutonaming auto-names all resource properties that are literally called "name".
+//
+// The effect is identical to configuring each matching property with [AutoName]. Pulumi will propose an auto-computed
+// value for these properties when no value is given by the user program. If a property was required before auto-naming,
+// it becomes optional.
+//
+// The maxLength and separator parameters configure how AutoName generates default values. See [AutoNameOptions].
+//
+// SetAutonaming will skip properties that already have a [SchemaInfo] entry in [ResourceInfo.Fields], assuming those
+// are already customized by the user. If those properties need AutoName functionality, please use AutoName directly to
+// populate their SchemaInfo entry.
+//
+// Note that when constructing a ProviderInfo incrementally, some care is required to make sure SetAutonaming is called
+// after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
+func SetAutonaming(p *ProviderInfo, maxLength int, separator string) {
+	if p.P == nil {
+		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
+		return
+	}
+
+	const nameProperty = "name"
+	for resname, res := range p.Resources {
+		if schema := p.P.ResourcesMap().Get(resname); schema != nil {
+			// Only apply auto-name to input properties (Optional || Required)
+			// of type `string` named `name`
+			if sch, hasName := schema.Schema().GetOk(nameProperty); hasName &&
+				(sch.Optional() || sch.Required()) && // Is an input type
+				sch.Type() == shim.TypeString { // has type string
+
+				if _, hasfield := res.Fields[nameProperty]; !hasfield {
+					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
+				}
+			}
+		}
 	}
 }
 

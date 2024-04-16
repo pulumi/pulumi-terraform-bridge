@@ -51,14 +51,8 @@ import (
 // detected, and then overrides are cleared. Effectively this makes sure that upstream
 // MaxItems changes are deferred until the next major version.
 //
-// Panics if [ProviderInfo.ApplyAutoAliases] would return an error.
-func (info *ProviderInfo) MustApplyAutoAliases() {
-	err := info.ApplyAutoAliases()
-	contract.AssertNoErrorf(err, "Failed to apply aliases")
-}
-
-// See [MustApplyAutoAliases].
-func (info *ProviderInfo) ApplyAutoAliases() error {
+//go:linkname ApplyAutoAliases info.applyAutoAliases
+func ApplyAutoAliases(info *ProviderInfo) error {
 	// Do minimal work at runtime to avoid adding to provider startup delay.
 	if currentRuntimeStage == runningProviderStage {
 		autoSettings, err := loadAutoSettings(info.GetMetadata())
