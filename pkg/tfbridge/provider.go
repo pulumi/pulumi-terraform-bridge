@@ -726,6 +726,7 @@ func (p *Provider) Configure(ctx context.Context,
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
+	ctx = WithUrn(ctx, urn)
 	t := urn.Type()
 	res, has := p.resources[t]
 	if !has {
