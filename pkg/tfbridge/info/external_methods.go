@@ -98,10 +98,3 @@ func (info *Provider) MustComputeTokens(opts Strategy) {
 	err := computeTokens(info, opts)
 	contract.AssertNoErrorf(err, "Failed to apply token mapping")
 }
-
-//go:linkname setAutonaming tfbridge.SetAutonaming
-func setAutonaming(p *Provider, maxLength int, separator string)
-
-func (p *Provider) SetAutonaming(maxLength int, separator string) {
-	setAutonaming(p, maxLength, separator)
-}
