@@ -290,6 +290,17 @@ func (p *Provider) label() string {
 	return fmt.Sprintf("tf.Provider[%s]", p.module)
 }
 
+func ignoredTokens(info *info.Provider) map[string]bool {
+	ignored := map[string]bool{}
+	if info == nil {
+		return ignored
+	}
+	for _, tk := range info.IgnoreMappings {
+		ignored[tk] = true
+	}
+	return ignored
+}
+
 // initResourceMaps creates maps from Pulumi types and tokens to Terraform resource type.
 func (p *Provider) initResourceMaps() {
 

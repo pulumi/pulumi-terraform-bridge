@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"unicode"
 
+	_ "unsafe"
+
 	"github.com/gedex/inflector"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -355,6 +357,8 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 //
 // Note that when constructing a ProviderInfo incrementally, some care is required to make sure SetAutonaming is called
 // after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
+//
+//go:linkname SetAutonaming
 func SetAutonaming(p *ProviderInfo, maxLength int, separator string) {
 	if p.P == nil {
 		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")

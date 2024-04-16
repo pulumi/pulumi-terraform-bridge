@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"sort"
+	_ "unsafe"
 
 	"github.com/Masterminds/semver"
 
@@ -51,7 +52,7 @@ import (
 // detected, and then overrides are cleared. Effectively this makes sure that upstream
 // MaxItems changes are deferred until the next major version.
 //
-//go:linkname ApplyAutoAliases info.applyAutoAliases
+//go:linkname ApplyAutoAliases
 func ApplyAutoAliases(info *ProviderInfo) error {
 	// Do minimal work at runtime to avoid adding to provider startup delay.
 	if currentRuntimeStage == runningProviderStage {

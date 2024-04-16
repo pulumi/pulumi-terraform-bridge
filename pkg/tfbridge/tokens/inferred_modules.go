@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -57,14 +57,14 @@ type InferredModulesOpts struct {
 
 // A strategy to infer module placement from global analysis of all items (Resources & DataSources).
 func InferredModules(
-	info *b.ProviderInfo, finalize Make, opts *InferredModulesOpts,
-) (b.Strategy, error) {
+	p *info.Provider, finalize Make, opts *InferredModulesOpts,
+) (Strategy, error) {
 	if opts == nil {
 		opts = &InferredModulesOpts{}
 	}
-	err := opts.ensurePrefix(info)
+	err := opts.ensurePrefix(p)
 	if err != nil {
-		return b.Strategy{}, fmt.Errorf("inferring pkg prefix: %w", err)
+		return Strategy{}, fmt.Errorf("inferring pkg prefix: %w", err)
 	}
 	contract.Assertf(opts.MinimumModuleSize >= 0, "Cannot have a minimum modules size less then zero")
 	if opts.MinimumModuleSize == 0 {
@@ -77,22 +77,22 @@ func InferredModules(
 		opts.MainModule = "index"
 	}
 
-	tokenMap := opts.computeTokens(info)
+	tokenMap := opts.computeTokens(p)
 
-	rIsEmpty := func(r *b.ResourceInfo) bool { return r.Tok == "" }
-	dIsEmpty := func(r *b.DataSourceInfo) bool { return r.Tok == "" }
+	rIsEmpty := func(r *info.Resource) bool { return r.Tok == "" }
+	dIsEmpty := func(r *info.DataSource) bool { return r.Tok == "" }
 
-	return b.Strategy{
-		Resource: tokenFromMap(tokenMap, rIsEmpty, finalize, func(tk string, resource *b.ResourceInfo) {
+	return Strategy{
+		Resource: tokenFromMap(tokenMap, rIsEmpty, finalize, func(tk string, resource *info.Resource) {
 			checkedApply(&resource.Tok, tokens.Type(tk))
 		}),
-		DataSource: tokenFromMap(tokenMap, dIsEmpty, finalize, func(tk string, datasource *b.DataSourceInfo) {
+		DataSource: tokenFromMap(tokenMap, dIsEmpty, finalize, func(tk string, datasource *info.DataSource) {
 			checkedApply(&datasource.Tok, tokens.ModuleMember(tk))
 		}),
 	}, nil
 }
 
-func (opts *InferredModulesOpts) ensurePrefix(info *b.ProviderInfo) error {
+func (opts *InferredModulesOpts) ensurePrefix(info *info.Provider) error {
 	prefix := opts.TfPkgPrefix
 	var noCommonality bool
 	findPrefix := func(key string, _ shim.Resource) bool {
@@ -214,7 +214,7 @@ func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, 
 // Precompute the mapping from tf tokens to pulumi modules.
 //
 // The resulting map is complete for all TF resources and datasources in info.P.
-func (opts *InferredModulesOpts) computeTokens(info *b.ProviderInfo) map[string]tokenInfo {
+func (opts *InferredModulesOpts) computeTokens(info *info.Provider) map[string]tokenInfo {
 	contract.Assertf(opts.TfPkgPrefix != "", "TF package prefix not provided or computed")
 	tree := &node{segment: opts.TfPkgPrefix}
 
@@ -306,18 +306,7 @@ func (opts *InferredModulesOpts) computeTokens(info *b.ProviderInfo) map[string]
 	return output
 }
 
-func ignoredTokens(info *b.ProviderInfo) map[string]bool {
-	ignored := map[string]bool{}
-	if info == nil {
-		return ignored
-	}
-	for _, tk := range info.IgnoreMappings {
-		ignored[tk] = true
-	}
-	return ignored
-}
-
-func mapProviderItems(info *b.ProviderInfo, each func(string, shim.Resource) bool) {
+func mapProviderItems(info *info.Provider, each func(string, shim.Resource) bool) {
 	ignored := ignoredTokens(info)
 	info.P.ResourcesMap().Range(func(key string, value shim.Resource) bool {
 		if ignored[key] {
@@ -351,10 +340,10 @@ func sharedPrefix(s1, s2 string) string {
 
 type tokenInfo struct{ mod, name string }
 
-func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
+func tokenFromMap[T info.Resource | info.DataSource](
 	tokenMap map[string]tokenInfo, isEmpty func(*T) bool,
 	finalize Make, apply func(tk string, elem *T),
-) b.ElementStrategy[T] {
+) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
 		if !isEmpty(elem) {
 			return nil

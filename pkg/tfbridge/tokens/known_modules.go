@@ -21,14 +21,14 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func knownModules[T b.ResourceInfo | b.DataSourceInfo](
+func knownModules[T info.Resource | info.DataSource](
 	prefix, defaultModule string, modules []string,
 	apply func(string, string, *T, error) error,
 	moduleTransform func(string) string,
-) b.ElementStrategy[T] {
+) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
 		tk := strings.TrimPrefix(tfToken, prefix)
 		if len(tk) == len(tfToken) {
@@ -55,13 +55,13 @@ func knownModules[T b.ResourceInfo | b.DataSourceInfo](
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
 func KnownModules(
 	tfPackagePrefix, defaultModule string, modules []string, finalize Make,
-) b.Strategy {
+) Strategy {
 	// NOTE: We could turn this from a sort + linear lookup into a radix tree to recover
 	// O(log(n)) performance (current is O(n*m)) where n = number of modules and m =
 	// number of mappings.
 	sort.Sort(sort.Reverse(sort.StringSlice(modules)))
 
-	return b.Strategy{
+	return Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, modules,
 			knownResource(finalize), camelCase),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
@@ -69,8 +69,8 @@ func KnownModules(
 	}
 }
 
-func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo, err error) error {
-	return func(mod, tk string, r *b.ResourceInfo, err error) error {
+func knownResource(finalize Make) func(mod, tk string, r *info.Resource, err error) error {
+	return func(mod, tk string, r *info.Resource, err error) error {
 		if r.Tok != "" {
 			return nil
 		}
@@ -86,8 +86,8 @@ func knownResource(finalize Make) func(mod, tk string, r *b.ResourceInfo, err er
 	}
 }
 
-func knownDataSource(finalize Make) func(mod, tk string, d *b.DataSourceInfo, err error) error {
-	return func(mod, tk string, d *b.DataSourceInfo, err error) error {
+func knownDataSource(finalize Make) func(mod, tk string, d *info.DataSource, err error) error {
+	return func(mod, tk string, d *info.DataSource, err error) error {
 		if d.Tok != "" {
 			return nil
 		}

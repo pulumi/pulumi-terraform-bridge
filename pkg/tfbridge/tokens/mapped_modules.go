@@ -18,8 +18,6 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // A strategy for assigning tokens to a hand generated set of modules with an arbitrary
@@ -28,7 +26,7 @@ import (
 // If defaultModule is "", then the returned strategies will error on not encountering a matching module.
 func MappedModules(
 	tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
-) b.Strategy {
+) Strategy {
 
 	mods := make([]string, 0, len(modules))
 	for k := range modules {
@@ -48,7 +46,7 @@ func MappedModules(
 		return s
 	}
 
-	return b.Strategy{
+	return Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, mods,
 			knownResource(finalize), transform),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,

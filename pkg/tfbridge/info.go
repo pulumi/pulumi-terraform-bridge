@@ -165,7 +165,7 @@ type CSharpInfo = info.CSharp
 
 // See https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
 // supported options.
-type JavaInfo = info.JavaScript
+type JavaInfo = info.Java
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
 type PreConfigureCallback = info.PreCheckCallback
