@@ -6,6 +6,7 @@ import (
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -256,15 +257,15 @@ func TestValidateInputType_objects(t *testing.T) {
 			},
 		},
 		{
-			name:     "object_multi_type_failure_object",
+			name:     "oneof_object_multi_type_failure_object",
 			typeRef:  "ObjectMultiType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"prop": []interface{}{"foo"},
 			})),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
-				{Reason: "expected object type, got [] type", ResourcePath: "object_multi_type_failure_object.prop"},
+				{Reason: "expected string type, got [] type", ResourcePath: "oneof_object_multi_type_failure_object.prop"},
+				{Reason: "expected object type, got [] type", ResourcePath: "oneof_object_multi_type_failure_object.prop"},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectMultiType": {
@@ -326,7 +327,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			},
 		},
 		{
-			name:     "object_multi_type_failure",
+			name:     "oneof_object_multi_type_failure",
 			typeRef:  "ObjectMultiType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -335,11 +336,11 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_multi_type_failure.prop",
+					ResourcePath: "oneof_object_multi_type_failure.prop",
 				},
 				{
 					Reason:       "expected number type, got [] type",
-					ResourcePath: "object_multi_type_failure.prop",
+					ResourcePath: "oneof_object_multi_type_failure.prop",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -397,34 +398,6 @@ func TestValidateInputType_objects(t *testing.T) {
 				{
 					Reason:       "expected string type, got object type",
 					ResourcePath: "object_string_type_failure.objectStringProp",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "object_string_type_failure_name",
-			typeRef:  "ObjectStringType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"objectStringProp1": "foo",
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "property objectStringProp1 is not defined in the schema",
-					ResourcePath: "object_string_type_failure_name",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -513,7 +486,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason: "object_double_nested_object_type_required_failure.prop object" +
+					Reason: "object_double_nested_object_type_required_failure.prop" +
 						" is missing required properties: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure.prop",
 				},
@@ -567,18 +540,18 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[1] object" +
-						" is missing required property: objectStringProp",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[1]" +
+						" is missing a required property: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[1]",
 				},
 				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[2] object" +
-						" is missing required property: objectStringProp",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[2]" +
+						" is missing a required property: objectStringProp",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[2] object " +
-						"is missing required property: foo",
+					Reason: "object_double_nested_object_type_required_failure_2.prop[2]" +
+						" is missing a required property: foo",
 					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
 				},
 			},
@@ -634,58 +607,6 @@ func TestValidateInputType_objects(t *testing.T) {
 					},
 				},
 			})),
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "string",
-									},
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectDoubleNestedObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									// not using ref to test arbitrary object keys
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "object",
-										Ref:  "#/types/pkg:index/type:ObjectStringType",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "object_double_nested_object_type_failure_name",
-			typeRef:  "ObjectDoubleNestedObjectType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": map[string]interface{}{
-					"foo": map[string]interface{}{
-						"bar": "baz",
-					},
-				},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "property foo is not defined in the schema",
-					ResourcePath: "object_double_nested_object_type_failure_name.prop",
-				},
-			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectStringType": {
 					ObjectTypeSpec: pschema.ObjectTypeSpec{
@@ -1043,7 +964,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			},
 		},
 		{
-			name:     "object_multi_type_nested_failure2",
+			name:     "oneof_object_multi_type_nested_failure2",
 			typeRef:  "ObjectNestedArrayObjectType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1056,15 +977,15 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected array type, got object type",
-					ResourcePath: "object_multi_type_nested_failure2.prop",
+					ResourcePath: "oneof_object_multi_type_nested_failure2.prop",
 				},
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
+					ResourcePath: "oneof_object_multi_type_nested_failure2.prop.bar",
 				},
 				{
 					Reason:       "expected object type, got [] type",
-					ResourcePath: "object_multi_type_nested_failure2.prop.bar",
+					ResourcePath: "oneof_object_multi_type_nested_failure2.prop.bar",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1120,7 +1041,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			},
 		},
 		{
-			name:     "object_multi_type_nested_failure",
+			name:     "oneof_object_multi_type_nested_failure",
 			typeRef:  "ObjectNestedArrayObjectType",
 			typeName: "object",
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1131,11 +1052,11 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "object_multi_type_nested_failure.prop[0].objectStringProp",
+					ResourcePath: "oneof_object_multi_type_nested_failure.prop[0].objectStringProp",
 				},
 				{
 					Reason:       "expected object type, got [] type",
-					ResourcePath: "object_multi_type_nested_failure.prop",
+					ResourcePath: "oneof_object_multi_type_nested_failure.prop",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
@@ -1201,7 +1122,6 @@ func TestValidateInputType_objects(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",
@@ -1214,7 +1134,9 @@ func TestValidateInputType_objects(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
+			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
+				resource.PropertyKey(tc.name): tc.input,
+			})
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}
@@ -1515,57 +1437,6 @@ func TestValidateInputType_arrays(t *testing.T) {
 			},
 		},
 		{
-			name:     "object_double_nested_object_type_failure_name",
-			typeRef:  "ObjectDoubleNestedObjectType",
-			typeName: "object",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-					"prop": map[string]interface{}{
-						"foo": map[string]interface{}{
-							"bar": "baz",
-						},
-					},
-				})),
-			}),
-			failures: []TypeFailure{
-				{
-					Reason:       "property foo is not defined in the schema",
-					ResourcePath: "object_double_nested_object_type_failure_name[0].prop",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectDoubleNestedObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									// not using ref to test arbitrary object keys
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "object",
-										Ref:  "#/types/pkg:index/type:ObjectStringType",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
 			name:     "object_double_nested_object_type_no_ref_success",
 			typeRef:  "ObjectDoubleNestedObjectType",
 			typeName: "object",
@@ -1737,10 +1608,6 @@ func TestValidateInputType_arrays(t *testing.T) {
 					Reason:       "expected string type, got [] type",
 					ResourcePath: "object_nested_array_object_type_failure[0].prop[1].objectStringProp",
 				},
-				{
-					Reason:       "property foo is not defined in the schema",
-					ResourcePath: "object_nested_array_object_type_failure[0].prop[2]",
-				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectStringType": {
@@ -1798,7 +1665,6 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",
@@ -1811,7 +1677,9 @@ func TestValidateInputType_arrays(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
+			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
+				resource.PropertyKey(tc.name): tc.input,
+			})
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}
@@ -1939,11 +1807,8 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
-			name:  "array_type_failure",
+			name:  "array_type_string_coalesce_success",
 			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-			failures: []TypeFailure{
-				{Reason: "expected number type, got string type", ResourcePath: "array_type_failure[0]"},
-			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"array_type_failure": {
 					TypeSpec: pschema.TypeSpec{
@@ -1974,28 +1839,25 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		{
 			name: "object_type_failure",
 			input: resource.NewObjectProperty(
-				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
+				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": []string{"bar"}}),
 			),
 			failures: []TypeFailure{
-				{Reason: "expected number type, got string type", ResourcePath: "object_type_failure.foo"},
+				{Reason: "expected boolean type, got [] type", ResourcePath: "object_type_failure.foo"},
 			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"object_type_failure": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "object",
 						AdditionalProperties: &pschema.TypeSpec{
-							Type: "number",
+							Type: "bool",
 						},
 					},
 				},
 			},
 		},
 		{
-			name:  "string_type_failure_name",
+			name:  "extraneous_property_success",
 			input: resource.NewNumberProperty(1),
-			failures: []TypeFailure{
-				{Reason: "property string_type_failure_name is not defined in the schema", ResourcePath: ""},
-			},
 			inputProperties: map[string]pschema.PropertySpec{
 				"prop": {
 					TypeSpec: pschema.TypeSpec{
@@ -2016,13 +1878,10 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
-			name:  "secret_type_failure",
+			name:  "secret_type_string_coalesce_success",
 			input: resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("foo")}),
-			failures: []TypeFailure{
-				{Reason: "expected number type, got secret<string> type", ResourcePath: "secret_type_failure"},
-			},
 			inputProperties: map[string]pschema.PropertySpec{
-				"secret_type_failure": {
+				"secret_type_string_coalesce_success": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "number",
 					},
@@ -2056,17 +1915,10 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
-			name: "output_computed_type_failure",
-			input: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewComputedProperty(resource.Computed{
-					Element: resource.NewStringProperty("foo"),
-				}),
-			}),
-			failures: []TypeFailure{
-				{Reason: "expected number type, got output<output<string>> type", ResourcePath: "output_computed_type_failure"},
-			},
+			name:  "output_type_coalesce_success",
+			input: resource.NewOutputProperty(resource.Output{Element: resource.NewStringProperty("foo"), Known: true}),
 			inputProperties: map[string]pschema.PropertySpec{
-				"output_computed_type_failure": {
+				"output_type_coalesce_success": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "number",
 					},
@@ -2074,29 +1926,49 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
-			name:  "output_type_failure",
-			input: resource.NewOutputProperty(resource.Output{Element: resource.NewStringProperty("foo")}),
-			failures: []TypeFailure{
-				{Reason: "expected number type, got output<string> type", ResourcePath: "output_type_failure"},
-			},
-			inputProperties: map[string]pschema.PropertySpec{
-				"output_type_failure": {
-					TypeSpec: pschema.TypeSpec{
-						Type: "number",
-					},
-				},
-			},
-		},
-		{
-			name:  "null_type_failure",
+			name:  "null_type_success",
 			input: resource.NewNullProperty(),
-			failures: []TypeFailure{
-				{Reason: "property null_type_failure is required", ResourcePath: ""},
-			},
 			inputProperties: map[string]pschema.PropertySpec{
-				"null_type_failure": {
+				"null_type_success": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "string",
+					},
+				},
+			},
+		},
+		{
+			name:  "default_required_success",
+			input: resource.NewNullProperty(),
+			inputProperties: map[string]pschema.PropertySpec{
+				"default_required_success": {
+					Default: "foo",
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		{
+			name:  "oneof_default_type_success",
+			input: resource.NewStringProperty("foo"),
+			inputProperties: map[string]pschema.PropertySpec{
+				"oneof_default_type_success": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+						OneOf: []pschema.TypeSpec{
+							{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+							{
+								Type: "object",
+								AdditionalProperties: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -2114,7 +1986,6 @@ func TestValidateInputType_toplevel(t *testing.T) {
 					},
 				},
 			}
-			pathBuilder := resource.PropertyPath{}
 			urn := resource.CreateURN(
 				"testResource",
 				"pkg:mod:ResA",
@@ -2127,7 +1998,9 @@ func TestValidateInputType_toplevel(t *testing.T) {
 				urn:    urn,
 				schema: pspec,
 			}
-			failures := v.validateResourceInputType(tc.name, tc.input, pathBuilder)
+			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
+				resource.PropertyKey(tc.name): tc.input,
+			})
 			if failures != nil && len(*failures) != len(tc.failures) {
 				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
 			}

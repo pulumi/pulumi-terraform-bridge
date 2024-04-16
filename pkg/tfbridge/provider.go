@@ -785,7 +785,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		})()
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
-			typeFailures := iv.ValidateInputs(news)
+			typeFailures := iv.ValidateInputs(t, news)
 			if typeFailures != nil {
 				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
 					"issue at https://github.com/pului/pulumi-terraform-bridge/issues.",
