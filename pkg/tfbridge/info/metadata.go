@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package info
 
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -27,7 +27,7 @@ import (
 type ProviderMetadata *metadata.Data
 
 // Information necessary to persist and use provider level metadata.
-type MetadataInfo struct {
+type Metadata struct {
 	// The path (relative to schema.json) of the metadata file.
 	Path string
 	// The parsed metadata.
@@ -37,7 +37,7 @@ type MetadataInfo struct {
 // Describe a metadata file called `bridge-metadata.json`.
 //
 // `bytes` is the embedded metadata file.
-func NewProviderMetadata(bytes []byte) *MetadataInfo {
+func NewProviderMetadata(bytes []byte) *Metadata {
 	parsed, err := metadata.New(bytes)
 	// We assert instead of returning an (MetadataInfo, error) because we are
 	// validating compile time embedded data.
@@ -46,12 +46,12 @@ func NewProviderMetadata(bytes []byte) *MetadataInfo {
 	// `go:embed`ed.
 	contract.AssertNoErrorf(err, "This always signals an error at compile time.")
 
-	info := &MetadataInfo{"bridge-metadata.json", ProviderMetadata(parsed)}
+	info := &Metadata{"bridge-metadata.json", ProviderMetadata(parsed)}
 	info.assertValid()
 	return info
 }
 
-func (info *MetadataInfo) assertValid() {
+func (info *Metadata) assertValid() {
 	contract.Assertf(info != nil,
 		"Attempting to use provider metadata without setting ProviderInfo.MetadataInfo")
 
@@ -60,23 +60,4 @@ func (info *MetadataInfo) assertValid() {
 	// extracted. This error is irrecoverable and needs to be fixed at compile time.
 	contract.Assertf(info.Path != "", "Path must be non-empty")
 
-}
-
-var declaredRuntimeMetadata = map[string]struct{}{
-	autoSettingsKey: {},
-	"mux":           {},
-}
-
-func declareRuntimeMetadata(label string) { declaredRuntimeMetadata[label] = struct{}{} }
-
-// trim the metadata to just the keys required for the runtime phase
-// in the future this method might also substitute compressed contents within some keys
-func ExtractRuntimeMetadata(info *MetadataInfo) *MetadataInfo {
-	data, _ := metadata.New(nil)
-
-	for k := range declaredRuntimeMetadata {
-		metadata.CloneKey(k, info.Data, data)
-	}
-
-	return &MetadataInfo{"runtime-bridge-metadata.json", ProviderMetadata(data)}
 }
