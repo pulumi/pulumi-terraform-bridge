@@ -72,6 +72,7 @@ type Provider struct {
 	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
 	supportsSecrets bool                               // true if the engine supports secret property values
 	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
+	cachedSchema    func() *pschema.PackageSpec
 	memStats        memStatCollector
 }
 
@@ -212,6 +213,13 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		info:         info,
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
+		cachedSchema: sync.OnceValue(func() *pschema.PackageSpec {
+			var schema pschema.PackageSpec
+			if err := json.Unmarshal(pulumiSchema, &schema); err != nil {
+				return nil
+			}
+			return &schema
+		}),
 	}
 	p.loggingContext(ctx, "")
 	p.initResourceMaps()
@@ -776,13 +784,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	_, validateShouldError := os.LookupEnv("PULUMI_ERROR_TYPE_CHECKER")
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
-		schema := sync.OnceValue(func() *pschema.PackageSpec {
-			var schema pschema.PackageSpec
-			if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
-				return nil
-			}
-			return &schema
-		})()
+		schema := p.cachedSchema()
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
