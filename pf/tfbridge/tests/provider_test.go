@@ -133,7 +133,7 @@ func TestValidateInputs(t *testing.T) {
 	      "stringArrayPropertyValues": ["1", "1"],
 		  "boolPropertyValues": true,
 		  "mapPropertyValues": [
-		  {"__defaults": [], "foo": "bar"}
+		  {"foo": "bar"}
 		  ]
 	    }
 	  }
