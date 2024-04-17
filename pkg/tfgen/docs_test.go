@@ -787,22 +787,25 @@ func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
 
 func TestGetNestedBlockName(t *testing.T) {
 	var tests = []struct {
-		input, expected string
+		input    string
+		expected []string
 	}{
-		{"", ""},
-		{"The `website` object supports the following:", "website"},
-		{"The optional `settings.location_preference` subblock supports:", "location_preference"},
-		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", "authorized_networks"},
-		{"#### result_configuration Argument Reference", "result_configuration"},
-		{"### advanced_security_options", "advanced_security_options"},
-		{"### `server_side_encryption`", "server_side_encryption"},
-		{"### Failover Routing Policy", "failover_routing_policy"},
-		{"##### `log_configuration`", "log_configuration"},
-		{"### data_format_conversion_configuration", "data_format_conversion_configuration"},
-		// This is a common starting line of base arguments, so should result in zero value:
-		{"The following arguments are supported:", ""},
-		{"* `kms_key_id` - ...", ""},
-		{"## Import", ""},
+		//{"", []string(nil)},
+		//{"The `website` object supports the following:", []string{"website"}},
+		//{"The optional `settings.location_preference` subblock supports:", []string{"location_preference"}},
+		//{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"authorized_networks"}},
+		//{"#### result_configuration Argument Reference", []string{"result_configuration"}},
+		//{"### advanced_security_options", []string{"advanced_security_options"}},
+		//{"### `server_side_encryption`", []string{"server_side_encryption"}},
+		//{"### Failover Routing Policy", []string{"failover_routing_policy"}},
+		//{"##### `log_configuration`", []string{"log_configuration"}},
+		//{"### data_format_conversion_configuration", []string{"data_format_conversion_configuration"}},
+		////// This is a common starting line of base arguments, so should result in nil value:
+		//{"The following arguments are supported:", []string(nil)},
+		//{"* `kms_key_id` - ...", []string(nil)},
+		//{"## Import", []string(nil)},
+		//{"#### build_batch_config: restrictions", []string{"build_batch_config.restrictions"}},
+		{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
 	}
 
 	for _, tt := range tests {

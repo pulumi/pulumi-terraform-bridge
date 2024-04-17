@@ -319,14 +319,15 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 
 	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
 
+	//TODO: somewhere in the parsing, we overwrite the Type field. Well that sucks.
 	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
 
-	if strings.Contains(string(markdownBytes), "Provides a CodeBuild Project resource. See also") {
-		q.Q(doc)
-	}
+	//if strings.Contains(string(markdownBytes), "Provides a CodeBuild Project resource. See also") {
+	//	q.Q(doc)
+	//}
 
 	if docInfo != nil {
 		// Helper func for readability due to large number of params
@@ -608,6 +609,9 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	footerLinks := getFooterLinks(markdown)
 
 	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
+	if strings.Contains(doc.Description, "Provides a CodeBuild Project resource. See also") {
+		q.Q(doc.Arguments)
+	}
 	return doc, nil
 }
 
@@ -857,6 +861,11 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
 
 	// For example:
+	// codebuild_project.html.markdown: "#### build_batch_config: restrictions"
+	// codebuild_project.html.markdown: "#### logs_config: s3_logs"
+	regexp.MustCompile("###+ ([a-zA-Z_]+: [a-zA-Z_0-9]+).*"),
+
+	// For example:
 	// elasticsearch_domain.html.markdown: "### advanced_security_options"
 	regexp.MustCompile("###+ ([a-z_]+).*"),
 
@@ -882,14 +891,17 @@ var nestedObjectRegexps = []*regexp.Regexp{
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
 func getNestedBlockName(line string) []string {
+	//q.Q("in getNestedBlockName", line)
 	nested := ""
 	var nestedBlockNames []string
-	for _, match := range nestedObjectRegexps {
+
+	for i, match := range nestedObjectRegexps {
 		matches := match.FindStringSubmatch(line)
-		if len(matches) >= 2 {
+
+		// If we match with the first regex, we have to see if we've got many to many matching for resources going on.
+		if len(matches) >= 2 && i == 0 {
 			firstMatch := matches[0]
 			subNest := ""
-
 			if strings.Contains(firstMatch, "'s ") {
 				// we have even more nesting!
 				// split the line into all of its components
@@ -910,16 +922,40 @@ func getNestedBlockName(line string) []string {
 					parts := strings.Split(nested, ".")
 					nested = parts[len(parts)-1]
 					if subNest != "" {
-						// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:"
-						// Result should be grpc_route.action
+						// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object
+						//supports the following:" the result should be grpc_route.action
 						nested = nested + "." + subNest
 					}
 					nestedBlockNames = append(nestedBlockNames, nested)
 				}
 			}
+			break
+		} else if len(matches) >= 2 && i == 2 {
+			// there's a colon in the subheader; split the line
+			q.Q(matches)
+			parts := strings.Split(matches[1], ":")
+			nested = strings.ToLower(parts[0])
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, ":")
+			subNest := strings.ToLower(parts[1])
+			subNest = strings.TrimSpace(subNest)
+			subNest = strings.Replace(subNest, " ", "_", -1)
+
+			nested = nested + "." + subNest
+			nestedBlockNames = append(nestedBlockNames, nested)
+			break
+		} else if len(matches) >= 2 {
+			nested = strings.ToLower(matches[1])
+			nested = strings.Replace(nested, " ", "_", -1)
+			nested = strings.TrimSuffix(nested, "[]")
+			parts := strings.Split(nested, ".")
+			nested = parts[len(parts)-1]
+			nestedBlockNames = append(nestedBlockNames, nested)
+			break
 		}
-		break
 	}
+	q.Q(nestedBlockNames)
+
 	return nestedBlockNames
 }
 
@@ -963,6 +999,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = []docsPath{}
 				return
 			}
+			//TODO: because the nested headers logic was broken, we can probably remove this bit
 			if strings.HasPrefix(line, "####") {
 				lastMatch = ""
 				nesteds = []docsPath{}
@@ -976,6 +1013,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	var hadSpace bool
 
 	for _, line := range subsection {
+		//q.Q(line)
 		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new argument.
@@ -995,6 +1033,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// heading is over.
 			lastMatch = ""
 		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
+			//q.Q("nestedBlockCurrentLine", line)
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//empty nesteds TODO: make this nicer
@@ -1002,6 +1041,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			for _, item := range nestedBlockCurrentLine {
 				nesteds = append(nesteds, docsPath(item))
 			}
+			q.Q(nesteds)
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.

@@ -1232,6 +1232,10 @@ func (g *Generator) gatherResource(rawname string,
 		pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
 		if err == nil {
 			entityDocs = pulumiDocs
+			//q.Q("ENTITY DOCS COME FROM HERE")
+			//if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
+			//	q.Q(entityDocs.Arguments)
+			//}
 		} else if !g.checkNoDocsError(err) {
 			return nil, err
 		}
@@ -1860,9 +1864,9 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 2. rules.type
 	// 3. type
 
-	// q.Q( "ALSO HERE")
+	//q.Q("ALSO HERE")
 	//if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
-	//	q.Q(entityDocs)
+	//	q.Q(entityDocs.Arguments)
 	//}
 
 	for p := path; p != ""; {
