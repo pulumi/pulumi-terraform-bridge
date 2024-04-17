@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ryboe/q"
 	"os"
 	"path"
 	"path/filepath"
@@ -1220,9 +1219,6 @@ func (g *Generator) gatherResource(rawname string,
 
 	resourceToken := tokens.NewTypeToken(mod, name)
 
-	if strings.Contains(string(resourceToken), "codebuild") {
-		q.Q(resourceToken)
-	}
 	resourcePath := paths.NewResourcePath(rawname, resourceToken, isProvider)
 
 	// Collect documentation information
@@ -1253,17 +1249,23 @@ func (g *Generator) gatherResource(rawname string,
 	// Next, gather up all properties.
 	var stateVars []*variable
 	for _, key := range stableSchemas(schema.Schema()) {
+		//if resourceToken.String() == "aws:appflow/flow:Flow" {
+		//	q.Q(key)
+		//	if strings.Contains(key, "connector") {
+		//		q.Q("#####\n\n\n#####", key, "#####\n\n\n#####")
+		//	}
+		//}
 		propschema := schema.Schema().Get(key)
 		if propschema.Removed() != "" {
 			continue
 		}
 
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
+
 		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
 		rawdoc := propschema.Description()
 
 		propinfo := info.Fields[key]
-
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not
 		// yet implemented.
 		if !isProvider {
@@ -1865,16 +1867,22 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 3. type
 
 	//q.Q("ALSO HERE")
-	//if strings.Contains(entityDocs.Description, "Provides a CodeBuild Project resource. See also") {
-	//	q.Q(entityDocs.Arguments)
+	//if strings.Contains(entityDocs.Description, "A Backend Service defines a group of virtual machines that will serve traffic") {
+	//	q.Q(path)
 	//}
 
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
 		v, ok := entityDocs.Arguments[p]
 		if ok {
+			//if strings.Contains(entityDocs.Description, "A Backend Service defines a group of virtual machines that will serve traffic") {
+			//	q.Q("we found a match", v, p)
+			//}
 			return v.description, false
 		}
+		//if strings.Contains(entityDocs.Description, "A Backend Service defines a group of virtual machines that will serve traffic") {
+		//	q.Q("we did not find a match", p)
+		//}
 		p = p.withOutRoot()
 	}
 
@@ -1890,7 +1898,7 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	//
 	// For example, this will match `production_branch.status` with
 	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
-	// to incorrect docs.
+	// to incorrect docs.Structure
 	//keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
 	//leaf := path.leaf()
 	//for k := range entityDocs.Arguments {

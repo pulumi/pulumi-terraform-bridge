@@ -346,11 +346,41 @@ func TestArgumentRegex(t *testing.T) {
 			},
 			expected: map[docsPath]*argumentDocs{
 
-				"key_algorithm":     {description: "Type of the public key algorithm and size, in bits, of the key pair that your key pair creates when it issues a certificate. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
-				"signing_algorithm": {description: "Name of the algorithm your private CA uses to sign certificate requests. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
-				"subject":           {description: "Nested argument that contains X.500 distinguished name information. At least one nested attribute must be specified."},
-				"common_name":       {description: "Fully qualified domain name (FQDN) associated with the certificate subject. Must be less than or equal to 64 characters in length."},
-				"country":           {description: "Two digit code that specifies the country in which the certificate subject located. Must be less than or equal to 2 characters in length."},
+				"certificate_authority_configuration.key_algorithm":     {description: "Type of the public key algorithm and size, in bits, of the key pair that your key pair creates when it issues a certificate. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
+				"certificate_authority_configuration.signing_algorithm": {description: "Name of the algorithm your private CA uses to sign certificate requests. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
+				"certificate_authority_configuration.subject":           {description: "Nested argument that contains X.500 distinguished name information. At least one nested attribute must be specified."},
+				"subject.common_name":                                   {description: "Fully qualified domain name (FQDN) associated with the certificate subject. Must be less than or equal to 64 characters in length."},
+				"subject.country":                                       {description: "Two digit code that specifies the country in which the certificate subject located. Must be less than or equal to 2 characters in length."},
+			},
+		},
+		{
+			input: []string{
+				"* `header` - (Optional) Contains additional header parameters for the connection. Each parameter can contain the following:",
+				"  * `key` - (Required) The key for the parameter.",
+				"  			There is an extra line description here for reasons.",
+				"  * `value` - (Required) The value associated with the key. Created and stored in AWS Secrets Manager if is secret.",
+				"  * `is_value_secret` - (Optional) Specified whether the value is secret.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"header":                 {description: "Contains additional header parameters for the connection. Each parameter can contain the following:"},
+				"header.key":             {description: "The key for the parameter.\nThere is an extra line description here for reasons."},
+				"header.value":           {description: "The value associated with the key. Created and stored in AWS Secrets Manager if is secret."},
+				"header.is_value_secret": {description: "Specified whether the value is secret."},
+			},
+		},
+		{
+			input: []string{
+				"* `node_pool_config` (Input only) The configuration for the GKE node pool. ",
+				"       If specified, Dataproc attempts to create a node pool with the specified shape. ",
+				"       If one with the same name already exists, it is verified against all specified fields. ",
+				"       If a field differs, the virtual cluster creation will fail.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"node_pool_config": {description: "The configuration for the GKE node pool. \nIf specified, " +
+					"Dataproc attempts to create a node pool with the specified shape.\nIf one with the same name " +
+					"already exists, it is verified against all specified fields.\nIf a field differs, the virtual " +
+					"cluster creation will fail.",
+				},
 			},
 		},
 	}
@@ -740,6 +770,7 @@ func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
 		"The following attributes are exported:",
 		"",
 		"* `id` - The ID of the Droplet",
+		"			which has an extra line attached to it",
 		"* `urn` - The uniform resource name of the Droplet",
 		"* `name`- The name of the Droplet",
 		"* `region` - The region of the Droplet",
@@ -792,6 +823,7 @@ func TestGetNestedBlockName(t *testing.T) {
 	}{
 		//{"", []string(nil)},
 		//{"The `website` object supports the following:", []string{"website"}},
+		{"The `website` and `pages` objects support the following:", []string{"website", "pages"}},
 		//{"The optional `settings.location_preference` subblock supports:", []string{"location_preference"}},
 		//{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"authorized_networks"}},
 		//{"#### result_configuration Argument Reference", []string{"result_configuration"}},
@@ -805,7 +837,8 @@ func TestGetNestedBlockName(t *testing.T) {
 		//{"* `kms_key_id` - ...", []string(nil)},
 		//{"## Import", []string(nil)},
 		//{"#### build_batch_config: restrictions", []string{"build_batch_config.restrictions"}},
-		{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
+		//{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
+		//{"###### S3 Input Format Config", []string{"s3_input_format_config"}},
 	}
 
 	for _, tt := range tests {

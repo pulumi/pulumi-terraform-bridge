@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"path/filepath"
@@ -319,7 +318,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 
 	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
 
-	//TODO: somewhere in the parsing, we overwrite the Type field. Well that sucks.
 	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
@@ -595,23 +593,24 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 	}
 
 	for _, section := range sections {
-		if strings.Contains(string(tfMarkdown), "Provides a CodeBuild Project resource. See also") {
+		//if strings.Contains(string(tfMarkdown), "A Backend Service defines a group of virtual machines that will serve traffic") {
 
-			//q.Q("HERE HERE HERE", strings.Join(section, " "))
+		//q.Q("HERE HERE HERE", strings.Join(section, " "))
 
-			if err := p.parseSection(section); err != nil {
-				return entityDocs{}, err
-			}
+		if err := p.parseSection(section); err != nil {
+			return entityDocs{}, err
 		}
+		//q.Q(p.ret.Arguments)
+		//}
 	}
 
 	// Get links.
 	footerLinks := getFooterLinks(markdown)
 
 	doc, _ := cleanupDoc(p.rawname, p.sink, p.infoCtx, p.ret, footerLinks)
-	if strings.Contains(doc.Description, "Provides a CodeBuild Project resource. See also") {
-		q.Q(doc.Arguments)
-	}
+	//if strings.Contains(doc.Description, "Provides an AppFlow flow resource.") {
+	//	q.Q(doc.Arguments)
+	//}
 	return doc, nil
 }
 
@@ -854,28 +853,29 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
-	regexp.MustCompile("`([a-z_]+)`.*following"),
+	regexp.MustCompile("`([a-z_0-9]+)`.*following"),
 
 	// For example:
 	// athena_workgroup.html.markdown: "#### result_configuration Argument Reference"
-	regexp.MustCompile("(?i)## ([a-z_]+).* argument reference"),
+	regexp.MustCompile("(?i)## ([a-z_0-9]+).* argument reference"),
 
 	// For example:
 	// codebuild_project.html.markdown: "#### build_batch_config: restrictions"
 	// codebuild_project.html.markdown: "#### logs_config: s3_logs"
-	regexp.MustCompile("###+ ([a-zA-Z_]+: [a-zA-Z_0-9]+).*"),
+	regexp.MustCompile("###+ ([a-zA-Z_0-9]+: [a-zA-Z_0-9]+).*"),
 
 	// For example:
 	// elasticsearch_domain.html.markdown: "### advanced_security_options"
-	regexp.MustCompile("###+ ([a-z_]+).*"),
+	regexp.MustCompile("###+ ([a-z_0-9]+).*"),
 
 	// For example:
 	// dynamodb_table.html.markdown: "### `server_side_encryption`"
-	regexp.MustCompile("###+ `([a-z_]+).*`"),
+	regexp.MustCompile("###+ `([a-z_0-9]+).*`"),
 
 	// For example:
 	// route53_record.html.markdown: "### Failover Routing Policy"
-	regexp.MustCompile("###+ ([a-zA-Z_ ]+).*"),
+	// appflow_flow.html.markdown: "###### S3 Input Format Config"
+	regexp.MustCompile("###+ ([a-zA-Z_ 0-9]+).*"),
 
 	// For example:
 	// sql_database_instance.html.markdown:
@@ -883,7 +883,7 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 }
 
-// getNestedBlockName take a line of a Terraform docs Markdown page and returns the name of the nested block it
+// getNestedBlockName takes line of a Terraform docs Markdown page and returns the name of the nested block it
 // describes. If the line does not describe a nested block, an empty string is returned.
 //
 // Examples of nested blocks include (but are not limited to):
@@ -932,7 +932,6 @@ func getNestedBlockName(line string) []string {
 			break
 		} else if len(matches) >= 2 && i == 2 {
 			// there's a colon in the subheader; split the line
-			q.Q(matches)
 			parts := strings.Split(matches[1], ":")
 			nested = strings.ToLower(parts[0])
 			nested = strings.Replace(nested, " ", "_", -1)
@@ -948,14 +947,12 @@ func getNestedBlockName(line string) []string {
 			nested = strings.ToLower(matches[1])
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
-			parts := strings.Split(nested, ".")
+			parts := strings.Split(nested, ".") // TODO: is this where we're getting some missing dots?
 			nested = parts[len(parts)-1]
 			nestedBlockNames = append(nestedBlockNames, nested)
 			break
 		}
 	}
-	q.Q(nestedBlockNames)
-
 	return nestedBlockNames
 }
 
@@ -999,12 +996,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = []docsPath{}
 				return
 			}
-			//TODO: because the nested headers logic was broken, we can probably remove this bit
-			if strings.HasPrefix(line, "####") {
-				lastMatch = ""
-				nesteds = []docsPath{}
-				return
-			}
 			line = "\n" + strings.TrimSpace(line)
 			ret.Arguments[docsPath(lastMatch)].description += line
 		}
@@ -1012,19 +1003,21 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	// hadSpace tells us if the previous line was blank.
 	var hadSpace bool
 
+	var parentHeader string
+
 	for _, line := range subsection {
 		//q.Q(line)
 		// We have found a new resource on this line.
 		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
 			// We have found a new argument.
-			// If a bullet point is indented, we have found a sub-field of the previous line.
+			// If a bullet point is indented, we have most likely found a sub-field of the previous line.
 			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875
-
 			if isIndented {
-				name = lastMatch + "." + name
+				name = parentHeader + "." + name
 			} else {
-				lastMatch = name
+				parentHeader = name
 			}
+			lastMatch = name
 			addNewHeading(name, desc, line)
 
 		} else if strings.TrimSpace(line) == "---" {
@@ -1041,7 +1034,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			for _, item := range nestedBlockCurrentLine {
 				nesteds = append(nesteds, docsPath(item))
 			}
-			q.Q(nesteds)
 			lastMatch = ""
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
