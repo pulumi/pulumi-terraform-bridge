@@ -148,6 +148,8 @@ type SchemaMap interface {
 
 	Set(key string, value Schema)
 	Delete(key string)
+
+	Validate() error
 }
 
 type ImportFunc func(t, id string, meta interface{}) ([]InstanceState, error)
@@ -191,6 +193,7 @@ type Provider interface {
 	ResourcesMap() ResourceMap
 	DataSourcesMap() ResourceMap
 
+	InternalValidate() error
 	Validate(ctx context.Context, c ResourceConfig) ([]string, []error)
 	ValidateResource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)
 	ValidateDataSource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)

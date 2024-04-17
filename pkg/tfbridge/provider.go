@@ -844,7 +844,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(
-		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, false, p.supportsSecrets,
+		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
 	)
 
 	pinputsWithSecrets := MarkSchemaSecrets(ctx, schemaMap, res.Schema.Fields,

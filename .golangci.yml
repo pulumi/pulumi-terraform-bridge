@@ -1,8 +1,4 @@
 run:
-  skip-dirs:
-    - pkg/tf2pulumi/internal/addrs
-    - pkg/tf2pulumi/internal/config
-    - pkg/tf2pulumi/internal/configs
   timeout: 10m
 
 linters:
@@ -25,3 +21,7 @@ issues:
   exclude:
     - "unused-parameter: parameter"
     - "redefines-builtin-id:"
+  exclude-dirs:
+    - pkg/tf2pulumi/internal/addrs
+    - pkg/tf2pulumi/internal/config
+    - pkg/tf2pulumi/internal/configs

@@ -424,7 +424,9 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.TypeSet:
 		t.kind = kindSet
 	default:
-		panic("impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point")
+		contract.Failf(
+			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point path: %s, type: %s",
+			typePath.String(), sch.Type())
 	}
 	t.element = element
 	return t

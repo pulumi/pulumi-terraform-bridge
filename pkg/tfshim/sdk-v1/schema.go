@@ -190,6 +190,14 @@ func NewSchemaMap(m map[string]*schema.Schema) shim.SchemaMap {
 	return v1SchemaMap(m)
 }
 
+func (m v1SchemaMap) unwrap() map[string]*schema.Schema {
+	return m
+}
+
+func (m v1SchemaMap) Validate() error {
+	return schema.InternalMap(m).InternalValidate(m.unwrap())
+}
+
 func (m v1SchemaMap) Len() int {
 	return len(m)
 }

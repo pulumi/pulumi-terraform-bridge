@@ -16,6 +16,7 @@ package schemashim
 
 import (
 	"context"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -57,6 +58,10 @@ func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 		panic(err)
 	}
 	return &schemaOnlyDataSourceMap{dataSources}
+}
+
+func (p *SchemaOnlyProvider) InternalValidate() error {
+	return nil
 }
 
 func (p *SchemaOnlyProvider) Validate(context.Context, shim.ResourceConfig) ([]string, []error) {

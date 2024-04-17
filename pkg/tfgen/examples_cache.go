@@ -65,6 +65,13 @@ func newExamplesCache(info *tfbridge.ProviderInfo, cacheDir string) *examplesCac
 	enabled := true
 	if dir == "" {
 		dir, enabled = os.LookupEnv(pulumiConvertExamplesCacheDirEnvVar)
+		// If the provider author is debugging schema generation, example cache may get in the way of getting
+		// accurate results - there are some problems at the intersection of using Go workspaces and computing
+		// accurate keys. Disable it.
+		_, convertOnly := os.LookupEnv("PULUMI_CONVERT_ONLY")
+		if convertOnly {
+			enabled = false
+		}
 	}
 	if !enabled {
 		return &examplesCache{}

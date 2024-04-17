@@ -64,6 +64,10 @@ func newObjectPseudoResource(t basetypes.ObjectTypable,
 var _ shim.Resource = (*objectPseudoResource)(nil)
 var _ shim.SchemaMap = (*objectPseudoResource)(nil)
 
+func (r *objectPseudoResource) Validate() error {
+	return nil
+}
+
 func (r *objectPseudoResource) Schema() shim.SchemaMap {
 	return r
 }
@@ -196,6 +200,10 @@ func newTuplePseudoResource(t attr.TypeWithElementTypes) shim.Resource {
 
 func (*tuplePseudoResource) SchemaVersion() int         { panic("TODO") }
 func (*tuplePseudoResource) DeprecationMessage() string { panic("TODO") }
+
+func (r *tuplePseudoResource) Validate() error {
+	return nil
+}
 
 func (r *tuplePseudoResource) Schema() shim.SchemaMap {
 	return r

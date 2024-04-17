@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -39,6 +40,10 @@ func (s ProviderShim) ResourcesMap() shim.ResourceMap {
 
 func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
+}
+
+func (s ProviderShim) InternalValidate() error {
+	return nil
 }
 
 func (ProviderShim) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
