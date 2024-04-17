@@ -49,11 +49,11 @@ func XWithUrn(ctx context.Context, urn resource.URN) context.Context {
 //
 //	urn := GetUrn(ctx)
 //
-// GetUrn is available on any context associated with a resource. 
+// GetUrn is available on any context associated with a resource.
 // Calling GetUrn on a context associated with an Invoke will panic.
 func GetUrn(ctx context.Context) resource.URN {
-	urn, ok := ctx.Value(urnCtxKey).(resource.URN)
-	return urn, ok
+	urn := ctx.Value(urnCtxKey).(resource.URN)
+	return urn
 }
 
 const (

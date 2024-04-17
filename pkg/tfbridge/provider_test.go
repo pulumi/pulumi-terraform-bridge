@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -772,10 +771,7 @@ func TestCheckCallback(t *testing.T) {
 		// We test that we have access to the logger in this callback.
 		GetLogger(ctx).Status().Info("Did not panic")
 
-		urn, ok := GetUrn(ctx)
-		if !ok {
-			return config, errors.New("Expected GetUrn to find urn")
-		}
+		urn := GetUrn(ctx)
 		assert.Equal(t, urn, resource.URN("urn:pulumi:st::pg::testprovider:index/res:Res::r"))
 
 		config["arrayPropertyValues"] = resource.NewArrayProperty(
