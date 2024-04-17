@@ -16,7 +16,8 @@ package tfbridge
 
 import (
 	"sort"
-	_ "unsafe"
+
+	_ "unsafe" // Needed for linkname
 
 	"github.com/Masterminds/semver"
 

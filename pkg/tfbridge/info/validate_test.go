@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func ref[T any](t T) *T { return &t }
+
 func TestValidateNameOverride(t *testing.T) {
 	r := func() shim.Resource {
 		return (&schema.Resource{
@@ -58,7 +60,7 @@ func TestValidateNameOverride(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		info        *ResourceInfo
+		info        *Resource
 		expectedErr error
 	}{
 		{
@@ -68,16 +70,16 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "valid field, name override",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"scalar1": {Name: "foo"},
 				},
 			},
 		},
 		{
 			name: "invalid field, name override",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"scalar_missing": {Name: "foo"},
 				},
 			},
@@ -85,19 +87,19 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "invalid elem on scalar",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
-					"scalar1": {Elem: &SchemaInfo{}},
+			info: &Resource{
+				Fields: map[string]*Schema{
+					"scalar1": {Elem: &Schema{}},
 				},
 			},
 			expectedErr: errNoElemToOverride,
 		},
 		{
 			name: "invalid name override on scalar list elem",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"list_of_scalar": {
-						Elem: &SchemaInfo{
+						Elem: &Schema{
 							Name: "foo",
 						},
 					},
@@ -107,10 +109,10 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "valid object field overrides",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"object1": {
-						Fields: map[string]*SchemaInfo{
+						Fields: map[string]*Schema{
 							"nest1": {Name: "Foo"},
 						},
 					},
@@ -119,11 +121,11 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "invalid object field overrides",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"object1": {
-						Elem: &SchemaInfo{
-							Fields: map[string]*SchemaInfo{
+						Elem: &Schema{
+							Fields: map[string]*Schema{
 								"nest1": {Name: "Foo"},
 							},
 						},
@@ -134,10 +136,10 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "invalid fields on list",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"list_of_scalar": {
-						Fields: map[string]*SchemaInfo{
+						Fields: map[string]*Schema{
 							"invalid": {},
 						},
 					},
@@ -147,18 +149,18 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "valid max items 1",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
-					"list_of_scalar": {MaxItemsOne: True()},
+			info: &Resource{
+				Fields: map[string]*Schema{
+					"list_of_scalar": {MaxItemsOne: ref(true)},
 				},
 			},
 		},
 		{
 			name: "invalid max items 1 (nested)",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
+			info: &Resource{
+				Fields: map[string]*Schema{
 					"list_of_scalar": {
-						Elem: &SchemaInfo{MaxItemsOne: True()},
+						Elem: &Schema{MaxItemsOne: ref(true)},
 					},
 				},
 			},
@@ -166,18 +168,18 @@ func TestValidateNameOverride(t *testing.T) {
 		},
 		{
 			name: "invalid max items 1 (scalar)",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
-					"scalar1": {MaxItemsOne: True()},
+			info: &Resource{
+				Fields: map[string]*Schema{
+					"scalar1": {MaxItemsOne: ref(true)},
 				},
 			},
 			expectedErr: errCannotSetMaxItemsOne,
 		},
 		{
 			name: "invalid max items 1 (object)",
-			info: &ResourceInfo{
-				Fields: map[string]*SchemaInfo{
-					"object1": {MaxItemsOne: True()},
+			info: &Resource{
+				Fields: map[string]*Schema{
+					"object1": {MaxItemsOne: ref(true)},
 				},
 			},
 			expectedErr: errCannotSetMaxItemsOne,
@@ -198,21 +200,21 @@ func TestValidateNameOverride(t *testing.T) {
 	}
 }
 
-func withResource(info *ResourceInfo, r shim.Resource) *ProviderInfo {
+func withResource(info *Resource, r shim.Resource) *Provider {
 	token := "test_r"
 
 	if info == nil {
-		info = &ResourceInfo{}
+		info = &Resource{}
 	}
 
-	p := &ProviderInfo{
+	p := &Provider{
 		Name: "test",
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
 				token: r,
 			},
 		}).Shim(),
-		Resources: map[string]*ResourceInfo{
+		Resources: map[string]*Resource{
 			token: info,
 		},
 	}

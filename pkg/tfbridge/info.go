@@ -39,10 +39,9 @@ const (
 	UnlicensedLicenseType = info.UnlicensedLicenseType
 )
 
-// ProviderInfo contains information about a Terraform provider plugin that we will use to generate the Pulumi
-// metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
-//
-//nolint:lll
+// ProviderInfo contains information about a Terraform provider plugin that we will use to
+// generate the Pulumi metadata.  It primarily contains a pointer to the Terraform schema,
+// but can also contain specific name translations.
 type ProviderInfo = info.Provider
 
 // Send logs or status logs to the user.

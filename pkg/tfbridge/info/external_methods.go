@@ -19,6 +19,8 @@ package info
 
 import (
 	"strings"
+
+	// Needed to unsafely import ApplyAutoAliases
 	_ "unsafe"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -28,7 +30,7 @@ import (
 //
 // This needs linkname to avoid go's package coherence rules.
 
-//go:linkname applyAutoAliases tfbridge.ApplyAutoAliases
+//go:linkname applyAutoAliases github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ApplyAutoAliases
 func applyAutoAliases(info *Provider) error
 
 func (info *Provider) MustApplyAutoAliases() {

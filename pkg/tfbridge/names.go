@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"unicode"
 
-	_ "unsafe"
-
 	"github.com/gedex/inflector"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
