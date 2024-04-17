@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: Add a description here
+// [info] contains the types that bridged provider authors use to describe the mapping
+// between Pulumi and Terraform providers.
+//
+// As much as possible, this package should restrict itself to type declarations. Runtime
+// behavior and advanced configuration should go in /pkg/tfbridge or more specialized
+// packages.
 package info
 
 import (
@@ -35,8 +40,9 @@ const (
 	UnlicensedLicenseType TFProviderLicense = "UNLICENSED"
 )
 
-// Provider contains information about a Terraform provider plugin that we will use to generate the Pulumi
-// metadata.  It primarily contains a pointer to the Terraform schema, but can also contain specific name translations.
+// Provider contains information about a Terraform provider plugin that we will use to
+// generate the Pulumi metadata.  It primarily contains a pointer to the Terraform schema,
+// but can also contain specific name translations.
 //
 //nolint:lll
 type Provider struct {

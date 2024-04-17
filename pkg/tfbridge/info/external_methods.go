@@ -16,6 +16,9 @@ package info
 
 // This file maintains backward comparability by maintaining methods on *Provider that are
 // supplied by packages that import info.
+//
+// It should not be extended and new functions similar to those here should be
+// free-standing methods.
 
 import (
 	"strings"
@@ -26,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Materialize tfbridge.ApplyAutoAliases as a method in *Provider.
+// Materialize [tfbridge.ApplyAutoAliases] as a method in [*Provider].
 //
 // This needs linkname to avoid go's package coherence rules.
 
@@ -39,6 +42,10 @@ func (info *Provider) MustApplyAutoAliases() {
 }
 
 func (info *Provider) ApplyAutoAliases() error { return applyAutoAliases(info) }
+
+// Materialize [tfbridge.ComputeTokens] as a method on [*Provider].
+//
+// Supporting data structures need to be defined here to satisfy go's coherence rules.
 
 type Strategy struct {
 	Resource   ResourceStrategy
